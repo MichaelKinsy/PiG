@@ -1,0 +1,34 @@
+# Pi 1402973a rpc-mode.ts:195-208: RPC mode forwards setWidget for undefined and string arrays only.
+# A component factory is ignored: it is never called and nothing reaches the host except a later clear.
+name = "61-rpc-set-widget-factory"
+description = "RPC setWidget forwards string lines and clears but never runs or renders a component factory"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/extensions/types.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"w","type":"prompt","message":"/widget-kinds"}']
+timeout_seconds = 15
+settle_seconds = 2
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/widget-factory-ui.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/widget-factory-ui.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = ['"widgetKey":"lines"', '"widgetLines":["string-widget-line"]', '"widgetKey":"factory"', '"id":"w","type":"response","command":"prompt","success":true']
+both_not_contain = ['factory-ran', 'FACTORY-FRAME', '"success":false', 'extension_error']
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."

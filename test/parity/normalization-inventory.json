@@ -82,7 +82,7 @@
     },
     {
       "source": "test/parity/testdata/session-wire.py",
-      "sha256": "884305f39e05b7df7fb5bc6b4aa11a79b4a62ef0d4c556f9e4cdfc508a83ff81",
+      "sha256": "796ae00ad8c91c26e1adf50e15d2808633246eeecb9ba6e8a6ae7cceeaaf662f",
       "reason": "The Session query probe validates unique eight-hex generated IDs and exact millisecond ISO timestamps before injective substitution. Imported IDs/times remain unchanged; only reconstructed label identities are aliased after collision checks. Complete get_entries records are compared, not unrelated mutation events. Signal probes compare process wait status after real provider/command barriers, not terminal rendering. The session_shutdown signal cases replace the probe's temporary directory with <root> in stderr, because the extension path a handler's error names lives there; the rest of stderr, stdout, the session records and the request count are compared exactly."
     },
     {
@@ -1888,6 +1888,16 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/53-node-shared-model-runtime-session.toml",
+      "transforms": [
+        {
+          "kind": "artifact_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A Node extension's nested Session shares ctx.modelRegistry's model runtime and the parent's credentials",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/54-extension-context-usage-presence.toml",
       "transforms": [
         {
@@ -2437,6 +2447,27 @@
         {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/85-extension-dir-with-prompts.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "/[^\" ]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+",
+          "with": "<agent>",
+          "reason": "Isolated agent roots differ; preserve each resource path and its metadata."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\{\"(?:name\":\"sprite\",\"description\":\"Select the PiG login sprite\\.\",\"source\":\"extension\",\"sourceInfo\":\\{\"path\":\"builtin:pig-login\",\"source\":\"builtin\",\"scope\":\"temporary\",\"origin\":\"top-level\"\\}|description\":\"Select the PiG login sprite\\.\",\"name\":\"sprite\",\"source\":\"extension\",\"sourceInfo\":\\{\"origin\":\"top-level\",\"path\":\"builtin:pig-login\",\"scope\":\"temporary\",\"source\":\"builtin\"\\})\\},?",
+          "with": "",
+          "reason": "D2: PiG's built-in pig-login extension registers /sprite, which Pi has no counterpart for. Only that one command entry is removed; every other command, its order and its sourceInfo stay compared."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
         }
       ]
     },
@@ -7625,6 +7656,20 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/rpc/61-rpc-set-widget-factory.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/rpc/62-rpc-parallel-tool-dialog-order.toml",
       "transforms": [
         {
@@ -7656,6 +7701,153 @@
             "/**/sections/cwd"
           ],
           "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/63-rpc-command-send-message-first-run-system.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/64-rpc-tool-activation-trigger-turn-snippets.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "roots": [
+            "readme",
+            "docs",
+            "examples"
+          ],
+          "reason": "D2/D22: compare Pi's package README/docs/examples destinations with PiG's materialized README/docs and hosted examples root. Alias only those exact runtime destinations; retain filenames, URL/path suffixes, all surrounding wording and whitespace."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/preamble"
+          ],
+          "pig": "operating inside pig,",
+          "pi": "operating inside pi,",
+          "reason": "D2: only the host command identity differs in the preamble; retain the rest of the complete sentence."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "PiG documentation (",
+          "pi": "Pi documentation (",
+          "reason": "D2/D22: the documentation heading names the product; all usage conditions and topic wording remain compared."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "asks about pig itself,",
+          "pi": "asks about pi itself,",
+          "reason": "D2: this exact heading clause names the host command; no other words in the read-only condition are aliased."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "When reading pig docs or examples,",
+          "pi": "When reading pi docs or examples,",
+          "reason": "D2/D22: the path-resolution instruction names its product; retain its complete resolution rule and relative paths."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "pig packages (docs/packages.md)",
+          "pi": "pi packages (docs/packages.md)",
+          "reason": "D2: only the product name in the Package topic differs; the packages.md destination and every other topic remain literal."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "When working on pig topics,",
+          "pi": "When working on pi topics,",
+          "reason": "D2: this exact instruction prefix names the host product; retain its complete-read and cross-reference requirements."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "Always read pig .md files",
+          "pi": "Always read pi .md files",
+          "reason": "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."
         }
       ]
     },

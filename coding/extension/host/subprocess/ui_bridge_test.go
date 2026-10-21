@@ -2101,3 +2101,28 @@ func TestUIBridge_StopFrontendPushesJoinsTheWorker(t *testing.T) {
 		t.Fatalf("pushes = %d, want only the one before stop", got)
 	}
 }
+
+// Pi's RPC mode forwards setWidget for undefined and string arrays only and never runs a component factory (packages/coding-agent/src/modes/rpc/rpc-mode.ts
+// setWidget). A frame a Node component rendered at a width reaches the host as lines with a width; the request observer must not forward it, while a string
+// list and a clear still go through.
+func TestUIBridge_HandleCall_SetWidget_RequestObserverDropsRenderedFrames(t *testing.T) {
+	b := NewUIBridge(func() {})
+	b.SetUIContext(&mockUIContext{})
+	var got []string
+	b.SetWidgetRequestFunc(func(_ string, key string, lines []string, _ *extension.ExtensionWidgetOptions) {
+		got = append(got, key+":"+strings.Join(lines, ",")+":"+fmt.Sprint(lines == nil))
+	})
+	for _, args := range []string{
+		`{"key":"frame","content":["RENDERED"],"width":80}`,
+		`{"key":"text","content":["plain"]}`,
+		`{"key":"frame","content":null}`,
+	} {
+		if _, err := call(b, "ui.setWidget", args); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{"text:plain:false", "frame::true"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("forwarded %q, want %q", got, want)
+	}
+}

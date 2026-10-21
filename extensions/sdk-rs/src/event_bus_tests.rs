@@ -85,7 +85,7 @@ impl Host {
             .write_envelope(&Envelope {
                 msg_type: "request".into(),
                 id: Some(id.into()),
-                request: Some(RequestMsg { method: method.into(), tool: tool.map(str::to_string), event: None, handler_id: 0, tool_call_id: None, args, terminal_input: None, stream: None, stream_error: None }),
+                request: Some(RequestMsg { method: method.into(), tool: tool.map(str::to_string), event: None, handler_id: 0, tool_call_id: None, batch: None, args, terminal_input: None, stream: None, stream_error: None }),
                 ..Default::default()
             })
             .unwrap();

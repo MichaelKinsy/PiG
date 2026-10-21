@@ -155,12 +155,13 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 		var failure error
 		// The calls' tool_execution_end events follow the order their tools settle (SettleGate).
 		var settleGate SettleGate
+		batch := toolBatches.Add(1)
 		for i, outcome := range outcomes {
 			if outcome.prepared == nil {
 				continue
 			}
 			slot := settleGate.NewSlot()
-			callCtx := withToolSettle(callCtxs[i], slot, outcome.prepared.call.id)
+			callCtx := withToolSettle(callCtxs[i], slot, outcome.prepared.call.id, batch)
 			// Pi awaits Promise.all over every prepared call, so all calls run at
 			// once. A CPU-count cap would serialize I/O-bound tools on small machines.
 			wg.Go(func() {

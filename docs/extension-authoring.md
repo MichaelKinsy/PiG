@@ -340,6 +340,12 @@ A Piglet Binary may fuse a compatible Go factory into Pig's process. Fused code 
 
 Use `pig extension init <path>` to create a factory. Add `--isolated` to create a standalone. The scaffold writes no extension metadata file.
 
+### Extension directories that hold resource directories
+
+Pig names an extension directory the way Pi does. The rule is the same for Go, Rust, Python, and Node. For `pig -e <dir>` and for a `packages` setting entry, a directory with a `pi` block in `package.json`, or with an `extensions`, `skills`, `prompts`, or `themes` directory, is a Package. Pig loads the extensions that its `pi` block or its `extensions` directory names, and registers its prompts, skills, and themes. Pig does not load the extension at the directory root, so a `go.mod`, `Cargo.toml`, Python factory, or `index.ts` beside a `prompts` directory loads nothing. A directory with none of those is one extension. An `extensions` setting entry always names extensions: it loads the directory root and registers no resources from it.
+
+To ship an extension together with prompts, put the extension in a subdirectory and list it in the `pi.extensions` array of `package.json`, or put it under the Package's `extensions` directory.
+
 ### Portable staged SDK resolution
 
 `pig extension init` writes versioned SDK dependencies without machine-local paths. During a source build, Pig resolves an un-replaced Go requirement on `github.com/MichaelKinsy/PiG/extensions/sdk` or an un-pathed Rust `pig-sdk` dependency to the SDK staged by the running binary under the active config root. The build uses a temporary Go modfile or Cargo patch and never edits the authored `go.mod` or `Cargo.toml`. An explicit valid author replacement or path wins. If staged material is missing, run `pig reload`, which restages the Go, Python, and Rust SDKs.

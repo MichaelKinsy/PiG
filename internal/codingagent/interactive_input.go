@@ -31,6 +31,7 @@ func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 		// host: read(0)=EIO, POLLHUP, ioctl(1,TIOCGWINSZ)=0): the size probe below saw a live terminal, the session kept
 		// running without input, and the parity probe timed out (10-terminal-disconnect-exit). Pi exits 129 on that
 		// terminal's EIO. Input that ended while output still goes to a live terminal keeps the session running (#165).
+		// pig divergence (D186): Pi exits 0 at the hangup when its event loop holds nothing; PiG always exits 129 and records it in exit.log.
 		if tui.OutputTerminalHungUp() {
 			m.emergencyTerminalExit("terminal gone: " + cause.Error() + " (hung up)")
 			return

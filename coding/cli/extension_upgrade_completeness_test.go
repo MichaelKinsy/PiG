@@ -1,3 +1,5 @@
+//go:build !pig_strip_extension_sdk_go
+
 package cli
 
 import (
@@ -124,6 +126,15 @@ func writeOldShapeExtensions(t *testing.T, dir string) []string {
 	return dirs
 }
 
+// upgradeCommandFor is the command the notice must print for these extension directories: each path as the shell of the platform reads it. A path outside the plain set (a space, or the "~" of a Windows 8.3 temp directory such as RUNNER~1) is quoted, so the printed words are not the raw paths.
+func upgradeCommandFor(dirs []string) string {
+	words := []string{"pig", "extension", "upgrade"}
+	for _, dir := range dirs {
+		words = append(words, commandWord(dir))
+	}
+	return strings.Join(words, " ")
+}
+
 func useRepositorySDK(t *testing.T) string {
 	t.Helper()
 	configRoot := t.TempDir()
@@ -184,7 +195,7 @@ func TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch(t *testing.T) {
 			t.Errorf("notice lacks %s:\n%s", name, notice)
 		}
 	}
-	if !strings.Contains(notice, "Run: pig extension upgrade "+dirs[0]+" "+dirs[1]+" "+dirs[2]+" "+dirs[3]+"\n") {
+	if !strings.Contains(notice, "Run: "+upgradeCommandFor(dirs[:4])+"\n") {
 		t.Errorf("notice lacks the one command:\n%s", notice)
 	}
 }
@@ -329,5 +340,21 @@ func TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest(t *testing.T) {
 	}
 	if !strings.Contains(readFile(t, filepath.Join(dir, "extension.go")), "id, err := ctx.GetSessionID()") {
 		t.Fatal("the safe rewrite was not applied")
+	}
+}
+
+// A compile error the extension already had is listed with its path, and a Windows path holds a colon of its own (the drive), so the message a rewrite build repeats is not the
+// text after the third colon: the build of the rewritten extension must still know it, on every platform.
+func TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath(t *testing.T) {
+	const message = `cannot use "not an int" (untyped string constant) as int value in variable declaration`
+	result := &upgrade.Result{Errors: []string{`C:\Users\runneradmin\Temp\broken\extension.go:14:13: ` + message}}
+	output := []byte("# example.com/ask\n" + `C:\Users\RUNNER~1\Temp\pig-upgrade-check-1\0.go:17:13: ` + message + "\n")
+	check := classifyRewriteBuild(errors.New("exit status 1"), output, t.TempDir(), nil, result)
+	if len(check.Unexpected) != 0 {
+		t.Fatalf("the compile error the extension already had was unexpected: %v", check.Unexpected)
+	}
+	output = append(output, []byte(`C:\Users\RUNNER~1\Temp\pig-upgrade-check-1\0.go:18:2: a new error`+"\n")...)
+	if check = classifyRewriteBuild(errors.New("exit status 1"), output, t.TempDir(), nil, result); len(check.Unexpected) != 1 {
+		t.Fatalf("a new compile error must stay unexpected: %v", check.Unexpected)
 	}
 }

@@ -659,6 +659,18 @@ func Extension() *sdk.Extension {
 		return map[string]string{"content": fmt.Sprintf("start#%d n=%v", number, params["n"])}, nil
 	})
 
+	// Opens a select dialog as its first act, after an exec when the call asks for one, and returns the answer: a batch of these shows the order the SDK opens the dialogs in and resumes the calls in.
+	ext.Tool("dialog_order", "Open a select dialog titled by the call and report the answer", sdk.Schema{"type": "object", "properties": map[string]any{"title": map[string]any{"type": "string"}, "exec": map[string]any{"type": "boolean"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		if params["exec"] == true {
+			_, _ = ctx.Exec("dialog-order-exec", nil)
+		}
+		selected, _, err := ctx.Select(fmt.Sprint(params["title"]), []string{"a", "b"})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": fmt.Sprintf("dialog:%v=%s", params["title"], selected)}, nil
+	})
+
 	ext.Tool("throw_probe", "Throw a value of the requested kind", sdk.Schema{"type": "object", "properties": map[string]any{"kind": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
 		switch params["kind"] {
 		case "unicode":

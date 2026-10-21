@@ -167,6 +167,7 @@ func TestOpenAIDecisionsMatchesPi(t *testing.T) {
 			request.Images = append(request.Images, ImageContent{Data: fmt.Sprintf("AAAA%d", n), MimeType: mime})
 		}
 		result := ClassifyOpenAIDecisions(t.Context(), model, request, ClassifierOptions{APIKey: probe.APIKey})
+		closeClassifierIdleConnections(t)
 		server.Close()
 		answers, err := jsstring.MarshalJSON(result.Answers)
 		if err != nil {

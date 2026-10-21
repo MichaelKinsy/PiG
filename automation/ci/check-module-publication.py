@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,10 @@ def command(args, cwd, env):
     return result.stdout
 
 
+# The shape of a Go pseudo-version (golang.org/x/mod/module.IsPseudoVersion): the commit a requirement names instead of a tag.
+PSEUDO_VERSION = re.compile(r"^v[0-9]+\.(?:0\.0-|[0-9]+\.[0-9]+-(?:[^+]*\.)?0\.)[0-9]{14}-[0-9a-f]{12}$")
+
+
 def check(root: Path, remote: str):
     # Stock disposition: required substrate; verify public Go dependency publication independently of workspace builds.
     env = dict(os.environ, GOWORK="off", GOFLAGS="", GIT_TERMINAL_PROMPT="0")
@@ -28,9 +33,14 @@ def check(root: Path, remote: str):
     requirements = [r for r in manifest.get("Require") or [] if r["Path"].startswith(prefix)]
     if not requirements:
         return
-    tags = [r["Path"][len(prefix):] + "/" + r["Version"] for r in requirements]
-    refs = command(["git", "ls-remote", "--refs", remote, *["refs/tags/" + t for t in tags]], root, env)
-    published = {line.split()[1] for line in refs.splitlines()}
+    # Between releases main requires a nested module at the pseudo-version of the main commit that holds the API the root uses; the
+    # release bumps it to the tag. A pseudo-version has no tag to look up: the download below proves the commit is public.
+    tagged = [r for r in requirements if not PSEUDO_VERSION.match(r["Version"])]
+    tags = [r["Path"][len(prefix):] + "/" + r["Version"] for r in tagged]
+    published = set()
+    if tags:
+        refs = command(["git", "ls-remote", "--refs", remote, *["refs/tags/" + t for t in tags]], root, env)
+        published = {line.split()[1] for line in refs.splitlines()}
     missing = [tag for tag in tags if "refs/tags/" + tag not in published]
     if missing:
         raise ValueError("unpublished nested-module tag(s): " + ", ".join(missing) +
@@ -43,8 +53,9 @@ def check(root: Path, remote: str):
         for name in ("go.mod", "go.sum"):
             shutil.copyfile(root / name, scratch / name)
         env["GOMODCACHE"] = str(scratch / "cache")
-        for requirement, tag in zip(requirements, tags):
+        for requirement in requirements:
             path, version = requirement["Path"], requirement["Version"]
+            tag = version if PSEUDO_VERSION.match(version) else path[len(prefix):] + "/" + version
             result = json.loads(command(["go", "mod", "download", "-json", path + "@" + version], scratch, env))
             for suffix, key in (("", "Sum"), ("/go.mod", "GoModSum")):
                 expected = f"{path} {version}{suffix} {result[key]}"

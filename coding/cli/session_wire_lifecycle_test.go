@@ -31,7 +31,7 @@ func TestModeWireLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"print", "json", "disconnect", "live-hup", "modal-shutdown"} {
+	for _, name := range []string{"print", "json", "disconnect", "disconnect-repo", "live-hup", "modal-shutdown"} {
 		t.Run(name, func(t *testing.T) {
 			command := exec.CommandContext(t.Context(), "python3", script, "--bin", binary, "--case", name)
 			if output, err := command.CombinedOutput(); err != nil {
