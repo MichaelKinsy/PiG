@@ -1587,18 +1587,21 @@ class RuntimeUI {
     this.theme = new ThemeShim();
   }
   async select(title, options, opts = {}) {
+    if (opts?.signal?.aborted) return undefined;
     this.runtime.blockForUser();
-    const result = await this.runtime.call("ui.select", { title, options, opts });
+    const result = await this.runtime.dialogCall("ui.select", { title, options, opts });
     return result?.ok ? result.selected : undefined;
   }
   async confirm(title, message, opts = {}) {
+    if (opts?.signal?.aborted) return false;
     this.runtime.blockForUser();
-    const result = await this.runtime.call("ui.confirm", { title, message, opts });
+    const result = await this.runtime.dialogCall("ui.confirm", { title, message, opts });
     return Boolean(result?.confirmed);
   }
   async input(title, placeholder = "", opts = {}) {
+    if (opts?.signal?.aborted) return undefined;
     this.runtime.blockForUser();
-    const result = await this.runtime.call("ui.input", { title, placeholder, opts });
+    const result = await this.runtime.dialogCall("ui.input", { title, placeholder, opts });
     return result?.ok ? result.text : undefined;
   }
   // ExtensionUIContext.notify has an optional type; an omitted one stays omitted (RPC writes no notifyType, rpc-mode.ts notify).
@@ -1970,6 +1973,7 @@ export class Runtime {
     this.bashOperations = new Map();
     this.bashOperationsSeq = 0;
     this.nextExecuteId = 1;
+    this.nextDialogId = 1;
     // Raw terminal-input handlers, consulted synchronously while the host
     // waits for a consume decision. Empty means the host never round-trips.
     this.terminalInputHandlers = [];
@@ -4901,6 +4905,25 @@ export class Runtime {
     } finally {
       if (reportedRequestId && !owner?.responded && !connection.closed) connection.requestState(reportedRequestId, "progress");
     }
+  }
+
+  // A dialog whose options carry a signal (rpc-mode.ts createDialogPromise, which a pre-aborted signal never reaches because the dialogs return the default first): an abort
+  // settles the dialog with the default at once, and the host dismisses it. The signal does not cross the process boundary, so the call names the dialog by id.
+  async dialogCall(method, args) {
+    const { signal, ...opts } = args.opts ?? {};
+    if (!signal) return this.call(method, args);
+    const dialogId = `d${this.nextDialogId++}`;
+    const outcome = this.call(method, { ...args, opts, dialogId });
+    let onAbort;
+    const aborted = new Promise(resolve => {
+      onAbort = () => {
+        this.conn?.call("ui.cancelDialog", { dialogId }, "").catch(() => {});
+        resolve(undefined);
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+    try { return await Promise.race([outcome, aborted]); }
+    finally { signal.removeEventListener("abort", onAbort); }
   }
 
   // A withSession callback (types.ts:410-430) cannot cross the process boundary: the call names it by handle, and the host runs it with a with_session request before the call settles. A callback that throws rejects the call with its own error, as Pi's awaited callback does.
