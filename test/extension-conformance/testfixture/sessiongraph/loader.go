@@ -59,7 +59,7 @@ func resourceReport(loader *sdk.DefaultResourceLoader) map[string]any {
 }
 
 func loaderScript(ctx sdk.Context, args map[string]any) map[string]any {
-	root, cwd, agentDir := fmt.Sprint(args["root"]), fmt.Sprint(args["cwd"]), fmt.Sprint(args["agentDir"])
+	root, cwd, agentDir := fmt.Sprint(args["root"]), fmt.Sprint(args["cwd"]), fmt.Sprint(args["loaderAgentDir"])
 	extraSkills, extraPrompts := filepath.Join(root, "extra-skills"), filepath.Join(root, "extra-prompts")
 	r := map[string]any{}
 

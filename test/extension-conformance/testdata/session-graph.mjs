@@ -383,7 +383,7 @@ const resourceReport = (loader) => {
   };
 };
 
-async function loaderScript({ root, cwd, agentDir }) {
+async function loaderScript({ root, cwd, loaderAgentDir: agentDir }) {
   const extraSkills = join(root, "extra-skills");
   const extraPrompts = join(root, "extra-prompts");
   const r = {};

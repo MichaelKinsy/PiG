@@ -405,7 +405,7 @@ def resource_report(loader):
 
 
 def loader_script(ctx, args):
-    root, cwd, agent_dir = args["root"], args["cwd"], args["agentDir"]
+    root, cwd, agent_dir = args["root"], args["cwd"], args["loaderAgentDir"]
     extra_skills, extra_prompts = os.path.join(root, "extra-skills"), os.path.join(root, "extra-prompts")
     r = {}
     plain = DefaultResourceLoader(ctx, cwd=cwd, agent_dir=agent_dir)

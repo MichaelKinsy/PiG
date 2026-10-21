@@ -69,7 +69,7 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 	configDir := icodingagent.ConfigDirName()
 	args := map[string]any{
 		"cwd": filepath.Join(root, "project"), "dir": filepath.Join(root, "sessions"), "otherDir": filepath.Join(root, "other"), "junk": filepath.Join(root, "junk.jsonl"),
-		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "root": root, "brokenCwd": filepath.Join(root, "broken"),
+		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "root": root, "loaderAgentDir": filepath.Join(root, "agent-loader"), "brokenCwd": filepath.Join(root, "broken"),
 	}
 	files := map[string]string{
 		filepath.Join(root, "agent", "settings.json"):                sessionGraphGlobalSettings,
@@ -80,6 +80,7 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 		filepath.Join(root, "project", configDir, "skills", ".keep"): "",
 		filepath.Join(root, "anc", ".agents", "skills", ".keep"):     "",
 		filepath.Join(root, "anc", "proj", ".keep"):                  "",
+		filepath.Join(root, "agent-loader", ".keep"):                 "",
 		filepath.Join(root, "bare", ".keep"):                         "",
 		filepath.Join(root, "agent-array", "trust.json"):             "[1]",
 		filepath.Join(root, "agent-bad-json", "trust.json"):          "{bad",

@@ -442,7 +442,7 @@ fn resource_report(loader: &DefaultResourceLoader) -> io::Result<Value> {
 }
 
 fn loader_script(ctx: &Context, args: &Value) -> io::Result<Value> {
-    let (root, cwd, agent_dir) = (text(&args["root"]), text(&args["cwd"]), text(&args["agentDir"]));
+    let (root, cwd, agent_dir) = (text(&args["root"]), text(&args["cwd"]), text(&args["loaderAgentDir"]));
     let extra_skills = Path::new(root).join("extra-skills");
     let extra_prompts = Path::new(root).join("extra-prompts");
     let mut r = serde_json::Map::new();
