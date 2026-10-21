@@ -4484,8 +4484,14 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			// pig additive (D19): Pi applies a command's calls, such as writing a dialog request, before the process can exit, so the command counts as suspended only after the calls received before its report applied their synchronous parts. The wait runs off the read loop because those calls can need later frames.
 			if env.RequestState != nil {
 				state := *env.RequestState
+				// A report that ends a tool's start window waits for the calls the extension sent before it, not for the call its handler sends after it: the calls
+				// are marked now, in the order the frames were read.
+				applied := lanes.barrier
+				if state.State != "suspended" {
+					applied = lanes.barrierMark()
+				}
 				go func() {
-					lanes.barrier()
+					applied()
 					conn.deliverRequestState(state)
 					if state.State == "suspended" {
 						conn.settleSuspension(state.RequestID)

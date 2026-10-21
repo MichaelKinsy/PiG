@@ -157,6 +157,12 @@ func (l *callLanes) drain(lane string, current *callLane) {
 // barrier returns once every call queued before it has run. A Promise-shaped
 // call has run once it applied its synchronous part.
 func (l *callLanes) barrier() {
+	l.barrierMark()()
+}
+
+// barrierMark marks the calls queued so far, on the caller's goroutine, and returns the function that waits until they have run. A caller that reads frames in
+// order marks before it reads the next one, so a call the extension sent after the frame the caller marks for is not waited for.
+func (l *callLanes) barrierMark() func() {
 	var reached sync.WaitGroup
 	l.mu.Lock()
 	for _, lane := range l.lanes {
@@ -164,7 +170,7 @@ func (l *callLanes) barrier() {
 		lane.queue = append(lane.queue, queuedCall{run: reached.Done})
 	}
 	l.mu.Unlock()
-	reached.Wait()
+	return reached.Wait
 }
 
 // queueCall orders one extension→host call. A Promise-shaped call runs on its
