@@ -34,7 +34,7 @@ func BenchmarkRetainedContextHostCall(b *testing.B) {
 				}
 			}()
 			defer func() { _ = client.Close(); _ = server.Close(); <-done; <-connection.done; <-host.done }()
-			parent := connection.armParent("origin", b.Context(), b.Context())
+			parent := connection.armParent("origin", b.Context(), b.Context(), false)
 			ctx := Context{ext: &Extension{conn: connection}, requestID: "origin", parent: parent, ctx: context.Background()}
 			if err := connection.respond("origin", nil, nil); err != nil {
 				b.Fatal(err)

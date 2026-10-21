@@ -21,10 +21,10 @@ type Turns struct {
 	observers []func(deferring bool)
 	// appliedWaits wait for the runtimes to apply the changes the observers made.
 	appliedWaits []func(ctx context.Context)
-	deferring bool
-	notifyMu  sync.Mutex
-	ticks     []func(done func())
-	flushing  bool
+	deferring    bool
+	notifyMu     sync.Mutex
+	ticks        []func(done func())
+	flushing     bool
 }
 
 // Chain says the running work is a chain of microtasks, and returns the function that ends it. Callbacks wait while any chain runs and no wait is open.

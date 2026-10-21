@@ -1326,7 +1326,7 @@ type CallPayload struct {
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
 	// Timer marks a call made by deferred work: from a callback of a timer or an immediate (setTimeout, setInterval, setImmediate) or from work such a callback started, and in the Go, Python and Rust SDKs from a context whose request already returned. The host runs such a call when Pi's loop would run the callback: not while the agent's run chains microtasks (jsloop.Turns, D5).
 	Timer bool `json:"timer,omitempty"`
-	// Tick marks a Timer call that Pi runs right after the tool_execution_end of the tool that queued it: the call of a process.nextTick callback, or of a timer callback that fires while a sibling tool still awaits, so Pi's loop is turning.
+	// Tick marks a Timer call that Pi runs right after the tool_execution_end of the tool that queued it: the call of a process.nextTick callback, or of deferred work that makes the call while a sibling tool call still runs, so Pi's loop is turning (a timer callback in the Node runtime, a call through a request's context after its handler returned in the Go, Python and Rust SDKs).
 	Tick bool `json:"tick,omitempty"`
 }
 

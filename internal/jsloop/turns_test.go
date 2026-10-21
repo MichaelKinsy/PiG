@@ -145,3 +145,34 @@ func TestTurnsRunTicksAtTheTickBoundaryBeforeTimers(t *testing.T) {
 		t.Fatalf("after the chain ended: order %v, want %v", got, want)
 	}
 }
+
+func TestArmWaitsForTheRuntimesToApplyTheHold(t *testing.T) {
+	var turns Turns
+	var frames []bool
+	applied := make(chan struct{})
+	release := make(chan struct{})
+	turns.ObserveDefer(func(deferring bool) { frames = append(frames, deferring) }, func(ctx context.Context) {
+		close(applied)
+		select {
+		case <-release:
+		case <-ctx.Done():
+		}
+	})
+	armed := make(chan func(), 1)
+	go func() { armed <- turns.Arm(context.Background()) }()
+	<-applied
+	if len(frames) != 1 || !frames[0] {
+		t.Fatalf("frames sent before the wait = %v, want one hold", frames)
+	}
+	select {
+	case <-armed:
+		t.Fatal("Arm returned before the runtimes applied the hold")
+	default:
+	}
+	close(release)
+	end := <-armed
+	end()
+	if len(frames) != 2 || frames[1] {
+		t.Fatalf("frames = %v, want hold then release", frames)
+	}
+}
