@@ -2,6 +2,7 @@
 //! testfixture/modeltypes (Go) and of the inline Python fixture, so one table of rows proves every SDK. Every value a row asserts is one the
 //! host or this code produces and no SDK fallback can.
 
+use pig_sdk::tui;
 use pig_sdk::{
     APIKeyAuth, AuthResult, Color, Extension, ModelRoute, Provider, ProviderAuth, ProviderOperationFn, ProviderOperations,
     TextAttributes, ThemeAppearance, Theme, ThemeSlot, ThemeStyle, ToolResult, VirtualModel, empty_schema,
@@ -92,7 +93,7 @@ fn pixels() -> Provider {
 fn color_from(value: &Value) -> Option<Color> {
     let number = |key: &str| value[key].as_f64().unwrap_or_default();
     match value["kind"].as_str()? {
-        "indexed" => Some(Color::Indexed { index: number("index") as u8 }),
+        "indexed" => Some(Color::Indexed(number("index") as u8)),
         "rgb" => Some(Color::Rgb { r: number("r"), g: number("g"), b: number("b") }),
         "oklch" => Some(Color::Oklch { l: number("l"), c: number("c"), h: number("h") }),
         _ => None,
@@ -101,7 +102,7 @@ fn color_from(value: &Value) -> Option<Color> {
 
 fn color_json(color: &Color) -> Value {
     match color {
-        Color::Indexed { index } => json!({"kind": "indexed", "index": index}),
+        Color::Indexed(index) => json!({"kind": "indexed", "index": index}),
         Color::Rgb { r, g, b } => json!({"kind": "rgb", "r": r, "g": g, "b": b}),
         Color::Oklch { l, c, h } => json!({"kind": "oklch", "l": l, "c": c, "h": h}),
     }
@@ -218,6 +219,7 @@ pub fn new_extension() -> Extension {
         let appearance = theme.appearance().map(|value| match value { ThemeAppearance::Light => "light", ThemeAppearance::Dark => "dark" });
         ToolResult::text(json!({"appearance": appearance, "colors": tokens, "styles": styles, "fgs": fgs, "queries": theme_queries(&theme, &args)}).to_string())
     });
+    ext.tool("tui_probe", "Reads pi-tui's keybindings and terminal capabilities.", empty_schema(), |_, args| ToolResult::text(tui_probe(&args).to_string()));
     ext.tool("late_provider", "Registers a provider with operations after the factory finished.", empty_schema(), |ctx, args| {
         let registry = ctx.model_registry();
         let cost = json!({"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0});
@@ -318,4 +320,71 @@ fn theme_fg(theme: &Theme, token: &str) -> String {
         let message = payload.downcast_ref::<String>().cloned().or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string())).unwrap_or_default();
         format!("throw:{message}")
     })
+}
+
+fn strings(value: &Value) -> Vec<String> {
+    value.as_array().map(|items| items.iter().filter_map(Value::as_str).map(String::from).collect()).unwrap_or_default()
+}
+
+fn tui_caps(caps: tui::TerminalCapabilities) -> Value {
+    let images = caps.images.map(|protocol| match protocol { tui::ImageProtocol::Kitty => "kitty", tui::ImageProtocol::ITerm2 => "iterm2" });
+    json!({"images": images, "trueColor": caps.true_color, "hyperlinks": caps.hyperlinks})
+}
+
+fn color_mode(mode: tui::TerminalColorMode) -> &'static str {
+    match mode { tui::TerminalColorMode::TrueColor => "truecolor", tui::TerminalColorMode::Color256 => "256color" }
+}
+
+/// tui_probe: what pi-tui's keybindings and capabilities answer once the host published its state (the Go, Node and Python fixtures carry the same tool).
+fn tui_probe(args: &Value) -> Value {
+    let ids = strings(&args["ids"]);
+    let keybindings = tui::get_keybindings();
+    let keys: serde_json::Map<String, Value> = ids.iter().map(|id| (id.clone(), json!(keybindings.get_keys(id)))).collect();
+    let definitions: serde_json::Map<String, Value> = ids.iter().map(|id| (id.clone(), keybindings.get_definition(id).and_then(|d| d.description.clone()).map(Value::String).unwrap_or(Value::Null))).collect();
+    let matches: Vec<Value> = args["inputs"].as_array().map(|inputs| inputs.iter().map(|input| json!(keybindings.matches(input["data"].as_str().unwrap_or_default(), input["id"].as_str().unwrap_or_default()))).collect()).unwrap_or_default();
+    let user: serde_json::Map<String, Value> = keybindings.get_user_bindings().into_iter().map(|(id, bound)| (id, json!(bound))).collect();
+    let conflicts: Vec<Value> = keybindings.get_conflicts().into_iter().map(|c| json!({"key": c.key, "keybindings": c.keybindings})).collect();
+    let mut resolved_ids: Vec<String> = keybindings.get_resolved_bindings().into_iter().map(|(id, _)| id).collect();
+    resolved_ids.sort();
+    let defaults_table = tui::tui_keybindings();
+    let default_keys = |id: &str| -> Vec<String> { defaults_table.iter().find(|(key, _)| key == id).map(|(_, d)| d.default_keys.clone()).unwrap_or_default() };
+    let caps = tui::get_capabilities();
+    let mut report = json!({
+        "keys": keys, "matches": matches, "definitions": definitions, "user": user, "conflicts": conflicts, "resolvedIds": resolved_ids,
+        "defaults": {"count": defaults_table.len(), "tui.input.submit": default_keys("tui.input.submit"), "tui.select.confirm": default_keys("tui.select.confirm")},
+        "key": {"ctrl": tui::Key::ctrl("x"), "alt": tui::Key::alt(tui::Key::ENTER), "shift": tui::Key::shift(tui::Key::TAB), "escape": tui::Key::ESCAPE, "ctrlShift": tui::Key::ctrl_shift("p")},
+        "capabilities": tui_caps(caps), "colorMode": color_mode(tui::get_terminal_color_mode(None)),
+    });
+
+    // Install, then put back what the host published.
+    let original = (*keybindings).clone();
+    tui::set_keybindings(tui::KeybindingsManager::new(vec![("x.probe".to_string(), tui::KeybindingDefinition { default_keys: vec!["ctrl+q".to_string()], description: None })], Vec::new()));
+    let mut installed = json!({"keys": tui::get_keybindings().get_keys("x.probe"), "hostKeys": tui::get_keybindings().get_keys("tui.input.submit")});
+    let mut rebound = tui::KeybindingsManager::new(vec![("x.probe".to_string(), tui::KeybindingDefinition { default_keys: vec!["ctrl+q".to_string()], description: None })], Vec::new());
+    rebound.set_user_bindings(vec![("x.probe".to_string(), vec!["ctrl+w".to_string()])]);
+    tui::set_keybindings(rebound);
+    let rebound_keys = tui::get_keybindings().get_keys("x.probe");
+    tui::set_keybindings(original);
+    installed["rebound"] = json!(rebound_keys);
+    installed["restored"] = json!(tui::get_keybindings().get_keys("tui.input.submit"));
+    report["installed"] = installed;
+
+    tui::set_capabilities(tui::TerminalCapabilities { images: Some(tui::ImageProtocol::Kitty), true_color: false, hyperlinks: false });
+    let mut swapped = json!({"capabilities": tui_caps(tui::get_capabilities()), "colorMode": color_mode(tui::get_terminal_color_mode(None))});
+    tui::set_capability_overrides(tui::CapabilityOverrides { hyperlinks: Some(true), ..Default::default() });
+    swapped["overridden"] = json!(tui::get_capabilities().hyperlinks);
+    tui::set_capability_overrides(tui::CapabilityOverrides::default());
+    tui::reset_capabilities_cache();
+    // detectCapabilities reads the environment, which the host's state does not replace; the probe only proves the call answers.
+    let _ = tui::detect_capabilities(Some(&|| false));
+    swapped["detected"] = json!(true);
+    tui::set_capabilities(caps);
+    swapped["restored"] = tui_caps(tui::get_capabilities());
+    let before = tui::is_kitty_protocol_active();
+    tui::set_kitty_protocol_active(true);
+    let after = tui::is_kitty_protocol_active();
+    tui::set_kitty_protocol_active(before);
+    swapped["kitty"] = json!([before, after, tui::is_kitty_protocol_active()]);
+    report["swapped"] = swapped;
+    report
 }

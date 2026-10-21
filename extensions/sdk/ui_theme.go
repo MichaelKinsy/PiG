@@ -9,6 +9,8 @@ import (
 	"maps"
 	"math"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui"
 )
 
 // UITheme is the host's active theme as extensions see it (upstream
@@ -281,26 +283,19 @@ func (t UITheme) GetBashModeBorderColor() func(string) string {
 // ThemeAppearance is the background a theme is designed for (upstream ThemeAppearance): "light" or "dark".
 type ThemeAppearance string
 
-// Color is a concrete color (upstream pi-tui Color): [IndexedColor], [RgbColorValue] or [OklchColorValue]. The union is closed; the unexported method seals it.
-type Color interface{ isColor() }
-
-// IndexedColor is an ANSI palette index, 0-255 (kind "indexed").
-type IndexedColor struct{ Index int }
-
-// RgbColorValue is an sRGB color with channels 0-255 (kind "rgb").
-type RgbColorValue struct{ R, G, B float64 }
-
-// OklchColorValue is an OKLCH color (kind "oklch"): lightness 0-1, chroma and hue in degrees.
-type OklchColorValue struct{ L, C, H float64 }
-
-func (IndexedColor) isColor()    {}
-func (RgbColorValue) isColor()   {}
-func (OklchColorValue) isColor() {}
-
-// TextAttributes are the text attributes theme.style applies (upstream pi-tui TextAttributes).
-type TextAttributes struct {
-	Bold, Dim, Italic, Underline, Inverse, Strikethrough bool
-}
+// The color types are pi-tui's (package tui): one implementation of the conversions serves the helpers and the theme.
+type (
+	// Color is a concrete color (upstream pi-tui Color): [IndexedColor], [RgbColorValue] or [OklchColorValue]. The union is closed.
+	Color = tui.Color
+	// IndexedColor is an ANSI palette index, 0-255 (kind "indexed").
+	IndexedColor = tui.IndexedColor
+	// RgbColorValue is an sRGB color with channels 0-255 (kind "rgb").
+	RgbColorValue = tui.RgbColorValue
+	// OklchColorValue is an OKLCH color (kind "oklch"): lightness 0-1, chroma and hue in degrees.
+	OklchColorValue = tui.OklchColorValue
+	// TextAttributes are the text attributes theme.style applies (upstream pi-tui TextAttributes).
+	TextAttributes = tui.TextAttributes
+)
 
 // ThemeStyle is the style [UITheme.Style] applies (upstream ThemeStyle): a foreground and a background, each a theme token or a concrete Color, and text attributes. Upstream's one `fg` field holds a token or a Color; Go uses a field per form. Setting both the token and the color of a slot is an error.
 type ThemeStyle struct {
@@ -335,7 +330,7 @@ func (t UITheme) Style(text string, style ThemeStyle) (string, error) {
 		}
 		fgAnsi = ansi
 	case style.Fg != nil:
-		fgAnsi = colorAnsi(style.Fg, t.GetColorMode(), false)
+		fgAnsi = tui.ForegroundAnsi(style.Fg, tui.TerminalColorMode(t.GetColorMode()))
 	}
 	switch {
 	case style.BgToken != "":
@@ -345,9 +340,9 @@ func (t UITheme) Style(text string, style ThemeStyle) (string, error) {
 		}
 		bgAnsi = ansi
 	case style.Bg != nil:
-		bgAnsi = colorAnsi(style.Bg, t.GetColorMode(), true)
+		bgAnsi = tui.BackgroundAnsi(style.Bg, tui.TerminalColorMode(t.GetColorMode()))
 	}
-	return styleTextWithAnsi(text, fgAnsi, bgAnsi, attributes), nil
+	return tui.StyleTextWithAnsi(text, fgAnsi, bgAnsi, attributes), nil
 }
 
 // UITheme returns a snapshot of the host's active theme (upstream

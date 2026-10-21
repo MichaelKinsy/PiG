@@ -1,4 +1,9 @@
 // The Node fixture of the typed model operation and theme conformance rows (model_types_test.go, theme_test.go). It carries the tools of testfixture/modeltypes (Go), testdata/modeltypes-rust and the inline Python fixture, so one table of rows proves every SDK. Every value a row asserts is one the host or this code produces and no SDK fallback can.
+import {
+  Key, KeybindingsManager, TUI_KEYBINDINGS, detectCapabilities, getCapabilities, getKeybindings, getTerminalColorMode, isKittyProtocolActive,
+  resetCapabilitiesCache, setCapabilities, setCapabilityOverrides, setKeybindings, setKittyProtocolActive,
+} from "@earendil-works/pi-tui";
+
 const ZERO = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 const state = { cancelled: 0 };
 
@@ -124,6 +129,51 @@ export default function (pi) {
     if (params.mode === "again") registry.registerProvider("late", { baseUrl: "https://late.test/v2" });
     if (params.mode === "gone") registry.unregisterProvider("late");
     return reply({ mode: params.mode ?? null });
+  });
+  // tui_probe: what pi-tui's keybindings and capabilities answer once the host published its state (the Go, Rust and Python fixtures carry the same tool).
+  tool("tui_probe", async (_id, params) => {
+    const list = (keys) => (keys === undefined ? [] : Array.isArray(keys) ? [...keys] : [keys]);
+    const caps = (value) => ({ images: value.images ?? null, trueColor: value.trueColor, hyperlinks: value.hyperlinks });
+    const keybindings = getKeybindings();
+    const ids = params.ids ?? [];
+    const original = getCapabilities();
+    const report = {
+      keys: Object.fromEntries(ids.map((id) => [id, keybindings.getKeys(id)])),
+      matches: (params.inputs ?? []).map((input) => keybindings.matches(input.data, input.id)),
+      definitions: Object.fromEntries(ids.map((id) => [id, keybindings.getDefinition(id)?.description ?? null])),
+      user: Object.fromEntries(Object.entries(keybindings.getUserBindings()).map(([id, keys]) => [id, list(keys)])),
+      conflicts: keybindings.getConflicts().map((conflict) => ({ key: conflict.key, keybindings: conflict.keybindings })),
+      resolvedIds: Object.keys(keybindings.getResolvedBindings()).sort(),
+      defaults: {
+        count: Object.keys(TUI_KEYBINDINGS).length,
+        "tui.input.submit": list(TUI_KEYBINDINGS["tui.input.submit"].defaultKeys), "tui.select.confirm": list(TUI_KEYBINDINGS["tui.select.confirm"].defaultKeys),
+      },
+      key: { ctrl: Key.ctrl("x"), alt: Key.alt(Key.enter), shift: Key.shift(Key.tab), escape: Key.escape, ctrlShift: Key.ctrlShift("p") },
+      capabilities: caps(original), colorMode: getTerminalColorMode(),
+    };
+    setKeybindings(new KeybindingsManager({ "x.probe": { defaultKeys: ["ctrl+q"] } }));
+    report.installed = { keys: getKeybindings().getKeys("x.probe"), hostKeys: getKeybindings().getKeys("tui.input.submit") };
+    getKeybindings().setUserBindings({ "x.probe": ["ctrl+w"] });
+    report.installed.rebound = getKeybindings().getKeys("x.probe");
+    setKeybindings(keybindings);
+    report.installed.restored = getKeybindings().getKeys("tui.input.submit");
+
+    setCapabilities({ images: "kitty", trueColor: false, hyperlinks: false });
+    const swapped = { capabilities: caps(getCapabilities()), colorMode: getTerminalColorMode() };
+    setCapabilityOverrides({ hyperlinks: true });
+    swapped.overridden = getCapabilities().hyperlinks;
+    setCapabilityOverrides({});
+    resetCapabilitiesCache();
+    swapped.detected = typeof detectCapabilities() === "object";
+    setCapabilities(original);
+    swapped.restored = caps(getCapabilities());
+    const before = isKittyProtocolActive();
+    setKittyProtocolActive(true);
+    const after = isKittyProtocolActive();
+    setKittyProtocolActive(before);
+    swapped.kitty = [before, after, isKittyProtocolActive()];
+    report.swapped = swapped;
+    return reply(report);
   });
   tool("ops_status", async () => reply({ cancelled: state.cancelled }));
   // theme_probe: the host's palette through ctx.ui.theme, for the colors and styles the test passes in params.

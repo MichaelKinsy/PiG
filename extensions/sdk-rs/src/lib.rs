@@ -120,7 +120,6 @@ mod login;
 mod oauth;
 mod protocol;
 mod theme;
-mod theme_color;
 mod tool_render;
 mod tool_start_order;
 mod transport;
