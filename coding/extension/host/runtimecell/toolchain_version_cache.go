@@ -2,9 +2,11 @@ package runtimecell
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/gofrs/flock"
 
@@ -24,35 +27,69 @@ type toolchainVersionRecord struct {
 	Output      string `json:"output"`
 }
 
+// Bounds on a version probe. A toolchain manager can take minutes to answer (rustup downloading the toolchain a rust-toolchain.toml names), so the probe is bounded rather than left to hang a start, and a start that waits for a peer's probe of the same record waits no longer than toolchainLockWait before it probes for itself.
+var (
+	toolchainProbeTimeout = 2 * time.Minute // pig additive (D20): the shared cell cache and its version probes have no upstream equivalent
+	toolchainLockWait     = 5 * time.Minute // pig additive (D20): see toolchainProbeTimeout
+)
+
+// toolchainProbeKillDelay is how long a killed probe may keep its output pipes open before Wait gives up on them: a rustup proxy leaves its download running in a child that holds them.
+// pig additive (D20): see toolchainProbeTimeout.
+const toolchainProbeKillDelay = 5 * time.Second
+
+// toolchainSlotsPerCommand is how many fingerprints' records a command keeps; the least recently written go first.
+const toolchainSlotsPerCommand = 8
+
 // commandVersion returns a cached version probe keyed by the resolved command,
 // its file identity, and tool-selector state. Warm startups stat the selected
-// tool and read one small record without spawning it.
+// tool and read one small record without spawning it. Each fingerprint has its
+// own record and lock, so two projects whose selectors differ (go.mod,
+// rust-toolchain.toml) neither replace each other's record nor wait for each
+// other's probe.
 func commandVersion(cacheRoot, name string, args ...string) string {
-	cachePath := toolchainVersionCachePath(cacheRoot, name, args)
-	if fingerprint, _, err := toolchainFingerprint(name, args); err == nil {
-		if output, ok := readToolchainVersion(cachePath, fingerprint); ok {
-			return output
-		}
+	fingerprint, _, err := toolchainFingerprint(name, args)
+	if err != nil {
+		return "error:" + err.Error()
+	}
+	cachePath := toolchainVersionCachePath(cacheRoot, name, args, fingerprint)
+	if output, ok := readToolchainVersion(cachePath, fingerprint); ok {
+		return output
 	}
 	if err := os.MkdirAll(filepath.Dir(cachePath), 0o755); err != nil {
 		return "error:" + err.Error()
 	}
+	// The lock only keeps peers from probing the same record at once. A peer that holds it past toolchainLockWait is not waited for: this start probes for itself, and the record is published by rename, so the two cannot corrupt it.
 	lock := flock.New(cachePath + ".lock")
-	if err := lock.Lock(); err != nil {
+	//portlint:allow ctxbackground commandVersion has no caller context: it runs under hashing a cell's inputs, and toolchainLockWait bounds the wait
+	lockCtx, cancelLock := context.WithTimeout(context.Background(), toolchainLockWait)
+	locked, err := lock.TryLockContext(lockCtx, 25*time.Millisecond) // pig additive (D20): poll interval of the bounded wait
+	cancelLock()
+	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
 		return "error:" + err.Error()
 	}
-	defer func() { _ = lock.Unlock() }()
+	if locked {
+		defer func() { _ = lock.Unlock() }()
+	}
 
 	for range 2 {
 		fingerprint, resolved, err := toolchainFingerprint(name, args)
 		if err != nil {
 			return "error:" + err.Error()
 		}
+		cachePath := toolchainVersionCachePath(cacheRoot, name, args, fingerprint)
 		if output, ok := readToolchainVersion(cachePath, fingerprint); ok {
 			return output
 		}
-		cmd := linkerexec.Command(resolved, args...)
+		//perf:ok once per probe of an uncached toolchain, which spawns a process
+		probeCtx, cancelProbe := context.WithTimeout(context.Background(), toolchainProbeTimeout) //portlint:allow ctxbackground commandVersion has no caller context: it runs under hashing a cell's inputs, and toolchainProbeTimeout bounds the probe
+		cmd := linkerexec.CommandContext(probeCtx, resolved, args...)
+		cmd.WaitDelay = toolchainProbeKillDelay
 		out, err := cmd.CombinedOutput()
+		timedOut := probeCtx.Err() != nil
+		cancelProbe()
+		if timedOut {
+			return "error:" + filepath.Base(name) + " did not answer within " + toolchainProbeTimeout.String()
+		}
 		if err != nil {
 			return "error:" + err.Error()
 		}
@@ -67,23 +104,62 @@ func commandVersion(cacheRoot, name string, args ...string) string {
 		if err := writeToolchainVersion(cachePath, toolchainVersionRecord{Fingerprint: fingerprint, Output: output}); err != nil {
 			return "error:" + err.Error()
 		}
+		pruneToolchainVersions(cacheRoot, name, args, cachePath)
 		return output
 	}
 	return "error:toolchain changed while its version was being probed"
 }
 
+// invalidateCommandVersion forgets every record of the command, whatever fingerprint it was probed under.
 func invalidateCommandVersion(cacheRoot, name string, args ...string) {
-	_ = os.Remove(toolchainVersionCachePath(cacheRoot, name, args))
+	for _, path := range toolchainVersionSlots(cacheRoot, name, args) {
+		_ = os.Remove(path)
+	}
 }
 
-func toolchainVersionCachePath(cacheRoot, name string, args []string) string {
+// toolchainVersionPrefix is the file name prefix shared by one command's records.
+func toolchainVersionPrefix(name string, args []string) string {
 	h := sha256.New()
 	_, _ = h.Write([]byte(filepath.Base(name)))
 	for _, arg := range args {
 		_, _ = h.Write([]byte{0})
 		_, _ = h.Write([]byte(arg))
 	}
-	return filepath.Join(cacheRoot, "toolchains", hex.EncodeToString(h.Sum(nil))+".json")
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func toolchainVersionCachePath(cacheRoot, name string, args []string, fingerprint string) string {
+	return filepath.Join(cacheRoot, "toolchains", toolchainVersionPrefix(name, args)+"-"+fingerprint+".json")
+}
+
+// toolchainVersionSlots lists the command's record files.
+func toolchainVersionSlots(cacheRoot, name string, args []string) []string {
+	slots, _ := filepath.Glob(filepath.Join(cacheRoot, "toolchains", toolchainVersionPrefix(name, args)+"-*.json"))
+	return slots
+}
+
+// pruneToolchainVersions removes the records, and their locks, of the fingerprints written longest ago once the command has more than toolchainSlotsPerCommand of them. The record just written is kept.
+func pruneToolchainVersions(cacheRoot, name string, args []string, keep string) {
+	slots := toolchainVersionSlots(cacheRoot, name, args)
+	if len(slots) <= toolchainSlotsPerCommand {
+		return
+	}
+	modTime := make(map[string]time.Time, len(slots))
+	for _, slot := range slots {
+		if info, err := os.Stat(slot); err == nil { //perf:ok only when a command is over its record limit, after an uncached probe
+			modTime[slot] = info.ModTime()
+		}
+	}
+	slices.SortFunc(slots, func(a, b string) int { return modTime[b].Compare(modTime[a]) })
+	kept := 0
+	for _, slot := range slots {
+		if slot == keep || kept < toolchainSlotsPerCommand {
+			kept++
+			continue
+		}
+		_ = os.Remove(slot)
+		_ = os.Remove(slot + ".lock")
+	}
 }
 
 func toolchainFingerprint(name string, args []string) (string, string, error) {

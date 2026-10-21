@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/fsretry"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
@@ -171,5 +172,127 @@ func writeRuntimecellTestFile(t *testing.T, path, content string) {
 	}
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// startSlowProbe starts a version probe of toolPath that answers after sleep and returns when the probe has started.
+func startSlowProbe(t *testing.T, cacheRoot, toolPath string, args []string, logPath string, sleep string) <-chan string {
+	t.Helper()
+	t.Setenv("PIG_TEST_TOOLCHAIN_SLEEP", sleep)
+	done := make(chan string, 1)
+	go func() { done <- commandVersion(cacheRoot, toolPath, args...) }()
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		if data, err := os.ReadFile(logPath); err == nil && strings.Contains(string(data), "probe\n") {
+			return done
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the slow probe never started")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func setToolchainBounds(t *testing.T, probe, lockWait time.Duration) {
+	t.Helper()
+	oldProbe, oldLock := toolchainProbeTimeout, toolchainLockWait
+	toolchainProbeTimeout, toolchainLockWait = probe, lockWait
+	t.Cleanup(func() { toolchainProbeTimeout, toolchainLockWait = oldProbe, oldLock })
+}
+
+// A start that finds a peer probing the same record does not wait for the peer past toolchainLockWait: it probes for itself and answers.
+func TestCommandVersionDoesNotWaitForAPeerProbeWithoutBound(t *testing.T) {
+	setToolchainBounds(t, time.Minute, 200*time.Millisecond)
+	toolPath := filepath.Join(t.TempDir(), exeNameForRuntime("go"))
+	copyTestExecutable(t, toolPath)
+	logPath := filepath.Join(t.TempDir(), "probes.log")
+	t.Setenv("PIG_TEST_TOOLCHAIN_PROBE_LOG", logPath)
+	t.Setenv("PIG_TEST_TOOLCHAIN_VERSION", "go-v1")
+	args := []string{"-test.run=^TestCommandVersionProbeHelper$"}
+	cacheRoot := t.TempDir()
+
+	holder := startSlowProbe(t, cacheRoot, toolPath, args, logPath, "4s")
+	t.Setenv("PIG_TEST_TOOLCHAIN_SLEEP", "0s")
+	start := time.Now()
+	got := commandVersion(cacheRoot, toolPath, args...)
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("the second start waited %v for the peer's probe", elapsed)
+	}
+	if !strings.Contains(got, "go-v1") {
+		t.Fatalf("second start = %q, want the version", got)
+	}
+	if peer := <-holder; !strings.Contains(peer, "go-v1") {
+		t.Fatalf("peer = %q", peer)
+	}
+}
+
+// A probe that does not answer within toolchainProbeTimeout is ended and reported as an error instead of holding the start.
+func TestCommandVersionEndsAProbeThatDoesNotAnswer(t *testing.T) {
+	setToolchainBounds(t, 300*time.Millisecond, time.Minute)
+	toolPath := filepath.Join(t.TempDir(), exeNameForRuntime("go"))
+	copyTestExecutable(t, toolPath)
+	t.Setenv("PIG_TEST_TOOLCHAIN_PROBE_LOG", filepath.Join(t.TempDir(), "probes.log"))
+	t.Setenv("PIG_TEST_TOOLCHAIN_VERSION", "go-v1")
+	t.Setenv("PIG_TEST_TOOLCHAIN_SLEEP", "10s")
+	start := time.Now()
+	got := commandVersion(t.TempDir(), toolPath, "-test.run=^TestCommandVersionProbeHelper$")
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Fatalf("the probe ran %v past its bound", elapsed)
+	}
+	if !strings.HasPrefix(got, "error:") {
+		t.Fatalf("commandVersion = %q, want an error", got)
+	}
+}
+
+// Two projects whose selectors differ (go.mod here) each keep their record: starting in one after the other does not make the first probe again.
+func TestCommandVersionKeepsOneRecordPerSelectorState(t *testing.T) {
+	root := t.TempDir()
+	dirs := []string{filepath.Join(root, "a"), filepath.Join(root, "b")}
+	writeRuntimecellTestFile(t, filepath.Join(dirs[0], "go.mod"), "module a\n")
+	writeRuntimecellTestFile(t, filepath.Join(dirs[1], "go.mod"), "module project-b-with-a-longer-name\n")
+	toolPath := filepath.Join(t.TempDir(), exeNameForRuntime("go"))
+	copyTestExecutable(t, toolPath)
+	logPath := filepath.Join(t.TempDir(), "probes.log")
+	t.Setenv("PIG_TEST_TOOLCHAIN_PROBE_LOG", logPath)
+	t.Setenv("PIG_TEST_TOOLCHAIN_VERSION", "go-v1")
+	args := []string{"-test.run=^TestCommandVersionProbeHelper$"}
+	cacheRoot := t.TempDir()
+	for range 3 {
+		for _, dir := range dirs {
+			t.Chdir(dir)
+			if got := commandVersion(cacheRoot, toolPath, args...); !strings.Contains(got, "go-v1") {
+				t.Fatalf("commandVersion in %s = %q", dir, got)
+			}
+		}
+	}
+	if probes := probeCount(t, logPath); probes != 2 {
+		t.Fatalf("probes alternating between two projects = %d, want 2 (one per project)", probes)
+	}
+	invalidateCommandVersion(cacheRoot, toolPath, args...)
+	t.Chdir(dirs[0])
+	commandVersion(cacheRoot, toolPath, args...)
+	if probes := probeCount(t, logPath); probes != 3 {
+		t.Fatalf("probes after invalidation = %d, want 3", probes)
+	}
+}
+
+// A command keeps the records of at most toolchainSlotsPerCommand selector states, the newest.
+func TestCommandVersionPrunesOldRecords(t *testing.T) {
+	root := t.TempDir()
+	toolPath := filepath.Join(t.TempDir(), exeNameForRuntime("go"))
+	copyTestExecutable(t, toolPath)
+	t.Setenv("PIG_TEST_TOOLCHAIN_PROBE_LOG", filepath.Join(t.TempDir(), "probes.log"))
+	t.Setenv("PIG_TEST_TOOLCHAIN_VERSION", "go-v1")
+	args := []string{"-test.run=^TestCommandVersionProbeHelper$"}
+	cacheRoot := t.TempDir()
+	for i := range toolchainSlotsPerCommand + 4 {
+		dir := filepath.Join(root, fmt.Sprint(i))
+		writeRuntimecellTestFile(t, filepath.Join(dir, "go.mod"), strings.Repeat("x", i+1))
+		t.Chdir(dir)
+		commandVersion(cacheRoot, toolPath, args...)
+		time.Sleep(20 * time.Millisecond)
+	}
+	if got := len(toolchainVersionSlots(cacheRoot, toolPath, args)); got != toolchainSlotsPerCommand {
+		t.Fatalf("records kept = %d, want %d", got, toolchainSlotsPerCommand)
 	}
 }
