@@ -3451,16 +3451,28 @@ class Context:
 
     # Shell ------------------------------------------------------------------
 
-    def exec(self, command: str, args: list[str] | None = None, *, timeout: float | None = None, cwd: str | None = None) -> ExecResult:
+    def exec(self, command: str, args: list[str] | None = None, *, timeout: float | None = None, cwd: str | None = None, signal: ProviderSignal | None = None) -> ExecResult:
         """Run a command through the host's executor.
 
-        ``timeout`` (milliseconds) and ``cwd`` are upstream ExecOptions; a
-        command the timeout kills reports ``killed``. Raises HostCallError, a
-        RuntimeError whose message is the host's, when the host reports a
-        failure, such as "spawn EINVAL" for a batch file on Windows, so a
-        caller sees the reason rather than an exit code of zero it never
-        produced.
+        ``timeout`` (milliseconds), ``cwd`` and ``signal`` are upstream
+        ExecOptions; a command the timeout kills reports ``killed``. Setting
+        the ``signal`` (a :class:`ProviderSignal`) terminates the command, as
+        Pi does: the command alone receives SIGTERM (the process is killed on
+        Windows), no descendant is signalled, and the call returns the output
+        written so far with ``killed`` set and ``exit_code`` 0, which is what a
+        command that a signal ended reports. A signal that is set before the
+        call starts the command and ends it at once. Nothing follows the
+        SIGTERM, as upstream's: a command that ignores it keeps the call
+        waiting. Without a ``signal`` the command ends when the calling request
+        is cancelled; a ``signal`` replaces that cancellation, so cancelling
+        the request then leaves the command running and the call waits for its
+        result. Raises HostCallError, a RuntimeError whose message is the
+        host's, when the host reports a failure, such as "spawn EINVAL" for a
+        batch file on Windows, so a caller sees the reason rather than an exit
+        code of zero it never produced.
         """
+        if signal is not None and not callable(getattr(signal, "subscribe", None)):
+            raise TypeError("signal must be a ProviderSignal")
         call_args: dict[str, Any] = {"command": command, "args": args or []}
         options: dict[str, Any] = {}
         if timeout is not None:
@@ -3469,7 +3481,11 @@ class Context:
             options["cwd"] = cwd
         if options:
             call_args["options"] = options
-        result = self._call("exec", call_args).get("result") or {}
+        if signal is None:
+            reply = self._call("exec", call_args)
+        else:
+            reply = self.extension._exec_with_signal(self, call_args, signal)
+        result = reply.get("result") or {}
         return ExecResult(
             stdout=str(result.get("stdout") or ""),
             stderr=str(result.get("stderr") or ""),
@@ -4005,6 +4021,7 @@ class Extension:
         self._settings: dict[str, Any] | None = None
         self._mcp_servers: list[dict[str, Any]] = []
         self._execute_seq = 0
+        self._exec_seq = 0
         self._nested_calls: dict[str, _NestedCall] = {}
         self._bash_operations = _BashOperationsTable()
         # Ids of the MCP registration calls in flight, guarded by _state_lock. The read loop applies each reply's server list in frame order, so a later state push is never replaced by an older reply.
@@ -4279,6 +4296,34 @@ class Extension:
             with self._state_lock:
                 self._nested_calls.pop(execute_id, None)
             ctx._report_request_state("progress")
+
+    def _exec_with_signal(self, ctx: Context, call_args: dict[str, Any], signal: ProviderSignal) -> dict[str, Any]:
+        """pi.exec with options.signal: the call is not tied to the calling request (core/exec.ts has no signal but the caller's), and the signal's abort reaches the host as exec.cancel."""
+        with self._state_lock:
+            self._exec_seq += 1
+            exec_id = f"exec-{self._exec_seq}"
+        payload = {**call_args, "execId": exec_id, "ownSignal": True}
+        ctx._report_request_state("blocked", "host_call")
+        unsubscribe: Callable[[], None] | None = None
+        try:
+            call_id, event = self._begin_call("exec", payload)
+            # After the call is sent: the host applies a cancel only after the call it names started the command.
+            unsubscribe = signal.subscribe(lambda: self._cancel_exec(exec_id))
+            return self._wait_call(call_id, event, "exec")
+        finally:
+            if unsubscribe is not None:
+                unsubscribe()
+            ctx._report_request_state("progress")
+
+    def _cancel_exec(self, exec_id: str) -> None:
+        """Send the cancel of one exec call from a thread of its own, so the signal's setter never waits for the host."""
+        def cancel() -> None:
+            try:
+                self._call("exec.cancel", {"execId": exec_id})
+            except Exception:  # noqa: BLE001 - the call ended or the connection closed: nothing is left to cancel  # nosec B110
+                pass
+
+        threading.Thread(target=cancel, name=f"pig-exec-cancel-{exec_id}", daemon=True).start()
 
     def _cancel_nested(self, execute_id: str) -> None:
         """Send the cancel of one nested call from a thread of its own, so the signal's setter never waits for the host."""

@@ -331,6 +331,10 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		callCtx = extension.WithDialogSettle(callCtx, dialogSlot.Settle)
 	}
 
+	// An exec call the extension owns the signal of ends when the extension reports the abort.
+	callCtx, endExecSignal := h.execSignal(callCtx, conn, call)
+	defer endExecSignal()
+
 	var result *CallResultPayload
 	var err error
 	switch {
@@ -376,6 +380,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleLoadTheme(call)
 	case call.Method == CallLoadingExec:
 		result, err = h.handleLoadingExec(callCtx, call)
+	case call.Method == CallExecCancel:
+		result, err = h.handleExecCancel(conn, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:
 		result, err = h.handleMcpServerCall(callCtx, me, call)
 	case call.Method == CallRegisterVirtualModel || call.Method == CallUnregisterVirtualModel:
@@ -559,11 +565,7 @@ func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedEx
 
 // handleUnboundExec runs pi.exec for a call that arrives before a session binds the exec action, which is while a factory loads. Pi's pi.exec needs no session: it runs the command in the loader's working directory (core/extensions/loader.ts createExtensionAPI exec).
 func (h *Host) handleUnboundExec(ctx context.Context, call *CallPayload) (*CallResultPayload, error) {
-	var p struct {
-		Command string                 `json:"command"`
-		Args    []string               `json:"args"`
-		Options *extension.ExecOptions `json:"options,omitempty"`
-	}
+	var p ExecArgs
 	if err := json.Unmarshal(call.Args, &p); err != nil {
 		return nil, fmt.Errorf("parse exec args: %w", err)
 	}

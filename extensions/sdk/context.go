@@ -1629,8 +1629,7 @@ type ExecResult struct {
 	Killed bool `json:"killed"`
 }
 
-// ExecOptions mirrors the serializable part of upstream ExecOptions. The
-// command's AbortSignal is the request's cancellation.
+// ExecOptions are the options of [Context.ExecWithOptions], upstream's ExecOptions.
 type ExecOptions struct {
 	// Timeout kills the command after this many milliseconds. Pi's timeout is
 	// a JavaScript number, so fractional and very large values are preserved.
@@ -1638,6 +1637,16 @@ type ExecOptions struct {
 	Timeout float64 `json:"timeout,omitempty"`
 	// Cwd is the command's working directory. Empty uses the session's.
 	Cwd string `json:"cwd,omitempty"`
+	// Signal is upstream's options.signal. When it is done the host terminates the command, as Pi does: the command alone
+	// receives SIGTERM (the process is killed on Windows), no descendant is signalled, and the call returns the output
+	// written so far with Killed set and ExitCode 0, which is what a command that a signal ended reports. A Signal that is done
+	// before the call starts the command and ends it at once. Like upstream, nothing follows the SIGTERM, so a command that
+	// ignores it keeps the call waiting.
+	//
+	// Without a Signal the command ends when the calling request is cancelled. A Signal replaces that cancellation, as
+	// upstream's exec has no signal but the one the caller passes: cancelling the request then leaves the command running
+	// and the call waits for its result.
+	Signal context.Context `json:"-"`
 }
 
 // Exec runs a shell command through the host's bash executor.
@@ -1647,11 +1656,43 @@ func (c Context) Exec(command string, args []string) (*ExecResult, error) {
 
 // ExecWithOptions is [Context.Exec] with upstream's exec options.
 func (c Context) ExecWithOptions(command string, args []string, opts ExecOptions) (*ExecResult, error) {
-	return c.exec(map[string]any{"command": command, "args": args, "options": opts})
+	payload := map[string]any{"command": command, "args": args, "options": opts}
+	if opts.Signal == nil {
+		return c.exec(payload)
+	}
+	signal := opts.Signal
+	execID := fmt.Sprintf("exec-%d", c.ext.executeSeq.Add(1))
+	payload["execId"], payload["ownSignal"] = execID, true
+	// The abort reaches the host through a second call, ordered after the exec call's frame: the host applies a cancel only
+	// after the call it names started the command, so a signal that is done already still spawns the command and then ends
+	// it, as core/exec.ts does. The call is detached from the request, which replaces its cancellation.
+	stop := make(chan struct{})
+	var watcher sync.WaitGroup
+	result, err := c.callHostAfterBegin("exec", payload, true, func() {
+		watcher.Go(func() {
+			select {
+			case <-signal.Done():
+				cancelResult, cancelErr := c.ext.conn.call("exec.cancel", struct {
+					ExecID string `json:"execId"`
+				}{execID})
+				if err := callResultError(cancelResult, cancelErr); err != nil {
+					reportHostCallFailure("exec.cancel", err, nil)
+				}
+			case <-stop:
+			}
+		})
+	})
+	close(stop)
+	watcher.Wait()
+	return execResult(result, err)
 }
 
 func (c Context) exec(payload map[string]any) (*ExecResult, error) {
 	result, err := c.callHost("exec", payload)
+	return execResult(result, err)
+}
+
+func execResult(result *callResultMsg, err error) (*ExecResult, error) {
 	if err != nil {
 		return nil, err
 	}

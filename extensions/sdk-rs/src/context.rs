@@ -3379,7 +3379,14 @@ impl Context {
     }
 
     /// Run a command through the host's executor with upstream `ExecOptions`
-    /// (timeout in milliseconds, working directory). Errors as [`Self::exec`].
+    /// (timeout in milliseconds, working directory, signal). Errors as [`Self::exec`].
+    ///
+    /// When `options.signal` is cancelled the host terminates the command, as Pi does: the command alone receives SIGTERM (the
+    /// process is killed on Windows), no descendant is signalled, and the call returns the output written so far with `killed`
+    /// set and `exit_code` 0, which is what a command that a signal ended reports. A signal that is cancelled before the call
+    /// starts the command and ends it at once. Nothing follows the SIGTERM, as upstream's: a command that ignores it keeps the
+    /// call waiting. Without a signal the command ends when the calling request is cancelled; a signal replaces that
+    /// cancellation, so cancelling the request then leaves the command running and the call waits for its result.
     pub fn exec_with_options(
         &self,
         command: &str,
@@ -3393,13 +3400,42 @@ impl Context {
         if let Some(cwd) = options.cwd.as_deref() {
             opts.insert("cwd".into(), serde_json::Value::String(cwd.to_string()));
         }
-        self.exec_call(serde_json::json!({ "command": command, "args": args, "options": opts }))
+        let mut call = serde_json::json!({ "command": command, "args": args, "options": opts });
+        let Some(signal) = options.signal.as_ref() else {
+            return self.exec_call(call);
+        };
+        let exec_id = format!("exec-{}", self.conn.execute_seq.fetch_add(1, Ordering::Relaxed));
+        call["execId"] = serde_json::Value::String(exec_id.clone());
+        call["ownSignal"] = serde_json::Value::Bool(true);
+        let reports = !self.request_id.is_empty();
+        if reports {
+            let _ = self.conn.request_state_for(self.request_parent.as_deref(), &self.request_id, "blocked", Some("host_call"));
+        }
+        // The signal replaces the request's cancellation (core/exec.ts has no other), so the call is not tied to the request.
+        let reply = self.conn.begin_call_for(None, "exec", Some(call)).and_then(|pending| {
+            // Subscribed after the call frame is written: the host applies the cancel after it started the command.
+            let _cancel = signal.subscribe({
+                let conn = self.conn.clone();
+                Arc::new(move || {
+                    let _ = conn.begin_call_for(None, "exec.cancel", Some(serde_json::json!({ "execId": exec_id })));
+                })
+            });
+            self.conn.wait_call(pending)
+        });
+        if reports {
+            let _ = self.conn.request_state_for(self.request_parent.as_deref(), &self.request_id, "progress", None);
+        }
+        Self::exec_result(reply.map_err(|e| e.to_string())?)
     }
 
     fn exec_call(&self, args: serde_json::Value) -> Result<ExecResult, String> {
         let result = self
             .call_wire("exec", Some(args))
             .map_err(|e| e.to_string())?;
+        Self::exec_result(result)
+    }
+
+    fn exec_result(result: crate::protocol::CallResultMsg) -> Result<ExecResult, String> {
         if let Some(error) = result.error {
             return Err(host_error_message(error));
         }
@@ -3877,14 +3913,15 @@ pub struct ExecResult {
     pub killed: bool,
 }
 
-/// Upstream `ExecOptions` for [`Context::exec_with_options`]. Cancellation
-/// (upstream's `signal`) is the request's own.
+/// Upstream `ExecOptions` for [`Context::exec_with_options`].
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ExecOptions {
     /// Timeout in milliseconds. Pi's `timeout` is a JavaScript number: fractional and very large values are meaningful, and only a positive one starts a timer.
     pub timeout: Option<f64>,
     /// Working directory; the session's when unset.
     pub cwd: Option<String>,
+    /// Upstream's `signal`: cancelling it terminates the command (see [`Context::exec_with_options`]). Unset, the command ends when the calling request is cancelled.
+    pub signal: Option<crate::ProviderSignal>,
 }
 
 /// Upstream `ExtensionUIDialogOptions` for the `*_with_options` dialogs.
@@ -5318,6 +5355,7 @@ mod sdk_surface_call_tests {
                     &ExecOptions {
                         timeout: Some(250.0),
                         cwd: Some("/work".to_string()),
+                        signal: None,
                     },
                 )
             },

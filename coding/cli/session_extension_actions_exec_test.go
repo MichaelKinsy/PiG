@@ -154,6 +154,16 @@ func TestSharedSubprocessExecAcrossModes(t *testing.T) {
 				if err := command.Handler(ctx, ""); err != nil {
 					t.Fatalf("pi.exec in %s mode: %v", mode, err)
 				}
+				// The action the session binds runs under the call's context, so a signal the extension aborts ends a running command here as in
+				// interactive mode (core/exec.ts:46-52).
+				abortCommand, ok := ext.Commands["exec_abort_probe"]
+				if !ok {
+					t.Fatal("exec_abort_probe command not registered")
+				}
+				t.Setenv(execEchoHelperEnv, "hang")
+				if err := abortCommand.Handler(ctx, ""); err != nil {
+					t.Fatalf("pi.exec with an abort signal in %s mode: %v", mode, err)
+				}
 			})
 		}
 	}

@@ -142984,8 +142984,8 @@
       ],
       "evidence": [
         "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
-        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs",
-        "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad"
+        "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs",
+        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -143029,8 +143029,8 @@
       ],
       "evidence": [
         "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
-        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs",
-        "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad"
+        "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs",
+        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

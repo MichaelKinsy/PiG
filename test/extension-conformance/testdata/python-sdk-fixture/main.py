@@ -1099,6 +1099,27 @@ def new_extension() -> pig_sdk.Extension:
             except RuntimeError as error:
                 ctx.notify(f"rejected:{error}", "info")
 
+    def exec_abort_probe(ctx, args):
+        probe = json.loads(args)
+        signal = pig_sdk.ProviderSignal()
+        if probe.get("pre"):
+            signal.set()
+        else:
+            def abort_when_started():
+                deadline = time.monotonic() + 15
+                while time.monotonic() < deadline and not pathlib.Path(probe["pidFile"]).exists():
+                    time.sleep(0.01)
+                signal.set()
+
+            threading.Thread(target=abort_when_started, daemon=True).start()
+        try:
+            result = ctx.exec(probe["command"], probe["args"], signal=signal)
+            ctx.notify(f"exec-abort:killed={str(result.killed).lower()};code={result.exit_code};stdout={result.stdout.strip()}", "info")
+        except RuntimeError as error:
+            ctx.notify(f"rejected:{error}", "info")
+
+    ext.command("exec-abort-probe", "Abort a running exec through its signal", exec_abort_probe)
+
     def language_probe(ctx, args):
         ctx.notify("language:%s:end" % json.dumps({"lang": pig_sdk.get_language_from_path(json.loads(args)["path"])}, separators=(",", ":")), "info")
 

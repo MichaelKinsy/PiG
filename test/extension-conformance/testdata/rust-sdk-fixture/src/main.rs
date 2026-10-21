@@ -1089,7 +1089,7 @@ fn main() {
     });
     ext.command("timeout-probe", "Send JavaScript-number timeouts", |ctx, _| {
         for timeout in [0.5, 4294967296.5, 1e21] {
-            if let Err(err) = ctx.exec_with_options("timeout-command", &[], &pig_sdk::ExecOptions { timeout: Some(timeout), cwd: None }) {
+            if let Err(err) = ctx.exec_with_options("timeout-command", &[], &pig_sdk::ExecOptions { timeout: Some(timeout), ..Default::default() }) {
                 return CommandResult::Error(err);
             }
         }
@@ -1108,6 +1108,36 @@ fn main() {
                 Ok(result) => ctx.notify(&format!("resolved:{}", result.exit_code), "info"),
                 Err(err) => ctx.notify(&format!("rejected:{err}"), "info"),
             }
+        }
+        CommandResult::Ok
+    });
+    ext.command("exec-abort-probe", "Abort a running exec through its signal", |ctx, args| {
+        let probe: Value = match serde_json::from_str(args) {
+            Ok(probe) => probe,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let command = probe["command"].as_str().unwrap_or_default().to_string();
+        let argv: Vec<String> = probe["args"].as_array().into_iter().flatten().filter_map(|arg| arg.as_str().map(str::to_string)).collect();
+        let signal = pig_sdk::ProviderSignal::new();
+        if probe["pre"].as_bool() == Some(true) {
+            signal.cancel();
+        } else {
+            let signal = signal.clone();
+            let pid_file = probe["pidFile"].as_str().unwrap_or_default().to_string();
+            thread::spawn(move || {
+                for _ in 0..1500 {
+                    if std::path::Path::new(&pid_file).exists() {
+                        break;
+                    }
+                    thread::sleep(Duration::from_millis(10));
+                }
+                signal.cancel();
+            });
+        }
+        let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
+        match ctx.exec_with_options(&command, &argv, &pig_sdk::ExecOptions { signal: Some(signal), ..Default::default() }) {
+            Ok(result) => ctx.notify(&format!("exec-abort:killed={};code={};stdout={}", result.killed, result.exit_code, result.stdout.trim()), "info"),
+            Err(err) => ctx.notify(&format!("rejected:{err}"), "info"),
         }
         CommandResult::Ok
     });

@@ -1,5 +1,5 @@
 import zlib from "node:zlib";
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import * as piAi from "@earendil-works/pi-ai";
 import { join as joinPath } from "node:path";
 import * as piTui from "@earendil-works/pi-tui";
@@ -37,6 +37,23 @@ export default function (pi) {
       } catch (error) {
         ctx.ui.notify(`rejected:${error.message}`, "info");
       }
+    }
+  }});
+  pi.registerCommand("exec-abort-probe", { description: "Abort a running exec through its signal", handler: async (args, ctx) => {
+    const probe = JSON.parse(args);
+    const controller = new AbortController();
+    if (probe.pre) controller.abort();
+    else {
+      void (async () => {
+        for (const deadline = Date.now() + 15000; Date.now() < deadline && !existsSync(probe.pidFile);) await new Promise((resolve) => setTimeout(resolve, 10));
+        controller.abort();
+      })();
+    }
+    try {
+      const result = await pi.exec(probe.command, probe.args, { signal: controller.signal });
+      ctx.ui.notify(`exec-abort:killed=${result.killed};code=${result.code};stdout=${result.stdout.trim()}`, "info");
+    } catch (error) {
+      ctx.ui.notify(`rejected:${error.message}`, "info");
     }
   }});
   pi.registerCommand("thinking-model", { description: "Read the thinking level and switch the model", handler: async (_args, ctx) => {
