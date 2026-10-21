@@ -50,7 +50,7 @@ func TestZeroUsageAutoCompactionUsesMessageEstimate(t *testing.T) {
 			}
 			sess.refreshContext()
 
-			if _, err := sess.checkCompaction(context.Background(), assistant, true, nil); err != nil {
+			if _, err := sess.checkCompaction(context.Background(), assistant, true); err != nil {
 				t.Fatal(err)
 			}
 			if got := completer.called.Load(); got != tc.wantCompact {

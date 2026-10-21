@@ -79,7 +79,7 @@ func TestUpstreamSessionBoundariesAccounting(t *testing.T) {
 		h.session.RefreshContext()
 		errorMessage := &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: ""}}, Provider: "faux", ModelID: "faux-1", Usage: &ai.Usage{}, StopReason: ai.StopReasonError, ErrorMessage: "invalid_api_key", Timestamp: time.Now().UnixMilli() + 1000}
 		calls := 0
-		continued, err := h.session.checkCompactionDecision(t.Context(), errorMessage, true, nil, func(ctx context.Context, reason string, willRetry bool) (bool, error) {
+		continued, err := h.session.checkCompactionDecision(t.Context(), errorMessage, true, func(ctx context.Context, reason string, willRetry bool) (bool, error) {
 			calls++
 			return h.session.autoCompactAndDecide(ctx, reason, willRetry)
 		})

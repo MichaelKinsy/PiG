@@ -31,9 +31,9 @@ import { createInterface } from 'node:readline';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const base = root + '/node_modules/@earendil-works/';
-const versions = {piVersion: PIG_UPSTREAM_VERSION, awsSdkClientBedrockRuntime: '3.1127.0', smithyCore: '3.36.1', smithyNodeHttpHandler: '4.12.1'};
+const versions = {piVersion: PIG_UPSTREAM_VERSION, awsSdkClientBedrockRuntime: '3.1127.0', smithyCore: '3.36.2', smithyNodeHttpHandler: '4.12.1'};
 for (const [path, version] of [[root + '/package.json', PI_PACKAGE_VERSION], [base + 'pi-ai/package.json', PI_PACKAGE_VERSION], [base + 'pi-agent-core/package.json', PI_PACKAGE_VERSION],
-  [root + '/node_modules/@aws-sdk/client-bedrock-runtime/package.json', '3.1127.0'], [root + '/node_modules/@smithy/core/package.json', '3.36.1'], [root + '/node_modules/@smithy/node-http-handler/package.json', '4.12.1']]) {
+  [root + '/node_modules/@aws-sdk/client-bedrock-runtime/package.json', '3.1127.0'], [root + '/node_modules/@smithy/core/package.json', '3.36.2'], [root + '/node_modules/@smithy/node-http-handler/package.json', '4.12.1']]) {
   assert.equal(JSON.parse(await readFile(path, 'utf8')).version, version, path);
 }
 const ticksEnabled = process.env.PROBE_TICKS !== '0';
@@ -367,5 +367,5 @@ if (process.argv[3]) {
 // One case per line keeps diffs reviewable.
 const lines = outputs.map(o => '  ' + JSON.stringify(o));
 const rpcLines = rpc.map(o => '  ' + JSON.stringify(o));
-await writeFile(process.argv[2], `{"piVersion":${JSON.stringify(PIG_UPSTREAM_VERSION)},"awsSdkClientBedrockRuntime":"3.1127.0","smithyCore":"3.36.1","smithyNodeHttpHandler":"4.12.1","cases":[\n${lines.join(',\n')}\n],"rpc":[\n${rpcLines.join(',\n')}\n]}\n`);
+await writeFile(process.argv[2], `{"piVersion":${JSON.stringify(PIG_UPSTREAM_VERSION)},"awsSdkClientBedrockRuntime":"3.1127.0","smithyCore":"3.36.2","smithyNodeHttpHandler":"4.12.1","cases":[\n${lines.join(',\n')}\n],"rpc":[\n${rpcLines.join(',\n')}\n]}\n`);
 process.exit(0);

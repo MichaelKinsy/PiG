@@ -334,7 +334,7 @@ func TestBoundaryDoesNotTriggerThresholdCompactionFromPostEditUsageCapturedBefor
 	h.session.RefreshContext()
 	errorMessage := &agent.AssistantMessage{Role: agent.RoleAssistant, Provider: "faux", ModelID: "faux-1", StopReason: ai.StopReasonError, ErrorMessage: "invalid_api_key", Timestamp: time.Now().UnixMilli() + 1_000}
 
-	if continueRun, err := h.session.checkCompaction(context.Background(), errorMessage, true, nil); err != nil || continueRun {
+	if continueRun, err := h.session.checkCompaction(context.Background(), errorMessage, true); err != nil || continueRun {
 		t.Fatalf("checkCompaction = %v, %v", continueRun, err)
 	}
 	if n := len(h.entries("compaction")); n != 1 {
@@ -579,5 +579,48 @@ func TestQueuedUserMessageResetsRecoveryBudget(t *testing.T) {
 	}
 	if h.session.overflowRecoveryAttempted.Load() {
 		t.Fatal("new user message retained the previous recovery budget")
+	}
+}
+
+// Port of packages/coding-agent/test/suite/regressions/11227-recovery-omits-tool-results.test.ts
+// (https://github.com/earendil-works/pi/issues/11227): pre-prompt recovery of a resumed length
+// stop omits the truncated call together with the result that answered it.
+func TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{
+		settings:      `{"compaction":{"enabled":true}}`,
+		contextWindow: 100_000, maxTokens: 1_000,
+		extension: summaryFromPreparation("summary"),
+	}, fauxReply("done", ai.StopReasonStop, 0))
+	inner := h.session.Inner()
+	now := time.Now().UnixMilli()
+	if _, err := inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "check status"}}, Timestamp: now - 1000}}); err != nil {
+		t.Fatal(err)
+	}
+	truncated := &agent.AssistantMessage{Role: agent.RoleAssistant,
+		Content:  []ai.AssistantContentBlock{ai.ToolCall{ID: "call_truncated", Name: "bash", Arguments: ai.JsonObject{"command": "echo"}}},
+		Provider: "faux", ModelID: "faux-1", StopReason: ai.StopReasonLength, Timestamp: now - 500,
+		Usage: &ai.Usage{Input: 100, Output: 16, TotalTokens: 116}}
+	if _, err := inner.AppendMessage(agent.AgentMessage{Assistant: truncated}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := inner.AppendMessage(agent.AgentMessage{ToolResult: &agent.ToolResultMessage{Role: "toolResult", ToolCallID: "call_truncated", ToolName: "bash", IsError: true,
+		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Not executed: output token limit reached."}}, Timestamp: now - 400}}); err != nil {
+		t.Fatal(err)
+	}
+	h.session.RefreshContext()
+
+	if _, err := h.session.Send(context.Background(), "continue"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle(t)
+
+	h.provider.mu.Lock()
+	requests := append([]string(nil), h.provider.requests...)
+	h.provider.mu.Unlock()
+	if len(requests) != 1 {
+		t.Fatalf("model calls = %d, want 1", len(requests))
+	}
+	if strings.Contains(requests[0], `"role":"toolResult"`) || strings.Contains(requests[0], `"stopReason":"length"`) {
+		t.Fatalf("request still carries the truncated call or its result: %s", requests[0])
 	}
 }

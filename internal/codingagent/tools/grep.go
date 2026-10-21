@@ -158,7 +158,9 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 	effectiveLimit = math.Max(1, effectiveLimit)
 
-	args := []string{"--json", "--line-number", "--color=never", "--hidden"}
+	// --no-config: the tool contract (literal, glob, limit, ...) must not depend
+	// on ambient user config like RIPGREP_CONFIG_PATH.
+	args := []string{"--no-config", "--json", "--line-number", "--color=never", "--hidden"}
 	if p.IgnoreCase {
 		args = append(args, "--ignore-case")
 	}

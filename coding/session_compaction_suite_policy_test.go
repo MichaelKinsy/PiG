@@ -39,7 +39,7 @@ func suitePolicySession(t *testing.T, window int, settings string) *Session {
 }
 func suitePolicyCheck(t *testing.T, s *Session, message *agent.AssistantMessage, skip bool, calls *[]compactionDecisionCall) {
 	t.Helper()
-	_, err := s.checkCompactionDecision(t.Context(), message, skip, nil, func(_ context.Context, reason string, retry bool) (bool, error) {
+	_, err := s.checkCompactionDecision(t.Context(), message, skip, func(_ context.Context, reason string, retry bool) (bool, error) {
 		*calls = append(*calls, compactionDecisionCall{reason, retry})
 		return false, nil
 	})

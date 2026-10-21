@@ -1913,7 +1913,7 @@ func TestCheckCompactionThreshold(t *testing.T) {
 		},
 	}
 
-	if _, err := sess.checkCompaction(context.Background(), msg, true, nil); err != nil {
+	if _, err := sess.checkCompaction(context.Background(), msg, true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1974,7 +1974,7 @@ func TestCheckCompactionOverflow(t *testing.T) {
 	sess.refreshContext()
 	retryMsg := lastAssistantMessage(sess.agent.Messages())
 
-	continueRun, err := sess.checkCompaction(context.Background(), retryMsg, true, nil)
+	continueRun, err := sess.checkCompaction(context.Background(), retryMsg, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2046,7 +2046,7 @@ func TestOverflowNoDoubleRetry(t *testing.T) {
 		ModelID:      "fake-1",
 	}
 
-	if _, err := sess.checkCompaction(context.Background(), overflowMsg, true, nil); err != nil {
+	if _, err := sess.checkCompaction(context.Background(), overflowMsg, true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2212,13 +2212,13 @@ func TestPreSendCompactionSkipsAborted(t *testing.T) {
 	}
 
 	// Post-send check (skipAbortedCheck=true) should skip.
-	_, _ = sess.checkCompaction(context.Background(), abortedHighUsage, true, nil)
+	_, _ = sess.checkCompaction(context.Background(), abortedHighUsage, true)
 	if fakeComp.called.Load() {
 		t.Error("post-send check (skipAbortedCheck=true) should skip aborted messages")
 	}
 
 	// Pre-send check (skipAbortedCheck=false) should NOT skip.
-	_, _ = sess.checkCompaction(context.Background(), abortedHighUsage, false, nil)
+	_, _ = sess.checkCompaction(context.Background(), abortedHighUsage, false)
 	if !fakeComp.called.Load() {
 		t.Error("pre-send check (skipAbortedCheck=false) should process aborted messages and trigger threshold compaction")
 	}
