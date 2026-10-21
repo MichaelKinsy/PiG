@@ -65,6 +65,10 @@ gates = [
   { ratchet = "process.interactive_first_frame.children_at_exit" },
   { ratchet = "tui.hljs_grammar_load.allocs" },
   { ratchet = "tui.hljs_grammar_load.bytes" },
+  { ratchet = "tui.hljs_language_first_use.allocs" },
+  { ratchet = "tui.hljs_language_first_use.bytes" },
+  { ratchet = "tui.hljs_autodetect_load.allocs" },
+  { ratchet = "tui.hljs_autodetect_load.bytes" },
   { missing = "start-to-first-frame time on the cluster with the exact-CV gate (no k8sbench profile for regular PiG)", route = "k8s-bench" },
 ]
 
@@ -986,8 +990,8 @@ techniques = ["T5"]
 route = "perf-session (land), go-native-perf (projection cache, turn-3,500 gate)"
 
 [[plan]]
-gap = "Interactive start allocates about 96,000 objects and 22 MB and holds 58 MB RSS at the first frame, against print mode's 34,800 and rpi's self-reported 12 MiB at ready (process.interactive_first_frame): the model catalog materialized and deep-cloned for provider info (28,000 profiled start allocations) and the highlight.js grammar objects (42,500 allocations and 11 MB for every grammar, tui.hljs_grammar_load). The lazy JSON-schema compile and the typed grammar snapshot decoder have landed (21,500 and 176,000 fewer)."
-plan = "Decode each highlight language on first use and shrink the grammar mode object; answer provider questions from the static catalog without cloning every model; then PGO and a dynamic GOGC from a memory target (never a default GOMEMLIMIT), measured on the cluster; the start target is under 10 ms."
+gap = "Interactive start allocates about 96,000 objects and 22 MB and holds 58 MB RSS at the first frame, against print mode's 34,800 and rpi's self-reported 12 MiB at ready (process.interactive_first_frame): the model catalog materialized and deep-cloned for provider info (28,000 profiled start allocations) The lazy JSON-schema compile, the typed grammar snapshot decoder and the per-language grammar decode on first use (the start decodes 385 allocations and 2.3 MB of grammar, tui.hljs_grammar_load) have landed."
+plan = "Shrink the grammar mode object; answer provider questions from the static catalog without cloning every model; then PGO and a dynamic GOGC from a memory target (never a default GOMEMLIMIT), measured on the cluster; the start target is under 10 ms."
 gain = "start allocations cut by more than half and a lower RSS at ready; time on the cluster"
 techniques = ["T2", "T8", "T9"]
 route = "go-native-perf"
