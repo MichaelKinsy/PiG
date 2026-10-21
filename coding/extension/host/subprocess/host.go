@@ -496,6 +496,8 @@ type Host struct {
 	commandWindowHandler  func(suspended int)
 	tailFlights           map[*tailFlight]struct{}
 	settleTailHandler     func(suspended int)
+	// backgroundGate is the embedder's hold on calls no request started (SetBackgroundCallGate).
+	backgroundGate atomic.Pointer[func() <-chan struct{}]
 
 	// widthFunc and heightFunc return the current terminal dimensions. Set by
 	// the wiring layer (interactive mode) so the host can pass real geometry
@@ -2316,6 +2318,15 @@ func (h *Host) SetSettleTailHandler(fn func(suspended int)) {
 	h.commandFlightMu.Lock()
 	h.settleTailHandler = fn
 	h.commandFlightMu.Unlock()
+}
+
+// SetBackgroundCallGate installs the embedder's hold on the UI calls that no request started. Pi runs a timer or I/O callback only when its event loop turns, so a toast an extension deferred with setTimeout(0) while the host runs one chain of awaited handlers (a replacement's session_start, then its command's response) reaches the output after the chain's end, whereas this runtime's timer fires while the host's next dispatch crosses the process boundary. gate returns nil when such a call may run now, or a channel that closes when it may. The gate runs on host goroutines and must not block.
+func (h *Host) SetBackgroundCallGate(gate func() <-chan struct{}) {
+	if gate == nil {
+		h.backgroundGate.Store(nil)
+		return
+	}
+	h.backgroundGate.Store(&gate)
 }
 
 // SetCommandWindowHandler installs the process-owner callback that receives how many in-flight extension commands Pi's process would have left unanswered when it reads stdin's end: those that count suspended, and those of a runtime with no microtask continuation that are still running (FlushCommands applies the same rule to the flights themselves later). A Node command is not counted until its runtime reports its window closed, which it does only after runtime_input_end. The callback runs on host goroutines, must not block, and must not resume or cancel the command.

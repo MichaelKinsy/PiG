@@ -345,9 +345,16 @@ func bindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 		},
 		WaitForIdle: func() error {
 			if sess := current(); sess != nil {
+				if waitForIdleSettlesAtOnce(sess, stage) {
+					return nil
+				}
 				return sess.ExtensionCommandActions().WaitForIdle()
 			}
 			return nil
+		},
+		WaitForIdleBlocks: func() bool {
+			sess := current()
+			return sess != nil && !waitForIdleSettlesAtOnce(sess, stage)
 		},
 		NavigateTree: func(targetID string, opts *extension.NavigateTreeOptions) (extension.CancelledResult, error) {
 			if sess := current(); sess != nil {
@@ -495,4 +502,9 @@ func bindSessionAppendEntry(bridge *subprocess.UIBridge, current func() *coding.
 		}
 		return sess.Inner(), nil
 	}, onAppend)
+}
+
+// waitForIdleSettlesAtOnce reports whether `await ctx.waitForIdle()` returns without waiting. Pi's returns at once while the Session is idle (agent-session.ts waitForIdle: `if (this.isIdle) return`), and that includes the run a command's own sendUserMessage requested: its input handlers, compaction check and before_agent_start run after microtasks (agent-session.ts prompt, _startRun), later than the handler's next statement. Here that run is prepared ahead of the handler's continuation and its agent_start is held until the command's handlers stop running (rpcAdmission.extensionRunStage), so the Session counts it busy; a run a sendUserMessage requested that has not emitted agent_start does not count. A triggering sendMessage does: Pi's sendCustomMessage awaits _startRun, which sets the run active before the send returns, so the command's waitForIdle waits for the run.
+func waitForIdleSettlesAtOnce(sess *coding.Session, stage func() *coding.ExtensionRunStage) bool {
+	return sess.IsIdle() || (stage != nil && stage() != nil && sess.ExtensionUserMessageRunPending())
 }

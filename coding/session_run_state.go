@@ -36,6 +36,8 @@ type sessionRunState struct {
 	active         atomic.Bool
 	settling       atomic.Bool
 	abortRequested atomic.Bool
+	// userRunsPending counts the runs an extension's sendUserMessage prepared or is preparing whose agent_start has not been emitted.
+	userRunsPending atomic.Int32
 
 	mu              sync.Mutex
 	generation      uint64
@@ -63,6 +65,9 @@ func (s *Session) IsStreaming() bool { return s.runState.active.Load() }
 //
 // upstream: agent-session.ts:3368 (`getSignal: () => this.agent.signal`)
 func (s *Session) Signal() context.Context { return s.agent.Signal() }
+
+// ExtensionUserMessageRunPending reports whether a run an extension's sendUserMessage requested has not emitted agent_start yet. Pi's sendUserMessage goes through prompt(), which awaits the input handlers, the compaction check and before_agent_start before _startRun marks the Session busy, so the Session is still idle to the extension that sent it (agent-session.ts:2064-2140); here the run is prepared ahead of the extension's continuation and counts busy from its start (RunStart).
+func (s *Session) ExtensionUserMessageRunPending() bool { return s.runState.userRunsPending.Load() > 0 }
 
 // IsIdle reports whether the session has no active run and no compaction in
 // flight (upstream isIdle).
