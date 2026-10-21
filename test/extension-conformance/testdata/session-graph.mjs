@@ -438,7 +438,7 @@ async function packagesScript({ root, pmCwd: cwd, pmAgentDir: agentDir }) {
   const events = [];
   pm.setProgressCallback((event) => events.push(event.type + ":" + event.action));
   await pm.installAndPersist(pkg, { local: true });
-  r.installed = { list: pm.listConfiguredPackages(), events };
+  r.installed = { list: pm.listConfiguredPackages(), events: [...events] };
   r.removed = {
     project: await pm.removeAndPersist(pkg, { local: true }), list: pm.listConfiguredPackages().length,
     settings: pm.removeSourceFromSettings(pkg), settingsAgain: pm.removeSourceFromSettings(pkg),
