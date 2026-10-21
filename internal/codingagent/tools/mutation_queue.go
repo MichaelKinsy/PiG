@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sync"
 	"syscall"
@@ -11,9 +12,12 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
-// FileMutationQueue serialises concurrent mutations targeting the same
-// canonical file path, in the order callers entered With. Operations on
-// different files proceed in parallel.
+// FileMutationQueue serialises concurrent mutations of one file, in the order
+// callers entered With: mutations whose canonical paths are equal, and
+// mutations of an existing file reached by different canonical paths (hard
+// links, and case aliases that Go's symlink resolution leaves apart). That
+// second rule goes beyond Pi (D190). Operations on different files proceed in
+// parallel. It coordinates only mutations registered in this process.
 //
 // Mirrors upstream core/tools/file-mutation-queue.ts::withFileMutationQueue,
 // which chains a per-file Promise so mutations for one file apply in the
@@ -34,20 +38,21 @@ import (
 type FileMutationQueue struct {
 	mu     sync.Mutex
 	chains map[string]chan struct{} // path -> signal closed when its holder's fn returns
+	files  map[string]os.FileInfo
 }
 
 // NewFileMutationQueue returns a ready-to-use queue.
 func NewFileMutationQueue() *FileMutationQueue {
-	return &FileMutationQueue{chains: make(map[string]chan struct{})}
+	return &FileMutationQueue{chains: make(map[string]chan struct{}), files: make(map[string]os.FileInfo)}
 }
 
 // With runs fn once every mutation registered earlier for the same canonical
-// path has completed, then hands the path to the next queued caller and
-// returns fn's error. filePath is resolved to its canonical form before
-// keying (matching upstream realpath behaviour: symlinks to the same file
-// share one queue slot). If q is nil (e.g. in tests that construct tools
-// directly), fn is called without serialisation: safe for single-threaded
-// test contexts.
+// path, or for the same existing file under another canonical path, has
+// completed, then hands the path to the next queued caller and returns fn's
+// error. filePath is resolved to its canonical form before keying (matching
+// upstream realpath behaviour: symlinks to the same file share one queue
+// slot). If q is nil (e.g. in tests that construct tools directly), fn is
+// called without serialisation: safe for single-threaded test contexts.
 func (q *FileMutationQueue) With(filePath string, fn func() error) error {
 	if q == nil {
 		return fn()
@@ -61,7 +66,7 @@ func (q *FileMutationQueue) With(filePath string, fn func() error) error {
 	return fn()
 }
 
-// WithFileMutationQueue is upstream's withFileMutationQueue (file-mutation-queue.ts:32): it runs fn once every mutation registered earlier for the same canonical path has completed, through the process-wide queue that every edit and write tool made by the Create functions shares, and returns fn's result. Mutations of different files run in parallel. An error from resolving the path's canonical form is returned without running fn, as upstream's rejection is.
+// WithFileMutationQueue is upstream's withFileMutationQueue (file-mutation-queue.ts:32): it runs fn once every mutation registered earlier for the same file has completed (the same canonical path, or the same existing file under another path, D190), through the process-wide queue that every edit and write tool made by the Create functions shares, and returns fn's result. Mutations of different files run in parallel. An error from resolving the path's canonical form is returned without running fn, as upstream's rejection is.
 func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, error) {
 	var result T
 	err := processFileMutationQueue.With(filePath, func() error {
@@ -84,7 +89,7 @@ func ReserveFileMutation(filePath string) (*MutationTicket, error) {
 type MutationTicket struct {
 	q    *FileMutationQueue
 	key  string
-	prev <-chan struct{}
+	prev []<-chan struct{}
 	next chan struct{}
 }
 
@@ -101,18 +106,36 @@ func (q *FileMutationQueue) Reserve(filePath string) (*MutationTicket, error) {
 		q.mu.Unlock()
 		return nil, err
 	}
-	prev := q.chains[key]
+	//perf:ok once per file mutation call, which reads and writes the file; the identity of the file is what D190 orders by
+	info, err := os.Stat(key)
+	if err != nil && !isMissingPathError(err) {
+		q.mu.Unlock()
+		return nil, err
+	}
+	var prev []<-chan struct{}
+	for path, pending := range q.chains {
+		observed := q.files[path]
+		if observed == nil && info != nil {
+			// A queued write may have created a file that was missing at registration.
+			//perf:ok only for a queued call whose file was missing when it queued, and only while a call for an existing file is queued behind it
+			observed, _ = os.Stat(path)
+		}
+		// pig divergence (D190): a mutation also waits for earlier mutations of the same existing file reached by another canonical path (a hard link, or a case alias on a case-insensitive filesystem); Pi keys only by realpath, so it runs them at once and one overwrites the other.
+		if path == key || (info != nil && observed != nil && os.SameFile(info, observed)) {
+			prev = append(prev, pending)
+		}
+	}
 	next := make(chan struct{})
 	q.chains[key] = next
+	q.files[key] = info
 	q.mu.Unlock()
 	return &MutationTicket{q: q, key: key, prev: prev, next: next}, nil
 }
 
-// Wait blocks until every earlier-registered mutation for this ticket's
-// canonical path has completed.
+// Wait blocks until earlier mutations of this ticket's path or file identity complete.
 func (t *MutationTicket) Wait() {
-	if t.prev != nil {
-		<-t.prev
+	for _, prev := range t.prev {
+		<-prev
 	}
 }
 
@@ -144,6 +167,7 @@ func (t *MutationTicket) Release() {
 	t.q.mu.Lock()
 	if t.q.chains[t.key] == t.next {
 		delete(t.q.chains, t.key)
+		delete(t.q.files, t.key)
 	}
 	t.q.mu.Unlock()
 }
