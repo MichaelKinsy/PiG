@@ -312,11 +312,11 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 13 | 13 | 0 | 0 | 0 | 10 | not run |
 | `interactive-rendering` | 68 | 67 | 1 | 0 | 0 | 37 | not run |
-| `json` | 12 | 12 | 0 | 0 | 0 | 10 | not run |
+| `json` | 13 | 13 | 0 | 0 | 0 | 10 | not run |
 | `model-resolver-selector` | 25 | 25 | 0 | 0 | 0 | 15 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 32 | 32 | 0 | 0 | 0 | 19 | not run |
-| `print` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
+| `print` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `project-trust` | 26 | 26 | 0 | 0 | 0 | 19 | not run |
 | `providers-faux-streaming` | 66 | 65 | 0 | 1 | 0 | 49 | not run |
 | `providers-registry` | 9 | 6 | 0 | 3 | 0 | 27 | not run |
