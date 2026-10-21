@@ -106,6 +106,8 @@ func newModelTypesRig(t *testing.T) *modelTypesRig {
 	t.Cleanup(func() { r.host.Shutdown("test complete") })
 	r.bridge = subprocess.NewUIBridge(func() {})
 	r.host.SetUIBridge(r.bridge)
+	// The Node runtime runs a setWidget component factory only in the interactive mode (rpc-mode.ts ignores it), so the rig reports the mode its widget rows are for.
+	r.host.SetMode(conformanceMode)
 	r.bridge.SetThemeFunc(func() any {
 		r.mu.Lock()
 		defer r.mu.Unlock()
