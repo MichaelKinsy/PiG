@@ -272,12 +272,13 @@ export default function (pi) {
       return { content: [{ type: "text", text: `order-done n=${params.n}` }] };
     },
   });
-  // mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+  // mutation_order_probe takes the file mutation queue in its first statement (late: "loop" awaits the event loop first) and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
   pi.registerTool({
     name: "mutation_order_probe",
     description: "Take the file mutation queue and append a tag to the file",
-    parameters: { type: "object", properties: { file: { type: "string" }, tag: { type: "string" } } },
+    parameters: { type: "object", properties: { file: { type: "string" }, tag: { type: "string" }, late: { type: "string" } } },
     async execute(_id, params) {
+      if (params.late === "loop") await new Promise((resolve) => setImmediate(resolve));
       await withFileMutationQueue(params.file, async () => {
         const before = fs.existsSync(params.file) ? fs.readFileSync(params.file, "utf8") : "";
         fs.writeFileSync(params.file, `${before}${params.tag}\n`);

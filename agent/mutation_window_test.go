@@ -33,9 +33,9 @@ func newWindowedTool(name string, log *orderLog, proceed, finish <-chan struct{}
 			if proceed != nil {
 				<-proceed
 			}
-			if closeWindow := ToolStartWindowFromContext(ctx, id); closeWindow != nil {
+			if window := ToolStartWindowFromContext(ctx, id); window != nil {
 				log.add(name + "-window")
-				closeWindow()
+				window.Close()
 			}
 			if finish != nil {
 				<-finish

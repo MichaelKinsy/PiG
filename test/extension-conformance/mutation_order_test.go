@@ -17,8 +17,8 @@ import (
 // Each case is a batch of a mutation_order_probe call (the extension appends its tag to the file inside the queue) and a built-in write call (it replaces the
 // file); the file shows which registered first: the write replaced the tag when the extension was first, and the tag follows the written text when the write was.
 //
-// Not a row: an extension tool that awaits something before it takes the queue, where Pi registers the write first. The host learns of that await a hop before it
-// sees the extension's registration, and the two race (see docs/extension-api-parity.md).
+// The Node realizations add a tool that awaits the event loop before it takes the queue, where Pi registers the write first: the runtime reports the await, the host
+// registers the write, and the runtime holds the tool's registration until it did. A native handler cannot tell such an await from work of its own, so it has no row.
 func TestFileMutationOrderAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -27,6 +27,7 @@ func TestFileMutationOrderAcrossSDKs(t *testing.T) {
 		name string
 		// probeFirst puts the extension call before the write call.
 		probeFirst bool
+		late       string
 		applies    func(realization string) bool
 		want       string
 		upstream   string
@@ -36,6 +37,8 @@ func TestFileMutationOrderAcrossSDKs(t *testing.T) {
 			upstream: "agent-loop.ts:646-648, file-mutation-queue.ts:32-45: the extension's withFileMutationQueue call, made in its synchronous prefix, registers before the write's"},
 		{name: "the write precedes the extension tool", probeFirst: false, applies: everyRealization, want: "WRITE\nEXT\n",
 			upstream: "agent-loop.ts:646-648: the write's synchronous prefix runs before the extension tool's"},
+		{name: "the extension tool awaits the event loop before it takes the queue", probeFirst: true, late: "loop", applies: firstStatementOrder, want: "WRITE\nEXT\n",
+			upstream: "agent-loop.ts:646-648: the extension tool's prefix ends at its first await, so the write registers first"},
 	}
 	for _, tc := range orderingCases() {
 		t.Run(tc.name, func(t *testing.T) {
@@ -78,7 +81,7 @@ func TestFileMutationOrderAcrossSDKs(t *testing.T) {
 					if err := os.WriteFile(file, nil, 0o600); err != nil {
 						t.Fatal(err)
 					}
-					probe := ai.FauxToolCall("mutation_order_probe", map[string]any{"file": file, "tag": "EXT"}, &ai.FauxToolCallOptions{ID: fmt.Sprintf("probe-%d", round)})
+					probe := ai.FauxToolCall("mutation_order_probe", map[string]any{"file": file, "tag": "EXT", "late": b.late}, &ai.FauxToolCallOptions{ID: fmt.Sprintf("probe-%d", round)})
 					write := ai.FauxToolCall("write", map[string]any{"path": file, "content": "WRITE\n"}, &ai.FauxToolCallOptions{ID: fmt.Sprintf("write-%d", round)})
 					calls := []ai.FauxContentBlock{write, probe}
 					if b.probeFirst {
