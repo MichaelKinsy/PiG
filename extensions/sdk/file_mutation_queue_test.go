@@ -14,8 +14,9 @@ import (
 // scriptedQueueHost is the host side of the file mutation queue calls, over a pipe: it admits every fileMutation.enter at once with a fresh ticket (a path that
 // contains "unresolvable" fails, as the host fails a path it cannot resolve), answers every fileMutation.exit, and records the calls it was made in order.
 type scriptedQueueHost struct {
-	mu    sync.Mutex
-	calls []queueCall
+	mu       sync.Mutex
+	calls    []queueCall
+	stopConn func()
 }
 
 type queueCall struct {
@@ -32,17 +33,28 @@ func (h *scriptedQueueHost) recorded() []queueCall {
 // startScriptedQueueHost adopts a connection to a scripted host as the running extension's, so the SDK's helper calls use it.
 func startScriptedQueueHost(t *testing.T) *scriptedQueueHost {
 	t.Helper()
+	t.Setenv("PIG_EXT_SOCKET", "")
+	return adoptScriptedQueueHost(t, "")
+}
+
+// adoptScriptedQueueHost adopts a connection to a scripted host as a running extension's, serving socket. stopConn ends it as a stopping extension's does: the
+// extension is forgotten and its transport closes.
+func adoptScriptedQueueHost(t *testing.T, socket string) *scriptedQueueHost {
+	t.Helper()
 	clientNet, hostNet := net.Pipe()
 	client := newConn(clientNet)
 	client.start()
-	adoptHelperConn(client, "")
-	t.Cleanup(func() {
-		releaseHelperConn(client)
-		_ = clientNet.Close()
-		_ = hostNet.Close()
-	})
-	t.Setenv("PIG_EXT_SOCKET", "")
-	h := &scriptedQueueHost{}
+	adoptHelperConn(client, socket)
+	var once sync.Once
+	stop := func() {
+		once.Do(func() {
+			releaseHelperConn(client)
+			_ = clientNet.Close()
+			_ = hostNet.Close()
+		})
+	}
+	t.Cleanup(stop)
+	h := &scriptedQueueHost{stopConn: stop}
 	go func() {
 		host := newConn(hostNet)
 		var tickets int
@@ -196,5 +208,48 @@ func TestWithFileMutationQueueUsesTheFusedHostHook(t *testing.T) {
 	ran := false
 	if _, err := WithFileMutationQueue(file, func() (int, error) { ran = true; return 1, nil }); !errors.Is(err, hookErr) || ran {
 		t.Fatalf("hook error: err = %v, ran = %v", err, ran)
+	}
+}
+
+// A packed cell runs several extensions in one process, and the free function has no Context: its turn rides the first running extension's connection. When that
+// extension stops while another member's task still holds the turn, the turn is the process's, not the stopped connection's: the exit goes to a connection that
+// still runs, or the file stays held for as long as the process lives (the host releases a stopped connection's turns only with the process's last one).
+func TestWithFileMutationQueueExitReachesTheHostWhenTheCarryingConnectionStopped(t *testing.T) {
+	t.Setenv("PIG_EXT_SOCKET", "")
+	carrier := adoptScriptedQueueHost(t, "/s/e-0.sock")
+	peer := adoptScriptedQueueHost(t, "/s/e-1.sock")
+	file := filepath.Join(t.TempDir(), "a.txt")
+	inside, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
+	go func() {
+		_, err := WithFileMutationQueue(file, func() (struct{}, error) {
+			close(inside)
+			<-release
+			return struct{}{}, nil
+		})
+		done <- err
+	}()
+	<-inside
+	if calls := carrier.recorded(); len(calls) != 1 || calls[0].method != callFileMutationEnter {
+		t.Fatalf("the enter did not ride the first running connection: %+v", calls)
+	}
+	// The member whose connection carried the enter stops while the other member's task still holds the turn.
+	carrier.stopConn()
+	close(release)
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the task never returned")
+	}
+	var exits []queueCall
+	for _, call := range peer.recorded() {
+		if call.method == callFileMutationExit {
+			exits = append(exits, call)
+		}
+	}
+	if len(exits) != 1 || exits[0].args["ticket"] != "fm-1" {
+		t.Fatalf("exits the still-running extension's connection received = %+v, want one for ticket fm-1", exits)
 	}
 }

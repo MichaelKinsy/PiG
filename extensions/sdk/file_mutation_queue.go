@@ -21,8 +21,8 @@ const (
 // returns that error without running fn.
 //
 // The queue is the host's: it serializes this extension's mutations with the host's built-in edit and write tools and with every other extension process, as Pi's
-// one queue does. The turn is held by the extension's connection: if the connection closes while fn runs, the host releases the file. Like the other host helpers
-// it may be called before Run, and with no connection to the host (PIG_EXT_SOCKET unset) it returns an error without running fn.
+// one queue does. The turn is held by the extension's process: a packed cell's members share it, so one member stopping while another's fn runs does not release
+// the file, and the host releases it when the process's last connection closes. Like the other host helpers it may be called before Run, and with no connection to the host (PIG_EXT_SOCKET unset) it returns an error without running fn.
 func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, error) {
 	var result T
 	// Pi resolves the path against the process's working directory; the host resolves nothing relative, so the SDK sends it absolute.
@@ -56,8 +56,17 @@ func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, err
 		return result, fmt.Errorf("%s returned no ticket", callFileMutationEnter)
 	}
 	defer func() {
-		// The host also releases the turn when the connection closes, so a failed exit leaves nothing held.
-		_, _ = c.call(callFileMutationExit, map[string]string{"ticket": entered.Ticket})
+		args := map[string]string{"ticket": entered.Ticket}
+		// The turn belongs to the process (the host's ticket registry is per process for a packed cell), not to the connection it was taken on: when that connection
+		// is gone, because its extension was replaced or stopped while this task ran, another extension's connection of the process gives the turn back.
+		if _, err := c.call(callFileMutationExit, args); err != nil {
+			for _, other := range runningConnectionsExcept(c) {
+				if _, err := other.call(callFileMutationExit, args); err == nil {
+					break
+				}
+			}
+		}
+		// With no connection of the process left the host has released the turn already (it does when the last connection closes).
 	}()
 	return fn()
 }

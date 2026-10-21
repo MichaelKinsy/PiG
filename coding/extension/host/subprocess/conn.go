@@ -137,8 +137,10 @@ type Conn struct {
 	loopTurnsClosed bool
 	// onClosed runs once when the read loop ends.
 	onClosed func()
-	// fileMutations holds the file mutation queue tickets this connection's extension process was admitted to and has not exited (host_file_mutation.go).
-	fileMutations connFileMutations
+	// fileMutations holds the file mutation queue tickets this connection was admitted to and has not exited; sharedTurns replaces it for a connection of a process several extensions run in. turnsLeft is guarded by the registry's mutex (host_file_mutation.go).
+	fileMutations fileMutationTurns
+	sharedTurns   *fileMutationTurns
+	turnsLeft     bool
 	// viewImages holds the image bytes this connection's views sent (D107).
 	viewImagesOnce sync.Once
 	viewImages     *viewImageStore
@@ -280,6 +282,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 	}
 	parts, _ := c.(framePartsWriter)
 	return &Conn{
+		fileMutations:      fileMutationTurns{live: 1},
 		name:               name,
 		conn:               c,
 		parts:              parts,
@@ -1020,7 +1023,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		close(c.inCh)
 		c.settleAllAbandoned()
 		c.stopAbortForwards()
-		c.fileMutations.releaseAll()
+		c.turns().leave(c)
 		if c.onClosed != nil {
 			c.onClosed()
 		}
