@@ -46,7 +46,7 @@ func TestMcpServerRegistryKeepsOwnershipOrderAndCopies(t *testing.T) {
 	}
 }
 
-// Not upstream: the registry keeps upstream's one change listener, which the runner owns (runner.ts:459-462), and also tells its observers about every change, so the owner of a runtime that replicates `pi.getMcpServers()` (loader.ts:495-497) learns of a registration the runtime made no call for. A removal of a server another extension owns changes nothing and tells nobody; a stopped observer hears nothing.
+// Not upstream: the registry keeps upstream's one change listener, which the runner owns (runner.ts:465-467), and also tells its observers about every change, so the owner of a runtime that replicates `pi.getMcpServers()` (loader.ts:495-497) learns of a registration the runtime made no call for. A removal of a server another extension owns changes nothing and tells nobody; a stopped observer hears nothing.
 func TestMcpServerRegistryObserversHearEveryChangeAfterTheListener(t *testing.T) {
 	registry := NewMcpServerRegistry()
 	var order []string

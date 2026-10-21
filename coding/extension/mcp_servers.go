@@ -723,7 +723,7 @@ func (r *McpServerRegistry) SetChangeListener(listener func()) {
 }
 
 // ObserveChange registers observe to run after every change to the registry, after the change listener. Upstream's registry has the one listener
-// the runner owns (runner.ts:459-462), and `pi.getMcpServers()` reads the registry live (loader.ts:495-497); an owner that hands a copy of the list to
+// the runner owns (runner.ts:465-467), and `pi.getMcpServers()` reads the registry live (loader.ts:495-497); an owner that hands a copy of the list to
 // a runtime that has no `mcp_servers_change` handler reports each change through this. observe runs on the goroutine that changed the registry, after
 // it released its lock, and must return at once. The returned function removes it and can be called repeatedly.
 func (r *McpServerRegistry) ObserveChange(observe func()) func() {
