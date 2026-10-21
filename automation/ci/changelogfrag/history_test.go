@@ -228,3 +228,70 @@ func TestNoFragmentsNeedNoHistory(t *testing.T) {
 		t.Fatal(problems)
 	}
 }
+
+// squashed commits a fix on a side branch, then lands it on main as one squash commit whose message message(side) builds,
+// and drops the side branch, as a squash merge does: the side commit stays out of main's history. It returns the side
+// commit's full sha.
+func (r gitRepo) squashed(message func(side string) string) (side string) {
+	r.t.Helper()
+	r.git("checkout", "-q", "-b", "side")
+	side = r.commit("fix: the squashed bug", map[string]string{"fixed.go": "package x\n"})
+	r.git("checkout", "-q", "main")
+	r.git("branch", "-q", "-D", "side")
+	r.commit(message(side), map[string]string{"fixed.go": "package x\n"})
+	return side
+}
+
+// A squash commit that carries "Fix-Commit: <full sha>" for a commit it replaced lets a marker or a fragment name keep
+// naming that commit; every other spelling of the same claim still fails.
+func TestFixCommitTrailerResolvesAMarkerTheSquashRemoved(t *testing.T) {
+	const bullet = "### Fixed\n\n- The squashed bug no longer happens. <!-- fix: %s -->\n"
+	other := strings.Repeat("ab", 20)
+	for _, tc := range []struct {
+		name    string
+		message func(side string) string
+		marker  func(side string) string
+		ok      bool
+	}{
+		{"unreachable marker with a matching trailer resolves", func(s string) string { return "Squash\n\nFix-Commit: " + s }, func(s string) string { return s[:10] }, true},
+		{"a full-length marker resolves too", func(s string) string { return "Squash\n\nFix-Commit: " + s }, func(s string) string { return s }, true},
+		{"a trailer among others resolves", func(s string) string {
+			return "Squash\n\nSigned-off-by: T <t@example.com>\nFix-Commit: " + other + "\nFix-Commit: " + s
+		}, func(s string) string { return s[:10] }, true},
+		{"unreachable marker without a trailer fails", func(string) string { return "Squash" }, func(s string) string { return s[:10] }, false},
+		{"a trailer naming a different sha fails", func(string) string { return "Squash\n\nFix-Commit: " + other }, func(s string) string { return s[:10] }, false},
+		{"an abbreviated trailer fails", func(s string) string { return "Squash\n\nFix-Commit: " + s[:10] }, func(s string) string { return s[:10] }, false},
+		{"a trailer that is not at a line start fails", func(s string) string { return "Squash\n\nSee Fix-Commit: " + s }, func(s string) string { return s[:10] }, false},
+		{"a marker shorter than the minimum fails", func(s string) string { return "Squash\n\nFix-Commit: " + s }, func(s string) string { return s[:6] }, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newGitRepo(t)
+			side := r.squashed(tc.message)
+			r.fragments(map[string]string{"tern-" + side[:10] + ".md": strings.Replace(bullet, "%s", tc.marker(side), 1)})
+			got := r.check()
+			if tc.ok && got != "" {
+				t.Fatalf("the marker must resolve through the trailer:\n%s", got)
+			}
+			if !tc.ok && !strings.Contains(got, "reachable from HEAD") && !strings.Contains(got, "fewer than") {
+				t.Fatalf("the marker must not resolve:\n%q", got)
+			}
+		})
+	}
+}
+
+// A fragment name resolves through the trailer the same way a marker does.
+func TestFixCommitTrailerResolvesAFragmentName(t *testing.T) {
+	const bullet = "### Fixed\n\n- The squashed bug no longer happens. <!-- fix: %s -->\n"
+	r := newGitRepo(t)
+	side := r.squashed(func(s string) string { return "Squash\n\nFix-Commit: " + s })
+	r.fragments(map[string]string{"tern-" + side[:10] + ".md": strings.Replace(bullet, "%s", side[:10], 1)})
+	if got := r.check(); got != "" {
+		t.Fatalf("name and marker must resolve through the trailer:\n%s", got)
+	}
+	r = newGitRepo(t)
+	side = r.squashed(func(string) string { return "Squash with no trailer" })
+	r.fragments(map[string]string{"tern-" + side[:10] + ".md": strings.Replace(bullet, "%s", side[:10], 1)})
+	if got := r.check(); !strings.Contains(got, "the name <lane>-<sha>.md names") {
+		t.Fatalf("without the trailer the name must fail:\n%s", got)
+	}
+}
