@@ -1,0 +1,3 @@
+### Fixed
+
+- CI: `TestModeWireLifecycle` no longer fails on a loaded host with `command-ready barrier not reached` and an empty terminal. Its probe (`session-wire.py`) gave pig 15 s to reach the command-ready barrier, 10 s to shut down after a hangup and 15 s for each marker between, but pig needs about one CPU-second to reach the barrier (the Node extension host starts cold under the probe's fresh `HOME`), so those bounds held only while the probe's processes got about 7 percent of a CPU. The probe's waits now end on the event or on pig's exit, and the Go test owns the one hang bound (the test budget) and ends a hung probe with SIGTERM, which the probe answers with the barrier it was waiting for and the terminal output it had read. <!-- fix: 951bc79461 -->
