@@ -1057,7 +1057,12 @@ func TestLinksIPCAWriteThatFailsAfterThePeerProcessExitedEPIPEEndsTheLinkInstead
 	if _, err := link.Send(PingFrame{N: 1}); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "the link to end", link.Closed)
+	// link.ts ends the link and calls its close handlers in one synchronous block; here the link reads closed first
+	// (TestLinkIsClosedWhileItsCloseHandlersRun), so the test waits for the handler's report.
+	waitFor(t, "the link to end", func() bool { return len(reasons.list()) > 0 })
+	if !link.Closed() {
+		t.Fatal("the close handler ran on an open link")
+	}
 	if got := reasons.list(); !slices.Equal(got, []string{"ipc send failed: EPIPE"}) {
 		t.Fatalf("reasons = %q", got)
 	}
