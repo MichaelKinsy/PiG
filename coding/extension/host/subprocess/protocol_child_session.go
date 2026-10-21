@@ -63,10 +63,12 @@ type ChildSessionCreate struct {
 	// Tools is the allowlist of tool names or `*` patterns, or a list of only `+name` and `-name` entries. Absent is Pi's undefined, an empty list is an allowlist of nothing.
 	Tools *[]string `json:"tools,omitempty"`
 	// ExcludeTools is the denylist applied after Tools.
+	//portlint:allow emptydrop PiG wire field read by the host as a list: an empty list and an absent one mean the same (nothing to exclude or add)
 	ExcludeTools []string `json:"excludeTools,omitempty"`
 	// NoTools is "all" or "builtin".
 	NoTools string `json:"noTools,omitempty"`
 	// CustomTools are tools the extension serves: the host asks it to run one with a tool_call request that names the session in RequestPayload.ChildSession, and the result becomes the session's tool result.
+	//portlint:allow emptydrop PiG wire field read by the host as a list: an empty list and an absent one mean the same (nothing to exclude or add)
 	CustomTools []ToolDecl `json:"customTools,omitempty"`
 	// Settings are in-memory settings, Pi's `SettingsManager.inMemory(settings)`: the session reads no settings file. Absent is `SettingsManager.create(cwd, agentDir)`, the settings files.
 	Settings json.RawMessage `json:"settings,omitempty"`
@@ -80,6 +82,7 @@ type ChildSessionCreate struct {
 	ResourceLoader  string `json:"resourceLoader,omitempty"`
 	ModelRuntime    string `json:"modelRuntime,omitempty"`
 	// ScopedModels is Pi's `scopedModels`: the models the session cycles through.
+	//portlint:allow emptydrop PiG wire field read by the host as a list: an empty list and an absent one mean the same (nothing to exclude or add)
 	ScopedModels []ChildScopedModel `json:"scopedModels,omitempty"`
 }
 
@@ -97,8 +100,11 @@ type ChildSessionResources struct {
 	NoThemes          bool `json:"noThemes,omitempty"`
 	NoContextFiles    bool `json:"noContextFiles,omitempty"`
 	// AdditionalExtensionPaths, AdditionalSkillPaths and AdditionalPromptTemplatePaths are loaded after the resolved resources.
-	AdditionalExtensionPaths      []string `json:"additionalExtensionPaths,omitempty"`
-	AdditionalSkillPaths          []string `json:"additionalSkillPaths,omitempty"`
+	//portlint:allow emptydrop PiG wire field read by the host as a list: an empty list and an absent one mean the same (nothing to exclude or add)
+	AdditionalExtensionPaths []string `json:"additionalExtensionPaths,omitempty"`
+	//portlint:allow emptydrop PiG wire field read by the host as a list: an empty list and an absent one mean the same (nothing to exclude or add)
+	AdditionalSkillPaths []string `json:"additionalSkillPaths,omitempty"`
+	//portlint:allow emptydrop PiG wire field read by the host as a list: an empty list and an absent one mean the same (nothing to exclude or add)
 	AdditionalPromptTemplatePaths []string `json:"additionalPromptTemplatePaths,omitempty"`
 	// ExtensionNames keeps only the extensions whose path contains one of the names, compared without case: Pi's `extensionsOverride`. Absent keeps all, an empty list none.
 	ExtensionNames *[]string `json:"extensionNames,omitempty"`
@@ -125,6 +131,7 @@ type ChildSessionInfo struct {
 	// ModelFallbackMessage is CreateAgentSessionResult.modelFallbackMessage.
 	ModelFallbackMessage string `json:"modelFallbackMessage,omitempty"`
 	// ExtensionErrors are the errors of CreateAgentSessionResult.extensionsResult.errors, as "path: error".
+	//portlint:allow emptydrop PiG wire field every SDK reads as a list, an absent one as empty
 	ExtensionErrors []string `json:"extensionErrors,omitempty"`
 }
 
@@ -137,8 +144,9 @@ type ChildSessionImage struct {
 
 // ChildSessionPrompt is the CallChildSessionPrompt argument: AgentSession.prompt(text, options).
 type ChildSessionPrompt struct {
-	ID     string              `json:"id"`
-	Text   string              `json:"text"`
+	ID   string `json:"id"`
+	Text string `json:"text"`
+	//portlint:allow emptydrop PiG wire field: an empty image list and an absent one send the same prompt
 	Images []ChildSessionImage `json:"images,omitempty"`
 	// ExpandPromptTemplates is Pi's option; absent is true.
 	ExpandPromptTemplates *bool `json:"expandPromptTemplates,omitempty"`
@@ -155,10 +163,11 @@ type ChildSessionPromptResult struct {
 
 // ChildSessionQueue is the CallChildSessionQueue argument: AgentSession.steer or followUp.
 type ChildSessionQueue struct {
-	ID       string              `json:"id"`
-	Behavior string              `json:"behavior"` // "steer" | "followUp"
-	Text     string              `json:"text"`
-	Images   []ChildSessionImage `json:"images,omitempty"`
+	ID       string `json:"id"`
+	Behavior string `json:"behavior"` // "steer" | "followUp"
+	Text     string `json:"text"`
+	//portlint:allow emptydrop PiG wire field: an empty image list and an absent one send the same message
+	Images []ChildSessionImage `json:"images,omitempty"`
 }
 
 // ChildSessionEvent is the NotifyChildSessionEvent argument. Event is the AgentSessionEvent in Pi's JSON shape, the one print mode's JSON stream writes.

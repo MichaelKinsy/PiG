@@ -1059,7 +1059,8 @@ func (i HostInfo) empty() bool {
 
 // ShellInfo is Pi's ShellConfig, or the error getShellConfig() throws when no shell is found.
 type ShellInfo struct {
-	Shell            string   `json:"shell,omitempty"`
+	Shell string `json:"shell,omitempty"`
+	//portlint:allow emptydrop Pi's ShellConfig.args is never empty: every shell Pi resolves carries its command flag
 	Args             []string `json:"args,omitempty"`
 	CommandTransport string   `json:"commandTransport,omitempty"`
 	Error            string   `json:"error,omitempty"`

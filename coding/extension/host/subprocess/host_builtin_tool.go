@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -445,16 +446,16 @@ func (h *Host) handleBuiltinToolExecute(ctx context.Context, conn *Conn, call *C
 }
 
 func textOf(result agent.AgentToolResult) string {
-	var text string
+	var text strings.Builder
 	for _, block := range result.Content {
 		if t, ok := block.(ai.TextContent); ok {
-			if text != "" {
-				text += "\n"
+			if text.Len() > 0 {
+				text.WriteByte('\n')
 			}
-			text += t.Text
+			text.WriteString(t.Text)
 		}
 	}
-	return text
+	return text.String()
 }
 
 // handleBuiltinToolLocalExec serves CallBuiltinToolLocalExec: `exec` of createLocalBashOperations / createLocalPowerShellOperations.

@@ -313,7 +313,12 @@ var childEventBuffers = sync.Pool{New: func() any { return new([]byte) }}
 func (c *childSession) Subscribe(listener func(event json.RawMessage)) func() {
 	return c.session.Subscribe(func(event agent.AgentEvent) {
 		buffer := childEventBuffers.Get().(*[]byte)
-		defer childEventBuffers.Put(buffer)
+		defer func() {
+			if cap(*buffer) > maxPooledJSONLine {
+				*buffer = nil
+			}
+			childEventBuffers.Put(buffer)
+		}()
 		if update, ok := event.(agent.MessageUpdateEvent); ok {
 			// AgentSession.subscribe hands a listener the message so far and the assistant event with its partial, as extension handlers get them; RPC mode's message_update drops both.
 			encoded, err := jsstring.AppendMarshalJSON((*buffer)[:0], extension.MessageUpdateEvent{Type: "message_update", Message: update.Message, AssistantMessageEvent: update.AssistantMessageEvent})

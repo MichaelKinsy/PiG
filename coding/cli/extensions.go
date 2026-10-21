@@ -291,7 +291,7 @@ func extensionHostInfo() subprocess.HostInfo {
 // extensionPackageDir is Pi's getPackageDir() (config.ts) for a compiled binary: PI_PACKAGE_DIR when set (a leading ~ expanded, as Pi's normalizePath does), else the
 // directory of the running executable. It is empty when neither is known.
 func extensionPackageDir() string {
-	if dir := os.Getenv("PI_PACKAGE_DIR"); dir != "" {
+	if dir := os.Getenv("PI_PACKAGE_DIR"); dir != "" { //perf:ok once per extension host build (HostInfo), not per request
 		return codingagent.ExpandTildePath(dir)
 	}
 	executable, err := os.Executable()

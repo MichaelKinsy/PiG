@@ -163,7 +163,7 @@ func (e CompactionEntry) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	object.Delete("fromHook")
-	return object.MarshalJSON()
+	return object.MarshalJSON() //perf:ok once per compaction entry written, and only when the entry carries no fromHook
 }
 
 func (e BranchSummaryEntry) Base() SessionEntryBase { return e.withoutRecord() }
