@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 645 | 634 | 635 |
+| `pi-coding-agent` | 920 | 305 | 910 | 618 | 607 | 608 |
 | `pi-tui` | 364 | 85 | 363 | 264 | 278 | 277 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
@@ -25,12 +25,12 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1128 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkLedgerHygiene | SdkLedgerHygiene lane (ledger hygiene) | 0.5.2 | 0 | A conformance fixture or vector test reaching each listed symbol; the row leaves [[unreached]] when it does |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
-| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 564 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
+| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 483 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 1065 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
 
 ## High-use gaps (block the release gate)
 
-85 exports imported by 5 or more scanned packages have a gap.
+83 exports imported by 5 or more scanned packages have a gap.
 
 | Export | uses | Gaps |
 |---|---|---|
@@ -46,7 +46,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: createAgentSession` | 20 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-tui: Editor` | 20 | Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: buildSessionContext` | 19 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
-| `pi-coding-agent: DefaultResourceLoader` | 18 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: ModelRuntime` | 18 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: getSettingsListTheme` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: isKeyRelease` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
@@ -60,7 +59,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-tui: CURSOR_MARKER` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: fuzzyFilter` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: getKeybindings` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-coding-agent: DefaultPackageManager` | 12 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: createBashToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: createEditToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: createGrepToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
@@ -132,6 +130,8 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: CustomEditor.setPaddingX` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX |
 | `pi-coding-agent: DEFAULT_MAX_BYTES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxBytes |
 | `pi-coding-agent: DEFAULT_MAX_LINES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxLines |
+| `pi-coding-agent: DefaultPackageManager.remove` | python | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (the Python package manager fixture calls remove_and_persist only) |
+| `pi-coding-agent: DefaultResourceLoader.loadProjectTrustExtensions` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (it needs a project with trust-gated extensions the loader fixture does not build yet) |
 | `pi-coding-agent: ProjectTrustStore.set` | python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
 | `pi-coding-agent: SessionManager.appendCompaction` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
 | `pi-coding-agent: SessionManager.appendContextEdit` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
@@ -365,33 +365,33 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `DEFAULT_COMPACTION_SETTINGS` | 4 | served | native:DefaultCompactionSettings | native:DEFAULT_COMPACTION_SETTINGS | native:DEFAULT_COMPACTION_SETTINGS |
 | `DEFAULT_MAX_BYTES` | 17 | served | native:DefaultMaxBytes | native:DEFAULT_MAX_BYTES | native:DEFAULT_MAX_BYTES |
 | `DEFAULT_MAX_LINES` | 14 | served | native:DefaultMaxLines | native:DEFAULT_MAX_LINES | native:DEFAULT_MAX_LINES |
-| `DefaultPackageManager` | 12 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.addSourceToSettings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.checkForAvailableUpdates` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.getInstalledPath` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.install` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.installAndPersist` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.listConfiguredPackages` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.remove` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.removeAndPersist` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.removeSourceFromSettings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.resolve` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.resolveExtensionSources` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.setProgressCallback` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultPackageManager.update` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader` | 18 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.extendResources` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.getAgentsFiles` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.getAppendSystemPrompt` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.getAppendSystemPromptSources` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.getExtensions` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.getPrompts` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.getSkills` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.getSystemPrompt` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.getSystemPromptSource` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.getThemes` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.loadProjectTrustExtensions` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `DefaultResourceLoader.reload` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `DefaultPackageManager` | 12 | served | native:NewDefaultPackageManager | native:DefaultPackageManager::new | native:DefaultPackageManager |
+| `DefaultPackageManager.addSourceToSettings` | 0 | served | native:DefaultPackageManager.AddSourceToSettings | native:DefaultPackageManager::add_source_to_settings | native:DefaultPackageManager.add_source_to_settings |
+| `DefaultPackageManager.checkForAvailableUpdates` | 0 | served | native:DefaultPackageManager.CheckForAvailableUpdates | native:DefaultPackageManager::check_for_available_updates | native:DefaultPackageManager.check_for_available_updates |
+| `DefaultPackageManager.getInstalledPath` | 0 | served | native:DefaultPackageManager.GetInstalledPath | native:DefaultPackageManager::get_installed_path | native:DefaultPackageManager.get_installed_path |
+| `DefaultPackageManager.install` | 0 | served | native:DefaultPackageManager.Install | native:DefaultPackageManager::install | native:DefaultPackageManager.install |
+| `DefaultPackageManager.installAndPersist` | 0 | served | native:DefaultPackageManager.InstallAndPersist | native:DefaultPackageManager::install_and_persist | native:DefaultPackageManager.install_and_persist |
+| `DefaultPackageManager.listConfiguredPackages` | 0 | served | native:DefaultPackageManager.ListConfiguredPackages | native:DefaultPackageManager::list_configured_packages | native:DefaultPackageManager.list_configured_packages |
+| `DefaultPackageManager.remove` | 0 | served | native:DefaultPackageManager.Remove | native:DefaultPackageManager::remove | native:DefaultPackageManager.remove |
+| `DefaultPackageManager.removeAndPersist` | 0 | served | native:DefaultPackageManager.RemoveAndPersist | native:DefaultPackageManager::remove_and_persist | native:DefaultPackageManager.remove_and_persist |
+| `DefaultPackageManager.removeSourceFromSettings` | 0 | served | native:DefaultPackageManager.RemoveSourceFromSettings | native:DefaultPackageManager::remove_source_from_settings | native:DefaultPackageManager.remove_source_from_settings |
+| `DefaultPackageManager.resolve` | 0 | served | native:DefaultPackageManager.Resolve | native:DefaultPackageManager::resolve | native:DefaultPackageManager.resolve |
+| `DefaultPackageManager.resolveExtensionSources` | 0 | served | native:DefaultPackageManager.ResolveExtensionSources | native:DefaultPackageManager::resolve_extension_sources | native:DefaultPackageManager.resolve_extension_sources |
+| `DefaultPackageManager.setProgressCallback` | 0 | served | native:DefaultPackageManager.SetProgressCallback | native:DefaultPackageManager::set_progress_callback | native:DefaultPackageManager.set_progress_callback |
+| `DefaultPackageManager.update` | 0 | served | native:DefaultPackageManager.Update | native:DefaultPackageManager::update | native:DefaultPackageManager.update |
+| `DefaultResourceLoader` | 18 | served | native:NewDefaultResourceLoader | native:DefaultResourceLoader::new | native:DefaultResourceLoader |
+| `DefaultResourceLoader.extendResources` | 0 | served | native:DefaultResourceLoader.ExtendResources | native:DefaultResourceLoader::extend_resources | native:DefaultResourceLoader.extend_resources |
+| `DefaultResourceLoader.getAgentsFiles` | 0 | served | native:DefaultResourceLoader.GetAgentsFiles | native:DefaultResourceLoader::get_agents_files | native:DefaultResourceLoader.get_agents_files |
+| `DefaultResourceLoader.getAppendSystemPrompt` | 0 | served | native:DefaultResourceLoader.GetAppendSystemPrompt | native:DefaultResourceLoader::get_append_system_prompt | native:DefaultResourceLoader.get_append_system_prompt |
+| `DefaultResourceLoader.getAppendSystemPromptSources` | 0 | served | native:DefaultResourceLoader.GetAppendSystemPromptSources | native:DefaultResourceLoader::get_append_system_prompt_sources | native:DefaultResourceLoader.get_append_system_prompt_sources |
+| `DefaultResourceLoader.getExtensions` | 0 | served | native:DefaultResourceLoader.GetExtensions | native:DefaultResourceLoader::get_extensions | native:DefaultResourceLoader.get_extensions |
+| `DefaultResourceLoader.getPrompts` | 0 | served | native:DefaultResourceLoader.GetPrompts | native:DefaultResourceLoader::get_prompts | native:DefaultResourceLoader.get_prompts |
+| `DefaultResourceLoader.getSkills` | 0 | served | native:DefaultResourceLoader.GetSkills | native:DefaultResourceLoader::get_skills | native:DefaultResourceLoader.get_skills |
+| `DefaultResourceLoader.getSystemPrompt` | 0 | served | native:DefaultResourceLoader.GetSystemPrompt | native:DefaultResourceLoader::get_system_prompt | native:DefaultResourceLoader.get_system_prompt |
+| `DefaultResourceLoader.getSystemPromptSource` | 0 | served | native:DefaultResourceLoader.GetSystemPromptSource | native:DefaultResourceLoader::get_system_prompt_source | native:DefaultResourceLoader.get_system_prompt_source |
+| `DefaultResourceLoader.getThemes` | 0 | served | native:DefaultResourceLoader.GetThemes | native:DefaultResourceLoader::get_themes | native:DefaultResourceLoader.get_themes |
+| `DefaultResourceLoader.loadProjectTrustExtensions` | 0 | served | native:DefaultResourceLoader.LoadProjectTrustExtensions | native:DefaultResourceLoader::load_project_trust_extensions | native:DefaultResourceLoader.load_project_trust_extensions |
+| `DefaultResourceLoader.reload` | 0 | served | native:DefaultResourceLoader.Reload | native:DefaultResourceLoader::reload | native:DefaultResourceLoader.reload |
 | `DynamicBorder` | 22 | served | kit:DynamicBorder | kit:DynamicBorder | kit:DynamicBorder |
 | `DynamicBorder.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
 | `DynamicBorder.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |

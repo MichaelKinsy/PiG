@@ -414,20 +414,20 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: DEFAULT_COMPACTION_SETTINGS" = { go = "native:DefaultCompactionSettings", rust = "native:DEFAULT_COMPACTION_SETTINGS", python = "native:DEFAULT_COMPACTION_SETTINGS" }
 "pi-coding-agent: DEFAULT_MAX_BYTES" = { go = "native:DefaultMaxBytes", rust = "native:DEFAULT_MAX_BYTES", python = "native:DEFAULT_MAX_BYTES" }
 "pi-coding-agent: DEFAULT_MAX_LINES" = { go = "native:DefaultMaxLines", rust = "native:DEFAULT_MAX_LINES", python = "native:DEFAULT_MAX_LINES" }
-"pi-coding-agent: DefaultPackageManager" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.addSourceToSettings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.checkForAvailableUpdates" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.getInstalledPath" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.install" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.installAndPersist" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.listConfiguredPackages" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.remove" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.removeAndPersist" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.removeSourceFromSettings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.resolve" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.resolveExtensionSources" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.setProgressCallback" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: DefaultPackageManager.update" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: DefaultPackageManager" = { go = "native:NewDefaultPackageManager", rust = "native:DefaultPackageManager::new", python = "native:DefaultPackageManager" }
+"pi-coding-agent: DefaultPackageManager.addSourceToSettings" = { go = "native:DefaultPackageManager.AddSourceToSettings", rust = "native:DefaultPackageManager::add_source_to_settings", python = "native:DefaultPackageManager.add_source_to_settings" }
+"pi-coding-agent: DefaultPackageManager.checkForAvailableUpdates" = { go = "native:DefaultPackageManager.CheckForAvailableUpdates", rust = "native:DefaultPackageManager::check_for_available_updates", python = "native:DefaultPackageManager.check_for_available_updates" }
+"pi-coding-agent: DefaultPackageManager.getInstalledPath" = { go = "native:DefaultPackageManager.GetInstalledPath", rust = "native:DefaultPackageManager::get_installed_path", python = "native:DefaultPackageManager.get_installed_path" }
+"pi-coding-agent: DefaultPackageManager.install" = { go = "native:DefaultPackageManager.Install", rust = "native:DefaultPackageManager::install", python = "native:DefaultPackageManager.install" }
+"pi-coding-agent: DefaultPackageManager.installAndPersist" = { go = "native:DefaultPackageManager.InstallAndPersist", rust = "native:DefaultPackageManager::install_and_persist", python = "native:DefaultPackageManager.install_and_persist" }
+"pi-coding-agent: DefaultPackageManager.listConfiguredPackages" = { go = "native:DefaultPackageManager.ListConfiguredPackages", rust = "native:DefaultPackageManager::list_configured_packages", python = "native:DefaultPackageManager.list_configured_packages" }
+"pi-coding-agent: DefaultPackageManager.remove" = { go = "native:DefaultPackageManager.Remove", rust = "native:DefaultPackageManager::remove", python = "native:DefaultPackageManager.remove" }
+"pi-coding-agent: DefaultPackageManager.removeAndPersist" = { go = "native:DefaultPackageManager.RemoveAndPersist", rust = "native:DefaultPackageManager::remove_and_persist", python = "native:DefaultPackageManager.remove_and_persist" }
+"pi-coding-agent: DefaultPackageManager.removeSourceFromSettings" = { go = "native:DefaultPackageManager.RemoveSourceFromSettings", rust = "native:DefaultPackageManager::remove_source_from_settings", python = "native:DefaultPackageManager.remove_source_from_settings" }
+"pi-coding-agent: DefaultPackageManager.resolve" = { go = "native:DefaultPackageManager.Resolve", rust = "native:DefaultPackageManager::resolve", python = "native:DefaultPackageManager.resolve" }
+"pi-coding-agent: DefaultPackageManager.resolveExtensionSources" = { go = "native:DefaultPackageManager.ResolveExtensionSources", rust = "native:DefaultPackageManager::resolve_extension_sources", python = "native:DefaultPackageManager.resolve_extension_sources" }
+"pi-coding-agent: DefaultPackageManager.setProgressCallback" = { go = "native:DefaultPackageManager.SetProgressCallback", rust = "native:DefaultPackageManager::set_progress_callback", python = "native:DefaultPackageManager.set_progress_callback" }
+"pi-coding-agent: DefaultPackageManager.update" = { go = "native:DefaultPackageManager.Update", rust = "native:DefaultPackageManager::update", python = "native:DefaultPackageManager.update" }
 "pi-coding-agent: DefaultResourceLoader" = { go = "native:NewDefaultResourceLoader", rust = "native:DefaultResourceLoader::new", python = "native:DefaultResourceLoader" }
 "pi-coding-agent: DefaultResourceLoader.extendResources" = { go = "native:DefaultResourceLoader.ExtendResources", rust = "native:DefaultResourceLoader::extend_resources", python = "native:DefaultResourceLoader.extend_resources" }
 "pi-coding-agent: DefaultResourceLoader.getAgentsFiles" = { go = "native:DefaultResourceLoader.GetAgentsFiles", rust = "native:DefaultResourceLoader::get_agents_files", python = "native:DefaultResourceLoader.get_agents_files" }
@@ -1760,3 +1760,15 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-agent-core: runToolCall" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: setDefaultStreamFn" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: streamProxy" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+
+[[unreached]]
+key = "pi-coding-agent: DefaultPackageManager.remove"
+sdks = ["python"]
+lane = "SdkSessionGraph"
+row = "a conformance fixture under test/extension-conformance that calls it (the Python package manager fixture calls remove_and_persist only)"
+
+[[unreached]]
+key = "pi-coding-agent: DefaultResourceLoader.loadProjectTrustExtensions"
+sdks = ["go", "python", "rust"]
+lane = "SdkSessionGraph"
+row = "a conformance fixture under test/extension-conformance that calls it (it needs a project with trust-gated extensions the loader fixture does not build yet)"
