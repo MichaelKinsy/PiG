@@ -544,6 +544,59 @@ def new_extension() -> pig_sdk.Extension:
     class EmbeddingEditor(ConformanceEditor):
         embed_working_status = True
 
+    class HooksEditor(ConformanceEditor):
+        """A CustomEditor subclass that sets the handlers Pi's CustomEditor keeps as public fields (on_escape, on_ctrl_d,
+        on_paste_image, action_handlers through on_action, on_extension_shortcut), reads and sets the members it inherits
+        from Pi's Editor on its base ("M"), and hears the host's working status and invalidate. Each handler writes what ran
+        into the host's text (TestEditorComponentAppHandlersRunInTheExtension, TestEditorComponentInheritedMembersReachTheHost,
+        TestEditorComponentHearsTheWorkingStatusAndInvalidate)."""
+
+        def __init__(self, base):
+            super().__init__(base)
+
+            def say(what):
+                return lambda: base.set_text("raw:hook=" + what)
+
+            base.on_escape = say("escape")
+            base.on_ctrl_d = say("ctrl-d")
+            base.on_paste_image = say("paste-image")
+            base.on_action("app.clear", say("clear"))
+            # action_handlers is the live dict: an entry deleted from it is no longer the component's.
+            base.on_action("app.unused", say("unused"))
+            del base.action_handlers["app.unused"]
+
+            def shortcut(data):
+                if data != "S":
+                    return False
+                base.set_text("raw:hook=shortcut")
+                return True
+
+            base.on_extension_shortcut = shortcut
+
+        def handle_input(self, data):
+            if data != "M":
+                return super().handle_input(data)
+            base = self.base
+            padding = base.get_padding_x()
+            visible = base.get_autocomplete_max_visible()
+            border = base.border_color("x")
+            base.disable_submit = True
+            disabled = base.disable_submit
+            base.focused = True
+            focused = base.focused
+            base.set_autocomplete_provider(kit.Autocomplete([kit.SlashCommand("help", "Show help")], "/work"))
+            base.on_submit("sub")
+            base.on_change("chg")
+            base.set_text("raw:members=padding=%d,max=%d,border=%s,disable=%s,focused=%s" % (padding, visible, border, str(disabled).lower(), str(focused).lower()))
+
+        def set_working_status_indicator(self, status):
+            self.base.set_text("raw:status=none" if status is None else "raw:status=%s/%s/%d" % (status.kind, status.message, status.frame))
+
+        def invalidate(self):
+            self.base.set_text("raw:invalidated")
+
+    ext.command("editor-install-hooks", "Install a custom editor that sets CustomEditor's handlers", lambda ctx, _args: ctx.set_editor_component(HooksEditor))
+
     def eager_editor(ctx, _args):
         def factory(base: pig_sdk.EditorBase):
             try:

@@ -1845,7 +1845,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.height = payload.Height
 			e.mu.Unlock()
 		}
-	case "ui.editor.input", "ui.editor.mouse", "ui.editor.setText", "ui.editor.insertText", "ui.editor.addToHistory", "ui.editor.configure", "ui.editor.closed":
+	case "ui.editor.input", "ui.editor.mouse", "ui.editor.setText", "ui.editor.insertText", "ui.editor.addToHistory", "ui.editor.configure", "ui.editor.invalidate", "ui.editor.closed":
 		e.handleEditorNotify(env.Notify.Method, env.Notify.Args)
 	case "ui.custom.opened":
 		var payload struct {

@@ -26,6 +26,15 @@ type baseEditorHost struct {
 	optIns   int
 	// paddingX and autocompleteMax record the last setPaddingX and setAutocompleteMaxVisible argument (-1 before any).
 	paddingX, autocompleteMax int
+	// handleInputs records each key that reached the host's handleInput with the hooks it listed; the other fields record
+	// the CustomEditor members' operations (editor_component_members_test.go).
+	handleInputs  []string
+	hooksSeen     [][]string
+	disableSubmit bool
+	focused       bool
+	provider      json.RawMessage
+	submits       []string
+	changes       []string
 }
 
 func (h *baseEditorHost) EditorEmbedWorkingStatusChanged() {
@@ -50,10 +59,13 @@ func (h *baseEditorHost) EditorClosed()                             {}
 
 func (h *baseEditorHost) EditorBase(_ context.Context, op string, args json.RawMessage) (json.RawMessage, error) {
 	var p struct {
-		Data  string `json:"data"`
-		Text  string `json:"text"`
-		Width int    `json:"width"`
-		N     int    `json:"n"`
+		Data     string          `json:"data"`
+		Text     string          `json:"text"`
+		Width    int             `json:"width"`
+		N        int             `json:"n"`
+		Value    bool            `json:"value"`
+		Hooks    []string        `json:"hooks"`
+		Provider json.RawMessage `json:"provider"`
 	}
 	_ = sdkjson.Unmarshal(args, &p)
 	h.mu.Lock()
@@ -71,6 +83,13 @@ func (h *baseEditorHost) EditorBase(_ context.Context, op string, args json.RawM
 	}
 	switch op {
 	case "handleInput":
+		h.handleInputs = append(h.handleInputs, p.Data)
+		h.hooksSeen = append(h.hooksSeen, slices.Clone(p.Hooks))
+		// The host answers a key whose app action the component handles itself with the hook (CustomEditor's own check of
+		// the editor being empty before exit is the host's, covered by internal/codingagent).
+		if id := baseEditorActions[p.Data]; id != "" && slices.Contains(p.Hooks, id) && (id != "app.exit" || h.text == "") {
+			return sdkjson.Marshal(map[string]string{"hook": id})
+		}
 		h.text += p.Data
 	case "setText":
 		h.text = p.Text
@@ -88,6 +107,26 @@ func (h *baseEditorHost) EditorBase(_ context.Context, op string, args json.RawM
 		h.paddingX = p.N
 	case "setAutocompleteMaxVisible":
 		h.autocompleteMax = p.N
+	case "getPaddingX":
+		return sdkjson.Marshal(map[string]any{"n": 4})
+	case "getAutocompleteMaxVisible":
+		return sdkjson.Marshal(map[string]any{"n": 9})
+	case "borderColor":
+		return sdkjson.Marshal(map[string]string{"text": "[" + p.Text + "]"})
+	case "getDisableSubmit":
+		return sdkjson.Marshal(map[string]any{"value": h.disableSubmit})
+	case "setDisableSubmit":
+		h.disableSubmit = p.Value
+	case "getFocused":
+		return sdkjson.Marshal(map[string]any{"value": h.focused})
+	case "setFocused":
+		h.focused = p.Value
+	case "setAutocompleteProvider":
+		h.provider = slices.Clone(p.Provider)
+	case "onSubmit":
+		h.submits = append(h.submits, p.Text)
+	case "onChange":
+		h.changes = append(h.changes, p.Text)
 	case "render":
 		return sdkjson.Marshal(map[string]any{"lines": []string{"base:" + h.text}})
 	case "addToHistory":
@@ -96,6 +135,9 @@ func (h *baseEditorHost) EditorBase(_ context.Context, op string, args json.RawM
 	}
 	return json.RawMessage(`{}`), nil
 }
+
+// baseEditorActions are the keys the stub host maps to the app actions it can answer as hooks.
+var baseEditorActions = map[string]string{"\x1b": "app.interrupt", "\x04": "app.exit", "\x16": "app.clipboard.pasteImage", "\x03": "app.clear"}
 
 func (h *baseEditorHost) snapshot() (string, [][]string) {
 	h.mu.Lock()
