@@ -587,6 +587,7 @@ type graphSettingsStorage struct {
 func (g *graphSettingsStorage) WithLock(scope string, fn func(current *string) (*string, error)) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	//portlint:allow ctxbackground Pi's SettingsStorage.withLock is synchronous and carries no signal; the extension's lock callbacks run to their end
 	ctx := context.Background()
 	begin, err := json.Marshal([]any{"begin", scope})
 	if err != nil {

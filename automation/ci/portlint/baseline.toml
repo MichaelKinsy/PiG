@@ -509,7 +509,7 @@ snippet = "now := func() float64 { return float64(time.Now().UnixMilli()) }"
 [[hit]]
 check = "clock"
 file = "internal/codingagent/session.go"
-func = "Session.AppendCompaction"
+func = "Session.appendCompaction"
 snippet = "now := time.Now().UTC()"
 
 [[hit]]
@@ -5636,12 +5636,6 @@ check = "ctxbackground"
 file = "coding/cli/self_update.go"
 func = "applyStandaloneUpdate"
 snippet = "ctx, cancel := context.WithTimeout(context.Background(), selfUpdateTimeout)"
-
-[[hit]]
-check = "ctxbackground"
-file = "coding/cli/session_extension_actions.go"
-func = "bindSessionExtensionActions"
-snippet = "return extension.ExecCommand(context.Background(), cwd, command, args, opts)"
 
 [[hit]]
 check = "ctxbackground"

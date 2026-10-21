@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
@@ -92,13 +93,17 @@ func (g *GraphPackageManager) Call(ctx context.Context, method string, raw json.
 			return nil, nil
 		}
 		manager.SetProgressCallback(func(event packagemanager.ProgressEvent) {
-			wire := map[string]any{"type": event.Type, "action": event.Action, "source": event.Source}
-			if event.Message != nil {
-				wire["message"] = *event.Message
-			}
-			encoded, _ := json.Marshal(wire)
+			// Pi's ProgressEvent members in its order: type, action, source, message.
+			wire := struct {
+				Type    string  `json:"type"`
+				Action  string  `json:"action"`
+				Source  string  `json:"source"`
+				Message *string `json:"message,omitempty"`
+			}{event.Type, event.Action, event.Source, event.Message}
+			encoded, _ := jsstring.AppendMarshalJSON([]byte{'['}, wire)
 			// The callback outlives the call that set it: it reports to the extension for as long as the connection lives.
-			_, _ = g.scope.Callback(context.Background(), *id, json.RawMessage("["+string(encoded)+"]"))
+			//portlint:allow ctxbackground the progress callback is Pi's setProgressCallback: it reports for as long as the connection lives, with no call to cancel it
+			_, _ = g.scope.Callback(context.Background(), *id, json.RawMessage(append(encoded, ']')))
 		})
 		return nil, nil
 	case "addSourceToSettings", "removeSourceFromSettings":
@@ -135,8 +140,8 @@ func (g *GraphPackageManager) Call(ctx context.Context, method string, raw json.
 		var onMissing packagemanager.MissingSourceCallback
 		if id != nil {
 			onMissing = func(source string) (packagemanager.MissingSourceAction, error) {
-				encoded, _ := json.Marshal(source)
-				result, err := g.scope.Callback(ctx, *id, json.RawMessage("["+string(encoded)+"]"))
+				encoded, _ := jsstring.AppendMarshalJSON([]byte{'['}, source)
+				result, err := g.scope.Callback(ctx, *id, json.RawMessage(append(encoded, ']')))
 				if err != nil {
 					return "", err
 				}

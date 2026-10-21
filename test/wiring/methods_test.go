@@ -163,6 +163,10 @@ func init() {
 		undeliveredHostFrames["notify runtime_input_end by "+sdk] = "sent only to a Node runtime, which reports command suspension after stdin's end"
 		// host.go buildExtension sets Extension.EventLoopTurn only for a Node runtime: the Node process takes one turn of its own event loop before a tool's result, which Pi runs on that loop; the Go, Python and Rust SDKs have no loop of that kind (TestEventLoopTurnIsOfferedOnlyForNodeRuntimes)
 		undeliveredHostFrames["request event_loop_turn by "+sdk] = "sent only to a Node runtime, which takes one turn of its own event loop before a tool's result"
+		// Turns.Arm (sendTimerDefer) tells only the Node runtimes of the host to hold their timer and immediate callbacks while an RPC command runs; the native SDKs have no event loop of Pi's kind to hold, and mark a deferred call themselves (callMsg.Timer).
+		undeliveredHostFrames["notify timer_defer by "+sdk] = "sent only to a Node runtime, which holds its timer and immediate callbacks while an RPC stdin command runs"
+		// endRequestWindowByReport answers the request_state report "blocked external_io", which only the Node runtime sends after a tool's execute returned its Promise; a native handler's window closes at its first Promise-returning host call or its answer.
+		undeliveredHostFrames["notify tool_window_settled by "+sdk] = "answers a Node runtime's report that a tool's execute awaits something that is not a host call; native handlers send no such report"
 	}
 	for _, sdk := range []string{"go", "py", "rust"} {
 		// admitSurface reports a retired surface only when it has an id, which only the Node runtime assigns. Surface ids are Pig transport mechanics for

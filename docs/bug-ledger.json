@@ -31499,7 +31499,7 @@
         }
       ],
       "tests": [
-        "agent/settle_order_test.go::TestToolBatchFromContextNamesTheParallelBatch",
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "extensions/sdk-py/tests/test_tool_dialog_order.py",
         "extensions/sdk/tool_dialog_order_test.go::TestToolBatchOrdersAreIndependentAcrossBatches",
         "extensions/sdk/tool_dialog_order_test.go::TestToolDialogOrderPassesAnEndedRequest",
@@ -31740,8 +31740,8 @@
         }
       ],
       "tests": [
-        "agent/settle_order_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
-        "agent/settle_order_test.go::TestSettleGateRunsActionsInSettleOrder",
+        "agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
+        "internal/jsloop/settle_gate_table_test.go::TestSettleGateBehaviors",
         "coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder",
         "coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived"
       ]

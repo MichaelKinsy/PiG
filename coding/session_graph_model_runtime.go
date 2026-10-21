@@ -637,6 +637,7 @@ func (g *GraphModelRuntime) login(ctx context.Context, args icodingagent.GraphAr
 
 // StreamModel implements subprocess.SessionGraphStreamer: Pi's ModelRuntime.stream and streamSimple of the model object and request the extension sent.
 func (g *GraphModelRuntime) StreamModel(ctx context.Context, model map[string]any, request map[string]any) (*ai.AssistantMessageEventStream, error) {
+	//portlint:allow mapkeyorder the model object is decoded into an ai.Model by chatModel at once; no one observes the member order of this copy
 	encoded, err := json.Marshal(model)
 	if err != nil {
 		return nil, err

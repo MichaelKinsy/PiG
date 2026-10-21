@@ -190,12 +190,13 @@ func Rules() []Rule {
 		},
 		{
 			ID:      RuleNotComparable,
-			Summary: "ToolInfo, OAuthCredentials and RemoteOverlayOptions are no longer comparable",
+			Summary: "ToolInfo, OAuthCredentials, RemoteOverlayOptions and Editor are no longer comparable",
 			Remedy:  "Compare the fields you need, or use reflect.DeepEqual. Do not use these types as map keys or compare them with ==.",
 			Changes: []Change{
 				{Symbol: "ToolInfo", Old: "comparable struct", New: "struct with a slice and a raw message", Since: "0.3.0"},
 				{Symbol: "OAuthCredentials", Old: "comparable struct", New: "struct that is not comparable", Since: "0.3.0"},
 				{Symbol: "RemoteOverlayOptions", Old: "comparable struct", New: "struct with a function field (OnHandle) and a pointer to OverlayOptions", Since: "0.5.0"},
+				{Symbol: "Editor", Old: "comparable struct", New: "struct with the handler table of CustomEditor's actions (hooks)", Since: "0.5.2"},
 			},
 		},
 		{

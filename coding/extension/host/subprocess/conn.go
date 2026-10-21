@@ -1168,8 +1168,8 @@ func (c *Conn) readLoop(ctx context.Context) {
 			if c.endsStartWindow(*env.RequestState) {
 				// The handler's synchronous prefix is over. The host loop delivers the report after the calls received before it applied their synchronous parts, so the prefix's registration in the file mutation queue precedes the window's end.
 				select {
-				case c.inCh <- &env:
-				case <-ctx.Done():
+				case c.inCh <- &env: //perf:ok once per tool call whose handler awaits something that is not a host call (request_state blocked), not per frame
+				case <-ctx.Done(): //perf:ok the same select
 					return
 				}
 				continue
@@ -1515,6 +1515,7 @@ func (c *Conn) endRequestWindowByReport(requestID string) {
 		return
 	}
 	window.Close()
+	//portlint:allow golifetime AwaitSettled returns once the calls that waited for the window registered, which the dispatcher forces when the tool call ends, so the goroutine ends with the call
 	go func() {
 		window.AwaitSettled()
 		c.sendToolWindowSettled(requestID)

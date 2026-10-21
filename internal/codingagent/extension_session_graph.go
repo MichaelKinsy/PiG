@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -90,7 +91,10 @@ func (a GraphArgs) Int(i int) (int, error) {
 	if err := json.Unmarshal(raw, &value); err != nil {
 		return 0, fmt.Errorf("argument %d is not a number", i+1)
 	}
-	return int(value), nil
+	if math.IsNaN(value) || math.IsInf(value, 0) || value > math.MaxInt32 || value < math.MinInt32 {
+		return 0, fmt.Errorf("argument %d is not an integer in range", i+1)
+	}
+	return int(value), nil //portlint:allow numbers value is finite and within the int32 range here
 }
 
 // Decode decodes argument i into target; undefined and null leave target alone.
@@ -447,6 +451,7 @@ func (g *GraphSessionManager) Call(_ context.Context, method string, raw json.Ra
 				params[name] = value
 			}
 		}
+		//portlint:allow mapkeyorder ExtensionSessionRead decodes these arguments by method and member name; the encoding is read back at once and no one observes its member order
 		encoded, _ := json.Marshal(params)
 		return ExtensionSessionRead(ExtensionSessionView{Session: session, CWD: session.CWD(), SessionDir: session.GetSessionDir()}, method, encoded)
 	}

@@ -57,6 +57,7 @@ type BuiltinToolOptions struct {
 	// ExposeSessionEnvironment is BashToolOptions.exposeSessionEnvironment and PowerShellToolOptions.exposeSessionEnvironment.
 	ExposeSessionEnvironment *bool `json:"exposeSessionEnvironment,omitempty"`
 	// Operations names the members of the tool's `operations` object the extension supplied.
+	//portlint:allow emptydrop Operations only names the supplied members of the operations object: an empty list is the absent one
 	Operations []string `json:"operations,omitempty"`
 	// SpawnHook reports the extension supplied `spawnHook`.
 	SpawnHook bool `json:"spawnHook,omitempty"`
@@ -72,10 +73,11 @@ type BuiltinToolDefinitionArgs struct {
 // BuiltinToolDefinitionResult is the reply of CallBuiltinToolDefinition: the members of Pi's ToolDefinition for a built-in tool that are data. Absent
 // members are Pi's undefined.
 type BuiltinToolDefinitionResult struct {
-	Name                string          `json:"name"`
-	Label               string          `json:"label"`
-	Description         string          `json:"description"`
-	PromptSnippet       string          `json:"promptSnippet,omitempty"`
+	Name          string `json:"name"`
+	Label         string `json:"label"`
+	Description   string `json:"description"`
+	PromptSnippet string `json:"promptSnippet,omitempty"`
+	//portlint:allow emptydrop Pi's definition.promptGuidelines is undefined or a non-empty list for the built-in tools, and the SDKs read an absent list as undefined
 	PromptGuidelines    []string        `json:"promptGuidelines,omitempty"`
 	Parameters          json.RawMessage `json:"parameters"`
 	OutputSchema        json.RawMessage `json:"outputSchema,omitempty"`

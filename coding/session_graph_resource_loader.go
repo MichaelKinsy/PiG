@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // GraphResourceLoader is a DefaultResourceLoader an extension constructed.
@@ -152,10 +153,11 @@ func newGraphResourceLoader(scope subprocess.SessionGraphScope, op string, raw j
 
 // override runs the extension's function id with base and decodes its result into out. It reports false, and keeps the error for the call that is running, when the function failed.
 func (g *GraphResourceLoader) override(id string, base, out any) bool {
-	input, err := json.Marshal(base)
+	input, err := jsstring.AppendMarshalJSON([]byte{'['}, base)
 	if err == nil {
 		var result json.RawMessage
-		if result, err = g.scope.Callback(context.Background(), id, json.RawMessage("["+string(input)+"]")); err == nil {
+		//portlint:allow ctxbackground Pi's override options (agentsFilesOverride, systemPromptOverride and the rest) are synchronous functions of the loader's load, which carries no signal
+		if result, err = g.scope.Callback(context.Background(), id, json.RawMessage(append(input, ']'))); err == nil {
 			if err = json.Unmarshal(result, out); err == nil {
 				return true
 			}
@@ -420,11 +422,12 @@ func (g *GraphResourceLoader) reload(ctx context.Context, args icodingagent.Grap
 	var reloadOptions []ResourceLoaderReloadOptions
 	if id := options.ResolveProjectTrust; id != "" {
 		reloadOptions = append(reloadOptions, ResourceLoaderReloadOptions{ResolveProjectTrust: func(callCtx context.Context, input ResolveProjectTrustInput) (bool, error) {
-			encoded, err := json.Marshal(graphExtensionsOf(input.ExtensionsResult))
+			//portlint:allow mapkeyorder graphExtensionsOf is a data view PiG defines (Pi's extension objects hold functions), which the extension reads by member name
+			encoded, err := jsstring.AppendMarshalJSON([]byte{'['}, graphExtensionsOf(input.ExtensionsResult))
 			if err != nil {
 				return false, err
 			}
-			result, err := g.scope.Callback(callCtx, id, json.RawMessage("["+string(encoded)+"]"))
+			result, err := g.scope.Callback(callCtx, id, json.RawMessage(append(encoded, ']')))
 			if err != nil {
 				return false, err
 			}

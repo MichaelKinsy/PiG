@@ -104,6 +104,7 @@ func (a *rpcAdmission) commandTurn() (settled, abandoned func()) {
 	finish := a.turns.Command()
 	return func() {
 		idle := a.turn.Idle()
+		//portlint:allow asyncorder the goroutine ends the command's timer hold once the executor drained; it writes nothing the client sees, so no output order depends on it
 		go func() {
 			<-idle
 			finish()
