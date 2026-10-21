@@ -34,6 +34,9 @@ type RustExtension struct {
 	Crate   string
 	Factory string
 	Hash    string
+	// Verify, when set, reports an error when the extension's source no longer matches Hash. A caller that derived Hash from the
+	// source files sets it, so that a build proves the compiler read the source that was hashed (see cellInputsUnchanged).
+	Verify func() error
 }
 
 // RustPackedCell describes a generated Rust packed-cell artifact.
@@ -127,6 +130,9 @@ func BuildRustPackedCell(ctx context.Context, cacheRoot, key string, extensions 
 						return "", failure
 					}
 					return "", cacheBuildFailure(failure)
+				}
+				if err := cellInputsUnchanged(key, hash, rustPackedCellHash(cacheRoot, key, normalized, sdkRoot), rustExtensionVerifiers(normalized)); err != nil {
+					return "", err
 				}
 				return filepath.Join(cargoTargetDirectory(scratch), "release", packageName+strings.TrimPrefix(artifactName, "runner")), nil
 			})

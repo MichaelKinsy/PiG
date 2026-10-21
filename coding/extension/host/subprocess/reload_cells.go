@@ -435,6 +435,7 @@ func goExtensionFromConfig(cfg ExtConfig) (runtimecell.GoExtension, error) {
 		Factory:          cfg.Factory,
 		Hash:             valueOr(cfg.ContentHash, cfg.Source),
 		WorkspaceModules: append([]string(nil), cfg.GoWorkspaceModules...),
+		Verify:           cfg.sourceCheck,
 	}, nil
 }
 
@@ -448,6 +449,7 @@ func rustExtensionFromConfig(cfg ExtConfig) (runtimecell.RustExtension, error) {
 		Package: cfg.Package,
 		Factory: cfg.Factory,
 		Hash:    valueOr(cfg.ContentHash, cfg.Source),
+		Verify:  cfg.sourceCheck,
 	}, nil
 }
 

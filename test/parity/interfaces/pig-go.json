@@ -111503,6 +111503,17 @@
       "shapeHash": "sha256:39fd1f1fdc80812335eb8c11430261a702fee9e9f70fb1b93f0aaa44b4bc30b0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#cellInputsUnchanged",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "cellInputsUnchanged",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(key string, hash string, rehashed string, verify []func() error) error"
+      },
+      "shapeHash": "sha256:4691b0dff38f34f988fd7206e9fda60618f7bd0ec97efa8bba7b60b582838067"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#cellReadyFile",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "cellReadyFile",
@@ -112183,6 +112194,17 @@
         "type": "func(tc github.com/MichaelKinsy/PiG/internal/toolchain.GoToolchain) string"
       },
       "shapeHash": "sha256:386d5bbce1a990c4160c82697d0797086b218b3c757b5c68f3c4660d213cce45"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#goExtensionVerifiers",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "goExtensionVerifiers",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(extensions []GoExtension) []func() error"
+      },
+      "shapeHash": "sha256:270afe5195530157d895942c6cd1874dfa0b168e1f0233c99d34cd62525683ec"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#goFailureInputs",
@@ -113459,6 +113481,17 @@
         "type": "func(cacheRoot string, key string, normalized []RustExtension) (*RustPackedCell, bool)"
       },
       "shapeHash": "sha256:688f75cb030c9874a050c2318ff33ae57134b629f18a29828d640c1e1c65ad4e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustExtensionVerifiers",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustExtensionVerifiers",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(extensions []RustExtension) []func() error"
+      },
+      "shapeHash": "sha256:b966d60aba1d0b8b9aeb365075ed3ffa83c7f35d2c13645728774a20c4e15fc2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustPackedCellHash",
@@ -128047,6 +128080,17 @@
       "shapeHash": "sha256:8749cf0184591720ec565064d5136b93bdee485d40217ccb5ab181da135daaad"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#fillContentHash",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "fillContentHash",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cfg *ExtConfig)"
+      },
+      "shapeHash": "sha256:471421cd121af1eda24c305ed153c46f0a55f2cfbc3c9f8070ca8ee69e86ca81"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#frameBuffer",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "frameBuffer",
@@ -128696,6 +128740,17 @@
       "shapeHash": "sha256:5ed91a5c7087ace4963528014d99668a6fca48a2cde6c28b319ff5849601e898"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hashDirSourcesStamped",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "hashDirSourcesStamped",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(h hash.Hash, stamp hash.Hash, root string, exts []string) error"
+      },
+      "shapeHash": "sha256:0c3620a3acb80103918b34ad3aa53de34cbf680e2a88ceffe821f59a9eec35ba"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hashSourceDir",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "hashSourceDir",
@@ -128705,6 +128760,17 @@
         "type": "func(src string, buildType string) (string, error)"
       },
       "shapeHash": "sha256:f0dddce83ab0aeac2f2e551d97871b06096370af61d8a03257f77168a64f5666"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hashSourceDirStamped",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "hashSourceDirStamped",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(src string, buildType string) (digest string, stamp string, err error)"
+      },
+      "shapeHash": "sha256:4eabd0e9d2015437d8a254dff214918e1b04f0505202acb03c78dca63c0ccaf6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hashWithStagedSDK",
@@ -134623,6 +134689,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sourceUnchanged",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "sourceUnchanged",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(srcDir string, buildType string, stamp string) error"
+      },
+      "shapeHash": "sha256:d5f6f419b527116f962a29986a4eb3135fa00b4ebc8ab1a81dacaee70060a9e5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sparse",
