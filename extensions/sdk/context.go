@@ -368,13 +368,18 @@ func (c Context) Notify(message, level string) {
 	})
 }
 
-// SetStatus sets a status text in the footer/status bar.
-// Empty text clears the entry for this key.
+// SetStatus sets a status text in the footer/status bar. An empty text is a text, as in Pi (RPC mode writes it); [Context.ClearStatus] removes the entry, as
+// Pi's setStatus(key, undefined) does.
 func (c Context) SetStatus(key, text string) {
 	_, _ = c.callHost("ui.setStatus", map[string]string{
 		"key":  key,
 		"text": text,
 	})
+}
+
+// ClearStatus removes the status entry for this key: Pi's setStatus(key, undefined).
+func (c Context) ClearStatus(key string) {
+	_, _ = c.callHost("ui.setStatus", map[string]string{"key": key})
 }
 
 // SetWorkingMessage sets the message shown during LLM streaming. An empty string is a message, shown as an empty label, as in Pi
@@ -457,7 +462,17 @@ func (c Context) ConfirmWithOptions(title, message string, opts DialogOptions) (
 
 // InputWithOptions is [Context.Input] with upstream's dialog options.
 func (c Context) InputWithOptions(title, placeholder string, opts DialogOptions) (string, bool, error) {
-	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder, "opts": opts})
+	return c.inputDialog(withNonEmpty(map[string]any{"title": title, "opts": opts}, "placeholder", placeholder))
+}
+
+// withNonEmpty sets args[key] to value unless it is empty. An optional dialog member (Pi's `placeholder?`, `prefill?`) is undefined when the extension passes
+// none, and a Go string cannot be undefined: an empty one is the unset member, as in every native SDK. The host then writes no such member to an RPC client,
+// as Pi does, where it writes `placeholder: ""` for the empty string a Node extension can pass.
+func withNonEmpty(args map[string]any, key, value string) map[string]any {
+	if value != "" {
+		args[key] = value
+	}
+	return args
 }
 
 func (c Context) selectDialog(args map[string]any) (string, bool, error) {
@@ -495,7 +510,7 @@ func (c Context) confirmDialog(args map[string]any) (bool, error) {
 // Input shows a text input dialog.
 // Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
 func (c Context) Input(title, placeholder string) (string, bool, error) {
-	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder})
+	return c.inputDialog(withNonEmpty(map[string]any{"title": title}, "placeholder", placeholder))
 }
 
 func (c Context) inputDialog(args map[string]any) (string, bool, error) {
@@ -516,10 +531,7 @@ func (c Context) inputDialog(args map[string]any) (string, bool, error) {
 // Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
 func (c Context) Editor(title, prefill string) (string, bool, error) {
 	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.editor", map[string]any{
-		"title":   title,
-		"prefill": prefill,
-	})
+	result, err := c.callHost("ui.editor", withNonEmpty(map[string]any{"title": title}, "prefill", prefill))
 	if err := callResultError(result, err); err != nil {
 		return "", false, err
 	}

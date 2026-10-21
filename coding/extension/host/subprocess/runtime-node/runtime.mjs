@@ -1496,7 +1496,8 @@ class RuntimeUI {
     const result = await this.runtime.call("ui.confirm", { title, message, opts });
     return Boolean(result?.confirmed);
   }
-  async input(title, placeholder = "", opts = {}) {
+  // An omitted placeholder stays omitted, and an empty one is sent: RPC writes the member for the second only (rpc-mode.ts input).
+  async input(title, placeholder, opts = {}) {
     this.runtime.blockForUser();
     const result = await this.runtime.call("ui.input", { title, placeholder, opts });
     return result?.ok ? result.text : undefined;
@@ -1590,7 +1591,8 @@ class RuntimeUI {
   pasteToEditor(text) { this.runtime.fireAndForget("ui.pasteToEditor", { text }); }
   setEditorText(text) { this.runtime.fireAndForget("ui.setEditorText", { text }); }
   getEditorText() { return this.runtime.state.editorText ?? ""; }
-  async editor(title, prefill = "") {
+  // An omitted prefill stays omitted, and an empty one is sent: RPC writes the member for the second only (rpc-mode.ts editor).
+  async editor(title, prefill) {
     this.runtime.blockForUser();
     const result = await this.runtime.call("ui.editor", { title, prefill });
     return result?.ok ? result.text : undefined;

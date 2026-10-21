@@ -2319,6 +2319,7 @@ func Extension() *sdk.Extension {
 	// each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
 	ext.Command("ui_wire_empties_probe", "Call the UI members with empty and unset arguments", func(ctx sdk.Context, args string) error {
 		ctx.SetStatus("k", "")
+		ctx.ClearStatus("k")
 		ctx.Notify("", "")
 		ctx.Notify("typed", "warning")
 		ctx.SetTitle("")

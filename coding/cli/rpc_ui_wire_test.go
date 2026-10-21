@@ -69,6 +69,7 @@ func TestRPCUIWireKeepsEmptyMembersAndOmitsUndefinedOnes(t *testing.T) {
 		// setStatus: { method: "setStatus", statusKey: key, statusText: text }
 		{"setStatus empty text", func(_ context.Context, ui *rpcUIContext) { ui.SetStatus("k", "") }, prefix + `"setStatus","statusKey":"k","statusText":""}`},
 		{"setStatus text", func(_ context.Context, ui *rpcUIContext) { ui.SetStatus("k", "t") }, prefix + `"setStatus","statusKey":"k","statusText":"t"}`},
+		{"setStatus undefined text", func(_ context.Context, ui *rpcUIContext) { ui.ClearStatus("k") }, prefix + `"setStatus","statusKey":"k"}`},
 		{"setStatus empty key", func(_ context.Context, ui *rpcUIContext) { ui.SetStatus("", "t") }, prefix + `"setStatus","statusKey":"","statusText":"t"}`},
 		// setWidget: { method: "setWidget", widgetKey: key, widgetLines: content, widgetPlacement: options?.placement }
 		{"setWidget empty lines", func(_ context.Context, ui *rpcUIContext) { ui.SetWidget("w", []string{}, nil) }, prefix + `"setWidget","widgetKey":"w","widgetLines":[]}`},
@@ -93,10 +94,15 @@ func TestRPCUIWireKeepsEmptyMembersAndOmitsUndefinedOnes(t *testing.T) {
 		// input: { method: "input", title, placeholder, timeout: opts?.timeout }
 		{"input empty placeholder", func(ctx context.Context, ui *rpcUIContext) { _, _ = ui.Input(ctx, "T", "", none) }, prefix + `"input","title":"T","placeholder":""}`},
 		{"input placeholder", func(ctx context.Context, ui *rpcUIContext) { _, _ = ui.Input(ctx, "", "p", none) }, prefix + `"input","title":"","placeholder":"p"}`},
+		{"input undefined placeholder", func(ctx context.Context, ui *rpcUIContext) { _, _ = ui.InputWithoutPlaceholder(ctx, "T", none) }, prefix + `"input","title":"T"}`},
+		{"input undefined placeholder, timeout 0", func(ctx context.Context, ui *rpcUIContext) {
+			_, _ = ui.InputWithoutPlaceholder(ctx, "T", timeout(0))
+		}, prefix + `"input","title":"T","timeout":0}`},
 		{"input empty placeholder, timeout 50", func(ctx context.Context, ui *rpcUIContext) { _, _ = ui.Input(ctx, "T", "", timeout(50)) }, prefix + `"input","title":"T","placeholder":"","timeout":50}`},
 		// editor: { method: "editor", title, prefill }
 		{"editor empty prefill", func(ctx context.Context, ui *rpcUIContext) { _, _ = ui.Editor(ctx, "E", "") }, prefix + `"editor","title":"E","prefill":""}`},
 		{"editor prefill", func(ctx context.Context, ui *rpcUIContext) { _, _ = ui.Editor(ctx, "", "x") }, prefix + `"editor","title":"","prefill":"x"}`},
+		{"editor undefined prefill", func(ctx context.Context, ui *rpcUIContext) { _, _ = ui.EditorWithoutPrefill(ctx, "E") }, prefix + `"editor","title":"E"}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

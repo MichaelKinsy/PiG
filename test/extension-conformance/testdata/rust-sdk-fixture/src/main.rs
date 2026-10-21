@@ -659,6 +659,7 @@ fn main() {
     // ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
     ext.command("ui_wire_empties_probe", "Call the UI members with empty and unset arguments", |ctx, _args| {
         ctx.set_status("k", "");
+        ctx.clear_status("k");
         ctx.notify("", "");
         ctx.notify("typed", "warning");
         ctx.set_title("");
