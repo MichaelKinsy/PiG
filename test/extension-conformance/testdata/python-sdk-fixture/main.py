@@ -231,6 +231,100 @@ KIT_WIDGET_CASES[_INPUT + "wide characters"] = lambda: _kit_input(value="漢字 
 KIT_WIDGET_CASES[_INPUT + "submit newline key"] = lambda: _kit_input(value="preset")
 KIT_WIDGET_CASES[_INPUT + "escape"] = lambda: _kit_input(value="keep")
 
+_EDITOR_COMMANDS = kit.Autocomplete([
+    kit.SlashCommand("help", "Show help"),
+    kit.SlashCommand("model", "Switch the model", argument_hint="<name>"),
+    kit.SlashCommand("quit", "Exit"),
+    kit.SlashCommand("session", "Session info"),
+    kit.SlashCommand("settings", "Open settings"),
+    kit.SlashCommand("share"),
+    kit.SlashCommand("skills", "List skills"),
+    kit.SlashCommand("compact", "Compact the context"),
+])
+
+
+def _kit_editor(focus: bool = True, **options: Any) -> kit.View:
+    return kit.View(kit.Container([kit.Editor("e", **options)]), focus="e" if focus else None)
+
+
+_EDITOR = "pi-tui/Editor/"
+KIT_WIDGET_CASES[_EDITOR + "empty"] = lambda: _kit_editor(False)
+KIT_WIDGET_CASES[_EDITOR + "empty focused"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "value"] = lambda: _kit_editor(False, value="hello world")
+KIT_WIDGET_CASES[_EDITOR + "multiline value focused"] = lambda: _kit_editor(value="one\ntwo\nthree")
+KIT_WIDGET_CASES[_EDITOR + "wrapped line"] = lambda: _kit_editor(value="The quick brown fox jumps over the lazy dog and keeps running through the field")
+KIT_WIDGET_CASES[_EDITOR + "wide characters"] = lambda: _kit_editor(value="漢字 and 😀 text")
+KIT_WIDGET_CASES[_EDITOR + "typing"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "newline"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "backspace and delete"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "kill word and yank"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "undo"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "submit"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "paste"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "paste large"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "cursor movement"] = lambda: _kit_editor(value="one\ntwo\nthree")
+KIT_WIDGET_CASES[_EDITOR + "submit multiline"] = lambda: _kit_editor(value="one\ntwo")
+KIT_WIDGET_CASES[_EDITOR + "submit disabled"] = lambda: _kit_editor(value="keep", disable_submit=True)
+KIT_WIDGET_CASES[_EDITOR + "padding"] = lambda: _kit_editor(value="padded text", padding_x=2)
+KIT_WIDGET_CASES[_EDITOR + "padding wrapped"] = lambda: _kit_editor(value="The quick brown fox jumps over the lazy dog and keeps running", padding_x=3)
+KIT_WIDGET_CASES[_EDITOR + "border color"] = lambda: _kit_editor(value="colored", border_color="accent")
+KIT_WIDGET_CASES[_EDITOR + "history"] = lambda: _kit_editor(history=["first", "second", "third"])
+KIT_WIDGET_CASES[_EDITOR + "history then edit"] = lambda: _kit_editor(history=["first", "second"])
+KIT_WIDGET_CASES[_EDITOR + "scrolls past the visible lines"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")
+KIT_WIDGET_CASES[_EDITOR + "scroll indicator below"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")
+KIT_WIDGET_CASES[_EDITOR + "more rows show more lines"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")
+KIT_WIDGET_CASES[_EDITOR + "few rows show five lines"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")
+KIT_WIDGET_CASES[_EDITOR + "page up and down"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30")
+KIT_WIDGET_CASES[_EDITOR + "click moves the cursor"] = lambda: _kit_editor(value="hello\nworld")
+KIT_WIDGET_CASES[_EDITOR + "click on the border"] = lambda: _kit_editor(value="hello\nworld")
+KIT_WIDGET_CASES[_EDITOR + "right click ignored"] = lambda: _kit_editor(value="hello")
+KIT_WIDGET_CASES[_EDITOR + "slash opens the menu"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash narrows"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash no match"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash tab accepts"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash arrow then tab"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash enter accepts"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash escape closes"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash click selects"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "text after the slash opens nothing"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash max visible 3"] = lambda: _kit_editor(autocomplete_max_visible=3, autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash with padding"] = lambda: _kit_editor(padding_x=2, autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "autocomplete menu does not follow disabled submit"] = lambda: _kit_editor(disable_submit=True, autocomplete=_EDITOR_COMMANDS)
+
+def _kit_scroll_child(kind: str) -> kit.Node:
+    if kind == "md":
+        return kit.Markdown("# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`", 1, 0)
+    if kind == "empty":
+        return kit.Container([])
+    if kind == "branch":
+        return kit.BranchSummary("The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`.", id="b")
+    return kit.Text("Alpha line of the log\nBeta line of the log\nGamma line of the log that is long enough to wrap at the narrow widths\nDelta", 1, 0)
+
+
+_SCROLL = "pi-tui/ScrollView/"
+_MOUSE_REGION = "pi-tui/MouseRegion/"
+KIT_WIDGET_CASES[_SCROLL + "default"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"))]))
+KIT_WIDGET_CASES[_SCROLL + "scrollbar always"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="always")]))
+KIT_WIDGET_CASES[_SCROLL + "scrollbar auto"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="auto")]))
+KIT_WIDGET_CASES[_SCROLL + "scrollbar colors"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="always", scrollbar_track_color="dim", scrollbar_thumb_color="accent")]))
+KIT_WIDGET_CASES[_SCROLL + "follow end"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), follow="end")]))
+KIT_WIDGET_CASES[_SCROLL + "primary and contain"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), primary=True, overscroll="contain")]))
+KIT_WIDGET_CASES[_SCROLL + "hide delay"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="auto", scrollbar_hide_delay_ms=50)]))
+KIT_WIDGET_CASES[_SCROLL + "scroll top clamps"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scroll_top=3)]))
+KIT_WIDGET_CASES[_SCROLL + "markdown child"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("md"), scrollbar="always")]))
+KIT_WIDGET_CASES[_SCROLL + "after other rows"] = lambda: kit.View(kit.Container([kit.Text("Header", 1, 0), kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="always"), kit.Text("Footer", 1, 0)]))
+KIT_WIDGET_CASES[_SCROLL + "empty child"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("empty"), scrollbar="always")]))
+KIT_WIDGET_CASES[_SCROLL + "wheel and click pass"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text")), kit.Text("after", 1, 0)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "renders its child"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"))]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "every type by default"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"))]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "types filter"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"), types=["click"])]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "not handled"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"), handled=False)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "capture"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"), capture=True)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "focus and render"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"), focus=True, render=False)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "local coordinates"] = lambda: kit.View(kit.Container([kit.Text("Above the region", 1, 0), kit.MouseRegion("m", _kit_scroll_child("text")), kit.Text("Below", 1, 0)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "the child takes the event first"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("branch"))]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "right button"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"))]))
+
 # kit-widget-cases
 
 

@@ -247,6 +247,7 @@ function themeQueries(theme, params) {
     thinking: Object.fromEntries((params.levels ?? []).map((level) => [level, attempt(() => theme.getThinkingBorderColor(level)("x"))])),
     bash: attempt(() => theme.getBashModeBorderColor()("x")),
     sourcePath: theme.sourcePath ?? null,
+    sourceInfo: theme.sourceInfo ?? null,
   };
 }
 

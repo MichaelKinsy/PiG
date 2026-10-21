@@ -114,6 +114,63 @@ def test_defaults_match_upstream_constructors() -> None:
     ]
 
 
+def test_editor_encodes_its_fields_and_the_defaults_are_omitted() -> None:
+    commands = kit.Autocomplete([kit.SlashCommand("help", "Show help"), kit.SlashCommand("model", argument_hint="<name>")], "/work")
+    editor = kit.Editor("e", "one\ntwo", padding_x=2, autocomplete_max_visible=3, border_color="accent", disable_submit=True, history=["a", "b"], autocomplete=commands)
+    assert kit._Encoder(False).node(editor, 0) == {
+        "kind": "editor",
+        "id": "e",
+        "value": "one\ntwo",
+        "paddingX": 2,
+        "autocompleteMaxVisible": 3,
+        "borderColor": "accent",
+        "disableSubmit": True,
+        "history": ["a", "b"],
+        "autocomplete": {"commands": [{"name": "help", "description": "Show help"}, {"name": "model", "argumentHint": "<name>"}], "basePath": "/work"},
+    }
+    assert kit._Encoder(False).node(kit.Editor("e"), 0) == {"kind": "editor", "id": "e"}
+
+
+def test_scroll_view_encodes_its_child_and_options() -> None:
+    view = kit.ScrollView("s", kit.Text("x", 1, 0), follow="end", primary=True, overscroll="contain", scrollbar="always", scrollbar_track_color="dim", scrollbar_thumb_color="accent", scrollbar_hide_delay_ms=0, scroll_top=4)
+    assert kit._Encoder(False).node(view, 0) == {
+        "kind": "scroll-view",
+        "id": "s",
+        "children": [{"kind": "text", "text": "x", "paddingX": 1, "paddingY": 0}],
+        "follow": "end",
+        "primary": True,
+        "overscroll": "contain",
+        "scrollbar": "always",
+        "scrollbarTrackColor": "dim",
+        "scrollbarThumbColor": "accent",
+        "scrollbarHideDelayMs": 0,
+        "scrollTop": 4,
+    }
+
+
+def test_mouse_region_encodes_its_handler_as_a_description() -> None:
+    region = kit.MouseRegion("m", kit.Spacer(1), types=["click"], handled=False, capture=True, focus=True, render=False)
+    assert kit._Encoder(False).node(region, 0) == {
+        "kind": "mouse-region",
+        "id": "m",
+        "children": [{"kind": "spacer", "lines": 1}],
+        "region": {"types": ["click"], "handled": False, "capture": True, "focus": True, "render": False},
+    }
+    assert kit._Encoder(False).node(kit.MouseRegion("m", kit.Spacer(1)), 0)["region"] == {}
+
+
+def test_input_encodes_its_fields() -> None:
+    assert kit._Encoder(False).node(kit.Input("i", "v", prompt="", placeholder="p", placeholder_color="dim"), 0) == {
+        "kind": "input",
+        "id": "i",
+        "value": "v",
+        "prompt": "",
+        "placeholder": "p",
+        "placeholderColor": "dim",
+    }
+    assert kit._Encoder(False).node(kit.Input("i"), 0) == {"kind": "input", "id": "i"}
+
+
 def test_conversation_kinds_encode_as_the_go_sdk() -> None:
     image = b"png bytes"
     assistant = kit.AssistantMessage(id="a1")

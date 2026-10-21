@@ -28,6 +28,83 @@ export function widgetRenderHandlers(tui, h) {
       if (c.focused) node.focused = true;
       return node;
     }],
+    // An Editor draws what its text, cursor, focus, padding, border and autocomplete list say. As an Input's, the node names the
+    // cursor and the focus the Node component holds. State the node cannot name (a paste marker, history browsing, an open
+    // autocomplete list, a pending character jump) leaves the editor to a lines range.
+    [tui.Editor.prototype.render, (walk, c) => {
+      const state = c.state;
+      if (!Array.isArray(state?.lines) || state.lines.length === 0 || !state.lines.every((line) => typeof line === "string")) return undefined;
+      if (!h.isInt(state.cursorLine) || !h.isInt(state.cursorCol) || state.cursorLine < 0 || state.cursorLine >= state.lines.length || state.cursorCol < 0) return undefined;
+      if (c.autocompleteState || (c.pastes?.size ?? 0) > 0 || c.historyIndex !== -1 || c.jumpMode !== null || c.isInPaste) return undefined;
+      if (!h.isInt(c.paddingX) || c.paddingX < 0 || !h.isInt(c.autocompleteMaxVisible) || typeof c.focused !== "boolean" || typeof c.disableSubmit !== "boolean") return undefined;
+      if (!Array.isArray(c.history) || c.history.length > h.maxListItems || !c.history.every((entry) => typeof entry === "string")) return undefined;
+      if (!walk.probe.sameTheme(c.theme?.selectList, "select")) return undefined;
+      const border = walk.probe.token(c.borderColor, "fg");
+      if (typeof border !== "string") return undefined;
+      const node = { kind: "editor", id: h.conversationId(c, "editor") };
+      const text = state.lines.join("\n");
+      if (text) node.value = text;
+      node.cursor = { line: state.cursorLine, col: state.cursorCol };
+      if (c.paddingX !== 0) node.paddingX = c.paddingX;
+      if (c.autocompleteMaxVisible !== 5) node.autocompleteMaxVisible = c.autocompleteMaxVisible;
+      if (border !== "borderMuted") node.borderColor = border;
+      if (c.disableSubmit) node.disableSubmit = true;
+      // Pi keeps the history most recent first; the wire lists the addToHistory calls oldest first.
+      if (c.history.length > 0) node.history = [...c.history].reverse();
+      const provider = c.autocompleteProvider;
+      if (provider !== undefined) {
+        // Only the provider the wire names: slash commands and a base path, without the fd search.
+        if (!(provider instanceof h.tui.CombinedAutocompleteProvider) || provider.fdPath !== null || typeof provider.basePath !== "string" || !Array.isArray(provider.commands)) return undefined;
+        const commands = [];
+        for (const command of provider.commands) {
+          if (typeof command?.name !== "string" || typeof command.getArgumentCompletions === "function") return undefined;
+          if ((command.description !== undefined && typeof command.description !== "string") || (command.argumentHint !== undefined && typeof command.argumentHint !== "string")) return undefined;
+          const wire = { name: command.name };
+          if (command.description) wire.description = command.description;
+          if (command.argumentHint) wire.argumentHint = command.argumentHint;
+          commands.push(wire);
+        }
+        node.autocomplete = {};
+        if (commands.length > 0) node.autocomplete.commands = commands;
+        if (provider.basePath) node.autocomplete.basePath = provider.basePath;
+      }
+      if (c.focused) node.focused = true;
+      return node;
+    }],
+    // A ScrollView draws its child at the content width (and a column more for a scrollbar that is always shown). The node
+    // carries the options; the scroll state is the host's, which lays out without a viewport height (layoutScroll).
+    [tui.ScrollView.prototype.render, (walk, c, _rows, width, path, depth) => {
+      if (width === undefined || !c.child || typeof c.followEnd !== "boolean" || typeof c.primary !== "boolean") return undefined;
+      if (!["chain", "contain"].includes(c.overscroll) || !["hidden", "auto", "always"].includes(c.currentScrollbar)) return undefined;
+      if (!h.isInt(c.scrollbarHideDelayMs) || c.scrollbarHideDelayMs < 0 || !h.isInt(c.currentScrollTop) || c.currentScrollTop < 0) return undefined;
+      // A style that is Pi's default has no token; any other must be a theme token.
+      const styleToken = (style, escape, close) => {
+        if (typeof style !== "function") return h.FAIL;
+        if (style("x") === `${escape}x${close}`) return null;
+        const token = walk.probe.token(style, "fg");
+        return typeof token === "string" ? token : h.FAIL;
+      };
+      const track = styleToken(c.scrollbarTrackStyle, "\x1b[90m", "\x1b[39m");
+      const thumb = styleToken(c.scrollbarThumbStyle, "\x1b[37m", "\x1b[39m");
+      if (track === h.FAIL || thumb === h.FAIL) return undefined;
+      const children = walk.children([c.child], undefined, c.getContentWidth(width), path, depth);
+      if (!children) return undefined;
+      const node = { kind: "scroll-view", id: h.conversationId(c, "scroll-view"), children };
+      if (c.followEnd) node.follow = "end";
+      if (c.primary) node.primary = true;
+      if (c.overscroll !== "chain") node.overscroll = c.overscroll;
+      if (c.currentScrollbar !== "hidden") node.scrollbar = c.currentScrollbar;
+      if (track) node.scrollbarTrackColor = track;
+      if (thumb) node.scrollbarThumbColor = thumb;
+      if (c.scrollbarHideDelayMs !== 1000) node.scrollbarHideDelayMs = c.scrollbarHideDelayMs;
+      return node;
+    }],
+    // A MouseRegion draws its child unchanged; its handler is a closure, which the Node component runs itself, since a Node
+    // view takes no mouse on the host.
+    [tui.MouseRegion.prototype.render, (walk, c, rows, width, path, depth) => {
+      if (!c.child || typeof c.onMouse !== "function") return undefined;
+      return walk.node(c.child, rows, width, path, depth + 1);
+    }],
     // widget-render-walkers
   ];
 }

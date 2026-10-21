@@ -349,6 +349,35 @@ fn kit_input_view(focus: bool, set: impl FnOnce(kit::Input) -> kit::Input) -> ki
 }
 
 
+fn kit_editor_view(focus: bool, set: impl FnOnce(kit::Editor) -> kit::Editor) -> kit::View {
+    let view = kit::View::new(Container::new().child(set(kit::Editor::new("e"))));
+    if focus { view.focus("e") } else { view }
+}
+
+fn kit_editor_commands() -> kit::Autocomplete {
+    kit::Autocomplete::new(vec![
+        kit::SlashCommand::new("help").description("Show help"),
+        kit::SlashCommand::new("model").description("Switch the model").argument_hint("<name>"),
+        kit::SlashCommand::new("quit").description("Exit"),
+        kit::SlashCommand::new("session").description("Session info"),
+        kit::SlashCommand::new("settings").description("Open settings"),
+        kit::SlashCommand::new("share"),
+        kit::SlashCommand::new("skills").description("List skills"),
+        kit::SlashCommand::new("compact").description("Compact the context"),
+    ])
+}
+
+
+fn kit_scroll_child(kind: &str) -> kit::Node {
+    match kind {
+        "md" => Markdown::new("# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`", 1, 0).into(),
+        "empty" => Container::new().into(),
+        "branch" => kit::BranchSummary::new("The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`.").id("b").into(),
+        _ => Text::new("Alpha line of the log\nBeta line of the log\nGamma line of the log that is long enough to wrap at the narrow widths\nDelta", 1, 0).into(),
+    }
+}
+
+
 /// The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
 /// §10), built with the SDK's own constructors; the key is
 /// "<module>/<export>/<case name>" and the case's wire node is its vector's
@@ -458,6 +487,69 @@ fn kit_widget_case(key: &str) -> Option<kit::View> {
         "pi-tui/Input/wide characters" => kit_input_view(true, |n| n.value("漢字 and 😀 text")),
         "pi-tui/Input/submit newline key" => kit_input_view(true, |n| n.value("preset")),
         "pi-tui/Input/escape" => kit_input_view(true, |n| n.value("keep")),
+        "pi-tui/Editor/empty" => kit_editor_view(false, |n| n),
+        "pi-tui/Editor/empty focused" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/value" => kit_editor_view(false, |n| n.value("hello world")),
+        "pi-tui/Editor/multiline value focused" => kit_editor_view(true, |n| n.value("one\ntwo\nthree")),
+        "pi-tui/Editor/wrapped line" => kit_editor_view(true, |n| n.value("The quick brown fox jumps over the lazy dog and keeps running through the field")),
+        "pi-tui/Editor/wide characters" => kit_editor_view(true, |n| n.value("漢字 and 😀 text")),
+        "pi-tui/Editor/typing" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/newline" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/backspace and delete" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/kill word and yank" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/undo" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/submit" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/paste" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/paste large" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/cursor movement" => kit_editor_view(true, |n| n.value("one\ntwo\nthree")),
+        "pi-tui/Editor/submit multiline" => kit_editor_view(true, |n| n.value("one\ntwo")),
+        "pi-tui/Editor/submit disabled" => kit_editor_view(true, |n| n.value("keep").disable_submit(true)),
+        "pi-tui/Editor/padding" => kit_editor_view(true, |n| n.value("padded text").padding_x(2)),
+        "pi-tui/Editor/padding wrapped" => kit_editor_view(true, |n| n.value("The quick brown fox jumps over the lazy dog and keeps running").padding_x(3)),
+        "pi-tui/Editor/border color" => kit_editor_view(true, |n| n.value("colored").border_color("accent")),
+        "pi-tui/Editor/history" => kit_editor_view(true, |n| n.history(["first", "second", "third"])),
+        "pi-tui/Editor/history then edit" => kit_editor_view(true, |n| n.history(["first", "second"])),
+        "pi-tui/Editor/scrolls past the visible lines" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/scroll indicator below" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/more rows show more lines" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/few rows show five lines" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/page up and down" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30")),
+        "pi-tui/Editor/click moves the cursor" => kit_editor_view(true, |n| n.value("hello\nworld")),
+        "pi-tui/Editor/click on the border" => kit_editor_view(true, |n| n.value("hello\nworld")),
+        "pi-tui/Editor/right click ignored" => kit_editor_view(true, |n| n.value("hello")),
+        "pi-tui/Editor/slash opens the menu" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash narrows" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash no match" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash tab accepts" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash arrow then tab" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash enter accepts" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash escape closes" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash click selects" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/text after the slash opens nothing" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash max visible 3" => kit_editor_view(true, |n| n.autocomplete_max_visible(3).autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash with padding" => kit_editor_view(true, |n| n.padding_x(2).autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/autocomplete menu does not follow disabled submit" => kit_editor_view(true, |n| n.disable_submit(true).autocomplete(kit_editor_commands())),
+        "pi-tui/ScrollView/default" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")))),
+        "pi-tui/ScrollView/scrollbar always" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always"))),
+        "pi-tui/ScrollView/scrollbar auto" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("auto"))),
+        "pi-tui/ScrollView/scrollbar colors" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always").scrollbar_track_color("dim").scrollbar_thumb_color("accent"))),
+        "pi-tui/ScrollView/follow end" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).follow("end"))),
+        "pi-tui/ScrollView/primary and contain" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).primary(true).overscroll("contain"))),
+        "pi-tui/ScrollView/hide delay" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("auto").scrollbar_hide_delay_ms(50))),
+        "pi-tui/ScrollView/scroll top clamps" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scroll_top(3))),
+        "pi-tui/ScrollView/markdown child" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("md")).scrollbar("always"))),
+        "pi-tui/ScrollView/after other rows" => kit::View::new(Container::new().child(Text::new("Header", 1, 0)).child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always")).child(Text::new("Footer", 1, 0))),
+        "pi-tui/ScrollView/empty child" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("empty")).scrollbar("always"))),
+        "pi-tui/ScrollView/wheel and click pass" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text"))).child(Text::new("after", 1, 0))),
+        "pi-tui/MouseRegion/renders its child" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")))),
+        "pi-tui/MouseRegion/every type by default" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")))),
+        "pi-tui/MouseRegion/types filter" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")).types(["click"]))),
+        "pi-tui/MouseRegion/not handled" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")).handled(false))),
+        "pi-tui/MouseRegion/capture" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")).capture(true))),
+        "pi-tui/MouseRegion/focus and render" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")).focus(true).render(false))),
+        "pi-tui/MouseRegion/local coordinates" => kit::View::new(Container::new().child(Text::new("Above the region", 1, 0)).child(kit::MouseRegion::new("m", kit_scroll_child("text"))).child(Text::new("Below", 1, 0))),
+        "pi-tui/MouseRegion/the child takes the event first" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("branch")))),
+        "pi-tui/MouseRegion/right button" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")))),
         // kit-widget-cases
         _ => return None,
     })
