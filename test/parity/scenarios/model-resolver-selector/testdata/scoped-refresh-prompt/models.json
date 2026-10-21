@@ -1,0 +1,15 @@
+{
+  "providers": {
+    "fixture": {
+      "name": "Fixture",
+      "baseUrl": "http://127.0.0.1:1/v1",
+      "apiKey": "fixture-key",
+      "api": "openai-completions",
+      "models": [
+        { "id": "model-a", "name": "Model A", "reasoning": false, "input": ["text"], "contextWindow": 128000, "maxTokens": 4096 },
+        { "id": "model-b", "name": "Model B", "reasoning": false, "input": ["text"], "contextWindow": 128000, "maxTokens": 4096 },
+        { "id": "model-c", "name": "Model C", "reasoning": false, "input": ["text"], "contextWindow": 128000, "maxTokens": 4096 }
+      ]
+    }
+  }
+}

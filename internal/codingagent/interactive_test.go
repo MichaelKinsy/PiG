@@ -1613,6 +1613,9 @@ func (h *recordingCompactHandle) BeginModelCycleOnMain(_ context.Context, direct
 	return result, nil, err
 }
 func (h *recordingCompactHandle) LastAssistantText() *string { return h.lastAssistant }
+
+func (h *recordingCompactHandle) AvailableModelSnapshot() []*ai.Model { return nil }
+
 func (h *recordingCompactHandle) ScopedModels() []extension.ScopedModel {
 	return h.scopedModels
 }
