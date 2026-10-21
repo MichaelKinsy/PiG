@@ -47,7 +47,10 @@ func TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession(t *testing.T) {
 			return nil
 		}
 		pi.RegisterTool(extension.ToolDefinition{Name: "first", Parameters: []byte(objectSchema), PrepareLoadout: hook})
-		hooks = append(hooks[:0], hook)
+		// The Session's registry keeps the tool of the first load until the reload's rebuild replaces it.
+		if len(hooks) == 0 {
+			hooks = append(hooks, hook)
+		}
 		return nil
 	}
 	if _, err := factoryload.LoadExtensionFromFactory(first, ".", bus, runtime, "builtin:first"); err != nil {
