@@ -1,9 +1,11 @@
 import zlib from "node:zlib";
+import { readFileSync } from "node:fs";
+import * as piAi from "@earendil-works/pi-ai";
 import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
 const { Container } = piTui;
 import {
-  createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, VERSION, formatSize, DEFAULT_MAX_LINES, DEFAULT_MAX_BYTES, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
+  createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, getPackageDir, getShellConfig, generateDiffString, generateUnifiedPatch, sessionEntryToContextMessages, convertToPng, resizeImage, readStoredCredential, VERSION, formatSize, DEFAULT_MAX_LINES, DEFAULT_MAX_BYTES, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
   getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff,
 } from "@earendil-works/pi-coding-agent";
 
@@ -707,6 +709,70 @@ export default function (pi) {
       } catch { progress.add(`ended:${task.id}`); failed.push(task.id); }
     }));
     ctx.ui.notify(`file_queue:${JSON.stringify({ log, errors: failed.sort((a, b) => a - b) })}:end`, "info");
+  } });
+  // host_paths_probe reports getPackageDir() and getShellConfig() as the runtime answers them, for the default shell and for the existing and the missing custom shell path
+  // in args ("<existing>|<missing>") (TestConformance_HostPathsAgreeAcrossSDKs).
+  pi.registerCommand("host_paths_probe", { description: "Report getPackageDir and getShellConfig", handler: async (args, ctx) => {
+    const [existing, missing] = args.split("|");
+    const shell = (...custom) => {
+      try {
+        const config = getShellConfig(...custom);
+        return { shell: config.shell, args: config.args, ...(config.commandTransport ? { commandTransport: config.commandTransport } : {}) };
+      } catch (error) { return { error: error.message }; }
+    };
+    ctx.ui.notify(`host_paths:${JSON.stringify({ packageDir: getPackageDir(), default: shell(), custom: shell(existing), missing: shell(missing) })}:end`, "info");
+  } });
+  // host_helpers_probe runs the pi helpers over the golden file's inputs through Pi's own code (TestConformance_HostHelpersAgreeAcrossSDKs). args is
+  // "<golden>|<auth.json path>|<text to copy>". Pi's copyToClipboard runs in this process and writes the system clipboard, so it is not called here.
+  pi.registerCommand("host_helpers_probe", { description: "Run the pi helpers over the golden inputs", handler: async (args, ctx) => {
+    const [goldenPath, authPath] = args.split("|", 3);
+    const golden = JSON.parse(readFileSync(goldenPath, "utf8"));
+    const diffs = golden.diffs.map((c) => {
+      const lines = c.contextLines === undefined ? [] : [c.contextLines];
+      const report = { patch: generateUnifiedPatch(c.path ?? "src/a.ts", c.oldContent, c.newContent, ...lines) };
+      if (!c.patchOnly) { const diff = generateDiffString(c.oldContent, c.newContent, ...lines); report.diff = diff.diff; report.firstChangedLine = diff.firstChangedLine ?? null; }
+      return report;
+    });
+    const entries = golden.entries.map((c) => sessionEntryToContextMessages(c.entry));
+    const meta = (image) => (image ? { mimeType: image.mimeType, ...(image.originalWidth === undefined ? {} : { originalWidth: image.originalWidth, originalHeight: image.originalHeight, width: image.width, height: image.height, wasResized: image.wasResized }), decodes: image.data.length > 0 } : null);
+    const images = [];
+    for (const c of golden.images) {
+      if (c.op === "convert") images.push(meta(await convertToPng(c.data, c.mimeType)));
+      else { try { images.push(meta(await resizeImage(new Uint8Array(Buffer.from(c.data, "base64")), c.mimeType, c.options))); } catch { images.push(null); } }
+    }
+    const read = (provider, path) => readStoredCredential(provider, path) ?? null;
+    const creds = { explicit: read("anthropic", authPath), default: read("anthropic"), absentProvider: read("nobody", authPath), missingFile: read("anthropic", `${authPath}.missing`), notJSON: read("anthropic", `${authPath}.bad`) };
+    ctx.ui.notify(`host_helpers:${JSON.stringify({ diffs, entries, images, creds })}:end`, "info");
+  } });
+  // pi_ai_helpers_probe runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the test) through the runtime's pi-ai and
+  // reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).
+  pi.registerCommand("pi_ai_helpers_probe", { description: "Run the golden pi-ai helper calls", handler: async (args, ctx) => {
+    const golden = JSON.parse(readFileSync(args, "utf8"));
+    const cases = golden.cases.map((c) => {
+      const value = c.fn === "DEFAULT_MAX_AGENT_RETRY_DELAY_MS" ? piAi[c.fn] : piAi[c.fn](...c.args.map((arg) => (arg === null ? undefined : arg)));
+      return value === undefined ? [] : [value];
+    });
+    const signal = new AbortController().signal;
+    const auth = [];
+    for (const c of golden.auth.cases) {
+      const seen = [];
+      const result = await piAi.envApiKeyAuth(c.name, c.envVars).resolve({ ctx: { env: async (name) => { seen.push(name); return c.env[name]; } }, credential: c.credential ?? undefined, signal });
+      auth.push({ result: result ?? null, seen });
+    }
+    const prompts = [];
+    const credential = await piAi.envApiKeyAuth("Name", ["FIRST", "SECOND"]).login({ signal, prompt: async (request) => { prompts.push(request); return "typed-key"; } });
+    const timing = golden.timing.map((c) => {
+      const stream = piAi.createAssistantMessageEventStream();
+      const message = (isLater) => ({ role: "assistant", content: [], stopReason: c.kind === "error" ? "error" : "stop", ...(isLater || c.timestamp === "now" ? { timestamp: Date.now() } : c.timestamp === "old" ? { timestamp: 1 } : {}), ...(c.preset !== null && !isLater ? { durationMs: c.preset } : {}) });
+      const final = message(false);
+      const later = message(true);
+      if (c.kind === "done") stream.push({ type: "done", reason: "stop", message: final });
+      else if (c.kind === "error") stream.push({ type: "error", reason: "error", error: final });
+      else if (c.kind === "end") stream.end(final);
+      else { stream.push({ type: "done", reason: "stop", message: final }); stream.end(later); }
+      return { present: final.durationMs !== undefined, value: c.preset !== null && final.durationMs === c.preset ? c.preset : null, laterTimed: later.durationMs !== undefined };
+    });
+    ctx.ui.notify(`pi_ai_helpers:${JSON.stringify({ cases, timing, auth, login: { prompts, result: credential } })}:end`, "info");
   } });
   pi.registerCommand("host_info_probe", { description: "Report getAgentDir, CONFIG_DIR_NAME and VERSION", handler: async (_args, ctx) => {
     ctx.ui.notify(`host_info:${JSON.stringify({ agentDir: getAgentDir(), configDirName: CONFIG_DIR_NAME, version: VERSION, factoryAgentDir })}:end`, "info");

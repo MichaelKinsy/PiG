@@ -727,6 +727,29 @@ struct ModelStreamState {
     terminal: bool,
     result: Option<serde_json::Value>,
     started: Option<Result<(),String>>,
+    /// Set on a stream made by [`create_assistant_message_event_stream`]: when it was created, as Unix milliseconds and on a monotonic clock.
+    timing: Option<(i64, std::time::Instant)>,
+}
+
+/// `AssistantMessageEventStream`'s `#time` (`packages/ai/src/utils/event-stream.ts`): the final message gets `durationMs`, the milliseconds since the stream was created on a
+/// monotonic clock, unless the message already has one or its `timestamp` predates the stream (a response that started elsewhere, such as a deferred result fetched later, stays
+/// untimed).
+fn time_message(timing: Option<(i64, std::time::Instant)>, message: Option<&mut serde_json::Value>) {
+    let (Some((started_at, started)), Some(serde_json::Value::Object(message))) = (timing, message) else { return };
+    if message.contains_key("durationMs") || message.get("timestamp").and_then(serde_json::Value::as_f64).is_some_and(|timestamp| timestamp < started_at as f64) {
+        return;
+    }
+    message.insert("durationMs".into(), serde_json::json!((started.elapsed().as_secs_f64() * 1000.0).round().max(0.0) as u64));
+}
+
+/// Pi's `createAssistantMessageEventStream`: a provider-owned event stream of one assistant response. It times the response as Pi's does: the final message (the `done` event's
+/// `message`, the `error` event's `error`, or the result passed to [`ModelEventStream::end`]) gets `durationMs`, measured from this call, unless it already has one or its
+/// `timestamp` predates the stream.
+pub fn create_assistant_message_event_stream() -> Arc<ModelEventStream> {
+    let stream = ModelEventStream::new();
+    let started_at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |elapsed| elapsed.as_millis() as i64);
+    stream.state.lock().unwrap().timing = Some((started_at, std::time::Instant::now()));
+    Arc::new(stream)
 }
 
 pub struct ModelEventStream {
@@ -976,7 +999,7 @@ impl ModelEventStream {
     }
     pub(crate) fn mark_started(&self,error:Option<String>){let mut state=self.state.lock().unwrap();if state.started.is_none(){state.started=Some(error.map_or(Ok(()),Err));self.changed.notify_all();}}
     pub(crate) fn wait_started(&self)->Result<(),String>{let mut state=self.state.lock().unwrap();loop{if let Some(result)=&state.started{return result.clone()}state=self.changed.wait(state).unwrap();}}
-    pub fn push(&self, event: serde_json::Value) {
+    pub fn push(&self, mut event: serde_json::Value) {
         let mut state = self.state.lock().unwrap();
         if state.terminal {
             return;
@@ -985,6 +1008,8 @@ impl ModelEventStream {
             event.get("type").and_then(|v| v.as_str()),
             Some("done" | "error")
         ) {
+            let member = if event.get("type").and_then(|v| v.as_str()) == Some("done") { "message" } else { "error" };
+            time_message(state.timing, event.get_mut(member));
             state.terminal = true;
             state.result = if event.get("type").and_then(|v| v.as_str()) == Some("done") {
                 event.get("message").cloned()
@@ -995,11 +1020,12 @@ impl ModelEventStream {
         state.events.push_back(event);
         self.changed.notify_all();
     }
-    pub fn end(&self, result: serde_json::Value) {
+    pub fn end(&self, mut result: serde_json::Value) {
         let mut state = self.state.lock().unwrap();
         if state.terminal {
             return;
         };
+        time_message(state.timing, Some(&mut result));
         state.terminal = true;
         state.result = Some(result);
         self.changed.notify_all();
@@ -2074,6 +2100,36 @@ impl Context {
     pub fn parse_date(&self, text: &str) -> io::Result<Option<f64>> {
         let (method, args) = crate::host_helpers::date_args(text);
         crate::host_helpers::decode_date(self.call_host(method, Some(args))?)
+    }
+
+    /// Pi's `generateDiffString` over this handler's own connection; see [`crate::generate_diff_string`].
+    pub fn generate_diff_string(&self, old_content: &str, new_content: &str, context_lines: Option<i64>) -> io::Result<crate::DiffString> {
+        let (method, args) = crate::host_helpers::generate_diff_string_args(old_content, new_content, context_lines);
+        crate::host_helpers::decode_diff_string(self.call_host(method, Some(args))?)
+    }
+
+    /// Pi's `generateUnifiedPatch` over this handler's own connection; see [`crate::generate_unified_patch`].
+    pub fn generate_unified_patch(&self, path: &str, old_content: &str, new_content: &str, context_lines: Option<i64>) -> io::Result<String> {
+        let (method, args) = crate::host_helpers::generate_unified_patch_args(path, old_content, new_content, context_lines);
+        crate::host_helpers::decode_patch(self.call_host(method, Some(args))?)
+    }
+
+    /// Pi's `copyToClipboard` over this handler's own connection; see [`crate::copy_to_clipboard`].
+    pub fn copy_to_clipboard(&self, text: &str) -> io::Result<()> {
+        let (method, args) = crate::host_helpers::copy_to_clipboard_args(text);
+        self.call_host(method, Some(args)).map(|_| ())
+    }
+
+    /// Pi's `convertToPng` over this handler's own connection; see [`crate::convert_to_png`].
+    pub fn convert_to_png(&self, base64_data: &str, mime_type: &str) -> io::Result<Option<crate::ConvertedImage>> {
+        let (method, args) = crate::host_helpers::convert_to_png_args(base64_data, mime_type);
+        crate::host_helpers::decode_converted(self.call_host(method, Some(args))?)
+    }
+
+    /// Pi's `resizeImage` over this handler's own connection; see [`crate::resize_image`].
+    pub fn resize_image(&self, input: &[u8], mime_type: &str, options: Option<&crate::ImageResizeOptions>) -> io::Result<Option<crate::ResizedImage>> {
+        let (method, args) = crate::host_helpers::resize_image_args(input, mime_type, options);
+        crate::host_helpers::decode_resized(self.call_host(method, Some(args))?)
     }
 
     /// Low-level host call escape hatch. Prefer typed methods when available.

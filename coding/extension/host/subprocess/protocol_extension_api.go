@@ -207,6 +207,90 @@ const CallParseFrontmatter = "frontmatter.parse"
 // ParseDateArgs and the result a ParseDateResult. It may arrive before the register frame.
 const CallParseDate = "date.parse"
 
+// CallGenerateDiffString (ext→host) is Pi's generateDiffString (core/tools/edit-diff.ts): the line-numbered display diff of two texts and the first changed line of the new
+// one, from the host's byte-exact port. The args are a GenerateDiffStringArgs and the result a GenerateDiffStringResult. Like every pure helper it reads no session or
+// extension state and may arrive before the register frame.
+const CallGenerateDiffString = "diff.string"
+
+// CallGenerateUnifiedPatch (ext→host) is Pi's generateUnifiedPatch (core/tools/edit-diff.ts): a standard unified patch of two texts, from the host's port of jsdiff's
+// createTwoFilesPatch. The args are a GenerateUnifiedPatchArgs and the result a GenerateUnifiedPatchResult.
+const CallGenerateUnifiedPatch = "diff.patch"
+
+// CallCopyToClipboard (ext→host) is Pi's copyToClipboard (utils/clipboard.ts): the host copies text with the same strategy its own copy commands use. The args are a
+// CopyToClipboardArgs; the result is empty and a failed copy is the call's error.
+const CallCopyToClipboard = "clipboard.copy"
+
+// CallConvertToPng (ext→host) is Pi's convertToPng (utils/image-convert.ts): a base64 image as base64 PNG, or null when it does not decode. The args are a
+// ConvertToPngArgs and the result an ImageResult.
+const CallConvertToPng = "image.convertToPng"
+
+// CallResizeImage (ext→host) is Pi's resizeImage (utils/image-resize.ts): an image fitted within the option limits and the encoded size limit, or null when it cannot be.
+// The args are a ResizeImageArgs and the result an ImageResult.
+const CallResizeImage = "image.resize"
+
+// GenerateDiffStringArgs is the argument of CallGenerateDiffString; ContextLines is Pi's optional third parameter (default 4).
+type GenerateDiffStringArgs struct {
+	OldContent   string `json:"oldContent"`
+	NewContent   string `json:"newContent"`
+	ContextLines *int   `json:"contextLines,omitempty"`
+}
+
+// GenerateDiffStringResult is the result of CallGenerateDiffString: Pi's `{ diff, firstChangedLine }`, the line null when the texts do not differ.
+type GenerateDiffStringResult struct {
+	Diff             string `json:"diff"`
+	FirstChangedLine *int   `json:"firstChangedLine"`
+}
+
+// GenerateUnifiedPatchArgs is the argument of CallGenerateUnifiedPatch; ContextLines is Pi's optional fourth parameter (default 4).
+type GenerateUnifiedPatchArgs struct {
+	Path         string `json:"path"`
+	OldContent   string `json:"oldContent"`
+	NewContent   string `json:"newContent"`
+	ContextLines *int   `json:"contextLines,omitempty"`
+}
+
+// GenerateUnifiedPatchResult is the result of CallGenerateUnifiedPatch.
+type GenerateUnifiedPatchResult struct {
+	Patch string `json:"patch"`
+}
+
+// CopyToClipboardArgs is the argument of CallCopyToClipboard.
+type CopyToClipboardArgs struct {
+	Text string `json:"text"`
+}
+
+// ConvertToPngArgs is the argument of CallConvertToPng: Pi's `(base64Data, mimeType)`.
+type ConvertToPngArgs struct {
+	Data     string `json:"data"`
+	MimeType string `json:"mimeType"`
+}
+
+// ResizeImageArgs is the argument of CallResizeImage: Pi's `(inputBytes, mimeType, options?)` with the bytes in base64.
+type ResizeImageArgs struct {
+	Data     string `json:"data"`
+	MimeType string `json:"mimeType"`
+	Options  *struct {
+		MaxWidth    int `json:"maxWidth,omitempty"`
+		MaxHeight   int `json:"maxHeight,omitempty"`
+		MaxBytes    int `json:"maxBytes,omitempty"`
+		JPEGQuality int `json:"jpegQuality,omitempty"`
+	} `json:"options,omitempty"`
+}
+
+// ImageResult is the result of CallConvertToPng and CallResizeImage: the image, or null (Pi's null). A converted image has Data and MimeType only; a resized one also the
+// sizes Pi's ResizedImage carries.
+type ImageResult struct {
+	Image *struct {
+		Data           string `json:"data"`
+		MimeType       string `json:"mimeType"`
+		OriginalWidth  *int   `json:"originalWidth,omitempty"`
+		OriginalHeight *int   `json:"originalHeight,omitempty"`
+		Width          *int   `json:"width,omitempty"`
+		Height         *int   `json:"height,omitempty"`
+		WasResized     *bool  `json:"wasResized,omitempty"`
+	} `json:"image"`
+}
+
 // ParseFrontmatterArgs is the argument of CallParseFrontmatter.
 type ParseFrontmatterArgs struct {
 	Content string `json:"content"`

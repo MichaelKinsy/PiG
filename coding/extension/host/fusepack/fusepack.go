@@ -7,6 +7,7 @@
 package fusepack
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net"
 	"sort"
@@ -65,6 +66,36 @@ func HostHelpers() *sdk.HostHelpers {
 			return sdk.ParsedFrontmatter{Frontmatter: frontmatter, Body: body}, err
 		},
 		ParseDate: subprocess.ParseDateMs,
+		GenerateDiffString: func(oldContent, newContent string, contextLines *int) sdk.DiffString {
+			result := subprocess.GenerateDiffString(oldContent, newContent, contextLines)
+			return sdk.DiffString{Diff: result.Diff, FirstChangedLine: result.FirstChangedLine}
+		},
+		GenerateUnifiedPatch: subprocess.GenerateUnifiedPatch,
+		CopyToClipboard:      subprocess.CopyToClipboard,
+		ConvertToPng: func(data, mimeType string) (sdk.ConvertedImage, bool) {
+			result := subprocess.ConvertToPng(data, mimeType)
+			if result.Image == nil {
+				return sdk.ConvertedImage{}, false
+			}
+			return sdk.ConvertedImage{Data: result.Image.Data, MimeType: result.Image.MimeType}, true
+		},
+		ResizeImage: func(input []byte, mimeType string, options *sdk.ImageResizeOptions) (sdk.ResizedImage, bool, error) {
+			args := subprocess.ResizeImageArgs{Data: base64.StdEncoding.EncodeToString(input), MimeType: mimeType}
+			if options != nil {
+				args.Options = &struct {
+					MaxWidth    int `json:"maxWidth,omitempty"`
+					MaxHeight   int `json:"maxHeight,omitempty"`
+					MaxBytes    int `json:"maxBytes,omitempty"`
+					JPEGQuality int `json:"jpegQuality,omitempty"`
+				}{options.MaxWidth, options.MaxHeight, options.MaxBytes, options.JPEGQuality}
+			}
+			result, err := subprocess.ResizeImage(args)
+			if err != nil || result.Image == nil {
+				return sdk.ResizedImage{}, false, err
+			}
+			image := result.Image
+			return sdk.ResizedImage{Data: image.Data, MimeType: image.MimeType, OriginalWidth: float64(*image.OriginalWidth), OriginalHeight: float64(*image.OriginalHeight), Width: float64(*image.Width), Height: float64(*image.Height), WasResized: *image.WasResized}, true, nil
+		},
 	}
 }
 

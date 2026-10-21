@@ -1,0 +1,84 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-ai@1.3.0",
+ "module": "pi-ai",
+ "export": "getModelType",
+ "cases": [
+  {
+   "name": "case 0001",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x"
+    }
+   ],
+   "result": "chat"
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x",
+     "type": "chat"
+    }
+   ],
+   "result": "chat"
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x",
+     "type": "image"
+    }
+   ],
+   "result": "image"
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "y",
+     "type": "classifier"
+    }
+   ],
+   "result": "classifier"
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    {
+     "id": "b",
+     "provider": "p",
+     "api": "x"
+    }
+   ],
+   "result": "chat"
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    {
+     "id": "a",
+     "provider": "q",
+     "api": "x"
+    }
+   ],
+   "result": "chat"
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    {}
+   ],
+   "result": "chat"
+  }
+ ]
+}

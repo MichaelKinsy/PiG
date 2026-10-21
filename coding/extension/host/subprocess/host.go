@@ -1012,12 +1012,29 @@ func (h *Host) SetMode(mode string) {
 	h.mode = mode
 }
 
-// HostInfo is the host's answer to Pi's getAgentDir(), CONFIG_DIR_NAME and VERSION (config.ts). Every extension process receives it in PIG_EXT_HOST_INFO, so an SDK
-// returns the host's own values instead of rederiving them from an environment it may not share.
+// HostInfo is the host's answer to Pi's getAgentDir(), CONFIG_DIR_NAME, VERSION, getPackageDir() and the default getShellConfig() (config.ts, utils/shell.ts). Every
+// extension process receives it in PIG_EXT_HOST_INFO, so an SDK returns the host's own values instead of rederiving them from an environment it may not share.
 type HostInfo struct {
 	AgentDir      string
 	ConfigDirName string
 	Version       string
+	// PackageDir is getPackageDir(): PI_PACKAGE_DIR when set, else the directory of the host executable (Pi's own answer for a compiled binary).
+	PackageDir string
+	// Shell resolves getShellConfig() with no custom shell path. It runs when an extension process starts, not when the host records it: finding a shell may start
+	// a process. A nil Shell sends none.
+	Shell func() *ShellInfo
+}
+
+func (i HostInfo) empty() bool {
+	return i.AgentDir == "" && i.ConfigDirName == "" && i.Version == "" && i.PackageDir == "" && i.Shell == nil
+}
+
+// ShellInfo is Pi's ShellConfig, or the error getShellConfig() throws when no shell is found.
+type ShellInfo struct {
+	Shell            string   `json:"shell,omitempty"`
+	Args             []string `json:"args,omitempty"`
+	CommandTransport string   `json:"commandTransport,omitempty"`
+	Error            string   `json:"error,omitempty"`
 }
 
 // SetHostInfo records the configuration facts every extension process starts with.
@@ -1025,8 +1042,8 @@ func (h *Host) SetHostInfo(info HostInfo) {
 	h.hostInfo = info
 }
 
-// hostInfoEnv is the PIG_EXT_HOST_INFO environment entry every extension process starts with: Pi's getAgentDir(), CONFIG_DIR_NAME and VERSION are callable while
-// an extension's factory runs, before the host's ready message, so the process needs them at start. An empty HostInfo sends no entry.
+// hostInfoEnv is the PIG_EXT_HOST_INFO environment entry every extension process starts with: Pi's getAgentDir(), CONFIG_DIR_NAME, VERSION, getPackageDir() and
+// getShellConfig() are callable while an extension's factory runs, before the host's ready message, so the process needs them at start. An empty HostInfo sends no entry.
 func (h *Host) hostInfoEnv() []string {
 	value, ok := h.hostInfoValue()
 	if !ok {
@@ -1037,11 +1054,20 @@ func (h *Host) hostInfoEnv() []string {
 
 // hostInfoValue is the PIG_EXT_HOST_INFO value, or false for an empty HostInfo.
 func (h *Host) hostInfoValue() (string, bool) {
-	if h.hostInfo == (HostInfo{}) {
+	if h.hostInfo.empty() {
 		return "", false
 	}
-	//portlint:allow mapkeyorder PiG-only env entry the Go, Rust and Python SDKs read by member name (extensions/sdk/host_info.go:28); its three keys are written in sorted order already
-	data, err := json.Marshal(map[string]string{"agentDir": h.hostInfo.AgentDir, "configDirName": h.hostInfo.ConfigDirName, "version": h.hostInfo.Version}) //portlint:allow jsonescape PiG-only env entry; every SDK's JSON parser decodes \u003c and \u0026 to the same path text
+	wire := struct {
+		AgentDir      string     `json:"agentDir"`
+		ConfigDirName string     `json:"configDirName"`
+		PackageDir    string     `json:"packageDir,omitempty"`
+		Shell         *ShellInfo `json:"shell,omitempty"`
+		Version       string     `json:"version"`
+	}{AgentDir: h.hostInfo.AgentDir, ConfigDirName: h.hostInfo.ConfigDirName, PackageDir: h.hostInfo.PackageDir, Version: h.hostInfo.Version}
+	if h.hostInfo.Shell != nil {
+		wire.Shell = h.hostInfo.Shell()
+	}
+	data, err := json.Marshal(wire) //portlint:allow jsonescape PiG-only env entry; every SDK's JSON parser decodes \u003c and \u0026 to the same path text
 	if err != nil {
 		return "", false
 	}

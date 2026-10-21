@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,10 +9,14 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/frontmatter"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/nodebase64"
 	"github.com/MichaelKinsy/PiG/internal/yaml12"
 )
 
@@ -173,4 +178,164 @@ func quoteJS(text string) string {
 	}
 	out.WriteByte('"')
 	return out.String()
+}
+
+// clipboardCopier is the host's copy command, which the CLI installs; the helpers below serve Pi's copyToClipboard through it. It is process-wide because a fused extension
+// calls the helper directly, with no Host in hand.
+var clipboardCopier atomic.Pointer[func(string) error]
+
+// SetClipboardCopier installs the host's copy function (Pi's copyToClipboard); nil removes it. CopyToClipboard fails while none is installed.
+func SetClipboardCopier(copy func(text string) error) {
+	if copy == nil {
+		clipboardCopier.Store(nil)
+		return
+	}
+	clipboardCopier.Store(&copy)
+}
+
+// CopyToClipboard is Pi's copyToClipboard through the host's copy function. The CallCopyToClipboard handler and the fused extensions' SDK hook share it.
+func CopyToClipboard(text string) error {
+	copier := clipboardCopier.Load()
+	if copier == nil {
+		return errors.New("clipboard: the host has no copy function")
+	}
+	return (*copier)(text)
+}
+
+// GenerateDiffString is Pi's generateDiffString over the host's port; contextLines nil is Pi's default of 4.
+func GenerateDiffString(oldContent, newContent string, contextLines *int) GenerateDiffStringResult {
+	var result tools.DiffStringResult
+	if contextLines == nil {
+		result = tools.GenerateDiffString(oldContent, newContent)
+	} else {
+		result = tools.GenerateDiffString(oldContent, newContent, *contextLines)
+	}
+	return GenerateDiffStringResult{Diff: result.Diff, FirstChangedLine: result.FirstChangedLine}
+}
+
+// GenerateUnifiedPatch is Pi's generateUnifiedPatch over the host's port; contextLines nil is Pi's default of 4.
+func GenerateUnifiedPatch(path, oldContent, newContent string, contextLines *int) string {
+	if contextLines == nil {
+		return tools.GenerateUnifiedPatch(path, oldContent, newContent)
+	}
+	return tools.GenerateUnifiedPatch(path, oldContent, newContent, *contextLines)
+}
+
+// ConvertToPng is Pi's convertToPng over the host's image code: nil is Pi's null.
+func ConvertToPng(data, mimeType string) *ImageResult {
+	// convertToPng returns a PNG as it is and converts anything else, null when it does not decode (utils/image-convert.ts).
+	convertedData, convertedMime := data, mimeType
+	if mimeType != "image/png" {
+		png := imageprocessing.ConvertImageBytesToPng(nodebase64.Decode(data))
+		if png == nil {
+			return &ImageResult{}
+		}
+		convertedData, convertedMime = base64.StdEncoding.EncodeToString(png), "image/png"
+	}
+	result := &ImageResult{Image: new(struct {
+		Data           string `json:"data"`
+		MimeType       string `json:"mimeType"`
+		OriginalWidth  *int   `json:"originalWidth,omitempty"`
+		OriginalHeight *int   `json:"originalHeight,omitempty"`
+		Width          *int   `json:"width,omitempty"`
+		Height         *int   `json:"height,omitempty"`
+		WasResized     *bool  `json:"wasResized,omitempty"`
+	})}
+	result.Image.Data, result.Image.MimeType = convertedData, convertedMime
+	return result
+}
+
+// ResizeImage is Pi's resizeImage over the host's image code: a nil Image is Pi's null.
+func ResizeImage(args ResizeImageArgs) (*ImageResult, error) {
+	input, err := base64.StdEncoding.DecodeString(args.Data)
+	if err != nil {
+		return nil, fmt.Errorf("decode image: %w", err)
+	}
+	var options *ai.ModelImageResizeOptions
+	if args.Options != nil {
+		options = &ai.ModelImageResizeOptions{MaxWidth: args.Options.MaxWidth, MaxHeight: args.Options.MaxHeight, MaxBytes: args.Options.MaxBytes, JPEGQuality: args.Options.JPEGQuality}
+	}
+	resized, err := imageprocessing.ResizeImage(input, args.MimeType, options)
+	if err != nil {
+		return &ImageResult{}, nil
+	}
+	result := &ImageResult{Image: new(struct {
+		Data           string `json:"data"`
+		MimeType       string `json:"mimeType"`
+		OriginalWidth  *int   `json:"originalWidth,omitempty"`
+		OriginalHeight *int   `json:"originalHeight,omitempty"`
+		Width          *int   `json:"width,omitempty"`
+		Height         *int   `json:"height,omitempty"`
+		WasResized     *bool  `json:"wasResized,omitempty"`
+	})}
+	result.Image.Data, result.Image.MimeType = resized.Data, resized.MimeType
+	result.Image.OriginalWidth, result.Image.OriginalHeight, result.Image.Width, result.Image.Height, result.Image.WasResized = &resized.OriginalWidth, &resized.OriginalHeight, &resized.Width, &resized.Height, &resized.WasResized
+	return result, nil
+}
+
+func decodeArgs(call *CallPayload, into any) error {
+	if err := json.Unmarshal(call.Args, into); err != nil {
+		return fmt.Errorf("decode %s: %w", call.Method, err)
+	}
+	return nil
+}
+
+func jsonResult(value any) (*CallResultPayload, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: data}, nil
+}
+
+// handleGenerateDiffString serves CallGenerateDiffString.
+func (h *Host) handleGenerateDiffString(call *CallPayload) (*CallResultPayload, error) {
+	var args GenerateDiffStringArgs
+	if err := decodeArgs(call, &args); err != nil {
+		return nil, err
+	}
+	return jsonResult(GenerateDiffString(args.OldContent, args.NewContent, args.ContextLines))
+}
+
+// handleGenerateUnifiedPatch serves CallGenerateUnifiedPatch.
+func (h *Host) handleGenerateUnifiedPatch(call *CallPayload) (*CallResultPayload, error) {
+	var args GenerateUnifiedPatchArgs
+	if err := decodeArgs(call, &args); err != nil {
+		return nil, err
+	}
+	return jsonResult(GenerateUnifiedPatchResult{Patch: GenerateUnifiedPatch(args.Path, args.OldContent, args.NewContent, args.ContextLines)})
+}
+
+// handleCopyToClipboard serves CallCopyToClipboard.
+func (h *Host) handleCopyToClipboard(call *CallPayload) (*CallResultPayload, error) {
+	var args CopyToClipboardArgs
+	if err := decodeArgs(call, &args); err != nil {
+		return nil, err
+	}
+	if err := CopyToClipboard(args.Text); err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: []byte(`{}`)}, nil
+}
+
+// handleConvertToPng serves CallConvertToPng.
+func (h *Host) handleConvertToPng(call *CallPayload) (*CallResultPayload, error) {
+	var args ConvertToPngArgs
+	if err := decodeArgs(call, &args); err != nil {
+		return nil, err
+	}
+	return jsonResult(ConvertToPng(args.Data, args.MimeType))
+}
+
+// handleResizeImage serves CallResizeImage.
+func (h *Host) handleResizeImage(call *CallPayload) (*CallResultPayload, error) {
+	var args ResizeImageArgs
+	if err := decodeArgs(call, &args); err != nil {
+		return nil, err
+	}
+	result, err := ResizeImage(args)
+	if err != nil {
+		return nil, err
+	}
+	return jsonResult(result)
 }

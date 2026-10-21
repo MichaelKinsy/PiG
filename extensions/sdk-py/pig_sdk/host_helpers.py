@@ -2,6 +2,7 @@
 and Date.parse (the host's port of V8's). They read no session state, so the host serves them before an extension registers, and a helper called while the
 factory runs (before ``run``) dials the host itself: the first call opens the connection and ``run`` later reuses it. A call from a handler uses the
 handler's own connection (``ctx.parse_frontmatter``, ``ctx.parse_date``)."""
+import base64
 import json
 import os
 import struct
@@ -9,8 +10,16 @@ import threading
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
+from .image_dimension_note import ResizedImage
+
 _CALL_PARSE_FRONTMATTER = "frontmatter.parse"
 _CALL_PARSE_DATE = "date.parse"
+# The host's ports of Pi's generateDiffString, generateUnifiedPatch, copyToClipboard, convertToPng and resizeImage.
+_CALL_GENERATE_DIFF_STRING = "diff.string"
+_CALL_GENERATE_UNIFIED_PATCH = "diff.patch"
+_CALL_COPY_TO_CLIPBOARD = "clipboard.copy"
+_CALL_CONVERT_TO_PNG = "image.convertToPng"
+_CALL_RESIZE_IMAGE = "image.resize"
 
 
 @dataclass(frozen=True)
@@ -57,6 +66,103 @@ def parse_date(text: str) -> Optional[float]:
     if hook is not None and hook[1] is not None:
         return hook[1](text)
     return _decode_date(_helper_call(_CALL_PARSE_DATE, {"text": text}))
+
+
+@dataclass(frozen=True)
+class DiffString:
+    """The result of generate_diff_string: Pi's ``{ diff, firstChangedLine }``. ``first_changed_line`` is None when the texts do not differ (undefined in Pi)."""
+
+    diff: str
+    first_changed_line: Optional[int]
+
+
+@dataclass(frozen=True)
+class ConvertedImage:
+    """The result of convert_to_png: Pi's ``{ data, mimeType }``."""
+
+    data: str
+    mime_type: str
+
+
+@dataclass(frozen=True)
+class ImageResizeOptions:
+    """Pi's ImageResizeOptions (utils/image-resize-core.ts). None takes Pi's default."""
+
+    max_width: Optional[int] = None
+    max_height: Optional[int] = None
+    max_bytes: Optional[int] = None
+    jpeg_quality: Optional[int] = None
+
+
+def _diff_args(old_content: str, new_content: str, context_lines: Optional[int]) -> dict:
+    args: dict = {"oldContent": old_content, "newContent": new_content}
+    if context_lines is not None:
+        args["contextLines"] = context_lines
+    return args
+
+
+def _patch_args(path: str, old_content: str, new_content: str, context_lines: Optional[int]) -> dict:
+    return {**_diff_args(old_content, new_content, context_lines), "path": path}
+
+
+def _resize_args(input_bytes: bytes, mime_type: str, options: Optional[ImageResizeOptions]) -> dict:
+    args: dict = {"data": base64.b64encode(bytes(input_bytes)).decode("ascii"), "mimeType": mime_type}
+    if options is not None:
+        wire = {"maxWidth": options.max_width, "maxHeight": options.max_height, "maxBytes": options.max_bytes, "jpegQuality": options.jpeg_quality}
+        args["options"] = {key: value for key, value in wire.items() if value is not None}
+    return args
+
+
+def _decode_diff_string(result: Any) -> DiffString:
+    return DiffString(diff=result.get("diff", ""), first_changed_line=result.get("firstChangedLine"))
+
+
+def _decode_converted(result: Any) -> Optional[ConvertedImage]:
+    image = result.get("image")
+    return None if not isinstance(image, dict) else ConvertedImage(data=image.get("data", ""), mime_type=image.get("mimeType", ""))
+
+
+def _decode_resized(result: Any) -> Optional[ResizedImage]:
+    image = result.get("image")
+    if not isinstance(image, dict):
+        return None
+
+    def number(key: str) -> float:
+        value = image.get(key)
+        return float("nan") if value is None else float(value)
+
+    return ResizedImage(number("originalWidth"), number("originalHeight"), number("width"), number("height"), bool(image.get("wasResized")), image.get("data", ""), image.get("mimeType", ""))
+
+
+def generate_diff_string(old_content: str, new_content: str, context_lines: Optional[int] = None) -> DiffString:
+    """Pi's generateDiffString (core/tools/edit-diff.ts, exported from index.ts): the line-numbered display diff of two texts, with the context around each change cut to
+    ``context_lines`` (default 4) lines, and the first changed line of the new text. The host's byte-exact port answers. It may be called before ``run``."""
+    return _decode_diff_string(_helper_call(_CALL_GENERATE_DIFF_STRING, _diff_args(old_content, new_content, context_lines)))
+
+
+def generate_unified_patch(path: str, old_content: str, new_content: str, context_lines: Optional[int] = None) -> str:
+    """Pi's generateUnifiedPatch (core/tools/edit-diff.ts, exported from index.ts): a standard unified patch of two texts for one path, with ``context_lines`` (default 4)
+    lines of context around each change. The host's port of jsdiff answers. It may be called before ``run``."""
+    return _helper_call(_CALL_GENERATE_UNIFIED_PATCH, _patch_args(path, old_content, new_content, context_lines)).get("patch", "")
+
+
+def copy_to_clipboard(text: str) -> None:
+    """Pi's copyToClipboard (utils/clipboard.ts, exported from index.ts): the host copies ``text`` with the strategy its own copy commands use, and a failed copy raises
+    ``HostCallError``. It may be called before ``run``."""
+    _helper_call(_CALL_COPY_TO_CLIPBOARD, {"text": text})
+
+
+def convert_to_png(base64_data: str, mime_type: str) -> Optional[ConvertedImage]:
+    """Pi's convertToPng (utils/image-convert.ts, exported from index.ts): base64 image data as base64 PNG data, which a PNG already is. None, as Pi's null, when the data
+    does not decode. It may be called before ``run``."""
+    return _decode_converted(_helper_call(_CALL_CONVERT_TO_PNG, {"data": base64_data, "mimeType": mime_type}))
+
+
+def resize_image(input_bytes: bytes, mime_type: str, options: Optional[ImageResizeOptions] = None) -> Optional[ResizedImage]:
+    """Pi's resizeImage (utils/image-resize.ts, exported from index.ts): the image fitted within the option limits (2000 pixels on a side, 4.5 MiB encoded unless
+    ``options`` say otherwise), as the host's image code does it. None, as Pi's null, when the image cannot be made to fit. An image already within every limit comes back
+    as it was. It may be called before ``run``."""
+    return _decode_resized(_helper_call(_CALL_RESIZE_IMAGE, _resize_args(input_bytes, mime_type, options)))
 
 
 def _decode_frontmatter(result: Any) -> ParsedFrontmatter:

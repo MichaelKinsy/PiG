@@ -316,7 +316,7 @@ fn main() {
             json!(pig_sdk::convert_to_llm(case["messages"].as_array().map(Vec::as_slice).unwrap_or(&[])))
         } else {
             let i = &case["image"];
-            let image = pig_sdk::ResizedImage { original_width: i["originalWidth"].as_f64().unwrap_or(0.0), original_height: i["originalHeight"].as_f64().unwrap_or(0.0), width: i["width"].as_f64().unwrap_or(0.0), height: i["height"].as_f64().unwrap_or(0.0), was_resized: i["wasResized"].as_bool().unwrap_or(false) };
+            let image = pig_sdk::ResizedImage { original_width: i["originalWidth"].as_f64().unwrap_or(0.0), original_height: i["originalHeight"].as_f64().unwrap_or(0.0), width: i["width"].as_f64().unwrap_or(0.0), height: i["height"].as_f64().unwrap_or(0.0), was_resized: i["wasResized"].as_bool().unwrap_or(false), ..Default::default() };
             json!(pig_sdk::format_dimension_note(&image))
         };
         ctx.notify(&format!("convert:{}:end", json!({"result": result})), "info");
@@ -641,6 +641,46 @@ fn main() {
         failed.sort_unstable();
         ctx.notify(&format!("file_queue:{}:end", json!({"log": *log.lock().unwrap(), "errors": failed})), "info");
         CommandResult::Ok
+    });
+    // host_paths_probe reports getPackageDir() and getShellConfig() as this SDK answers them, for the default shell and for the existing and the missing custom shell path
+    // in args ("<existing>|<missing>") (TestConformance_HostPathsAgreeAcrossSDKs).
+    ext.command("host_paths_probe", "Report getPackageDir and getShellConfig", |ctx, args| {
+        let (existing, missing) = args.split_once('|').unwrap_or((args, ""));
+        let shell = |custom: Option<&str>| match pig_sdk::get_shell_config(custom) {
+            Ok(config) => {
+                let mut report = json!({"shell": config.shell, "args": config.args});
+                if let Some(transport) = config.command_transport {
+                    report["commandTransport"] = json!(transport);
+                }
+                report
+            }
+            Err(err) => json!({"error": err.to_string()}),
+        };
+        match pig_sdk::get_package_dir() {
+            Ok(package_dir) => {
+                ctx.notify(&format!("host_paths:{}:end", json!({"packageDir": package_dir, "default": shell(None), "custom": shell(Some(existing)), "missing": shell(Some(missing))})), "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // host_helpers_probe runs the host-served pi helpers over the golden file's inputs (TestConformance_HostHelpersAgreeAcrossSDKs). args is
+    // "<golden>|<auth.json path>|<text to copy>".
+    ext.command("host_helpers_probe", "Run the host-served pi helpers over the golden inputs", |ctx, args| match host_helpers_probe(&ctx, &args) {
+        Ok(report) => {
+            ctx.notify(&format!("host_helpers:{report}:end"), "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err),
+    });
+    // pi_ai_helpers_probe runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the test) through this SDK's pi-ai
+    // helpers and reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).
+    ext.command("pi_ai_helpers_probe", "Run the golden pi-ai helper calls", |ctx, args| match pi_ai_helpers_probe(&args) {
+        Ok(report) => {
+            ctx.notify(&format!("pi_ai_helpers:{report}:end"), "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err),
     });
     // host_info_probe reports Pi's getAgentDir(), CONFIG_DIR_NAME and VERSION as this SDK answers them (TestConformance_HostConfigurationAgreesAcrossSDKs).
     ext.command("host_info_probe", "Report getAgentDir, CONFIG_DIR_NAME and VERSION", move |ctx, _args| {
@@ -3072,4 +3112,211 @@ fn conformance_bash_operations() -> pig_sdk::BashOperations {
             other => Err(format!("exec failed: {other}")),
         }),
     }
+}
+
+fn pi_ai_helpers_call(name: &str, args: &[Value]) -> Result<Option<Value>, String> {
+    let a = |i: usize| &args[i];
+    let messages = |i: usize| a(i).as_array().cloned().unwrap_or_default();
+    let flag = |i: usize| a(i).as_bool().unwrap_or_default();
+    Ok(Some(match name {
+        "StringEnum" => {
+            let values: Vec<&str> = a(0).as_array().unwrap().iter().filter_map(Value::as_str).collect();
+            let options = args.get(1).map(|o| pig_sdk::StringEnumOptions { description: o.get("description").and_then(Value::as_str).map(String::from), default: o.get("default").and_then(Value::as_str).map(String::from) });
+            pig_sdk::string_enum(&values, options.as_ref())
+        }
+        "getSupportedThinkingLevels" => json!(pig_sdk::get_supported_thinking_levels(a(0))),
+        "clampThinkingLevel" => json!(pig_sdk::clamp_thinking_level(a(0), a(1).as_str().unwrap_or_default())),
+        "calculateCost" => pig_sdk::calculate_cost(a(0), &mut a(1).clone())?,
+        "contentText" => json!(pig_sdk::content_text(Some(a(0)), args.get(1).and_then(Value::as_str).unwrap_or("\n"))?),
+        "getCurrentTools" => json!(pig_sdk::get_current_tools(&messages(0))),
+        "getCurrentSystemMessage" => return pig_sdk::get_current_system_message(&messages(0)),
+        "getCurrentSystemPrompt" => json!(pig_sdk::get_current_system_prompt(&messages(0))?),
+        "getInitialSystemMessage" => return Ok(pig_sdk::get_initial_system_message(&messages(0)).cloned()),
+        "getDeclaredTools" => json!(pig_sdk::get_declared_tools(&messages(0))),
+        "hasNonAdditiveToolChanges" => json!(pig_sdk::has_non_additive_tool_changes(&messages(0))),
+        "resolveTranscriptTools" => {
+            let resolved = pig_sdk::resolve_transcript_tools(&messages(0), flag(1));
+            json!({ "requestTools": resolved.request_tools, "anchorsAdditions": resolved.anchors_additions })
+        }
+        "collapseSystemMessages" => pig_sdk::collapse_system_messages(a(0))?,
+        "resolveTranscript" => pig_sdk::resolve_transcript(a(0), flag(1))?,
+        "withoutInitialSystemMessage" => json!(pig_sdk::without_initial_system_message(&messages(0))),
+        "normalizeContext" => pig_sdk::normalize_context(a(0)),
+        "createInitialSystemMessage" => {
+            let tools = args.get(1).filter(|tools| !tools.is_null()).map(|tools| tools.as_array().cloned().unwrap_or_default());
+            return Ok(pig_sdk::create_initial_system_message(a(0).as_str(), tools.as_deref()));
+        }
+        "getSystemMessageText" => json!(pig_sdk::get_system_message_text(a(0))?),
+        "renderSystemMessageUpdate" => json!(pig_sdk::render_system_message_update(a(0))?),
+        "getModelType" => json!(pig_sdk::get_model_type(a(0))),
+        "isModelType" => json!(pig_sdk::is_model_type(a(0), a(1).as_str().unwrap_or_default())),
+        "hasApi" => json!(pig_sdk::has_api(a(0), a(1).as_str().unwrap_or_default())),
+        "modelsAreEqual" => json!(pig_sdk::models_are_equal(Some(a(0)).filter(|first| !first.is_null()), Some(a(1)).filter(|other| !other.is_null()))),
+        "isRetryableAssistantError" => json!(pig_sdk::is_retryable_assistant_error(a(0))),
+        "isContextOverflow" => json!(pig_sdk::is_context_overflow(a(0), args.get(1).and_then(Value::as_f64))),
+        "isRecoverableLength" => json!(pig_sdk::is_recoverable_length(a(0), a(1).as_f64().unwrap_or_default())),
+        "retryDelayMs" => {
+            let policy = pig_sdk::RetryPolicy { base_delay_ms: a(0)["baseDelayMs"].as_f64().unwrap_or_default(), max_agent_delay_ms: a(0).get("maxAgentDelayMs").and_then(Value::as_f64) };
+            json!(pig_sdk::retry_delay_ms(&policy, a(1).as_i64().unwrap_or_default()))
+        }
+        "DEFAULT_MAX_AGENT_RETRY_DELAY_MS" => json!(pig_sdk::DEFAULT_MAX_AGENT_RETRY_DELAY_MS),
+        other => return Err(format!("no Rust counterpart for {other}")),
+    }))
+}
+
+fn pi_ai_helpers_probe(path: &str) -> Result<Value, String> {
+    let golden: Value = serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    let mut cases = Vec::new();
+    for case in golden["cases"].as_array().ok_or("no cases")? {
+        let name = case["fn"].as_str().unwrap_or_default();
+        let value = pi_ai_helpers_call(name, case["args"].as_array().unwrap_or(&Vec::new())).map_err(|e| format!("{name}: {e}"))?;
+        cases.push(Value::Array(value.into_iter().collect()));
+    }
+    let mut auth = Vec::new();
+    for case in golden["auth"]["cases"].as_array().ok_or("no auth cases")? {
+        let vars: Vec<&str> = case["envVars"].as_array().unwrap().iter().filter_map(Value::as_str).collect();
+        let env = case["env"].clone();
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let seen_in = seen.clone();
+        let input = pig_sdk::APIKeyAuthInput {
+            ctx: pig_sdk::AuthContext {
+                env: Arc::new(move |name| {
+                    seen_in.lock().unwrap().push(name.clone());
+                    Ok(env.get(&name).and_then(Value::as_str).map(String::from))
+                }),
+                file_exists: Arc::new(|_| Ok(false)),
+            },
+            credential: case.get("credential").filter(|c| !c.is_null()).cloned(),
+            signal: pig_sdk::ProviderSignal::default(),
+        };
+        let result = (pig_sdk::env_api_key_auth(case["name"].as_str().unwrap_or_default(), &vars).resolve)(input)?;
+        auth.push(json!({ "result": result.map(|r| serde_json::to_value(r).unwrap()), "seen": *seen.lock().unwrap() }));
+    }
+    let prompts = Arc::new(Mutex::new(Vec::new()));
+    let prompts_in = prompts.clone();
+    let credential = (pig_sdk::env_api_key_auth("Name", &["FIRST", "SECOND"]).login.unwrap())(pig_sdk::AuthInteraction {
+        signal: pig_sdk::ProviderSignal::default(),
+        prompt: Arc::new(move |request| {
+            prompts_in.lock().unwrap().push(request);
+            Ok("typed-key".to_string())
+        }),
+        notify: Arc::new(|_| Ok(())),
+    })?;
+    let now = || std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |elapsed| elapsed.as_millis() as u64);
+    let mut timing = Vec::new();
+    for case in golden["timing"].as_array().ok_or("no timing")? {
+        let stream = pig_sdk::create_assistant_message_event_stream();
+        let kind = case["kind"].as_str().unwrap_or_default();
+        let message = |is_later: bool| {
+            let mut message = json!({ "role": "assistant", "content": [], "stopReason": if kind == "error" { "error" } else { "stop" } });
+            match case["timestamp"].as_str().unwrap_or_default() {
+                _ if is_later => message["timestamp"] = json!(now()),
+                "now" => message["timestamp"] = json!(now()),
+                "old" => message["timestamp"] = json!(1),
+                _ => {}
+            }
+            if !case["preset"].is_null() && !is_later {
+                message["durationMs"] = case["preset"].clone();
+            }
+            message
+        };
+        let (final_message, later) = (message(false), message(true));
+        let delivered = match kind {
+            "done" => {
+                stream.push(json!({ "type": "done", "reason": "stop", "message": final_message }));
+                stream.next().unwrap()["message"].clone()
+            }
+            "error" => {
+                stream.push(json!({ "type": "error", "reason": "error", "error": final_message }));
+                stream.next().unwrap()["error"].clone()
+            }
+            "end" => {
+                stream.end(final_message);
+                stream.result().unwrap()
+            }
+            _ => {
+                stream.push(json!({ "type": "done", "reason": "stop", "message": final_message }));
+                stream.end(later);
+                stream.next().unwrap()["message"].clone()
+            }
+        };
+        let value = delivered.get("durationMs");
+        let kept = value.filter(|value| !case["preset"].is_null() && **value == case["preset"]).cloned().unwrap_or(Value::Null);
+        timing.push(json!({ "present": value.is_some(), "value": kept, "laterTimed": false }));
+    }
+    Ok(json!({ "cases": cases, "timing": timing, "auth": auth, "login": { "prompts": *prompts.lock().unwrap(), "result": credential } }))
+}
+
+fn host_helpers_probe(ctx: &pig_sdk::Context, args: &str) -> Result<Value, String> {
+    let mut parts = args.splitn(3, '|');
+    let (golden_path, auth_path, text) = (parts.next().unwrap_or_default(), parts.next().unwrap_or_default(), parts.next().unwrap_or_default());
+    let golden: Value = serde_json::from_str(&std::fs::read_to_string(golden_path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    let io = |e: std::io::Error| e.to_string();
+    let mut diffs = Vec::new();
+    for case in golden["diffs"].as_array().ok_or("no diffs")? {
+        let lines = case.get("contextLines").and_then(Value::as_i64);
+        let (old, new) = (case["oldContent"].as_str().unwrap_or_default(), case["newContent"].as_str().unwrap_or_default());
+        let mut report = json!({"patch": ctx.generate_unified_patch(case.get("path").and_then(Value::as_str).unwrap_or("src/a.ts"), old, new, lines).map_err(io)?});
+        if !case.get("patchOnly").and_then(Value::as_bool).unwrap_or(false) {
+            let diff = ctx.generate_diff_string(old, new, lines).map_err(io)?;
+            report["diff"] = json!(diff.diff);
+            report["firstChangedLine"] = json!(diff.first_changed_line);
+        }
+        diffs.push(report);
+    }
+    let mut entries = Vec::new();
+    for case in golden["entries"].as_array().ok_or("no entries")? {
+        entries.push(json!(pig_sdk::session_entry_to_context_messages(&case["entry"]).map_err(io)?));
+    }
+    let mut images = Vec::new();
+    for case in golden["images"].as_array().ok_or("no images")? {
+        let (data, mime) = (case["data"].as_str().unwrap_or_default(), case["mimeType"].as_str().unwrap_or_default());
+        if case["op"] == "convert" {
+            images.push(match ctx.convert_to_png(data, mime).map_err(io)? {
+                Some(converted) => json!({"mimeType": converted.mime_type, "decodes": !converted.data.is_empty()}),
+                None => Value::Null,
+            });
+            continue;
+        }
+        let options = case.get("options").filter(|o| o.is_object()).map(|o| pig_sdk::ImageResizeOptions {
+            max_width: o.get("maxWidth").and_then(Value::as_u64).map(|v| v as u32),
+            max_height: o.get("maxHeight").and_then(Value::as_u64).map(|v| v as u32),
+            max_bytes: o.get("maxBytes").and_then(Value::as_u64),
+            jpeg_quality: o.get("jpegQuality").and_then(Value::as_u64).map(|v| v as u32),
+        });
+        let input = decode_base64(data);
+        images.push(match ctx.resize_image(&input, mime, options.as_ref()).map_err(io)? {
+            Some(resized) => json!({"mimeType": resized.mime_type, "originalWidth": resized.original_width, "originalHeight": resized.original_height, "width": resized.width, "height": resized.height, "wasResized": resized.was_resized, "decodes": !resized.data.is_empty()}),
+            None => Value::Null,
+        });
+    }
+    let credential = |provider: &str, path: Option<&str>| pig_sdk::read_stored_credential(provider, path).ok().flatten().unwrap_or(Value::Null);
+    let creds = json!({
+        "explicit": credential("anthropic", Some(auth_path)), "default": credential("anthropic", None), "absentProvider": credential("nobody", Some(auth_path)),
+        "missingFile": credential("anthropic", Some(&format!("{auth_path}.missing"))), "notJSON": credential("anthropic", Some(&format!("{auth_path}.bad"))),
+    });
+    ctx.copy_to_clipboard(text).map_err(io)?;
+    Ok(json!({"diffs": diffs, "entries": entries, "images": images, "creds": creds}))
+}
+
+fn decode_base64(text: &str) -> Vec<u8> {
+    let value = |c: u8| match c {
+        b'A'..=b'Z' => Some(c - b'A'),
+        b'a'..=b'z' => Some(c - b'a' + 26),
+        b'0'..=b'9' => Some(c - b'0' + 52),
+        b'+' => Some(62),
+        b'/' => Some(63),
+        _ => None,
+    };
+    let (mut out, mut buffer, mut bits) = (Vec::new(), 0u32, 0);
+    for byte in text.bytes().filter_map(value) {
+        buffer = (buffer << 6) | u32::from(byte);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((buffer >> bits) as u8);
+            buffer &= (1 << bits) - 1;
+        }
+    }
+    out
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 )
 
 // Provider is Pi's callable provider object. The ModelRegistry resolves credentials and normalizes transcripts separately from these methods.
@@ -205,8 +206,14 @@ func (e *Extension) RegisterNativeProvider(provider *Provider) error {
 	return nil
 }
 
-// CreateAssistantMessageEventStream creates a Provider-owned Event Stream.
-func CreateAssistantMessageEventStream() *ModelEventStream { return newModelEventStream() }
+// CreateAssistantMessageEventStream is pi-ai's createAssistantMessageEventStream: a provider-owned event stream of one assistant response. It times the response as Pi's
+// does: the final message (the done event's message, the error event's error, or the result passed to End) gets durationMs, measured from this call, unless it already has one
+// or its timestamp predates the stream.
+func CreateAssistantMessageEventStream() *ModelEventStream {
+	stream := newModelEventStream()
+	stream.timed, stream.startedAt, stream.startedMono = true, time.Now().UnixMilli(), time.Now()
+	return stream
+}
 
 // Push publishes an event in source order. A terminal event completes Result and closes Events.
 func (s *ModelEventStream) Push(event map[string]any) { s.push(event) }

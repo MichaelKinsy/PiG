@@ -352,6 +352,16 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleParseFrontmatter(call)
 	case call.Method == CallParseDate:
 		result, err = h.handleParseDate(call)
+	case call.Method == CallGenerateDiffString:
+		result, err = h.handleGenerateDiffString(call)
+	case call.Method == CallGenerateUnifiedPatch:
+		result, err = h.handleGenerateUnifiedPatch(call)
+	case call.Method == CallCopyToClipboard:
+		result, err = h.handleCopyToClipboard(call)
+	case call.Method == CallConvertToPng:
+		result, err = h.handleConvertToPng(call)
+	case call.Method == CallResizeImage:
+		result, err = h.handleResizeImage(call)
 	case call.Method == CallLoadingExec:
 		result, err = h.handleLoadingExec(callCtx, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:

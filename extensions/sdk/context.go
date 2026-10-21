@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -1300,6 +1301,49 @@ type ModelEventStream struct {
 	result    map[string]any
 	startOnce sync.Once
 	started   chan error
+	// A stream made by CreateAssistantMessageEventStream times its response as pi-ai's AssistantMessageEventStream does (see timeMessage); one the SDK makes for a host
+	// operation does not, because the host already timed that response.
+	timed       bool
+	startedAt   int64
+	startedMono time.Time
+}
+
+// timeMessage is AssistantMessageEventStream's #time (packages/ai/src/utils/event-stream.ts): the final message gets durationMs, the milliseconds since the stream was created
+// on a monotonic clock, unless the message already has one or its timestamp predates the stream (a response that started elsewhere, such as a deferred result fetched
+// later, stays untimed). The caller holds s.mu.
+func (s *ModelEventStream) timeMessage(message map[string]any) {
+	if !s.timed || s.terminal || message == nil {
+		return
+	}
+	if _, present := message["durationMs"]; present {
+		return
+	}
+	if timestamp, ok := jsNumberValue(message["timestamp"]); ok && timestamp < float64(s.startedAt) {
+		return
+	}
+	message["durationMs"] = math.Max(0, math.Round(float64(time.Since(s.startedMono))/float64(time.Millisecond)))
+}
+
+// jsNumberValue reads a message timestamp that is a JSON number, whatever Go type the caller built it with.
+func jsNumberValue(value any) (float64, bool) {
+	switch value := value.(type) {
+	case float64:
+		return value, true
+	case float32:
+		return float64(value), true
+	case int:
+		return float64(value), true
+	case int32:
+		return float64(value), true
+	case int64:
+		return float64(value), true
+	case uint64:
+		return float64(value), true
+	case json.Number:
+		number, err := value.Float64()
+		return number, err == nil
+	}
+	return 0, false
 }
 
 // End completes iteration and resolves the final provider result.
@@ -1309,6 +1353,7 @@ func (s *ModelEventStream) End(result map[string]any) {
 	if s.terminal {
 		return
 	}
+	s.timeMessage(result)
 	s.terminal = true
 	s.result = result
 	close(s.done)
@@ -1332,6 +1377,13 @@ func (s *ModelEventStream) push(event map[string]any) {
 	}
 	s.queue = append(s.queue, event)
 	if eventType, _ := event["type"].(string); eventType == "done" || eventType == "error" {
+		if eventType == "done" {
+			message, _ := event["message"].(map[string]any)
+			s.timeMessage(message)
+		} else {
+			message, _ := event["error"].(map[string]any)
+			s.timeMessage(message)
+		}
 		s.terminal = true
 		if eventType == "done" {
 			s.result, _ = event["message"].(map[string]any)
