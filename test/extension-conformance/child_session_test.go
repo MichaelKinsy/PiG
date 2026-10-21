@@ -107,6 +107,7 @@ func newChildSessionHostWith(t *testing.T, sentinel bool, wrap func(subprocess.C
 	}
 	host := subprocess.NewHostWithConfigRoot(dir, t.TempDir())
 	t.Cleanup(func() { host.Shutdown("test complete") })
+	host.SetSessionGraph(coding.NewSessionGraph())
 	bridge := subprocess.NewUIBridge(func() {})
 	host.SetUIBridge(bridge)
 	if wrap == nil {
