@@ -31,6 +31,7 @@ const fixtureModule = "github.com/MichaelKinsy/PiG/"
 // scopePackages are fixtures that sit at a real package path, to pin which packages and files an ordering check reads. The shared ai and internal/jsloop fixtures hold the shapes of every ordering check and expect no finding: ai is out of scope and internal/jsloop is exempt.
 var scopePackages = map[string][]string{
 	"boundarygoroutine": {fixtureModule + "internal/codingagent", fixtureModule + "ai", fixtureModule + "internal/jsloop"},
+	"unorderedfanin":    {fixtureModule + "chord/host", fixtureModule + "ai", fixtureModule + "internal/jsloop"},
 }
 
 // An ordering check needs a class on its marker: no reason, no class and a reason that names none each leave one finding at the marker and drop the one the marker covers.

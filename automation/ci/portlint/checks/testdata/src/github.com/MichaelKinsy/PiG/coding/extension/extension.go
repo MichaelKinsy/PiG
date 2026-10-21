@@ -5,3 +5,8 @@ package extension
 type Handler interface {
 	Handle(event string)
 }
+
+// UIContext is the host's UI surface an extension drives.
+type UIContext interface {
+	SetStatus(key, text string)
+}
