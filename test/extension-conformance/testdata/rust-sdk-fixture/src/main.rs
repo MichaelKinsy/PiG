@@ -1090,7 +1090,7 @@ fn main() {
                 let ctx = ctx.clone();
                 let name = name.to_string();
                 thread::spawn(move || -> std::io::Result<()> {
-                    let chosen = |(value, ok): (String, bool)| if ok { value } else { "cancelled".to_string() };
+                    let chosen = |(value, ok): (serde_json::Value, bool)| if ok { value.as_str().map_or_else(|| value.to_string(), str::to_string) } else { "cancelled".to_string() };
                     let value = match name.as_str() {
                         "A" => chosen(ctx.select("A", &["a1", "a2"])?),
                         "B" => ctx.confirm("B", "message")?.to_string(),
