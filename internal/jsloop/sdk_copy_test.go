@@ -8,7 +8,7 @@ import (
 )
 
 // copiedFiles are the files the SDK module carries verbatim. Each is the implementation of one primitive or the behavior table that pins it, so one table runs against both copies.
-var copiedFiles = []string{"settle_gate.go", "settle_gate_table_test.go"}
+var copiedFiles = []string{"settle_gate.go", "settle_gate_table_test.go", "lane.go", "lane_table_test.go"}
 
 func TestSDKCopy(t *testing.T) {
 	sdk := filepath.Join("..", "..", "extensions", "sdk", "internal", "jsloop")
