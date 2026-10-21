@@ -190485,9 +190485,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "*regexp.Regexp"
+        "type": "func() *regexp.Regexp"
       },
-      "shapeHash": "sha256:71d5e3591899cd0c396770073cb9dff2078549477cfe54a8adbee9e0bbd77653"
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#childListener",
@@ -193895,9 +193895,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[]*regexp.Regexp"
+        "type": "func() []*regexp.Regexp"
       },
-      "shapeHash": "sha256:f94df2877fb0221db950816ba37a001c7c1933e9dd03a1f87c52c0771ad84838"
+      "shapeHash": "sha256:e47464a63e98a61ec78c11d860d4f02aa50ac0b9228aa10e31a80ef2252684c2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#nonRetryableProviderLimitErrorPattern",
@@ -193906,9 +193906,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "*regexp.Regexp"
+        "type": "func() *regexp.Regexp"
       },
-      "shapeHash": "sha256:71d5e3591899cd0c396770073cb9dff2078549477cfe54a8adbee9e0bbd77653"
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#normalizeStoredPath",
@@ -194258,9 +194258,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[]*regexp.Regexp"
+        "type": "func() []*regexp.Regexp"
       },
-      "shapeHash": "sha256:f94df2877fb0221db950816ba37a001c7c1933e9dd03a1f87c52c0771ad84838"
+      "shapeHash": "sha256:e47464a63e98a61ec78c11d860d4f02aa50ac0b9228aa10e31a80ef2252684c2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#overlayComponent",
@@ -195545,9 +195545,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "*regexp.Regexp"
+        "type": "func() *regexp.Regexp"
       },
-      "shapeHash": "sha256:71d5e3591899cd0c396770073cb9dff2078549477cfe54a8adbee9e0bbd77653"
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#rpcSynchronousUIEffects",
