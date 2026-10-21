@@ -26064,7 +26064,7 @@
         }
       ],
       "tests": [
-        "coding/cli/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "coding/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONEncodesOncePerSettingsGeneration",
         "internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONKeepsPiMemberOrder",
         "internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock",
@@ -26091,7 +26091,7 @@
         }
       ],
       "tests": [
-        "coding/cli/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "coding/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONEncodesOncePerSettingsGeneration",
         "internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONKeepsPiMemberOrder",
         "internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock",
@@ -33090,6 +33090,7 @@
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 1,
     "Repair of a merge between development branches": 8,
-    "Review follow-up to unreleased work": 2
+    "Review follow-up to unreleased work": 2,
+    "test-only": 1
   }
 }

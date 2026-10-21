@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -149,8 +150,8 @@ func TestChildAgentSessionGoPlacements(t *testing.T) {
 	}
 }
 
-// childSessionWant is the observation every SDK must produce: the events in the order the session emitted them (message events carry their role), the transcript's roles, and the text only the extension's tool can have produced. It is Pi's own observation: TestNodeCreateAgentSessionSentinelScenarioMatchesPi runs Pi's createAgentSession through the same scenario and asserts these lists, so the Node row is that test and every other row asserts the same golden.
-var childSessionWant = func() map[string]any {
+// childSessionWant is read on first use, not at package init: a test binary that runs as a helper process (TestExecAbortHelperProcess) starts in another directory. It is the observation every SDK must produce: the events in the order the session emitted them (message events carry their role), the transcript's roles, and the text only the extension's tool can have produced. It is Pi's own observation: TestNodeCreateAgentSessionSentinelScenarioMatchesPi runs Pi's createAgentSession through the same scenario and asserts these lists, so the Node row is that test and every other row asserts the same golden.
+var childSessionWant = sync.OnceValue(func() map[string]any {
 	raw, err := os.ReadFile("testdata/child-session-want.json")
 	if err != nil {
 		panic(err)
@@ -160,7 +161,7 @@ var childSessionWant = func() map[string]any {
 		panic(err)
 	}
 	return want
-}()
+})
 
 // checkChildSession runs the fixture's child_run tool for a plain prompt and for a prompt that makes the sentinel model call the extension's tool.
 func checkChildSession(t *testing.T, ext extension.Extension) {
@@ -180,28 +181,28 @@ func checkChildSession(t *testing.T, ext extension.Extension) {
 	if plain["final"] != "sentinel-model:echo:hello" || plain["file"] != "" || plain["appendix"] != true || plain["model"] != "echo" {
 		t.Fatalf("plain run: %v", plain)
 	}
-	if !reflect.DeepEqual(plain["events"], childSessionWant["plain-events"]) {
-		t.Fatalf("plain events = %v, want %v", plain["events"], childSessionWant["plain-events"])
+	if !reflect.DeepEqual(plain["events"], childSessionWant()["plain-events"]) {
+		t.Fatalf("plain events = %v, want %v", plain["events"], childSessionWant()["plain-events"])
 	}
 	streamed := run("stream:40")
 	wantStreamed := ""
 	for i := range 40 {
 		wantStreamed += fmt.Sprintf("chunk-%03d ", i)
 	}
-	if streamed["final"] != strings.TrimSpace(wantStreamed) || streamed["streamed"] != wantStreamed || streamed["partial"] != wantStreamed || streamed["updates"] != childSessionWant["stream-updates"] {
-		t.Fatalf("streamed run: final %q streamed %q partial %q updates %v, want the %d-chunk text and %v updates", streamed["final"], streamed["streamed"], streamed["partial"], streamed["updates"], 40, childSessionWant["stream-updates"])
+	if streamed["final"] != strings.TrimSpace(wantStreamed) || streamed["streamed"] != wantStreamed || streamed["partial"] != wantStreamed || streamed["updates"] != childSessionWant()["stream-updates"] {
+		t.Fatalf("streamed run: final %q streamed %q partial %q updates %v, want the %d-chunk text and %v updates", streamed["final"], streamed["streamed"], streamed["partial"], streamed["updates"], 40, childSessionWant()["stream-updates"])
 	}
 	for _, observed := range []map[string]any{plain, streamed} {
-		if !reflect.DeepEqual(observed["system"], childSessionWant["system"]) {
-			t.Fatalf("the transcript's system message = %v, want Pi's %v", observed["system"], childSessionWant["system"])
+		if !reflect.DeepEqual(observed["system"], childSessionWant()["system"]) {
+			t.Fatalf("the transcript's system message = %v, want Pi's %v", observed["system"], childSessionWant()["system"])
 		}
 	}
 	tool := run("tool:abc")
-	if tool["final"] != "sentinel-final:ABC!" || !reflect.DeepEqual(tool["roles"], childSessionWant["tool-roles"]) {
+	if tool["final"] != "sentinel-final:ABC!" || !reflect.DeepEqual(tool["roles"], childSessionWant()["tool-roles"]) {
 		t.Fatalf("the final text did not come from the extension's tool: %v", tool)
 	}
-	if !reflect.DeepEqual(tool["events"], childSessionWant["tool-events"]) {
-		t.Fatalf("tool events = %v, want %v", tool["events"], childSessionWant["tool-events"])
+	if !reflect.DeepEqual(tool["events"], childSessionWant()["tool-events"]) {
+		t.Fatalf("tool events = %v, want %v", tool["events"], childSessionWant()["tool-events"])
 	}
 	checkChildExtensionEvents(t, ext)
 }

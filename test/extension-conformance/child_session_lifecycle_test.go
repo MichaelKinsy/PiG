@@ -63,8 +63,8 @@ func TestChildAgentSessionLifecycleMatchesPi(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			host, _ := newChildSessionHost(t)
 			got := runChildTool(t, load(t, host), "child_lifecycle", `{}`)
-			if !reflect.DeepEqual(got, childSessionWant["lifecycle"]) {
-				t.Fatalf("lifecycle = %v, want Pi's %v", got, childSessionWant["lifecycle"])
+			if !reflect.DeepEqual(got, childSessionWant()["lifecycle"]) {
+				t.Fatalf("lifecycle = %v, want Pi's %v", got, childSessionWant()["lifecycle"])
 			}
 		})
 	}
@@ -78,8 +78,8 @@ func TestChildAgentSessionModelErrorsMatchPi(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			host, _ := newChildSessionHostWith(t, false, nil)
 			got := runChildTool(t, load(t, host), "child_errors", `{}`)
-			if !reflect.DeepEqual(got, childSessionWant["model-errors"]) {
-				t.Fatalf("model errors = %v, want Pi's %v", got, childSessionWant["model-errors"])
+			if !reflect.DeepEqual(got, childSessionWant()["model-errors"]) {
+				t.Fatalf("model errors = %v, want Pi's %v", got, childSessionWant()["model-errors"])
 			}
 		})
 	}
@@ -198,13 +198,13 @@ func TestChildAgentSessionNativeSDKsLifecycleAndModelErrors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			host, _ := newChildSessionHost(t)
 			ext := load(t, host, "strict")
-			if got := runChildTool(t, ext, "child_lifecycle", `{}`); !reflect.DeepEqual(got, childSessionWant["lifecycle"]) {
-				t.Fatalf("lifecycle = %v, want Pi's %v", got, childSessionWant["lifecycle"])
+			if got := runChildTool(t, ext, "child_lifecycle", `{}`); !reflect.DeepEqual(got, childSessionWant()["lifecycle"]) {
+				t.Fatalf("lifecycle = %v, want Pi's %v", got, childSessionWant()["lifecycle"])
 			}
 			errorsHost, _ := newChildSessionHostWith(t, false, nil)
 			ext = load(t, errorsHost, "strict")
-			if got := runChildTool(t, ext, "child_errors", `{}`); !reflect.DeepEqual(got, childSessionWant["model-errors"]) {
-				t.Fatalf("model errors = %v, want Pi's %v", got, childSessionWant["model-errors"])
+			if got := runChildTool(t, ext, "child_errors", `{}`); !reflect.DeepEqual(got, childSessionWant()["model-errors"]) {
+				t.Fatalf("model errors = %v, want Pi's %v", got, childSessionWant()["model-errors"])
 			}
 		})
 	}

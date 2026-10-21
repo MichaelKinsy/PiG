@@ -73,8 +73,7 @@ func (b *viewBuilder) describeLoader(n *ViewNode, out *frontend.ViewNode, l *tui
 
 // viewCancellable is the widget state of a cancellable loader.
 type viewCancellable struct {
-	cl      *tui.CancellableLoader
-	aborted bool
+	cl *tui.CancellableLoader
 }
 
 func (c *viewCancellable) handleInput(data string) bool {

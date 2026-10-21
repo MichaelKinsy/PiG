@@ -180,11 +180,11 @@ func TestChildAgentSessionNode(t *testing.T) {
 			host, _ := newChildSessionHostWith(t, false, nil)
 			ext := loadChildNode(t, host, isolation)
 			checkChildSession(t, ext)
-			if got := runChildTool(t, ext, "child_lifecycle", `{}`); !reflect.DeepEqual(got, childSessionWant["lifecycle"]) {
-				t.Fatalf("lifecycle = %v, want Pi's %v", got, childSessionWant["lifecycle"])
+			if got := runChildTool(t, ext, "child_lifecycle", `{}`); !reflect.DeepEqual(got, childSessionWant()["lifecycle"]) {
+				t.Fatalf("lifecycle = %v, want Pi's %v", got, childSessionWant()["lifecycle"])
 			}
-			if got := runChildTool(t, ext, "child_errors", `{}`); !reflect.DeepEqual(got, childSessionWant["model-errors"]) {
-				t.Fatalf("model errors = %v, want Pi's %v", got, childSessionWant["model-errors"])
+			if got := runChildTool(t, ext, "child_errors", `{}`); !reflect.DeepEqual(got, childSessionWant()["model-errors"]) {
+				t.Fatalf("model errors = %v, want Pi's %v", got, childSessionWant()["model-errors"])
 			}
 		})
 	}

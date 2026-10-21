@@ -102,6 +102,12 @@ func callSenders(t *testing.T) []sdkSet {
 func TestSDKCallsHaveHostHandlers(t *testing.T) {
 	host := goPkg(t, "coding/extension/host/subprocess")
 	handled, _ := host.handledMethods(host.envelopeFieldType(t, "call"))
+	// The session graph calls (SessionManager, SettingsManager, ModelRuntime, package manager) are answered by the coding package's session graph, which the host dispatches to.
+	for _, pkg := range []string{"coding", "internal/codingagent"} {
+		for method, at := range goPkg(t, pkg).methodFieldConstants() {
+			handled.add(method, at)
+		}
+	}
 	l := newLedger(t, "call-handled", nil)
 	for _, sdk := range callSenders(t) {
 		for _, method := range sdk.set.sorted() {
@@ -170,6 +176,10 @@ func init() {
 	}
 	// child_session.go: only the Go, Python and Rust SDKs ask the host for a child session (childSession.*); Node runs Pi's own createAgentSession in the extension process (runtime-node/shims/independent-session.mjs) and its AgentSession emits to its listeners directly, so the host has nothing to forward (TestNodeCreateAgentSessionSentinelScenarioMatchesPi).
 	undeliveredHostFrames["notify childSession.event by node"] = "Node's createAgentSession runs in the extension process; its events never cross the wire"
+	// builtin_tool.go, session_graph.go: only the Go, Python and Rust SDKs build Pi's built-in tools and session graph objects through the host (builtinTool.*, sessionGraph.*); Node runs Pi's own factories and classes in the extension process, so the host never asks it for a callback.
+	for _, request := range []string{"builtin_tool_callback", "builtin_tool_exec_data", "sessionGraph.callback"} {
+		undeliveredHostFrames["request "+request+" by node"] = "Node runs Pi's own built-in tools and session graph in the extension process; its callbacks never cross the wire"
+	}
 	// view_wire.go: a Node frame carries the lines Pi's components rendered, so the host routes every key to ui.custom.input.
 	undeliveredHostFrames["notify ui.view.event by node"] = "a Node view frame is rendered lines; keys go to ui.custom.input (TestEverySDKReceivesEveryHostNotifyCapability)"
 }
@@ -389,6 +399,9 @@ func TestProviderCallbacksAreHandled(t *testing.T) {
 	sdk := goPkg(t, "extensions/sdk")
 	handled := host.methodFieldConstants()
 	for method, at := range agent.methodFieldConstants() {
+		handled.add(method, at)
+	}
+	for method, at := range goPkg(t, "coding").methodFieldConstants() {
 		handled.add(method, at)
 	}
 	namespaces := sdk.subMethods(sdk.envelopeFieldType(t, "call"))
