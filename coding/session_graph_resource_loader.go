@@ -28,6 +28,9 @@ type GraphResourceLoader struct {
 // Loader is the loader the handle names. A session created from it shares it, as Pi's createAgentSession shares the ResourceLoader it is given.
 func (g *GraphResourceLoader) Loader() *DefaultResourceLoader { return g.loader }
 
+// Release implements subprocess.SessionGraphReleaser: when the last holder lets go (the extension's handle and every session created over the loader), the Extension Host the loader started for its extensions shuts down. Pi's extensions live in the importing process and need no close; here they are processes.
+func (g *GraphResourceLoader) Release() { g.loader.Close() }
+
 // graphLoaderOptions is Pi's DefaultResourceLoaderOptions as it crosses the wire: an object option is the handle of the object, a function option is the name of the function the extension holds.
 type graphLoaderOptions struct {
 	Cwd                           string    `json:"cwd"`
@@ -457,3 +460,4 @@ func (g *GraphResourceLoader) reload(ctx context.Context, args icodingagent.Grap
 }
 
 var _ subprocess.SessionGraphObject = (*GraphResourceLoader)(nil)
+var _ subprocess.SessionGraphReleaser = (*GraphResourceLoader)(nil)
