@@ -1342,6 +1342,8 @@ type CallPayload struct {
 	Timer bool `json:"timer,omitempty"`
 	// Tick marks a Timer call that Pi runs right after the tool_execution_end of the tool that queued it: the call of a process.nextTick callback, or of deferred work that makes the call while a sibling tool call still runs, so Pi's loop is turning (a timer callback in the Node runtime, a call through a request's context after its handler returned in the Go, Python and Rust SDKs).
 	Tick bool `json:"tick,omitempty"`
+	// OriginToolCallID, with Tick, is the tool call whose handler queued the callback that made the call (a Node runtime knows it from the request the callback was queued in). The host runs the call after that call's tool_execution_end, whether the call reaches the host before or after the event: the runtime is another process, so the time between its answer and the callback's call decides nothing about Pi's order. Empty when no tool call queued the callback.
+	OriginToolCallID string `json:"origin_tool_call_id,omitempty"`
 }
 
 // ── CallResult (host→ext) ────────────────────────────────────────────────────

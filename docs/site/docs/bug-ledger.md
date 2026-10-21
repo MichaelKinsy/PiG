@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-1041 bugs. 991 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 164 bugs have no recorded test.
+1042 bugs. 992 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 164 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -1060,6 +1060,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-8343791](#bf-8343791) | CI: `TestStartupReusesPreTrustExtensionsAcrossEntrypoints` no longer reads an extension process that is still… | PiG's own defect | All platforms | Unreleased |
 | [BF-df96b6a](#bf-df96b6a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-b429de0](#bf-b429de0) | A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -15568,6 +15569,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fixed in:** Unreleased
 - **Fix commits:** `df96b6a5ac` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-b429de0
+
+**A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool that returned while a sibling tool in the same batch still awaited reached an RPC client behind the sibling's own output in up to two runs in five, where Pi writes it right after the first tool's `tool_execution_end`.
+- **Root cause:** A timer or immediate callback a Node tool queued while a sibling tool still awaits runs, in Pi, right after the first tool's tool_execution_end. The runtime is another process: it writes the callback's host call a few hundred microseconds after the tool's answer, and the host passed the tick boundary of that tool in about the same time. A call that arrived after the boundary was held for the next tool_execution_end of any tool, so scenario 69 (rpc-sibling-tool-timer-call-order) wrote the immediate and timeout0 notifications behind the sibling's own notification in 8 of 20 single-pair runs on ordering/d5-timer-calls alone and 4 of 20 on the train.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0edebb2f36` (2026-10-21), `b429de0f57` (2026-10-21)
+- **Tests:** `coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape`, `coding/extension/host/subprocess/timer_turns_test.go::TestNodeTickCallsOfAToolRunAfterItsEndWhenTheyArriveLate`, `coding/extension/host/subprocess/timer_turns_test.go::TestNodeTimerCallbackCallsWaitForTheLoopTurn`, `internal/jsloop/turns_test.go::TestTurnsForgetATickBoundaryWhenTheToolCallStartsAgain`, `internal/jsloop/turns_test.go::TestTurnsRunALateTickAtOnceWhileNoWaitIsOpen`, `internal/jsloop/turns_test.go::TestTurnsRunATickAfterItsToolCallsEndWhicheverArrivesFirst`, `internal/jsloop/turns_test.go::TestTurnsRunTicksAtTheTickBoundaryBeforeTimers`, `test/extension-conformance/timer_calls_test.go::TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun`
+- **Release note:** A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool that returned while a sibling tool in the same batch still awaited reached an RPC client behind the sibling's own output in up to two runs in five, where Pi writes it right after the first tool's `tool_execution_end`. The Node runtime is another process: it wrote the callback's host call a few hundred microseconds after the tool's answer, and the host passed that tool's `tool_execution_end` in about the same time, so a call that arrived after it waited for the next `tool_execution_end` of any tool. The call now says which tool call queued its callback (`origin_tool_call_id`). The host runs it behind that call's `tool_execution_end` when it arrives before the event, and at once when it arrives after, where the runtime says a sibling tool still runs and the loop turns.
 
 ## Divergences from Pi added in this release
 
