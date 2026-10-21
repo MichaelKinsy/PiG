@@ -181,9 +181,6 @@
      "auth": {
       "apiKey": "stored"
      },
-     "env": {
-      "$": "undefined"
-     },
      "source": "stored credential"
     },
     "seen": []
