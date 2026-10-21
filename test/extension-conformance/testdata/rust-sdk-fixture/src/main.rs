@@ -556,14 +556,15 @@ fn kit_widget_case(key: &str) -> Option<kit::View> {
     })
 }
 
-/// kit-widget's component: it logs the keys and mouse events the view leaves
-/// to the extension and the callbacks its nodes fire, and closes with the log
-/// after `want` callbacks (never when `want` is 0).
+/// kit-widget's component: it takes the keys and mouse events the view leaves
+/// to the extension, and notifies each callback its nodes fire as
+/// "kit-widget-event=<type>:<value>" (a change report is not one). It never
+/// closes itself: the harness delivers the case's steps and then reads the
+/// callbacks, and a probe that closed after the callbacks Pi fired would drop
+/// the steps still to come.
 struct KitWidgetProbe {
+    ctx: pig_sdk::Context,
     view: kit::View,
-    want: usize,
-    count: usize,
-    log: Vec<String>,
 }
 
 impl ViewComponent for KitWidgetProbe {
@@ -571,8 +572,7 @@ impl ViewComponent for KitWidgetProbe {
         self.view.clone()
     }
 
-    fn handle_input(&mut self, data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
-        self.log.push(format!("input:{}", data.to_string_lossy()));
+    fn handle_input(&mut self, _data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
         Ok(RemoteComponentResult::pending())
     }
 
@@ -580,26 +580,20 @@ impl ViewComponent for KitWidgetProbe {
         true
     }
 
-    fn handle_mouse(&mut self, event: &MouseEvent) -> Result<RemoteComponentResult, String> {
-        self.log.push(format!("rawmouse:{}/{}/{},{}", event.kind, event.button, event.x, event.y));
+    fn handle_mouse(&mut self, _event: &MouseEvent) -> Result<RemoteComponentResult, String> {
         Ok(RemoteComponentResult::pending())
     }
 
     fn handle_view_event(&mut self, event: kit::Event) -> Result<RemoteComponentResult, String> {
         let entry = match event.kind {
+            EventKind::Change => return Ok(RemoteComponentResult::pending()),
             EventKind::Mouse => match &event.mouse {
                 Some(m) => format!("mouse:{}/{}/{}/{}", m.kind, m.button, m.x, m.y),
                 None => "mouse:".to_string(),
             },
             kind => format!("{}:{}", kit_event_name(kind), event.value),
         };
-        self.log.push(entry);
-        if event.kind != EventKind::Change {
-            self.count += 1;
-        }
-        if self.want > 0 && self.count >= self.want {
-            return Ok(RemoteComponentResult::done(Some(Value::from(self.log.join(",")))));
-        }
+        self.ctx.notify(&format!("kit-widget-event={entry}"), "info");
         Ok(RemoteComponentResult::pending())
     }
 }
@@ -2486,20 +2480,14 @@ fn main() {
             }
         },
     );
-    // kit-widget "<case key> [<callbacks>]" opens a widget kind's Pi vector
-    // case in an overlay and notifies "kit-widget=<log>" when it closes.
-    ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", |ctx, args| {
-        let (key, count) = args.split_once('|').unwrap_or((args, ""));
+    // kit-widget "<case key>" opens a widget kind's Pi vector case in an
+    // overlay; the probe notifies its callbacks as they fire.
+    ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", |ctx, key| {
         let Some(view) = kit_widget_case(key) else {
             return CommandResult::Error(format!("kit-widget: unknown case {key:?}"));
         };
-        let probe = KitWidgetProbe { view, want: count.parse().unwrap_or(0), count: 0, log: Vec::new() };
-        match ctx.custom_view(probe, json!({"title": "Kit"})) {
-            Ok(result) => {
-                let text = result.map(|value| value.as_str().map_or_else(|| value.to_string(), str::to_string)).unwrap_or_default();
-                ctx.notify(&format!("kit-widget={text}"), "info");
-                CommandResult::Ok
-            }
+        match ctx.custom_view(KitWidgetProbe { ctx: ctx.clone(), view }, json!({"title": "Kit"})) {
+            Ok(_) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
         }
     });

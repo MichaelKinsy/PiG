@@ -2,9 +2,6 @@ package testfixture
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
-	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
@@ -18,70 +15,47 @@ var kitWidgetCases = map[string]func() kit.View{}
 
 func registerKitWidgetCase(key string, build func() kit.View) { kitWidgetCases[key] = build }
 
-// kitWidgetProbe shows one case in a ui.custom overlay. It logs the keys and
-// mouse events the view leaves to the extension and the callbacks its nodes
-// fire, and closes with the log after want callbacks (never when want is 0).
+// kitWidgetProbe shows one case in a ui.custom overlay. It takes the keys and
+// mouse events the view leaves to the extension, and notifies each callback
+// its nodes fire as "kit-widget-event=<type>:<value>" (a change report is not
+// one). It never closes itself: the harness delivers the case's steps and then
+// reads the callbacks, and a probe that closed after the callbacks Pi fired
+// would drop the steps still to come.
 type kitWidgetProbe struct {
-	mu   sync.Mutex
+	ctx  sdk.Context
 	view kit.View
-	want int
-	log  []string
-	n    int
 }
 
 func (p *kitWidgetProbe) View(int) kit.View { return p.view }
 
-func (p *kitWidgetProbe) HandleInput(data string) (sdk.RemoteComponentResult, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.log = append(p.log, "input:"+data)
+func (p *kitWidgetProbe) HandleInput(string) (sdk.RemoteComponentResult, error) {
 	return sdk.RemoteComponentResult{}, nil
 }
 
-func (p *kitWidgetProbe) HandleMouse(event sdk.MouseEvent) (sdk.RemoteComponentResult, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.log = append(p.log, fmt.Sprintf("rawmouse:%s/%s/%d,%d", event.Type, event.Button, event.X, event.Y))
+func (p *kitWidgetProbe) HandleMouse(sdk.MouseEvent) (sdk.RemoteComponentResult, error) {
 	return sdk.RemoteComponentResult{}, nil
 }
 
 func (p *kitWidgetProbe) HandleViewEvent(event kit.Event) (sdk.RemoteComponentResult, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	entry := event.Type + ":" + event.Value
-	if event.Type == kit.EventMouse && event.Mouse != nil {
-		entry = fmt.Sprintf("mouse:%s/%s/%d/%d", event.Mouse.Type, event.Mouse.Button, event.Mouse.X, event.Mouse.Y)
-	}
-	p.log = append(p.log, entry)
-	if event.Type != kit.EventChange {
-		p.n++
-	}
-	if p.want > 0 && p.n >= p.want {
-		return sdk.RemoteComponentResult{Done: true, Value: strings.Join(p.log, ",")}, nil
+	switch {
+	case event.Type == kit.EventChange:
+	case event.Type == kit.EventMouse && event.Mouse != nil:
+		p.ctx.Notify(fmt.Sprintf("kit-widget-event=mouse:%s/%s/%d/%d", event.Mouse.Type, event.Mouse.Button, event.Mouse.X, event.Mouse.Y), "info")
+	default:
+		p.ctx.Notify("kit-widget-event="+event.Type+":"+event.Value, "info")
 	}
 	return sdk.RemoteComponentResult{}, nil
 }
 
-// registerKitWidgets adds kit-widget "<case key>[|<callbacks>]": it opens the
-// case in an overlay and notifies "kit-widget=<log>" when it closes.
+// registerKitWidgets adds kit-widget "<case key>": it opens the case in an
+// overlay and reports its callbacks as the probe notifies them.
 func registerKitWidgets(ext *sdk.Extension) {
-	ext.Command("kit-widget", "Show a widget kind's Pi vector case (D107)", func(ctx sdk.Context, args string) error {
-		key, count, _ := strings.Cut(args, "|")
+	ext.Command("kit-widget", "Show a widget kind's Pi vector case (D107)", func(ctx sdk.Context, key string) error {
 		build, ok := kitWidgetCases[key]
 		if !ok {
 			return fmt.Errorf("kit-widget: unknown case %q", key)
 		}
-		want, _ := strconv.Atoi(count)
-		probe := &kitWidgetProbe{view: build(), want: want}
-		result, err := ctx.Custom(probe, sdk.RemoteOverlayOptions{Title: "Kit"})
-		if err != nil {
-			return err
-		}
-		text := ""
-		if result != nil {
-			text = fmt.Sprint(result)
-		}
-		ctx.Notify("kit-widget="+text, "info")
-		return nil
+		_, err := ctx.Custom(&kitWidgetProbe{ctx: ctx, view: build()}, sdk.RemoteOverlayOptions{Title: "Kit"})
+		return err
 	})
 }

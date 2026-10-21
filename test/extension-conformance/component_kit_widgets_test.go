@@ -122,11 +122,7 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 		h.host.NotifyHeight(rows)
 	}
 	done := make(chan error, 1)
-	args := key
-	if len(events) > 0 {
-		args = fmt.Sprintf("%s|%d", key, len(events))
-	}
-	go func() { done <- command.Handler(kitCommandContext(t, h), args) }()
+	go func() { done <- command.Handler(kitCommandContext(t, h), key) }()
 	var session *kitSession
 	select {
 	case session = <-ui.sessions:
@@ -167,32 +163,26 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 		}
 		expect(fmt.Sprintf("after step %d", i+1), states[i+1])
 	}
-	if len(events) > 0 {
-		select {
-		case err := <-done:
-			if err != nil {
-				t.Fatalf("kit-widget %s: %v", key, err)
-			}
-		case <-time.After(10 * time.Second):
-			t.Fatalf("kit-widget %s %q did not close after %d callbacks", key, c.Name, len(events))
-		}
-		// The log holds the callbacks and, between them, the host's change reports; the callbacks are compared.
-		var got []string
-		for _, message := range h.ui.Recorded() {
-			if log, ok := strings.CutPrefix(message, "kit-widget="); ok {
-				for _, entry := range strings.Split(strings.TrimSuffix(log, ":info"), ",") {
-					// An earlier case's overlay closes when this one opens, and notifies what it closed with: no callback
-					// (every callback is "<type>:<value>").
-					if strings.Contains(entry, ":") && !strings.HasPrefix(entry, "change:") && !strings.HasPrefix(entry, "rawmouse:") && !strings.HasPrefix(entry, "input:") {
-						got = append(got, entry)
-					}
-				}
-			}
-		}
-		if !slices.Equal(got, events) {
-			t.Fatalf("%s %q at width %d: callbacks = %q, Pi fired %q", key, c.Name, width, got, events)
+	// The probe reports each callback as it fires and never closes itself: a probe that closed after the callbacks Pi
+	// fired would drop the steps still to come (a press fires the region's callback, and the click that follows
+	// is the child's). The case ends with its overlay's timeout, as the cases without callbacks do.
+	var got []string
+	awaitCondition(ctx, func() bool { got = kitWidgetCallbacks(h); return len(got) >= len(events) })
+	if !slices.Equal(got, events) {
+		t.Fatalf("%s %q at width %d: callbacks = %q, Pi fired %q", key, c.Name, width, got, events)
+	}
+}
+
+// kitWidgetCallbacks are the callbacks the cell's nodes have fired since the case opened, in order: the probe
+// notifies "kit-widget-event=<type>:<value>" for each (a change report, a key or a mouse event it was handed is not one).
+func kitWidgetCallbacks(h *harness) []string {
+	var got []string
+	for _, message := range h.ui.Recorded() {
+		if entry, ok := strings.CutPrefix(message, "kit-widget-event="); ok {
+			got = append(got, strings.TrimSuffix(entry, ":info"))
 		}
 	}
+	return got
 }
 
 func TestConformance_ComponentKitWidgetsMatchPi(t *testing.T) {
@@ -207,13 +197,19 @@ func TestConformance_ComponentKitWidgetsMatchPi(t *testing.T) {
 			h := startKitCell(t, tc)
 			ui := newKitUI(h)
 			for _, v := range kitWidgetExports {
-				for _, c := range readKitWidgetVectors(t, v.dir, v.export) {
-					if c.Throws != "" {
-						t.Fatalf("%s %q: Pi threw %s", v.export, c.Name, c.Throws)
+				// One subtest per export, so -run selects an export's vectors; a failing export stops the cell, as its
+				// open overlay would fail the next.
+				if !t.Run(v.export, func(t *testing.T) {
+					for _, c := range readKitWidgetVectors(t, v.dir, v.export) {
+						if c.Throws != "" {
+							t.Fatalf("%s %q: Pi threw %s", v.export, c.Name, c.Throws)
+						}
+						for _, frame := range c.Result.Frames {
+							runKitWidget(t, h, ui, tc, v.dir+"/"+v.export+"/"+c.Name, c, frame.Width, frame.States, frame.Events)
+						}
 					}
-					for _, frame := range c.Result.Frames {
-						runKitWidget(t, h, ui, tc, v.dir+"/"+v.export+"/"+c.Name, c, frame.Width, frame.States, frame.Events)
-					}
+				}) {
+					return
 				}
 			}
 		})

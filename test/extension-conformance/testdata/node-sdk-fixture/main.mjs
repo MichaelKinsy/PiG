@@ -972,14 +972,16 @@ export default function (pi) {
       return { handled: true };
     }
   }
-  // kit-widget "<case key>[|<callbacks>]": a widget kind's Pi vector case
+  // kit-widget "<case key>": a widget kind's Pi vector case
   // (D107, docs/plan/extension-component-kit.md §10), built from Pi's own
   // components; the runtime derives its view while a frontend draws. As
-  // ui.custom's component it logs the keys and mouse events the components
-  // leave to the extension and the callbacks they fire, and closes with the
-  // log after `want` callbacks (never when `want` is 0). The key is
-  // "<module>/<export>/<case name>" and the case's wire node is its vector's
-  // `root`.
+  // ui.custom's component it takes the keys and mouse events the components
+  // leave to the extension and notifies each callback they fire as
+  // "kit-widget-event=<type>:<value>". It never closes itself: the harness
+  // delivers the case's steps and then reads the callbacks, and a component
+  // that closed after the callbacks Pi fired would drop the steps still to
+  // come. The key is "<module>/<export>/<case name>" and the case's wire
+  // node is its vector's `root`.
   const kitWidgetCases = {};
   {
     const branch = (expanded, outputPad = 1) => () => {
@@ -1274,28 +1276,17 @@ export default function (pi) {
   // kit-widget-cases
   pi.registerCommand("kit-widget", {
     description: "Show a widget kind's Pi vector case (D107)",
-    handler: async (args, ctx) => {
-      const space = args.indexOf("|");
-      const key = space < 0 ? args : args.slice(0, space);
-      const want = space < 0 ? 0 : Number(args.slice(space + 1)) || 0;
+    handler: async (key, ctx) => {
       const build = kitWidgetCases[key];
       if (!build) throw new Error(`kit-widget: unknown case ${JSON.stringify(key)}`);
-      const log = [];
-      let count = 0;
-      const result = await ctx.ui.custom((tui, theme, keys, done) => {
-        const note = (entry, callback = true) => {
-          log.push(entry);
-          if (callback) count++;
-          // Closes after the frame the callback changed is drawn (an editor clears itself on submit).
-          if (want > 0 && count >= want) setTimeout(() => done(log.join(",")), 150);
-        };
+      await ctx.ui.custom((tui, theme, keys) => {
+        const note = (entry) => ctx.ui.notify(`kit-widget-event=${entry}`, "info");
         // build returns the root component and, when a node of it holds the focus, that node.
-        const { root, focus } = build({ tui, theme, keys, note, log });
+        const { root, focus } = build({ tui, theme, keys, note });
         if (focus) root.handleInput = (data) => focus.handleInput(data);
-        else if (!root.handleInput) root.handleInput = (data) => { log.push(`input:${data}`); };
+        else if (!root.handleInput) root.handleInput = () => {};
         return root;
       }, { overlayOptions: { title: "Kit" } });
-      ctx.ui.notify(`kit-widget=${result ?? ""}`, "info");
     },
   });
   pi.registerCommand("mouse-probe", {

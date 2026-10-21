@@ -331,37 +331,32 @@ KIT_WIDGET_CASES[_MOUSE_REGION + "right button"] = lambda: kit.View(kit.Containe
 
 
 class KitWidgetProbe:
-    """kit-widget's component: logs the keys and mouse events the view leaves
-    to the extension and the callbacks its nodes fire, and closes with the log
-    after ``want`` callbacks (never when ``want`` is 0)."""
+    """kit-widget's component: takes the keys and mouse events the view leaves
+    to the extension, and notifies each callback its nodes fire as
+    ``kit-widget-event=<type>:<value>`` (a change report is not one). It never
+    closes itself: the harness delivers the case's steps and then reads the
+    callbacks, and a probe that closed after the callbacks Pi fired would drop
+    the steps still to come."""
 
-    def __init__(self, view: kit.View, want: int) -> None:
+    def __init__(self, ctx: pig_sdk.Context, view: kit.View) -> None:
+        self.ctx = ctx
         self.view_ = view
-        self.want = want
-        self.count = 0
-        self.log: list[str] = []
 
     def view(self, _width: int) -> kit.View:
         return self.view_
 
-    def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
-        self.log.append("input:" + data)
+    def handle_input(self, _data: str) -> pig_sdk.RemoteComponentResult:
         return pig_sdk.RemoteComponentResult()
 
-    def handle_mouse(self, event: pig_sdk.MouseEvent) -> pig_sdk.RemoteComponentResult:
-        self.log.append(f"rawmouse:{event.type}/{event.button}/{event.x},{event.y}")
+    def handle_mouse(self, _event: pig_sdk.MouseEvent) -> pig_sdk.RemoteComponentResult:
         return pig_sdk.RemoteComponentResult()
 
     def handle_view_event(self, event: kit.Event) -> pig_sdk.RemoteComponentResult:
         if event.type == kit.MOUSE and event.mouse is not None:
             m = event.mouse
-            self.log.append(f"mouse:{m['type']}/{m['button']}/{m['x']}/{m['y']}")
-        else:
-            self.log.append(f"{event.type}:{event.value}")
-        if event.type != kit.CHANGE:
-            self.count += 1
-        if self.want > 0 and self.count >= self.want:
-            return pig_sdk.RemoteComponentResult(done=True, value=",".join(self.log))
+            self.ctx.notify(f"kit-widget-event=mouse:{m['type']}/{m['button']}/{m['x']}/{m['y']}", "info")
+        elif event.type != kit.CHANGE:
+            self.ctx.notify(f"kit-widget-event={event.type}:{event.value}", "info")
         return pig_sdk.RemoteComponentResult()
 
 
@@ -1697,13 +1692,11 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("kit-probe", "Exercise the component kit (D107)", kit_probe)
 
-    def kit_widget(ctx: pig_sdk.Context, args: str) -> None:
-        key, _, count = args.partition("|")
+    def kit_widget(ctx: pig_sdk.Context, key: str) -> None:
         build = KIT_WIDGET_CASES.get(key)
         if build is None:
             raise RuntimeError(f"kit-widget: unknown case {key!r}")
-        result = ctx.custom(KitWidgetProbe(build(), int(count or 0)), {"title": "Kit"})
-        ctx.notify(f"kit-widget={'' if result is None else result}", "info")
+        ctx.custom(KitWidgetProbe(ctx, build()), {"title": "Kit"})
 
     ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", kit_widget)
 
