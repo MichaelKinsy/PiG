@@ -429,7 +429,7 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("host_helpers:" + json.dumps({"diffs": diffs, "entries": entries, "images": images, "creds": creds}) + ":end", "info")
 
     ext.command("host_helpers_probe", "Run the host-served pi helpers over the golden inputs", host_helpers_probe)
-    # pi_ai_helpers_probe runs every call of the golden file (test/parity/sdk-vectors/pi-ai-helpers/golden.json, Pi's own answers at the pin) through this SDK's pi-ai
+    # pi_ai_helpers_probe runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the test) through this SDK's pi-ai
     # helpers and reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).
     def pi_ai_helpers_probe(ctx, args):
         golden = json.loads(pathlib.Path(args).read_text(encoding="utf-8"))

@@ -1,0 +1,177 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-ai@1.3.0",
+ "module": "pi-ai",
+ "export": "createInitialSystemMessage",
+ "cases": [
+  {
+   "name": "case 0001",
+   "args": [
+    {
+     "$": "undefined"
+    },
+    {
+     "$": "undefined"
+    }
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    "",
+    []
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    "p",
+    {
+     "$": "undefined"
+    }
+   ],
+   "result": {
+    "role": "system",
+    "content": "p",
+    "timestamp": 0
+   }
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    {
+     "$": "undefined"
+    },
+    [
+     {
+      "name": "t",
+      "description": "t tool",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    ]
+   ],
+   "result": {
+    "role": "system",
+    "content": "",
+    "toolsAdded": [
+     {
+      "name": "t",
+      "description": "t tool",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    ],
+    "timestamp": 0
+   }
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    "p",
+    [
+     {
+      "name": "t",
+      "description": "t tool",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    ]
+   ],
+   "result": {
+    "role": "system",
+    "content": "p",
+    "toolsAdded": [
+     {
+      "name": "t",
+      "description": "t tool",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    ],
+    "timestamp": 0
+   }
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    "",
+    [
+     {
+      "name": "t",
+      "description": "t tool",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    ]
+   ],
+   "result": {
+    "role": "system",
+    "content": "",
+    "toolsAdded": [
+     {
+      "name": "t",
+      "description": "t tool",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    ],
+    "timestamp": 0
+   }
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    "p",
+    []
+   ],
+   "result": {
+    "role": "system",
+    "content": "p",
+    "timestamp": 0
+   }
+  }
+ ]
+}

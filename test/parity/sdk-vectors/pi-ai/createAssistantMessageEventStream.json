@@ -1,0 +1,548 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-ai@1.3.0",
+ "module": "pi-ai",
+ "export": "createAssistantMessageEventStream",
+ "cases": [
+  {
+   "name": "done now none",
+   "args": [
+    {
+     "kind": "done",
+     "timestamp": "now",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "done now 0",
+   "args": [
+    {
+     "kind": "done",
+     "timestamp": "now",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "done now 7",
+   "args": [
+    {
+     "kind": "done",
+     "timestamp": "now",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "done old none",
+   "args": [
+    {
+     "kind": "done",
+     "timestamp": "old",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": false,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "done old 0",
+   "args": [
+    {
+     "kind": "done",
+     "timestamp": "old",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "done old 7",
+   "args": [
+    {
+     "kind": "done",
+     "timestamp": "old",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "done absent none",
+   "args": [
+    {
+     "kind": "done",
+     "timestamp": "absent",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "done absent 0",
+   "args": [
+    {
+     "kind": "done",
+     "timestamp": "absent",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "done absent 7",
+   "args": [
+    {
+     "kind": "done",
+     "timestamp": "absent",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "error now none",
+   "args": [
+    {
+     "kind": "error",
+     "timestamp": "now",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "error now 0",
+   "args": [
+    {
+     "kind": "error",
+     "timestamp": "now",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "error now 7",
+   "args": [
+    {
+     "kind": "error",
+     "timestamp": "now",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "error old none",
+   "args": [
+    {
+     "kind": "error",
+     "timestamp": "old",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": false,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "error old 0",
+   "args": [
+    {
+     "kind": "error",
+     "timestamp": "old",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "error old 7",
+   "args": [
+    {
+     "kind": "error",
+     "timestamp": "old",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "error absent none",
+   "args": [
+    {
+     "kind": "error",
+     "timestamp": "absent",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "error absent 0",
+   "args": [
+    {
+     "kind": "error",
+     "timestamp": "absent",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "error absent 7",
+   "args": [
+    {
+     "kind": "error",
+     "timestamp": "absent",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "end now none",
+   "args": [
+    {
+     "kind": "end",
+     "timestamp": "now",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "end now 0",
+   "args": [
+    {
+     "kind": "end",
+     "timestamp": "now",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "end now 7",
+   "args": [
+    {
+     "kind": "end",
+     "timestamp": "now",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "end old none",
+   "args": [
+    {
+     "kind": "end",
+     "timestamp": "old",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": false,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "end old 0",
+   "args": [
+    {
+     "kind": "end",
+     "timestamp": "old",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "end old 7",
+   "args": [
+    {
+     "kind": "end",
+     "timestamp": "old",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "end absent none",
+   "args": [
+    {
+     "kind": "end",
+     "timestamp": "absent",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "end absent 0",
+   "args": [
+    {
+     "kind": "end",
+     "timestamp": "absent",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "end absent 7",
+   "args": [
+    {
+     "kind": "end",
+     "timestamp": "absent",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "doneThenEnd now none",
+   "args": [
+    {
+     "kind": "doneThenEnd",
+     "timestamp": "now",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "doneThenEnd now 0",
+   "args": [
+    {
+     "kind": "doneThenEnd",
+     "timestamp": "now",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "doneThenEnd now 7",
+   "args": [
+    {
+     "kind": "doneThenEnd",
+     "timestamp": "now",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "doneThenEnd old none",
+   "args": [
+    {
+     "kind": "doneThenEnd",
+     "timestamp": "old",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": false,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "doneThenEnd old 0",
+   "args": [
+    {
+     "kind": "doneThenEnd",
+     "timestamp": "old",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "doneThenEnd old 7",
+   "args": [
+    {
+     "kind": "doneThenEnd",
+     "timestamp": "old",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "doneThenEnd absent none",
+   "args": [
+    {
+     "kind": "doneThenEnd",
+     "timestamp": "absent",
+     "preset": null
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": false,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "doneThenEnd absent 0",
+   "args": [
+    {
+     "kind": "doneThenEnd",
+     "timestamp": "absent",
+     "preset": 0
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  },
+  {
+   "name": "doneThenEnd absent 7",
+   "args": [
+    {
+     "kind": "doneThenEnd",
+     "timestamp": "absent",
+     "preset": 7
+    }
+   ],
+   "result": {
+    "present": true,
+    "kept": true,
+    "laterTimed": false
+   }
+  }
+ ]
+}

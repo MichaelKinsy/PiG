@@ -101,16 +101,13 @@ var orderedPiAiHelpers = map[string]bool{
 
 // Pi's pure pi-ai helpers (clampThinkingLevel, calculateCost, contentText, normalizeContext, isRetryableAssistantError, isContextOverflow, StringEnum, envApiKeyAuth and
 // their siblings in packages/ai/src) give every SDK, and the Node runtime, the answer Pi's own code gave at the pin for the same call. The expected values are
-// test/parity/sdk-vectors/pi-ai-helpers/golden.json (probe.mjs runs Pi's pi-ai to write it); a helper an SDK never ported, or ported as a constant, fails a call whose answer
+// test/parity/sdk-vectors/pi-ai/*.json and pi-coding-agent/*.json (automation/gen/generate-sdk-vectors.mjs runs Pi's own code to write them); a helper an SDK never ported, or ported as a constant, fails a call whose answer
 // is neither.
 func TestConformance_PiAiHelpersAgreeAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	golden, err := filepath.Abs(filepath.Join("..", "parity", "sdk-vectors", "pi-ai-helpers", "golden.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	golden := piVectorsFile(t)
 	content, err := os.ReadFile(golden)
 	if err != nil {
 		t.Fatal(err)
