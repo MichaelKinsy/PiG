@@ -27,7 +27,7 @@ SHARDED_SPEC=(
   ./codemode:2
   ./durable/codemode:2
   ./coding/extension/host/subprocess:3
-  ./test/extension-conformance:2
+  ./test/extension-conformance:3
 )
 MODE=${1:-default}
 COUNT_FLAG=()
