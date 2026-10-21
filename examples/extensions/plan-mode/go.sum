@@ -1,4 +1,4 @@
-github.com/MichaelKinsy/PiG/extensions/sdk v0.5.0 h1:CDDQ2IK5k7CK9XV7f8nA/l65Tm0y7OvqSOM5Gq3Vink=
-github.com/MichaelKinsy/PiG/extensions/sdk v0.5.0/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
+github.com/MichaelKinsy/PiG/extensions/sdk v0.3.1-0.20261020232631-3ee123c6d5f4 h1:WkHHhR6FS42M+4mdYKdHSosEu3KfIvJ9GIBleY0KnyE=
+github.com/MichaelKinsy/PiG/extensions/sdk v0.3.1-0.20261020232631-3ee123c6d5f4/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
 golang.org/x/text v0.41.0 h1:vz/seA0lnX87Othu2f/0L24RcgrXD9/YFTSuGjj3rH8=
 golang.org/x/text v0.41.0/go.mod h1:jvf1O8ajNzZqhSrQBPbutR/EB83Cc0CFrezNQIwbb5M=

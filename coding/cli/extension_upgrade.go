@@ -139,17 +139,27 @@ func canonicalPath(path string) string {
 	return filepath.Clean(path)
 }
 
-var plainShellWord = lazyregexp.New(`^[A-Za-z0-9_@%+=:,./\\-]+$`)
+// plainPOSIXWord and plainWindowsWord are the words the shell of the platform reads as written: "\" is plain only on Windows, where it separates path elements; a POSIX shell reads it as an escape.
+var (
+	plainPOSIXWord   = lazyregexp.New(`^[A-Za-z0-9_@%+=:,./-]+$`)
+	plainWindowsWord = lazyregexp.New(`^[A-Za-z0-9_@%+=:,./\\-]+$`)
+)
 
 // backupNameUnsafe is a run of characters a backup directory name replaces with "_".
 var backupNameUnsafe = lazyregexp.New(`[^A-Za-z0-9._-]+`)
 
-func commandWord(word string) string {
-	if plainShellWord.MatchString(word) {
-		return word
-	}
-	if runtime.GOOS == "windows" {
+func commandWord(word string) string { return commandWordFor(runtime.GOOS, word) }
+
+// commandWordFor is word as the shell of goos reads it: unchanged when plain, else quoted.
+func commandWordFor(goos, word string) string {
+	if goos == "windows" {
+		if plainWindowsWord.MatchString(word) {
+			return word
+		}
 		return `"` + strings.ReplaceAll(word, `"`, `\"`) + `"`
+	}
+	if plainPOSIXWord.MatchString(word) {
+		return word
 	}
 	return "'" + strings.ReplaceAll(word, "'", `'\''`) + "'"
 }

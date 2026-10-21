@@ -61,6 +61,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The changelog fragment check resolves the commits fragments name against the history of HEAD.
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -481,6 +483,11 @@ jobs:
       - name: Typecheck and test the Cloudflare host
         shell: bash
         run: automation/ci/with-isolated-pig-home.sh make durable-core-host-check
+      # durable-core-budget: the size budget of the core and the host bundle, the TinyGo heap policy, and the allocation-site
+      # baseline (durable/core/budget/allocs.json). It needs the TinyGo installed above, and no other job runs it.
+      - name: Check the Durable core budget
+        shell: bash
+        run: automation/ci/with-isolated-pig-home.sh make durable-core-budget
 
   verify:
     name: Linux verification

@@ -97,19 +97,50 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 	}
 	if len(git) > 0 {
 		tasks = append(tasks, func() error {
-			gitTasks := make([]func() error, len(git))
-			for i, pkg := range git {
+			groups := groupGitUpdatesByCheckout(cwd, sm.AgentDir(), git)
+			start := func(pkg ConfiguredPackage) {
+				source := pkg.Source.Source
+				report(ProgressEvent{Type: "start", Action: "update", Source: source, Message: new(fmt.Sprintf("Updating %s...", source))})
+			}
+			gitTasks := make([]func() error, len(groups))
+			for i, group := range groups {
 				gitTasks[i] = func() error {
-					return FinishPackageProgress(report, "update", pkg.Source.Source, InstallManagedGit(cwd, sm.AgentDir(), sm, pkg.Source.Source, pkg.Scope == "project"))
+					// Packages of one repository share a managed checkout and each moves it to its own ref, so they run one at a time in settings order and the last one decides the checked-out commit.
+					var first error
+					for j, pkg := range group {
+						if j > 0 {
+							start(pkg)
+						}
+						err := FinishPackageProgress(report, "update", pkg.Source.Source, InstallManagedGit(cwd, sm.AgentDir(), sm, pkg.Source.Source, pkg.Scope == "project"))
+						if err != nil && first == nil {
+							first = err
+						}
+					}
+					return first
 				}
 			}
-			return runPackageTasks(gitTasks, func(i int) {
-				source := git[i].Source.Source
-				report(ProgressEvent{Type: "start", Action: "update", Source: source, Message: new(fmt.Sprintf("Updating %s...", source))})
-			})
+			return runPackageTasks(gitTasks, func(i int) { start(groups[i][0]) })
 		})
 	}
 	return runPackageTasks(tasks, nil)
+}
+
+// groupGitUpdatesByCheckout collects Git packages that resolve to one managed checkout, in input order, with groups ordered by their first package. Pi's updateConfiguredSources gives each package its own task and so races two updates of one checkout (package-manager.ts:1171-1181, 1931-1945): both fetch into one FETCH_HEAD and both run `git reset --hard`, which fails on index.lock. A source whose checkout path cannot be computed stays alone, so InstallManagedGit reports its error for that package only.
+func groupGitUpdatesByCheckout(cwd, agentDir string, git []ConfiguredPackage) [][]ConfiguredPackage {
+	var groups [][]ConfiguredPackage
+	byCheckout := map[string]int{}
+	for _, pkg := range git {
+		checkout, err := GitCheckoutPath(cwd, agentDir, pkg.Source.Source, pkg.Scope == "project")
+		if err == nil {
+			if i, shared := byCheckout[checkout]; shared {
+				groups[i] = append(groups[i], pkg)
+				continue
+			}
+			byCheckout[checkout] = len(groups)
+		}
+		groups = append(groups, []ConfiguredPackage{pkg})
+	}
+	return groups
 }
 
 func installNpmBatch(sm *codingagent.SettingsManager, batch npmUpdateBatch) error {

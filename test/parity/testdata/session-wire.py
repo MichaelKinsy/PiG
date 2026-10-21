@@ -200,14 +200,29 @@ def wait_command_ready(master, proc, ready):
     return output
 
 
-def terminal_probe(binary, root, action):
+def terminal_probe(binary, root, case):
+    """A terminal that goes away (disconnect, disconnect-repo) or a live SIGHUP (live-hup) under an interactive session.
+
+    disconnect and live-hup keep the session working with a ticker (command_ready_fixture). disconnect-repo leaves it
+    idle in a git repository with the PTY as the session's controlling terminal, as a login terminal is: Pi's footer
+    watches .git/HEAD, so its event loop stays alive, the kernel's SIGHUP at the hangup runs its graceful shutdown,
+    and the shutdown's terminal writes meet EIO (interactive-mode.ts shutdown fromSignal, then emergencyTerminalExit):
+    129 without any pending render. Without a controlling terminal no SIGHUP arrives, and an idle Pi in a repository
+    stays alive until some write fails. In a plain directory an idle Pi has nothing left in its loop, so it can exit
+    0 before the handler runs (D186; D102 states the live-terminal half of this)."""
+    action = "live-hup" if case == "live-hup" else "disconnect"
     cwd, env, args = setup(root, "http://127.0.0.1:1/v1")
-    ready, extension = command_ready_fixture(root, env, busy=True)
+    spawn = {}
+    if case == "disconnect-repo":
+        subprocess.run(["git", "init", "-q"], cwd=cwd, env=env, check=True)
+    ready, extension = command_ready_fixture(root, env, busy=case != "disconnect-repo")
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 35, 100, 0, 0))
+    if case == "disconnect-repo":
+        spawn["preexec_fn"] = lambda: fcntl.ioctl(slave, termios.TIOCSCTTY, 0)
     try:
         with child([*binary, *args, "-e", str(extension), "/wire-ready"], cwd=cwd, env=env,
-                   stdin=slave, stdout=slave, stderr=slave) as proc:
+                   stdin=slave, stdout=slave, stderr=slave, **spawn) as proc:
             wait_command_ready(master, proc, ready)
             if action == "disconnect":
                 os.close(master)
@@ -223,7 +238,7 @@ def terminal_probe(binary, root, action):
                 else:
                     time.sleep(0.02)
             status = proc.wait()
-            emit({"case": action, "returncode": status})
+            emit({"case": case, "returncode": status})
             assert status == (129 if action == "disconnect" else 0), status
     finally:
         if master is not None:
@@ -366,7 +381,7 @@ def tool_signal_probe(binary, root, sig, shutdown=None, mode="json"):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bin", default=os.environ.get("PIG_PARITY_PIG_BIN"))
-    parser.add_argument("--case", choices=["session", "print", "json", "json-tool-term", "json-tool-hup", "json-tool-throwing-shutdown", "json-tool-slow-shutdown", "text-tool-throwing-shutdown", "text-tool-slow-shutdown", "disconnect", "live-hup", "modal-shutdown"], required=True, action="append")
+    parser.add_argument("--case", choices=["session", "print", "json", "json-tool-term", "json-tool-hup", "json-tool-throwing-shutdown", "json-tool-slow-shutdown", "text-tool-throwing-shutdown", "text-tool-slow-shutdown", "disconnect", "disconnect-repo", "live-hup", "modal-shutdown"], required=True, action="append")
     options = parser.parse_args()
     if not options.bin:
         parser.error("--bin or PIG_PARITY_PIG_BIN is required")

@@ -729,6 +729,32 @@ replace = "Took Ns"
 	}
 }
 
+// The runner prebuilds the Go test binaries and programs a script lists in env.pig_go_tests, env.pi_go_tests, env.pig_go_programs and
+// env.pi_go_programs (test/parity/runner/schema.go). The lint decodes the same scenarios, so it must know every key the runner does.
+func TestDecodeScenarioAcceptsTheGoPrebuildEnvKeys(t *testing.T) {
+	source := `
+name = "prebuild"
+description = "prebuild"
+covers = ["packages/tui/src/autocomplete.ts"]
+tags = ["hermetic"]
+driver = "interactive-tmux"
+
+[env]
+pig_go_tests = ["./tui"]
+pi_go_tests = ["./tui"]
+pig_go_programs = ["./cmd/probe"]
+pi_go_programs = ["./cmd/probe"]
+`
+	var sc scenario
+	var violations []violation
+	if err := decodeScenarioWithUnknownKeyLint("prebuild.toml", source, &sc, &violations); err != nil {
+		t.Fatalf("decodeScenarioWithUnknownKeyLint returned parse error: %v", err)
+	}
+	if len(violations) != 0 {
+		t.Fatalf("the lint rejects env keys the runner accepts: %+v", violations)
+	}
+}
+
 func TestLintOAuthProviderCoverage(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "providers.toml"), []byte(`

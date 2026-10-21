@@ -1052,6 +1052,21 @@ fn main() {
         },
     );
     ext.tool(
+        "dialog_order",
+        "Open a select dialog titled by the call and report the answer",
+        json!({"type": "object", "properties": {"title": {"type": "string"}, "exec": {"type": "boolean"}}}),
+        |ctx, params: Value| {
+            let title = params["title"].as_str().unwrap_or("").to_string();
+            if params["exec"].as_bool() == Some(true) {
+                let _ = ctx.exec("dialog-order-exec", &[]);
+            }
+            match ctx.select(&title, &["a", "b"]) {
+                Ok((selected, _)) => ToolResult::text(format!("dialog:{title}={selected}")),
+                Err(error) => ToolResult::Error(error.to_string()),
+            }
+        },
+    );
+    ext.tool(
         "throw_probe",
         "Throw a value of the requested kind",
         json!({"type": "object", "properties": {"kind": {"type": "string"}}}),

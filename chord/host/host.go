@@ -1951,6 +1951,17 @@ func (host *HostImpl) Close() error {
 			memory.flush()
 		}
 	}
+	// A hold that a link delivered after the snapshot above created its object after it: nothing disposes that object, and a resource open still waiting on its abort signal would keep waitTasks blocked for good. The links are closed now, so no more arrive; dispose what is left, holders first, until nothing is.
+	for {
+		var late []*ObjectImpl
+		host.run(func() { late = host.objects.Values() })
+		if len(late) == 0 {
+			break
+		}
+		if lateErr := host.disposeHoldersFirst(late, reason, "host close: disposal failed"); err == nil {
+			err = lateErr
+		}
+	}
 	host.waitTasks()
 	return err
 }
