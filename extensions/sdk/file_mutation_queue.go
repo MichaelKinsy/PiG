@@ -1,29 +1,18 @@
 package sdk
 
 import (
-	"errors"
-	"io/fs"
+	"encoding/json"
+	"fmt"
 	"path/filepath"
-	"runtime"
-	"slices"
-	"sync"
-	"syscall"
-
-	"github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop"
 )
 
-// fileMutationQueues serializes the mutations of one file inside this extension process, as Pi's module-level queue does (core/tools/file-mutation-queue.ts). Each
-// file keeps the place of the last mutation registered for it and the number of mutations admitted and not finished; the entry is dropped when the count reaches zero.
-// The entry is a value in the map, so a call that finds no queue makes no allocation but its place.
-var fileMutationQueues = struct {
-	mu     sync.Mutex
-	queues map[string]mutationQueue
-}{queues: map[string]mutationQueue{}}
-
-type mutationQueue struct {
-	tail     *jsloop.Place
-	admitted int
-}
+// Host calls for Pi's withFileMutationQueue (core/tools/file-mutation-queue.ts). Pi has one queue in one process, shared by the built-in edit and write tools and
+// every extension. An extension here runs in a process of its own, so the queue lives in the host and the SDK asks it for the file's turn (fileMutation.enter,
+// answered once the file's earlier mutations completed) and gives the turn back (fileMutation.exit). The SDK keeps no queue and no path-key code of its own.
+const (
+	callFileMutationEnter = "fileMutation.enter"
+	callFileMutationExit  = "fileMutation.exit"
+)
 
 // WithFileMutationQueue runs fn once every mutation registered earlier for the same file has finished, then lets the next one run, and returns fn's result and error.
 // Mutations of different files run in parallel. It mirrors Pi's withFileMutationQueue, which edit and write extension tools wrap around their read-modify-write so
@@ -31,78 +20,53 @@ type mutationQueue struct {
 // keyed by its absolute path), and callers run in the order they called. A path that cannot be resolved for a reason other than a missing file or directory
 // returns that error without running fn.
 //
-// The queue serializes mutations made through it inside this process; it does not coordinate with the host's built-in tools or other extension processes.
+// The queue is the host's: it serializes this extension's mutations with the host's built-in edit and write tools and with every other extension process, as Pi's
+// one queue does. The turn is held by the extension's process: a packed cell's members share it, so one member stopping while another's fn runs does not release
+// the file, and the host releases it when the process's last connection closes. Like the other host helpers it may be called before Run, and with no connection to the host (PIG_EXT_SOCKET unset) it returns an error without running fn.
 func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, error) {
-	queues := &fileMutationQueues
-	// The key is resolved and the position taken under one lock: admission order equals call order, which Pi gets from its registration queue.
-	queues.mu.Lock()
-	key, err := fileMutationQueueKey(filePath)
-	if err != nil {
-		queues.mu.Unlock()
-		var zero T
-		return zero, err
-	}
-	queue := queues.queues[key]
-	place := jsloop.After(queue.tail)
-	queue.tail = place
-	queue.admitted++
-	queues.queues[key] = queue
-	queues.mu.Unlock()
-
-	place.Wait()
-	defer func() {
-		place.Release()
-		queues.mu.Lock()
-		queue := queues.queues[key]
-		if queue.admitted--; queue.admitted == 0 {
-			delete(queues.queues, key)
-		} else {
-			queues.queues[key] = queue
-		}
-		queues.mu.Unlock()
-	}()
-	return fn()
-}
-
-func fileMutationQueueKey(filePath string) (string, error) {
+	var result T
+	// Pi resolves the path against the process's working directory; the host resolves nothing relative, so the SDK sends it absolute.
 	resolved, err := filepath.Abs(filePath)
 	if err != nil {
-		return "", err
+		return result, err
 	}
-	real, err := filepath.EvalSymlinks(resolved)
+	if hook := installedHelpers(); hook != nil && hook.WithFileMutationQueue != nil {
+		err := hook.WithFileMutationQueue(resolved, func() error {
+			var taskErr error
+			result, taskErr = fn()
+			return taskErr
+		})
+		return result, err
+	}
+	c, err := helperConnection()
 	if err != nil {
-		if isMissingPathError(err) {
-			return resolved, nil
+		return result, err
+	}
+	reply, err := c.call(callFileMutationEnter, map[string]string{"path": resolved})
+	if err := callResultError(reply, err); err != nil {
+		return result, err
+	}
+	var entered struct {
+		Ticket string `json:"ticket"`
+	}
+	if err := json.Unmarshal(reply.Result, &entered); err != nil {
+		return result, fmt.Errorf("decode %s: %w", callFileMutationEnter, err)
+	}
+	if entered.Ticket == "" {
+		return result, fmt.Errorf("%s returned no ticket", callFileMutationEnter)
+	}
+	defer func() {
+		args := map[string]string{"ticket": entered.Ticket}
+		// The turn belongs to the process (the host's ticket registry is per process for a packed cell), not to the connection it was taken on: when that connection
+		// is gone, because its extension was replaced or stopped while this task ran, another extension's connection of the process gives the turn back.
+		if _, err := c.call(callFileMutationExit, args); err != nil {
+			for _, other := range runningConnectionsExcept(c) {
+				if _, err := other.call(callFileMutationExit, args); err == nil {
+					break
+				}
+			}
 		}
-		return "", err
-	}
-	return real, nil
-}
-
-// windowsMissingPathErrors are the Windows system errors that libuv's uv_translate_sys_error names ENOENT, so Node's realpath reports each as a missing path.
-var windowsMissingPathErrors = []syscall.Errno{
-	2,     // ERROR_FILE_NOT_FOUND
-	3,     // ERROR_PATH_NOT_FOUND
-	15,    // ERROR_INVALID_DRIVE
-	123,   // ERROR_INVALID_NAME
-	126,   // ERROR_MOD_NOT_FOUND
-	161,   // ERROR_BAD_PATHNAME
-	203,   // ERROR_ENVVAR_NOT_FOUND
-	267,   // ERROR_DIRECTORY
-	4392,  // ERROR_INVALID_REPARSE_DATA
-	11001, // WSAHOST_NOT_FOUND
-	11004, // WSANO_DATA
-}
-
-// isMissingPathError is Pi's isMissingPathError: the error's Node code is ENOENT or ENOTDIR. On Windows that is decided by the system error, not by fs.ErrNotExist,
-// which also covers ERROR_BAD_NETPATH (libuv: UNKNOWN).
-func isMissingPathError(err error) bool {
-	var errno syscall.Errno
-	if !errors.As(err, &errno) {
-		return errors.Is(err, fs.ErrNotExist)
-	}
-	if errno == syscall.ENOENT || errno == syscall.ENOTDIR {
-		return true
-	}
-	return runtime.GOOS == "windows" && slices.Contains(windowsMissingPathErrors, errno)
+		// With no connection of the process left the host has released the turn already (it does when the last connection closes).
+	}()
+	return fn()
 }

@@ -27,12 +27,14 @@ type ParsedFrontmatter struct {
 	Body        string
 }
 
-// HostHelpers are the host's parsers for a fused extension, which runs in the host's own process and has no connection before Run. The code that builds
-// the fused binary installs them with SetHostHelpers before it runs any factory.
+// HostHelpers are the host's parsers and file mutation queue for a fused extension, which runs in the host's own process and has no connection before Run. The code
+// that builds the fused binary installs them with SetHostHelpers before it runs any factory.
 type HostHelpers struct {
 	ParseFrontmatter func(content string) (ParsedFrontmatter, error)
 	// ParseDate is Date.parse: the time value in milliseconds, false for NaN.
 	ParseDate func(text string) (float64, bool)
+	// WithFileMutationQueue runs fn in the host's file mutation queue for the absolute path (the host's WithFileMutationQueue) and returns the resolve error or fn's error.
+	WithFileMutationQueue func(filePath string, fn func() error) error
 }
 
 var helpers struct {
@@ -172,6 +174,20 @@ func helperConnection() (*conn, error) {
 	}
 	helpers.dialled[path] = c
 	return c, nil
+}
+
+// runningConnectionsExcept are the connections of the running extensions other than c. It never dials: it is for a helper that must reach the host after the
+// connection it started on has gone.
+func runningConnectionsExcept(c *conn) []*conn {
+	helpers.mu.Lock()
+	defer helpers.mu.Unlock()
+	var others []*conn
+	for _, running := range helpers.running {
+		if running.c != c {
+			others = append(others, running.c)
+		}
+	}
+	return others
 }
 
 // helperSocketPath is the socket a helper dials: PIG_EXT_SOCKET, which a packed cell's runner sets to the member's socket while the member's factory runs.

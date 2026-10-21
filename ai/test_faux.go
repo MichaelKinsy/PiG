@@ -457,6 +457,18 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 	}
 
+	// Extension tool and built-in write and edit on one file in one parallel batch: file-mutation-queue.ts is shared by the built-in tools and every extension.
+	if strings.Contains(lastText, "Run: parallel extension file mutation") {
+		return "tool", "", []testFauxToolCall{
+			{Name: "write", Args: map[string]any{"path": "parity-parallel-mutation-target.txt", "content": "base\n"}},
+			{Name: "patch_file", Args: map[string]any{"path": "parity-parallel-mutation-target.txt", "line": "patched-A"}},
+			{Name: "edit", Args: map[string]any{
+				"path":  "parity-parallel-mutation-target.txt",
+				"edits": []map[string]any{{"oldText": "base", "newText": "BASE"}},
+			}},
+		}
+	}
+
 	// MCP tool card parity.
 	if strings.Contains(lastText, "Run: mcp search cards") {
 		return "tool", "", []testFauxToolCall{{
@@ -656,6 +668,16 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 		if strings.Contains(currentUserText, "Run: write parity-write-output.txt") {
 			return "text", "wrote", nil
+		}
+		if strings.Contains(currentUserText, "Run: parallel extension file mutation") {
+			// The batch's results (write, patch_file, edit) lead to a read of the file; the read's result decides.
+			if strings.Contains(lastText, "Successfully") || strings.Contains(lastText, "patch-file: appended") {
+				return "tool", "", []testFauxToolCall{{Name: "read", Args: map[string]any{"path": "parity-parallel-mutation-target.txt"}}}
+			}
+			if strings.Contains(lastText, "BASE") && strings.Contains(lastText, "patched-A") {
+				return "text", "parallel-mutation-done", nil
+			}
+			return "error", "test-faux: lost update: " + lastText, nil
 		}
 		if strings.Contains(currentUserText, "Run: write then edit parity-batched-target.txt") {
 			if strings.Contains(historyText, "Successfully wrote") &&
