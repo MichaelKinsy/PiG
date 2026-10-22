@@ -231,14 +231,14 @@ func TestFastEntryDecodeHandWrittenVariants(t *testing.T) {
 		}
 	}
 	for name, text := range map[string]string{
-		"usage extra key":     `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"input":1,"cacheWrite1h":2},"stopReason":"stop","timestamp":1}]}`,
-		"cost extra key":      `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"cost":{"input":1,"other":2}},"stopReason":"stop","timestamp":1}]}`,
+		"usage extra key":              `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"input":1,"cacheWrite1h":2},"stopReason":"stop","timestamp":1}]}`,
+		"cost extra key":               `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"cost":{"input":1,"other":2}},"stopReason":"stop","timestamp":1}]}`,
 		"total from provider number":   `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"cost":{"totalFromProvider":1}},"stopReason":"stop","timestamp":1}]}`,
 		"total from provider repeated": `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"cost":{"totalFromProvider":true,"totalFromProvider":false}},"stopReason":"stop","timestamp":1}]}`,
-		"escaped key":         `{"i\u0064":7}`,
-		"float timestamp":     `{"id":7,"kind":"k","model":[{"role":"user","content":"x","timestamp":1.5}]}`,
-		"null content":        `{"id":7,"kind":"k","model":[{"role":"assistant","content":null,"api":"a","provider":"p","model":"m","stopReason":"stop","timestamp":1}]}`,
-		"number out of range": `{"id":7,"kind":"k","data":1e999}`,
+		"escaped key":                  `{"i\u0064":7}`,
+		"float timestamp":              `{"id":7,"kind":"k","model":[{"role":"user","content":"x","timestamp":1.5}]}`,
+		"null content":                 `{"id":7,"kind":"k","model":[{"role":"assistant","content":null,"api":"a","provider":"p","model":"m","stopReason":"stop","timestamp":1}]}`,
+		"number out of range":          `{"id":7,"kind":"k","data":1e999}`,
 		// UnmarshalContentBlock rejects a block without a type, so a typeless block must not decode as text or a call.
 		"untyped text block":      `{"id":7,"kind":"k","model":[{"role":"user","content":[{"text":"x"}],"timestamp":1}]}`,
 		"untyped tool call block": `{"id":7,"kind":"k","model":[{"role":"assistant","content":[{"id":"c","name":"t","arguments":{}}],"api":"a","provider":"p","model":"m","usage":{},"stopReason":"toolUse","timestamp":1}]}`,

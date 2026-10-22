@@ -112,7 +112,9 @@ func TestOpenAICompletionsUsesOpenRouterReportedCost(t *testing.T) {
 }
 
 // fromProvider reports usage.cost.totalFromProvider as Pi reads it: absent means false.
-func fromProvider(cost UsageCost) bool { return cost.TotalFromProvider != nil && *cost.TotalFromProvider }
+func fromProvider(cost UsageCost) bool {
+	return cost.TotalFromProvider != nil && *cost.TotalFromProvider
+}
 
 // openai-completions-provider-stream-event.test.ts "uses OpenRouter's reported total without double-counting non-BYOK upstream cost": a
 // model with no catalog rates, so every component is 0 and only the total carries the billed cost.
