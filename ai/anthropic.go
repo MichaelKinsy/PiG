@@ -584,8 +584,6 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 				}
 			}
 		case AssistantMessage:
-			out = append(out, pendingSystem...)
-			pendingSystem = nil
 			var blocks []anthContentBlock
 			for _, content := range message.Content {
 				switch content := content.(type) {
@@ -622,6 +620,9 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 				}
 			}
 			if len(blocks) > 0 {
+				// An assistant message that converts to no blocks is dropped, so the held updates wait for the next one that is sent (Pi #11091).
+				out = append(out, pendingSystem...)
+				pendingSystem = nil
 				messageIndex := len(out)
 				out = append(out, anthMessage{Role: "assistant", Content: blocks})
 				if managedProvider != "" && message.API == APIAnthropicMessages && message.Provider == managedProvider && isAnthropicEffort(AnthropicEffort(message.ProviderThinkingLevel)) {

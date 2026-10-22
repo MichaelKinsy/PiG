@@ -1857,8 +1857,25 @@
     },
     {
       "path": "packages/ai/test/transcript-tool-changes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:95e287e77f81bcbd4fb48cc9d18fc7ff48769221d0e40589a994a97cdd84a24c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:95e287e77f81bcbd4fb48cc9d18fc7ff48769221d0e40589a994a97cdd84a24c",
+      "evidence": [
+        "ai/system_message_replay_test.go",
+        "ai/transcript_tool_changes_test.go",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesKimiCodingAdditions",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesRequests",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesAdditionalToolsItem",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesPoisonedHistory",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesKeepsPrefixAcrossRemovalAndLoads",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesRedefinitionIsNotARemoval",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesStopsListingAToolAsUnavailableOnceDeclaredAgain",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesDoesNotListAToolAsUnavailableBeforeItsRemovalIsAnnounced",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesToolSearchPrefixAcrossLoadsAfterARemoval",
+        "ai/transcript_tool_changes_test.go#TestResolveTranscriptToolsBoundaryPerTransport",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesKimiPrefixAcrossLoadsAfterARemoval",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks"
+      ],
+      "rationale": "The fold tests cover all providers without native support; the integrated serialized-request suite covers Anthropic native capability/tool-list fallbacks, OpenAI developer-message/tool-search/removal fallbacks, and Kimi tool-bearing/system-text anchoring. Together they port all 11 upstream cases. Pi 3daa2028→b06c1f2c: Pi b06c1f2c (#10720) adds 'anchors additions for Kimi Coding k3/k3-256k/kimi-for-coding' and 'keeps Kimi Coding Highspeed additions in top-level tools'; ported in TestTranscriptToolChangesKimiCodingAdditions. Pi fdce48eb (caa6967b, 530015d9, #11142): every OpenAI Responses tool is declared in additional_tools items at its developer message (the table cases 'declares every OpenAI tool...' and 'announces OpenAI removals as text' are the first and fifth rows of TestTranscriptToolChangesOpenAIResponsesRequests); 'redefines an OpenAI tool with additional_tools...' is ...RedefinitionIsNotARemoval; the #10940 prefix cases are ...KeepsPrefixAcrossRemovalAndLoads, ...ToolSearchPrefixAcrossLoadsAfterARemoval and TestTranscriptToolChangesKimiPrefixAcrossLoadsAfterARemoval; 'stops listing a tool as unavailable...' and 'does not list a tool as still unavailable...' keep their names; 'resolves the top-level tool boundary per transport' is TestResolveTranscriptToolsBoundaryPerTransport. The 0.87.1 evidence for the Anthropic and fold cases is unchanged. Pi 3bc6eebac (1.4.0+3bc6eeba, #11091) adds \"holds an Anthropic update past an assistant message that converts to no blocks\", ported as TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks with the same transcript and expected role orders."
     },
     {
       "path": "packages/ai/test/transform-messages-copilot-openai-to-anthropic.test.ts",
