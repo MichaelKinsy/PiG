@@ -217,6 +217,7 @@ func TestChildAgentSessionGoFused(t *testing.T) {
 }
 
 const childSessionPython = `import json
+import re
 import threading
 import time
 import pig_sdk
@@ -330,7 +331,7 @@ def new_extension():
             if not message:
                 return None
             lines = message.split("\n")
-            return {"first": lines[0], "docs": [line.strip().split("/")[-1] for line in lines if line.strip().endswith(".md")]}
+            return {"first": lines[0], "docs": [re.split(r"[\\/]", line.strip())[-1] for line in lines if line.strip().endswith(".md")]}
 
         out = {}
         for name, model in (("no-key", {"provider": "nokey", "id": "locked"}), ("no-model", None)):
@@ -585,7 +586,7 @@ pub fn new_extension() -> Extension {
         let norm = |message: &str| -> Value {
             if message.is_empty() { return Value::Null; }
             let lines: Vec<&str> = message.split('\n').collect();
-            let docs: Vec<String> = lines.iter().map(|line| line.trim()).filter(|line| line.ends_with(".md")).map(|line| line.rsplit('/').next().unwrap_or("").to_string()).collect();
+            let docs: Vec<String> = lines.iter().map(|line| line.trim()).filter(|line| line.ends_with(".md")).map(|line| line.rsplit(['/', '\\']).next().unwrap_or("").to_string()).collect();
             json!({"first": lines[0], "docs": docs})
         };
         let mut out = serde_json::Map::new();

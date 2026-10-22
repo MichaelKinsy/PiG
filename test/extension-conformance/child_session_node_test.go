@@ -123,7 +123,7 @@ export default function (pi) {
 
   pi.registerTool({ name: "child_errors", label: "child_errors", description: "child_errors", parameters: object, execute: async () => reply(await world(async ({ runtime, create }) => {
     // The docs paths are the installation's: the message keeps its first line and the names of the documents it points at.
-    const norm = message => message == null ? null : { first: message.split("\n")[0], docs: message.split("\n").filter(line => line.trim().endsWith(".md")).map(line => line.trim().split("/").at(-1)) };
+    const norm = message => message == null ? null : { first: message.split("\n")[0], docs: message.split("\n").filter(line => line.trim().endsWith(".md")).map(line => line.trim().split(/[\\/]/).at(-1)) };
     const out = {};
     for (const [name, options] of [["no-key", { model: runtime.getModel("nokey", "locked") }], ["no-model", {}]]) {
       const { session, modelFallbackMessage } = await create(options);
