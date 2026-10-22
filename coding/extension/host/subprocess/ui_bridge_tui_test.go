@@ -21,7 +21,7 @@ func (u *tuiUI) RequestTUIRender(force bool) {
 	u.calls = append(u.calls, "requestRender")
 }
 
-// D192: Pi's `tui.invalidate()` and `tui.requestRender(force)` reach the host's TUI in the order they were made.
+// Pi's `tui.invalidate()` and `tui.requestRender(force)` reach the host's TUI in the order they were made.
 func TestUIBridgeTUIHandleCallsReachTheUI(t *testing.T) {
 	ui := &tuiUI{mockUIContext: &mockUIContext{}}
 	bridge := newTestBridge(ui)

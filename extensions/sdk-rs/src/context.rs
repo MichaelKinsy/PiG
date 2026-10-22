@@ -4492,8 +4492,8 @@ impl Drop for WidthChangeSubscription {
     }
 }
 
-/// pig additive (D192): the handle of Pi's TUI that a widget factory receives as its `tui` argument. A subprocess extension has no
-/// factory to receive it, so [`Context::tui`] hands the same two calls out directly. With no UI both do nothing.
+/// The handle of Pi's TUI that a widget factory receives as its `tui` argument (`TUI.invalidate`, tui.ts:366; `TUI.requestRender`, tui.ts:990).
+/// A subprocess extension has no factory to receive it, so [`Context::tui`] hands the same two calls out directly. With no UI both do nothing.
 pub struct Tui {
     ctx: Context,
 }

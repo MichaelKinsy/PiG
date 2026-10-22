@@ -4457,7 +4457,7 @@ func (b *UIBridge) commandsWire(actions *HostCallbacks) (json.RawMessage, bool) 
 	return encoded, true
 }
 
-// pig additive (D192): handleInvalidateTUI is TUI.invalidate() of the `tui` Pi hands a widget factory.
+// handleInvalidateTUI is TUI.invalidate() (tui.ts:366) of the `tui` Pi hands a widget factory.
 func (b *UIBridge) handleInvalidateTUI(ui extension.UIContext) (*CallResultPayload, error) {
 	if driver, ok := ui.(extension.TUIDriver); ok {
 		driver.InvalidateTUI()
@@ -4465,7 +4465,7 @@ func (b *UIBridge) handleInvalidateTUI(ui extension.UIContext) (*CallResultPaylo
 	return &CallResultPayload{}, nil
 }
 
-// pig additive (D192): handleRequestRender is TUI.requestRender(force) of the `tui` Pi hands a widget factory.
+// handleRequestRender is TUI.requestRender(force) (tui.ts:990) of the `tui` Pi hands a widget factory.
 func (b *UIBridge) handleRequestRender(ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
 		Force bool `json:"force"`

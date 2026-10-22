@@ -12,7 +12,7 @@ import (
 // (Go, Python and Rust extensions run out of process).
 var _ extension.TUIDriver = (*ExtUIContext)(nil)
 
-// pig additive (D192): InvalidateTUI is TUI.invalidate(): every component drops its render cache, as a theme change does. It runs on the owner
+// InvalidateTUI is Pi's TUI.invalidate() (tui.ts:366): every component drops its render cache, as a theme change does. It runs on the owner
 // loop, which owns the component tree.
 func (u *ExtUIContext) InvalidateTUI() {
 	apply := func() {
@@ -29,7 +29,7 @@ func (u *ExtUIContext) InvalidateTUI() {
 	u.m.runOnMain(u.m.runCtx, apply)
 }
 
-// pig additive (D192): RequestTUIRender is TUI.requestRender(force): it coalesces a repaint on the current renderer, a full one when force is set.
+// RequestTUIRender is Pi's TUI.requestRender(force) (tui.ts:990): it coalesces a repaint on the current renderer, a full one when force is set.
 func (u *ExtUIContext) RequestTUIRender(force bool) {
 	u.m.rendererMu.RLock()
 	defer u.m.rendererMu.RUnlock()

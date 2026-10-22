@@ -1881,8 +1881,8 @@ func (c Context) OnTerminalInput(handler TerminalInputHandler) (func(), error) {
 	return unsubscribe, nil
 }
 
-// pig additive (D192): TUI is the handle of Pi's TUI that a widget factory receives as its `tui` argument. A subprocess extension has no
-// factory to receive it, so [Context.TUI] hands the same two calls out directly.
+// TUI is the handle of Pi's TUI that a widget factory receives as its `tui` argument (TUI.invalidate, tui.ts:366; TUI.requestRender,
+// tui.ts:990). A subprocess extension has no factory to receive it, so [Context.TUI] hands the same two calls out directly.
 type TUI struct{ ctx Context }
 
 // TUI returns the handle of the host's TUI.

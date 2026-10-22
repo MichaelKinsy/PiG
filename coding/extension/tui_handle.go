@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// pig additive (D192): TUIDriver is a UI that draws a TUI: the two calls of Pi's TUI an extension's widget factory
+// TUIDriver is a UI that draws a TUI: the two calls of Pi's TUI an extension's widget factory
 // reaches through the `tui` it is handed. Invalidate is TUI.invalidate (drops every component's
 // render cache, Markdown transform results included); RequestRender is TUI.requestRender (schedules a
 // repaint, a full one when force is set). A UI that draws none (print, JSON, RPC) does not implement

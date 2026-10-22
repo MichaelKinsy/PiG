@@ -3408,7 +3408,7 @@ export class Runtime {
         self.requestOverlayFrames();
         self.requestHostRender(force === true);
       },
-      // pig additive (D192): TUI.invalidate(): every component of the host's TUI drops its render cache, Markdown transform results included.
+      // TUI.invalidate() (tui.ts:366): every component of the host's TUI drops its render cache, Markdown transform results included.
       invalidate: () => self.fireAndForget("ui.tui.invalidate", {}),
       showOverlay: (child, childOptions) => self.showChildOverlay(child, childOptions),
       hideOverlay: () => self.hideTopOverlay(),
