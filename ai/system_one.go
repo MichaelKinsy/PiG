@@ -344,7 +344,8 @@ func addSystemOneImages(label string, model ClassifierModel, input SystemOneImag
 		for _, image := range images {
 			state = append(state, map[string]any{"type": "image_url", "image_url": map[string]any{"url": "data:" + image.MimeType + ";base64," + image.Data}})
 		}
-		request.State = append(state, request.State)
+		state = append(state, request.State)
+		request.State = state
 		return nil
 	}
 	assets := &SystemOneImageAssets{}
@@ -362,7 +363,8 @@ func addSystemOneImages(label string, model ClassifierModel, input SystemOneImag
 	for _, name := range assets.Names {
 		state = append(state, name)
 	}
-	request.State = append(state, request.State)
+	state = append(state, request.State)
+	request.State = state
 	return nil
 }
 
