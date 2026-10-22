@@ -369,6 +369,7 @@ func (stream *AssistantMessageEventStream) observeEvents(ctx context.Context, ma
 }
 
 // observeEventScopes is the iterator under Events, ObserveEvents and ObservePublishedEvents. expose says the consumer receives the observation, which it may keep; Events does not pass it on, so one that ended with nothing referring to it scopes the next callback again.
+//
 //perf:hot
 func (stream *AssistantMessageEventStream) observeEventScopes(ctx context.Context, materialize, expose bool) iter.Seq2[*StreamObservation, AssistantMessageEvent] {
 	if ctx == nil {

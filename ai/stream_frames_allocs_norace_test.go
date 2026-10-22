@@ -16,11 +16,11 @@ var streamFrameAllocCeilings = map[string]float64{
 	"openai-completions-text":     7,
 	"openai-completions-toolcall": 27,
 	"openai-responses-text":       7,
-	"openai-codex-responses-text": 29,
+	"openai-codex-responses-text": 28,
 	"anthropic-text":              8,
 	"anthropic-toolcall":          22,
-	"google-text":                 32,
-	"mistral-text":                38,
+	"google-text":                 30,
+	"mistral-text":                36,
 }
 
 // streamFrameMallocs is the heap allocations of one whole streamed response of frames records.

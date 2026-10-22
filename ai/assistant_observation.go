@@ -33,6 +33,8 @@ type assistantMessageObservation struct {
 	shallow *assistantMessageReferences
 	// seq is the cell publication the holder's exported fields were copied at: while the cell's seq still equals it, those fields are the current state and delivered keeps the holder.
 	seq uint64
+	// pending is set on a handle built at a push for the consumer that waits for it (currentHandle), before that consumer's tick. Nothing but that consumer reads the handle until delivered runs, so a handle that went stale meanwhile is refreshed in place instead of replaced.
+	pending *deliveredHandle
 }
 
 // assistantMessageReplacements distinguishes top-level assignment from mutation of an existing nested object.
@@ -96,7 +98,9 @@ func (cell *assistantMessageCell) currentHandle() *AssistantMessage {
 	cell.mu.Lock()
 	defer cell.mu.Unlock()
 	cell.settleLocked(nil)
-	return newDeliveredHandle(cell.current, assistantMessageObservation{cell: cell, seq: cell.seq})
+	handle := newDeliveredStorage(cell.current, assistantMessageObservation{cell: cell, seq: cell.seq})
+	handle.observation.pending = handle
+	return &handle.message
 }
 
 // Observe returns independently owned message data at the current publication. Full views advance all fields; shallow views retain copied scalars and the nested objects present at their copy boundary. An ordinary message is deep-copied; native JSON scalar values and nil containers retain their representation. Nil stays nil.
@@ -265,6 +269,9 @@ func (message *AssistantMessage) delivered() *AssistantMessage {
 	}
 	observation := message.observation
 	cell := observation.cell
+	if pending := observation.pending; pending != nil {
+		return pending.refresh()
+	}
 	cell.mu.RLock()
 	unchanged := observation.seq == cell.seq
 	cell.mu.RUnlock()
@@ -273,6 +280,20 @@ func (message *AssistantMessage) delivered() *AssistantMessage {
 	}
 	current, _, seq := observation.capture(message)
 	return newDeliveredHandle(current, assistantMessageObservation{cell: cell, shallow: observation.shallow, seq: seq})
+}
+
+// refresh is delivered for a pending handle: it ends the pending state and, when the cell published since the handle was built, rebuilds the handle in place from the cell's current state.
+func (handle *deliveredHandle) refresh() *AssistantMessage {
+	cell := handle.observation.cell
+	cell.mu.Lock()
+	defer cell.mu.Unlock()
+	if handle.observation.seq != cell.seq {
+		cell.settleLocked(nil)
+		handle.fill(cell.current, assistantMessageObservation{cell: cell, seq: cell.seq})
+	} else {
+		handle.observation.pending = nil
+	}
+	return &handle.message
 }
 
 // deliveredHandle is the storage of one handle delivered returns: the message, its observation and, for a message of a few blocks, the content it holds, in one allocation.
@@ -286,7 +307,18 @@ type deliveredHandle struct {
 
 // newDeliveredHandle is clonePublishedAssistantMessage of current with observation, as one allocation unless the content is long.
 func newDeliveredHandle(current AssistantMessage, observation assistantMessageObservation) *AssistantMessage {
-	handle := &deliveredHandle{message: current, observation: observation}
+	return &newDeliveredStorage(current, observation).message
+}
+
+func newDeliveredStorage(current AssistantMessage, observation assistantMessageObservation) *deliveredHandle {
+	handle := &deliveredHandle{}
+	handle.fill(current, observation)
+	return handle
+}
+
+// fill makes the handle hold a clone of current with observation. A handle that is filled again drops what it held.
+func (handle *deliveredHandle) fill(current AssistantMessage, observation assistantMessageObservation) {
+	*handle = deliveredHandle{message: current, observation: observation}
 	message := &handle.message
 	message.observation = &handle.observation
 	if current.Content != nil {
@@ -315,7 +347,6 @@ func newDeliveredHandle(current AssistantMessage, observation assistantMessageOb
 	if current.DurationMs != nil {
 		message.DurationMs = new(*current.DurationMs)
 	}
-	return message
 }
 
 // RefreshEvent returns the event with its partial's exported fields set to the stream state at this call. A host dispatcher calls it when it delivers a retained event to a listener after an awaited step, so the listener's direct field reads match what a JavaScript listener sees at that tick. Events without a partial are returned unchanged.

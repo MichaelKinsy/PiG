@@ -530,6 +530,15 @@ func (builder *assistantStreamBuilder) settleArguments() {
 }
 
 func (builder *assistantStreamBuilder) publish() *AssistantMessage {
+	builder.publishState()
+	if !builder.publishesViews() {
+		return builder.partial
+	}
+	return builder.cell.view()
+}
+
+// publishState publishes the partial to the cell without making the live view of it.
+func (builder *assistantStreamBuilder) publishState() {
 	builder.dirty = false
 	if !builder.publishesViews() {
 		// The construction message itself goes out (below), so its calls hold their parse, even one deferred while the builder still published views.
@@ -541,11 +550,6 @@ func (builder *assistantStreamBuilder) publish() *AssistantMessage {
 		builder.cell.publish(builder.partial, builder.replacements)
 	}
 	builder.replacements = assistantMessageReplacements{}
-	if !builder.publishesViews() {
-		// A producer outside the JavaScript-order executor pushes its construction message; Push stores an emission-time snapshot of it.
-		return builder.partial
-	}
-	return builder.cell.view()
 }
 
 func (builder *assistantStreamBuilder) push(event AssistantMessageEvent) {
@@ -588,10 +592,17 @@ func (builder *assistantStreamBuilder) pushToolCallDelta(contentIndex int, delta
 
 // publishedView publishes the partial and returns the message its events carry.
 func (builder *assistantStreamBuilder) publishedView() *AssistantMessage {
-	view := builder.publish()
-	if builder.publishesViews() && builder.stream.materializingWaiter() {
-		// The consumer that takes the event next reads its partial at its tick, which is now unless the producer publishes again first: the event carries that partial, so the consumer's refresh of it finds it current and allocates nothing.
+	builder.publishState()
+	var view *AssistantMessage
+	switch {
+	case !builder.publishesViews():
+		// A producer outside the JavaScript-order executor pushes its construction message; Push stores an emission-time snapshot of it.
+		view = builder.partial
+	case builder.stream.materializingWaiter():
+		// The consumer that takes the event next reads its partial at its tick, which is now unless the producer publishes again first: the event carries that partial, so the consumer's refresh of it finds it current and allocates nothing. The live view is not made: nothing else would read it.
 		view = builder.cell.currentHandle()
+	default:
+		view = builder.cell.view()
 	}
 	if builder.partialCopy != nil {
 		view = builder.partialCopy(view)
