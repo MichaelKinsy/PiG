@@ -112192,6 +112192,17 @@
       "shapeHash": "sha256:5dd1228400903c25331f6e917df7a93dd8156b34f1701892dde584ff1500342f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/fusepack#managedToolsDir",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/fusepack",
+      "name": "managedToolsDir",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/fusepack#registerFactory",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/fusepack",
       "name": "registerFactory",
@@ -125214,6 +125225,17 @@
         "type": "LoadThemeResult"
       },
       "shapeHash": "sha256:f41cef052be9d9f9eae476588e9349137951127f089973c3179af4ca3e79319b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#LocalExec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "LocalExec",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, args BuiltinToolLocalExecArgs, binDir string, onData func([]byte) error) (*int, error)"
+      },
+      "shapeHash": "sha256:5cb90782c14ef808f371af0fbc56d2146bf080d8519056409aba4a09d90944ce"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#LoopTurnArgs",
@@ -195746,6 +195768,28 @@
         "type": "func(name *string) (encoding/json.RawMessage, error)"
       },
       "shapeHash": "sha256:6cdd9e62111a33e1746a7a0e33ad40072d2eefa5bd980c11765a505e7ff329aa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#localExecCall",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "localExecCall",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "localExecCall"
+      },
+      "shapeHash": "sha256:011e18c2e6677e572d6d000619d68a71d3cc6e5c810c5bbf6102d125dbb51470"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#localExecReply",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "localExecReply",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "localExecReply"
+      },
+      "shapeHash": "sha256:c00b112a31cbff974f38eb79ea68c61acffd08e2be704f86e0cc584c5150cf13"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#localOption",

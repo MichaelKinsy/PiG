@@ -526,17 +526,43 @@ func (h *Host) handleBuiltinToolLocalExec(ctx context.Context, conn *Conn, call 
 		defer stop()
 	}
 	extension.CallInitiated(ctx)
+	exitCode, err := LocalExec(runCtx, args, h.builtinToolBinDir(), func(data []byte) error {
+		payload, err := json.Marshal(BuiltinToolExecData{ExecuteID: args.ExecuteID, Data: base64.StdEncoding.EncodeToString(data)})
+		if err != nil {
+			return err
+		}
+		resp, err := conn.Request(context.WithoutCancel(runCtx), &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestBuiltinToolExecData, Args: payload}})
+		if err == nil && resp.Response != nil && resp.Response.Error != nil {
+			err = errors.New(resp.Response.Error.Message)
+		}
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(BuiltinToolLocalExecResult{ExitCode: exitCode})
+	return &CallResultPayload{Result: data}, err
+}
+
+// LocalExec is `exec` of createLocalBashOperations / createLocalPowerShellOperations for args (ExecuteID is not used): the command the host runs for an
+// extension. The connection handler serves an extension in another process with it, and a fused extension, which shares this process, calls it directly
+// through [sdk.HostHelpers], so the command does not depend on any extension's connection, as Pi's exec depends on none. It returns Pi's `{ exitCode }` (nil
+// for a command a signal ended), or the error Pi's exec rejects with. Output chunks reach onData in order before it returns, and a chunk is lent for the
+// call. An onData error ends the command: nobody can read the rest, and the error is LocalExec's. ctx ends the command, as does args.Aborted.
+func LocalExec(ctx context.Context, args BuiltinToolLocalExecArgs, binDir string, onData func([]byte) error) (*int, error) {
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	if args.Aborted {
 		cancel()
 	}
 	var operations tools.BashOperations
 	switch args.Shell {
 	case "bash":
-		local := tools.CreateLocalBashOperations(&tools.LocalBashOptions{ShellPath: args.ShellPath, BinDir: h.builtinToolBinDir()})
+		local := tools.CreateLocalBashOperations(&tools.LocalBashOptions{ShellPath: args.ShellPath, BinDir: binDir})
 		operations = local
 	case "powershell":
 		local := tools.NewLocalPowerShellOperations()
-		local.BinDir = h.builtinToolBinDir()
+		local.BinDir = binDir
 		operations = local
 	default:
 		return nil, fmt.Errorf("unknown shell %q", args.Shell)
@@ -556,20 +582,12 @@ func (h *Host) handleBuiltinToolLocalExec(ctx context.Context, conn *Conn, call 
 			options.Env = append(options.Env, name+"="+(*args.Env)[name])
 		}
 	}
-	// Output chunks reach the extension in order and before the reply. A failed delivery ends the command: nobody can read the rest.
 	var deliveryErr error
 	options.OnData = func(data []byte) {
 		if deliveryErr != nil {
 			return
 		}
-		payload, err := json.Marshal(BuiltinToolExecData{ExecuteID: args.ExecuteID, Data: base64.StdEncoding.EncodeToString(data)})
-		if err == nil {
-			var resp *Envelope
-			if resp, err = conn.Request(context.WithoutCancel(runCtx), &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestBuiltinToolExecData, Args: payload}}); err == nil && resp.Response != nil && resp.Response.Error != nil {
-				err = errors.New(resp.Response.Error.Message)
-			}
-		}
-		if err != nil {
+		if err := onData(data); err != nil {
 			deliveryErr = err
 			cancel()
 		}
@@ -581,6 +599,5 @@ func (h *Host) handleBuiltinToolLocalExec(ctx context.Context, conn *Conn, call 
 	if err != nil {
 		return nil, err
 	}
-	data, err := json.Marshal(BuiltinToolLocalExecResult{ExitCode: exec.ExitCode})
-	return &CallResultPayload{Result: data}, err
+	return exec.ExitCode, nil
 }

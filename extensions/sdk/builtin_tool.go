@@ -840,7 +840,7 @@ type LocalBashOperationsOptions struct {
 // to rewrite commands while it keeps Pi's local shell behavior (for example in a user_bash handler or a bash tool's operations). The command runs on the
 // host; Exec streams its output to OnData in order and returns when the command ends, with Pi's `{ exitCode }`, or with the error Pi's exec rejects with
 // ("aborted" when Signal was cancelled, "timeout:<seconds>" when Timeout elapsed). Exec runs over the connection of the running extension, so it needs
-// [Extension.Run] to have started.
+// [Extension.Run] to have started; a fused extension's Exec runs the command in the host's own process through [HostHelpers.LocalExec] and needs no connection.
 func CreateLocalBashOperations(options *LocalBashOperationsOptions) BashOperations {
 	var shellPath string
 	if options != nil {
@@ -858,19 +858,27 @@ func CreateLocalPowerShellOperations() PowerShellOperations {
 	}}
 }
 
+// localExecCall is the arguments of builtinTool.localExec, and the JSON [HostHelpers.LocalExec] takes.
+type localExecCall struct {
+	Shell     string             `json:"shell"`
+	ShellPath string             `json:"shellPath,omitempty"`
+	Command   string             `json:"command"`
+	Cwd       string             `json:"cwd"`
+	Timeout   *float64           `json:"timeout,omitempty"`
+	Env       *map[string]string `json:"env,omitempty"`
+	ExecuteID string             `json:"executeId"`
+	Aborted   bool               `json:"aborted,omitempty"`
+}
+
+// localExecReply is Pi's `{ exitCode }`, the reply of builtinTool.localExec.
+type localExecReply struct {
+	ExitCode *int `json:"exitCode"`
+}
+
 func localShellExec(shell, shellPath, command, cwd string, o BashExecOptions) (BashExecResult, error) {
-	ext, err := runningExtension()
-	if err != nil {
-		return BashExecResult{}, err
-	}
-	executeID := fmt.Sprintf("execute-%d", ext.executeSeq.Add(1))
 	var dataErr error
 	var dataMu sync.Mutex
-	builtinRegistry.mu.Lock()
-	if builtinRegistry.execData == nil {
-		builtinRegistry.execData = map[string]func([]byte) error{}
-	}
-	builtinRegistry.execData[executeID] = func(data []byte) (failure error) {
+	deliver := func(data []byte) (failure error) {
 		dataMu.Lock()
 		defer dataMu.Unlock()
 		if o.OnData == nil || dataErr != nil {
@@ -890,25 +898,54 @@ func localShellExec(shell, shellPath, command, cwd string, o BashExecOptions) (B
 		o.OnData(data)
 		return nil
 	}
+	call := localExecCall{Shell: shell, ShellPath: shellPath, Command: command, Cwd: cwd, Timeout: o.Timeout, Aborted: o.Signal != nil && o.Signal.Err() != nil}
+	if o.Env != nil {
+		call.Env = &o.Env
+	}
+	// A fused extension shares the host's process, so the host runs the command for it directly, as Pi's exec runs it in the extension's own process. The call
+	// has no Context, so no connection is its own: one that rode the first running extension's would end with that extension, whichever the caller is.
+	if hook := installedHelpers(); hook != nil && hook.LocalExec != nil {
+		raw, err := json.MarshalJS(call)
+		if err != nil {
+			return BashExecResult{}, err
+		}
+		signal := o.Signal
+		if signal == nil {
+			signal = context.Background()
+		}
+		encoded, execErr := hook.LocalExec(signal, raw, deliver)
+		dataMu.Lock()
+		failed := dataErr
+		dataMu.Unlock()
+		if failed != nil {
+			return BashExecResult{}, failed
+		}
+		if execErr != nil {
+			return BashExecResult{}, execErr
+		}
+		var reply localExecReply
+		if err := json.Unmarshal(encoded, &reply); err != nil {
+			return BashExecResult{}, fmt.Errorf("host reply to builtinTool.localExec: %w", err)
+		}
+		return BashExecResult(reply), nil
+	}
+	ext, err := runningExtension()
+	if err != nil {
+		return BashExecResult{}, err
+	}
+	executeID := fmt.Sprintf("execute-%d", ext.executeSeq.Add(1))
+	call.ExecuteID = executeID
+	builtinRegistry.mu.Lock()
+	if builtinRegistry.execData == nil {
+		builtinRegistry.execData = map[string]func([]byte) error{}
+	}
+	builtinRegistry.execData[executeID] = deliver
 	builtinRegistry.mu.Unlock()
 	defer func() {
 		builtinRegistry.mu.Lock()
 		delete(builtinRegistry.execData, executeID)
 		builtinRegistry.mu.Unlock()
 	}()
-	call := struct {
-		Shell     string             `json:"shell"`
-		ShellPath string             `json:"shellPath,omitempty"`
-		Command   string             `json:"command"`
-		Cwd       string             `json:"cwd"`
-		Timeout   *float64           `json:"timeout,omitempty"`
-		Env       *map[string]string `json:"env,omitempty"`
-		ExecuteID string             `json:"executeId"`
-		Aborted   bool               `json:"aborted,omitempty"`
-	}{shell, shellPath, command, cwd, o.Timeout, nil, executeID, o.Signal != nil && o.Signal.Err() != nil}
-	if o.Env != nil {
-		call.Env = &o.Env
-	}
 	stop := make(chan struct{})
 	var watcher sync.WaitGroup
 	pending, err := ext.conn.beginCallFor("", callBuiltinToolLocalExec, call)
@@ -944,13 +981,11 @@ func localShellExec(shell, shellPath, command, cwd string, o BashExecOptions) (B
 	if result == nil {
 		return BashExecResult{}, errors.New("host returned no result for builtinTool.localExec")
 	}
-	var reply struct {
-		ExitCode *int `json:"exitCode"`
-	}
+	var reply localExecReply
 	if err := json.Unmarshal(result.Result, &reply); err != nil {
 		return BashExecResult{}, fmt.Errorf("host reply to builtinTool.localExec: %w", err)
 	}
-	return BashExecResult{ExitCode: reply.ExitCode}, nil
+	return BashExecResult(reply), nil
 }
 
 // dispatchBuiltinExecData delivers one output chunk of a local execution to its OnData, and returns what the host waits for: nil, or OnData's throw.

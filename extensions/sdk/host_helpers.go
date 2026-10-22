@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -56,6 +57,10 @@ type HostHelpers struct {
 	ResizeImage func(input []byte, mimeType string, options *ImageResizeOptions) (ResizedImage, bool, error)
 	// BuiltinToolDefinition answers builtinTool.definition: the JSON of its arguments in, the JSON of its reply out.
 	BuiltinToolDefinition func(args []byte) ([]byte, error)
+	// LocalExec answers builtinTool.localExec in the host's own process: the JSON of its arguments in (the executeId is unused), the JSON of Pi's `{ exitCode }` out.
+	// The command ends with ctx. Each output chunk goes to onData in order before LocalExec returns, and an error from onData ends the command and is LocalExec's.
+	// The call has no Context, so a connection of its own would be any running extension's, which ends when that extension does, whichever made the call.
+	LocalExec func(ctx context.Context, args []byte, onData func(data []byte) error) ([]byte, error)
 	// HighlightCode is highlightCode (markdown false) or getMarkdownTheme().highlightCode (markdown true), drawn with the palette of the theme initTheme installed, or with the
 	// host's active theme when palette is empty.
 	HighlightCode func(code, lang string, markdown bool, palette []byte) ([]string, error)
