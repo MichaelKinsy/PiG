@@ -14945,6 +14945,27 @@
       ]
     },
     {
+      "id": "BF-6f7daf1",
+      "title": "fix: clone Windows Git Packages with core.longpaths so a deep file:// source path fits",
+      "symptom": "fix: clone Windows Git Packages with core.longpaths so a deep file:// source path fits",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6f7daf115e",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": [
+        "coding/cli/git_checkout_path_test.go::TestGitCloneArgsPerPlatform"
+      ]
+    },
+    {
       "id": "BF-6fb1307",
       "title": "openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before…",
       "symptom": "openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before `transformMessages` drops an errored or aborted assistant turn (`ai/openai_responses.go`, openai-codex-responses.ts:551): a transcript that starts with such a turn followed by a system message no longer sends that message as the prompt.",

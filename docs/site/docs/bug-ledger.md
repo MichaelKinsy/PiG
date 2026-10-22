@@ -515,6 +515,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6ee6eae](#bf-6ee6eae) | A Session delivers each event to its listeners the way Pi's `AgentSession` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f26a84](#bf-6f26a84) | Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6f7daf1](#bf-6f7daf1) | fix: clone Windows Git Packages with core.longpaths so a deep file:// source path fits | PiG's own defect | Windows | Unreleased |
 | [BF-6fb1307](#bf-6fb1307) | openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-70d51e5](#bf-70d51e5) | Fixed bash and PowerShell results losing `Took` after reloading a session, and the live `Took` including… | A fix Pi shipped that PiG ported | Windows | 0.5.0 |
 | [BF-70d51e5-2](#bf-70d51e5-2) | Fixed the message-format page: it said PiG does not carry the `nestedCalls` record on tool result messages… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
@@ -8033,6 +8034,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0ae4683246` (2026-10-08), `e8cc072521` (2026-10-08), `6f4a82fd86` (2026-10-09), `97e178f7f6` (2026-10-09), `d490a8b161` (2026-10-09)
 - **Tests:** `ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput`, `ai/validate_tool_args_oracle_test.go::TestValidateToolArgumentsMatchesPiOnSeededSchemas`, `chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder`, `internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`, `internal/evals/report_oracle_test.go::TestEvalReportMatchesPiOnSeededDesigns`
 - **Release note:** Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must contain at least 1 valid item", and a failing `then` branch reports only `must match "then" schema` while a failing `else` branch also lists its errors, as in Pi.
+
+### BF-6f7daf1
+
+**fix: clone Windows Git Packages with core.longpaths so a deep file:// source path fits**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: clone Windows Git Packages with core.longpaths so a deep file:// source path fits
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `6f7daf115e` (2026-10-22)
+- **Tests:** `coding/cli/git_checkout_path_test.go::TestGitCloneArgsPerPlatform`
 
 ### BF-6fb1307
 
