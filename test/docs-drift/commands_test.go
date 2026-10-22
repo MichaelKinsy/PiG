@@ -371,7 +371,7 @@ func TestCommandWordsStopAtShellOperators(t *testing.T) {
 var foreignFlags = map[string]string{
 	"--yes": "npm publish and others", "--dry-run": "npm and git examples", "--registry": "npm", "--save-dev": "npm",
 	"--arm": "k8sbench (the benchmark harness in benchmarking.md)", "--expose-gc": "Node (the benchmark notes in benchmarking.md)", "--rm": "docker", "--version": "any tool", "--help": "any tool", "--tag": "npm publish", "--access": "npm publish", "--otp": "npm publish",
-	"--omit": "npm install", "--no-optional": "npm install",
+	"--omit": "npm install", "--no-optional": "npm install", "--ignore-scripts": "npm install (the flag PiG passes while it resolves a Piglet, piglets.md)",
 	"--models-dir": "llama-server", "--no-models-autoload": "llama-server", "--jinja": "llama-server", "--host": "llama-server", "--reasoning-budget": "llama-server",
 	"--models-preset": "llama-server (nvidia-rtx-llama-cpp.md)", "--ctx-size": "llama-server (nvidia-rtx-llama-cpp.md)", "--port": "llama-server (nvidia-rtx-llama-cpp.md)", "--spec-draft-model": "llama-server (nvidia-rtx-llama-cpp.md)",
 	"--ctx-checkpoints": "llama-server (llama-cpp.md)", "--checkpoint-min-step": "llama-server (llama-cpp.md)",

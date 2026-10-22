@@ -41,6 +41,17 @@ func newScriptsFixture(t *testing.T) scriptsFixture {
 	t.Setenv("npm_config_cache", t.TempDir())
 	t.Setenv("npm_config_userconfig", filepath.Join(t.TempDir(), "npmrc"))
 	t.Setenv("npm_config_update_notifier", "false")
+	// The test proves what PiG asks npm to do, not what the machine's npm decides. Clear every npm switch that changes
+	// lifecycle scripts, then state both policies: npm 12 blocks the scripts of a Package that allowScripts does not
+	// cover, and any npm can ignore scripts by configuration.
+	for _, name := range []string{"NPM_CONFIG_IGNORE_SCRIPTS", "NPM_CONFIG_ALLOW_SCRIPTS", "NPM_CONFIG_DANGEROUSLY_ALLOW_ALL_SCRIPTS", "NPM_CONFIG_STRICT_ALLOW_SCRIPTS"} {
+		t.Setenv(name, "")
+		if err := os.Unsetenv(name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("npm_config_ignore_scripts", "false")
+	t.Setenv("npm_config_dangerously_allow_all_scripts", "true")
 	t.Chdir(t.TempDir())
 
 	sentinels := t.TempDir()
