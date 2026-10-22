@@ -861,6 +861,29 @@
       ]
     },
     {
+      "id": "BF-0aa31c4",
+      "title": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node…",
+      "symptom": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).",
+      "rootCause": "Ports Pi (#11156): loader shim table, register-loader and runtime-modules lists, a pi-ai models bundle entry, the host peer, and sdk-ts declarations. Needs make vendor-pi-dist and make generate to produce sdk-bundle/models.js.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "0.5.2",
+      "releaseNote": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0aa31c48e4",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_pi_ai_models_test.go::TestNodeExtensionImportsPiAiModelsSubpath",
+        "coding/extension/host/subprocess/required_tools_test.go::TestRequiredSDKToolsFailWhenMissing"
+      ]
+    },
+    {
       "id": "BF-0aba908",
       "title": "Extensions' `ctx.ui.setHiddenThinkingLabel()` now changes the collapsed thinking label of every assistant…",
       "symptom": "Extensions' `ctx.ui.setHiddenThinkingLabel()` now changes the collapsed thinking label of every assistant block (it was stored but never read) and is reset when the session is replaced.",
@@ -1504,6 +1527,32 @@
         "durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable",
         "durable/session/watch_doc_typed_test.go::TestDocumentStateOfDecodesRevisionsAndRetirement",
         "internal/codingagent/prompts/hidden_tools_upstream_test.go::TestUpstreamSystemPromptHiddenTools"
+      ]
+    },
+    {
+      "id": "BF-0e8c35e",
+      "title": "OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's…",
+      "symptom": "OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's reported total as `usage.cost.total` for OpenAI Completions and Anthropic Messages streams, plus the upstream inference cost for a BYOK request, instead of the catalog estimate, and mark it provider-reported.",
+      "rootCause": "Ports Pi (#10286, fixes #9980). For an OpenRouter model the OpenAI Completions usage chunk and the Anthropic Messages message_delta usage replace usage.cost.total with the reported cost (plus the upstream inference cost for BYOK) and set usage.cost.totalFromProvider. Retires divergence D124, which carried the unreleased branch of this fix: the call-site markers, the export-html normalize_replace rules and the pinned-asset note are removed because template.js is now Pi's file.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's reported total as `usage.cost.total` for OpenAI Completions and Anthropic Messages streams, plus the upstream inference cost for a BYOK request, instead of the catalog estimate, and mark it provider-reported. The export HTML header uses the recorded total. Replaces PiG's earlier D124 form of this fix with Pi's.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0e8c35e799",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": [
+        "ai/openrouter_cost_test.go::TestAnthropicMessagesUsesOpenRouterReportedCost",
+        "ai/openrouter_cost_test.go::TestApplyOpenRouterReportedCost",
+        "ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates",
+        "ai/openrouter_cost_test.go::TestOpenAICompletionsUsesOpenRouterReportedCost",
+        "internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets"
       ]
     },
     {
@@ -2499,6 +2548,28 @@
         "internal/codingagent/tool_codemode_timer_test.go::TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
         "tui/editor_status_test.go::TestEmbeddedCompactionStatusTakesTheEditorBorderColorLikeWorking",
         "tui/terminal_image_test.go::TestHerdrWithGraphicsSignalRendersKittyImage"
+      ]
+    },
+    {
+      "id": "BF-1abe7eb",
+      "title": "An Anthropic request holds a mid-conversation system update until an assistant message that is actually sent…",
+      "symptom": "An Anthropic request holds a mid-conversation system update until an assistant message that is actually sent, so an assistant message that converts to no blocks no longer moves the update before a user message.",
+      "rootCause": "Ports Pi (#11091). A mid-conversation system message is held until an assistant message that is actually sent (or the end of the transcript), so an assistant message that converts to no blocks no longer lets the update land before a user message.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An Anthropic request holds a mid-conversation system update until an assistant message that is actually sent, so an assistant message that converts to no blocks no longer moves the update before a user message.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1abe7eb962",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": [
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks"
       ]
     },
     {
@@ -6611,6 +6682,122 @@
       "tests": [
         "chord/host/node_delay_test.go::TestAwaitVoteDeadlineAboveNodeTimeoutMaxRejectsAfterOneMillisecond",
         "chord/host/node_delay_test.go::TestNodeDelayMatchesNodeTimers"
+      ]
+    },
+    {
+      "id": "BF-43d2597",
+      "title": "`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query…",
+      "symptom": "`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query with or without a `/` (Pi 612a172e, #10972).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "0.5.2",
+      "releaseNote": "`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query with or without a `/` (Pi 612a172e, #10972).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d259770e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi",
+        "coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError",
+        "coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi",
+        "coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort",
+        "internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn",
+        "test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs",
+        "tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD",
+        "tui/file_autocomplete_test.go::TestBuildFdPathQuery"
+      ]
+    },
+    {
+      "id": "BF-43d2597-2",
+      "title": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction…",
+      "symptom": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).",
+      "rootCause": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "0.5.2",
+      "releaseNote": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d259770e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi",
+        "coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError",
+        "coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi",
+        "coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort",
+        "internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn",
+        "test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs",
+        "tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD",
+        "tui/file_autocomplete_test.go::TestBuildFdPathQuery"
+      ]
+    },
+    {
+      "id": "BF-43d2597-3",
+      "title": "A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such…",
+      "symptom": "A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such as tools of an extension installed after the session started, unless they are registered with `defaultActive: false`; a tool the branch removed, also before a compaction, stays inactive.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "0.5.2",
+      "releaseNote": "A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such as tools of an extension installed after the session started, unless they are registered with `defaultActive: false`; a tool the branch removed, also before a compaction, stays inactive. Built-in tools keep following `defaultTools` (Pi bd3c9b82, #11062, #11075).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d259770e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi",
+        "coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError",
+        "coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi",
+        "coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort",
+        "internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn",
+        "test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs",
+        "tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD",
+        "tui/file_autocomplete_test.go::TestBuildFdPathQuery"
+      ]
+    },
+    {
+      "id": "BF-43d2597-4",
+      "title": "Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore…",
+      "symptom": "Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "0.5.2",
+      "releaseNote": "Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d259770e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi",
+        "coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError",
+        "coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi",
+        "coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort",
+        "internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn",
+        "test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs",
+        "tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD",
+        "tui/file_autocomplete_test.go::TestBuildFdPathQuery"
       ]
     },
     {
@@ -10745,48 +10932,6 @@
       "tests": []
     },
     {
-      "id": "BF-648ff3e-117",
-      "title": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it",
-      "symptom": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Lost or altered data",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "0.5.2",
-      "releaseNote": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it. A display-math block never spans a table, and the streaming pending-math fallback no longer treats a following table as pending math (Pi 2ed3118b, #11159).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "648ff3e2b0",
-          "date": "2026-10-22",
-          "pr": "288"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-648ff3e-118",
-      "title": "The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or…",
-      "symptom": "The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or alternate-screen mode when pig exits through a path that skips the normal teardown (a direct exit, an emergency exit, an off-loop crash, a panic unwinding through `Main`).",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "0.5.2",
-      "releaseNote": "The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or alternate-screen mode when pig exits through a path that skips the normal teardown (a direct exit, an emergency exit, an off-loop crash, a panic unwinding through `Main`). The modes are restored in Pi's order, once, and not again after a normal stop (Pi 9df819de, #11170).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "648ff3e2b0",
-          "date": "2026-10-22",
-          "pr": "288"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-648ff3e-119",
       "title": "Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in…",
       "symptom": "Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in interactive mode no longer replace each other: a second dialog used to take the editor slot and leave the first one's promise pending.",
@@ -10839,48 +10984,6 @@
       "class": "own",
       "fixedIn": "0.5.2",
       "releaseNote": "Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the `wl-copy`, `xclip` or `xsel` process that keeps serving the clipboard now runs in its own session and is not stopped with pig (Pi f8ab362c, #11179).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "648ff3e2b0",
-          "date": "2026-10-22",
-          "pr": "288"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-648ff3e-121",
-      "title": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel…",
-      "symptom": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "0.5.2",
-      "releaseNote": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents. A script waits up to 60 seconds, in arrival order, for a free worker; the wait counts toward its `timeout_ms` (Pi 885a564b, #11184).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "648ff3e2b0",
-          "date": "2026-10-22",
-          "pr": "288"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-648ff3e-122",
-      "title": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node…",
-      "symptom": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "0.5.2",
-      "releaseNote": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).",
       "origin": "release note",
       "commits": [
         {
@@ -11691,90 +11794,6 @@
       "class": "own",
       "fixedIn": "0.5.2",
       "releaseNote": "Extension tools of one parallel batch reach the host in Pi's order. Pi runs a batch on one thread, so the host calls the tools make in their first tick (`appendEntry`, `ui.notify`, `ui.setStatus`, `setActiveTools`, `sendMessage`, and the rest) apply in the order the extension sent them, whichever tool made each; before, eight parallel tools that each called the host applied their calls in scheduler order, and in a Node extension that also reordered the tools' answers, so `tool_execution_end` and the tool_result hooks came in a different order on every run.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "648ff3e2b0",
-          "date": "2026-10-22",
-          "pr": "288"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-648ff3e-40",
-      "title": "`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query…",
-      "symptom": "`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query with or without a `/` (Pi 612a172e, #10972).",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "0.5.2",
-      "releaseNote": "`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query with or without a `/` (Pi 612a172e, #10972).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "648ff3e2b0",
-          "date": "2026-10-22",
-          "pr": "288"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-648ff3e-41",
-      "title": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction…",
-      "symptom": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).",
-      "rootCause": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).",
-      "rootCauseSource": "release note",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "0.5.2",
-      "releaseNote": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "648ff3e2b0",
-          "date": "2026-10-22",
-          "pr": "288"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-648ff3e-42",
-      "title": "A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such…",
-      "symptom": "A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such as tools of an extension installed after the session started, unless they are registered with `defaultActive: false`; a tool the branch removed, also before a compaction, stays inactive.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "0.5.2",
-      "releaseNote": "A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such as tools of an extension installed after the session started, unless they are registered with `defaultActive: false`; a tool the branch removed, also before a compaction, stays inactive. Built-in tools keep following `defaultTools` (Pi bd3c9b82, #11062, #11075).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "648ff3e2b0",
-          "date": "2026-10-22",
-          "pr": "288"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-648ff3e-43",
-      "title": "Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore…",
-      "symptom": "Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "0.5.2",
-      "releaseNote": "Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).",
       "origin": "release note",
       "commits": [
         {
@@ -18598,6 +18617,32 @@
       ]
     },
     {
+      "id": "BF-909581e",
+      "title": "The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or…",
+      "symptom": "The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or alternate-screen mode when pig exits through a path that skips the normal teardown (a direct exit, an emergency exit, an off-loop crash, a panic unwinding through `Main`).",
+      "rootCause": "Port Pi (#11170): Pi's process 'exit' handler writes the mode resets synchronously when stop() did not run. Go has no exit hook, so tui.RestoreTerminalOnExit is that handler and every exit path reachable while a TUI runs (coding/cli exitProcess; emergencyTerminalExit, handleInterruptSignal, uncaughtOffLoop) calls it before os.Exit. Order matches TuiAltScreen: end synchronized output, mouse off, autowrap on, cursor, progress clear, bracketed paste off, Kitty pop, modifyOtherKeys off, then alternate-screen exit and cursor show; cooked mode is restored as libuv does. Registered terminals and alt screens leave on normal stop, so nothing is written twice.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "0.5.2",
+      "releaseNote": "The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or alternate-screen mode when pig exits through a path that skips the normal teardown (a direct exit, an emergency exit, an off-loop crash, a panic unwinding through `Main`). The modes are restored in Pi's order, once, and not again after a normal stop (Pi 9df819de, #11170).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "909581ef0b",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/exit_restore_paths_test.go::TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal",
+        "tui/terminal_exit_restore_test.go::TestExitRestoreFixture",
+        "tui/terminal_exit_restore_test.go::TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
+        "tui/terminal_exit_restore_test.go::TestTerminalRestoreOnProcessExit",
+        "tui/terminal_exit_restore_test.go::TestTerminalRestoreOnProcessExitDoesNotRepeatAfterStop"
+      ]
+    },
+    {
       "id": "BF-909a2e2",
       "title": "MCP OAuth metadata documents with a member whose name differs from a modeled one only in case (for example…",
       "symptom": "MCP OAuth metadata documents with a member whose name differs from a modeled one only in case (for example `Scopes_Supported`) are no longer rejected; the member is kept as an unmodeled member, as in Pi.",
@@ -21476,6 +21521,30 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-9c98038",
+      "title": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it",
+      "symptom": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it.",
+      "rootCause": "Port Pi (packages/tui/src/components/markdown.ts containsTableStart, TABLE_DELIMITER_ROW_REGEX, tokenizeBlockLatex, #11159): a block-math token no longer spans a GFM table and the pending-math fallback skips one; a pending \\[ also needs a non-empty body. The eight upstream 'unclosed display math before tables' cases are ported verbatim, with a live-Pi comparison of them and their neighbours.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "0.5.2",
+      "releaseNote": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it. A display-math block never spans a table, and the streaming pending-math fallback no longer treats a following table as pending math (Pi 2ed3118b, #11159).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9c980381eb",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "tui/markdown_latex_table_test.go::TestMarkdownContainsTableStart",
+        "tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTables",
+        "tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi"
       ]
     },
     {
@@ -31200,6 +31269,37 @@
       ]
     },
     {
+      "id": "BF-e73e536",
+      "title": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel…",
+      "symptom": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents.",
+      "rootCause": "Ports Pi (#11184): scripts wait up to 60 s in arrival order for a free VM, PI_CODEMODE_MAX_WORKERS raises the limit of two, aborts and deadlines count the wait, a launch resuming after its result settled starts no worker, and the reservation is released exactly once.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "0.5.2",
+      "releaseNote": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents. A script waits up to 60 seconds, in arrival order, for a free worker; the wait counts toward its `timeout_ms` (Pi 885a564b, #11184).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e73e536f2c",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "codemode/worker_settled_launch_test.go::TestLaunchResumingAfterTheResultSettledTakesNoWorker",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionBoundsSurvivingWorkers",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionDropsAbortedAndTimedOutWaiters",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionIgnoresAnInvalidPICodemodeMaxWorkers",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionQueuesABurstInArrivalOrder",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionReadsTheLimitFromPICodemodeMaxWorkers",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionRefusesAnAbortedCallerAtOnce",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerSlotIsReturnedAfterSuccessAndTimeout",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestMaxCodemodeWorkersFollowsNumberOfTheEnvironmentValue",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestWorkerReservationReleasesExactlyOnce"
+      ]
+    },
+    {
       "id": "BF-e75a8b9",
       "title": "The external editor (`ctrl+g`) now edits `prompt.md` inside a private `pi-editor-*` directory under the…",
       "symptom": "The external editor (`ctrl+g`) now edits `prompt.md` inside a private `pi-editor-*` directory under the system temp directory and removes the directory afterwards, as Pi does.",
@@ -32716,25 +32816,6 @@
         "internal/ignorerules/ignore_oracle_test.go::TestIgnoredMatchesPiIgnorePackage",
         "internal/ignorerules/ignorerules_test.go::TestIgnoreRulesFollowTheIgnorePackage"
       ]
-    },
-    {
-      "id": "BF-f48b2c1",
-      "title": "Fix in shipped code",
-      "symptom": "Fix in shipped code",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "f48b2c1af9",
-          "date": "2026-10-21"
-        }
-      ],
-      "tests": []
     },
     {
       "id": "BF-f4d85f8",
@@ -35438,11 +35519,6 @@
       "id": "D122",
       "title": "OpenAI Completions keeps a signature-only `reasoning.text` delta (pi-mono #9534)",
       "entry": "BF-cb00273"
-    },
-    {
-      "id": "D124",
-      "title": "OpenRouter's reported cost is the usage total, ported from pi-mono commit 83ca8020 (pi-mono #9980)",
-      "entry": "BF-0d0a3ef"
     },
     {
       "id": "D128",
