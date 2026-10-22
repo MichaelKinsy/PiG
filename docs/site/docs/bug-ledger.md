@@ -564,6 +564,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
+| [BF-86cb092](#bf-86cb092) | A YAML date used as a mapping key is named with the time zone names of Node 24.22 and later, the Node Pi runs… | PiG's own defect | All platforms | Unreleased |
 | [BF-8894a13](#bf-8894a13) | A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8894a13-2](#bf-8894a13-2) | The liveness conformance harness answers the host-parser helper calls a factory makes before the register… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-893ff97](#bf-893ff97) | A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not… | PiG's own defect | All platforms | 0.5.0 |
@@ -8699,6 +8700,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `86c411a481` (2026-10-10)
 - **Tests:** `coding/extension/builtin/codemode/schema_order_test.go::TestInputSchemaKeepsTypeBoxKeyOrder`, `coding/extension/builtin/toolsearch/schema_order_test.go::TestInputSchemaKeepsTypeBoxKeyOrder`
+
+### BF-86cb092
+
+**A YAML date used as a mapping key is named with the time zone names of Node 24.22 and later, the Node Pi runs…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A YAML date used as a mapping key is named with the time zone names of Node 24.22 and later, the Node Pi runs on (tz 2026e).
+- **Root cause:** Node 24.22.1 bundles tz 2026e, Node 24.19.0 tz 2026b; ICU 78.3 and CLDR 48.0 are the same in both. ICU's TimeZone::getDisplayName names a zone by its CLDR metazone at the wall-clock instant of the process, and the 2026e ICU data adds Europe_Western for Africa/Casablanca and Africa/El_Aaiun from 2026-09-20 01:00 UTC, when Morocco returned to permanent UTC. Node 24.22.1 now prints "Western European Standard Time" / "Western European Summer Time" for them where 24.19.0 printed "GMT+00:00" / "GMT+01:00" (24.22.1 itself prints the old names before that instant; checked with the clock moved). tz 2026d also makes EST5EDT, CST6CDT, MST7MDT and PST8PDT zones of their own, which ICU names by offset…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `86cb0929c3` (2026-10-21)
+- **Tests:** `internal/yaml12/zonenames_test.go::TestDateStringMatchesNode`, `internal/yaml12/zonenames_test.go::TestWinterNamesIgnoreGoZoneData`
+- **Release note:** A YAML date used as a mapping key is named with the time zone names of Node 24.22 and later, the Node Pi runs on (tz 2026e). Morocco and Western Sahara print "Western European Standard Time" and "Western European Summer Time" instead of "GMT+00:00" and "GMT+01:00" (Node 24.22.1 does so from 2026-09-20 01:00 UTC, when Morocco returned to permanent UTC); `EST5EDT`, `CST6CDT`, `MST7MDT` and `PST8PDT` print their offset (`GMT-05:00`) instead of the names of New York, Chicago, Denver and Los Angeles; and the switches between standard and daylight names of Alberta, Manitoba, the Northwest Territories, Colombia (1992) and Iran (1979) follow tz 2026e. Node 22.19 and 24.19 print other names for these zones.
 
 ### BF-8894a13
 

@@ -212512,6 +212512,39 @@
       "shapeHash": "sha256:ddda23e09de25758e2cc50236119a433fcbc3df473735752b594b9f277f5f504"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#tuiKeybindingRow",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
+      "name": "tuiKeybindingRow",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiKeybindingRow"
+      },
+      "shapeHash": "sha256:30914d8757a11ebba98df9645a1f332f00c732e71d5f559f5fb8f218df7b0371"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#tuiKeybindingRow.keysFor",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
+      "name": "tuiKeybindingRow.keysFor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(platform KeybindingPlatform) []string"
+      },
+      "shapeHash": "sha256:79065d909b22cc2745c3632b8e551003193383410fb8696c5a683af9b41157e4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#tuiKeybindingRows",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
+      "name": "tuiKeybindingRows",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[47]tuiKeybindingRow"
+      },
+      "shapeHash": "sha256:056987f94427a5ed6401d4834fc352b04ef8ebbbe99632046b4603601f76a0be"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#vector3",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
       "name": "vector3",
@@ -350890,6 +350923,39 @@
         "type": "func() map[string][]string"
       },
       "shapeHash": "sha256:ddda23e09de25758e2cc50236119a433fcbc3df473735752b594b9f277f5f504"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiKeybindingRow",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiKeybindingRow",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiKeybindingRow"
+      },
+      "shapeHash": "sha256:30914d8757a11ebba98df9645a1f332f00c732e71d5f559f5fb8f218df7b0371"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiKeybindingRow.keysFor",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiKeybindingRow.keysFor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(platform KeybindingPlatform) []string"
+      },
+      "shapeHash": "sha256:79065d909b22cc2745c3632b8e551003193383410fb8696c5a683af9b41157e4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiKeybindingRows",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiKeybindingRows",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[47]tuiKeybindingRow"
+      },
+      "shapeHash": "sha256:056987f94427a5ed6401d4834fc352b04ef8ebbbe99632046b4603601f76a0be"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#unknownHighlightLanguage",

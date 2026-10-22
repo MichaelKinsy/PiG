@@ -17611,6 +17611,29 @@
       ]
     },
     {
+      "id": "BF-86cb092",
+      "title": "A YAML date used as a mapping key is named with the time zone names of Node 24.22 and later, the Node Pi runs…",
+      "symptom": "A YAML date used as a mapping key is named with the time zone names of Node 24.22 and later, the Node Pi runs on (tz 2026e).",
+      "rootCause": "Node 24.22.1 bundles tz 2026e, Node 24.19.0 tz 2026b; ICU 78.3 and CLDR 48.0 are the same in both. ICU's TimeZone::getDisplayName names a zone by its CLDR metazone at the wall-clock instant of the process, and the 2026e ICU data adds Europe_Western for Africa/Casablanca and Africa/El_Aaiun from 2026-09-20 01:00 UTC, when Morocco returned to permanent UTC. Node 24.22.1 now prints \"Western European Standard Time\" / \"Western European Summer Time\" for them where 24.19.0 printed \"GMT+00:00\" / \"GMT+01:00\" (24.22.1 itself prints the old names before that instant; checked with the clock moved). tz 2026d also makes EST5EDT, CST6CDT, MST7MDT and PST8PDT zones of their own, which ICU names by offset…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A YAML date used as a mapping key is named with the time zone names of Node 24.22 and later, the Node Pi runs on (tz 2026e). Morocco and Western Sahara print \"Western European Standard Time\" and \"Western European Summer Time\" instead of \"GMT+00:00\" and \"GMT+01:00\" (Node 24.22.1 does so from 2026-09-20 01:00 UTC, when Morocco returned to permanent UTC); `EST5EDT`, `CST6CDT`, `MST7MDT` and `PST8PDT` print their offset (`GMT-05:00`) instead of the names of New York, Chicago, Denver and Los Angeles; and the switches between standard and daylight names of Alberta, Manitoba, the Northwest Territories, Colombia (1992) and Iran (1979) follow tz 2026e. Node 22.19 and 24.19 print other names for these zones.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "86cb0929c3",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "internal/yaml12/zonenames_test.go::TestDateStringMatchesNode",
+        "internal/yaml12/zonenames_test.go::TestWinterNamesIgnoreGoZoneData"
+      ]
+    },
+    {
       "id": "BF-8894a13",
       "title": "A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a…",
       "symptom": "Each half became U+FFFD.",

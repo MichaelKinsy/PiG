@@ -296,14 +296,14 @@ func TestNormalizeSessionGraphWindowsPaths(t *testing.T) {
 		"cwd":    windowsRoot + `\project`,
 		"list":   []any{map[string]any{"cwd": windowsRoot + `\project`, "id": "0b1c2d3e-4f50-4162-8394-a5b6c7d8e9f0", "n": float64(1), "ok": true, "none": nil}},
 		"source": `..\..\pkgs\localpkg`,
-		"file":   map[string]any{windowsRoot + `\anc`: true, windowsRoot + `\other`: false},
+		"file":   map[string]any{windowsRoot + `\anc`: true, windowsRoot + `\sibling`: false},
 		"server": "http://127.0.0.1:41234/v1",
 	}
 	want := map[string]any{
 		"cwd":    "<root>/project",
 		"list":   []any{map[string]any{"cwd": "<root>/project", "id": "<uuid>", "n": float64(1), "ok": true, "none": nil}},
 		"source": "../../pkgs/localpkg",
-		"file":   map[string]any{"<root>/anc": true, "<root>/other": false},
+		"file":   map[string]any{"<root>/anc": true, "<root>/sibling": false},
 		"server": "<server>/v1",
 	}
 	if got := normalizeSessionGraphFor(report, windowsRoot, true); !reflect.DeepEqual(got, want) {
