@@ -83955,6 +83955,17 @@
       "shapeHash": "sha256:3669eb7349cb8bcae461655862e7429d36ba1b77f74bc7b6eea72428d185bbe8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#canonicalExistingPrefix",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "canonicalExistingPrefix",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) string"
+      },
+      "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#canonicalPath",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "canonicalPath",
