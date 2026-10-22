@@ -713,7 +713,7 @@ func validateOnlyGitFixture(t *testing.T, fixture string) string {
 			t.Fatal(err)
 		}
 	}
-	bare := filepath.Join(t.TempDir(), "owner", "repo.git")
+	bare := filepath.Join(t.TempDir(), "owner", "sdk-fixture.git")
 	if err := os.MkdirAll(filepath.Dir(bare), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -789,8 +789,8 @@ for argument in "$@"; do
   if [ "$previous" = "--prefix" ]; then root="$argument"; fi
   previous="$argument"
 done
-mkdir -p "$root/node_modules/validate-fixture"
-cp -R "$VALIDATE_FIXTURE"/. "$root/node_modules/validate-fixture/"
+mkdir -p "$root/node_modules/sdk-fixture"
+cp -R "$VALIDATE_FIXTURE"/. "$root/node_modules/sdk-fixture/"
 `)
 	settings, err := json.Marshal(map[string]any{"npmCommand": []string{npm}})
 	if err != nil {
@@ -803,7 +803,7 @@ cp -R "$VALIDATE_FIXTURE"/. "$root/node_modules/validate-fixture/"
 	if err := os.WriteFile(settingsPath, settings, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if valid, out := runValidateOnlyJSON(t, "npm:validate-fixture@1.0.0"); !valid {
+	if valid, out := runValidateOnlyJSON(t, "npm:sdk-fixture@1.0.0"); !valid {
 		t.Fatalf("uninstalled npm source reported invalid: %s", out)
 	}
 	if after, err := os.ReadFile(settingsPath); err != nil || string(after) != string(settings) {
