@@ -3,7 +3,7 @@ import { useKeybindings, withPlatform } from "../../../../../automation/gen/sdk-
 const IDS = ["tui.select.cancel", "tui.select.confirm", "tui.editor.cursorLeft", "app.interrupt", "app.test.multi", "app.test.none", "app.test.slash", "app.test.alt", "app.test.unicode", "no.such.id"];
 
 export const cases = [];
-for (const platform of ["linux", "darwin"]) {
+for (const platform of ["linux", "darwin", "win32"]) {
   for (const user of ["default", "overridden"]) {
     for (const id of IDS) cases.push({ name: `${platform} ${user} ${id}`, args: [platform, user, id] });
   }

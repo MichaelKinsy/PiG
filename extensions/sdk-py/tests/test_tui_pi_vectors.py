@@ -4,7 +4,6 @@ automation/gen/generate-sdk-vectors.mjs). Every case of every file is run."""
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 
 import pytest

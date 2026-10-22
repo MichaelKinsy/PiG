@@ -4,7 +4,7 @@ const KEYS = ["", "enter", "alt+enter", "ctrl+alt+x", "ALT+x", "Alt+Left", "alt+
 
 export const cases = [];
 for (const [theme, mode] of THEMES.slice(0, 2)) {
-  for (const platform of ["linux", "darwin"]) {
+  for (const platform of ["linux", "darwin", "win32"]) {
     for (const key of KEYS) cases.push({ name: `${theme} ${mode} ${platform} ${JSON.stringify(key)}`, args: [theme, mode, platform, key, "desc"] });
   }
 }

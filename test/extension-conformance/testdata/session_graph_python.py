@@ -349,7 +349,7 @@ def settings_script(ctx, args):
 
     persisted = SettingsManager.create(ctx, cwd, agent_dir)
     r["persisted"] = read_all(persisted)
-    with open(os.path.join(agent_dir, "settings.json"), "w", encoding="utf-8") as handle:
+    with open(os.path.join(agent_dir, "settings.json"), "w", encoding="utf-8", newline="") as handle:
         handle.write('{"defaultProvider":"external"}')
     persisted.reload()
     r["reload"] = {"provider": persisted.get_default_provider(), "model": persisted.get_default_model(), "merged": persisted.get_settings()}

@@ -11803,6 +11803,5906 @@
     },
     "text": ""
    }
+  },
+  {
+   "name": "win32 default tui.select.cancel",
+   "args": [
+    "win32",
+    "default",
+    "tui.select.cancel"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": "escape/ctrl+c"
+   }
+  },
+  {
+   "name": "win32 default tui.select.confirm",
+   "args": [
+    "win32",
+    "default",
+    "tui.select.confirm"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": "enter"
+   }
+  },
+  {
+   "name": "win32 default tui.editor.cursorLeft",
+   "args": [
+    "win32",
+    "default",
+    "tui.editor.cursorLeft"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": "left/ctrl+b"
+   }
+  },
+  {
+   "name": "win32 default app.interrupt",
+   "args": [
+    "win32",
+    "default",
+    "app.interrupt"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": "escape"
+   }
+  },
+  {
+   "name": "win32 default app.test.multi",
+   "args": [
+    "win32",
+    "default",
+    "app.test.multi"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": "alt+x/ctrl+shift+f5/alt+/"
+   }
+  },
+  {
+   "name": "win32 default app.test.none",
+   "args": [
+    "win32",
+    "default",
+    "app.test.none"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": ""
+   }
+  },
+  {
+   "name": "win32 default app.test.slash",
+   "args": [
+    "win32",
+    "default",
+    "app.test.slash"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": "ctrl+//super+k"
+   }
+  },
+  {
+   "name": "win32 default app.test.alt",
+   "args": [
+    "win32",
+    "default",
+    "app.test.alt"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": "alt+alt"
+   }
+  },
+  {
+   "name": "win32 default app.test.unicode",
+   "args": [
+    "win32",
+    "default",
+    "app.test.unicode"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": "é+alt+ü/ß/alt+ß/øption"
+   }
+  },
+  {
+   "name": "win32 default no.such.id",
+   "args": [
+    "win32",
+    "default",
+    "no.such.id"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {},
+    "text": ""
+   }
+  },
+  {
+   "name": "win32 overridden tui.select.cancel",
+   "args": [
+    "win32",
+    "overridden",
+    "tui.select.cancel"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": "escape/ctrl+c"
+   }
+  },
+  {
+   "name": "win32 overridden tui.select.confirm",
+   "args": [
+    "win32",
+    "overridden",
+    "tui.select.confirm"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": ""
+   }
+  },
+  {
+   "name": "win32 overridden tui.editor.cursorLeft",
+   "args": [
+    "win32",
+    "overridden",
+    "tui.editor.cursorLeft"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": "left/ctrl+b"
+   }
+  },
+  {
+   "name": "win32 overridden app.interrupt",
+   "args": [
+    "win32",
+    "overridden",
+    "app.interrupt"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": "ctrl+c/alt+q"
+   }
+  },
+  {
+   "name": "win32 overridden app.test.multi",
+   "args": [
+    "win32",
+    "overridden",
+    "app.test.multi"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": "alt+x/ctrl+shift+f5/alt+/"
+   }
+  },
+  {
+   "name": "win32 overridden app.test.none",
+   "args": [
+    "win32",
+    "overridden",
+    "app.test.none"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": ""
+   }
+  },
+  {
+   "name": "win32 overridden app.test.slash",
+   "args": [
+    "win32",
+    "overridden",
+    "app.test.slash"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": "ctrl+//super+k"
+   }
+  },
+  {
+   "name": "win32 overridden app.test.alt",
+   "args": [
+    "win32",
+    "overridden",
+    "app.test.alt"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": "alt+alt"
+   }
+  },
+  {
+   "name": "win32 overridden app.test.unicode",
+   "args": [
+    "win32",
+    "overridden",
+    "app.test.unicode"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": "é+alt+ü/ß/alt+ß/øption"
+   }
+  },
+  {
+   "name": "win32 overridden no.such.id",
+   "args": [
+    "win32",
+    "overridden",
+    "no.such.id"
+   ],
+   "result": {
+    "platform": "win32",
+    "defs": {
+     "tui.editor.cursorUp": {
+      "defaultKeys": "up",
+      "description": "Move cursor up"
+     },
+     "tui.editor.cursorDown": {
+      "defaultKeys": "down",
+      "description": "Move cursor down"
+     },
+     "tui.editor.historyPrevious": {
+      "defaultKeys": [],
+      "description": "Select previous prompt history entry"
+     },
+     "tui.editor.historyNext": {
+      "defaultKeys": [],
+      "description": "Select next prompt history entry"
+     },
+     "tui.editor.cursorLeft": {
+      "defaultKeys": [
+       "left",
+       "ctrl+b"
+      ],
+      "description": "Move cursor left"
+     },
+     "tui.editor.cursorRight": {
+      "defaultKeys": [
+       "right",
+       "ctrl+f"
+      ],
+      "description": "Move cursor right"
+     },
+     "tui.editor.cursorWordLeft": {
+      "defaultKeys": [
+       "alt+left",
+       "ctrl+left",
+       "alt+b"
+      ],
+      "description": "Move cursor word left"
+     },
+     "tui.editor.cursorWordRight": {
+      "defaultKeys": [
+       "alt+right",
+       "ctrl+right",
+       "alt+f"
+      ],
+      "description": "Move cursor word right"
+     },
+     "tui.editor.cursorLineStart": {
+      "defaultKeys": [
+       "home",
+       "ctrl+a"
+      ],
+      "description": "Move to line start"
+     },
+     "tui.editor.cursorLineEnd": {
+      "defaultKeys": [
+       "end",
+       "ctrl+e"
+      ],
+      "description": "Move to line end"
+     },
+     "tui.editor.jumpForward": {
+      "defaultKeys": "ctrl+]",
+      "description": "Jump forward to character"
+     },
+     "tui.editor.jumpBackward": {
+      "defaultKeys": "ctrl+alt+]",
+      "description": "Jump backward to character"
+     },
+     "tui.editor.pageUp": {
+      "defaultKeys": [
+       "pageUp",
+       "ctrl+pageUp"
+      ],
+      "description": "Page up"
+     },
+     "tui.editor.pageDown": {
+      "defaultKeys": [
+       "pageDown",
+       "ctrl+pageDown"
+      ],
+      "description": "Page down"
+     },
+     "tui.editor.deleteCharBackward": {
+      "defaultKeys": "backspace",
+      "description": "Delete character backward"
+     },
+     "tui.editor.deleteCharForward": {
+      "defaultKeys": [
+       "delete",
+       "ctrl+d"
+      ],
+      "description": "Delete character forward"
+     },
+     "tui.editor.deleteWordBackward": {
+      "defaultKeys": [
+       "ctrl+w",
+       "alt+backspace"
+      ],
+      "description": "Delete word backward"
+     },
+     "tui.editor.deleteWordForward": {
+      "defaultKeys": [
+       "alt+d",
+       "alt+delete"
+      ],
+      "description": "Delete word forward"
+     },
+     "tui.editor.deleteToLineStart": {
+      "defaultKeys": "ctrl+u",
+      "description": "Delete to line start"
+     },
+     "tui.editor.deleteToLineEnd": {
+      "defaultKeys": "ctrl+k",
+      "description": "Delete to line end"
+     },
+     "tui.editor.yank": {
+      "defaultKeys": "ctrl+y",
+      "description": "Yank"
+     },
+     "tui.editor.yankPop": {
+      "defaultKeys": "alt+y",
+      "description": "Yank pop"
+     },
+     "tui.editor.undo": {
+      "defaultKeys": "ctrl+-",
+      "description": "Undo"
+     },
+     "tui.input.newLine": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+j"
+      ],
+      "description": "Insert newline"
+     },
+     "tui.input.submit": {
+      "defaultKeys": "enter",
+      "description": "Submit input"
+     },
+     "tui.input.tab": {
+      "defaultKeys": "tab",
+      "description": "Tab / autocomplete"
+     },
+     "tui.input.copy": {
+      "defaultKeys": "ctrl+c",
+      "description": "Copy selection"
+     },
+     "tui.select.up": {
+      "defaultKeys": "up",
+      "description": "Move selection up"
+     },
+     "tui.select.down": {
+      "defaultKeys": "down",
+      "description": "Move selection down"
+     },
+     "tui.select.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Selection page up"
+     },
+     "tui.select.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Selection page down"
+     },
+     "tui.select.confirm": {
+      "defaultKeys": "enter",
+      "description": "Confirm selection"
+     },
+     "tui.select.cancel": {
+      "defaultKeys": [
+       "escape",
+       "ctrl+c"
+      ],
+      "description": "Cancel selection"
+     },
+     "tui.altScreen.pageUp": {
+      "defaultKeys": "pageUp",
+      "description": "Scroll viewport up one page"
+     },
+     "tui.altScreen.pageDown": {
+      "defaultKeys": "pageDown",
+      "description": "Scroll viewport down one page"
+     },
+     "tui.altScreen.halfPageUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up half a page"
+     },
+     "tui.altScreen.halfPageDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down half a page"
+     },
+     "tui.altScreen.lineUp": {
+      "defaultKeys": [],
+      "description": "Scroll viewport up one line"
+     },
+     "tui.altScreen.lineDown": {
+      "defaultKeys": [],
+      "description": "Scroll viewport down one line"
+     },
+     "tui.altScreen.previousPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+up",
+       "ctrl+up"
+      ],
+      "description": "Jump to previous semantic prompt"
+     },
+     "tui.altScreen.nextPrompt": {
+      "defaultKeys": [
+       "ctrl+shift+down",
+       "ctrl+down"
+      ],
+      "description": "Jump to next semantic prompt"
+     },
+     "tui.altScreen.search": {
+      "defaultKeys": "ctrl+shift+f",
+      "description": "Search the primary scroll view"
+     },
+     "tui.altScreen.searchNext": {
+      "defaultKeys": [
+       "enter",
+       "ctrl+g"
+      ],
+      "description": "Select the next search match"
+     },
+     "tui.altScreen.searchPrevious": {
+      "defaultKeys": [
+       "shift+enter",
+       "ctrl+shift+g"
+      ],
+      "description": "Select the previous search match"
+     },
+     "tui.altScreen.searchClose": {
+      "defaultKeys": "escape",
+      "description": "Close transcript search"
+     },
+     "tui.altScreen.top": {
+      "defaultKeys": "ctrl+home",
+      "description": "Scroll viewport to top"
+     },
+     "tui.altScreen.bottom": {
+      "defaultKeys": "ctrl+end",
+      "description": "Scroll viewport to bottom"
+     },
+     "app.interrupt": {
+      "defaultKeys": "escape",
+      "description": "Interrupt"
+     },
+     "app.test.multi": {
+      "defaultKeys": [
+       "alt+x",
+       "ctrl+shift+f5",
+       "alt+/"
+      ],
+      "description": "Multi"
+     },
+     "app.test.none": {
+      "defaultKeys": [],
+      "description": "None"
+     },
+     "app.test.slash": {
+      "defaultKeys": [
+       "ctrl+/",
+       "super+k"
+      ],
+      "description": "Slash"
+     },
+     "app.test.alt": {
+      "defaultKeys": "alt+alt",
+      "description": "Alt"
+     },
+     "app.test.unicode": {
+      "defaultKeys": [
+       "é+alt+ü",
+       "ß",
+       "alt+ß",
+       "øption"
+      ],
+      "description": "Unicode"
+     }
+    },
+    "user": {
+     "app.interrupt": [
+      "ctrl+c",
+      "alt+q"
+     ],
+     "tui.select.confirm": []
+    },
+    "text": ""
+   }
   }
  ]
 }

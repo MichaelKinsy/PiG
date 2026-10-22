@@ -131,15 +131,15 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
-# Pinned export vendor assets remain unmodified so the complete exported page matches Pi.
+# Pinned export vendor assets remain unmodified so the complete exported page matches Pi; the .gz files are the same bytes compressed for the binary.
 [[annotations]]
-path = "internal/codingagent/export/assets/vendor/highlight.min.js"
+path = ["internal/codingagent/export/assets/vendor/highlight.min.js", "internal/codingagent/export/assets/vendor/highlight.min.js.gz"]
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2006, Ivan Sagalaev"
 SPDX-License-Identifier = "BSD-3-Clause"
 
 [[annotations]]
-path = "internal/codingagent/export/assets/vendor/marked.min.js"
+path = ["internal/codingagent/export/assets/vendor/marked.min.js", "internal/codingagent/export/assets/vendor/marked.min.js.gz"]
 precedence = "override"
 SPDX-FileCopyrightText = [
   "Copyright (c) 2018+, MarkedJS",
@@ -149,7 +149,7 @@ SPDX-FileCopyrightText = [
 SPDX-License-Identifier = "MIT AND BSD-3-Clause"
 
 [[annotations]]
-path = "internal/codingagent/export/assets/vendor/marked-cjk-friendly.min.js"
+path = ["internal/codingagent/export/assets/vendor/marked-cjk-friendly.min.js", "internal/codingagent/export/assets/vendor/marked-cjk-friendly.min.js.gz"]
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2024 Tatsunori Uchino, and authors and contributors of original packages"
 SPDX-License-Identifier = "MIT"

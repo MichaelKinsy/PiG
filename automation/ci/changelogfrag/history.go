@@ -121,25 +121,45 @@ func (h *history) replacedBy(rev string) string {
 	return h.replaced[found]
 }
 
+// unmarked reports the bullets of a section the bug ledger reads that carry no fix marker at all, in fragment order.
+func unmarked(fragments []fragment) []error {
+	var problems []error
+	for _, f := range fragments {
+		for _, section := range ledgerSections {
+			for _, item := range f.items[section] {
+				if !fixMarker.MatchString(item) {
+					problems = append(problems, noMarker(f.name, section, item))
+				}
+			}
+		}
+	}
+	return problems
+}
+
 // checkHistory reports the fragments whose name or fix markers name a commit that HEAD does not reach, and the bullets
-// of a section the bug ledger reads that carry no marker. A legacy fragment is exempt: its commits were squashed away
-// before the rule, so no commit reachable from HEAD can name them.
+// of a section the bug ledger reads that carry no marker. A legacy fragment is exempt from the reachability checks: its
+// commits were squashed away before the rule, so no commit reachable from HEAD can name them. It is not exempt from the
+// marker itself: the fold copies its bullets into CHANGELOG.md, where the ledger finds an unmarked one introduced by
+// whatever squash first held its text and refuses it (the 0.5.2 fold carried 42 such bullets).
 func checkHistory(dir string, fragments []fragment) []error {
 	var checked []fragment
+	var legacyFragments []fragment
 	for _, f := range fragments {
-		if !f.legacy {
+		if f.legacy {
+			legacyFragments = append(legacyFragments, f)
+		} else {
 			checked = append(checked, f)
 		}
 	}
+	problems := unmarked(legacyFragments)
 	if len(checked) == 0 {
-		return nil
+		return problems
 	}
 	h, err := openHistory(dir)
 	if err != nil {
-		return []error{err}
+		return append(problems, err)
 	}
 	sort.Slice(checked, func(i, j int) bool { return checked[i].name < checked[j].name })
-	var problems []error
 	for _, f := range checked {
 		if m := nameSHA.FindStringSubmatch(f.name); m != nil && !h.reaches(m[1]) {
 			lane := strings.TrimSuffix(f.name, m[0])
@@ -159,7 +179,7 @@ func checkMarker(h *history, name, section, item string) []error {
 	text := abbreviate(strings.Join(strings.Fields(fixMarker.ReplaceAllString(item, "")), " "))
 	matches := fixMarker.FindAllStringSubmatch(item, -1)
 	if len(matches) == 0 {
-		return []error{fmt.Errorf("%s: the \"### %s\" bullet %q has no fix marker; the bug ledger reads it and, without a marker, guesses its commits from the history, which can credit a squash commit and thousands of its tests to this bullet. End the bullet with <!-- fix: <sha> --> naming the commit that fixes it (git log --oneline -- <the code it changes>; git rev-parse --short=10 <commit>)", name, section, text)}
+		return []error{noMarker(name, section, item)}
 	}
 	var problems []error
 	for _, m := range matches {
@@ -173,4 +193,10 @@ func checkMarker(h *history, name, section, item string) []error {
 		}
 	}
 	return problems
+}
+
+// noMarker is the problem of a bullet of a section the ledger reads that has no fix marker.
+func noMarker(name, section, item string) error {
+	text := abbreviate(strings.Join(strings.Fields(fixMarker.ReplaceAllString(item, "")), " "))
+	return fmt.Errorf("%s: the \"### %s\" bullet %q has no fix marker; the bug ledger reads it and, without a marker, guesses its commits from the history, which can credit a squash commit and thousands of its tests to this bullet. End the bullet with <!-- fix: <sha> --> naming the commit that fixes it (git log --oneline -- <the code it changes>; git rev-parse --short=10 <commit>)", name, section, text)
 }

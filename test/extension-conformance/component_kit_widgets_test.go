@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // Widget kind conformance (D107, docs/plan/extension-component-kit.md §2.2, §10).
@@ -145,7 +146,7 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 	for i, step := range steps {
 		switch {
 		case step.Keys != nil:
-			session.input(*step.Keys)
+			session.input(kitStepKeys(tui.HostKeybindingPlatform(), *step.Keys))
 		case step.Mouse != nil:
 			m := step.Mouse
 			event := extension.RemoteMouseEvent{Type: m.Type, Button: m.Button, X: m.X, Y: m.Y, ScreenX: m.X, ScreenY: m.Y, Width: width,
@@ -171,6 +172,23 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 	if !slices.Equal(got, events) {
 		t.Fatalf("%s %q at width %d: callbacks = %q, Pi fired %q", key, c.Name, width, got, events)
 	}
+}
+
+// kitStepKeys is what a cell presses for a vector step's keys on a platform. Pi's widget vectors come from pi-tui's own components, whose undo
+// is ctrl+- ("\x1f", packages/tui/src/keybindings.ts:142). coding-agent rebinds undo per platform (core/keybindings.ts:184: ctrl+z on native
+// Windows, alt+z under WSL) and the host applies that table, as an extension host running inside Pi does, so on those platforms a step that
+// presses the library's undo key presses the platform's undo key. Every other step is sent as recorded.
+func kitStepKeys(platform tui.KeybindingPlatform, keys string) string {
+	if keys != "\x1f" {
+		return keys
+	}
+	switch platform {
+	case tui.KeybindingPlatformWin32:
+		return "\x1a"
+	case tui.KeybindingPlatformLinuxWSL:
+		return "\x1bz"
+	}
+	return keys
 }
 
 // kitWidgetCallbacks are the callbacks the cell's nodes have fired since the case opened, in order: the probe
@@ -213,5 +231,28 @@ func TestConformance_ComponentKitWidgetsMatchPi(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Every platform's undo step must press a key that platform binds to tui.editor.undo, so the Windows and WSL branches of kitStepKeys are checked
+// wherever the suite runs, not only on those hosts.
+func TestKitStepKeysPressThePlatformsUndoKey(t *testing.T) {
+	for _, platform := range tui.KeybindingPlatforms {
+		t.Run(string(platform), func(t *testing.T) {
+			bound := tui.TUIKeybindingDefinitionsFor(platform)[tui.KBEditorUndo].DefaultKeys
+			binds := func(pressed string) bool {
+				return slices.ContainsFunc(bound, func(key string) bool { return tui.MatchesKeyID(pressed, key) })
+			}
+			if pressed := kitStepKeys(platform, "\x1f"); !binds(pressed) {
+				t.Errorf("the undo step presses %q, which none of the %s undo keys %q match", pressed, platform, bound)
+			}
+			// The recorded key is the library's ctrl+-; it undoes only where the platform keeps it, which is why the step is rewritten.
+			if recorded := binds("\x1f"); recorded != (kitStepKeys(platform, "\x1f") == "\x1f") {
+				t.Errorf("on %s the recorded undo key binds undo = %v but the step %s it", platform, recorded, map[bool]string{true: "keeps", false: "rewrites"}[kitStepKeys(platform, "\x1f") == "\x1f"])
+			}
+		})
+	}
+	if got := kitStepKeys(tui.KeybindingPlatformWin32, "abc"); got != "abc" {
+		t.Errorf("a step other than the undo key was rewritten to %q", got)
 	}
 }

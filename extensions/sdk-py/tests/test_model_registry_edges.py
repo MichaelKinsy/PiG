@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 from test_extension_api_099 import _command_ext, _drive, _host
 
 STATE = {

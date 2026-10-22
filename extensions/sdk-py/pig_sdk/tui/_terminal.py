@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-import subprocess
+import subprocess  # nosec B404 - only runs the fixed tmux capability probe below
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
@@ -41,7 +41,7 @@ def hyperlink(text: str, url: str) -> str:
 
 def _probe_tmux_hyperlinks() -> bool:
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607 - fixed argv, no input; pi-tui runs tmux from PATH the same way
             ["tmux", "display-message", "-p", "#{client_termfeatures}"],
             capture_output=True, text=True, timeout=0.25, stdin=subprocess.DEVNULL, check=True,
         ).stdout  # fmt: skip

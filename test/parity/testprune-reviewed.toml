@@ -258,3 +258,17 @@ class = "NOBEHAVIOR"
 cite = ""
 reason = "The case list gains hosts and file URLs with xn-- labels (xn--, a.xn--.b, XN--a, xn--ls8h, xn--a-ecp.ru); the test asserts nothing hard-coded for them, it compares PiG's parser with Node's URL run on the same inputs, so the expected values are whatever the pinned Node answers. The implementation change that makes them agree with Node 24.22.1's ada 4 is internal/nodeurl, which tracks Node, not a Pi source file."
 
+
+[[entry]]
+path = "automation/ci/changelogfrag/history_test.go"
+commit = "2719b6854d8fb4a81f69a6ef4bd3be561daa6f86"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Tests of PiG's own changelog tooling, not of a Pi behavior: a legacy fragment stays exempt from the reachability checks but now needs a fix marker, because the 0.5.2 fold carried 42 unmarked Fixed bullets from legacy-exempted fragments into CHANGELOG.md and the bug ledger refused them. The expected values follow that rule change."
+
+[[entry]]
+path = "automation/ci/changelogfrag/main_test.go"
+commit = "2719b6854d8fb4a81f69a6ef4bd3be561daa6f86"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Tests of PiG's own changelog tooling, not of a Pi behavior: a legacy fragment stays exempt from the reachability checks but now needs a fix marker, because the 0.5.2 fold carried 42 unmarked Fixed bullets from legacy-exempted fragments into CHANGELOG.md and the bug ledger refused them. The expected values follow that rule change."

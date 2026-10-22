@@ -28,6 +28,7 @@ cli   ./coding/cli
 libs  ./chord
 libs  ./chord/host
 libs  ./chord/output
+libs  ./chord/telemetrysqlite
 libs  ./codemode
 libs  ./coding/extension/builtin/codemode
 libs  ./durable

@@ -120,7 +120,7 @@ func TestFoldAppendsToTheReleaseAndDeletesTheFragments(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, text := range map[string]string{
-		"old-sections.md": "### Fixed\n\n- Old fix.\n",
+		"old-sections.md": "### Fixed\n\n- Old fix. <!-- fix: 89abcdef01 -->\n",
 		"b-0123abc.md":    "### Removed\n\n- Remove B.\n\n### Upgrading\n\n- Upgrade B.\n\n### Added\n\n- Add B.\n  wrapped\n",
 		"a-0123abc.md":    "### Fixed\n\n- Fix A. <!-- fix: 0123abcdef -->\n",
 	} {
@@ -147,7 +147,7 @@ func TestFoldAppendsToTheReleaseAndDeletesTheFragments(t *testing.T) {
 		t.Fatal(problems)
 	}
 	fold(fragments)
-	want := "# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2026-10-15\n\n### Upgrading from 0.9.x\n\n- Note.\n- Upgrade B.\n\n### Added\n\n- Add X.\n- Add B.\n  wrapped\n\n### Removed\n\n- Remove B.\n\n### Fixed\n\n- Fix X.\n- Fix A. <!-- fix: 0123abcdef -->\n- Old fix.\n\n## [0.9.0] - 2026-01-01\n\n### Fixed\n\n- Old.\n"
+	want := "# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2026-10-15\n\n### Upgrading from 0.9.x\n\n- Note.\n- Upgrade B.\n\n### Added\n\n- Add X.\n- Add B.\n  wrapped\n\n### Removed\n\n- Remove B.\n\n### Fixed\n\n- Fix X.\n- Fix A. <!-- fix: 0123abcdef -->\n- Old fix. <!-- fix: 89abcdef01 -->\n\n## [0.9.0] - 2026-01-01\n\n### Fixed\n\n- Old.\n"
 	assertFile(t, changelog, want)
 	assertFile(t, legacyPath, "kept.md\n")
 	if left, _ := os.ReadDir(dir); len(left) != 0 {
@@ -165,7 +165,7 @@ func TestFoldAppendsToTheReleaseAndDeletesTheFragments(t *testing.T) {
 	if err := os.Mkdir(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "c-0123abc.md"), []byte("### Fixed\n\n- Fix C.\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "c-0123abc.md"), []byte("### Fixed\n\n- Fix C. <!-- fix: 0123abcdef -->\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	fragments, problems = load(dir)
@@ -173,7 +173,7 @@ func TestFoldAppendsToTheReleaseAndDeletesTheFragments(t *testing.T) {
 		t.Fatal(problems)
 	}
 	fold(fragments)
-	assertFile(t, changelog, strings.Replace(want, "- Old fix.\n", "- Old fix.\n- Fix C.\n", 1))
+	assertFile(t, changelog, strings.Replace(want, "- Old fix. <!-- fix: 89abcdef01 -->\n", "- Old fix. <!-- fix: 89abcdef01 -->\n- Fix C. <!-- fix: 0123abcdef -->\n", 1))
 }
 
 func TestFoldRefusesUnsortedFragmentsAndAMissingRelease(t *testing.T) {
@@ -181,8 +181,25 @@ func TestFoldRefusesUnsortedFragmentsAndAMissingRelease(t *testing.T) {
 	if _, err := fold(changelog, []fragment{{name: "old.md", unsorted: "- Old."}}, "1.0.0"); err == nil || !strings.Contains(err.Error(), "old.md") {
 		t.Fatalf("fold of an unsorted fragment: err = %v", err)
 	}
-	if _, err := fold(changelog, []fragment{{name: "a-0123abc.md", items: map[string][]string{"Fixed": {"Fix A."}}}}, "1.1.0"); err == nil {
+	if _, err := fold(changelog, []fragment{{name: "a-0123abc.md", items: map[string][]string{"Fixed": {"Fix A. <!-- fix: 0123abcdef -->"}}}}, "1.1.0"); err == nil {
 		t.Fatal("fold into a missing release succeeded")
+	}
+}
+
+// The fold copies bullets into CHANGELOG.md whatever the check said, so it refuses a bullet of a section the ledger reads
+// that has no marker, legacy or not, and takes it once marked.
+func TestFoldRefusesABulletTheLedgerWouldGuessAbout(t *testing.T) {
+	const changelog = "## [Unreleased]\n\n## [1.0.0] - 2026-10-15\n\n### Fixed\n\n- Fix X.\n"
+	for _, legacy := range []bool{false, true} {
+		bare := []fragment{{name: "a-0123abc.md", legacy: legacy, items: map[string][]string{"Fixed": {"Fix A."}, "Added": {"Add A."}}}}
+		if _, err := fold(changelog, bare, "1.0.0"); err == nil || !strings.Contains(err.Error(), "a-0123abc.md") || !strings.Contains(err.Error(), "has no fix marker") {
+			t.Errorf("legacy=%v: fold of an unmarked Fixed bullet: err = %v", legacy, err)
+		}
+		marked := []fragment{{name: "a-0123abc.md", legacy: legacy, items: map[string][]string{"Fixed": {"Fix A. <!-- fix: 0123abcdef -->"}, "Added": {"Add A."}}}}
+		got, err := fold(changelog, marked, "1.0.0")
+		if err != nil || !strings.Contains(got, "- Fix A. <!-- fix: 0123abcdef -->") || !strings.Contains(got, "- Add A.") {
+			t.Errorf("legacy=%v: fold of a marked fragment = %q, %v", legacy, got, err)
+		}
 	}
 }
 

@@ -139,6 +139,8 @@ func TestOpenAIResponsesMistypedMembersMatchPi(t *testing.T) {
 		Blocks   int    `json:"blocks"`
 		// Sigs is each text block's textSignature and each thinking block's thinkingSignature, in block order.
 		Sigs string `json:"sigs"`
+		// Transport is the cause of a failed request in Pi's run, empty when every request reached the server; PiG's run never has one, so a transport failure fails the row naming it.
+		Transport string `json:"transport"`
 	}
 	var want []result
 	const script = `(async () => {
@@ -147,12 +149,17 @@ const load = (rel) => import(require("node:url").pathToFileURL(require("node:pat
 const { createServer } = require("node:http");
 const api = await load("node_modules/@earendil-works/pi-ai/dist/api/openai-responses.js");
 const { normalizeContext } = await load("node_modules/@earendil-works/pi-ai/dist/utils/transcript.js");
+const rows = JSON.parse(rowsJSON);
+// One server answers every row, each on its own connection (connection: close): no listener is opened and closed per row and no keep-alive socket outlives its row.
+const server = createServer((req, res) => { req.resume(); req.on("end", () => { res.writeHead(200, { "content-type": "text/event-stream", connection: "close" }); res.end(rows[Number(req.url.split("/")[2])].body); }); });
+await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const out = [];
-for (const row of JSON.parse(rowsJSON)) {
-	const server = createServer((req, res) => { req.resume(); req.on("end", () => { res.writeHead(200, { "content-type": "text/event-stream" }); res.end(row.body); }); });
-	await new Promise((r) => server.listen(0, "127.0.0.1", r));
-	const model = { id: "test", name: "t", api: "openai-responses", provider: "openai", baseUrl: "http://127.0.0.1:" + server.address().port + "/v1", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128000, maxTokens: 1000 };
-	const r = await api.stream(model, normalizeContext({ messages: [{ role: "user", content: "hi", timestamp: 1 }] }), { apiKey: "k" }).result();
+for (const [i, row] of rows.entries()) {
+	// Pi reports a failed request as the SDK's "Connection error."; the fetch wrapper keeps the cause, so a transport failure names itself in the comparison.
+	let transport = "";
+	const fetchRecording = async (...args) => { try { return await fetch(...args); } catch (e) { transport = String(e?.cause?.code ?? e?.cause?.message ?? e?.message ?? e); throw e; } };
+	const model = { id: "test", name: "t", api: "openai-responses", provider: "openai", baseUrl: "http://127.0.0.1:" + server.address().port + "/v1/" + i, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128000, maxTokens: 1000 };
+	const r = await api.stream(model, normalizeContext({ messages: [{ role: "user", content: "hi", timestamp: 1 }] }), { apiKey: "k", fetch: fetchRecording }).result();
 	out.push({
 		stop: r.stopReason,
 		error: r.errorMessage ?? "",
@@ -163,8 +170,8 @@ for (const row of JSON.parse(rowsJSON)) {
 		usage: [r.usage.input, r.usage.output, r.usage.cacheRead, r.usage.cacheWrite, r.usage.totalTokens],
 		blocks: r.content.length,
 		sigs: JSON.stringify(r.content.filter((b) => b.type === "text" || b.type === "thinking").map((b) => (b.type === "text" ? b.textSignature : b.thinkingSignature) ?? null)),
+		transport,
 	});
-	server.close();
 }
 // Exit only after the pipe has taken the whole line: process.exit drops pending stdout writes.
 process.stdout.write(JSON.stringify(out) + "\n", () => process.exit(0));
