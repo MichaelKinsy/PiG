@@ -216,6 +216,12 @@ func validateResolvedInstallSources(cwd string, sm *codingagent.SettingsManager,
 				return nil, err
 			}
 			defer os.RemoveAll(scratch)
+			// git and npm write progress to stdout; keep it off the report.
+			if !codingagent.IsStdoutTakenOver() {
+				if err := codingagent.TakeOverStdout(); err == nil {
+					defer codingagent.RestoreStdout()
+				}
+			}
 			if err := packagemanager.InstallPackageArtifacts(scratch, scratch, sm, codingagent.PackageSource{Source: source}, false, nil); err != nil {
 				return nil, err
 			}
