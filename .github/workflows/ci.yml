@@ -861,6 +861,8 @@ jobs:
           # The oracle tests' own locked npm trees, as make parity-deps installs them on Linux.
           python3 automation/ci/npm-locked.py internal/typebox/testdata/npm
           python3 automation/ci/npm-locked.py ai/testdata/sdk
+          # The ai package's oracle tests import Pi's source through durable/interop's node_modules (make durable-interop-deps on Linux): the locked release of a tag pin.
+          if [ "$(python3 automation/pin/pin.py get kind)" = tag ]; then python3 automation/ci/npm-locked.py durable/interop; fi
       - name: Mirror the pinned Pi source
         # The ai package's upstream tests read Pi's source from
         # .upstream/current, as on Linux (make upstream-mirror) and Windows.
