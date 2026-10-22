@@ -49,10 +49,10 @@ class _GraphObject:
         def release() -> None:
             try:
                 context._call("sessionGraph.release", {"handle": handle})
-            except Exception:
+            except Exception:  # noqa: BLE001 - a release after the connection closed has nothing left to free  # nosec B110
                 pass
 
         try:
             threading.Thread(target=release, daemon=True).start()
-        except Exception:
+        except Exception:  # noqa: BLE001 - a finalizer at interpreter shutdown cannot start a thread  # nosec B110
             pass

@@ -70,7 +70,7 @@ _recorded = [0]  # the record-counted lines this process wrote
 
 def mark(name):
     """Record that a tool or command started, for the harness to wait on."""
-    open(".started-" + name, "w").close()
+    open(".started-" + name, "wb").close()
 
 
 def register_tool(extension, tool):
@@ -158,7 +158,8 @@ _footer_subscribed = []
 
 
 def append_line(path, line):
-    with open(path, "a", encoding="utf-8") as handle:
+    # newline="" keeps "\n" from becoming CRLF on Windows; the Go, Rust and Node fixtures write these bytes.
+    with open(path, "a", encoding="utf-8", newline="") as handle:
         handle.write(line + "\n")
 
 
@@ -284,7 +285,7 @@ def event_handler(op, tag):
 
 
 def write(path, text):
-    with open(path, "w", encoding="utf-8") as handle:
+    with open(path, "w", encoding="utf-8", newline="") as handle:
         handle.write(text)
 
 

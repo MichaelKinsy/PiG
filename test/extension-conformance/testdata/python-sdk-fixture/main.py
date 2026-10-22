@@ -624,7 +624,8 @@ def new_extension() -> pig_sdk.Extension:
     # headless-ui-probe hands the SDK footer, header and custom component closures; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
     def headless_ui_probe(ctx, path):
         def mark(line):
-            with open(path, "a", encoding="utf-8") as handle:
+            # newline="" keeps "\n" from becoming CRLF on Windows: the test splits the file on "\n", as it does for the Go, Rust and Node fixtures' markers.
+            with open(path, "a", encoding="utf-8", newline="") as handle:
                 handle.write(line + "\n")
 
         def footer(_width):
@@ -2891,7 +2892,7 @@ def _register_state_push_probe(ext: pig_sdk.Extension) -> None:
                 current = read()
             report = pathlib.Path(directory) / ("state-push-" + kind.replace(":", "_"))
             temp = report.with_name(report.name + ".tmp")
-            temp.write_text(armed + "=>" + current)
+            temp.write_bytes((armed + "=>" + current).encode("utf-8"))
             temp.replace(report)
 
         threading.Thread(target=watch, daemon=True).start()

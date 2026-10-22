@@ -219,10 +219,6 @@ paths = [
 version = "1.3.0"
 reason = "Records of work done, measured or probed against Pi 1.3.0 before the pin moved to 1.4.0: pending changelog fragments, findings, the performance scoreboard's comparator rows, plans, the 0.5.0 release notes draft, probe results a divergence or parity row cites by build, and the 'new in' and 'since' statements, which stay true."
 paths = [
-  "changelog.d/next-main-91130942.md",
-  "changelog.d/next-main-efddf65cef.md",
-  "changelog.d/tern-4444922d5f.md",
-  "changelog.d/tern-fcbb63d35c.md",
   "docs/additive-features.md",
   "docs/extension-api-parity.md",
   "docs/findings/fix-overlay-shim.md",

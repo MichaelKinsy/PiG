@@ -4,11 +4,14 @@
 package export
 
 import (
+	"bytes"
 	"cmp"
+	"compress/gzip"
 	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -26,7 +29,11 @@ import (
 
 const appName = "pig"
 
-//go:embed assets/template.html assets/template.css assets/template.js assets/vendor/marked.min.js assets/vendor/marked-cjk-friendly.min.js assets/vendor/highlight.min.js
+// The binary carries each asset gzip-compressed (about 277 KB of text becomes 80 KB); the uncompressed files next to them are the vendored
+// source, and TestEmbeddedAssetsMatchSources fails when a .gz does not inflate to its source. Refresh them with go generate after a pin bump.
+//
+//go:generate gzip -9nkf assets/template.html assets/template.css assets/template.js assets/vendor/marked.min.js assets/vendor/marked-cjk-friendly.min.js assets/vendor/highlight.min.js
+//go:embed assets/template.html.gz assets/template.css.gz assets/template.js.gz assets/vendor/marked.min.js.gz assets/vendor/marked-cjk-friendly.min.js.gz assets/vendor/highlight.min.js.gz
 var templateFS embed.FS
 
 // SessionData mirrors upstream export-html's payload shape.
@@ -125,10 +132,20 @@ func toHTML(data SessionData, themeName string) string {
 	return out
 }
 
+// mustReadAsset inflates the embedded gzip of the asset at path (relative to the package, without the .gz suffix). Nothing is cached: an export
+// builds one page, and the ~277 KB of text should not stay on the heap of a session that exported once.
 func mustReadAsset(path string) string {
-	b, err := templateFS.ReadFile(path)
+	compressed, err := templateFS.ReadFile(path + ".gz")
 	if err != nil {
 		panic(err)
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		panic(fmt.Errorf("export: embedded %s.gz: %w", path, err))
+	}
+	b, err := io.ReadAll(reader)
+	if err != nil {
+		panic(fmt.Errorf("export: embedded %s.gz: %w", path, err))
 	}
 	return string(b)
 }

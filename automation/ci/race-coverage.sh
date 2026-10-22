@@ -62,7 +62,7 @@ while IFS= read -r line; do
   read -r group path reason <<<"$line"
   if [[ -z "${path:-}" ]]; then echo "race-coverage: malformed line in $list: $line" >&2; fail=1; continue; fi
   if [[ "$group" == exempt && -z "${reason:-}" ]]; then echo "race-coverage: exempt entry $path has no reason" >&2; fail=1; fi
-  if [[ "$group" != exempt ]] && ! grep -Eq "group:.*[[:space:],[]$group[],[:space:]]" "$workflow"; then
+  if [[ "$group" != exempt ]] && ! grep -Eq "group:.*[[:space:],[]${group}[],[:space:]]" "$workflow"; then
     echo "race-coverage: group $group of $path is not in the matrix of $workflow" >&2; fail=1
   fi
   if [[ ! -d "$path" ]]; then echo "race-coverage: $list names $path, which does not exist" >&2; fail=1; continue; fi

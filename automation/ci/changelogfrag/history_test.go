@@ -187,16 +187,39 @@ func TestAFragmentNamedAfterAPreRebaseCommitFails(t *testing.T) {
 	}
 }
 
-// A legacy fragment, whose commits a squash replaced, is exempt from every history check.
-func TestLegacyFragmentsAreExemptFromTheHistoryChecks(t *testing.T) {
+// A legacy fragment, whose commits a squash replaced, is exempt from the reachability checks, not from the marker: the fold
+// copies its bullets into CHANGELOG.md, where the ledger refuses a bullet that has none (the 0.5.2 fold carried 42 of them
+// out of fragments that legacy.txt exempted). A marker naming a commit that no longer exists passes.
+func TestLegacyFragmentsAreExemptFromReachabilityButNotFromTheMarker(t *testing.T) {
 	r := newGitRepo(t)
 	r.fragments(map[string]string{"tern-0123abcdef.md": "### Fixed\n\n- Old fix.\n"})
 	if got := r.check(); got == "" {
 		t.Fatal("an unmarked fragment named after no commit must fail")
 	}
 	legacyList = "tern-0123abcdef.md\n"
+	got := r.check()
+	if n := strings.Count(got, "has no fix marker"); n != 1 || !strings.Contains(got, "tern-0123abcdef.md") || strings.Contains(got, "reachable") {
+		t.Fatalf("an unmarked legacy bullet must fail on the marker alone:\n%s", got)
+	}
+	r.fragments(map[string]string{"tern-0123abcdef.md": "### Fixed\n\n- Old fix. <!-- fix: 89abcdef01 -->\n"})
 	if got := r.check(); got != "" {
-		t.Fatalf("a legacy fragment is exempt:\n%s", got)
+		t.Fatalf("a marked legacy fragment is exempt from reachability:\n%s", got)
+	}
+}
+
+// With only legacy fragments there is nothing to resolve in the history, so the marker rule must not need a git checkout.
+func TestAnUnmarkedLegacyBulletFailsWithoutAGitCheckout(t *testing.T) {
+	saved := legacyList
+	defer func() { legacyList = saved }()
+	legacyList = "old-sections.md\n"
+	dir := writeFragments(t, map[string]string{"old-sections.md": "### Fixed\n\n- Old fix.\n\n### Added\n\n- A command.\n"})
+	fragments, problems := load(dir)
+	if len(problems) != 0 {
+		t.Fatal(problems)
+	}
+	problems = checkHistory(dir, fragments)
+	if len(problems) != 1 || !strings.Contains(problems[0].Error(), `old-sections.md: the "### Fixed" bullet "Old fix." has no fix marker`) {
+		t.Fatalf("problems = %v, want the one unmarked Fixed bullet (the Added bullet needs none)", problems)
 	}
 }
 

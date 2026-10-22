@@ -507,7 +507,8 @@ class BuiltinTool:
 
     def execute(self, tool_call_id: str, params: Any, signal: ProviderSignal | None = None, on_update: Callable[[dict[str, Any]], None] | None = None) -> dict[str, Any]:
         """Pi's ``tool.execute(toolCallId, params, signal, onUpdate)``. It runs over the connection of the running extension, so it needs ``run`` to have started."""
-        assert self._spec is not None
+        if self._spec is None:
+            raise RuntimeError("a builtin tool needs its spec before execute")
         return _execute(_running_extension(), None, self._spec, tool_call_id, params, signal, False, on_update)
 
 

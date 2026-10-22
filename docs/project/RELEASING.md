@@ -59,7 +59,7 @@ Release notes are written as fragments in `changelog.d/<lane>-<sha>.md`; `make c
 
 `make bug-ledger` refuses, with an error that names the entry, to attribute the tests of a commit that touches more than 500 files. The history it separates: the largest fix commit is 246 files, and every release or content squash above 500 is 799 files or more (the 0.5.0 squash is 13,725). If it names an entry, write or correct the marker of that entry's bullet so it names the commit that fixed the bug; if the commit fixes no product bug, give it a `Bug-Ledger: exempt <category>: <reason>` trailer.
 
-`automation/ci/changelogfrag/legacy.txt` lists the fragments whose commits the 0.5.0 squash replaced; no commit reachable from `HEAD` can name them, so they are exempt from the name and marker rules. The list only shrinks: the fold deletes a folded fragment and its line.
+`automation/ci/changelogfrag/legacy.txt` lists the fragments whose commits the 0.5.0 squash replaced; no commit reachable from `HEAD` can name them, so they are exempt from the name rule and from the reachability of their markers. Their `### Fixed` bullets still need a `<!-- fix: -->` marker, which may name a commit that no longer exists, and the fold refuses a bullet without one: the ledger refuses an unmarked bullet that the fold copied into `CHANGELOG.md`. The list only shrinks: the fold deletes a folded fragment and its line.
 
 ## Go module publication
 

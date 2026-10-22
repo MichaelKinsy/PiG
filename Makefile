@@ -237,7 +237,7 @@ divergences-drift: ## Fail when docs/parity/DIVERGENCES.md differs from the reco
 changelog-unreleased: ## Print the Unreleased changelog assembled from the fragments in changelog.d (nothing is written)
 	@go run ./automation/ci/changelogfrag
 
-changelog-check: ## Fail on a changelog fragment that is not named <lane>-<sha>.md after a commit reachable from HEAD, is not sections of bullets, or has a "### Fixed" bullet without a reachable <!-- fix: <sha> --> marker; needs the full history (fragments listed in automation/ci/changelogfrag/legacy.txt are exempt from the name and marker rules)
+changelog-check: ## Fail on a changelog fragment that is not named <lane>-<sha>.md after a commit reachable from HEAD, is not sections of bullets, or has a "### Fixed" bullet without a reachable <!-- fix: <sha> --> marker; needs the full history (fragments listed in automation/ci/changelogfrag/legacy.txt are exempt from the name and reachability rules, not from the marker rule)
 	@go run ./automation/ci/changelogfrag -check
 
 changelog-fold: ## Fold the changelog.d fragments into the VERSION section of CHANGELOG.md and delete them (integrator; rerun at release for later fragments)

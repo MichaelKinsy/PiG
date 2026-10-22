@@ -228,8 +228,8 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 			droppedCLI = true
 			continue
 		}
-		if !regexp.MustCompile(`go test [^\n]*\./` + regexp.QuoteMeta(match[1]) + `(\s|$)`).MatchString(extensionRuns) {
-			t.Errorf("native shard drops %s but the extension-host shard does not test it", match[1])
+		if !regexp.MustCompile(`go test [^\n]*\./` + regexp.QuoteMeta(match[1]) + `(\s|$)`).MatchString(extensionRuns + conformanceRuns) {
+			t.Errorf("native shard drops %s but neither the extension-host nor the extension-conformance shard tests it", match[1])
 		}
 	}
 	if !droppedCLI {
@@ -267,7 +267,7 @@ func TestWindowsNativeShardsPartitionTheSelectedPackages(t *testing.T) {
 	want := map[string]bool{}
 	for pkg := range strings.FieldsSeq(output) {
 		switch strings.TrimPrefix(pkg, modulePath+"/") {
-		case "coding/extension/host/runtimecell", "coding/extension/host/subprocess", "coding/cli":
+		case "coding/extension/host/runtimecell", "coding/extension/host/subprocess", "test/extension-conformance", "coding/cli":
 		default:
 			want[pkg] = true
 		}

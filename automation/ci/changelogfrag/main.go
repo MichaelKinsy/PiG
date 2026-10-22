@@ -13,7 +13,8 @@
 // fix marker must be reachable from HEAD, or named by a "Fix-Commit: <full sha>" trailer of a commit HEAD reaches (a
 // squash commit carries one for each commit it replaced), and every bullet of a section the bug ledger reads ("### Fixed") needs a
 // "<!-- fix: <sha> -->" marker, so the ledger never has to guess which commit fixed it. Fragments that predate these
-// rules, whose commits a squash replaced, are listed in legacy.txt and are exempt.
+// rules, whose commits a squash replaced, are listed in legacy.txt and are exempt from the name rule and from the
+// reachability of their markers, not from the marker: the check and the fold both refuse an unmarked Fixed bullet.
 package main
 
 import (
@@ -202,6 +203,14 @@ func fold(changelog string, fragments []fragment, version string) (string, error
 	}
 	if len(unsorted) > 0 {
 		return "", fmt.Errorf("give these fragments \"### <section>\" headings before the fold: %s", strings.Join(unsorted, ", "))
+	}
+	// Whatever the fragments' history says, a bullet the ledger reads must not reach CHANGELOG.md without its marker.
+	if problems := unmarked(fragments); len(problems) > 0 {
+		var msg []string
+		for _, p := range problems {
+			msg = append(msg, p.Error())
+		}
+		return "", fmt.Errorf("the fold would carry bullets without a fix marker into CHANGELOG.md:\n%s", strings.Join(msg, "\n"))
 	}
 	heading := regexp.MustCompile(`(?m)^## \[` + regexp.QuoteMeta(version) + `\]( - .*)?\n`).FindStringIndex(changelog)
 	if heading == nil {

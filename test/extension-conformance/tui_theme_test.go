@@ -338,6 +338,11 @@ func (r *modelTypesRig) installPiKeybindings(t *testing.T, defs map[string]any, 
 	t.Cleanup(func() { r.bridge.SetKeybindingsFunc(nil) })
 }
 
+// vectorPlatform is Pi's process.platform for the process the SDKs run in: the vectors are recorded for each platform in the case sources.
+func vectorPlatform() string {
+	return map[string]string{"linux": "linux", "darwin": "darwin", "windows": "win32"}[runtime.GOOS]
+}
+
 // keyHint and keyText read the host's keybindings and theme; the platform is the one the SDK process runs on, so a vector for another platform is run by the unit tests.
 func TestKeyHintAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "keyHint")
@@ -354,7 +359,7 @@ func TestKeyHintAcrossSDKs(t *testing.T) {
 			if err := json.Unmarshal(c.Result, &want); err != nil {
 				t.Fatal(err)
 			}
-			if want.Platform != map[string]string{"linux": "linux", "darwin": "darwin"}[runtime.GOOS] {
+			if want.Platform != vectorPlatform() {
 				continue
 			}
 			ran++
@@ -366,7 +371,7 @@ func TestKeyHintAcrossSDKs(t *testing.T) {
 			}
 		}
 		if ran == 0 {
-			t.Fatalf("no vector runs on %s", runtime.GOOS)
+			t.Fatalf("no vector was recorded for process.platform %q (the SDK process's platform on %s)", vectorPlatform(), runtime.GOOS)
 		}
 	})
 }
@@ -384,7 +389,7 @@ func TestRawKeyHintAcrossSDKs(t *testing.T) {
 			if err := json.Unmarshal(c.Result, &want); err != nil {
 				t.Fatal(err)
 			}
-			if want.Platform != map[string]string{"linux": "linux", "darwin": "darwin"}[runtime.GOOS] {
+			if want.Platform != vectorPlatform() {
 				continue
 			}
 			ran++
@@ -395,7 +400,7 @@ func TestRawKeyHintAcrossSDKs(t *testing.T) {
 			}
 		}
 		if ran == 0 {
-			t.Fatalf("no vector runs on %s", runtime.GOOS)
+			t.Fatalf("no vector was recorded for process.platform %q (the SDK process's platform on %s)", vectorPlatform(), runtime.GOOS)
 		}
 	})
 }

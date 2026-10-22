@@ -7,14 +7,13 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import re
 from pathlib import Path
 
 import pytest
 
 from pig_sdk import tui
-from pig_sdk.tui import _colors, _terminal
+from pig_sdk.tui import _terminal
 
 VECTORS = Path(__file__).resolve().parents[3] / "test" / "parity" / "sdk-bulk"
 

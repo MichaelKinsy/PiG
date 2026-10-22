@@ -4,7 +4,7 @@ const IDS = ["tui.select.cancel", "tui.select.confirm", "app.interrupt", "app.te
 
 export const cases = [];
 for (const [theme, mode] of THEMES.slice(0, 2)) {
-  for (const platform of ["linux", "darwin"]) {
+  for (const platform of ["linux", "darwin", "win32"]) {
     for (const user of ["default", "overridden"]) {
       for (const id of IDS) cases.push({ name: `${theme} ${mode} ${platform} ${user} ${id}`, args: [theme, mode, platform, user, id, "to go"] });
     }
