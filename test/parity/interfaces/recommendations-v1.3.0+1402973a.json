@@ -352172,7 +352172,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "5 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -352183,6 +352183,9 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/extension#TUI",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.TUI",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.TUI",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#TUI",
         "go:github.com/MichaelKinsy/PiG/tui#TUI"
       ],
       "missingClosure": [

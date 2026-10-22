@@ -6,3 +6,4 @@
 ### Fixed
 
 - An extension's `tui.invalidate()` now repaints a subprocess extension's Markdown transform: it drops the render caches of every mounted component and overlay (Pi's `TUI.invalidate`, tui.ts:366), the results of asynchronous transforms included, in the main-screen and the fullscreen renderer. Before, only the renderer's root was marked, so the transformer never ran again and a click on a stretchtext link did not repaint. <!-- fix: 785a0a9c49 -->
+- A fullscreen or main-screen pig no longer crashes a frame on a nil Markdown child when a subprocess extension's transform publishes while the transcript is invalidated: the publication reaches the assistant block through the owner loop instead of rebuilding the block from the transform's worker goroutine. <!-- fix: e04d14e34e -->

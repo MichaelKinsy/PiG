@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-946 bugs. 896 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+948 bugs. 898 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 140 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -965,6 +965,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-18022b2](#bf-18022b2) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
 | [BF-d084d86](#bf-d084d86) | Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6e6b97](#bf-f6e6b97) | Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was… | PiG's own defect | All platforms | Unreleased |
+| [BF-785a0a9](#bf-785a0a9) | An extension's `tui.invalidate()` now repaints a subprocess extension's Markdown transform: it drops the… | PiG's own defect | All platforms | Unreleased |
+| [BF-e04d14e](#bf-e04d14e) | A fullscreen or main-screen pig no longer crashes a frame on a nil Markdown child when a subprocess… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14152,6 +14154,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `f6e6b97f00` (2026-10-21)
 - **Tests:** `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus`, `coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero`
 - **Release note:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
+
+### BF-785a0a9
+
+**An extension's `tui.invalidate()` now repaints a subprocess extension's Markdown transform: it drops the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Only the renderer's root was marked, so the transformer never ran again and a click on a stretchtext link did not repaint.
+- **Root cause:** ExtUIContext.InvalidateTUI called the renderer's own Invalidate, which marks only its root, so a subprocess Markdown transformer never ran again after an extension's ui.tui.invalidate and a click did not repaint. It now walks the mounted roots and overlays (tui.ts:366), in the main-screen and alternate-screen renderers. The new tests fail on the old behavior in both modes.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `785a0a9c49` (2026-10-21)
+- **Tests:** `internal/codingagent/ext_ui_tui_handle_test.go::TestInvalidateTUIRerunsTheTranscriptMarkdownTransformer`, `tui/markdown_generation_test.go::TestInvalidateMountedRerunsAsyncMarkdownTransformer`
+- **Release note:** An extension's `tui.invalidate()` now repaints a subprocess extension's Markdown transform: it drops the render caches of every mounted component and overlay (Pi's `TUI.invalidate`, tui.ts:366), the results of asynchronous transforms included, in the main-screen and the fullscreen renderer. Before, only the renderer's root was marked, so the transformer never ran again and a click on a stretchtext link did not repaint.
+
+### BF-e04d14e
+
+**A fullscreen or main-screen pig no longer crashes a frame on a nil Markdown child when a subprocess…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A fullscreen or main-screen pig no longer crashes a frame on a nil Markdown child when a subprocess extension's transform publishes while the transcript is invalidated: the publication reaches the assistant block through the owner loop instead of rebuilding the block from the transform's worker goroutine.
+- **Root cause:** The worker that publishes a transform result called the assistant block's Invalidate itself, which rebuilds the block's children while the loop renders or invalidates it; with a fresh invalidate request in flight that raced and crashed a render on a nil child. The loop now runs it.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e04d14e34e` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** A fullscreen or main-screen pig no longer crashes a frame on a nil Markdown child when a subprocess extension's transform publishes while the transcript is invalidated: the publication reaches the assistant block through the owner loop instead of rebuilding the block from the transform's worker goroutine.
 
 ## Divergences from Pi added in this release
 

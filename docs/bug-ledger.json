@@ -31929,6 +31929,49 @@
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero"
       ]
+    },
+    {
+      "id": "BF-785a0a9",
+      "title": "An extension's `tui.invalidate()` now repaints a subprocess extension's Markdown transform: it drops the…",
+      "symptom": "Only the renderer's root was marked, so the transformer never ran again and a click on a stretchtext link did not repaint.",
+      "rootCause": "ExtUIContext.InvalidateTUI called the renderer's own Invalidate, which marks only its root, so a subprocess Markdown transformer never ran again after an extension's ui.tui.invalidate and a click did not repaint. It now walks the mounted roots and overlays (tui.ts:366), in the main-screen and alternate-screen renderers. The new tests fail on the old behavior in both modes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension's `tui.invalidate()` now repaints a subprocess extension's Markdown transform: it drops the render caches of every mounted component and overlay (Pi's `TUI.invalidate`, tui.ts:366), the results of asynchronous transforms included, in the main-screen and the fullscreen renderer. Before, only the renderer's root was marked, so the transformer never ran again and a click on a stretchtext link did not repaint.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "785a0a9c49",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_tui_handle_test.go::TestInvalidateTUIRerunsTheTranscriptMarkdownTransformer",
+        "tui/markdown_generation_test.go::TestInvalidateMountedRerunsAsyncMarkdownTransformer"
+      ]
+    },
+    {
+      "id": "BF-e04d14e",
+      "title": "A fullscreen or main-screen pig no longer crashes a frame on a nil Markdown child when a subprocess…",
+      "symptom": "A fullscreen or main-screen pig no longer crashes a frame on a nil Markdown child when a subprocess extension's transform publishes while the transcript is invalidated: the publication reaches the assistant block through the owner loop instead of rebuilding the block from the transform's worker goroutine.",
+      "rootCause": "The worker that publishes a transform result called the assistant block's Invalidate itself, which rebuilds the block's children while the loop renders or invalidates it; with a fresh invalidate request in flight that raced and crashed a render on a nil child. The loop now runs it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A fullscreen or main-screen pig no longer crashes a frame on a nil Markdown child when a subprocess extension's transform publishes while the transcript is invalidated: the publication reaches the assistant block through the owner loop instead of rebuilding the block from the transform's worker goroutine.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e04d14e34e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     }
   ],
   "divergences": [
