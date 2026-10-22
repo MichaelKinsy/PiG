@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // scriptsFixture is a real-npm registry that serves a Package, and a dependency of that Package, whose postinstall
@@ -214,9 +215,7 @@ func TestPigletResolutionKeepsFilesBuiltByAnOptedInInstall(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(base, "real", "home"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Symlink(filepath.Join(base, "real"), filepath.Join(base, "link")); err != nil {
-			t.Skipf("symbolic links are unavailable: %v", err)
-		}
+		testenv.RequireDirectoryLink(t, filepath.Join(base, "real"), filepath.Join(base, "link"))
 		keepsFilesBuiltByAnOptedInInstall(t, filepath.Join(base, "link", "home"))
 	})
 }
