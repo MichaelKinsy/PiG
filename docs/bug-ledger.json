@@ -7192,6 +7192,30 @@
       ]
     },
     {
+      "id": "BF-3e755ef",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "ai: SystemOneWireRequest keeps an explicit empty images list (system-one-shared.ts images?: string[]) instead of dropping it with omitempty, and the OpenRouter detection cites typesafe-system-one.ts:20. tools: WaitContext's hand-off goroutine moves out of its loop. gen-models: hasChatCompat compares with an encoder that does not escape \u003c, \u003e and \u0026. Signed-off-by: Michael Kinsy \u003c54590707+MichaelKinsy@users.noreply.github.com\u003e",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3e755ef501",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": [
+        "ai/system_one_wire_test.go::TestSystemOneWireRequestImagesKeepAnExplicitEmptyList",
+        "ai/system_one_wire_test.go::TestTypesafeSystemOneDetectCompatShapes",
+        "internal/codingagent/tools/mutation_queue_test.go::TestFileMutationQueueWithPanickingCallbackStillDrains",
+        "internal/codingagent/tools/mutation_queue_test.go::TestMutationTicketWaitContextGaveUpTicketPassesOnAfterEveryPredecessor"
+      ]
+    },
+    {
       "id": "BF-3f51752",
       "title": "Images are now resized with the image profile of the model that answered last under a virtual model selection",
       "symptom": "Images are now resized with the image profile of the model that answered last under a virtual model selection.",

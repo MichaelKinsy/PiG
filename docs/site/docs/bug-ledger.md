@@ -243,6 +243,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3d12e48](#bf-3d12e48) | fix(tui): tree selector cursor follows Pi's selectedIndex over an empty list | PiG's own defect | All platforms | Unreleased |
 | [BF-3d475c4](#bf-3d475c4) | Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3f51752](#bf-3f51752) | Images are now resized with the image profile of the model that answered last under a virtual model selection | PiG's own defect | All platforms | Unreleased |
 | [BF-3fa6e63](#bf-3fa6e63) | MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fbdfd2](#bf-3fbdfd2) | A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of… | PiG's own defect | All platforms | 0.5.0 |
@@ -4249,6 +4250,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `10e9b5c109` (2026-10-09), `1f84136411` (2026-10-09), `5ceebfdae9` (2026-10-09), `b41d7817cc` (2026-10-09), `3def2a7bd8` (2026-10-10)
 - **Tests:** `ai/anthropic_messages_response_oracle_test.go::TestAnthropicMessagesResponseMatchesPi`, `ai/models_store_bytes_oracle_test.go::TestModelsStoreFileBytesMatchPi`, `ai/models_store_lossless_test.go::TestModelsStoreKeepsUnknownFieldsThroughCloneAndFile`, `ai/openai_completions_response_oracle_test.go::TestOpenAICompletionsResponseMatchesPi`, `ai/openai_responses_response_oracle_test.go::TestOpenAIResponsesResponseMatchesPi`, `ai/transcript_replay_oracle_test.go::TestTranscriptReplayMatchesPi`, `coding/mcpext/config_load_oracle_test.go::TestLoadMcpConfigMatchesPiOnRandomFiles`, `coding/nested_recorder_oracle_test.go::TestNestedCallRecorderMatchesPi` and 2 more in docs/bug-ledger.json
 - **Release note:** MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON object lists its array-index keys first, in ascending order, then the others in file order. The ordered JSON object the MCP configuration, tool arguments and other raw objects use now follows that rule.
+
+### BF-3e755ef
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** ai: SystemOneWireRequest keeps an explicit empty images list (system-one-shared.ts images?: string[]) instead of dropping it with omitempty, and the OpenRouter detection cites typesafe-system-one.ts:20. tools: WaitContext's hand-off goroutine moves out of its loop. gen-models: hasChatCompat compares with an encoder that does not escape <, > and &. Signed-off-by: Michael Kinsy <54590707+MichaelKinsy@users.noreply.github.com>
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3e755ef501` (2026-10-22)
+- **Tests:** `ai/system_one_wire_test.go::TestSystemOneWireRequestImagesKeepAnExplicitEmptyList`, `ai/system_one_wire_test.go::TestTypesafeSystemOneDetectCompatShapes`, `internal/codingagent/tools/mutation_queue_test.go::TestFileMutationQueueWithPanickingCallbackStillDrains`, `internal/codingagent/tools/mutation_queue_test.go::TestMutationTicketWaitContextGaveUpTicketPassesOnAfterEveryPredecessor`
 
 ### BF-3f51752
 
