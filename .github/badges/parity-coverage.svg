@@ -1,11 +1,11 @@
 <!-- SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP -->
 <!-- SPDX-License-Identifier: MIT -->
-<svg xmlns="http://www.w3.org/2000/svg" width="290" height="20" role="img" aria-label="Pi 1.3.0+bd3c9b82 port: 100% · hardening">
-  <title>Pi 1.3.0+bd3c9b82 port: 100% · hardening</title>
-  <rect width="166" height="20" fill="#555"/>
-  <rect x="166" width="124" height="20" fill="#4c1"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="227" height="20" role="img" aria-label="Pi 1.4.0 port: 100% · hardening">
+  <title>Pi 1.4.0 port: 100% · hardening</title>
+  <rect width="103" height="20" fill="#555"/>
+  <rect x="103" width="124" height="20" fill="#4c1"/>
   <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
-    <text x="83" y="14">Pi 1.3.0+bd3c9b82 port</text>
-    <text x="228" y="14">100% · hardening</text>
+    <text x="51" y="14">Pi 1.4.0 port</text>
+    <text x="165" y="14">100% · hardening</text>
   </g>
 </svg>

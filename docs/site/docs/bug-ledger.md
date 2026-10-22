@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-982 bugs. 924 own defects, 29 fixed ahead of Pi, 29 Pi fixes ported. 149 bugs have no recorded test.
+984 bugs. 923 own defects, 29 fixed ahead of Pi, 32 Pi fixes ported. 146 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -998,9 +998,11 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-36e192b](#bf-36e192b) | fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits | PiG's own defect | All platforms | Unreleased |
 | [BF-b9db06c](#bf-b9db06c) | fix(subprocess): keep a user_bash operations object alive while its exec runs | PiG's own defect | All platforms | Unreleased |
 | [BF-d0c2727](#bf-d0c2727) | fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization… | PiG's own defect | All platforms | Unreleased |
-| [BF-pending-980](#bf-pending-980) | The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH`… | PiG's own defect | All platforms | Unreleased |
-| [BF-pending-981](#bf-pending-981) | Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that… | PiG's own defect | All platforms | Unreleased |
-| [BF-pending-982](#bf-pending-982) | The upstream pin moves to Pi `02726086` | PiG's own defect | All platforms | Unreleased |
+| [BF-645bcf8](#bf-645bcf8) | The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH`… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-645bcf8-2](#bf-645bcf8-2) | Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-6d31eda](#bf-6d31eda) | Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-6d31eda-2](#bf-6d31eda-2) | The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the… | PiG's own defect | All platforms | Unreleased |
+| [BF-6d31eda-3](#bf-6d31eda-3) | The upstream pin moves to Pi v1.4.0 | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14644,47 +14646,75 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `d0c2727053` (2026-10-21)
 - **Tests:** None recorded.
 
-### BF-pending-980
+### BF-645bcf8
 
 **The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH`…**
 
-- **Source:** PiG's own defect
+- **Source:** A fix Pi shipped that PiG ported
 - **Symptom:** The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH` file cannot change the tool's contract (literal, glob, limit).
-- **Root cause:** Not recorded.
+- **Root cause:** Pi puts --no-config first in ripgrep's argument list, so a user's RIPGREP_CONFIG_PATH cannot change the grep tool's contract. Pi 02726086 (#11227) finds the tool results that answered a recovered attempt's calls in the projected context, so every recovery caller omits the pair together; checkCompaction and the Session lose their lastAssistantToolResults plumbing.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** Not yet committed.
-- **Tests:** None recorded.
+- **Fix commits:** `645bcf8a88` (2026-10-21)
+- **Tests:** `coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult`
 - **Release note:** The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH` file cannot change the tool's contract (literal, glob, limit).
 
-### BF-pending-981
+### BF-645bcf8-2
 
 **Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that…**
 
-- **Source:** PiG's own defect
+- **Source:** A fix Pi shipped that PiG ported
 - **Symptom:** Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that answered the attempt's calls in the agent transcript and omits them with it, so a resumed session no longer persists orphaned tool results that providers reject (Pi `02726086`, #11227).
-- **Root cause:** Not recorded.
+- **Root cause:** Pi puts --no-config first in ripgrep's argument list, so a user's RIPGREP_CONFIG_PATH cannot change the grep tool's contract. Pi 02726086 (#11227) finds the tool results that answered a recovered attempt's calls in the projected context, so every recovery caller omits the pair together; checkCompaction and the Session lose their lastAssistantToolResults plumbing.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** Not yet committed.
-- **Tests:** None recorded.
+- **Fix commits:** `ae40b2b820` (2026-10-20), `645bcf8a88` (2026-10-21)
+- **Tests:** `coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult`, `tui/markdown_cjk_test.go::TestMarkdownCJKEmphasisPiCases`
 - **Release note:** Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that answered the attempt's calls in the agent transcript and omits them with it, so a resumed session no longer persists orphaned tool results that providers reject (Pi `02726086`, #11227).
 
-### BF-pending-982
+### BF-6d31eda
 
-**The upstream pin moves to Pi `02726086`**
+**Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and Cloudflare's Clef models, and provider-level `compat` in `models.json` now also applies to classifier models, with the System One fields `imageInput` and `sendImageOptInHeader`.
+- **Root cause:** ai: SystemOneCompat on ClassifierModel, addImages for assets/images/state-image-urls, per-transport detected compat, image opt-in header, 'does not support image input for <id>'. configschema: SystemOneCompatSchema. models.json provider compat overlays classifier models. gen-models carries classifier compat. Ports of Pi's typesafe, cloudflare, classifier-models and model-runtime-classifiers tests. Needs the v1.4.0 pin bump, make model-catalogs, make generate, and the jev-latest text-only rejection test retargeted. Signed-off-by: Michael Kinsy <54590707+MichaelKinsy@users.noreply.github.com>
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a4f45b032b` (2026-10-19), `9abc6acfde` (2026-10-20), `ae40b2b820` (2026-10-20), `b33900f4a0` (2026-10-20), `c371a134cc` (2026-10-20), `645bcf8a88` (2026-10-21), `6d31edae7c` (2026-10-21), `82c94e41e3` (2026-10-21), `9c48ac7f69` (2026-10-21), `a99ac58407` (2026-10-21)
+- **Tests:** `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`, `ai/classifier_shared_exports_test.go::TestClassifySystemOneRejectsAnotherAPIAndImagesWithoutSending`, `ai/cloudflare_workers_ai_system_one_upstream_test.go::TestCloudflareWorkersAISystemOneUpstream`, `ai/transcript_tool_changes_test.go::TestResolveTranscriptToolsBoundaryPerTransport`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesKimiPrefixAcrossLoadsAfterARemoval`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesDoesNotListAToolAsUnavailableBeforeItsRemovalIsAnnounced`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesKeepsPrefixAcrossRemovalAndLoads` and 12 more in docs/bug-ledger.json
+- **Release note:** Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and Cloudflare's Clef models, and provider-level `compat` in `models.json` now also applies to classifier models, with the System One fields `imageInput` and `sendImageOptInHeader`. A model without image input rejects images with a clear error.
+
+### BF-6d31eda-2
+
+**The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the…**
 
 - **Source:** PiG's own defect
-- **Symptom:** The upstream pin moves to Pi `02726086`.
+- **Symptom:** The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the model record as Pi does.
 - **Root cause:** Not recorded.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** Not yet committed.
-- **Tests:** None recorded.
-- **Release note:** The upstream pin moves to Pi `02726086`.
+- **Commit that wrote the release note (the fix commit is not identified):** `6d31edae7c` (2026-10-21)
+- **Tests:** `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `cmd/gen-models/openrouter_catalog_test.go::TestOpenRouterCatalogParsingUpstream`, `internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort`
+- **Release note:** The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the model record as Pi does.
+
+### BF-6d31eda-3
+
+**The upstream pin moves to Pi v1.4.0**
+
+- **Source:** PiG's own defect
+- **Symptom:** The upstream pin moves to Pi v1.4.0.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Commit that wrote the release note (the fix commit is not identified):** `6d31edae7c` (2026-10-21)
+- **Tests:** `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `cmd/gen-models/openrouter_catalog_test.go::TestOpenRouterCatalogParsingUpstream`, `internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort`
+- **Release note:** The upstream pin moves to Pi v1.4.0.
 
 ## Divergences from Pi added in this release
 

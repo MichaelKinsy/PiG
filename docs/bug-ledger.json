@@ -32762,49 +32762,180 @@
       "tests": []
     },
     {
-      "id": "BF-pending-980",
+      "id": "BF-645bcf8",
       "title": "The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH`…",
       "symptom": "The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH` file cannot change the tool's contract (literal, glob, limit).",
-      "rootCause": "",
-      "rootCauseSource": "",
+      "rootCause": "Pi puts --no-config first in ripgrep's argument list, so a user's RIPGREP_CONFIG_PATH cannot change the grep tool's contract. Pi 02726086 (#11227) finds the tool results that answered a recovered attempt's calls in the projected context, so every recovery caller omits the pair together; checkCompaction and the Session lose their lastAssistantToolResults plumbing.",
+      "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
-      "class": "own",
+      "class": "pi-port",
       "fixedIn": "Unreleased",
       "releaseNote": "The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH` file cannot change the tool's contract (literal, glob, limit).",
       "origin": "release note",
-      "commits": [],
-      "tests": []
+      "commits": [
+        {
+          "hash": "645bcf8a88",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult"
+      ]
     },
     {
-      "id": "BF-pending-981",
+      "id": "BF-645bcf8-2",
       "title": "Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that…",
       "symptom": "Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that answered the attempt's calls in the agent transcript and omits them with it, so a resumed session no longer persists orphaned tool results that providers reject (Pi `02726086`, #11227).",
-      "rootCause": "",
-      "rootCauseSource": "",
+      "rootCause": "Pi puts --no-config first in ripgrep's argument list, so a user's RIPGREP_CONFIG_PATH cannot change the grep tool's contract. Pi 02726086 (#11227) finds the tool results that answered a recovered attempt's calls in the projected context, so every recovery caller omits the pair together; checkCompaction and the Session lose their lastAssistantToolResults plumbing.",
+      "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
-      "class": "own",
+      "class": "pi-port",
       "fixedIn": "Unreleased",
       "releaseNote": "Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that answered the attempt's calls in the agent transcript and omits them with it, so a resumed session no longer persists orphaned tool results that providers reject (Pi `02726086`, #11227).",
       "origin": "release note",
-      "commits": [],
-      "tests": []
+      "commits": [
+        {
+          "hash": "ae40b2b820",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "645bcf8a88",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult",
+        "tui/markdown_cjk_test.go::TestMarkdownCJKEmphasisPiCases"
+      ]
     },
     {
-      "id": "BF-pending-982",
-      "title": "The upstream pin moves to Pi `02726086`",
-      "symptom": "The upstream pin moves to Pi `02726086`.",
+      "id": "BF-6d31eda",
+      "title": "Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and…",
+      "symptom": "Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and Cloudflare's Clef models, and provider-level `compat` in `models.json` now also applies to classifier models, with the System One fields `imageInput` and `sendImageOptInHeader`.",
+      "rootCause": "ai: SystemOneCompat on ClassifierModel, addImages for assets/images/state-image-urls, per-transport detected compat, image opt-in header, 'does not support image input for \u003cid\u003e'. configschema: SystemOneCompatSchema. models.json provider compat overlays classifier models. gen-models carries classifier compat. Ports of Pi's typesafe, cloudflare, classifier-models and model-runtime-classifiers tests. Needs the v1.4.0 pin bump, make model-catalogs, make generate, and the jev-latest text-only rejection test retargeted. Signed-off-by: Michael Kinsy \u003c54590707+MichaelKinsy@users.noreply.github.com\u003e",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and Cloudflare's Clef models, and provider-level `compat` in `models.json` now also applies to classifier models, with the System One fields `imageInput` and `sendImageOptInHeader`. A model without image input rejects images with a clear error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a4f45b032b",
+          "date": "2026-10-19"
+        },
+        {
+          "hash": "9abc6acfde",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "ae40b2b820",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "b33900f4a0",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "c371a134cc",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "645bcf8a88",
+          "date": "2026-10-21"
+        },
+        {
+          "hash": "6d31edae7c",
+          "date": "2026-10-21"
+        },
+        {
+          "hash": "82c94e41e3",
+          "date": "2026-10-21"
+        },
+        {
+          "hash": "9c48ac7f69",
+          "date": "2026-10-21"
+        },
+        {
+          "hash": "a99ac58407",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream",
+        "ai/classifier_shared_exports_test.go::TestClassifySystemOneRejectsAnotherAPIAndImagesWithoutSending",
+        "ai/cloudflare_workers_ai_system_one_upstream_test.go::TestCloudflareWorkersAISystemOneUpstream",
+        "ai/transcript_tool_changes_test.go::TestResolveTranscriptToolsBoundaryPerTransport",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesKimiPrefixAcrossLoadsAfterARemoval",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesDoesNotListAToolAsUnavailableBeforeItsRemovalIsAnnounced",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesKeepsPrefixAcrossRemovalAndLoads",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesRedefinitionIsNotARemoval",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesStopsListingAToolAsUnavailableOnceDeclaredAgain",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesToolSearchPrefixAcrossLoadsAfterARemoval",
+        "ai/typesafe_system_one_upstream_test.go::TestTypesafeSystemOneUpstream",
+        "cmd/gen-models/openrouter_catalog_test.go::TestOpenRouterCatalogParsingUpstream",
+        "coding/extension/host/subprocess/builder_node_embed_test.go::TestNodeRuntimeEmbedsVendoredPiDistAndDependencies",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage",
+        "coding/model_runtime_classifiers_upstream_test.go::TestModelRuntimeClassifierImagesUpstream",
+        "coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult",
+        "internal/codingagent/configschema/compat_schema_exports_test.go::TestCompatSchemaExportsMatchPi",
+        "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort",
+        "tui/markdown_cjk_test.go::TestMarkdownCJKEmphasisPiCases"
+      ]
+    },
+    {
+      "id": "BF-6d31eda-2",
+      "title": "The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the…",
+      "symptom": "The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the model record as Pi does.",
       "rootCause": "",
       "rootCauseSource": "",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "The upstream pin moves to Pi `02726086`.",
+      "releaseNote": "The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the model record as Pi does.",
       "origin": "release note",
-      "commits": [],
-      "tests": []
+      "commits": [
+        {
+          "hash": "6d31edae7c",
+          "date": "2026-10-21"
+        }
+      ],
+      "commitsFrom": "release note",
+      "tests": [
+        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "cmd/gen-models/openrouter_catalog_test.go::TestOpenRouterCatalogParsingUpstream",
+        "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
+      ]
+    },
+    {
+      "id": "BF-6d31eda-3",
+      "title": "The upstream pin moves to Pi v1.4.0",
+      "symptom": "The upstream pin moves to Pi v1.4.0.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The upstream pin moves to Pi v1.4.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6d31edae7c",
+          "date": "2026-10-21"
+        }
+      ],
+      "commitsFrom": "release note",
+      "tests": [
+        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "cmd/gen-models/openrouter_catalog_test.go::TestOpenRouterCatalogParsingUpstream",
+        "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
+      ]
     }
   ],
   "divergences": [

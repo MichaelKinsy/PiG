@@ -22865,6 +22865,28 @@
       "shapeHash": "sha256:41fc3e263adf122caec335e055817d02b732cdbe995634a3314b436731ecfbed"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageAssets.All",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageAssets.All",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() iter.Seq2[string, SystemOneImageAsset]"
+      },
+      "shapeHash": "sha256:d10846d910de2a56fb7ff7bfcf53a91f28c47bb0bd205b8d96078dcb8c668572"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageAssets.Get",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageAssets.Get",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(name string) (SystemOneImageAsset, bool)"
+      },
+      "shapeHash": "sha256:fbcada8ad9ade666fd578e091dce4bf6db113264afbad4ede5c46ad98f4a3ac8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageAssets.MarshalJSON",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "SystemOneImageAssets.MarshalJSON",
