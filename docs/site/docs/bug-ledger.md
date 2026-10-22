@@ -183,6 +183,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-304bd44-2](#bf-304bd44-2) | A streamed child-session text costs wire bytes linear in its length: `message_update` events travel as a… | PiG's own defect | All platforms | Unreleased |
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-30d4a6d](#bf-30d4a6d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-30e47f4](#bf-30e47f4) | fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback | PiG's own defect | All platforms | Unreleased |
 | [BF-31740ec](#bf-31740ec) | A `waitForIdle()` waiter registered during a run stays pending through `agent_settled` handlers and the… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-31a7d77](#bf-31a7d77) | `SessionBeforeTreeResultSummary.Usage` is typed as `ai.Usage` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-31cde9f](#bf-31cde9f) | A Node extension that calls `pi.appendEntry` now sees the new entry in `ctx.sessionManager.getEntries()` in… | PiG's own defect | All platforms | 0.5.0 |
@@ -440,6 +441,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6a6fffa-9](#bf-6a6fffa-9) | `TestSettingsSelectorMatchesPi` opens each row under the Kitty keyboard protocol with CSI-u keys; no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6ac4c8c](#bf-6ac4c8c) | Ctrl+V pastes clipboard text in Termux | A fix Pi shipped that PiG ported | Linux, Android and Termux | 0.5.0 |
 | [BF-6b381a3](#bf-6b381a3) | The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit | PiG's own defect | All platforms | Unreleased |
+| [BF-6c01b75](#bf-6c01b75) | A package manifest glob walks as Node 24.22 and later walk it | PiG's own defect | All platforms | Unreleased |
 | [BF-6cb29f0](#bf-6cb29f0) | Started from a directory reached through a symlink, `pig install`/`remove`/`list`/`update` resolve local… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6cb29f0-2](#bf-6cb29f0-2) | Started from a directory reached through a symlink, `/export <file>.jsonl` and `/bug` now write and name… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6cb29f0-3](#bf-6cb29f0-3) | Switching to or importing an empty session file from a directory reached through a symlink starts the session… | PiG's own defect | All platforms | 0.5.0 |
@@ -831,6 +833,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-3](#bf-b8df7eb-3) | Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b99457f](#bf-b99457f) | `tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-b9da7b9](#bf-b9da7b9) | The Cloudflare host's pi-durable facade sends Pi v1.4.0's client `identity` in every model request's options… | PiG's own defect | All platforms | Unreleased |
 | [BF-b9db06c](#bf-b9db06c) | fix(subprocess): keep a user_bash operations object alive while its exec runs | PiG's own defect | All platforms | Unreleased |
 | [BF-ba44e9f](#bf-ba44e9f) | A Node extension whose factory failed, because it has no default export or throws while initializing, could… | PiG's own defect | All platforms | Unreleased |
 | [BF-ba8b6b7](#bf-ba8b6b7) | `/logout` reads stored credentials with Pi's 15-second signal, so an unreadable `auth.json` reports "Could… | PiG's own defect | All platforms | 0.5.0 |
@@ -947,6 +950,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d7855fd](#bf-d7855fd) | A subprocess extension's message, entry or tool renderer, or tool renderer resolver, that was busy past the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d7bfea6](#bf-d7bfea6) | A git source whose ref has no repository (`git:#v1`) no longer panics, and a ref split out of an opaque-path… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d7c7f86](#bf-d7c7f86) | fix(runtimecell): start a packed cell's members in order so a later member's factory cannot take the factory… | PiG's own defect | All platforms | Unreleased |
+| [BF-d7df8b0](#bf-d7df8b0) | The Go, Rust and Python extension SDKs' `isContextOverflow` treats an HTTP 413 error as a context overflow… | PiG's own defect | All platforms | Unreleased |
+| [BF-d7df8b0-2](#bf-d7df8b0-2) | The Go, Rust and Python extension SDKs' `isRetryableAssistantError` retries on a status code (429, 500, 502… | PiG's own defect | All platforms | Unreleased |
 | [BF-d80425c](#bf-d80425c) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-d80c1cd](#bf-d80c1cd) | Where Pi calls `new URL(value)`, Pig now parses a `ws:`, `wss:`, `ftp:` or `file:` URL, and a bracketed IPv6… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d81ace2](#bf-d81ace2) | Prompts submitted after `/scoped-models` refreshed the model catalogs and Ctrl+P switched the model no longer… | PiG's own defect | All platforms | Unreleased |
@@ -3409,6 +3414,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `30d4a6d805` (2026-10-13)
+- **Tests:** None recorded.
+
+### BF-30e47f4
+
+**fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `30e47f4408` (2026-10-21)
 - **Tests:** None recorded.
 
 ### BF-31740ec
@@ -6973,6 +6991,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6b381a37fb` (2026-10-20)
 - **Tests:** `automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed`, `automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash`, `automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles`, `automation/ci/changelogfrag/history_test.go::TestAFragmentNamedAfterAPreRebaseCommitFails`, `automation/ci/changelogfrag/history_test.go::TestAMarkerNamingAnUnreachableCommitFails`, `automation/ci/changelogfrag/history_test.go::TestAShallowCloneFailsTheCheckInsteadOfGuessing`, `automation/ci/changelogfrag/history_test.go::TestEveryCommitOfAMarkerMustBeReachable`, `automation/ci/changelogfrag/history_test.go::TestEveryFixedBulletNeedsAFixMarker` and 3 more in docs/bug-ledger.json
 - **Release note:** The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit. A release note without a `<!-- fix: <sha> -->` marker had its commits guessed from the history, and the only commit it found for five notes was the 0.5.0 squash, which grew `docs/bug-ledger.json` from about 2.1 MB to 9.8 MB and pushed the root module past its size budget. `make changelog-check` now fails a `### Fixed` bullet without a marker, a marker or fragment name that names a commit `HEAD` does not reach, and `make bug-ledger` refuses, naming the entry, to attribute the tests of a commit that touches more than 500 files.
+
+### BF-6c01b75
+
+**A package manifest glob walks as Node 24.22 and later walk it**
+
+- **Source:** PiG's own defect
+- **Symptom:** A package manifest glob walks as Node 24.22 and later walk it.
+- **Root cause:** Node 24.22 no longer returns from an entry loop at an entry whose path the walk already holds, and a globstar no longer queues the segment after it below a symlink. Pi runs on the qualified Node (24.22.1), and Node 26.12.1 walks the same, so PiG follows that walk: **/x/**, a/**/../*.md, Sub/**/../*, **/x/**/y, ./cyc/**/../? and **/!(*.md) list what 24.22.1 and 26.12.1 list.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6c01b755f4` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** A package manifest glob walks as Node 24.22 and later walk it. Pi runs on that Node, and its `globSync` no longer ends a directory listing at an entry the walk already holds, nor queues the segment after a globstar below a symlink: `a/**/../*.md` lists the root's `.md` files as well, `Sub/**/../*` lists the siblings of `Sub`, and `**/x/**/y` lists every `x/**/y` below the root.
 
 ### BF-6cb29f0
 
@@ -12427,6 +12459,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/builtin/toolsearch/toolsearch_cjk_test.go::TestBm25RankerFindsAChineseQueryInChineseToolMetadata`, `coding/extension/builtin/toolsearch/toolsearch_cjk_test.go::TestTokenizeKeepsCJKCharactersAsTerms`, `coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi`
 - **Release note:** `tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a search term, where Pi's tokenizer dropped them (earendil-works/pi#10816; D173). Text in other scripts tokenizes as before.
 
+### BF-b9da7b9
+
+**The Cloudflare host's pi-durable facade sends Pi v1.4.0's client `identity` in every model request's options…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Cloudflare host's pi-durable facade sends Pi v1.4.0's client `identity` in every model request's options (last key, after `sessionId`), merged over `DEFAULT_HARNESS_IDENTITY` (provider attribution to pi) with `HarnessOptions.identity` and a request's own `identity`, as Pi's `Harness` does through `withClientIdentity` (Pi `adc5fa9f`, `04a93bad`).
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Commit that wrote the release note (the fix commit is not identified):** `b9da7b9055` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** The Cloudflare host's pi-durable facade sends Pi v1.4.0's client `identity` in every model request's options (last key, after `sessionId`), merged over `DEFAULT_HARNESS_IDENTITY` (provider attribution to pi) with `HarnessOptions.identity` and a request's own `identity`, as Pi's `Harness` does through `withClientIdentity` (Pi `adc5fa9f`, `04a93bad`). The facade exports `DEFAULT_HARNESS_IDENTITY`.
+
 ### BF-b9db06c
 
 **fix(subprocess): keep a user_bash operations object alive while its exec runs**
@@ -14039,6 +14085,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d7c7f86a12` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-d7df8b0
+
+**The Go, Rust and Python extension SDKs' `isContextOverflow` treats an HTTP 413 error as a context overflow…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Go, Rust and Python extension SDKs' `isContextOverflow` treats an HTTP 413 error as a context overflow whatever the provider or the body says: a failed message that begins with `413` (then a space, a colon or the end) or with `<provider> API error (413):`.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d7df8b0c4d` (2026-10-21)
+- **Tests:** `test/extension-conformance/pi_ai_helpers_test.go::TestConformance_PiAiHelpersAgreeAcrossSDKs`
+- **Release note:** The Go, Rust and Python extension SDKs' `isContextOverflow` treats an HTTP 413 error as a context overflow whatever the provider or the body says: a failed message that begins with `413` (then a space, a colon or the end) or with `<provider> API error (413):`. Carried forward from Pi 1.4.0 (`packages/ai/src/utils/overflow.ts`).
+
+### BF-d7df8b0-2
+
+**The Go, Rust and Python extension SDKs' `isRetryableAssistantError` retries on a status code (429, 500, 502…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Go, Rust and Python extension SDKs' `isRetryableAssistantError` retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, retries on `stream disconnected before completion`, and does not retry a ChatGPT Business workspace usage-limit error (`subscription_sharing_workplace_individual_usage_limit_exceeded`).
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d7df8b0c4d` (2026-10-21)
+- **Tests:** `test/extension-conformance/pi_ai_helpers_test.go::TestConformance_PiAiHelpersAgreeAcrossSDKs`
+- **Release note:** The Go, Rust and Python extension SDKs' `isRetryableAssistantError` retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, retries on `stream disconnected before completion`, and does not retry a ChatGPT Business workspace usage-limit error (`subscription_sharing_workplace_individual_usage_limit_exceeded`). Carried forward from Pi 6e491cfa, 29057ece and cedefc53.
 
 ### BF-d80425c
 

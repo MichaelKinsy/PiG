@@ -5274,6 +5274,25 @@
       "tests": []
     },
     {
+      "id": "BF-30e47f4",
+      "title": "fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback",
+      "symptom": "fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "30e47f4408",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-31740ec",
       "title": "A `waitForIdle()` waiter registered during a run stays pending through `agent_settled` handlers and the…",
       "symptom": "A `waitForIdle()` waiter registered during a run stays pending through `agent_settled` handlers and the prompts they defer, and an abort while settlement is in progress discards those prompts (D142, Pi #10704, #10705).",
@@ -13850,6 +13869,26 @@
         "automation/ci/changelogfrag/history_test.go::TestNoFragmentsNeedNoHistory",
         "automation/ci/changelogfrag/history_test.go::TestOnlyTheSectionsTheLedgerReadsNeedAMarker"
       ]
+    },
+    {
+      "id": "BF-6c01b75",
+      "title": "A package manifest glob walks as Node 24.22 and later walk it",
+      "symptom": "A package manifest glob walks as Node 24.22 and later walk it.",
+      "rootCause": "Node 24.22 no longer returns from an entry loop at an entry whose path the walk already holds, and a globstar no longer queues the segment after it below a symlink. Pi runs on the qualified Node (24.22.1), and Node 26.12.1 walks the same, so PiG follows that walk: **/x/**, a/**/../*.md, Sub/**/../*, **/x/**/y, ./cyc/**/../? and **/!(*.md) list what 24.22.1 and 26.12.1 list.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A package manifest glob walks as Node 24.22 and later walk it. Pi runs on that Node, and its `globSync` no longer ends a directory listing at an entry the walk already holds, nor queues the segment after a globstar below a symlink: `a/**/../*.md` lists the root's `.md` files as well, `Sub/**/../*` lists the siblings of `Sub`, and `**/x/**/y` lists every `x/**/y` below the root.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6c01b755f4",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-6cb29f0",
@@ -25588,6 +25627,27 @@
       ]
     },
     {
+      "id": "BF-b9da7b9",
+      "title": "The Cloudflare host's pi-durable facade sends Pi v1.4.0's client `identity` in every model request's options…",
+      "symptom": "The Cloudflare host's pi-durable facade sends Pi v1.4.0's client `identity` in every model request's options (last key, after `sessionId`), merged over `DEFAULT_HARNESS_IDENTITY` (provider attribution to pi) with `HarnessOptions.identity` and a request's own `identity`, as Pi's `Harness` does through `withClientIdentity` (Pi `adc5fa9f`, `04a93bad`).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Cloudflare host's pi-durable facade sends Pi v1.4.0's client `identity` in every model request's options (last key, after `sessionId`), merged over `DEFAULT_HARNESS_IDENTITY` (provider attribution to pi) with `HarnessOptions.identity` and a request's own `identity`, as Pi's `Harness` does through `withClientIdentity` (Pi `adc5fa9f`, `04a93bad`). The facade exports `DEFAULT_HARNESS_IDENTITY`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b9da7b9055",
+          "date": "2026-10-21"
+        }
+      ],
+      "commitsFrom": "release note",
+      "tests": []
+    },
+    {
       "id": "BF-b9db06c",
       "title": "fix(subprocess): keep a user_bash operations object alive while its exec runs",
       "symptom": "fix(subprocess): keep a user_bash operations object alive while its exec runs",
@@ -29514,6 +29574,50 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-d7df8b0",
+      "title": "The Go, Rust and Python extension SDKs' `isContextOverflow` treats an HTTP 413 error as a context overflow…",
+      "symptom": "The Go, Rust and Python extension SDKs' `isContextOverflow` treats an HTTP 413 error as a context overflow whatever the provider or the body says: a failed message that begins with `413` (then a space, a colon or the end) or with `\u003cprovider\u003e API error (413):`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go, Rust and Python extension SDKs' `isContextOverflow` treats an HTTP 413 error as a context overflow whatever the provider or the body says: a failed message that begins with `413` (then a space, a colon or the end) or with `\u003cprovider\u003e API error (413):`. Carried forward from Pi 1.4.0 (`packages/ai/src/utils/overflow.ts`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d7df8b0c4d",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/pi_ai_helpers_test.go::TestConformance_PiAiHelpersAgreeAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-d7df8b0-2",
+      "title": "The Go, Rust and Python extension SDKs' `isRetryableAssistantError` retries on a status code (429, 500, 502…",
+      "symptom": "The Go, Rust and Python extension SDKs' `isRetryableAssistantError` retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, retries on `stream disconnected before completion`, and does not retry a ChatGPT Business workspace usage-limit error (`subscription_sharing_workplace_individual_usage_limit_exceeded`).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go, Rust and Python extension SDKs' `isRetryableAssistantError` retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, retries on `stream disconnected before completion`, and does not retry a ChatGPT Business workspace usage-limit error (`subscription_sharing_workplace_individual_usage_limit_exceeded`). Carried forward from Pi 6e491cfa, 29057ece and cedefc53.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d7df8b0c4d",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/pi_ai_helpers_test.go::TestConformance_PiAiHelpersAgreeAcrossSDKs"
+      ]
     },
     {
       "id": "BF-d80425c",

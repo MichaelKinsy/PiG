@@ -187713,9 +187713,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(messages []encoding/json.RawMessage, supportsToolAdditions bool) (TranscriptTools, error)"
+        "type": "func(messages []encoding/json.RawMessage, support TranscriptToolSupport) (TranscriptTools, error)"
       },
-      "shapeHash": "sha256:1f1cac9ed4541462ab883a8931094e3aed4491d08ab05c99c837c57d2d9a09a6"
+      "shapeHash": "sha256:2d7bb616433eb21752836182fe6a58e723e382050df5c8fb509767baf0976539"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ResolvedPaths",
@@ -191348,6 +191348,50 @@
       "shapeHash": "sha256:a1cdb065b60215e405d6254b9f04fb3fe8df18bb1cc3a4639facd956080dd899"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TranscriptToolSupport",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TranscriptToolSupport",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TranscriptToolSupport"
+      },
+      "shapeHash": "sha256:5ee6e381fae277ea503fb1ac9cfe781a4457f3f2eb36b1adf997bc0485ed47c5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TranscriptToolSupportAdditions",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TranscriptToolSupportAdditions",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "TranscriptToolSupport"
+      },
+      "shapeHash": "sha256:5ee6e381fae277ea503fb1ac9cfe781a4457f3f2eb36b1adf997bc0485ed47c5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TranscriptToolSupportChanges",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TranscriptToolSupportChanges",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "TranscriptToolSupport"
+      },
+      "shapeHash": "sha256:5ee6e381fae277ea503fb1ac9cfe781a4457f3f2eb36b1adf997bc0485ed47c5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TranscriptToolSupportNone",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TranscriptToolSupportNone",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "TranscriptToolSupport"
+      },
+      "shapeHash": "sha256:5ee6e381fae277ea503fb1ac9cfe781a4457f3f2eb36b1adf997bc0485ed47c5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TranscriptTools",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "TranscriptTools",
@@ -194340,6 +194384,17 @@
       "shapeHash": "sha256:4ae50735a3e7965331d1b84dd081f3535677566253eb2d0d0fce374079f2dc8c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#findLastNonAdditiveToolChange",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "findLastNonAdditiveToolChange",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(systemMessages []any) int"
+      },
+      "shapeHash": "sha256:befb960443d11192a87820a9a707603686d846793aefb0b0b4fa7a9756db95a0"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#findSpec",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "findSpec",
@@ -194800,17 +194855,6 @@
         "type": "handlerDef"
       },
       "shapeHash": "sha256:d6f97455e135dda694b5ae81e9854e8534615fc63eb09013a427404bef74c5d7"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#hasNonAdditiveToolChanges",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "hasNonAdditiveToolChanges",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(messages []any) bool"
-      },
-      "shapeHash": "sha256:b4bfe5240a0c72629a4210eba9fb68b2bdfeed59995c8cb1dbf826bb687c48d8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#headerMethod",
@@ -195306,6 +195350,17 @@
         "type": "func(object map[string]any, key string) float64"
       },
       "shapeHash": "sha256:406884198a042dab3ddbfc676f43c393faa9d7ac8e16335143477cf3c0bca13f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#jsClass",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "jsClass",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(source string, open int) (string, int)"
+      },
+      "shapeHash": "sha256:3b7890dc911c6dd5566cae70a7d6782b6038c27cfc5c1543246e3fa05e36c91d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#jsIsNullish",
@@ -198716,6 +198771,17 @@
         "type": "func(message *jsObject) (string, error)"
       },
       "shapeHash": "sha256:6cbea99606c15a5b5d62b491cbb6fe07f92154666402ce98d3e20bacf6c20333"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#systemMessages",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "systemMessages",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(messages []any) []any"
+      },
+      "shapeHash": "sha256:3e1c4585a66be9fd9879b4ce4a906f4a0abb5894e17235c5f55c96755c8cb34a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#takeHelperConn",

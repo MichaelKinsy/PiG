@@ -53,7 +53,7 @@ func checkVectors(root string, rows []ledgerRow, pin string) []string {
 		}
 		rel, _ := filepath.Rel(base, path)
 		rel = filepath.ToSlash(rel)
-		if d.IsDir() || strings.HasSuffix(rel, ".md") || strings.HasPrefix(rel, "cases/") && strings.HasSuffix(rel, ".mjs") {
+		if d.IsDir() || rel == "go.mod" || strings.HasSuffix(rel, ".md") || strings.HasPrefix(rel, "cases/") && strings.HasSuffix(rel, ".mjs") {
 			if !d.IsDir() && strings.HasPrefix(rel, "cases/") {
 				parts := strings.Split(rel, "/")
 				if len(parts) != 3 {
