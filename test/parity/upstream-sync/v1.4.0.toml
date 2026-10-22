@@ -720,7 +720,7 @@ path = "packages/ai/src/providers/compat-schema.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
-rationale = "71023aec\u21928efd314f: Pi 4954d760 exports CompatSchemasByApi and maps azure-openai-responses and openai-codex-responses to the OpenAI Responses compat schema; the merged ProviderCompatSchema is unchanged by it. Pi 7f225f25 adds SystemOneCompatSchema (imageInput: assets, images or state-image-urls; sendImageOptInHeader) and maps typesafe-system-one and cloudflare-workers-ai-system-one to it. Ported as configschema.SystemOneCompatSchema (internal/codingagent/configschema/compat_b.go) with the same two api keys; TestCompatSchemaExportsMatchPi compares the export with Pi's, and schemas/models.schema.json is regenerated from it."
+rationale = "71023aec→8efd314f: Pi 4954d760 exports CompatSchemasByApi and maps azure-openai-responses and openai-codex-responses to the OpenAI Responses compat schema; the merged ProviderCompatSchema is unchanged by it. Pi 7f225f25 adds SystemOneCompatSchema (imageInput: assets, images or state-image-urls; sendImageOptInHeader) and maps typesafe-system-one and cloudflare-workers-ai-system-one to it. Ported as configschema.SystemOneCompatSchema (internal/codingagent/configschema/compat_b.go) with the same two api keys; TestCompatSchemaExportsMatchPi compares the export with Pi's, and schemas/models.schema.json is regenerated from it."
 
 [[files]]
 path = "packages/ai/src/providers/data-json.d.ts"
