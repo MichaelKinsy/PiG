@@ -107242,6 +107242,17 @@
       "shapeHash": "sha256:211f6fd71f76951123047ba9bfce9d3b316204917982e273e36859a41599ec0b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#execDrainHooksKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "execDrainHooksKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "execDrainHooksKey"
+      },
+      "shapeHash": "sha256:0c979ff387d5de4eb3234bf87702e39cb4455a1b7e866fd810d771f6ea5b9649"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#isExposure",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "isExposure",
