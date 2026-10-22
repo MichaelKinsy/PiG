@@ -243,3 +243,10 @@ commit = "0275c62f295865e48253b66d650b923c691b0b33"
 class = "CITE"
 cite = "packages/coding-agent/src/core/tools/file-mutation-queue.ts:32"
 reason = "withFileMutationQueue (file-mutation-queue.ts:32) is Pi's one queue for built-in tools and extensions in its single process; an SDK process now takes its turn from the host's queue through fileMutation.enter and fileMutation.exit, and the test drives those calls over a scripted host connection and expects the same call order."
+
+[[entry]]
+path = "ai/classifier_shared_exports_test.go"
+commit = "a99ac5840704732bfdfccce3b29a080ae50771b2"
+class = "CITE"
+cite = "packages/ai/src/api/system-one-shared.ts:210"
+reason = "Pi 7f225f25 words the rejection of images by a transport that takes none as `${transport.label} does not support image input for ${model.id}` (system-one-shared.ts:210); the expected message gains ` for jev-latest`, the model id the test's classifier model carries."
