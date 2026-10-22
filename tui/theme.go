@@ -477,6 +477,7 @@ func SetThemeInstance(theme *Theme) {
 	defer themeMutationMu.Unlock()
 	activeTheme.Store(theme)
 	noteSelectedTheme(InMemoryThemeName, false)
+	activeThemeObservers.Notify()
 }
 
 // SetThemeByName activates a registered theme, or the system theme when it is absent or invalid (theme.ts setTheme). enableWatcher restarts the interactive owner's watch after a successful selection; it defaults to false for previews.
