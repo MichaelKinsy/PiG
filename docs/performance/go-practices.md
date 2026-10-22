@@ -52,7 +52,8 @@ The Go specification allows a compiler to compute `x*y + z` with one rounding. T
 
 - Accumulate streamed text in builders, never with `string +=` per delta.
 - Resume partial tool-argument JSON from the last parsed offset (`ai/streaming_json_resume.go`); do not re-parse from byte zero.
-- Publish partial messages through copy-on-write cells (`ai/assistant_publication.go`), not a deep clone per event.
+- Publish partial messages through copy-on-write cells (`ai/assistant_publication.go`), not a deep clone per event. A delivered partial is one allocation (`newDeliveredHandle`: message, observation and up to two blocks), built when the event is pushed if a consumer already waits for it (`materializingWaiter`), so the consumer's refresh finds it current. Its size, about 450 bytes, is the floor of bytes per delivered event while a handle must hold its own exported fields.
+- Build a delta event once with its partial in place (`pushNonTerminal`), not with the producer's partial and again with the published view.
 - The SSE decoder (`ai/sse.go`) builds one string per line and copies the raw lines per event. Reuse the line bytes, and build the raw text only on the error path that prints it.
 - `BenchmarkProviderStreamFrames` reports allocations and bytes per frame for each provider through the real HTTP client, decoder and builder. Output digests (`TestLongStreamOutputUnchanged` and its siblings) pin the event sequence, so an allocation change can prove it kept the output.
 

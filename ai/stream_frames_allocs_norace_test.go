@@ -13,14 +13,14 @@ import (
 
 // streamFrameAllocCeilings are the allocations one more delta record costs on each provider's streaming path, measured as the marginal cost between a short and a long response so the request setup cancels. They only go down: lower a ceiling with the measurement when a change makes a frame cheaper.
 var streamFrameAllocCeilings = map[string]float64{
-	"openai-completions-text":     49,
-	"openai-completions-toolcall": 90,
-	"openai-responses-text":       46,
-	"openai-codex-responses-text": 58,
-	"anthropic-text":              43,
-	"anthropic-toolcall":          69,
-	"google-text":                 85,
-	"mistral-text":                58,
+	"openai-completions-text":     7,
+	"openai-completions-toolcall": 27,
+	"openai-responses-text":       7,
+	"openai-codex-responses-text": 29,
+	"anthropic-text":              8,
+	"anthropic-toolcall":          22,
+	"google-text":                 32,
+	"mistral-text":                38,
 }
 
 // streamFrameMallocs is the heap allocations of one whole streamed response of frames records.
