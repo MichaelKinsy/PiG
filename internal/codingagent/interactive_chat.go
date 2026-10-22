@@ -133,8 +133,9 @@ func (m *InteractiveMode) asyncMarkdownTransform(block *tui.AssistantMessageComp
 		Start:   m.backgroundTasks.Go,
 		Queue:   &m.markdownQueue,
 		Invalidate: func() {
+			// The worker publishes off the owner loop, and a block's Invalidate rebuilds its children, which the loop's frames and its own invalidations read: the loop runs it.
 			if invalidate != nil {
-				invalidate()
+				m.runOnMain(m.backgroundCtx, invalidate)
 			}
 			m.requestRender()
 		},
