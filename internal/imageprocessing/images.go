@@ -388,21 +388,19 @@ func fitImage(in []byte, mimeType string, options *ai.ModelImageResizeOptions) (
 
 	for {
 		resized := resizeImage(src, currentWidth, currentHeight)
-		candidates, err := encodeCandidates(resized, qualitySteps)
+		candidate, fits, err := firstFittingCandidate(resized, qualitySteps, limits.MaxBytes)
 		if err != nil {
 			return ResizedImage{}, nil, err
 		}
-		for _, candidate := range candidates {
-			if candidate.EncodedSize < limits.MaxBytes {
-				return ResizedImage{
-					MimeType:       candidate.MIME,
-					OriginalWidth:  originalWidth,
-					OriginalHeight: originalHeight,
-					Width:          currentWidth,
-					Height:         currentHeight,
-					WasResized:     true,
-				}, candidate.Data, nil
-			}
+		if fits {
+			return ResizedImage{
+				MimeType:       candidate.MIME,
+				OriginalWidth:  originalWidth,
+				OriginalHeight: originalHeight,
+				Width:          currentWidth,
+				Height:         currentHeight,
+				WasResized:     true,
+			}, candidate.Data, nil
 		}
 		if currentWidth == 1 && currentHeight == 1 {
 			break
@@ -685,28 +683,30 @@ func imageHasAlpha(img image.Image) bool {
 	return false
 }
 
-func encodeCandidates(img image.Image, jpegQualities []int) ([]encodedCandidate, error) {
+// firstFittingCandidate encodes img as PNG, then as JPEG at each quality in order, and returns the first whose base64 size is below
+// maxBytes. Later encodings are never made once one fits, because upstream also takes the first fitting candidate and the rest
+// only cost time (a JPEG encode of a large image is the most expensive step of a resize). A failed JPEG encode is skipped; a failed PNG
+// encode is an error.
+func firstFittingCandidate(img image.Image, jpegQualities []int, maxBytes int) (encodedCandidate, bool, error) {
 	pngBytes, err := encodePNG(img)
 	if err != nil {
-		return nil, fmt.Errorf("image: encode png: %w", err)
+		return encodedCandidate{}, false, fmt.Errorf("image: encode png: %w", err)
 	}
-	candidates := []encodedCandidate{{
-		Data:        pngBytes,
-		EncodedSize: encodedSizeBase64(pngBytes),
-		MIME:        "image/png",
-	}}
+	candidate := encodedCandidate{Data: pngBytes, EncodedSize: encodedSizeBase64(pngBytes), MIME: "image/png"}
+	if candidate.EncodedSize < maxBytes {
+		return candidate, true, nil
+	}
 	for _, quality := range jpegQualities {
 		jpegBytes, err := encodeJPEG(img, quality)
 		if err != nil {
 			continue
 		}
-		candidates = append(candidates, encodedCandidate{
-			Data:        jpegBytes,
-			EncodedSize: encodedSizeBase64(jpegBytes),
-			MIME:        "image/jpeg",
-		})
+		candidate = encodedCandidate{Data: jpegBytes, EncodedSize: encodedSizeBase64(jpegBytes), MIME: "image/jpeg"}
+		if candidate.EncodedSize < maxBytes {
+			return candidate, true, nil
+		}
 	}
-	return candidates, nil
+	return encodedCandidate{}, false, nil
 }
 
 // fitWithinBounds is the initial target size of image-resize-core.ts:105-116; a side may round to zero.
