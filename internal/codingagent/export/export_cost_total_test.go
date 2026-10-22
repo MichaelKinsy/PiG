@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// pi-mono #9980 (commit 83ca8020, packages/coding-agent/test/export-html-cost.test.ts): the exported header uses the recorded
-// cost.total, which can differ from the catalog-estimated components, and falls back to the component sum for sessions written
-// before cost.total was recorded.
+// packages/coding-agent/test/export-html-cost.test.ts (Pi #9980, #10286): the exported header uses the recorded cost.total, which can
+// differ from the catalog-estimated components, and falls back to the component sum for sessions written before cost.total was
+// recorded.
 func TestExportHTMLCostUsesRecordedTotals(t *testing.T) {
 	entries := `[
 		{"type":"message","message":{"role":"assistant","content":[],"usage":{"cost":{"input":0.1,"output":0.2,"cacheRead":0,"cacheWrite":0,"total":0.9}}}},

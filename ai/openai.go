@@ -572,7 +572,7 @@ type oaiUsage struct {
 	CompletionTokensDetails *struct {
 		ReasoningTokens int `json:"reasoning_tokens,omitempty"`
 	} `json:"completion_tokens_details,omitempty"`
-	// pig divergence (D124): OpenRouter adds billing fields to streamed usage at runtime, although the OpenAI SDK does not type them (pi-mono commit 83ca8020).
+	// OpenRouter adds billing fields to streamed usage at runtime, although the OpenAI SDK does not type them (openai-completions.ts parseChunkUsage).
 	openRouterUsageAccounting
 }
 
@@ -607,7 +607,7 @@ func parseChunkUsage(raw *oaiUsage, cost ModelCost, openRouter bool) *Usage {
 		TotalTokens: input + raw.CompletionTokens + cacheReadTokens + cacheWriteTokens,
 	}
 	calculateUsageCost(cost, usage)
-	if openRouter { // pig divergence (D124)
+	if openRouter {
 		applyOpenRouterReportedCost(usage, raw.openRouterUsageAccounting)
 	}
 	return usage

@@ -53,9 +53,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi", "test:ai/identity_oracle_test.go#TestAnthropicUserAgentHeaderReplacesTheClaudeCodeIdentityLikePi", "test:ai/user_agent_test.go#TestProviderUserAgentOverridePrecedence", "test:ai/openrouter_cost_test.go#TestAnthropicMessagesUsesOpenRouterReportedCost"]
+rationale = "Pi adc5fa9f and 04a93bad move client identity and attribution into pi-ai: getIdentityHeaders (ai/identity.go) replaces the local getPiUserAgent merge, layered below model and request headers. PiG sends its own product values (D26, D65). Anthropic sends the identity headers for API keys and Authorization, and keeps the Claude Code identity for OAuth tokens instead of the client identity; the oracle test compares the request headers with the pinned Pi for API-key and OAuth tokens across anthropic, openrouter, opencode and github-copilot, with and without a request User-Agent. Pi cae8d69e5: the message_delta usage applies OpenRouter's reported cost (ai/anthropic.go)."
 
 [[files]]
 path = "packages/ai/src/api/azure-openai-config.ts"
@@ -235,9 +235,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/api/openai-completions.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi", "test:ai/identity_test.go#TestProviderIdentityUserAgents", "test:ai/user_agent_test.go#TestProviderUserAgentOverridePrecedence", "test:ai/openrouter_cost_test.go#TestOpenAICompletionsUsesOpenRouterReportedCost", "test:ai/openrouter_cost_test.go#TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates"]
+rationale = "Pi adc5fa9f and 04a93bad move client identity and attribution into pi-ai: getIdentityHeaders (ai/identity.go) replaces the local getPiUserAgent merge, layered below model and request headers. PiG sends its own product values (D26, D65). Chat Completions merges the identity headers below model.headers, including the OpenRouter, NVIDIA and OpenCode attribution headers; the oracle test compares the custom, openrouter, nvidia, opencode, opencode-go and github-copilot requests with the pinned Pi. Pi cae8d69e5: parseChunkUsage applies OpenRouter's reported cost (ai/openai.go)."
 
 [[files]]
 path = "packages/ai/src/api/openai-decisions.lazy.ts"
@@ -1369,9 +1369,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/utils/openrouter-cost.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/openrouter_cost_test.go#TestApplyOpenRouterReportedCost"]
+rationale = "Pi cae8d69e5 (#10286) adds openrouter-cost.ts; ai/openrouter_cost.go ports isOpenRouterModel and applyOpenRouterReportedCost, including totalFromProvider true. Divergence D124, which carried the earlier unreleased form of this fix, is retired."
 
 [[files]]
 path = "packages/ai/src/utils/overflow.ts"

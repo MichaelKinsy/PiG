@@ -95,13 +95,12 @@ func TestCustomToolResultHTMLTrimsSpacing(t *testing.T) {
 	}
 }
 
-// These are the reviewed upstream 0.99.1 source assets, not hashes of Pig's generated output.
+// These are the reviewed upstream Pi source assets, not hashes of Pig's generated output.
 // Refresh from .upstream/current/packages/coding-agent/src/core/export-html with sha256sum when the upstream pin changes.
 func TestExportHTMLPinnedAssets(t *testing.T) {
 	for name, want := range map[string]string{
-		"template.html": "47d208235b066c856dae69c60281a3b99d164b99be9b81153d880375c9327105",
-		"template.css":  "8ee19851f8e583277ed396cbb76496687aa556707fdfc1f78d1118bff87c740a",
-		// D124: pinned Pi 1.3.0+fdce48eb is 946bd9e3e8255c1ebb40f806def18007aa9397816291a7bf2ac0e4e99cec07a4; this is that file with pi-mono commit 83ca8020 (#9980) applied.
+		"template.html":                     "47d208235b066c856dae69c60281a3b99d164b99be9b81153d880375c9327105",
+		"template.css":                      "8ee19851f8e583277ed396cbb76496687aa556707fdfc1f78d1118bff87c740a",
 		"template.js":                       "10bc6324f9cc3136a332d5670b25aa0a7280badd0565210beec7c1efb5036415",
 		"vendor/marked.min.js":              "438eedfcf932a414d0d0bfeea32dc365c063563b8ca713b4687fc8f8b501e5e4",
 		"vendor/marked-cjk-friendly.min.js": "93d2c938754cb24eef5b9ffecc268a98ef6beeb75dad614b0e874176aeeba565",

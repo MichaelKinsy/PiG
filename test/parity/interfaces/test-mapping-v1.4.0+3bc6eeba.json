@@ -214,8 +214,20 @@
     },
     {
       "path": "packages/ai/test/anthropic-sse-parsing.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:591ec97b9c5ab0ad494a56624aad56e4ebf42091e7371da54efb070d19a44f6c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:591ec97b9c5ab0ad494a56624aad56e4ebf42091e7371da54efb070d19a44f6c",
+      "evidence": [
+        "ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing",
+        "ai/anthropic_injected_client_upstream_test.go#TestAnthropicUpstreamSSEParsingInjectedClient",
+        "ai/anthropic_fallback_boundary_upstream_test.go#TestAnthropicFallbackBoundaryUpstream",
+        "ai/anthropic_payload_stream_upstream_test.go#TestAnthropicPayloadReplacementForcesStreamingUpstream",
+        "ai/anthropic_input_transformations_upstream_test.go#TestAnthropicInputTransformationsUpstream",
+        "ai/anthropic_test.go#TestAnthropicSSE_IgnoresUnknownEvents",
+        "ai/anthropic_test.go#TestAnthropicRefusalPreservesExplanation",
+        "ai/provider_stream_events_upstream_test.go#TestProviderStreamEventsUpstream",
+        "ai/openrouter_cost_test.go#TestAnthropicMessagesUsesOpenRouterReportedCost"
+      ],
+      "rationale": "All 14 cases: TestAnthropicUpstreamSSEParsing subtests carry the original inputs, including the 0.99.1 OpenRouter fixture anthropic/claude-haiku-4.5 (:285) and managed betas asserted on the anthropic-beta header. TestAnthropicUpstreamSSEParsingInjectedClient ports the three injected-client cases (:246, :271, :293) through ai.AnthropicClient and asserts params.stream and params.betas as the client receives them. The 0.99.1 'forwards parsed provider stream events in order' case (:113) is TestProviderStreamEventsUpstream/anthropic_forwards_parsed_provider_stream_events_in_order. Pi cae8d69e5 (1.4.0+3bc6eeba, #10286) adds \"uses the total reported by OpenRouter's Anthropic Messages endpoint\" (15 cases in all), ported as TestAnthropicMessagesUsesOpenRouterReportedCost with the same message_delta usage (cost 0.004, is_byok false, upstream_inference_cost 0.003) and the provider openrouter-work; it asserts total 0.004, totalFromProvider true and a component sum that differs from the total."
     },
     {
       "path": "packages/ai/test/anthropic-strict-tool-fallback.test.ts",
@@ -1203,8 +1215,14 @@
     },
     {
       "path": "packages/ai/test/openai-completions-provider-stream-event.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:758b563c74ec4f529a5a3c897da4c0b951d33d92da3a3a349778474b80b23c44"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:758b563c74ec4f529a5a3c897da4c0b951d33d92da3a3a349778474b80b23c44",
+      "evidence": [
+        "ai/provider_stream_events_upstream_test.go#TestProviderStreamEventsUpstream",
+        "ai/openrouter_cost_test.go#TestOpenAICompletionsUsesOpenRouterReportedCost",
+        "ai/openrouter_cost_test.go#TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates"
+      ],
+      "rationale": "New in 0.99.1 (unchanged in 0.99.2). The single case \"exposes provider chunks including OpenRouter metadata\" (openai-completions-provider-stream-event.test.ts:58) is ported as the openai-completions subtest of TestProviderStreamEventsUpstream. Pi cae8d69e5 (1.4.0+3bc6eeba, #10286) adds \"uses OpenRouter's reported total without double-counting non-BYOK upstream cost\" (cost toEqual {0,0,0,0,total 0.004,totalFromProvider true}, TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates) and \"includes upstream inference cost for OpenRouter BYOK requests\" (total 0.0032, totalFromProvider true, TestOpenAICompletionsUsesOpenRouterReportedCost)."
     },
     {
       "path": "packages/ai/test/openai-completions-raw-stop-reason.test.ts",
@@ -1470,8 +1488,13 @@
     },
     {
       "path": "packages/ai/test/openrouter-cost.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2e8d0d645dec66ccace0bea254e0965c5d16e53647e60225b444da95260d4a8e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2e8d0d645dec66ccace0bea254e0965c5d16e53647e60225b444da95260d4a8e",
+      "evidence": [
+        "ai/openrouter_cost_test.go#TestApplyOpenRouterReportedCost",
+        "ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates"
+      ],
+      "rationale": "New in Pi 1.4.0+3bc6eeba (cae8d69e5, #10286): all 5 cases are ported (isOpenRouterModel is TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates' provider/base-URL rows; the four applyOpenRouterReportedCost cases are TestApplyOpenRouterReportedCost with Pi's usage, accounting objects and total/totalFromProvider expectations)."
     },
     {
       "path": "packages/ai/test/openrouter-images.test.ts",
@@ -3491,8 +3514,13 @@
     },
     {
       "path": "packages/coding-agent/test/export-html-cost.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:06546a88d57fbb81e9ca037c08aeb798bec56a6af461b9cf16c9069407342dfb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:06546a88d57fbb81e9ca037c08aeb798bec56a6af461b9cf16c9069407342dfb",
+      "evidence": [
+        "internal/codingagent/export/export_cost_total_test.go#TestExportHTMLCostUsesRecordedTotals",
+        "internal/codingagent/export/upstream_test.go#TestExportHTMLPinnedAssets"
+      ],
+      "rationale": "New in Pi 1.4.0+3bc6eeba (cae8d69e5): the one case \"uses recorded totals while falling back to component sums for old sessions\" runs computeStats of the export template with Pi's two entries; TestExportHTMLPinnedAssets pins PiG's template.js to Pi's file byte for byte (D124 retired), so the function is Pi's."
     },
     {
       "path": "packages/coding-agent/test/export-html-skill-block.test.ts",

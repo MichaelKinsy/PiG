@@ -438,7 +438,6 @@ These differences apply to several providers:
 - A tool call that a provider streams without an id gets a unique `<name>_<epoch ms>_<counter>` id when its block ends. Replay omits a tool call with a blank name or a still-empty id, together with its results. Pi replays them, and every later turn fails (D120, Pi #10299). OpenAI Responses calls with an empty `call_id` get the same treatment (D129).
 - After a model switch, a reasoning Chat Completions target that requires `reasoning_content` (DeepSeek, Kimi, MiMo and similar) receives another model's plain-text thinking as `reasoning_content`. Pi appends it to `content` (D126, Pi #6167).
 - OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block. Pi drops it (D122, Pi #9534).
-- An OpenRouter turn reports the cost OpenRouter billed, not the cost computed from catalog rates (D124, Pi #9980).
 - `httpIdleTimeoutMs` restarts on each stream event, not on each byte. A stream that sends only keepalive comments or pings ends with an error after the timeout. Pi waits indefinitely (D131, Pi #10761, #10762).
 - A single server-sent-event line may be up to 512 MiB, the limit Node's string length gives Pi (D134).
 - A response stream dropped mid-run reports `terminated (cause: ...)`. Pi reports a bare `terminated` (D144, Pi #10697).

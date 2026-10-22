@@ -371,7 +371,7 @@ type anthEventMessageDelta struct {
 		OutputTokensDetails *struct {
 			ThinkingTokens *int `json:"thinking_tokens"`
 		} `json:"output_tokens_details,omitempty"`
-		// pig divergence (D124): OpenRouter adds billing fields to streamed message_delta usage at runtime, although its OpenAPI schema and the Anthropic SDK do not type them (pi-mono commit 83ca8020).
+		// OpenRouter adds billing fields to streamed message_delta usage at runtime, although its OpenAPI schema and the Anthropic SDK do not type them (anthropic-messages.ts).
 		openRouterUsageAccounting
 	} `json:"usage"`
 }
@@ -2225,7 +2225,7 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 			}
 			usage.TotalTokens = usage.Input + usage.Output + usage.CacheRead + usage.CacheWrite
 			calculateUsageCost(usageCost, usage)
-			if isOpenRouterModel(p.cfg.ProviderID, p.cfg.BaseURL) { // pig divergence (D124)
+			if isOpenRouterModel(p.cfg.ProviderID, p.cfg.BaseURL) {
 				applyOpenRouterReportedCost(usage, ev.Usage.openRouterUsageAccounting)
 			}
 			builder.touch()
