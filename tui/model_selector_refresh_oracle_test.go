@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -33,7 +34,7 @@ type modelRefreshOracleProbe struct {
 // several failed catalogs in failure order, an aborted result without the timeout), or the 15 second timer aborts it, whether the refresh then
 // settles or never does. Each probe compares the frame before the refresh, after keys typed while it runs, after it ends, and after keys typed
 // afterwards, byte for byte. The timeout rejects refreshModelCatalogs (raceWithAbortSignal), so the picker shows the timeout and keeps the list
-// it had: models the aborted refresh added stay hidden.
+// it had: models the aborted refresh added stay hidden. PiG's timer runs on a fake clock, so no probe depends on how fast the runner is.
 func TestModelSelectorRefreshModelsMatchesPi(t *testing.T) {
 	before := []modelOracleItem{{"anthropic", "claude-a", "Claude A"}, {"openai", "gpt-4o", "GPT 4o"}, {"groq", "llama-3", "Llama 3"}}
 	after := append(append([]modelOracleItem{}, before...), modelOracleItem{"openai", "gpt-added", "GPT Added"}, modelOracleItem{"xai", "grok", "Grok"})
@@ -96,16 +97,12 @@ func TestModelSelectorRefreshModelsMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousBindings, previousTheme, previousCaps, previousTimeout := GetKeybindings(), ActiveTheme(), GetCapabilities(), modelSelectorRefreshTimeout
+	previousBindings, previousTheme, previousCaps := GetKeybindings(), ActiveTheme(), GetCapabilities()
 	t.Cleanup(func() {
 		SetKeybindings(previousBindings)
 		SetCapabilities(previousCaps)
 		storeActiveTheme(previousTheme)
-		modelSelectorRefreshTimeout = previousTimeout
 	})
-	modelSelectorRefreshTimeout = 20 * time.Millisecond
-	hang := make(chan struct{})
-	t.Cleanup(func() { close(hang) })
 	toModels := func(items []modelOracleItem) []*ai.Model {
 		out := make([]*ai.Model, 0, len(items))
 		for _, item := range items {
@@ -113,57 +110,73 @@ func TestModelSelectorRefreshModelsMatchesPi(t *testing.T) {
 		}
 		return out
 	}
-	failures := 0
-	for i, probe := range probes {
-		SetCapabilities(TerminalCapabilities{TrueColor: true})
-		SetTheme(probe.Theme)
-		restoreKeybindingsAfterTest(t)
-		SetKeybindings(NewKeybindingsManager(TUIKeybindingDefinitionsFor(HostKeybindingPlatform()), nil))
-		ui, queue := newModelSelectorTUI(t)
-		runtime := &fakeModelRuntime{models: toModels(probe.Before), err: probe.RuntimeError}
-		settle := func() ai.ModelsRefreshResult {
-			runtime.models = toModels(probe.After)
-			result := refreshFailing(probe.Errors...)
-			result.Aborted = probe.Aborted
-			return result
-		}
-		runtime.refresh = func(ctx context.Context) ai.ModelsRefreshResult {
-			switch probe.Refresh {
-			case "settle":
-				return settle()
-			case "abort":
-				<-ctx.Done()
-				return settle()
-			default:
-				<-hang
-				return ai.ModelsRefreshResult{Aborted: true}
+	// The selector's 15 second timer runs on synctest's fake clock, which moves only when every goroutine is blocked. Pi's probe shortens the timer
+	// to 20 ms on a real clock, which is safe in Node because a refresh that settles at once is delivered in microtasks, before any timer callback;
+	// Go has no such ordering, so a 20 ms wall-clock timer on a loaded runner can fire before the settled refresh reaches the owner loop.
+	synctest.Test(t, func(t *testing.T) {
+		hang := make(chan struct{})
+		t.Cleanup(func() { close(hang) })
+		failures := 0
+		for i, probe := range probes {
+			SetCapabilities(TerminalCapabilities{TrueColor: true})
+			SetTheme(probe.Theme)
+			restoreKeybindingsAfterTest(t)
+			SetKeybindings(NewKeybindingsManager(TUIKeybindingDefinitionsFor(HostKeybindingPlatform()), nil))
+			ui, queue := newModelSelectorTUI(t)
+			runtime := &fakeModelRuntime{models: toModels(probe.Before), err: probe.RuntimeError}
+			settle := func() ai.ModelsRefreshResult {
+				runtime.models = toModels(probe.After)
+				result := refreshFailing(probe.Errors...)
+				result.Aborted = probe.Aborted
+				return result
 			}
-		}
-		var current *ai.Model
-		if provider, id, ok := strings.Cut(probe.Current, "/"); ok {
-			current = runtime.GetModel(provider, id)
-		}
-		selector := NewModelSelectorComponent(ui, current, runtime, nil, func(*ai.Model) {}, func() {}, probe.InitialSearch, func(*ai.Model) {}, nil)
-		frames := [][]string{selector.Render(probe.Width)}
-		for _, key := range probe.KeysBefore {
-			selector.HandleInput(key)
-		}
-		frames = append(frames, selector.Render(probe.Width))
-		queue.run(t)
-		frames = append(frames, selector.Render(probe.Width))
-		for _, key := range probe.KeysAfter {
-			selector.HandleInput(key)
+			runtime.refresh = func(ctx context.Context) ai.ModelsRefreshResult {
+				switch probe.Refresh {
+				case "settle":
+					return settle()
+				case "abort":
+					<-ctx.Done()
+					return settle()
+				default:
+					<-hang
+					return ai.ModelsRefreshResult{Aborted: true}
+				}
+			}
+			var current *ai.Model
+			if provider, id, ok := strings.Cut(probe.Current, "/"); ok {
+				current = runtime.GetModel(provider, id)
+			}
+			selector := NewModelSelectorComponent(ui, current, runtime, nil, func(*ai.Model) {}, func() {}, probe.InitialSearch, func(*ai.Model) {}, nil)
+			frames := [][]string{selector.Render(probe.Width)}
+			for _, key := range probe.KeysBefore {
+				selector.HandleInput(key)
+			}
 			frames = append(frames, selector.Render(probe.Width))
-		}
-		selector.Dispose()
-		if want := expected[i].Frames; !reflect.DeepEqual(frames, want) {
-			failures++
-			if failures <= 6 {
-				t.Errorf("probe %d refresh=%s aborted=%v errors=%v runtime=%q current=%q search=%q keys=%q/%q:\n%s", i, probe.Refresh, probe.Aborted, probe.Errors, probe.RuntimeError, probe.Current, probe.InitialSearch, probe.KeysBefore, probe.KeysAfter, modelFrameDifference(frames, want))
+			// The oracle waits 5 ms for a refresh that settles at once and 80 ms for the others, against its 20 ms timer: a quarter of the timer, and
+			// four times it. The fake clock keeps those ratios, so the timer never fires before a refresh that settles at once is delivered and always
+			// fires before the others.
+			wait := modelSelectorRefreshTimeout / 4
+			if probe.Refresh != "settle" {
+				wait = 4 * modelSelectorRefreshTimeout
+			}
+			time.Sleep(wait)
+			synctest.Wait()
+			queue.run(t)
+			frames = append(frames, selector.Render(probe.Width))
+			for _, key := range probe.KeysAfter {
+				selector.HandleInput(key)
+				frames = append(frames, selector.Render(probe.Width))
+			}
+			selector.Dispose()
+			if want := expected[i].Frames; !reflect.DeepEqual(frames, want) {
+				failures++
+				if failures <= 6 {
+					t.Errorf("probe %d refresh=%s aborted=%v errors=%v runtime=%q current=%q search=%q keys=%q/%q:\n%s", i, probe.Refresh, probe.Aborted, probe.Errors, probe.RuntimeError, probe.Current, probe.InitialSearch, probe.KeysBefore, probe.KeysAfter, modelFrameDifference(frames, want))
+				}
 			}
 		}
-	}
-	if failures > 6 {
-		t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
-	}
+		if failures > 6 {
+			t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
+		}
+	})
 }
