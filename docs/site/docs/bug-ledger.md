@@ -401,7 +401,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-644b3e0](#bf-644b3e0) | A codemode script that calls `text()` tens of thousands of times no longer blocks the process: adjacent text… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-645bcf8](#bf-645bcf8) | The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH`… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-645bcf8-2](#bf-645bcf8-2) | Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
-| [BF-645bcf8-3](#bf-645bcf8-3) | The upstream pin moves to Pi `02726086` | PiG's own defect | All platforms | Unreleased |
 | [BF-65426f3](#bf-65426f3) | fix(rpc): pipelined set_models apply in input order, after the batch's synchronous responses | PiG's own defect | All platforms | Unreleased |
 | [BF-65932e6](#bf-65932e6) | fix(extensions): run a tick call after the tool_execution_end of the tool call that queued its callback… | PiG's own defect | All platforms | Unreleased |
 | [BF-663e84b](#bf-663e84b) | The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead… | PiG's own defect | All platforms | 0.5.0 |
@@ -447,6 +446,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6ce1db1](#bf-6ce1db1) | In print and JSON mode, SIGTERM and SIGHUP always leave their line in `exit.log` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6d00b4a](#bf-6d00b4a) | Extension SDKs: `formatKeyText`/`keyDisplayText` upper-cased the first rune of a part, where Pi's… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d0ec02](#bf-6d0ec02) | Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6d31eda](#bf-6d31eda) | The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | Unreleased |
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6dba8f0](#bf-6dba8f0) | Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is… | PiG's own defect | All platforms | Unreleased |
@@ -716,6 +716,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9be5765](#bf-9be5765) | Pressing Escape while an extension tool runs now lets the tool finish: a tool that stops on its abort signal… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-9be7181](#bf-9be7181) | Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the… | PiG's own defect | Linux | Unreleased |
 | [BF-9c1a0e9](#bf-9c1a0e9) | An OpenAI Responses stream event or output item with a member of an unexpected type is read as Pi's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9c48ac7](#bf-9c48ac7) | The upstream pin moves to Pi v1.4.0 | PiG's own defect | All platforms | Unreleased |
 | [BF-9c98038](#bf-9c98038) | An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-9d4fe9c](#bf-9d4fe9c) | Selecting a model or cycling models with Ctrl+P no longer freezes the interactive mode when an extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9d64980](#bf-9d64980) | fix(coding): provider order and availability of virtual models follow Pi | PiG's own defect | All platforms | Unreleased |
@@ -764,6 +765,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a96962e](#bf-a96962e) | `ctx.isIdle()` after `pi.sendMessage(..., { triggerTurn: true })` in an `agent_settled` handler of a Node… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a99ac58](#bf-a99ac58) | Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and… | PiG's own defect | All platforms | Unreleased |
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aa69959](#bf-aa69959) | Key matching follows Pi for more terminal inputs and key identifiers | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aa9ff5b](#bf-aa9ff5b) | Removing a local package reports `start` and `complete` `remove` progress events, as Pi's `remove` does for… | PiG's own defect | All platforms | Unreleased |
@@ -6430,20 +6432,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult`, `tui/markdown_cjk_test.go::TestMarkdownCJKEmphasisPiCases`
 - **Release note:** Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that answered the attempt's calls in the agent transcript and omits them with it, so a resumed session no longer persists orphaned tool results that providers reject (Pi `02726086`, #11227).
 
-### BF-645bcf8-3
-
-**The upstream pin moves to Pi `02726086`**
-
-- **Source:** PiG's own defect
-- **Symptom:** The upstream pin moves to Pi `02726086`.
-- **Root cause:** Pi puts --no-config first in ripgrep's argument list, so a user's RIPGREP_CONFIG_PATH cannot change the grep tool's contract. Pi 02726086 (#11227) finds the tool results that answered a recovered attempt's calls in the projected context, so every recovery caller omits the pair together; checkCompaction and the Session lose their lastAssistantToolResults plumbing.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Commit that wrote the release note (the fix commit is not identified):** `645bcf8a88` (2026-10-21)
-- **Tests:** `coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult`
-- **Release note:** The upstream pin moves to Pi `02726086`.
-
 ### BF-65426f3
 
 **fix(rpc): pipelined set_models apply in input order, after the batch's synchronous responses**
@@ -7069,6 +7057,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `6d0ec024f2` (2026-10-12)
 - **Tests:** `durable/core/driver/remote_error_names_test.go::TestRemoteErrorMapsToATypedErrorOnlyByItsClassName`, `durable/errors_session_failed_test.go::TestStorageRequestErrorAndSessionFailedMatchErrorsTS`, `durable/harness/harness_structured_test.go::TestWaiting`, `durable/harness/scheduler_retention_test.go::TestSchedulerRetention`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseEndsThePhase` and 3 more in docs/bug-ledger.json
 - **Release note:** Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit with `Task <id> cannot wait on <member>: <cycle> is a wait cycle`, which names the cycle. Before, every task on such a cycle waited forever. The only cycles caught before were a task waiting on itself or on a task in its owner chain. A background task may now wait on the owner of its conversation, because that wait is no cycle, and a task may wait on an ended owner.
+
+### BF-6d31eda
+
+**The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the model record as Pi does.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6d31edae7c` (2026-10-21)
+- **Tests:** `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `cmd/gen-models/openrouter_catalog_test.go::TestOpenRouterCatalogParsingUpstream`, `internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort`
+- **Release note:** The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the model record as Pi does.
 
 ### BF-6d3cfc8
 
@@ -10811,6 +10813,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/anthropic_event_member_type_oracle_test.go::TestAnthropicEventMistypedMembersMatchPi`, `ai/google_chunk_member_type_oracle_test.go::TestGoogleChunkMistypedMembersMatchPi`, `ai/mistral_chunk_member_type_oracle_test.go::TestMistralChunkMistypedMembersMatchPi`, `ai/openai_completions_member_type_oracle_test.go::TestOpenAICompletionsMistypedMembersMatchPi`, `ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesItemPiStoresRawEndsTheTurnWithTheDecodeError`, `ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesMistypedMembersMatchPi`, `ai/openai_responses_response_oracle_test.go::TestProcessResponsesStreamEdgeEventsMatchPi`, `ai/utils_exports_upstream_test.go::TestTextSignatureV1WireShapeAndParsing` and 7 more in docs/bug-ledger.json
 - **Release note:** An OpenAI Responses stream event or output item with a member of an unexpected type is read as Pi's JavaScript reads it instead of ending the turn with `openai-responses: invalid SSE JSON` or silently skipping the item: a delta appends its string form (`null` and a missing delta append `null` and `undefined`), a finished message or reasoning item joins its parts' string forms and ends the turn with `item.content?.map is not a function` (or `item.summary?...`) when they are not an array, a function call's id interpolates a non-string `call_id`, non-string function-call arguments end the turn with Pi's `partialJson.trim is not a function` or `startsWith` error, a usage that is not an object reads as zeros, a status that is not a string ends the turn with `Unhandled stop reason: <its string form>`, and a failed response's non-string error code and message are written in their string form. OpenAI Codex streams read their events the same way. A missing or `null` output item ends the turn with Pi's `Cannot read properties of ... (reading 'type')` error, a message's text signature records its id and any non-empty phase as Pi's `JSON.stringify` writes them, and an output item whose mistyped member Pi keeps as-is ends the turn with the decode error instead of being dropped from an otherwise successful answer.
 
+### BF-9c48ac7
+
+**The upstream pin moves to Pi v1.4.0**
+
+- **Source:** PiG's own defect
+- **Symptom:** The upstream pin moves to Pi v1.4.0.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9c48ac7f69` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** The upstream pin moves to Pi v1.4.0.
+
 ### BF-9c98038
 
 **An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it**
@@ -11484,6 +11500,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a9757c8ed3` (2026-10-10)
 - **Tests:** `ai/provider_wrap_test.go::TestWrapBuiltinProviderResolvesTheEndpointFromTheConfiguredEnv`, `coding/cloudflare_build_model_test.go::TestBuildModelCloudflareEndpointUsesTheStoredCredentialEnv`
 - **Release note:** A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves `{CLOUDFLARE_ACCOUNT_ID}` and `{CLOUDFLARE_GATEWAY_ID}` from the stored credential's env again, under the request env, as Pi's `Models.applyAuth` merges the resolution env before `cloudflareStreams` runs. Since `ai.WrapBuiltinProvider` the wrapper read only the request env, so such a request went to the literal placeholder URL.
+
+### BF-a99ac58
+
+**Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and Cloudflare's Clef models, and provider-level `compat` in `models.json` now also applies to classifier models, with the System One fields `imageInput` and `sendImageOptInHeader`.
+- **Root cause:** ai: SystemOneCompat on ClassifierModel, addImages for assets/images/state-image-urls, per-transport detected compat, image opt-in header, 'does not support image input for <id>'. configschema: SystemOneCompatSchema. models.json provider compat overlays classifier models. gen-models carries classifier compat. Ports of Pi's typesafe, cloudflare, classifier-models and model-runtime-classifiers tests. Needs the v1.4.0 pin bump, make model-catalogs, make generate, and the jev-latest text-only rejection test retargeted. Signed-off-by: Michael Kinsy <54590707+MichaelKinsy@users.noreply.github.com>
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a99ac58407` (2026-10-21)
+- **Tests:** `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`, `ai/classifier_shared_exports_test.go::TestClassifySystemOneRejectsAnotherAPIAndImagesWithoutSending`, `ai/cloudflare_workers_ai_system_one_upstream_test.go::TestCloudflareWorkersAISystemOneUpstream`, `ai/typesafe_system_one_upstream_test.go::TestTypesafeSystemOneUpstream`, `coding/model_runtime_classifiers_upstream_test.go::TestModelRuntimeClassifierImagesUpstream`, `internal/codingagent/configschema/compat_schema_exports_test.go::TestCompatSchemaExportsMatchPi`
+- **Release note:** Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and Cloudflare's Clef models, and provider-level `compat` in `models.json` now also applies to classifier models, with the System One fields `imageInput` and `sendImageOptInHeader`. A model without image input rejects images with a clear error.
 
 ### BF-aa2003c
 

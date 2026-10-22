@@ -228,7 +228,6 @@ paths = [
   "docs/extension-sdk-surface.md",
   "docs/findings/fix-overlay-shim.md",
   "docs/parity/DIVERGENCES.md",
-  "docs/parity/KNOWN-GAPS-0.3.x.md",
   "docs/parity/divergences/D187.md",
   "docs/parity/divergences/D44.md",
   "docs/performance/scoreboard.md",

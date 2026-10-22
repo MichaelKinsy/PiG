@@ -12329,29 +12329,6 @@
       ]
     },
     {
-      "id": "BF-645bcf8-3",
-      "title": "The upstream pin moves to Pi `02726086`",
-      "symptom": "The upstream pin moves to Pi `02726086`.",
-      "rootCause": "Pi puts --no-config first in ripgrep's argument list, so a user's RIPGREP_CONFIG_PATH cannot change the grep tool's contract. Pi 02726086 (#11227) finds the tool results that answered a recovered attempt's calls in the projected context, so every recovery caller omits the pair together; checkCompaction and the Session lose their lastAssistantToolResults plumbing.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The upstream pin moves to Pi `02726086`.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "645bcf8a88",
-          "date": "2026-10-21"
-        }
-      ],
-      "commitsFrom": "release note",
-      "tests": [
-        "coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult"
-      ]
-    },
-    {
       "id": "BF-65426f3",
       "title": "fix(rpc): pipelined set_models apply in input order, after the batch's synchronous responses",
       "symptom": "fix(rpc): pipelined set_models apply in input order, after the batch's synchronous responses",
@@ -14103,6 +14080,30 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-6d31eda",
+      "title": "The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the…",
+      "symptom": "The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the model record as Pi does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The catalog tolerates the `free` field Pi v1.4.0's radius data carries (`recursive/flint`), keeping it in the model record as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6d31edae7c",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "cmd/gen-models/openrouter_catalog_test.go::TestOpenRouterCatalogParsingUpstream",
+        "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
       ]
     },
     {
@@ -21913,6 +21914,26 @@
       ]
     },
     {
+      "id": "BF-9c48ac7",
+      "title": "The upstream pin moves to Pi v1.4.0",
+      "symptom": "The upstream pin moves to Pi v1.4.0.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The upstream pin moves to Pi v1.4.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9c48ac7f69",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9c98038",
       "title": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it",
       "symptom": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it.",
@@ -23518,6 +23539,33 @@
       "tests": [
         "ai/provider_wrap_test.go::TestWrapBuiltinProviderResolvesTheEndpointFromTheConfiguredEnv",
         "coding/cloudflare_build_model_test.go::TestBuildModelCloudflareEndpointUsesTheStoredCredentialEnv"
+      ]
+    },
+    {
+      "id": "BF-a99ac58",
+      "title": "Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and…",
+      "symptom": "Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and Cloudflare's Clef models, and provider-level `compat` in `models.json` now also applies to classifier models, with the System One fields `imageInput` and `sendImageOptInHeader`.",
+      "rootCause": "ai: SystemOneCompat on ClassifierModel, addImages for assets/images/state-image-urls, per-transport detected compat, image opt-in header, 'does not support image input for \u003cid\u003e'. configschema: SystemOneCompatSchema. models.json provider compat overlays classifier models. gen-models carries classifier compat. Ports of Pi's typesafe, cloudflare, classifier-models and model-runtime-classifiers tests. Needs the v1.4.0 pin bump, make model-catalogs, make generate, and the jev-latest text-only rejection test retargeted. Signed-off-by: Michael Kinsy \u003c54590707+MichaelKinsy@users.noreply.github.com\u003e",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Classifier models take images (Pi `7f225f25`): `models.classify()` accepts `images` for TypeSafe's Jev and Cloudflare's Clef models, and provider-level `compat` in `models.json` now also applies to classifier models, with the System One fields `imageInput` and `sendImageOptInHeader`. A model without image input rejects images with a clear error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a99ac58407",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream",
+        "ai/classifier_shared_exports_test.go::TestClassifySystemOneRejectsAnotherAPIAndImagesWithoutSending",
+        "ai/cloudflare_workers_ai_system_one_upstream_test.go::TestCloudflareWorkersAISystemOneUpstream",
+        "ai/typesafe_system_one_upstream_test.go::TestTypesafeSystemOneUpstream",
+        "coding/model_runtime_classifiers_upstream_test.go::TestModelRuntimeClassifierImagesUpstream",
+        "internal/codingagent/configschema/compat_schema_exports_test.go::TestCompatSchemaExportsMatchPi"
       ]
     },
     {
@@ -36076,7 +36124,7 @@
     },
     {
       "id": "D158",
-      "title": "A setting of the wrong JSON type is ignored (Pi 1.3.0 throws)"
+      "title": "A setting of the wrong JSON type is ignored (Pi 1.4.0 throws)"
     },
     {
       "id": "D159",
