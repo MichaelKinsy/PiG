@@ -1544,6 +1544,7 @@ function calculateCost(model2, usage) {
   usage.cost.cacheRead = rates.cacheRead / 1e6 * usage.cacheRead;
   usage.cost.cacheWrite = (rates.cacheWrite * shortWrite + rates.input * 2 * longWrite) / 1e6;
   usage.cost.total = usage.cost.input + usage.cost.output + usage.cost.cacheRead + usage.cost.cacheWrite;
+  usage.cost.totalFromProvider = false;
   return usage.cost;
 }
 __name(calculateCost, "calculateCost");

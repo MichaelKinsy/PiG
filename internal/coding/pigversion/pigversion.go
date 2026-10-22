@@ -9,18 +9,18 @@ package pigversion
 const PigVersion = "0.5.2"
 
 // UpstreamRef is the pinned tag or commit of Pi.
-const UpstreamRef = "v1.4.0"
+const UpstreamRef = "3bc6eebacf3a6497eb82a66e02ca8644cfa3dde2"
 
 // UpstreamVersion is the pinned Pi build's display and ledger version: the
 // release version for a tag, the release version plus +<commit[:8]> for a commit.
-const UpstreamVersion = "1.4.0"
+const UpstreamVersion = "1.4.0+3bc6eeba"
 
 // UpstreamPackageVersion is the version Pi's package.json files and `pi --version` report.
 const UpstreamPackageVersion = "1.4.0"
 
 // UpstreamCommit is the exact Pi commit of the pin.
-const UpstreamCommit = "4a080252f06caf63a525d7873c5d94d3c23887e0"
+const UpstreamCommit = "3bc6eebacf3a6497eb82a66e02ca8644cfa3dde2"
 
 // Version combines the PiG release line with the upstream Pi build as semver
 // build metadata.
-const Version = PigVersion + "+1.4.0"
+const Version = PigVersion + "+1.4.0.3bc6eeba"

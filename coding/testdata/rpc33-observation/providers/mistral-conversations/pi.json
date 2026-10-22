@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0",
+  "piVersion": "1.4.0+3bc6eeba",
   "node": "v24.19.0",
   "api": "mistral-conversations",
   "bodies": {
@@ -93,7 +93,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -130,13 +131,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 31
+                "durationMs": 30
               }
             },
             {
@@ -168,13 +170,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 31
+                "durationMs": 30
               }
             },
             {
@@ -206,13 +209,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 31
+                "durationMs": 30
               }
             }
           ]
@@ -279,7 +283,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -317,7 +322,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -355,7 +361,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -393,7 +400,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -431,7 +439,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -526,7 +535,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -563,13 +573,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -601,13 +612,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -639,13 +651,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4,
+                "durationMs": 3,
                 "thinkingLevel": "off"
               }
             }
@@ -681,7 +694,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
@@ -703,7 +717,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -726,7 +741,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -748,7 +764,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -792,7 +809,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
@@ -882,7 +900,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -919,13 +938,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -957,13 +977,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -995,13 +1016,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             }
           ]
@@ -1094,13 +1116,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -1132,13 +1155,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -1170,13 +1194,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -1208,13 +1233,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -1303,7 +1329,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1340,7 +1367,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1378,7 +1406,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1416,7 +1445,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1468,7 +1498,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -1491,7 +1522,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -1513,7 +1545,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -1557,13 +1590,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 174,
+            "durationMs": 173,
             "thinkingLevel": "off"
           }
         }
@@ -1649,7 +1683,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1687,7 +1722,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1724,7 +1760,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1762,7 +1799,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1864,7 +1902,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1902,7 +1941,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -1939,13 +1979,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 184
+                "durationMs": 178
               }
             },
             {
@@ -1977,13 +2018,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 184
+                "durationMs": 178
               }
             }
           ]
@@ -2074,7 +2116,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2112,7 +2155,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2149,13 +2193,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 179
+                "durationMs": 176
               }
             },
             {
@@ -2187,13 +2232,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 179,
+                "durationMs": 176,
                 "thinkingLevel": "off"
               }
             }
@@ -2239,7 +2285,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -2262,7 +2309,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -2284,7 +2332,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -2328,13 +2377,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 201,
+            "durationMs": 200,
             "thinkingLevel": "off"
           }
         }
@@ -2434,7 +2484,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2471,7 +2522,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2509,7 +2561,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2547,7 +2600,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2662,7 +2716,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2700,7 +2755,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2738,7 +2794,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2776,7 +2833,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2887,7 +2945,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -2924,13 +2983,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354
+                "durationMs": 353
               }
             },
             {
@@ -2962,13 +3022,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354
+                "durationMs": 353
               }
             },
             {
@@ -3000,13 +3061,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354,
+                "durationMs": 353,
                 "thinkingLevel": "off"
               }
             }
@@ -3052,7 +3114,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -3075,7 +3138,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -3097,7 +3161,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -3141,7 +3206,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
@@ -3231,7 +3297,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -3268,13 +3335,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -3306,13 +3374,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -3344,13 +3413,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -3443,13 +3513,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -3481,13 +3552,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -3519,13 +3591,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -3557,13 +3630,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -3652,7 +3726,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -3689,13 +3764,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 151
               }
             },
             {
@@ -3727,13 +3803,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 151
               }
             },
             {
@@ -3765,13 +3842,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153,
+                "durationMs": 151,
                 "thinkingLevel": "off"
               }
             }
@@ -3817,7 +3895,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -3840,7 +3919,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -3862,7 +3942,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -3906,13 +3987,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 178,
+            "durationMs": 180,
             "thinkingLevel": "off"
           }
         }
@@ -4429,7 +4511,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -4474,7 +4557,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -4520,7 +4604,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -4904,7 +4989,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -4950,7 +5036,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -4995,7 +5082,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5041,7 +5129,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5087,7 +5176,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5133,7 +5223,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5179,7 +5270,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5225,7 +5317,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5626,7 +5719,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5671,7 +5765,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5717,7 +5812,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5763,7 +5859,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5809,7 +5906,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5855,7 +5953,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -5913,7 +6012,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -5934,7 +6034,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -5956,7 +6057,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -5978,7 +6080,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -6000,7 +6103,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -6021,7 +6125,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -6043,7 +6148,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -6065,7 +6171,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -6087,7 +6194,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -6110,7 +6218,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -6132,7 +6241,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -6154,7 +6264,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -6206,7 +6317,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
@@ -6729,7 +6841,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -6774,13 +6887,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -6820,13 +6934,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -7198,7 +7313,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -7244,7 +7360,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -7289,13 +7406,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -7335,13 +7453,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -7381,13 +7500,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -7427,13 +7547,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -7473,13 +7594,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -7519,13 +7641,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -7920,7 +8043,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -7965,7 +8089,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -8011,7 +8136,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -8057,7 +8183,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -8103,7 +8230,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -8149,7 +8277,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -8222,7 +8351,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8244,7 +8374,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8266,7 +8397,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8288,7 +8420,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8309,7 +8442,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8331,7 +8465,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8353,7 +8488,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8375,7 +8511,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8398,7 +8535,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8420,7 +8558,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8442,7 +8581,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -8494,7 +8634,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
@@ -9055,13 +9196,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 381
+                "durationMs": 380
               }
             },
             {
@@ -9101,13 +9243,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 381
+                "durationMs": 380
               }
             }
           ]
@@ -9699,7 +9842,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -9745,7 +9889,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -10311,13 +10456,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 378
+                "durationMs": 380
               }
             },
             {
@@ -10357,13 +10503,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 378,
+                "durationMs": 380,
                 "thinkingLevel": "off"
               }
             }
@@ -10650,7 +10797,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -10702,13 +10850,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 406,
+            "durationMs": 404,
             "thinkingLevel": "off"
           }
         }
@@ -11315,13 +11464,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1031
+                "durationMs": 1032
               }
             },
             {
@@ -11361,13 +11511,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1031
+                "durationMs": 1032
               }
             }
           ]
@@ -12011,13 +12162,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1031
+                "durationMs": 1033
               }
             },
             {
@@ -12057,13 +12209,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1031
+                "durationMs": 1033
               }
             }
           ]
@@ -12675,13 +12828,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1032
+                "durationMs": 1031
               }
             },
             {
@@ -12721,13 +12875,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1032,
+                "durationMs": 1031,
                 "thinkingLevel": "off"
               }
             }
@@ -13014,7 +13169,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -13066,13 +13222,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 1057,
+            "durationMs": 1053,
             "thinkingLevel": "off"
           }
         }
@@ -13587,7 +13744,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -13632,7 +13790,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -13678,7 +13837,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -14041,7 +14201,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -14087,7 +14248,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -14132,13 +14294,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14178,13 +14341,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14224,13 +14388,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14270,13 +14435,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14316,13 +14482,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14362,13 +14529,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             }
           ]
@@ -14797,7 +14965,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -14842,7 +15011,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -14888,7 +15058,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -14934,7 +15105,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -14980,7 +15152,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -15097,7 +15270,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -15119,7 +15293,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -15140,7 +15315,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -15162,7 +15338,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -15184,7 +15361,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -15206,7 +15384,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -15229,7 +15408,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -15251,7 +15431,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -15273,7 +15454,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -15325,7 +15507,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
@@ -15627,7 +15810,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -15676,7 +15860,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -15725,13 +15910,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -15775,13 +15961,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -15825,13 +16012,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -15875,13 +16063,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -15925,13 +16114,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             }
           ]
@@ -16100,7 +16290,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -16149,13 +16340,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -16199,13 +16391,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -16249,13 +16442,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -16299,13 +16493,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -16349,13 +16544,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -16399,13 +16595,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -16449,13 +16646,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -16499,13 +16697,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -16549,13 +16748,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -16599,13 +16799,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             }
           ]
@@ -16860,7 +17061,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -16909,7 +17111,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -16959,7 +17162,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -17009,7 +17213,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -17059,7 +17264,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -17109,7 +17315,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -17159,7 +17366,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -17209,7 +17417,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -17285,7 +17494,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17306,7 +17516,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17328,7 +17539,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17350,7 +17562,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17373,7 +17586,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17395,7 +17609,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17418,7 +17633,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17440,7 +17656,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17462,7 +17679,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17491,7 +17709,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -17547,7 +17766,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
@@ -17849,7 +18069,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -17898,7 +18119,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -17947,13 +18169,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -17997,13 +18220,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -18047,13 +18271,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -18097,13 +18322,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -18147,13 +18373,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             }
           ]
@@ -18298,7 +18525,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -18347,13 +18575,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -18397,13 +18626,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -18447,13 +18677,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -18497,13 +18728,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -18547,13 +18779,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -18597,13 +18830,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -18647,13 +18881,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -18697,13 +18932,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -18747,13 +18983,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -18797,13 +19034,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -19058,7 +19296,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -19107,13 +19346,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -19157,13 +19397,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -19207,13 +19448,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -19257,13 +19499,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -19307,13 +19550,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -19357,13 +19601,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -19407,13 +19652,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -19459,7 +19705,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19480,7 +19727,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19502,7 +19750,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19524,7 +19773,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19547,7 +19797,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19569,7 +19820,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19592,7 +19844,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19614,7 +19867,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19636,7 +19890,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19665,7 +19920,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -19721,13 +19977,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 175,
+            "durationMs": 173,
             "thinkingLevel": "off"
           }
         }
@@ -20211,7 +20468,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -20261,7 +20519,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -20311,7 +20570,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -20832,13 +21092,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 253
+                "durationMs": 254
               }
             },
             {
@@ -20882,13 +21143,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 253
+                "durationMs": 254
               }
             },
             {
@@ -20932,13 +21194,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 253
+                "durationMs": 254
               }
             }
           ]
@@ -21431,13 +21694,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 252
+                "durationMs": 254
               }
             },
             {
@@ -21481,13 +21745,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 252
+                "durationMs": 254
               }
             },
             {
@@ -21531,13 +21796,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 252,
+                "durationMs": 254,
                 "thinkingLevel": "off"
               }
             }
@@ -21760,7 +22026,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -21789,7 +22056,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -21845,13 +22113,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 279,
+            "durationMs": 277,
             "thinkingLevel": "off"
           }
         }
@@ -22367,13 +22636,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 656
+                "durationMs": 654
               }
             },
             {
@@ -22417,13 +22687,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 656
+                "durationMs": 654
               }
             },
             {
@@ -22467,13 +22738,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 656
+                "durationMs": 654
               }
             }
           ]
@@ -23020,13 +23292,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 656
+                "durationMs": 654
               }
             },
             {
@@ -23070,13 +23343,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 656
+                "durationMs": 654
               }
             },
             {
@@ -23120,13 +23394,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 656
+                "durationMs": 654
               }
             }
           ]
@@ -23651,7 +23926,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -23701,7 +23977,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -23751,7 +24028,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
@@ -23980,7 +24258,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -24009,7 +24288,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -24065,13 +24345,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 678,
+            "durationMs": 677,
             "thinkingLevel": "off"
           }
         }
@@ -24567,13 +24848,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 305
               }
             },
             {
@@ -24617,13 +24899,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 305
               }
             },
             {
@@ -24667,13 +24950,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 305
               }
             }
           ]
@@ -25168,13 +25452,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 305
               }
             },
             {
@@ -25218,13 +25503,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 305
               }
             },
             {
@@ -25268,13 +25554,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 305
               }
             },
             {
@@ -25318,13 +25605,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 305
               }
             }
           ]
@@ -25829,13 +26117,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -25879,13 +26168,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -25929,13 +26219,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304,
+                "durationMs": 303,
                 "thinkingLevel": "off"
               }
             }
@@ -26136,7 +26427,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -26158,7 +26450,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -26187,7 +26480,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -26243,7 +26537,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "toolUse",
@@ -26439,7 +26734,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 3
+                "durationMs": 4
               }
             },
             {
@@ -26474,7 +26769,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 3
+                "durationMs": 4
               }
             }
           ]
@@ -28621,7 +28916,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 227
+                "durationMs": 228
               }
             },
             {
@@ -28656,7 +28951,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 227,
+                "durationMs": 228,
                 "thinkingLevel": "off"
               }
             }
@@ -28807,7 +29102,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 251,
+            "durationMs": 252,
             "thinkingLevel": "off"
           }
         }
@@ -29013,7 +29308,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 378
+                "durationMs": 380
               }
             },
             {
@@ -29048,7 +29343,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 378
+                "durationMs": 380
               }
             }
           ]
@@ -29267,7 +29562,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 377
+                "durationMs": 379
               }
             },
             {
@@ -29302,7 +29597,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 377
+                "durationMs": 379
               }
             }
           ]
@@ -29695,7 +29990,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 401,
+            "durationMs": 402,
             "thinkingLevel": "off"
           }
         }
@@ -29887,7 +30182,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -29922,7 +30217,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 304
+                "durationMs": 303
               }
             }
           ]
@@ -30544,7 +30839,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 326,
+            "durationMs": 330,
             "thinkingLevel": "off"
           }
         }
@@ -30896,7 +31191,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 2
+                "durationMs": 3
               }
             },
             {
@@ -30930,7 +31225,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 2
+                "durationMs": 3
               }
             }
           ]
@@ -31082,7 +31377,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -31116,7 +31411,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 1,
+                "durationMs": 2,
                 "thinkingLevel": "off"
               }
             }
@@ -31250,7 +31545,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 28,
+            "durationMs": 27,
             "thinkingLevel": "off"
           }
         }
@@ -31596,7 +31891,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -31630,7 +31925,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -31782,7 +32077,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 152
+                "durationMs": 153
               }
             },
             {
@@ -31816,7 +32111,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 152,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -31944,7 +32239,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 172,
+            "durationMs": 173,
             "thinkingLevel": "off"
           }
         }
@@ -32095,7 +32390,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 178
+                "durationMs": 177
               }
             },
             {
@@ -32129,7 +32424,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 178
+                "durationMs": 177
               }
             }
           ]
@@ -32290,7 +32585,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 178
+                "durationMs": 177
               }
             },
             {
@@ -32324,7 +32619,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 178
+                "durationMs": 177
               }
             }
           ]
@@ -32476,7 +32771,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 178
+                "durationMs": 177
               }
             },
             {
@@ -32510,7 +32805,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 178,
+                "durationMs": 177,
                 "thinkingLevel": "off"
               }
             }
@@ -32638,7 +32933,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 197,
+            "durationMs": 196,
             "thinkingLevel": "off"
           }
         }
@@ -32992,7 +33287,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 229
+                "durationMs": 227
               }
             },
             {
@@ -33026,7 +33321,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 229
+                "durationMs": 227
               }
             }
           ]
@@ -33182,7 +33477,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 227
+                "durationMs": 226
               }
             },
             {
@@ -33216,7 +33511,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 227,
+                "durationMs": 226,
                 "thinkingLevel": "off"
               }
             }
@@ -33876,7 +34171,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 456
+                "durationMs": 452
               }
             },
             {
@@ -33910,7 +34205,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 456,
+                "durationMs": 452,
                 "thinkingLevel": "off"
               }
             }
@@ -34152,7 +34447,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34185,7 +34481,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34219,7 +34516,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34291,7 +34589,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34324,7 +34623,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34357,7 +34657,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34390,13 +34691,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -34424,13 +34726,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 3
+                "durationMs": 2
               }
             }
           ]
@@ -34545,7 +34848,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34578,7 +34882,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34612,7 +34917,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34650,7 +34956,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "stop",
@@ -34671,7 +34978,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -34692,7 +35000,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -34714,7 +35023,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -34747,13 +35057,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 28,
+            "durationMs": 40,
             "thinkingLevel": "off"
           }
         }
@@ -34867,7 +35178,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -34900,13 +35212,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 152
+                "durationMs": 153
               }
             },
             {
@@ -34934,13 +35247,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 152
+                "durationMs": 153
               }
             }
           ]
@@ -35032,7 +35346,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -35065,7 +35380,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -35098,7 +35414,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -35132,7 +35449,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -35253,7 +35571,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -35286,13 +35605,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -35320,13 +35640,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 153,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -35372,7 +35693,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -35393,7 +35715,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -35415,7 +35738,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -35448,13 +35772,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 173,
+            "durationMs": 172,
             "thinkingLevel": "off"
           }
         }
@@ -35602,13 +35927,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 204
+                "durationMs": 201
               }
             },
             {
@@ -35636,13 +35962,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 204
+                "durationMs": 201
               }
             }
           ]
@@ -35800,13 +36127,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 203
+                "durationMs": 202
               }
             },
             {
@@ -35834,13 +36162,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 203
+                "durationMs": 202
               }
             }
           ]
@@ -35989,13 +36318,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 203
+                "durationMs": 201
               }
             },
             {
@@ -36023,13 +36353,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 203,
+                "durationMs": 201,
                 "thinkingLevel": "off"
               }
             }
@@ -36118,7 +36449,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -36151,7 +36483,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "stop",
@@ -36317,13 +36650,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 353
+                "durationMs": 352
               }
             },
             {
@@ -36351,13 +36685,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 353
+                "durationMs": 352
               }
             }
           ]
@@ -36527,13 +36862,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 355
+                "durationMs": 352
               }
             },
             {
@@ -36561,13 +36897,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 355
+                "durationMs": 352
               }
             }
           ]
@@ -36728,13 +37065,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 353
+                "durationMs": 354
               }
             },
             {
@@ -36762,13 +37100,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 353,
+                "durationMs": 354,
                 "thinkingLevel": "off"
               }
             }
@@ -36857,7 +37196,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -36890,7 +37230,8 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "stop",
@@ -37010,7 +37351,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -37043,7 +37385,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -37077,7 +37420,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -37175,7 +37519,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -37208,7 +37553,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -37241,13 +37587,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 453
+                "durationMs": 451
               }
             },
             {
@@ -37275,13 +37622,14 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 453
+                "durationMs": 451
               }
             }
           ]
@@ -37396,7 +37744,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -37429,7 +37778,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -37463,7 +37813,8 @@
                     "output": 0,
                     "cacheRead": 0,
                     "cacheWrite": 0,
-                    "total": 0
+                    "total": 0,
+                    "totalFromProvider": false
                   }
                 },
                 "stopReason": "stop",
@@ -37515,7 +37866,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -37536,7 +37888,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -37558,7 +37911,8 @@
               "output": 0,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "total": 0
+              "total": 0,
+              "totalFromProvider": false
             }
           },
           "assistantMessageEvent": {
@@ -37591,13 +37945,14 @@
                 "output": 0,
                 "cacheRead": 0,
                 "cacheWrite": 0,
-                "total": 0
+                "total": 0,
+                "totalFromProvider": false
               }
             },
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 471,
+            "durationMs": 473,
             "thinkingLevel": "off"
           }
         }
@@ -38103,7 +38458,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 29
+            "durationMs": 27
           }
         },
         {
@@ -38179,7 +38534,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 29,
+            "durationMs": 27,
             "thinkingLevel": "off"
           }
         }
@@ -38420,7 +38775,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -38454,7 +38809,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -38488,7 +38843,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -38605,7 +38960,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 152
+                "durationMs": 153
               }
             },
             {
@@ -38639,7 +38994,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 152,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -38895,7 +39250,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 178
+                "durationMs": 179
               }
             }
           ]
@@ -39203,7 +39558,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 178,
+                "durationMs": 176,
                 "thinkingLevel": "off"
               }
             }
@@ -39309,7 +39664,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 203,
+            "durationMs": 200,
             "thinkingLevel": "off"
           }
         }
@@ -39463,7 +39818,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 229
+                "durationMs": 228
               }
             }
           ]
@@ -39624,7 +39979,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 228
+                "durationMs": 227
               }
             }
           ]
@@ -39779,7 +40134,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 227,
+                "durationMs": 226,
                 "thinkingLevel": "off"
               }
             }
@@ -40311,7 +40666,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 152
+                "durationMs": 153
               }
             },
             {
@@ -40345,7 +40700,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 152,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -40451,7 +40806,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 178,
+            "durationMs": 177,
             "thinkingLevel": "off"
           }
         }
@@ -40664,7 +41019,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 2
+                "durationMs": 4
               }
             },
             {
@@ -40698,7 +41053,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 2
+                "durationMs": 4
               }
             },
             {
@@ -40732,7 +41087,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 2
+                "durationMs": 4
               }
             },
             {
@@ -40766,7 +41121,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 2
+                "durationMs": 4
               }
             }
           ]
@@ -41269,7 +41624,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -41303,7 +41658,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -41337,7 +41692,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -41453,7 +41808,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -41487,7 +41842,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -41593,7 +41948,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 172,
+            "durationMs": 171,
             "thinkingLevel": "off"
           }
         }
@@ -41742,7 +42097,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 179
+                "durationMs": 178
               }
             }
           ]
@@ -41898,7 +42253,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 180
+                "durationMs": 178
               }
             }
           ]
@@ -42154,7 +42509,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 202,
+            "durationMs": 200,
             "thinkingLevel": "off"
           }
         }
@@ -42307,7 +42662,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 229
+                "durationMs": 226
               }
             }
           ]
@@ -42467,7 +42822,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 228
+                "durationMs": 226
               }
             }
           ]
@@ -42621,7 +42976,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 227,
+                "durationMs": 226,
                 "thinkingLevel": "off"
               }
             }
@@ -42727,7 +43082,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 251,
+            "durationMs": 253,
             "thinkingLevel": "off"
           }
         }
@@ -42966,7 +43321,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 152
+                "durationMs": 153
               }
             },
             {
@@ -43000,7 +43355,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 152
+                "durationMs": 153
               }
             },
             {
@@ -43034,7 +43389,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 152
+                "durationMs": 153
               }
             }
           ]
@@ -43290,7 +43645,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 177,
+            "durationMs": 181,
             "thinkingLevel": "off"
           }
         }
@@ -43988,7 +44343,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -44022,7 +44377,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -44113,7 +44468,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 151
               }
             },
             {
@@ -44147,7 +44502,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 151
               }
             },
             {
@@ -44181,7 +44536,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 151
               }
             }
           ]
@@ -44438,7 +44793,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 172,
+            "durationMs": 173,
             "thinkingLevel": "off"
           }
         }
@@ -44588,7 +44943,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 178
+                "durationMs": 177
               }
             }
           ]
@@ -44745,7 +45100,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 179
+                "durationMs": 180
               }
             }
           ]
@@ -44896,7 +45251,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 177,
+                "durationMs": 176,
                 "thinkingLevel": "off"
               }
             }
@@ -45002,7 +45357,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 201,
+            "durationMs": 202,
             "thinkingLevel": "off"
           }
         }
@@ -45156,7 +45511,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 228
+                "durationMs": 227
               }
             }
           ]
@@ -45694,7 +46049,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 152
+                "durationMs": 153
               }
             },
             {
@@ -45728,7 +46083,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 152
+                "durationMs": 153
               }
             }
           ]
@@ -45819,7 +46174,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -45853,7 +46208,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -45887,7 +46242,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -46004,7 +46359,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 151
+                "durationMs": 152
               }
             },
             {
@@ -46038,7 +46393,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 151,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -46144,7 +46499,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 178,
+            "durationMs": 177,
             "thinkingLevel": "off"
           }
         }

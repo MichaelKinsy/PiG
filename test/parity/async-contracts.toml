@@ -1,4 +1,4 @@
-version = "1.4.0"
+version = "1.4.0+3bc6eeba"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -30,10 +30,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/t
 
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f replaces the local User-Agent merge with getIdentityHeaders; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/ai/src/api/azure-openai-responses.ts"
@@ -135,10 +135,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/open
 
 [[files]]
 path = "packages/ai/src/api/openai-completions.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f replaces the local User-Agent merge with getIdentityHeaders; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/ai/src/api/openai-decisions.lazy.ts"
@@ -177,10 +177,10 @@ rationale = "`(lazy dynamic-import wrapper; Go providers are statically linked)`
 
 [[files]]
 path = "packages/ai/src/api/openrouter-images.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openrouter_images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi bd3c9b82: adc5fa9f sends the identity headers; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = ""
 
 [[files]]
 path = "packages/ai/src/api/pi-messages.ts"
@@ -380,10 +380,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/mode
 
 [[files]]
 path = "packages/ai/src/models.ts"
-disposition = "deferred"
-contracts = ["awaited", "concurrent-joined", "detached-owned", "cancellable"]
-evidence = ["test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream", "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream", "test:ai/models_runtime_available_test.go#TestModelsGetAvailableRejectsBeforeOtherChecksSettle", "test:ai/models_runtime_lifetime_test.go#TestModelsCompletedRefreshSignalFollowsItsCaller", "scenario:test/parity/scenarios/model-runtime-store-catalog/19-models-runtime.toml"]
-rationale = "Reviewed against 0.87.1 only. packages/ai/src/images-models.ts was removed upstream in 0.99.1 and its image-catalog refresh and generation contract (auth and generation are blocking awaited calls; all-provider refresh joins every operation and swallows individual failures) now lives in models.ts; those image-models tests no longer exist; Pi 0.99.1 adds async members (Models.generateImages, Models.classify, getAvailableOfType, getAllAvailable, the getAuthenticatedProviders helper, login options) whose ordering, cancellation and error contract is not yet reviewed (ai/src/models.ts in packages/ai 0.99.1). Cache restoration precedes network auth. Refresh phases share one concrete provider signal and serialized, generation-checked publication; persistence completes before synchronous update. Replacement cancels the prior refresh. Aborted callers receive immutable result snapshots while owned non-cooperative callbacks settle without late publication. getAvailable starts checks concurrently and rejects on the first failure while retaining ownership of other checks. Auth and login preserve caller contexts; login distinguishes queued from started mutations. Stream setup runs in an owned worker and forwards all terminal events. Completed refresh signals stay non-aborted and follow later caller cancellation; weak parent forwarding releases unused subscriptions without changing retained signals. Delta at Pi bd3c9b82: adc5fa9f/04a93bad add CreateModelsOptions.identity, its merge into every request and the default login agentName; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/ai/src/providers/amazon-bedrock.ts"
@@ -464,10 +464,10 @@ rationale = "observeModelRequest starts its span with `void start(...)`: nobody 
 
 [[files]]
 path = "packages/ai/src/types.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f adds the StreamOptions.identity member; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 7f225f25: adds ClassifierModel.compat; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review."
+rationale = ""
 
 [[files]]
 path = "packages/ai/src/utils/abort.ts"

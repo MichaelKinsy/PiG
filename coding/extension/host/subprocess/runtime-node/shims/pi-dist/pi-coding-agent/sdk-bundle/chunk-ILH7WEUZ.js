@@ -1,6 +1,6 @@
 import {
   SETTINGS_DEFAULTS
-} from "./chunk-UFSRWEFA.js";
+} from "./chunk-LKHC5YTL.js";
 import {
   VisualLinePreview,
   getTextOutput,
@@ -194,7 +194,7 @@ import { CODEMODE_SOURCE_GRAMMAR } from "../../pi-codemode/source.js";
 import { Type as Type2 } from "../../../typebox.mjs";
 
 // pi-dist/pi-coding-agent/extensions/codemode/execute.lazy.js
-var loadCodemodeExecutor = /* @__PURE__ */ __name(() => import("./chunk-CE6PSN37.js"), "loadCodemodeExecutor");
+var loadCodemodeExecutor = /* @__PURE__ */ __name(() => import("./chunk-IJQXPPGQ.js"), "loadCodemodeExecutor");
 
 // pi-dist/pi-coding-agent/extensions/codemode/renderer.js
 import { Container, Spacer, Text } from "../../../pi-tui.mjs";

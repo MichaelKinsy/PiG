@@ -1,4 +1,4 @@
-upstream_version = "1.4.0"
+upstream_version = "1.4.0+3bc6eeba"
 
 [[contract]]
 id = "coding-agent/extension-input/remapped-confirm"
