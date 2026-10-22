@@ -3723,7 +3723,7 @@
       "id": "pkg:agent/.#AgentTool::property:replay",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ca85d76148424add9f3a73c19543c836176a327ec11a39b06538b208a5991dda",
-      "rationale": "AgentTool.replay (agent/src/types.ts:490) is declared on the agent tool type and read by nothing in Pi 1.3.0+bd3c9b82: the only readers are durable/src/harness/tool.ts:175,185,305, which read ToolRegistration.replay (durable/src/harness/types.ts:305), a different type that does not extend AgentTool. PiG carries that policy where Pi reads it, durable.ToolRegistration.Replay (durable/harness_types.go:306, read at durable/harness/tool.go:253,297). Adding a field to agent.AgentTool that nothing reads would be the caller-free duplicate LEAD-DECISION-P1 forbids, so the member is designed out as declared-without-consumer, as the lead ruled for telemetryContext (LEAD-RULINGS-1520 lg-imla-2 census item 2).",
+      "rationale": "AgentTool.replay (agent/src/types.ts:490) is declared on the agent tool type and read by nothing in Pi 1.4.0: the only readers are durable/src/harness/tool.ts:175,185,305, which read ToolRegistration.replay (durable/src/harness/types.ts:305), a different type that does not extend AgentTool. PiG carries that policy where Pi reads it, durable.ToolRegistration.Replay (durable/harness_types.go:306, read at durable/harness/tool.go:253,297). Adding a field to agent.AgentTool that nothing reads would be the caller-free duplicate LEAD-DECISION-P1 forbids, so the member is designed out as declared-without-consumer, as the lead ruled for telemetryContext (LEAD-RULINGS-1520 lg-imla-2 census item 2).",
       "pigTargets": [
         "durable/harness_types.go#ToolRegistration"
       ]
@@ -100510,9 +100510,9 @@
         "public-api:chord/host/websocket.go#AcceptWebSockets"
       ],
       "evidence": [
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksAHoldTakenAfterTheServerRefusedTheSocketHasNoRoute",
         "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBinaryMessagesClientsMayNotSendThem",
-        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator",
-        "test:chord/host/pi_websocket_members_test.go#TestPiWebSocketServerLikeOnConnection"
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator"
       ]
     },
     {
@@ -100532,9 +100532,9 @@
         "public-api:chord/host/websocket.go#AcceptWebSockets"
       ],
       "evidence": [
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksAHoldTakenAfterTheServerRefusedTheSocketHasNoRoute",
         "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBinaryMessagesClientsMayNotSendThem",
-        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator",
-        "test:chord/host/pi_websocket_members_test.go#TestPiWebSocketServerLikeOnConnection"
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator"
       ]
     },
     {
@@ -108503,9 +108503,9 @@
         "public-api:chord/host/websocket.go#WebSocketAcceptOptions"
       ],
       "evidence": [
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksAHoldTakenAfterTheServerRefusedTheSocketHasNoRoute",
         "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBinaryMessagesClientsMayNotSendThem",
-        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator",
-        "test:chord/host/pi_websocket_members_test.go#TestPiWebSocketAcceptOptionsMaxCallsAnswersCallsBeyondItWithTooManyCalls"
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -108899,9 +108899,9 @@
         "call:chord/host/link.go#NewWebSocketLink"
       ],
       "evidence": [
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksAHoldTakenAfterTheServerRefusedTheSocketHasNoRoute",
         "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBinaryMessagesClientsMayNotSendThem",
-        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator",
-        "test:chord/host/link_test.go#TestWebSocketLinkKeepsSendOrderAcrossOpen"
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator"
       ]
     },
     {
@@ -108921,9 +108921,9 @@
         "call:chord/host/link.go#NewWebSocketLink"
       ],
       "evidence": [
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksAHoldTakenAfterTheServerRefusedTheSocketHasNoRoute",
         "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBinaryMessagesClientsMayNotSendThem",
-        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator",
-        "test:chord/host/link_test.go#TestWebSocketLinkKeepsSendOrderAcrossOpen"
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator"
       ]
     },
     {
@@ -108943,9 +108943,9 @@
         "call:chord/host/link.go#NewWebSocketLink"
       ],
       "evidence": [
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksAHoldTakenAfterTheServerRefusedTheSocketHasNoRoute",
         "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBinaryMessagesClientsMayNotSendThem",
-        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator",
-        "test:chord/host/link_test.go#TestWebSocketLinkKeepsSendOrderAcrossOpen"
+        "test:chord/host/websocket_upstream_test.go#TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator"
       ]
     },
     {
@@ -111365,8 +111365,8 @@
       ],
       "evidence": [
         "test:chord/host/manager_upstream_test.go#TestHostManagerExitBeforeReadyAndReadyTimeout",
-        "test:chord/host/manager_upstream_test.go#TestHostManagerStartIsIdempotentAndStopIsGraceful",
-        "test:chord/host/manager_upstream_test.go#TestHostManagerStartsAChildHostLinksItStopsItGracefully"
+        "test:chord/host/manager_upstream_test.go#TestHostManagerOnExitMayStartTheChildAgain",
+        "test:chord/host/manager_upstream_test.go#TestHostManagerReadsStoppedInsideOnExitAndNowhereElseBeforeItReturns"
       ]
     },
     {
@@ -111667,9 +111667,9 @@
         "call:chord/host/manager.go#HostManager.Instance"
       ],
       "evidence": [
+        "test:chord/host/manager_upstream_test.go#TestHostManagerReadsStoppedInsideOnExitAndNowhereElseBeforeItReturns",
         "test:chord/host/manager_upstream_test.go#TestHostManagerStartIsIdempotentAndStopIsGraceful",
-        "test:chord/host/pi_manager_members_test.go#TestHostManagerSendsShutdownAndKillsTheTreePastTheGrace",
-        "test:chord/host/pi_manager_members_test.go#TestHostManagerSpawnsThroughTheDriverAndListensForControl"
+        "test:chord/host/pi_manager_members_test.go#TestHostManagerSendsShutdownAndKillsTheTreePastTheGrace"
       ]
     },
     {
@@ -111691,7 +111691,7 @@
       "evidence": [
         "test:chord/host/manager_upstream_test.go#TestHostManagerIdleForCountsFromTheBusyToIdleTransition",
         "test:chord/host/manager_upstream_test.go#TestHostManagerKeepsFractionalActivityCounts",
-        "test:chord/host/pi_manager_members_test.go#TestHostManagerLivenessReportsViewersAndDurableTasks"
+        "test:chord/host/manager_upstream_test.go#TestHostManagerReadsStoppedInsideOnExitAndNowhereElseBeforeItReturns"
       ]
     },
     {
@@ -111980,8 +111980,8 @@
       ],
       "evidence": [
         "test:chord/host/manager_upstream_test.go#TestHostManagerKeepAliveStopsIdleChild",
-        "test:chord/host/manager_upstream_test.go#TestHostManagerStartIsIdempotentAndStopIsGraceful",
-        "test:chord/host/manager_upstream_test.go#TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo"
+        "test:chord/host/manager_upstream_test.go#TestHostManagerOnExitMayStartTheChildAgain",
+        "test:chord/host/manager_upstream_test.go#TestHostManagerReadsStoppedInsideOnExitAndNowhereElseBeforeItReturns"
       ]
     },
     {
@@ -113831,9 +113831,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
         "test:durable/storage/sqlite/sqlite_storage_test.go#TestPicoSqliteStorage",
-        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
       ]
     },
     {
@@ -113853,9 +113853,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently"
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -113876,9 +113876,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently"
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127397,7 +127397,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_session_factory.go#cliSessionFactory.StateFor"
+        "call:coding/cli/child_sessions.go#childSession.Abort"
       ],
       "evidence": [
         "test:coding/bash_execution_llm_text_upstream_test.go#TestRecordedBashResultReachesModelContextUpstream",
@@ -128885,7 +128885,7 @@
       "evidence": [
         "test:coding/session_prompt_abort_starting_upstream_test.go#TestUpstreamSessionPromptAbortWhileBeforeAgentStartRuns",
         "test:coding/session_prompt_custom_run_upstream_test.go#TestUpstreamSessionPromptRunsStartedByACustomMessage",
-        "test:coding/session_compaction_suite_active_test.go#TestAgentSessionCompactionSuiteAbortUpstream"
+        "test:test/extension-conformance/replicated_state_rw_test.go#TestReplicatedStateIsIdleAfterAMessageThatStartsARun"
       ]
     },
     {
@@ -129329,7 +129329,8 @@
       ],
       "evidence": [
         "test:coding/virtual_models_upstream_test.go#TestVirtualSessionFallsBackToThePhysicalModelWhenTheVirtualModelIsNotRegistered",
-        "test:coding/virtual_models_upstream_test.go#TestVirtualSessionRestoresTheVirtualSelectionInsteadOfThePhysicalModelThatAnswered"
+        "test:coding/virtual_models_upstream_test.go#TestVirtualSessionRestoresTheVirtualSelectionInsteadOfThePhysicalModelThatAnswered",
+        "test:coding/session_images_routed_test.go#TestPromptImagesUseTheRoutedModelsProfile"
       ]
     },
     {
@@ -129991,8 +129992,9 @@
         "call:coding/session.go#Session.SettingsManager"
       ],
       "evidence": [
-        "test:coding/session_resource_accessors_test.go#TestSessionSettingsManagerIsTheManagerItPersistsThrough",
-        "test:coding/session_settings_manager_test.go#TestSessionSettingsManagerIsTheServicesSettings"
+        "test:coding/session_replicated_state_test.go#TestSessionReplicatedStateObserversStopAndCostNothingWhenIdle",
+        "test:coding/session_replicated_state_test.go#TestSessionReportsEveryChangeOfTheStateExtensionsReplicate",
+        "test:coding/session_resource_accessors_test.go#TestSessionSettingsManagerIsTheManagerItPersistsThrough"
       ]
     },
     {
@@ -130320,7 +130322,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -130364,7 +130366,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_default_tool_modifiers_upstream_test.go#TestNewSessionRejectsInvalidToolModifierOptions",
@@ -130429,7 +130431,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_tool_registry.go#createSessionToolRegistry"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_tool_prompt_metadata_test.go#TestSessionToolPromptUsesJavaScriptWhitespace",
@@ -130473,7 +130475,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_default_tool_modifiers_upstream_test.go#TestNewSessionRejectsInvalidToolModifierOptions",
@@ -130495,7 +130497,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_initial_active_tool_names_test.go#TestNewSessionInitialActiveToolNamesHonourTheExclusionList",
@@ -130526,7 +130528,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_default_tool_modifiers_upstream_test.go#TestReloadAppliesDefaultToolModifiersToTheReloadedSetting",
@@ -130570,7 +130572,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/sdk_skills_upstream_test.go#TestSessionReadsSuppliedResourceLoaderLive",
@@ -130592,7 +130594,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/model_resolver_scope_upstream_test.go#TestModelResolverPersistedScopeUpstream",
@@ -130614,7 +130616,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerDerivesCWD",
@@ -131303,7 +131305,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#BindChildSessions"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -132861,7 +132863,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/armin_render_test.go#TestArminRenderClipsRowsToTheWidthPadsThemAndCachesUntilInvalidated",
-        "test:internal/codingagent/armin_test.go#TestArminFramesMatchPinnedPi"
+        "test:internal/codingagent/armin_test.go#TestArminFramesMatchPinnedPi",
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -132882,7 +132885,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/armin_render_test.go#TestArminRenderClipsRowsToTheWidthPadsThemAndCachesUntilInvalidated",
-        "test:internal/codingagent/armin_test.go#TestArminFramesMatchPinnedPi"
+        "test:internal/codingagent/armin_test.go#TestArminFramesMatchPinnedPi",
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -133143,8 +133147,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -133165,8 +133169,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -133715,7 +133719,7 @@
       "id": "pkg:coding-agent/.#BashExecutionComponent::property:getOutput",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6270aeda32c7d42e1dc0e0362acade0bb9e4c8762b5ae7f70a1cca187191edab",
-      "rationale": "Pi bash-execution.ts:213 getOutput() returns outputLines.join(\"\\n\"), every streamed line the block keeps, and nothing in Pi 1.3.0+bd3c9b82 calls it (probe: grep of packages/*/src finds only the declaration; interactive-mode.ts records a bash result from the executor's result, not from the component). An extension that draws the component reads its own Node-side instance. PiG's block keeps only the tail window it draws, so a long command holds about 50 KB instead of its whole stream (33.3 MB retained after 32 MB streamed before the change). Keeping the whole stream for a getter no caller reads would undo that, and a GetOutput that returned the window would be silently believed as the whole output. Recorded as D176 (docs/additive-features.md, docs/parity/DIVERGENCE-IDS.txt; Locked by TestBashExecutionStreamingRetainsTheTailNotTheWholeOutput). ContextOutput returns what the block keeps, Pi's truncateTail(getOutput()).content.",
+      "rationale": "Pi bash-execution.ts:213 getOutput() returns outputLines.join(\"\\n\"), every streamed line the block keeps, and nothing in Pi 1.4.0 calls it (probe: grep of packages/*/src finds only the declaration; interactive-mode.ts records a bash result from the executor's result, not from the component). An extension that draws the component reads its own Node-side instance. PiG's block keeps only the tail window it draws, so a long command holds about 50 KB instead of its whole stream (33.3 MB retained after 32 MB streamed before the change). Keeping the whole stream for a getter no caller reads would undo that, and a GetOutput that returned the window would be silently believed as the whole output. Recorded as D176 (docs/additive-features.md, docs/parity/DIVERGENCE-IDS.txt; Locked by TestBashExecutionStreamingRetainsTheTailNotTheWholeOutput). ContextOutput returns what the block keeps, Pi's truncateTail(getOutput()).content.",
       "pigTargets": [
         "tui/bash_execution.go#BashExecutionComponent.ContextOutput"
       ]
@@ -133788,9 +133792,9 @@
         "call:tui/bash_execution.go#BashExecutionComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -133810,9 +133814,9 @@
         "call:tui/bash_execution.go#BashExecutionComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -134072,7 +134076,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/bash_executor.go#ExecuteBashWithOperations"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#Host.handleBuiltinToolLocalExec"
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
@@ -134095,7 +134099,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/bash_executor.go#ExecuteBashWithOperations"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#Host.handleBuiltinToolLocalExec"
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
@@ -134202,11 +134206,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/shell_tool.go#BashSpawnHook"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#builtinCallbacks.spawnHook"
       ],
       "evidence": [
         "test:internal/codingagent/tools/bash_spawn_hook_test.go#TestBashSpawnHookAdjustsCommandCwdAndEnv",
@@ -134224,11 +134228,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/shell_tool.go#BashSpawnHook"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#builtinCallbacks.spawnHook"
       ],
       "evidence": [
         "test:internal/codingagent/tools/bash_spawn_hook_test.go#TestBashSpawnHookAdjustsCommandCwdAndEnv",
@@ -134778,7 +134782,7 @@
       "evidence": [
         "test:coding/session_model_extension_hooks_upstream_test.go#TestSessionModelExtensionHooksUpstream",
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesTheFirstRequestOfAPromptAsAUserTurnWhenExtensionMessagesFollowThePrompt",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs"
       ]
     },
     {
@@ -136378,8 +136382,8 @@
       ],
       "evidence": [
         "test:tui/message_components_gaps_test.go#TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -136400,8 +136404,8 @@
       ],
       "evidence": [
         "test:tui/message_components_gaps_test.go#TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -136979,8 +136983,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/before_agent_start_trigger_test.go#TestBeforeAgentStartTriggerAcrossSDKs",
-        "test:test/extension-conformance/prompt_chain_test.go#TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs",
-        "test:test/extension-conformance/prompt_options_test.go#TestPromptOptionEditsAcrossSDKs"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/prompt_chain_test.go#TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs"
       ]
     },
     {
@@ -138151,7 +138155,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.AppendCompaction"
+        "call:internal/codingagent/session.go#Session.appendCompaction"
       ],
       "evidence": [
         "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder",
@@ -138194,7 +138198,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.AppendCompaction"
+        "call:internal/codingagent/session.go#Session.appendCompaction"
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
@@ -138282,7 +138286,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.AppendCompaction"
+        "call:internal/codingagent/session.go#Session.appendCompaction"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream"
@@ -139037,9 +139041,9 @@
         "call:tui/compaction_summary.go#CompactionSummaryMessageComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -139059,9 +139063,9 @@
         "call:tui/compaction_summary.go#CompactionSummaryMessageComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -139350,21 +139354,22 @@
       "id": "pkg:coding-agent/.#CompactOptions::property:customInstructions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cc7a789c0082d4d27aca54215c8f07c302fe1bb396e73f8970a344f5fce27719",
-      "rationale": "CompactOptions: Go CompactOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CompactOptions::property:customInstructions is Go coding/extension/context_actions.go#CompactOptions.CustomInstructions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/context_actions.go#CompactOptions.CustomInstructions"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/session_extension_core.go#Session.ExtensionCompact"
       ],
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_DefaultsMatchUpstream",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
+        "test:coding/extension/host/subprocess/sdk_surface_wire_test.go#TestUIBridge_CompactAwaitsCompletion"
       ]
     },
     {
@@ -139393,21 +139398,22 @@
       "id": "pkg:coding-agent/.#CompactOptions::property:onError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6177995fed13ac75fd172139c74bdee1d7515249b310197342be4bf09e5a2ba5",
-      "rationale": "CompactOptions: Go CompactOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CompactOptions::property:onError is Go coding/extension/context_actions.go#CompactOptions.OnError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/context_actions.go#CompactOptions.OnError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.handleCompact"
       ],
       "evidence": [
-        "test:coding/extension/context_api_test.go#TestContext_DefaultsMatchUpstream",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:coding/extension/host/subprocess/sdk_surface_wire_test.go#TestUIBridge_CompactAwaitsCompletion",
+        "test:coding/session_settled_idle_test.go#TestCustomMessageRunSettledHandlerAwaitsCompaction",
+        "test:coding/session_settled_idle_test.go#TestSettledHandlerCompactionKeepsTheContinuationQueuedBeforeIt"
       ]
     },
     {
@@ -139808,84 +139814,88 @@
       "id": "pkg:coding-agent/.#ContextUsage",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:78d6aa176bd505f04efec35b2637f8decfb2fea7b2661531ffc295569f4b7efb",
-      "rationale": "ContextUsage: Go ContextUsage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ContextUsage is Go coding/session.go#SessionContextUsage (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/context_actions.go#ContextUsage"
+        "coding/session.go#SessionContextUsage"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+        "call:coding/cli/main.go#Main"
       ],
       "evidence": [
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
-        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors"
+        "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting",
+        "test:coding/session_stats_upstream_test.go#TestUpstreamAgentSessionStatsContext",
+        "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteEndsTheRunWithAnErrorResponseWhenRoutingFailsAndKeepsTheLastPhysicalLimits"
       ]
     },
     {
       "id": "pkg:coding-agent/.#ContextUsage::property:contextWindow",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7e288656e964571561ce092a0ce76aa32629a737a8a7527d93c29f732226612f",
-      "rationale": "ContextUsage: Go ContextUsage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ContextUsage::property:contextWindow is Go coding/session.go#SessionContextUsage.ContextWindow (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/context_actions.go#ContextUsage.ContextWindow"
+        "coding/session.go#SessionContextUsage.ContextWindow"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+        "call:coding/cli/main.go#Main"
       ],
       "evidence": [
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
-        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors"
+        "test:coding/session_stats_upstream_test.go#TestUpstreamAgentSessionStatsContext",
+        "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteEndsTheRunWithAnErrorResponseWhenRoutingFailsAndKeepsTheLastPhysicalLimits",
+        "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStaysVirtual"
       ]
     },
     {
       "id": "pkg:coding-agent/.#ContextUsage::property:percent",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:950ce68a49f6dd8f488d85e3e94d7ac596a8011df844ca20783c6aed68d9831c",
-      "rationale": "ContextUsage: Go ContextUsage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ContextUsage::property:percent is Go coding/session.go#SessionContextUsage.Percent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/context_actions.go#ContextUsage.Percent"
+        "coding/session.go#SessionContextUsage.Percent"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+        "call:coding/session.go#Session.projectedContextUsage"
       ],
       "evidence": [
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
-        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors"
+        "test:coding/session_stats_upstream_test.go#TestUpstreamAgentSessionStatsContext",
+        "test:coding/session_context_usage_test.go#TestSessionContextUsageCompactionUnknownUntilValidProjectedUsage",
+        "test:coding/session_recovery_test.go#TestBoundaryDoesNotTreatRetainedPreCompactionAssistantUsageAsPostCompactionUsage"
       ]
     },
     {
       "id": "pkg:coding-agent/.#ContextUsage::property:tokens",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3370fa47c844696b422ec0b9338f94da12a03ccb911b93d4773d9c67d407d21f",
-      "rationale": "ContextUsage: Go ContextUsage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ContextUsage::property:tokens is Go coding/session.go#SessionContextUsage.Tokens (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/context_actions.go#ContextUsage.Tokens"
+        "coding/session.go#SessionContextUsage.Tokens"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+        "call:coding/cli/main.go#Main"
       ],
       "evidence": [
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
-        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors"
+        "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting",
+        "test:coding/session_stats_upstream_test.go#TestUpstreamAgentSessionStatsContext",
+        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges"
       ]
     },
     {
@@ -140103,8 +140113,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionForwardsTheSessionOptions"
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -140126,8 +140136,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionForwardsTheSessionOptions"
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -140141,11 +140151,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServices"
+        "call:coding/create_agent_session.go#CreateAgentSessionFromServices"
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
@@ -140164,11 +140174,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServices"
+        "call:coding/create_agent_session.go#CreateAgentSessionFromServices"
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
@@ -140187,11 +140197,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
@@ -140209,14 +140219,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.CustomTools"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession"
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesAppliesToolModifiers"
       ]
     },
     {
@@ -140229,14 +140240,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.ExcludeTools"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesToolOptionPrecedence"
       ]
     },
     {
@@ -140249,14 +140261,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.Model"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
       ]
     },
     {
@@ -140269,14 +140283,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.NoTools"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesAppliesToolModifiers",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesToolOptionPrecedence"
       ]
     },
     {
@@ -140289,11 +140305,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.ScopedModels"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
@@ -140309,14 +140325,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.Services"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel"
       ]
     },
     {
@@ -140329,14 +140347,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.SessionManager"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault"
       ]
     },
     {
@@ -140349,11 +140369,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.SessionStartEvent"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
@@ -140369,11 +140389,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.ThinkingLevel"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
@@ -140389,14 +140409,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.Tools"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession"
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesAppliesToolModifiers",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesRejectsInvalidToolOptions"
       ]
     },
     {
@@ -140417,8 +140439,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionForwardsTheSessionOptions"
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions"
       ]
     },
     {
@@ -140711,11 +140733,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionResult"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
@@ -140733,14 +140755,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionResult.ExtensionsResult"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionReturnsTheLoadersExtensionsResult"
       ]
     },
     {
@@ -140753,14 +140776,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionResult.ModelFallbackMessage"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel"
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesSelectsTheInitialModelOrReportsNone"
       ]
     },
     {
@@ -140773,14 +140798,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionResult.Session"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel"
       ]
     },
     {
@@ -141059,7 +141086,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -141082,7 +141109,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -141104,7 +141131,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -141148,7 +141175,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/services.go#CreateAgentSessionServices"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:coding/services_options_test.go#TestServicesShareAnInjectedModelRuntimeAndDoNotCloseIt"
@@ -141168,7 +141195,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -141191,7 +141218,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/services.go#CreateAgentSessionServices"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
@@ -141234,7 +141261,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/services.go#CreateAgentSessionServices"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:coding/services_accessors_test.go#TestServicesReturnTheCallerSuppliedSettingsManager",
@@ -143010,9 +143037,9 @@
         "call:tui/editor.go#Editor.HandleInput"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_parity_test.go#TestEditor_DisableSubmitBlocksEnter",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi"
+        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity"
       ]
     },
     {
@@ -143054,9 +143081,9 @@
         "call:tui/editor.go#Editor.SetFocused"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_oracle_test.go#TestDelegatedEditorHooksMatchPi",
         "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryBuildsTheComponentThatTakesTheEditorsPlace",
-        "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryComponentRendersOnEveryPassAtTheRowsWidth",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenSearchTakesKeysFromEditor"
+        "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryComponentRendersOnEveryPassAtTheRowsWidth"
       ]
     },
     {
@@ -143615,8 +143642,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/ext_ui_editor_snapshot_test.go#TestExtensionEditorSnapshotPreservesObserverAndReplacement",
-        "test:tui/editor_parity_test.go#TestEditor_EnterSubmitsAndClears",
-        "test:tui/editor_parity_test.go#TestEditor_SetTextCallsOnChange"
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
+        "test:tui/editor_parity_test.go#TestEditor_EnterSubmitsAndClears"
       ]
     },
     {
@@ -143788,9 +143815,9 @@
         "call:tui/editor.go#Editor.SetAutocompleteMaxVisible"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges",
-        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor",
-        "test:tui/settings_live_effects_test.go#TestEditorRuntimeSettingsApplyImmediately"
+        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor"
       ]
     },
     {
@@ -143810,9 +143837,9 @@
         "call:tui/editor.go#Editor.SetAutocompleteMaxVisible"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges",
-        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor",
-        "test:tui/settings_live_effects_test.go#TestEditorRuntimeSettingsApplyImmediately"
+        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor"
       ]
     },
     {
@@ -143877,8 +143904,8 @@
       ],
       "evidence": [
         "test:tui/editor_wrapping_upstream_test.go#TestUpstreamEditorGraphemeWrapping",
-        "test:tui/editor_overlay_cursor_test.go#TestEditorCursorAfterLineFillingLayoutWidth",
-        "test:tui/editor_overlay_cursor_test.go#TestOverlayOverEditorRowKeepsOneCursorCell"
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
+        "test:tui/editor_overlay_cursor_test.go#TestEditorCursorAfterLineFillingLayoutWidth"
       ]
     },
     {
@@ -143899,8 +143926,8 @@
       ],
       "evidence": [
         "test:tui/editor_wrapping_upstream_test.go#TestUpstreamEditorGraphemeWrapping",
-        "test:tui/editor_overlay_cursor_test.go#TestEditorCursorAfterLineFillingLayoutWidth",
-        "test:tui/editor_overlay_cursor_test.go#TestOverlayOverEditorRowKeepsOneCursorCell"
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
+        "test:tui/editor_overlay_cursor_test.go#TestEditorCursorAfterLineFillingLayoutWidth"
       ]
     },
     {
@@ -143921,8 +143948,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/clipboard_paste_file_paths_upstream_test.go#TestClipboardPasteFilePaths",
-        "test:tui/autocomplete_upstream_test.go#TestEditorDirectPathCompletionCaller",
-        "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorAdvertisedTriggerCharactersRequestAfterCJKBoundary"
+        "test:internal/codingagent/remote_editor_hooks_oracle_test.go#TestDelegatedEditorHooksMatchPi",
+        "test:tui/autocomplete_upstream_test.go#TestEditorDirectPathCompletionCaller"
       ]
     },
     {
@@ -143943,8 +143970,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/clipboard_paste_file_paths_upstream_test.go#TestClipboardPasteFilePaths",
-        "test:tui/autocomplete_upstream_test.go#TestEditorDirectPathCompletionCaller",
-        "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorAdvertisedTriggerCharactersRequestAfterCJKBoundary"
+        "test:internal/codingagent/remote_editor_hooks_oracle_test.go#TestDelegatedEditorHooksMatchPi",
+        "test:tui/autocomplete_upstream_test.go#TestEditorDirectPathCompletionCaller"
       ]
     },
     {
@@ -146882,7 +146909,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestEditAbortAfterAccessDoesNotRead",
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream",
-        "test:internal/codingagent/tools/tool_options_test.go#TestToolsOptionsReachEachTool"
+        "test:internal/codingagent/tools/mutation_queue_alias_test.go#TestEditPreservesParallelAliasChanges"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -146905,7 +146932,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestEditAbortAfterAccessDoesNotRead",
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream",
-        "test:internal/codingagent/tools/tool_options_test.go#TestToolsOptionsReachEachTool"
+        "test:internal/codingagent/tools/mutation_queue_alias_test.go#TestEditPreservesParallelAliasChanges"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -147643,8 +147670,8 @@
       ],
       "evidence": [
         "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
-        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs",
-        "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad"
+        "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs",
+        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -147688,8 +147715,8 @@
       ],
       "evidence": [
         "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
-        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs",
-        "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad"
+        "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs",
+        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -147719,19 +147746,20 @@
       "id": "pkg:coding-agent/.#ExecResult",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f13c8a2e3c21030f40442973dc0bf1e680a0f097c587ce75fe79edb770cf158e",
-      "rationale": "ExecResult: Go ExecResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ExecResult is Go coding/extension/opaque_types.go#ExecResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/opaque_types.go#ExecResult"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
+        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
       ]
@@ -147740,19 +147768,20 @@
       "id": "pkg:coding-agent/.#ExecResult::property:code",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:68a65ce1e6c8f22ebdeb03a2b2a3c394006c4efed559e3b6862b7a10cac956bc",
-      "rationale": "ExecResult: Go ExecResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:code is Go coding/extension/opaque_types.go#ExecResult.Code (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/opaque_types.go#ExecResult.Code"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
+        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
       ]
@@ -147761,40 +147790,42 @@
       "id": "pkg:coding-agent/.#ExecResult::property:killed",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e84a11a6784dbac8856a936e1a728fae9e3142ce701247b2c32c7e43882a5380",
-      "rationale": "ExecResult: Go ExecResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:killed is Go coding/extension/opaque_types.go#ExecResult.Killed (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/opaque_types.go#ExecResult.Killed"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
-        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
+        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
+        "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs",
+        "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad"
       ]
     },
     {
       "id": "pkg:coding-agent/.#ExecResult::property:stderr",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:906788dcfef1c4f2b898e90830b2b5659fdc6eb43689f46172dbc54d97f01b5a",
-      "rationale": "ExecResult: Go ExecResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:stderr is Go coding/extension/opaque_types.go#ExecResult.Stderr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/opaque_types.go#ExecResult.Stderr"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
+        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
       ]
@@ -147803,19 +147834,20 @@
       "id": "pkg:coding-agent/.#ExecResult::property:stdout",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:11552d5606c5b7e647da0da01ca706797c29b535f913e112776eebaf6e941e51",
-      "rationale": "ExecResult: Go ExecResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:stdout is Go coding/extension/opaque_types.go#ExecResult.Stdout (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/opaque_types.go#ExecResult.Stdout"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
+        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
       ]
@@ -147869,21 +147901,22 @@
       "id": "pkg:coding-agent/.#ExecuteToolOptions::property:signal",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8a3599829b340aade9210d2ba01342ddd4b904b85132d7d569005701d05ab3be",
-      "rationale": "ExecuteToolOptions: Go ExecuteToolOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ExecuteToolOptions::property:signal is Go coding/extension/tool_context.go#ExecuteToolOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/tool_context.go#ExecuteToolOptions.Signal"
+        "coding/extension/tool_context.go#ExecuteToolOptions"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/extension/builtin/codemode/run.go#run.nestedCall"
       ],
       "evidence": [
-        "test:coding/extension/host/inproc/tool_context_test.go#TestRunnerBindCoreKeepsTheSessionBindingAModeOmits",
-        "test:coding/extension/host/inproc/tool_context_test.go#TestRunnerToolContextRejectsCallsOnAStaleRunner"
+        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall",
+        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOutcomeCarriesDuration",
+        "test:test/extension-conformance/node_extension_api_test.go#TestNodeExecuteToolAndCallableTools"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -148470,7 +148503,7 @@
       ],
       "evidence": [
         "test:coding/cli/session_extension_actions_direct_test.go#TestSessionExtensionActionsActOnTheLiveSession",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:coding/extension/builtin/codemode/create_extension_test.go#TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
       ]
     },
@@ -148492,7 +148525,7 @@
       ],
       "evidence": [
         "test:coding/cli/session_extension_actions_direct_test.go#TestSessionExtensionActionsActOnTheLiveSession",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:coding/extension/builtin/codemode/create_extension_test.go#TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
       ]
     },
@@ -148555,6 +148588,8 @@
         "call:coding/extension/factoryload/api.go#api.refreshTools"
       ],
       "evidence": [
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolAfterLoadRefreshesTheSession",
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession",
         "test:coding/extension/host/inproc/extension_actions_test.go#TestBindCoreRoutesExtensionActionsToContexts"
       ]
     },
@@ -148575,6 +148610,8 @@
         "call:coding/extension/factoryload/api.go#api.refreshTools"
       ],
       "evidence": [
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolAfterLoadRefreshesTheSession",
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession",
         "test:coding/extension/host/inproc/extension_actions_test.go#TestBindCoreRoutesExtensionActionsToContexts"
       ]
     },
@@ -149263,7 +149300,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIGetSettings",
-        "test:coding/extension/factoryload/load_test.go#TestActionsGoThroughTheBoundRuntime"
+        "test:coding/extension/factoryload/load_test.go#TestActionsGoThroughTheBoundRuntime",
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession"
       ]
     },
     {
@@ -149284,7 +149322,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIGetSettings",
-        "test:coding/extension/factoryload/load_test.go#TestActionsGoThroughTheBoundRuntime"
+        "test:coding/extension/factoryload/load_test.go#TestActionsGoThroughTheBoundRuntime",
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession"
       ]
     },
     {
@@ -151296,7 +151335,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_reference_session_actions_test.go#TestConformanceAPISessionActions",
-        "test:test/extension-conformance/dynamic_tools_test.go#TestDynamicToolRegistrationAcrossSDKs"
+        "test:test/extension-conformance/dynamic_tools_test.go#TestDynamicToolRegistrationAcrossSDKs",
+        "test:internal/codingagent/interactive_forced_prompt_test.go#TestInteractiveForcedSystemPromptRequestsHaveTheSessionsShape"
       ]
     },
     {
@@ -151317,7 +151357,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_reference_session_actions_test.go#TestConformanceAPISessionActions",
-        "test:test/extension-conformance/dynamic_tools_test.go#TestDynamicToolRegistrationAcrossSDKs"
+        "test:test/extension-conformance/dynamic_tools_test.go#TestDynamicToolRegistrationAcrossSDKs",
+        "test:internal/codingagent/interactive_forced_prompt_test.go#TestInteractiveForcedSystemPromptRequestsHaveTheSessionsShape"
       ]
     },
     {
@@ -151841,8 +151882,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -151863,8 +151904,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -153004,8 +153045,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -153026,8 +153067,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -153440,9 +153481,9 @@
         "call:coding/extension/context.go#Context.Abort"
       ],
       "evidence": [
+        "test:test/extension-conformance/context_abort_signal_test.go#TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
-        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/extension/host/inproc/abort_binding_test.go#TestBindAbortPreservesOtherContextActions"
+        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors"
       ]
     },
     {
@@ -153462,9 +153503,9 @@
         "call:coding/extension/context.go#Context.Abort"
       ],
       "evidence": [
+        "test:test/extension-conformance/context_abort_signal_test.go#TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
-        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/extension/host/inproc/abort_binding_test.go#TestBindAbortPreservesOtherContextActions"
+        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors"
       ]
     },
     {
@@ -153703,6 +153744,7 @@
         "call:coding/extension/context.go#Context.Signal"
       ],
       "evidence": [
+        "test:test/extension-conformance/context_abort_signal_test.go#TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
         "test:test/extension-conformance/context_signal_test.go#TestContextSignalFollowsTheRunBetweenRequestsInEverySDK",
         "test:test/extension-conformance/context_signal_test.go#TestContextSignalIsTheActiveRunsSignalInEverySDK"
       ],
@@ -153725,6 +153767,7 @@
         "call:coding/extension/context.go#Context.Signal"
       ],
       "evidence": [
+        "test:test/extension-conformance/context_abort_signal_test.go#TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
         "test:test/extension-conformance/context_signal_test.go#TestContextSignalFollowsTheRunBetweenRequestsInEverySDK",
         "test:test/extension-conformance/context_signal_test.go#TestContextSignalIsTheActiveRunsSignalInEverySDK"
       ],
@@ -157510,7 +157553,7 @@
       ],
       "evidence": [
         "test:coding/cli/session_extension_actions_direct_test.go#TestSessionExtensionActionsActOnTheLiveSession",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:coding/extension/builtin/codemode/create_extension_test.go#TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
       ]
     },
@@ -157532,7 +157575,7 @@
       ],
       "evidence": [
         "test:coding/cli/session_extension_actions_direct_test.go#TestSessionExtensionActionsActOnTheLiveSession",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:coding/extension/builtin/codemode/create_extension_test.go#TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
       ]
     },
@@ -157727,6 +157770,8 @@
         "call:coding/extension/factoryload/api.go#api.refreshTools"
       ],
       "evidence": [
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolAfterLoadRefreshesTheSession",
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession",
         "test:coding/extension/host/inproc/extension_actions_test.go#TestBindCoreRoutesExtensionActionsToContexts"
       ]
     },
@@ -157747,6 +157792,8 @@
         "call:coding/extension/factoryload/api.go#api.refreshTools"
       ],
       "evidence": [
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolAfterLoadRefreshesTheSession",
+        "test:coding/extension/factoryload/refresh_during_load_test.go#TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession",
         "test:coding/extension/host/inproc/extension_actions_test.go#TestBindCoreRoutesExtensionActionsToContexts"
       ]
     },
@@ -159097,8 +159144,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -159119,8 +159166,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -160360,12 +160407,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetUIContext"
+        "call:coding/extension/host/inproc/ui_prompt.go#uiPromptContext.ClearStatus"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -160382,12 +160429,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetUIContext"
+        "call:coding/extension/host/inproc/ui_prompt.go#uiPromptContext.ClearStatus"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -160713,7 +160760,8 @@
         "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetUIContext"
       ],
       "evidence": [
-        "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults"
+        "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
+        "test:internal/codingagent/ext_ui_noop_theme_test.go#TestNoopUIContextThemeIsTheActiveTheme"
       ]
     },
     {
@@ -160781,7 +160829,7 @@
       "evidence": [
         "test:coding/cli/rpc_ui_test.go#TestRPCUICancelAndTimeout",
         "test:coding/cli/rpc_ui_test.go#TestRPCUIDialogTimeoutIsAJavaScriptNumber",
-        "test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog"
+        "test:coding/cli/rpc_ui_wire_test.go#TestRPCUIWireKeepsEmptyMembersAndOmitsUndefinedOnes"
       ]
     },
     {
@@ -165829,12 +165877,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_resource_loader.go#cliResourceLoader.GetExtensions"
+        "call:coding/cli/child_sessions.go#childResourceLoaderOptions"
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderExtensionsOutliveTheContextOfTheReload"
       ]
     },
     {
@@ -165851,7 +165899,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/discover_extensions.go#loadExtensionPathsIn"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
@@ -165873,7 +165921,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_resource_loader.go#cliRuntimeBuilder.buildResourceLoader"
+        "call:coding/cli/child_sessions.go#childResourceLoaderOptions"
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
@@ -170069,7 +170117,9 @@
         "call:coding/virtual_models.go#ModelRegistry.UnregisterVirtualModel"
       ],
       "evidence": [
-        "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel"
+        "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeGetCommandsListsACommandRegisteredAfterLoad"
       ]
     },
     {
@@ -170089,7 +170139,9 @@
         "call:coding/virtual_models.go#ModelRegistry.UnregisterVirtualModel"
       ],
       "evidence": [
-        "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel"
+        "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeGetCommandsListsACommandRegisteredAfterLoad"
       ]
     },
     {
@@ -170192,7 +170244,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_summarization_auth.go#Session.prepareSummarizationRequest"
+        "call:coding/session_graph_model_runtime.go#GraphModelRuntime.resolveModel"
       ],
       "evidence": [
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteCompactsBetweenTurnsOfARunWhenTheNextRequestIsRoutedToASmallerWindow",
@@ -170414,7 +170466,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -173205,7 +173257,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_branch_runtime.go#Session.NewSession"
+        "call:internal/codingagent/extension_session_graph.go#GraphSessionManager.Call"
       ],
       "evidence": [
         "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
@@ -173225,7 +173277,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_branch_runtime.go#Session.NewSession"
+        "call:internal/codingagent/extension_session_graph.go#GraphSessionManager.Call"
       ],
       "evidence": [
         "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
@@ -174246,7 +174298,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/settings.go#Settings.UnmarshalJSON"
+        "call:internal/codingagent/extension_settings_graph.go#setPackages"
       ],
       "evidence": [
         "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream",
@@ -175705,7 +175757,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/project_trust_warning.go#InteractiveMode.maybeSaveImplicitProjectTrustAfterReload"
+        "call:internal/codingagent/extension_trust_graph.go#GraphProjectTrustStore.Call"
       ],
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
@@ -176040,7 +176092,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_prompt.go#Session.Prompt"
+        "call:coding/cli/child_sessions.go#childSession.Prompt"
       ],
       "evidence": [
         "test:coding/session_prompt_characterization_upstream_test.go#TestUpstreamSessionPromptCharacterization",
@@ -176062,10 +176114,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_prompt.go#Session.SendExtensionUserMessageStaged"
+        "call:coding/cli/child_sessions.go#childSession.Prompt"
       ],
       "evidence": [
-        "reach:coding/session_prompt.go#Session.SendExtensionUserMessageStaged"
+        "reach:coding/cli/child_sessions.go#childSession.Prompt"
       ]
     },
     {
@@ -177694,14 +177746,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/imageprocessing/images.go#ResizedImage.Data"
+        "call:internal/imageprocessing/images.go#ResizeImage"
       ],
       "evidence": [
-        "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageHonoursMaxHeightAndJPEGQualityOnTheirOwn"
+        "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageHonoursMaxHeightAndJPEGQualityOnTheirOwn",
+        "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageUpstream",
+        "test:internal/imageprocessing/resize_zero_side_test.go#TestResizeImageReturnsNoImageWhenAScaledSideRoundsToZero"
       ]
     },
     {
@@ -177846,11 +177900,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/imageprocessing/images.go#ResizeImage"
+        "call:internal/imageprocessing/images.go#ResizeImage"
       ],
       "evidence": [
         "test:internal/imageprocessing/resize_strategy_oracle_test.go#TestResizeImageDimensionStrategyMatchesPi",
@@ -177869,11 +177923,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/imageprocessing/images.go#ResizeImage"
+        "call:internal/imageprocessing/images.go#ResizeImage"
       ],
       "evidence": [
         "test:internal/imageprocessing/resize_strategy_oracle_test.go#TestResizeImageDimensionStrategyMatchesPi",
@@ -181493,7 +181547,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_ui.go#rpcUIContext.Confirm"
+        "call:coding/cli/rpc_ui.go#confirmRequest"
       ],
       "evidence": [
         "test:coding/cli/rpc_closed_unions_test.go#TestRPCClosedUnionConstantsAreTheUpstreamLiterals",
@@ -183475,7 +183529,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_resume.go#summaryPartial.finish"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -183497,7 +183551,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_resume.go#summaryPartial.finish"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -183519,7 +183573,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.nativeDetail"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -183541,7 +183595,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.NativeNode"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -183563,7 +183617,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_resume.go#summaryPartial.finish"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_activity_upstream_test.go#TestSessionActivityOrderingDoesNotChangeContinueMtimeSelection",
@@ -183585,7 +183639,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.nativeDetail"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -183607,7 +183661,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.nativeDetail"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_activity_upstream_test.go#TestSessionActivityTimestampFallbacks",
@@ -183629,7 +183683,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.NativeNode"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -183651,7 +183705,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_resume.go#summaryPartial.finish"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -183673,7 +183727,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.NativeNode"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileOperationsUpstream",
@@ -183889,7 +183943,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/interactive_build.go#cliRuntimeBuilder.interactiveReplacement"
+        "call:coding/cli/child_sessions.go#childSession.State"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -187939,7 +187993,7 @@
       "id": "pkg:coding-agent/.#SettingsCallbacks::property:onSessionShareDestinationChange",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ba9be9956648739e1eb3b0d80d4ca5def9d775c51bf5dcb31d29d7d761438944",
-      "rationale": "Pi 1.3.0+bd3c9b82 settings-selector.ts wires the settings selector item \"share-destination\" (auto, gist, radius) to the onSessionShareDestinationChange callback. PiG leaves that item out under D64 (docs/parity/divergences/D64.md, SCRUTINIZED:approved; durable correspondence 509f924dbd): its /share uploads to the PiG gateway for every destination value, so the item would change nothing, and with no item nothing calls this callback. SettingsManager keeps the setting (GetSessionShareDestination, SetSessionShareDestination) for a settings file shared with Pi. Locked by TestSettingsSelectorOmitsShareDestination.",
+      "rationale": "Pi 1.4.0 settings-selector.ts wires the settings selector item \"share-destination\" (auto, gist, radius) to the onSessionShareDestinationChange callback. PiG leaves that item out under D64 (docs/parity/divergences/D64.md, SCRUTINIZED:approved; durable correspondence 509f924dbd): its /share uploads to the PiG gateway for every destination value, so the item would change nothing, and with no item nothing calls this callback. SettingsManager keeps the setting (GetSessionShareDestination, SetSessionShareDestination) for a settings file shared with Pi. Locked by TestSettingsSelectorOmitsShareDestination.",
       "pigTargets": [
         "internal/codingagent/settings_selector.go#SettingsCallbacks"
       ]
@@ -189055,7 +189109,7 @@
       "id": "pkg:coding-agent/.#SettingsConfig::property:sessionShareDestination",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:157f3b29689fe7b5ef4ccc9687ab8dbc4226d3ef20977b59cd5c28eab0aaf8e5",
-      "rationale": "Pi 1.3.0+bd3c9b82 settings-selector.ts SettingsConfig.sessionShareDestination feeds the current value of the \"share-destination\" item. PiG leaves that item out under D64 (docs/parity/divergences/D64.md, SCRUTINIZED:approved; durable correspondence 509f924dbd), so the selector config carries no destination; the value stays in SettingsManager (GetSessionShareDestination).",
+      "rationale": "Pi 1.4.0 settings-selector.ts SettingsConfig.sessionShareDestination feeds the current value of the \"share-destination\" item. PiG leaves that item out under D64 (docs/parity/divergences/D64.md, SCRUTINIZED:approved; durable correspondence 509f924dbd), so the selector config carries no destination; the value stays in SettingsManager (GetSessionShareDestination).",
       "pigTargets": [
         "internal/codingagent/settings_selector.go#SettingsConfig"
       ]
@@ -189414,14 +189468,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/settings.go#SettingsManager.Flush"
+        "call:internal/codingagent/settings.go#SettingsManager.Flush"
       ],
       "evidence": [
-        "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream"
+        "test:coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream",
+        "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream",
+        "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -189435,14 +189491,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/settings.go#SettingsManager.Flush"
+        "call:internal/codingagent/settings.go#SettingsManager.Flush"
       ],
       "evidence": [
-        "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream"
+        "test:coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream",
+        "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream",
+        "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -192906,7 +192964,7 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:internal/codingagent/interactive_settings_json_test.go#TestInteractiveBindsSettingsEncodingOncePerGeneration"
       ]
     },
@@ -192928,7 +192986,7 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:internal/codingagent/interactive_settings_json_test.go#TestInteractiveBindsSettingsEncodingOncePerGeneration"
       ]
     },
@@ -193167,7 +193225,7 @@
       "evidence": [
         "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi",
         "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
-        "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+        "test:coding/cli/session_state_watch_test.go#TestPrintModeReportsSessionStateChangesToTheExtensionHost"
       ]
     },
     {
@@ -193189,7 +193247,7 @@
       "evidence": [
         "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi",
         "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
-        "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+        "test:coding/cli/session_state_watch_test.go#TestPrintModeReportsSessionStateChangesToTheExtensionHost"
       ]
     },
     {
@@ -195110,7 +195168,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/settings.go#NewSettingsManager"
+        "call:internal/codingagent/extension_settings_graph.go#NewGraphSettingsManager"
       ],
       "evidence": [
         "test:internal/codingagent/settings_create_options_test.go#TestSettingsManagerCreateOptionsProjectTrust",
@@ -195132,7 +195190,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/settings.go#NewSettingsManagerWithOptions"
+        "call:internal/codingagent/settings.go#NewSettingsManagerFromStorage"
       ],
       "evidence": [
         "test:internal/codingagent/settings_create_options_test.go#TestSettingsManagerCreateOptionsProjectTrust",
@@ -196359,8 +196417,8 @@
       ],
       "evidence": [
         "test:tui/message_components_gaps_test.go#TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -196381,8 +196439,8 @@
       ],
       "evidence": [
         "test:tui/message_components_gaps_test.go#TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -196681,7 +196739,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/extension_host_info.go#SlashCommandCatalog.Commands"
+        "call:coding/session_extension_loader_host.go#Session.bindLoaderExtensionHost"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -196703,7 +196761,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/extension_host_info.go#SlashCommandCatalog.Commands"
+        "call:coding/session_extension_loader_host.go#Session.bindLoaderExtensionHost"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -196725,7 +196783,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/extension_host_info.go#SlashCommandCatalog.Commands"
+        "call:coding/session_extension_loader_host.go#Session.bindLoaderExtensionHost"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -196747,7 +196805,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/extension_host_info.go#SlashCommandCatalog.Commands"
+        "call:coding/session_extension_loader_host.go#Session.bindLoaderExtensionHost"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -197554,9 +197612,9 @@
         "call:tui/theme.go#NewTheme"
       ],
       "evidence": [
+        "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
         "test:coding/resource_loader_extend_gaps_test.go#TestThemesOverrideSourceInfoKeepsExistingAndStampsSyntheticPaths",
-        "test:coding/resource_loader_extend_test.go#TestDefaultResourceLoaderThemesPreferProjectOverUser",
-        "test:coding/resource_loader_extend_test.go#TestExtendResourcesKeepsPackageMetadata"
+        "test:coding/resource_loader_extend_test.go#TestDefaultResourceLoaderThemesPreferProjectOverUser"
       ]
     },
     {
@@ -199242,7 +199300,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/subagent_trust_upstream_test.go#TestSubagentProjectTrustUpstream",
         "test:coding/mcpext/resources_oracle_test.go#TestMcpResourceToolsMatchPi",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers"
+        "test:test/extension-conformance/cancel_reason_test.go#TestCancelReasonReachesEveryNativeSDK"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199260,7 +199318,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
@@ -199353,7 +199411,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/subagent_trust_upstream_test.go#TestSubagentProjectTrustUpstream",
         "test:coding/mcpext/resources_oracle_test.go#TestMcpResourceToolsMatchPi",
-        "test:test/extension-conformance/conformance_test.go#TestToolDetailsKeepMemberOrderAcrossSDKs"
+        "test:test/extension-conformance/cancel_reason_test.go#TestCancelReasonReachesEveryNativeSDK"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199376,7 +199434,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/subagent_trust_upstream_test.go#TestSubagentProjectTrustUpstream",
         "test:coding/mcpext/resources_oracle_test.go#TestMcpResourceToolsMatchPi",
-        "test:test/extension-conformance/conformance_test.go#TestToolDetailsKeepMemberOrderAcrossSDKs"
+        "test:test/extension-conformance/cancel_reason_test.go#TestCancelReasonReachesEveryNativeSDK"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199394,7 +199452,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:coding/builtin_tool_definitions_oracle_test.go#TestSessionRegistersBuiltInToolDefinitionsAsPiDoes",
@@ -199482,7 +199540,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
@@ -199504,7 +199562,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
@@ -199548,7 +199606,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:coding/extension/host/subprocess/tool_dispatch_wire_test.go#TestPrepareArgumentsRunsInTheExtension",
@@ -202147,9 +202205,9 @@
         "call:tui/tree_select.go#TreeSelectorComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -202169,9 +202227,9 @@
         "call:tui/tree_select.go#TreeSelectorComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -203713,7 +203771,7 @@
       "evidence": [
         "test:tui/user_message_upstream_test.go#TestUpstreamUserMessageInvalidation",
         "test:tui/tui_surface_test.go#TestTuiSurfaceSendsAUserMessagesImages",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -203735,7 +203793,7 @@
       "evidence": [
         "test:tui/user_message_upstream_test.go#TestUpstreamUserMessageInvalidation",
         "test:tui/tui_surface_test.go#TestTuiSurfaceSendsAUserMessagesImages",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -204677,16 +204735,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
+        "call:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
       ],
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
-        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestWithFileMutationQueueReturnsTheResultAndReleasesOnFailure",
-        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueReturnsResultsAndReleasesOnFailure"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
+        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -204700,16 +204758,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
+        "call:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
       ],
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
-        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestWithFileMutationQueueReturnsTheResultAndReleasesOnFailure",
-        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueReturnsResultsAndReleasesOnFailure"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
+        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -226060,211 +226118,211 @@
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d6d7313d31eb2cebe866bf01e21f6561422161240191cdf7de9aba1202bdcee9",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. The class implements Pi's Storage interface over IndexedDB; the Go Storage contract is implemented by durable/storage/memory.go, jsonl, sqlite and the Cloudflare SQLite driver; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. The class implements Pi's Storage interface over IndexedDB; the Go Storage contract is implemented by durable/storage/memory.go, jsonl, sqlite and the Cloudflare SQLite driver; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:close",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:213d94733ac6bd5066f3c3b15f75aad7969587c993bdc6f33ce76ce8f2c65772",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:close::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0fc4c7e097a3243f969510a69e35ecdf4b52b1a581fc88959f2bf9fcdf0e9fd6",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:42823311b8d520cf17d17271f69ac143bcb5e035e0582ff457db3c66821702de",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. commit is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. commit is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:83dc443e93f49671e3735a44ed1d239724c3780c3278164074cbca5e0f7fd7b7",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. commit is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. commit is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:776e7c4fce7dce538f8a66f255fb514dbe27851333b16557b43dd185bd77667e",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c57dad45f9720daa945c148c855590e3f016a2ace5d65dcd5e5091e59750a78b",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:document",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c5f9658e4951abedfd6ed8bb4e3f5fdf1ee790d90aaa0d33d485f0f9dc98ad22",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:document::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:a0b624f6294ef31f08c528e7114aeac81599c53637380693782f39d2f56d6c11",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:5e206af481213cf3df6dc19321fb0ba14f26046c80a8a83681ab26e3f924f63a",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0b4d63eae08cb0d71be9818db74bac13e2e7c1cc0a48414488196934f4169c9b",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:1",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ba18ba5287b9f377c4a7c7237784a974d1bf82689d8d91ab117b5145d9afa501",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:af6df4a2c2848ea5e36e2dc991c7663ff3b3e5a7ee87dd1b5ecdb04fd49038e5",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:1b2fef09bc1a3de2f9c62fa3f92ecde759878bd0dc5c5fbad489d09047570e26",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:8439d8bfb4af870b3391be8cf8e43c2d7282cdff6eda5d595efc568ab8d932eb",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b63a79b2367e60d38767969bd2bfa6f76f393f1a4f794643d8bd706c72fe2ea5",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:de56cbba9c4dd497f2e821aadae610e208a8b1597d22d8f17196f167c6e0d151",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6fd62caa1e26abc517caaf4a0b8f513fdc906c3fd48f56019962d8876f9a0cb8",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:00c85136cc9372b9d5258d44c612d5e7ec444383a72bced09ddcdc191b5c9cc1",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:fe2fab4b855eb0cd51f66f24b038a2d8e82327ff03778359820965bb750cfb88",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:1b5cef48a8d490ed248e40fc48d47d182622a22a9d83cc4929b8a6f0189214d8",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b1331577616ff53934b819d024d9e5a3b4e792f3573f7078c3075a29d09884c9",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d639e7e2c4392b85af035c881198ea209ba469e9f8fad844f8dcd9498c61cb86",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:dd53c0cbe8a3fe5a6d7569ee9fc9dce971fb95607ba520a4eebdcfee66ef6831",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:85a803dfd0accce520f3aa10f7078ac48356fe4b3933134693d82f4e341bb1fa",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:a00bb1538eae98af57b1abf6fef5fef38a5a3c5d74c0ffa25f5cc8799bae262f",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:7f89609b1fa4814501156e4ecbf2e5e27571ee0779d3def871c3bcbcdf773bf6",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c599f81352cd06a6497881eb7299df14b7e83ac175c57cb90fc74b4ef7bf990e",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e25756f187b0b85dac665be77d56927cd587f1db6e171a93ee35962c3374c4fb",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:8c42348226d2bfa44ea73ef18e68d88fbc0755bb44d2bc828b40d926a45917b7",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f88cc011560c22a92a962865ec5ca5066a432d98924c249e78a3832f75d5f690",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:62370d5266007297868f66f05f7ca414eae772ae00ff9253af31c1f6d49bcbeb",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:task",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b88f2957d612b3485979ba395d9e92dc67bbdefb4bda475454a31a80fec54291",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:task::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e4de47192a104aa8e4bdd065c073314f095650de40d7f9896bc3e67aeff66c7d",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorageOptions",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:81b8be63847b81014eb2290dd1322101ea0093ce89c3525bcc12ffbc8d9cb645",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.3.0+bd3c9b82) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. The options type carries one field, indexedDB?: IDBFactory (indexeddb.ts:137-139), the browser factory the storage opens its database through; Go has no IDBFactory to pass. PORT_MAP and upstream-sync v1.3.0+bd3c9b82 record the file designed out for the same reason."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. The options type carries one field, indexedDB?: IDBFactory (indexeddb.ts:137-139), the browser factory the storage opens its database through; Go has no IDBFactory to pass. PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason."
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorage",
@@ -229965,7 +230023,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -229986,7 +230046,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -230000,13 +230062,14 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:durable/storage/sqlite/migrations.go#CurrentSqliteSchemaVersion"
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
       ],
       "evidence": [
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ]
     },
@@ -230027,7 +230090,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
       ]
     },
     {
@@ -241611,7 +241676,7 @@
       "id": "pkg:mcp/.#ListToolsResult::property:_meta",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:14517786ae9846499cf051b7eea5b021d41397e4489753e1f3a088e5fd374f68",
-      "rationale": "ListToolsResult (packages/mcp/src/protocol/types.ts:87) is a type-only export of Pi 1.3.0+bd3c9b82: grep of packages/*/src finds only the declaration and the index re-export (mcp/src/index.ts:45), no Pi code produces or consumes it, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage. Go mcp.ListToolsResult (mcp/types.go:207) carries the same three members and TestListToolsResultKeepsEveryToolMember round-trips them, but no non-test Go code reads the type, because Pi has no reader to port. Designed out under reason class a (no Pi reader, proven by the probe above). The design-out audit proposed a rebind; autobind P1(b) L5 refuses it, since a rebind needs a production reader of the member that neither implementation has. It becomes a port the day Pi reads the type (as listResourcesPage does for ListResourcesResult).",
+      "rationale": "ListToolsResult (packages/mcp/src/protocol/types.ts:87) is a type-only export of Pi 1.4.0: grep of packages/*/src finds only the declaration and the index re-export (mcp/src/index.ts:45), no Pi code produces or consumes it, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage. Go mcp.ListToolsResult (mcp/types.go:207) carries the same three members and TestListToolsResultKeepsEveryToolMember round-trips them, but no non-test Go code reads the type, because Pi has no reader to port. Designed out under reason class a (no Pi reader, proven by the probe above). The design-out audit proposed a rebind; autobind P1(b) L5 refuses it, since a rebind needs a production reader of the member that neither implementation has. It becomes a port the day Pi reads the type (as listResourcesPage does for ListResourcesResult).",
       "pigTargets": [
         "mcp/types.go#ListToolsResult.Meta"
       ]
@@ -241620,7 +241685,7 @@
       "id": "pkg:mcp/.#ListToolsResult::property:nextCursor",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:bed2bcfe640948d6e05d8bb4fc546c4182cf7198bcfe4e36c29ead5f00488f6b",
-      "rationale": "ListToolsResult (packages/mcp/src/protocol/types.ts:87) is a type-only export of Pi 1.3.0+bd3c9b82: grep of packages/*/src finds only the declaration and the index re-export (mcp/src/index.ts:45), no Pi code produces or consumes it, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage. Go mcp.ListToolsResult (mcp/types.go:207) carries the same three members and TestListToolsResultKeepsEveryToolMember round-trips them, but no non-test Go code reads the type, because Pi has no reader to port. Designed out under reason class a (no Pi reader, proven by the probe above). The design-out audit proposed a rebind; autobind P1(b) L5 refuses it, since a rebind needs a production reader of the member that neither implementation has. It becomes a port the day Pi reads the type (as listResourcesPage does for ListResourcesResult).",
+      "rationale": "ListToolsResult (packages/mcp/src/protocol/types.ts:87) is a type-only export of Pi 1.4.0: grep of packages/*/src finds only the declaration and the index re-export (mcp/src/index.ts:45), no Pi code produces or consumes it, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage. Go mcp.ListToolsResult (mcp/types.go:207) carries the same three members and TestListToolsResultKeepsEveryToolMember round-trips them, but no non-test Go code reads the type, because Pi has no reader to port. Designed out under reason class a (no Pi reader, proven by the probe above). The design-out audit proposed a rebind; autobind P1(b) L5 refuses it, since a rebind needs a production reader of the member that neither implementation has. It becomes a port the day Pi reads the type (as listResourcesPage does for ListResourcesResult).",
       "pigTargets": [
         "mcp/types.go#ListToolsResult.NextCursor"
       ]
@@ -241629,7 +241694,7 @@
       "id": "pkg:mcp/.#ListToolsResult::property:tools",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:dfb27eaa65ad762725f24bda67bf99eba40c426f3de7a1aafe228d781d8a0f77",
-      "rationale": "ListToolsResult (packages/mcp/src/protocol/types.ts:87) is a type-only export of Pi 1.3.0+bd3c9b82: grep of packages/*/src finds only the declaration and the index re-export (mcp/src/index.ts:45), no Pi code produces or consumes it, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage. Go mcp.ListToolsResult (mcp/types.go:207) carries the same three members and TestListToolsResultKeepsEveryToolMember round-trips them, but no non-test Go code reads the type, because Pi has no reader to port. Designed out under reason class a (no Pi reader, proven by the probe above). The design-out audit proposed a rebind; autobind P1(b) L5 refuses it, since a rebind needs a production reader of the member that neither implementation has. It becomes a port the day Pi reads the type (as listResourcesPage does for ListResourcesResult).",
+      "rationale": "ListToolsResult (packages/mcp/src/protocol/types.ts:87) is a type-only export of Pi 1.4.0: grep of packages/*/src finds only the declaration and the index re-export (mcp/src/index.ts:45), no Pi code produces or consumes it, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage. Go mcp.ListToolsResult (mcp/types.go:207) carries the same three members and TestListToolsResultKeepsEveryToolMember round-trips them, but no non-test Go code reads the type, because Pi has no reader to port. Designed out under reason class a (no Pi reader, proven by the probe above). The design-out audit proposed a rebind; autobind P1(b) L5 refuses it, since a rebind needs a production reader of the member that neither implementation has. It becomes a port the day Pi reads the type (as listResourcesPage does for ListResourcesResult).",
       "pigTargets": [
         "mcp/types.go#ListToolsResult.Tools"
       ]
@@ -258328,14 +258393,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/cancellable_loader.go#CancellableLoader.Aborted"
+        "call:tui/cancellable_loader.go#CancellableLoader.Aborted"
       ],
       "evidence": [
-        "test:tui/bordered_loader_input_oracle_test.go#TestBorderedLoaderHandleInputMatchesPi"
+        "test:tui/bordered_loader_input_oracle_test.go#TestBorderedLoaderHandleInputMatchesPi",
+        "test:tui/bordered_loader_oracle_test.go#TestBorderedLoaderMatchesPi",
+        "test:tui/bordered_loader_test.go#TestBorderedLoader_HandleInput"
       ]
     },
     {
@@ -258450,8 +258517,8 @@
       ],
       "evidence": [
         "test:tui/loader_ui_test.go#TestLoaderRequestsARenderAfterEveryChangeToItsText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -258472,8 +258539,8 @@
       ],
       "evidence": [
         "test:tui/loader_ui_test.go#TestLoaderRequestsARenderAfterEveryChangeToItsText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -260336,9 +260403,9 @@
         "call:tui/editor.go#Editor.HandleInput"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_parity_test.go#TestEditor_DisableSubmitBlocksEnter",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi"
+        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity"
       ]
     },
     {
@@ -260358,9 +260425,9 @@
         "call:tui/editor.go#Editor.SetFocused"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_oracle_test.go#TestDelegatedEditorHooksMatchPi",
         "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryBuildsTheComponentThatTakesTheEditorsPlace",
-        "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryComponentRendersOnEveryPassAtTheRowsWidth",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenSearchTakesKeysFromEditor"
+        "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryComponentRendersOnEveryPassAtTheRowsWidth"
       ]
     },
     {
@@ -260869,8 +260936,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/ext_ui_editor_snapshot_test.go#TestExtensionEditorSnapshotPreservesObserverAndReplacement",
-        "test:tui/editor_parity_test.go#TestEditor_EnterSubmitsAndClears",
-        "test:tui/editor_parity_test.go#TestEditor_SetTextCallsOnChange"
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
+        "test:tui/editor_parity_test.go#TestEditor_EnterSubmitsAndClears"
       ]
     },
     {
@@ -260954,9 +261021,9 @@
         "call:tui/editor.go#Editor.SetAutocompleteMaxVisible"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges",
-        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor",
-        "test:tui/settings_live_effects_test.go#TestEditorRuntimeSettingsApplyImmediately"
+        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor"
       ]
     },
     {
@@ -260976,9 +261043,9 @@
         "call:tui/editor.go#Editor.SetAutocompleteMaxVisible"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges",
-        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor",
-        "test:tui/settings_live_effects_test.go#TestEditorRuntimeSettingsApplyImmediately"
+        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor"
       ]
     },
     {
@@ -265979,8 +266046,8 @@
       ],
       "evidence": [
         "test:tui/loader_ui_test.go#TestLoaderRequestsARenderAfterEveryChangeToItsText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -266001,8 +266068,8 @@
       ],
       "evidence": [
         "test:tui/loader_ui_test.go#TestLoaderRequestsARenderAfterEveryChangeToItsText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -266474,7 +266541,7 @@
       "evidence": [
         "test:tui/component_members_test.go#TestMarkdownInvalidateForcesTheTransformAndParserToRunAgain",
         "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownRendersOnlyChangedInlineText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -266496,7 +266563,7 @@
       "evidence": [
         "test:tui/component_members_test.go#TestMarkdownInvalidateForcesTheTransformAndParserToRunAgain",
         "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownRendersOnlyChangedInlineText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -267569,7 +267636,7 @@
       "evidence": [
         "test:tui/input_components_gaps_test.go#TestMouseRegionDelegatesRenderAndInvalidate",
         "test:tui/mouse_region_passthrough_test.go#TestMouseRegionRendersAndInvalidatesTheChildUnchanged",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -267591,7 +267658,7 @@
       "evidence": [
         "test:tui/input_components_gaps_test.go#TestMouseRegionDelegatesRenderAndInvalidate",
         "test:tui/mouse_region_passthrough_test.go#TestMouseRegionRendersAndInvalidatesTheChildUnchanged",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -270652,14 +270719,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/scroll_view.go#ScrollView.Clear"
+        "call:tui/scroll_view.go#ScrollView.Clear"
       ],
       "evidence": [
-        "test:tui/library_member_citations_test.go#TestScrollViewClearRejectsClearingTheChild"
+        "test:tui/library_member_citations_test.go#TestScrollViewClearRejectsClearingTheChild",
+        "test:tui/scroll_view_test.go#TestScrollViewMutatorsPanic"
       ]
     },
     {
@@ -270672,14 +270740,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/scroll_view.go#ScrollView.Clear"
+        "call:tui/scroll_view.go#ScrollView.Clear"
       ],
       "evidence": [
-        "test:tui/library_member_citations_test.go#TestScrollViewClearRejectsClearingTheChild"
+        "test:tui/library_member_citations_test.go#TestScrollViewClearRejectsClearingTheChild",
+        "test:tui/scroll_view_test.go#TestScrollViewMutatorsPanic"
       ]
     },
     {
@@ -277408,7 +277477,7 @@
       "id": "pkg:tui/.#TUI::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: TUI::property:invalidate is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TUI::property:invalidate is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/renderer.go#TUI.Invalidate"
       ],
@@ -277418,17 +277487,17 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
-        "reach:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
       "id": "pkg:tui/.#TUI::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: TUI::property:invalidate::call:0 is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TUI::property:invalidate::call:0 is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/renderer.go#TUI.Invalidate"
       ],
@@ -277438,10 +277507,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
-        "reach:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -282614,7 +282683,7 @@
       "id": "pkg:tui/.#ViewportTUI::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: ViewportTUI::property:invalidate is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ViewportTUI::property:invalidate is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/renderer.go#TUI.Invalidate"
       ],
@@ -282624,17 +282693,17 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
-        "reach:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
       "id": "pkg:tui/.#ViewportTUI::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: ViewportTUI::property:invalidate::call:0 is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ViewportTUI::property:invalidate::call:0 is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/renderer.go#TUI.Invalidate"
       ],
@@ -282644,10 +282713,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
-        "reach:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
