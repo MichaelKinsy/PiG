@@ -41,7 +41,9 @@ export default function (pi) {
 var childExtensionEventsWant string
 
 // checkChildExtensionEvents runs the fixture's child_events tool once with the child's resources selected by option and once with a DefaultResourceLoader the extension built, and compares what the probe recorded with Pi's.
-func checkChildExtensionEvents(t *testing.T, ext extension.Extension) {
+//
+// scratch is a directory the caller made before it built its host (the host's own directory, which the host's cleanup leaves for last). The run's files live under it, not in a TempDir of the subtest: a session outlives the extension's dispose of it and the loader's handle, so the extension host a loader started for the probe stays up, with the loader's cwd as its working directory, until the host's Shutdown ends it (TestShutdownWithLiveChildSessionsLeavesNoDescendants). The subtest's TempDir is removed before that Shutdown, and Windows will not remove a directory a process is in.
+func checkChildExtensionEvents(t *testing.T, scratch string, ext extension.Extension) {
 	t.Helper()
 	var want []map[string]any
 	if err := json.Unmarshal([]byte(childExtensionEventsWant), &want); err != nil {
@@ -49,7 +51,10 @@ func checkChildExtensionEvents(t *testing.T, ext extension.Extension) {
 	}
 	for _, via := range []string{"resources", "loader"} {
 		t.Run("extension-events-"+via, func(t *testing.T) {
-			dir := t.TempDir()
+			dir, err := os.MkdirTemp(scratch, "events-"+via+"-")
+			if err != nil {
+				t.Fatal(err)
+			}
 			logPath := filepath.Join(dir, "events.jsonl")
 			probe := filepath.Join(dir, "probe.mjs")
 			quoted, _ := json.Marshal(logPath)

@@ -1635,9 +1635,10 @@ def new_extension() -> pig_sdk.Extension:
     # mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
     def mutation_order_probe(ctx, params):
         def body():
+            # Bytes, as the Go, Rust and Node fixtures write them: text mode turns "\n" into "\r\n" on Windows.
             path = pathlib.Path(params["file"])
-            before = path.read_text() if path.exists() else ""
-            path.write_text(before + params["tag"] + "\n")
+            before = path.read_bytes() if path.exists() else b""
+            path.write_bytes(before + (params["tag"] + "\n").encode())
 
         pig_sdk.with_file_mutation_queue(params["file"], body)
         return {"content": "mutated " + params["tag"]}

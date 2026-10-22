@@ -177,9 +177,9 @@ func TestChildAgentSessionNode(t *testing.T) {
 	}
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {
-			host, _ := newChildSessionHostWith(t, false, nil)
+			host, services := newChildSessionHostWith(t, false, nil)
 			ext := loadChildNode(t, host, isolation)
-			checkChildSession(t, ext)
+			checkChildSession(t, services.CWD(), ext)
 			if got := runChildTool(t, ext, "child_lifecycle", `{}`); !reflect.DeepEqual(got, childSessionWant()["lifecycle"]) {
 				t.Fatalf("lifecycle = %v, want Pi's %v", got, childSessionWant()["lifecycle"])
 			}
