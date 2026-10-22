@@ -169,10 +169,6 @@
   },
   {
     "provider": "opencode",
-    "id": "longcat-2.5-preview-free"
-  },
-  {
-    "provider": "opencode",
     "id": "mimo-v2.6-flash-free"
   },
   {
@@ -186,10 +182,6 @@
   {
     "provider": "opencode",
     "id": "minimax-m3"
-  },
-  {
-    "provider": "opencode",
-    "id": "minimax-m3.1-flash-free"
   },
   {
     "provider": "opencode",
@@ -401,10 +393,6 @@
   },
   {
     "provider": "opencode-go",
-    "id": "longcat-2.5-preview-free"
-  },
-  {
-    "provider": "opencode-go",
     "id": "mimo-v2.5"
   },
   {
@@ -421,7 +409,7 @@
   },
   {
     "provider": "opencode-go",
-    "id": "minimax-m3.1-flash-free"
+    "id": "minimax-m3.1-flash"
   },
   {
     "provider": "opencode-go",
