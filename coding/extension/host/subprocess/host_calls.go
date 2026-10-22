@@ -195,8 +195,21 @@ func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID st
 	h.queueCallDone(me, conn, lanes, callID, call, nil)
 }
 
-// queueCallDone is queueCall that calls done, when it is not nil, once the call ran or started: its effect is written.
+// queueCallDone is queueCall that calls done, when it is not nil, once the call ran or started: its effect is written. The request that made the call learns
+// that it applied (ackHold). A call that can wait for the session or the user (startsAsync) does not hold the acknowledgment of the handler awaiting it: the
+// handler is suspended on it, which is what the acknowledgment reports.
 func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, done func()) {
+	if startsAsync(call.Method) {
+		conn.hostCallApplied(call.ParentRequestID)
+	} else {
+		applied := done
+		done = func() {
+			if applied != nil {
+				applied()
+			}
+			conn.hostCallApplied(call.ParentRequestID)
+		}
+	}
 	if done == nil {
 		done = func() {}
 	}

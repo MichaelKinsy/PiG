@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
@@ -304,3 +305,69 @@ func TestConformance_ConcurrentDialogsAgreeAcrossSDKs(t *testing.T) {
 		})
 	}
 }
+
+// Pi runs the handlers of ui_prompt_start in microtasks, and each handler's synchronous part (its ctx.ui.notify) before the prompting extension continues with the
+// dialog's answer (runner.ts emitUIPromptEvent, withUIPrompt). An extension handler reports its suspension before the host call it makes next, so the host must
+// not take the handler's report as the handler having run until that call has applied: a prompt event whose notification the host applies late (a stalled
+// goroutine, a loaded machine) would otherwise let the answers settle, and the end event's notification record, ahead of it.
+//
+// The host here applies the start event's notification after a stall, longer than the answers take to cross the connection, and the row requires the start to
+// precede everything the dialogs' answers lead to: the commands' reports and the end event.
+func TestConformance_UIPromptStartIsAppliedBeforeTheDialogsAnswerSettles(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	t.Parallel()
+	for _, tc := range append(allHarnessCases(), packedSDKHarnessCases()...) {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			if h.bridge == nil {
+				t.Skip("the in-process runner has no host connection to stall")
+			}
+			h.ui.dialogs = newDialogGate()
+			var stalled sync.Once
+			h.bridge.SetNotifyFunc(func(message, level string) {
+				if strings.HasPrefix(message, "ui_prompt:ui_prompt_start:") {
+					// The fault under test: the host applies this notification late.
+					stalled.Do(func() { time.Sleep(uiPromptApplyStall) })
+				}
+				h.ui.RecordNotify(message, level)
+			})
+			probe := startStackProbe(t, h, "pair")
+			arrived := h.ui.dialogs.openTitles()
+			if len(arrived) != 2 {
+				t.Fatalf("host UI holds %v, want both dialogs", arrived)
+			}
+			earlier, later := arrived[0], arrived[1]
+			h.ui.dialogs.answer(t, later, stackProbeAnswers[later].answer)
+			h.ui.dialogs.answer(t, earlier, stackProbeAnswers[earlier].answer)
+			probe.expectDone()
+			requireOnePrompt(t, h, "A", "B")
+			recorded := h.ui.Recorded()
+			start, firstReport := -1, -1
+			for i, message := range recorded {
+				switch {
+				case start < 0 && strings.HasPrefix(message, "ui_prompt:ui_prompt_start:"):
+					start = i
+				case firstReport < 0 && strings.HasPrefix(message, "stack "):
+					firstReport = i
+				}
+			}
+			if start < 0 || firstReport < 0 || start > firstReport {
+				t.Fatalf("the start event's notification is at %d and the first report of the answers at %d in %q; the start must come first", start, firstReport, recorded)
+			}
+		})
+	}
+}
+
+// uiPromptApplyStall is how long the host holds the start event's notification: far longer than the answers take to settle, so a host that does not wait for the
+// notification lets them settle first.
+const uiPromptApplyStall = 300 * time.Millisecond

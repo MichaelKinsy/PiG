@@ -23,6 +23,12 @@ func WithSuspensionAcknowledgment(ctx context.Context, fn func()) context.Contex
 	return context.WithValue(ctx, ackKey{}, &acknowledgment{fn: fn, suspensionOnly: true})
 }
 
+// Bound reports whether ctx carries an acknowledgment: a request without one has nothing to hold back.
+func Bound(ctx context.Context) bool {
+	ack, _ := ctx.Value(ackKey{}).(*acknowledgment)
+	return ack != nil
+}
+
 // Acknowledge reports that a handler has entered the runtime boundary. Calls
 // after the first are no-ops.
 func Acknowledge(ctx context.Context) {

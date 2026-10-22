@@ -784,6 +784,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if inactivity > 0 || requestReportsSuspension(ctx) {
 		stateCh = make(chan RequestStatePayload, 8)
 	}
+	if invocation.Bound(ctx) {
+		ctx = withAckHold(ctx)
+	}
 	c.stateMu.Lock()
 	c.requestStates[env.ID] = requestStateSink{ch: stateCh, ctx: ctx}
 	c.stateMu.Unlock()
@@ -803,6 +806,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.requestStates, env.ID)
 		delete(c.suspendedRequests, env.ID)
 		c.stateMu.Unlock()
+		if hold := ackHoldOf(ctx); hold != nil {
+			hold.release()
+		}
 		c.hostCallMu.Lock()
 		delete(c.cancelledParent, env.ID)
 		c.hostCallMu.Unlock()
@@ -874,7 +880,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 			applyRequestSuspension(ctx, state)
 			switch state.State {
 			case "blocked":
-				invocation.Acknowledge(ctx)
+				acknowledgeBlocked(ctx)
 			case "completed":
 				invocation.Complete(ctx)
 			}
@@ -1143,12 +1149,21 @@ func (c *Conn) readLoop(ctx context.Context) {
 				}
 				c.provisionalBlocks[env.RequestState.RequestID] = struct{}{}
 				c.stateMu.Unlock()
+				if hold := c.requestAckHold(env.RequestState.RequestID); hold != nil {
+					hold.announce()
+				}
 			case env.RequestState.State == "blocked" || env.RequestState.State == "suspended":
 				c.reportRequestPhase(env.RequestState.RequestID, invocation.Suspended)
 			case env.RequestState.State == "progress":
 				c.stateMu.Lock()
 				delete(c.provisionalBlocks, env.RequestState.RequestID)
 				c.stateMu.Unlock()
+			}
+			if state := env.RequestState.State; state == "progress" || state == "completed" {
+				// The handler went on past the calls its blocked reports announced.
+				if hold := c.requestAckHold(env.RequestState.RequestID); hold != nil {
+					hold.release()
+				}
 			}
 			if env.RequestState.State == "suspended" {
 				// A suspension reports that the calls sent before it are in flight. The host loop delivers it after those calls applied their synchronous parts.
@@ -1415,7 +1430,7 @@ func drainRequestStates(ctx context.Context, stateCh <-chan RequestStatePayload)
 			applyRequestSuspension(ctx, state)
 			switch state.State {
 			case "blocked":
-				invocation.Acknowledge(ctx)
+				acknowledgeBlocked(ctx)
 			case "completed":
 				invocation.Complete(ctx)
 			}
@@ -1452,7 +1467,7 @@ func (c *Conn) deliverRequestState(state RequestStatePayload) {
 		// What the request's goroutine would do with the state, without waking it.
 		switch state.State {
 		case "blocked":
-			invocation.Acknowledge(sink.ctx)
+			acknowledgeBlocked(sink.ctx)
 		case "completed":
 			invocation.Complete(sink.ctx)
 		}
