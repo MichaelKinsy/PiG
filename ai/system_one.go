@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"strings"
 	"time"
@@ -38,6 +39,27 @@ func (a SystemOneImageAsset) MarshalJSON() ([]byte, error) {
 type SystemOneImageAssets struct {
 	Names  []string
 	Assets []SystemOneImageAsset
+}
+
+// All yields the assets in insertion order.
+func (a SystemOneImageAssets) All() iter.Seq2[string, SystemOneImageAsset] {
+	return func(yield func(string, SystemOneImageAsset) bool) {
+		for i, name := range a.Names {
+			if !yield(name, a.Assets[i]) {
+				return
+			}
+		}
+	}
+}
+
+// Get returns the asset with the given name.
+func (a SystemOneImageAssets) Get(name string) (SystemOneImageAsset, bool) {
+	for i, have := range a.Names {
+		if have == name {
+			return a.Assets[i], true
+		}
+	}
+	return SystemOneImageAsset{}, false
 }
 
 func (a SystemOneImageAssets) MarshalJSON() ([]byte, error) {
