@@ -27,7 +27,7 @@ func zoneProbeInstants() []int64 {
 	return out
 }
 
-// TestDateStringMatchesNode compares Date.prototype.toString under Node's ICU with dateStringIn for every generated zone, at irregular instants from 1850 to 2100 and at both sides of every name change in the table. The name is read with loc set to UTC, so no host zone data can reach it. Node switches zone through process.env.TZ.
+// TestDateStringMatchesNode compares Date.prototype.toString under Node's ICU with dateStringIn for every generated zone, at irregular instants from 1850 to 2100 and at both sides of every name change in the table. The name is read with loc set to UTC, so no host zone data can reach it. Node switches zone through process.env.TZ. The table is the qualified Node's (.node-version, 24.22.1; see zoneTimeline): Node 26.12.1 generates the same table and passes, while Node 24.19.0 (tz 2026b: 18188 of 1535551 instants differ, Africa/Casablanca first) and Node 22.19.0 (ICU 77.1: 88029 differ, Africa/Bangui first) do not. CI runs this test on the qualified Node only (automation/make/ci.mk, ci-node-runtime).
 func TestDateStringMatchesNode(t *testing.T) {
 	type probe struct {
 		Zone string  `json:"zone"`
@@ -155,7 +155,7 @@ func truncateLines(s string, n int) string {
 	return strings.Join(lines, "\n")
 }
 
-// TestWinterNamesIgnoreGoZoneData checks the zones whose daylight flag differs between Go's zone data and ICU: Dublin counts winter as daylight time in Go's data, and Morocco's flag is inverted since 2018. The names are the ones Node prints, whatever location the Date is read in.
+// TestWinterNamesIgnoreGoZoneData checks the zones whose daylight flag differs between Go's zone data and ICU: Dublin counts winter as daylight time in Go's data, and Morocco's flag is inverted since 2018. The names are the ones the qualified Node prints (see zoneTimeline for Casablanca's), whatever location the Date is read in.
 func TestWinterNamesIgnoreGoZoneData(t *testing.T) {
 	for _, c := range []struct {
 		zone string
@@ -165,8 +165,8 @@ func TestWinterNamesIgnoreGoZoneData(t *testing.T) {
 		{"Europe/Dublin", time.Date(2001, 12, 14, 0, 0, 0, 0, time.UTC), "Greenwich Mean Time"},
 		{"Europe/Dublin", time.Date(2001, 7, 14, 0, 0, 0, 0, time.UTC), "Irish Standard Time"},
 		{"Europe/Dublin", time.Date(1850, 1, 14, 0, 0, 0, 0, time.UTC), "Greenwich Mean Time"},
-		{"Africa/Casablanca", time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC), "GMT+01:00"},
-		{"Africa/Casablanca", time.Date(2023, 3, 25, 0, 0, 0, 0, time.UTC), "GMT+00:00"},
+		{"Africa/Casablanca", time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC), "Western European Summer Time"},
+		{"Africa/Casablanca", time.Date(2023, 3, 25, 0, 0, 0, 0, time.UTC), "Western European Standard Time"},
 	} {
 		loc, err := time.LoadLocation(c.zone)
 		if err != nil {
