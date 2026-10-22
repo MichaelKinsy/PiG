@@ -48,19 +48,48 @@ var errAnthropicRequestAborted = errors.New("Request was aborted")
 // anthropicSSEState is SseDecoderState.
 type anthropicSSEState struct {
 	event string
-	data  []string
-	raw   []string
+	// data and raw hold the lines of the record being read; a flush resets them for the next record, so a record costs no allocation of its own for them.
+	data []string
+	raw  []string
+	// rawSlab is the storage of the Raw lines of flushed events: each event owns a capped slice of it, and a full slab is replaced rather than grown, so what an event holds is never overwritten.
+	rawSlab []string
 }
+
+// anthropicRawSlabLines is the number of Raw lines one slab holds.
+const anthropicRawSlabLines = 64
 
 // flush is flushSseEvent.
 func (state *anthropicSSEState) flush() (serverSentEvent, bool) {
 	if state.event == "" && len(state.data) == 0 {
 		return serverSentEvent{}, false
 	}
-	// state.raw is cleared below, so the event owns it; copying it would only allocate.
-	event := serverSentEvent{Event: state.event, Data: strings.Join(state.data, "\n"), Raw: state.raw}
-	state.event, state.data, state.raw = "", nil, nil
+	var data string
+	if len(state.data) == 1 {
+		data = state.data[0]
+	} else {
+		data = strings.Join(state.data, "\n")
+	}
+	event := serverSentEvent{Event: state.event, Data: data, Raw: state.ownedRaw()}
+	state.event = ""
+	clear(state.data)
+	state.data = state.data[:0]
+	clear(state.raw)
+	state.raw = state.raw[:0]
 	return event, true
+}
+
+// ownedRaw copies the record's raw lines into the slab; a record of no lines has nil Raw, as one that was never appended to.
+func (state *anthropicSSEState) ownedRaw() []string {
+	n := len(state.raw)
+	if n == 0 {
+		return nil
+	}
+	if cap(state.rawSlab)-len(state.rawSlab) < n {
+		state.rawSlab = make([]string, 0, max(anthropicRawSlabLines, n))
+	}
+	start := len(state.rawSlab)
+	state.rawSlab = append(state.rawSlab, state.raw...)
+	return state.rawSlab[start : start+n : start+n]
 }
 
 // decode is decodeSseLine.
@@ -181,7 +210,9 @@ type anthropicSSEReader struct {
 	// buffer is the decoded text after the last line consumed; its first scanned bytes hold no line end that can be consumed yet.
 	buffer  []byte
 	scanned int
+	// queue holds the events a chunk completed; head is the first one next has not yielded.
 	queue   []serverSentEvent
+	head    int
 	readErr error
 	ended   bool
 	closed  bool
@@ -252,10 +283,14 @@ func (reader *anthropicSSEReader) drainLines(final bool) {
 //perf:hot
 func (reader *anthropicSSEReader) next() (serverSentEvent, bool, error) {
 	for {
-		if len(reader.queue) > 0 {
-			event := reader.queue[0]
-			reader.queue[0] = serverSentEvent{}
-			reader.queue = reader.queue[1:]
+		if reader.head < len(reader.queue) {
+			event := reader.queue[reader.head]
+			reader.queue[reader.head] = serverSentEvent{}
+			reader.head++
+			if reader.head == len(reader.queue) {
+				// The queue is drained: the next chunk's events fill the same array from its start.
+				reader.queue, reader.head = reader.queue[:0], 0
+			}
 			reader.suspend() // `yield event` awaits its operand (anthropic-messages.ts:437,449,457,463).
 			return event, true, nil
 		}
@@ -316,6 +351,8 @@ type anthropicEventReader struct {
 	sawMessageStart bool
 	sawMessageEnd   bool
 	finished        bool
+	// validation is the buffer json.Valid reads each record from.
+	validation []byte
 }
 
 func newAnthropicEventReader(ctx context.Context, source openAIStreamChunkReader, suspend func()) *anthropicEventReader {
@@ -366,7 +403,7 @@ func (reader *anthropicEventReader) generate() (anthropicStreamEvent, bool, erro
 		if !anthropicMessageEvents[sse.Event] {
 			continue
 		}
-		text, valid, err := anthropicParseJSON(sse.Data)
+		text, valid, err := anthropicParseJSONWith(sse.Data, &reader.validation)
 		var eventType string
 		if err == nil {
 			eventType, err = anthropicRecordType(text)
@@ -429,7 +466,12 @@ func (err *anthropicSSEParseError) Unwrap() error { return err.cause }
 
 // anthropicParseJSON is parseJsonWithRepair (packages/ai/src/utils/json-parse.ts:85-95): it returns the text that parses, repaired when the original does not, or V8's JSON.parse message for the text that was last tried. valid reports that encoding/json also accepts the returned text (json.Valid); JSON.parse accepts text it rejects, such as nesting deeper than its limit.
 func anthropicParseJSON(data string) (text string, valid bool, err error) {
-	if json.Valid([]byte(data)) {
+	return anthropicParseJSONWith(data, nil)
+}
+
+// anthropicParseJSONWith is anthropicParseJSON validating through *scratch, a byte buffer the caller reuses between calls, so the valid text that nearly every record is costs no copy of its own. A nil scratch allocates.
+func anthropicParseJSONWith(data string, scratch *[]byte) (text string, valid bool, err error) {
+	if anthropicValidJSON(data, scratch) {
 		return data, true, nil
 	}
 	err = jsonparse.Validate([]byte(data))
@@ -440,13 +482,26 @@ func anthropicParseJSON(data string) (text string, valid bool, err error) {
 	if repaired == data {
 		return "", false, err
 	}
-	if json.Valid([]byte(repaired)) {
+	if anthropicValidJSON(repaired, scratch) {
 		return repaired, true, nil
 	}
 	if err := jsonparse.Validate([]byte(repaired)); err != nil {
 		return "", false, err
 	}
 	return repaired, false, nil
+}
+
+// anthropicValidJSON is json.Valid of text, read from *scratch (a nil scratch copies text) so nothing is retained beyond the call.
+func anthropicValidJSON(text string, scratch *[]byte) bool {
+	if scratch == nil {
+		return json.Valid([]byte(text))
+	}
+	*scratch = append((*scratch)[:0], text...)
+	valid := json.Valid(*scratch)
+	if cap(*scratch) > anthropicLineBufferReuse {
+		*scratch = nil
+	}
+	return valid
 }
 
 // anthropicEventType is `event.type` of a parsed, non-null event when it is a string, and "" otherwise (anthropic-messages.ts:551-556). It walks the top-level members of the already validated JSON without allocating for an ordinary event: the member name is matched exactly and the last duplicate wins, as in JSON.parse (encoding/json would also match a case variant such as "TYPE").

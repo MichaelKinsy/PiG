@@ -495,6 +495,19 @@ func (p *chunkScanner) str() (string, bool) {
 }
 
 // escaped finishes a string whose first escape was found after start. The text is decoded into a stack buffer and copied once into the string.
+// ownedStr is str for a string the caller keeps: it never aliases p.s. A string without escapes is a copy; one with escapes, which str builds fresh, is returned as built. Every escape sequence decodes to fewer bytes than it spans, so the result is as long as the text between the quotes exactly when it has none.
+func (p *chunkScanner) ownedStr() (string, bool) {
+	open := p.i
+	text, ok := p.str()
+	if !ok {
+		return "", false
+	}
+	if len(text) == p.i-open-2 {
+		return strings.Clone(text), true
+	}
+	return text, true
+}
+
 func (p *chunkScanner) escaped(start int) (string, bool) {
 	var stack [256]byte
 	b := stack[:0]

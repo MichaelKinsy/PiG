@@ -1,10 +1,8 @@
 package ai
 
-import "strings"
-
 // decodeAnthropicDeltaFast decodes the common content_block_delta record, an object with a type, an integer index and a
 // delta holding its type and one non-empty string member, without reflection. It answers false for anything else (an
-// unknown or case-folded member name, a member of another type, an empty or absent text member that decodeAnthropicDeltaEvent
+// unknown or case-folded member name, a member of another type, an empty or absent text member that decodeAnthropicDeltaEventReflect
 // reads a second time, a duplicate member, malformed JSON), and the caller then runs decodeAnthropicDeltaEventReflect, so the two agree wherever this answers true.
 func decodeAnthropicDeltaFast(data string) (anthEventContentBlockDelta, bool) {
 	var ev anthEventContentBlockDelta
@@ -117,11 +115,11 @@ func (p *chunkScanner) anthropicDelta(ev *anthEventContentBlockDelta) bool {
 				return false
 			}
 			seen[slot] = true
-			text, ok := p.str()
+			text, ok := p.ownedStr()
 			if !ok {
 				return false
 			}
-			*target = strings.Clone(text)
+			*target = text
 		} else if !p.scalar() {
 			return false
 		}
