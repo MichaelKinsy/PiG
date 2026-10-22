@@ -17,7 +17,7 @@ func Code(errno syscall.Errno) (string, bool) {
 // Errno returns the errno Node reports (error.errno) for code: libuv's own
 // value on Windows.
 func Errno(code string) (int, bool) {
-	entry, ok := codes[code]
+	entry, ok := codes()[code]
 	return entry.libuvErrno, ok
 }
 

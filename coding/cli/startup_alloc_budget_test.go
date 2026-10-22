@@ -46,6 +46,12 @@ import (
 // literals that the engine copy doubled. The table is now package-level data and the TLS config is static: init allocations 4,031 against
 // 4,001 at 0.5.1 (4,123 before), --version 726,896-732,472 bytes / 3,801-3,808 objects in three runs, so the linux object budget is 3,808
 // plus under 2%. The Windows budgets keep their values until the runner measures them.
+//
+// The Windows runner then read 827,800 bytes / 5,744 objects (every run of ten, 827,800-828,280), over its 824,000, on main and on the train alike.
+// internal/nodeerrno built libuv's code table and the errno names at every start, 9,480 bytes in 16 allocations
+// (GODEBUG=inittrace=1, Windows build under Wine) of a table only an error path reads. They are built on first use: init 616,296 -> 607,112
+// bytes, pig --version 756.5-761.9 KB -> 747.8-753.2 KB under Wine, Linux 717,952-723,688 bytes / 3,794-3,802 objects in two runs, so the
+// linux byte budget is 723,688 plus under 2%.
 type startupAllocBudget struct{ versionBytes, versionObjects, promptBytes, promptObjects uint64 }
 
 func startupAllocBudgetFor(goos string) startupAllocBudget {
@@ -55,7 +61,7 @@ func startupAllocBudgetFor(goos string) startupAllocBudget {
 	if goos == "darwin" {
 		return startupAllocBudget{versionBytes: 760_000, versionObjects: 4_240, promptBytes: 2_970_000, promptObjects: 20_200}
 	}
-	return startupAllocBudget{versionBytes: 741_000, versionObjects: 3_880, promptBytes: 2_589_000, promptObjects: 16_820}
+	return startupAllocBudget{versionBytes: 738_000, versionObjects: 3_880, promptBytes: 2_589_000, promptObjects: 16_820}
 }
 
 func TestStartupAllocationBudget(t *testing.T) {

@@ -16,7 +16,7 @@ func Code(errno syscall.Errno) (string, bool) {
 // POSIX errno, which libuv passes through, when the platform defines one for
 // the code, and libuv's own value otherwise.
 func Errno(code string) (int, bool) {
-	entry, ok := codes[code]
+	entry, ok := codes()[code]
 	if !ok {
 		return 0, false
 	}
