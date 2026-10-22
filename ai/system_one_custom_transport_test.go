@@ -33,9 +33,6 @@ func TestSystemOneTransportAndWireRequestDriveClassifySystemOne(t *testing.T) {
 		DetectCompat: func(ClassifierModel) ResolvedSystemOneCompat {
 			return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputAssets}
 		},
-		DetectCompat: func(ClassifierModel) ResolvedSystemOneCompat {
-			return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputAssets}
-		},
 		URL: func(ClassifierModel) string { return "https://example.test/v1/classify" },
 		Payload: func(_ ClassifierModel, wire SystemOneWireRequest) map[string]any {
 			seen = append(seen, wire)
