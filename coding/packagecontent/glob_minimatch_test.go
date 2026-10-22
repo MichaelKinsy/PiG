@@ -53,7 +53,7 @@ var globOracleCases = []struct{ tree, patterns []string }{
 	{[]string{"y/x/x", "y/t/x/a", "y/t/x/t", "y/t/a/y", "x"}, []string{"?/**/../[x]/x"}},
 }
 
-// expandPackageGlob lists what Node's globSync lists, as Pi's expandPackageGlob (package-manager.ts:294-303) resolves, filters and sorts it, when Node has fs.globSync. Node ignores case for a segment with magic on Windows and macOS only, so this checks the rule of the platform the test runs on.
+// expandPackageGlob lists what Node's globSync lists, as Pi's expandPackageGlob (package-manager.ts:294-303) resolves, filters and sorts it, when Node has fs.globSync. Node ignores case for a segment with magic on Windows and macOS only, so this checks the rule of the platform the test runs on. The walk is the qualified Node's (.node-version): Node 24.22 and 26.12 agree on every pattern here, while Node 22.19 and 24.19 differ on six ("**/x/**", "a/**/../*.md", "Sub/**/../*", "**/x/**/y", "./cyc/**/../?", "**/!(*.md)"), where their loop returns at an entry whose path was walked already and a globstar queues the segment after it below a symlink, and Node 22.19's older minimatch differs on extglobs. CI runs this test on the qualified Node only (automation/make/ci.mk, ci-node-runtime).
 func TestExpandPackageGlobMatchesNodeGlobSync(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {

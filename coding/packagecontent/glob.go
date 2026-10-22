@@ -2,8 +2,12 @@ package packagecontent
 
 // Ports packages/coding-agent/src/core/package-manager.ts
 // expandPackageGlob lists the matches of Node's globSync, walked as the sync
-// walk of lib/internal/fs/glob.js: wildcard directory steps do not follow
-// symlinks, while literal steps can select symlinked trees.
+// walk of lib/internal/fs/glob.js as of the qualified Node (.node-version, 24.22.1;
+// Node 26.12.1 walks the same): wildcard directory steps do not follow
+// symlinks, while literal steps can select symlinked trees. Node 24.22 stopped
+// ending a listing at an entry whose path the walk already holds (24.19 and 22.19
+// returned from the loop) and stopped a globstar from queueing the next segment
+// below a symlink.
 
 import (
 	"os"
@@ -228,7 +232,7 @@ func (w *packageGlobWalk) addSubpattern(path string, pattern packageGlobPattern)
 	w.subpatterns = append(w.subpatterns, packageGlobQueued{path, []packageGlobPattern{pattern}})
 }
 
-// addSubpatterns is Glob#addSubpatterns for path and pattern. Without followSymlinks, Node treats a symlink that the walk reaches as a directory and lists it, and never adds a globstar's own index for a symlink it lists.
+// addSubpatterns is Glob#addSubpatterns for path and pattern. Without followSymlinks, Node treats a symlink that the walk reaches as a directory and lists it, and never adds a globstar's own index or the segment after it for a symlink it lists.
 func (w *packageGlobWalk) addSubpatterns(path string, pattern packageGlobPattern) {
 	if w.cacheAdd(path, pattern) {
 		return
@@ -278,7 +282,6 @@ func (w *packageGlobWalk) addSubpatterns(path string, pattern packageGlobPattern
 		child.name = only.literal
 		children = []*globDirent{child}
 	} else {
-		// The walk stops listing a directory at the first entry that it already walked for the same index, so it lists in Node's order.
 		children = w.readdir(fullpath)
 	}
 	for _, entry := range children {
@@ -288,9 +291,6 @@ func (w *packageGlobWalk) addSubpatterns(path string, pattern packageGlobPattern
 		isSymlink := entry.mode&os.ModeSymlink != 0
 		var subPatterns, symlinks []int
 		for _, index := range pattern.indexes {
-			if w.isSeen(entryPath, pattern, index) || w.isSeen(entryPath, pattern, index+1) {
-				return
-			}
 			next := index + 1
 			fromSymlink := slices.Contains(pattern.symlinks, index)
 			if pattern.isGlobstar(index) {
@@ -313,7 +313,7 @@ func (w *packageGlobWalk) addSubpatterns(path string, pattern packageGlobPattern
 				} else if nextMatches && entryIsDirectory {
 					subPatterns = addGlobIndex(subPatterns, index+2)
 				}
-				if (nextMatches || pattern.literalIs(0, ".")) && (entryIsDirectory || isSymlink) && !fromSymlink {
+				if (nextMatches || pattern.literalIs(0, ".")) && entryIsDirectory && !fromSymlink {
 					subPatterns = addGlobIndex(subPatterns, next)
 				}
 				if isSymlink {
