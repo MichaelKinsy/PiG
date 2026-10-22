@@ -3604,7 +3604,6 @@
         "ai/mistral_url_oracle_test.go::TestMistralChatCompletionsURLMatchesPiOnSeededProbes",
         "ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi",
         "internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode",
-        "internal/nodeurl/special_url_test.go::TestSpecialHostRejectsAnEmptyPunycodeLabel",
         "internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL"
       ]
     },
@@ -8315,6 +8314,34 @@
         "tui/extension_selector_test.go::TestExtensionSelectorPreviewDrawsAfterTheOptionRows",
         "tui/extension_selector_test.go::TestExtensionSelectorPreviewDropsWhenTheBodyWouldSqueeze",
         "tui/extension_selector_test.go::TestExtensionSelectorWithoutPreviewKeepsFullWidthRows"
+      ]
+    },
+    {
+      "id": "BF-4636a28",
+      "title": "URL parsing follows Node 24.22 and later",
+      "symptom": "URL parsing follows Node 24.22 and later.",
+      "rootCause": "Node 24.22 and 26.12 carry ada 4. Its domain-to-ASCII only lowercases an ASCII domain, so \"xn--\", \"xn--a\" and \"xn--a.b\" are valid hosts and an \"xn--\" label of an ASCII host is never decoded or validated; a domain with a non-ASCII character still runs UTS #46, with ada's decoder (a payload that starts with \"-\" decodes, a label decoding to \"xn--\" is rejected). Its to_unicode never fails: fileURLToPath on Windows keeps a label it cannot decode and validate. And a file base keeps its first path segment as a drive letter only when the segment is exactly a letter and \":\", so file:///C:ab/c and file:///u:p@[::1]:9000 resolve \"/x\" to file:///x.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "URL parsing follows Node 24.22 and later. Pi runs on that Node, whose URL parser only lowercases an ASCII host: `https://xn--.example` and `ftp:xn--mailto:` are valid, `file://xn--a.b/x` is a UNC path on Windows, and a provider or Radius base such as `file:///C:ab/c` or `file:///u:p@[::1]:9000` no longer keeps its first path segment as a drive letter when a path is resolved against it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4636a28415",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "internal/nodeurl/file_base_oracle_test.go::TestResolveOnFileBaseDriveLettersMatchesNode",
+        "internal/nodeurl/file_base_oracle_test.go::TestResolveOnFileBaseDriveLettersNodeSamples",
+        "internal/nodeurl/fileurl_test.go::TestDomainToUnicodeMatchesNode",
+        "internal/nodeurl/fileurl_test.go::TestFileURLToPathNodeSamples",
+        "internal/nodeurl/httpurl_test.go::TestParseHTTPURLMatchesNodeURL",
+        "internal/nodeurl/random_compose_oracle_test.go::TestParseMatchesNodeURLOnPunycodeLabelsBesideNonASCII",
+        "internal/nodeurl/special_url_test.go::TestSpecialHostKeepsAnASCIIPunycodeLabelAsIs"
       ]
     },
     {
@@ -28883,7 +28910,6 @@
         "ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi",
         "ai/trim_boundaries_test.go::TestOAuthPastedInputUsesECMAScriptTrim",
         "ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi",
-        "internal/nodeurl/special_url_test.go::TestSpecialHostRejectsAnEmptyPunycodeLabel",
         "internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL"
       ]
     },
@@ -29696,7 +29722,6 @@
         "ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi",
         "coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage",
         "internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode",
-        "internal/nodeurl/special_url_test.go::TestSpecialHostRejectsAnEmptyPunycodeLabel",
         "internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL",
         "tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput"
       ]

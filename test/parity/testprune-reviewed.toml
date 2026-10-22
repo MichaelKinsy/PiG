@@ -250,3 +250,11 @@ commit = "a99ac5840704732bfdfccce3b29a080ae50771b2"
 class = "CITE"
 cite = "packages/ai/src/api/system-one-shared.ts:210"
 reason = "Pi 7f225f25 words the rejection of images by a transport that takes none as `${transport.label} does not support image input for ${model.id}` (system-one-shared.ts:210); the expected message gains ` for jev-latest`, the model id the test's classifier model carries."
+
+[[entry]]
+path = "internal/nodeurl/special_url_test.go"
+commit = "4636a28415a40e35c9e109ae6b1bcca975bd5745"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The case list gains hosts and file URLs with xn-- labels (xn--, a.xn--.b, XN--a, xn--ls8h, xn--a-ecp.ru); the test asserts nothing hard-coded for them, it compares PiG's parser with Node's URL run on the same inputs, so the expected values are whatever the pinned Node answers. The implementation change that makes them agree with Node 24.22.1's ada 4 is internal/nodeurl, which tracks Node, not a Pi source file."
+
