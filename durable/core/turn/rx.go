@@ -40,7 +40,7 @@ type rxProgram struct{ alts [][]rxNode }
 // compileRx parses the pattern; it panics on a pattern outside the subset, which only a code change can introduce.
 func compileRx(pattern string) *rxProgram {
 	p := rxParser{s: []rune(pattern)}
-	alts := p.alternation()
+	alts := p.alternation(false)
 	if p.i != len(p.s) {
 		panic("turn: unsupported pattern " + pattern)
 	}
@@ -65,10 +65,11 @@ func (p *rxParser) hasPrefix(prefix string) bool {
 	return true
 }
 
-func (p *rxParser) alternation() [][]rxNode {
+// alternation parses `|`-separated sequences; anchored ends each with a `$`, so a lookbehind matches over the text cut at its position.
+func (p *rxParser) alternation(anchored bool) [][]rxNode {
 	var alts [][]rxNode
 	for {
-		alts = append(alts, p.sequence())
+		alts = append(alts, p.sequence(anchored))
 		if p.i < len(p.s) && p.s[p.i] == '|' {
 			p.i++
 			continue
@@ -77,12 +78,19 @@ func (p *rxParser) alternation() [][]rxNode {
 	}
 }
 
-func (p *rxParser) sequence() []rxNode {
+func (p *rxParser) sequence(anchored bool) []rxNode {
 	var seq []rxNode
-	for p.i < len(p.s) && p.s[p.i] != '|' && p.s[p.i] != ')' {
-		n := p.atom()
+	for done := false; !done; {
+		var n rxNode
+		if p.i < len(p.s) && p.s[p.i] != '|' && p.s[p.i] != ')' {
+			n = p.atom()
+		} else if done = true; anchored {
+			n = rxNode{kind: rxEnd}
+		} else {
+			break
+		}
 		n.min, n.max = 1, 1
-		if p.i < len(p.s) {
+		if !done && p.i < len(p.s) {
 			switch p.s[p.i] {
 			case '*':
 				n.min, n.max = 0, -1
@@ -122,7 +130,7 @@ func (p *rxParser) atom() rxNode {
 			p.i += 2
 			kind = rxNotAhead
 		}
-		alts := p.alternation()
+		alts := p.alternation(kind == rxNotBehind)
 		p.i++ // ')'
 		return rxNode{kind: kind, alts: alts, width: altsWidth(alts)}
 	case '[':
@@ -269,9 +277,10 @@ func matchSeq(seq []rxNode, text []rune, pos int, k func(int) bool) bool {
 
 // matchesEndingAt reports whether some match of alts ends at pos. Without captures or backreferences, a match found right to left
 // exists exactly when one found left to right does, so the start is tried from pos back over the widest span a match can have.
+// The alternatives end in `$` (see alternation), so matching the text cut at pos requires the match to end there.
 func matchesEndingAt(alts [][]rxNode, text []rune, pos, width int) bool {
 	for start := pos; start >= 0 && (width < 0 || pos-start <= width); start-- {
-		if matchAlts(alts, text, start, func(end int) bool { return end == pos }) {
+		if matchAlts(alts, text[:pos], start, func(int) bool { return true }) {
 			return true
 		}
 	}
