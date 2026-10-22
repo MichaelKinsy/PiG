@@ -225,7 +225,6 @@ paths = [
   "changelog.d/tern-fcbb63d35c.md",
   "docs/additive-features.md",
   "docs/extension-api-parity.md",
-  "docs/extension-sdk-surface.md",
   "docs/findings/fix-overlay-shim.md",
   "docs/parity/DIVERGENCES.md",
   "docs/parity/divergences/D187.md",
