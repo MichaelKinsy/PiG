@@ -115,6 +115,11 @@ type UIBridge struct {
 	// guards them and orders their registrations with the UI's; it is taken before mu.
 	spritesMu sync.Mutex
 	sprites   map[string][]extension.ValidatedSpriteDefinition
+	// linkClaims are the OSC 8 schemes each extension claimed (D193), each with the release of its claim in the
+	// current UI. They are kept across UI bindings, handed to every UI that takes claims
+	// (extension.LinkSchemeRegistrar), and dropped with their extension. linksMu guards them.
+	linksMu    sync.Mutex
+	linkClaims map[string]map[string]func()
 
 	// actions holds agent-loop callbacks (sendMessage, setModel, etc.).
 	// Set via [SetActions] after the agent session is created.
@@ -875,6 +880,7 @@ func (b *UIBridge) SetUIContext(ctx extension.UIContext) {
 				}
 			}
 		}
+		b.replayLinkClaims(ctx)
 		if pendingLogin != nil {
 			if err := ctx.SetLogin(*pendingLogin); err == nil {
 				b.mu.Lock()
@@ -1333,7 +1339,8 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 			"ui.setWorkingVisible", "ui.setHiddenThinkingLabel", "ui.setWidget", "ui.setFooter",
 			"ui.setHeader", "ui.setTitle", "ui.setEditorComponent", "ui.pasteToEditor",
 			"ui.setEditorText", "ui.setToolsExpanded", "ui.addAutocompleteProvider",
-			"ui.onTerminalInput", "ui.offTerminalInput":
+			"ui.onTerminalInput", "ui.offTerminalInput", CallUIInvalidateTUI, CallUIRequestRender,
+			CallUIOnLinkClick, CallUIOffLinkClick:
 			return &CallResultPayload{}, nil
 		case CallUICustom:
 			extension.CallInitiated(ctx)
@@ -1437,6 +1444,15 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleAutocompleteCancel(owner, call.Args)
 	case "ui.autocomplete.current":
 		return b.handleAutocompleteCurrent(ctx, extName, owner, ui)
+	case CallUIInvalidateTUI:
+		return b.handleInvalidateTUI(ui)
+	case CallUIRequestRender:
+		return b.handleRequestRender(ui, call.Args)
+	// pig additive (D193): an extension claims the scheme of OSC 8 hyperlinks.
+	case CallUIOnLinkClick:
+		return b.handleOnLinkClick(extName, call.Args)
+	case CallUIOffLinkClick:
+		return b.handleOffLinkClick(extName, call.Args)
 	case "ui.onTerminalInput":
 		return b.handleOnTerminalInput(extName, call.Args)
 	case "ui.offTerminalInput":
@@ -1767,6 +1783,7 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 	b.mu.Unlock()
 	if ownerGone {
 		b.dropSprites(extName)
+		b.dropLinkClaims(extName)
 	}
 	for _, proxy := range widgets {
 		proxy.Clear()
@@ -4438,4 +4455,144 @@ func (b *UIBridge) commandsWire(actions *HostCallbacks) (json.RawMessage, bool) 
 	b.commandsCache.version, b.commandsCache.encoded = version, encoded
 	b.mu.Unlock()
 	return encoded, true
+}
+
+// pig additive (D192): handleInvalidateTUI is TUI.invalidate() of the `tui` Pi hands a widget factory.
+func (b *UIBridge) handleInvalidateTUI(ui extension.UIContext) (*CallResultPayload, error) {
+	if driver, ok := ui.(extension.TUIDriver); ok {
+		driver.InvalidateTUI()
+	}
+	return &CallResultPayload{}, nil
+}
+
+// pig additive (D192): handleRequestRender is TUI.requestRender(force) of the `tui` Pi hands a widget factory.
+func (b *UIBridge) handleRequestRender(ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
+	var p struct {
+		Force bool `json:"force"`
+	}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, fmt.Errorf("parse requestRender args: %w", err)
+		}
+	}
+	if driver, ok := ui.(extension.TUIDriver); ok {
+		driver.RequestTUIRender(p.Force)
+	}
+	return &CallResultPayload{}, nil
+}
+
+// LinkClickPayload is a NotifyLinkClick argument.
+type LinkClickPayload struct {
+	Scheme string `json:"scheme"`
+	URL    string `json:"url"`
+}
+
+// handleOnLinkClick claims a scheme of OSC 8 hyperlinks for the extension (D193).
+func (b *UIBridge) handleOnLinkClick(extName string, args json.RawMessage) (*CallResultPayload, error) {
+	var p struct {
+		Scheme string `json:"scheme"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return nil, fmt.Errorf("parse onLinkClick args: %w", err)
+	}
+	if err := extension.ValidateLinkScheme(p.Scheme); err != nil {
+		return &CallResultPayload{Error: &ErrorInfo{Code: "invalid_scheme", Message: err.Error()}}, nil
+	}
+	b.linksMu.Lock()
+	defer b.linksMu.Unlock()
+	b.mu.RLock()
+	ui, ready := b.uiCtx, b.uiReady
+	b.mu.RUnlock()
+	var release func()
+	if registrar, ok := ui.(extension.LinkSchemeRegistrar); ok && ready {
+		var err error
+		release, err = registrar.RegisterLinkScheme(extName, p.Scheme, b.linkClickHandler(extName, p.Scheme))
+		if err != nil {
+			code := "ui_error"
+			if errors.Is(err, extension.ErrLinkSchemeInUse) {
+				code = "scheme_in_use"
+			}
+			return &CallResultPayload{Error: &ErrorInfo{Code: code, Message: err.Error()}}, nil
+		}
+	}
+	if b.linkClaims == nil {
+		b.linkClaims = map[string]map[string]func(){}
+	}
+	if b.linkClaims[extName] == nil {
+		b.linkClaims[extName] = map[string]func(){}
+	}
+	// A claim made again replaces the handler; the earlier release no longer holds anything.
+	b.linkClaims[extName][p.Scheme] = release
+	return &CallResultPayload{}, nil
+}
+
+// handleOffLinkClick gives a scheme back.
+func (b *UIBridge) handleOffLinkClick(extName string, args json.RawMessage) (*CallResultPayload, error) {
+	var p struct {
+		Scheme string `json:"scheme"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return nil, fmt.Errorf("parse offLinkClick args: %w", err)
+	}
+	b.linksMu.Lock()
+	release := b.linkClaims[extName][p.Scheme]
+	delete(b.linkClaims[extName], p.Scheme)
+	b.linksMu.Unlock()
+	if release != nil {
+		release()
+	}
+	return &CallResultPayload{}, nil
+}
+
+// linkClickHandler hands a click on a link of scheme to the extension's current connection.
+func (b *UIBridge) linkClickHandler(extName, scheme string) func(url string) {
+	return func(url string) {
+		b.mu.RLock()
+		conn := b.extConns[extName]
+		b.mu.RUnlock()
+		if conn == nil {
+			return
+		}
+		args, err := json.Marshal(LinkClickPayload{Scheme: scheme, URL: url})
+		if err != nil {
+			return
+		}
+		_ = conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyLinkClick, Args: args}})
+	}
+}
+
+// dropLinkClaims releases the schemes extName claimed.
+func (b *UIBridge) dropLinkClaims(extName string) {
+	b.linksMu.Lock()
+	claims := b.linkClaims[extName]
+	delete(b.linkClaims, extName)
+	b.linksMu.Unlock()
+	for _, release := range claims {
+		if release != nil {
+			release()
+		}
+	}
+}
+
+// replayLinkClaims moves every claim to a new UI: the old UI's claims are released, and a UI that takes claims
+// is handed each one again.
+func (b *UIBridge) replayLinkClaims(ui extension.UIContext) {
+	b.linksMu.Lock()
+	defer b.linksMu.Unlock()
+	registrar, _ := ui.(extension.LinkSchemeRegistrar)
+	for _, extName := range slices.Sorted(maps.Keys(b.linkClaims)) {
+		claims := b.linkClaims[extName]
+		for _, scheme := range slices.Sorted(maps.Keys(claims)) {
+			if release := claims[scheme]; release != nil {
+				release()
+			}
+			claims[scheme] = nil
+			if registrar != nil {
+				// A scheme the new UI refuses (another owner holds it there) stays unclaimed in that UI.
+				if release, err := registrar.RegisterLinkScheme(extName, scheme, b.linkClickHandler(extName, scheme)); err == nil {
+					claims[scheme] = release
+				}
+			}
+		}
+	}
 }

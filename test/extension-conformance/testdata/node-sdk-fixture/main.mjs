@@ -860,6 +860,34 @@ export default function (pi) {
       throw new Error("invalid sprite definition was accepted");
     },
   });
+  pi.registerCommand("tui-probe", {
+    description: "Exercise the host's TUI handle",
+    handler: async (_args, ctx) => {
+      // The `tui` a widget factory receives: invalidate drops the render caches, requestRender schedules a repaint.
+      let tui;
+      ctx.ui.setWidget("tui-probe", (handle) => {
+        tui = handle;
+        return { render: () => [], invalidate() {} };
+      });
+      tui.invalidate();
+      tui.requestRender();
+      tui.requestRender(true);
+      ctx.ui.setWidget("tui-probe", undefined);
+    },
+  });
+  pi.registerCommand("link-probe", {
+    description: "Exercise OSC 8 link claims and their host errors",
+    handler: async (_args, ctx) => {
+      try {
+        await ctx.ui.onLinkClick("https", () => {});
+        throw new Error("the reserved scheme https was claimed");
+      } catch (error) {
+        if (error.message === "the reserved scheme https was claimed") throw error;
+        ctx.ui.notify(error.message, "error");
+      }
+      await ctx.ui.onLinkClick("probe-link", (url) => ctx.ui.notify(`click:${url}`, "info"));
+    },
+  });
   pi.registerCommand("login-probe", {
     description: "Exercise semantic login submission and host errors",
     handler: async (_args, ctx) => {

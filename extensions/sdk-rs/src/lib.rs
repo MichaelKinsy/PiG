@@ -115,6 +115,7 @@ mod truncate;
 pub use truncate::{DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, GREP_MAX_LINE_LENGTH, TruncatedBy, TruncationOptions, TruncationResult, format_size, truncate_head, truncate_line, truncate_tail};
 mod extension;
 pub mod kit;
+mod link_click;
 mod login;
 mod oauth;
 mod protocol;
@@ -133,8 +134,8 @@ pub use editor_component::{EditorBase, EditorComponent, EditorCursor, EditorFact
 pub use context::{
     CommandInfo, CompactCompleteHandler, CompactErrorHandler, CompactOptions, Context,
     CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, ModelFetchRequest, ModelFetchResponse, ModelRegistry, ModelStreamCallbacks, MouseEvent, OverlayBounds, OverlayHandle, OverlayState, UnfocusTarget,
-    RemoteComponent, RemoteComponentInvalidate, RemoteComponentResult, SendMessageOptions,
-    SourceInfo, UsageInfo, TerminalInputResult, TerminalInputSubscription, ToolInfo, ToolInfoReachesTools, ViewComponent, message_role,
+    LinkClickSubscription, RemoteComponent, RemoteComponentInvalidate, RemoteComponentResult, SendMessageOptions,
+    SourceInfo, UsageInfo, TerminalInputResult, TerminalInputSubscription, ToolInfo, Tui, ToolInfoReachesTools, ViewComponent, message_role,
     message_text, is_tool_call_event_type, is_bash_tool_result, is_powershell_tool_result, is_read_tool_result, is_edit_tool_result, is_write_tool_result, is_grep_tool_result, is_find_tool_result, is_ls_tool_result,
 };
 pub use events::*;

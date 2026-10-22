@@ -1114,6 +1114,27 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	ext.Command("tui-probe", "Exercise the host's TUI handle", func(ctx sdk.Context, args string) error {
+		tui := ctx.TUI()
+		if err := tui.Invalidate(); err != nil {
+			return err
+		}
+		if err := tui.RequestRender(false); err != nil {
+			return err
+		}
+		return tui.RequestRender(true)
+	})
+
+	ext.Command("link-probe", "Exercise OSC 8 link claims and their host errors", func(ctx sdk.Context, args string) error {
+		if _, err := ctx.OnLinkClick("https", func(sdk.Context, string) {}); err == nil {
+			return errors.New("the reserved scheme https was claimed")
+		} else {
+			ctx.Notify(err.Error(), "error")
+		}
+		_, err := ctx.OnLinkClick("probe-link", func(ctx sdk.Context, url string) { ctx.Notify("click:"+url, "info") })
+		return err
+	})
+
 	ext.Command("login-probe", "Exercise semantic login submission and host errors", func(ctx sdk.Context, args string) error {
 		definition := conformanceLoginDefinition()
 		if err := ctx.SetLogin(definition); err != nil {

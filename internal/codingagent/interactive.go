@@ -287,6 +287,8 @@ type InteractiveMode struct {
 	// Injected so a test can supply a capturing opener; nil falls back to
 	// openBrowser. Mirrors upstream passing openBrowser to the fullscreen renderer.
 	openURL func(url string) error
+	// linkSchemes holds the OSC 8 schemes extensions claimed: a click on one of their links goes to the extension, never to openURL (D193).
+	linkSchemes linkSchemes
 	// copyClipboard writes user-requested text to the host clipboard.
 	// Injected for deterministic tests; nil uses the platform helper.
 	copyClipboard func(text string) error

@@ -322,6 +322,10 @@ err := ctx.RegisterSprite(sdk.SpriteDefinition{
 
 Rust uses `ctx.register_sprite(&SpriteDefinition { .. })`, Python `ctx.register_sprite(SpriteDefinition(...))`, and Node `await ctx.ui.registerSprite({ id, name, tagline, mascot, palette })`. Register the sprite in `session_start`. The sprite appears after the built-in sprites in `/sprite list` and the picker, and `/sprite set <id>` saves it. When the extension is not loaded, the header draws `pig-default` and the saved choice stays.
 
+Use `ctx.TUI()` (Go; Python `ctx.tui`, Rust `ctx.tui()`) for the `tui` handle Pi gives a widget factory (D192). `Invalidate()` drops the render cache of every component, so a Markdown transformer you registered runs again; `RequestRender(force)` schedules the repaint. Call both after the state your transformer reads changed. Node factories receive the same two methods on their `tui`.
+
+Use `ctx.OnLinkClick(scheme, handler)` (Go; Python and Rust `on_link_click`, Node `await ctx.ui.onLinkClick(scheme, handler)`) to take the clicks on OSC 8 links of a scheme you draw (D193). Write the link as `\x1b]8;;myscheme:7\x07text\x1b]8;;\x07` in a Markdown transform; in the fullscreen TUI a left click on it calls `handler` with `myscheme:7` and the host opens nothing. Claim the scheme in `session_start`. `http`, `https`, `file` and `mailto` stay with the host, and a scheme another extension holds is refused.
+
 ## Choosing a source form
 
 Pig accepts exactly one conventional factory or exact standalone form.

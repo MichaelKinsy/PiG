@@ -91,6 +91,14 @@ declare module "@earendil-works/pi-coding-agent" {
      * leaves /sprite when the extension unloads.
      */
     registerSprite(definition: PiGSpriteDefinition): Promise<void>;
+    /**
+     * Claim the scheme of OSC 8 hyperlinks (PiG only, D193). In the fullscreen TUI a left click on a
+     * link whose address has the scheme (`stretchtext:3`) calls `handler` with the address, and the
+     * host opens nothing. Clicks run one at a time, in order. Rejects when the scheme is reserved
+     * (http, https, file, mailto) or another extension holds it. Resolves with the function that
+     * gives the scheme back.
+     */
+    onLinkClick(scheme: string, handler: (url: string) => void | Promise<void>): Promise<() => void>;
   }
 }
 

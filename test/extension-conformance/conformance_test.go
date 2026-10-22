@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net"
 	"os"
@@ -93,6 +94,8 @@ type recording struct {
 	LoginError              string              `json:"login_error"`
 	SpriteDefinition        string              `json:"sprite_definition"`
 	SpriteError             string              `json:"sprite_error"`
+	TUICalls                []string            `json:"tui_calls"`  // what tui-probe asked of the host's TUI, in order
+	LinkProbe               []string            `json:"link_probe"` // link-probe: the refusal of a reserved scheme, then the click that reached the handler
 	StatusBurst             []string            `json:"status_burst"`
 	RichContent             string              `json:"rich_content"`
 	RichImages              []ai.ImageContent   `json:"rich_images"`
@@ -784,6 +787,30 @@ func captureRecording(t *testing.T, h *harness) recording {
 	spriteDefinition := h.ui.SpriteDefinitions()[0]
 	spriteError := h.ui.Recorded()[recordedBefore]
 
+	// Pi's `tui` handle (TUI.invalidate, TUI.requestRender) and pig additive D193's OSC 8 link claims.
+	tuiCmd, ok := findCommand(h.runner, "tui-probe")
+	if !ok {
+		t.Fatal("tui-probe command not registered")
+	}
+	if err := tuiCmd.Handler(ctx, ""); err != nil {
+		t.Fatalf("tui-probe command: %v", err)
+	}
+	waitFor(t, func() bool { return len(h.ui.TUICalls()) == 3 })
+	tuiCalls := h.ui.TUICalls()
+
+	*h.notify = nil
+	linkCmd, ok := findCommand(h.runner, "link-probe")
+	if !ok {
+		t.Fatal("link-probe command not registered")
+	}
+	if err := linkCmd.Handler(ctx, ""); err != nil {
+		t.Fatalf("link-probe command: %v", err)
+	}
+	waitFor(t, func() bool { return len(*h.notify) >= 1 && h.ui.LinkSchemes() == "probe-link" })
+	h.ui.ClickLink("probe-link:1")
+	waitFor(t, func() bool { return len(*h.notify) >= 2 })
+	linkProbe := append([]string(nil), (*h.notify)...)
+
 	*h.notify = nil
 	if _, err := h.runner.Emit(ctx, extension.SessionStartEvent{Type: "session_start", Reason: "startup"}); err != nil {
 		t.Fatalf("session_start emit: %v", err)
@@ -1028,6 +1055,8 @@ func captureRecording(t *testing.T, h *harness) recording {
 		LoginError:              loginError,
 		SpriteDefinition:        spriteDefinition,
 		SpriteError:             spriteError,
+		TUICalls:                tuiCalls,
+		LinkProbe:               linkProbe,
 		StatusBurst:             statusBurst,
 		RichContent:             rich.Text(),
 		RichImages:              rich.Images(),
@@ -1791,6 +1820,36 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					return nil
 				},
 			},
+			"tui-probe": {
+				Name:        "tui-probe",
+				Description: "Exercise the host's TUI handle",
+				Handler: func(context.Context, string) error {
+					driver, ok := ui.(extension.TUIDriver)
+					if !ok {
+						return errors.New("the UI does not drive a TUI")
+					}
+					driver.InvalidateTUI()
+					driver.RequestTUIRender(false)
+					driver.RequestTUIRender(true)
+					return nil
+				},
+			},
+			"link-probe": {
+				Name:        "link-probe",
+				Description: "Exercise OSC 8 link claims and their host errors",
+				Handler: func(context.Context, string) error {
+					// What the host does with a subprocess extension's ui.onLinkClick (UIBridge handleOnLinkClick): validate, then claim.
+					if err := extension.ValidateLinkScheme("https"); err != nil {
+						ui.Notify(fmt.Sprintf("invalid_scheme: %v", err), "error")
+					}
+					registrar, ok := ui.(extension.LinkSchemeRegistrar)
+					if !ok {
+						return errors.New("the UI does not take link claims")
+					}
+					_, err := registrar.RegisterLinkScheme("inproc", "probe-link", func(url string) { ui.Notify("click:"+url, "info") })
+					return err
+				},
+			},
 			"login-probe": {
 				Name:        "login-probe",
 				Description: "Exercise semantic login submission and host errors",
@@ -2390,6 +2449,8 @@ type recordingUI struct {
 	status        *[]string
 	logins        []string
 	sprites       []string
+	tuiCalls      []string
+	linkSchemes   map[string]func(string)
 	editorText    string
 	editor        extension.RemoteEditor
 	toolsExpanded bool
@@ -2634,6 +2695,57 @@ func (u *recordingUI) RegisterSprite(owner string, definition extension.Validate
 }
 
 func (u *recordingUI) UnregisterSprites(string) {}
+
+var _ extension.TUIDriver = (*recordingUI)(nil)
+
+// InvalidateTUI and RequestTUIRender record Pi's `tui` calls in order, so an SDK that never makes them fails the row.
+func (u *recordingUI) InvalidateTUI() { u.recordTUI("invalidate") }
+
+func (u *recordingUI) RequestTUIRender(force bool) {
+	u.recordTUI("requestRender:" + strconv.FormatBool(force))
+}
+
+func (u *recordingUI) recordTUI(call string) {
+	u.recordMu.Lock()
+	u.tuiCalls = append(u.tuiCalls, call)
+	u.recordMu.Unlock()
+}
+
+func (u *recordingUI) TUICalls() []string {
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	return append([]string(nil), u.tuiCalls...)
+}
+
+var _ extension.LinkSchemeRegistrar = (*recordingUI)(nil)
+
+func (u *recordingUI) RegisterLinkScheme(_, scheme string, handler func(string)) (func(), error) {
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	if u.linkSchemes == nil {
+		u.linkSchemes = map[string]func(string){}
+	}
+	u.linkSchemes[scheme] = handler
+	return func() {}, nil
+}
+
+// LinkSchemes lists the claimed schemes, comma separated.
+func (u *recordingUI) LinkSchemes() string {
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	return strings.Join(slices.Sorted(maps.Keys(u.linkSchemes)), ",")
+}
+
+// ClickLink is a click on an OSC 8 link with the address: it reaches the handler that claimed the scheme.
+func (u *recordingUI) ClickLink(address string) {
+	scheme, _, _ := strings.Cut(address, ":")
+	u.recordMu.Lock()
+	handler := u.linkSchemes[scheme]
+	u.recordMu.Unlock()
+	if handler != nil {
+		handler(address)
+	}
+}
 
 func (u *recordingUI) SpriteDefinitions() []string {
 	u.recordMu.Lock()

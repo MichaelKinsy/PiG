@@ -1445,6 +1445,7 @@ pub struct Context {
     pub(crate) terminal_input_seq: Arc<AtomicU64>,
     pub(crate) width_change: WidthChangeSubs,
     pub(crate) width_change_seq: Arc<AtomicU64>,
+    pub(crate) link_clicks: Arc<crate::link_click::LinkClicks>,
     pub(crate) model_streams: ModelStreams,
     pub(crate) model_stream_seq: Arc<AtomicU64>,
     /// Replicated `hasUI` and theme palette.
@@ -4491,6 +4492,112 @@ impl Drop for WidthChangeSubscription {
     }
 }
 
+/// pig additive (D192): the handle of Pi's TUI that a widget factory receives as its `tui` argument. A subprocess extension has no
+/// factory to receive it, so [`Context::tui`] hands the same two calls out directly. With no UI both do nothing.
+pub struct Tui {
+    ctx: Context,
+}
+
+impl Tui {
+    /// `TUI.invalidate()`: every component drops its render cache, Markdown transform results included, so the
+    /// next frame draws them again. It does not schedule that frame; follow it with [`Tui::request_render`].
+    pub fn invalidate(&self) -> io::Result<()> {
+        if !self.ctx.has_ui() {
+            return Ok(());
+        }
+        call_result_to_io(self.ctx.call_wire("ui.tui.invalidate", Some(serde_json::json!({})))?)
+    }
+
+    /// `TUI.requestRender(force)`: schedule a repaint, which the host coalesces to its frame cadence; `force`
+    /// draws every row again.
+    pub fn request_render(&self, force: bool) -> io::Result<()> {
+        if !self.ctx.has_ui() {
+            return Ok(());
+        }
+        call_result_to_io(self.ctx.call_wire("ui.tui.requestRender", Some(serde_json::json!({ "force": force })))?)
+    }
+}
+
+/// Guard returned by [`Context::on_link_click`]. Dropping it, or calling [`LinkClickSubscription::unsubscribe`],
+/// gives the scheme back unless a later claim replaced this one.
+pub struct LinkClickSubscription {
+    id: u64,
+    scheme: String,
+    clicks: Arc<crate::link_click::LinkClicks>,
+    conn: Arc<Connection>,
+    released: bool,
+}
+
+impl LinkClickSubscription {
+    /// Releases the claim. Idempotent.
+    pub fn unsubscribe(mut self) {
+        self.release();
+    }
+
+    fn release(&mut self) {
+        if self.released {
+            return;
+        }
+        self.released = true;
+        if self.clicks.release(&self.scheme, self.id) {
+            // A guard can outlive the request that created it; Drop has no request context, so this is an
+            // unparented call, as TerminalInputSubscription's.
+            let _ = self.conn.call("ui.offLinkClick", Some(serde_json::json!({ "scheme": self.scheme })));
+        }
+    }
+}
+
+impl Drop for LinkClickSubscription {
+    fn drop(&mut self) {
+        self.release();
+    }
+}
+
+impl Context {
+    /// The handle of the host's TUI, which Pi hands a widget factory as its `tui` argument.
+    pub fn tui(&self) -> Tui {
+        Tui { ctx: self.clone() }
+    }
+
+    /// Claim the scheme of OSC 8 hyperlinks (pig additive D193). In the fullscreen TUI a left click on a link whose
+    /// address has the scheme, such as `stretchtext:3`, calls `handler` with the address and the host opens
+    /// nothing. A scheme is lower case letters, digits, `+`, `-` and `.`, starting with a letter; `http`, `https`,
+    /// `file` and `mailto` stay with the host, and a scheme another extension holds is an error. Claiming a scheme
+    /// again replaces the handler.
+    ///
+    /// Handlers run on a worker thread, one at a time in the order of the clicks, never on the thread that reads
+    /// the host's replies, so a handler can make a blocking host call. A handler that panics does not stop the
+    /// next click. The returned guard gives the scheme back when dropped, unless a later claim replaced this one.
+    /// With no UI, nothing is claimed.
+    pub fn on_link_click<F>(&self, scheme: &str, handler: F) -> io::Result<LinkClickSubscription>
+    where
+        F: Fn(&str) + Send + Sync + 'static,
+    {
+        let mut subscription = LinkClickSubscription {
+            id: 0,
+            scheme: scheme.to_string(),
+            clicks: self.link_clicks.clone(),
+            conn: self.conn.clone(),
+            released: true,
+        };
+        if !self.has_ui() {
+            return Ok(subscription);
+        }
+        let (id, previous) = self.link_clicks.claim(scheme, Box::new(handler));
+        match call_result_to_io(self.call_wire("ui.onLinkClick", Some(serde_json::json!({ "scheme": scheme })))?) {
+            Ok(()) => {
+                subscription.id = id;
+                subscription.released = false;
+                Ok(subscription)
+            }
+            Err(err) => {
+                self.link_clicks.restore(scheme, id, previous);
+                Err(err)
+            }
+        }
+    }
+}
+
 impl Context {
     /// Subscribe to terminal resizes, receiving the new width after
     /// [`Context::width`] has been updated (a handler that reads it sees that
@@ -4673,6 +4780,7 @@ mod width_change_tests {
             terminal_input_seq: Arc::new(AtomicU64::new(0)),
             width_change: subs,
             width_change_seq: seq,
+            link_clicks: Default::default(),
             model_streams: Arc::new(Mutex::new(HashMap::new())),
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
@@ -4785,6 +4893,7 @@ mod login_call_tests {
             terminal_input_seq: Arc::new(AtomicU64::new(0)),
             width_change: Arc::new(Mutex::new(Vec::new())),
             width_change_seq: Arc::new(AtomicU64::new(0)),
+            link_clicks: Default::default(),
             model_streams: Arc::new(Mutex::new(HashMap::new())),
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
@@ -5078,6 +5187,7 @@ mod sdk_surface_call_tests {
             terminal_input_seq: Arc::new(AtomicU64::new(0)),
             width_change: Arc::new(Mutex::new(Vec::new())),
             width_change_seq: Arc::new(AtomicU64::new(0)),
+            link_clicks: Default::default(),
             model_streams: Arc::new(Mutex::new(HashMap::new())),
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),

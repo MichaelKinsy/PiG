@@ -52,6 +52,8 @@ export default function extension(pi: ExtensionAPI): void {
   pi.on("session_start", async (_event, ctx) => {
     await ctx.ui.setLogin(login);
     await ctx.ui.registerSprite(sprite);
+    const release: () => void = await ctx.ui.onLinkClick("example", (url: string) => void url);
+    release();
     ctx.ui.notify("ready", "info");
   });
   // PiG emits Pi's UI prompt lifecycle for every SDK; the kinds and the

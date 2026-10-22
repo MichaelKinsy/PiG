@@ -2462,6 +2462,31 @@ _RPC_SYNCHRONOUS_UI_EFFECTS = frozenset({
 
 
 @dataclass
+class TUI:
+    """pig additive (D192): the handle of Pi's TUI that a widget factory receives as its ``tui`` argument.
+
+    A subprocess extension has no factory to receive it, so :attr:`Context.tui` hands the same two calls out directly.
+    With no UI both do nothing.
+    """
+
+    def __init__(self, ctx: "Context") -> None:
+        self._ctx = ctx
+
+    def _has_ui(self) -> bool:
+        with self._ctx.extension._state_lock:
+            return self._ctx.extension._has_ui
+
+    def invalidate(self) -> None:
+        """TUI.invalidate(): every component drops its render cache, Markdown transform results included, so the next frame draws them again. It does not schedule that frame; follow it with :meth:`request_render`."""
+        if self._has_ui():
+            self._ctx._call("ui.tui.invalidate", {})
+
+    def request_render(self, force: bool = False) -> None:
+        """TUI.requestRender(force): schedule a repaint, which the host coalesces to its frame cadence; ``force`` draws every row again."""
+        if self._has_ui():
+            self._ctx._call("ui.tui.requestRender", {"force": bool(force)})
+
+
 class Context:
     extension: "Extension"
     tool_call_id: str | None = None
@@ -3190,6 +3215,34 @@ class Context:
             raise TypeError("on_terminal_input requires a callable handler")
         return self.extension._add_terminal_input_handler(handler)
 
+    @property
+    def tui(self) -> "TUI":
+        """The handle of the host's TUI, which Pi hands a widget factory as its ``tui`` argument."""
+        return TUI(self)
+
+    def on_link_click(self, scheme: str, handler: "Callable[[str], None]") -> "Callable[[], None]":
+        """Claim the scheme of OSC 8 hyperlinks (pig additive D193).
+
+        In the fullscreen TUI a left click on a link whose address has the scheme, such as ``stretchtext:3``, calls
+        ``handler(url)`` and the host opens nothing. A scheme is lower case letters, digits, ``+``, ``-`` and ``.``,
+        starting with a letter; ``http``, ``https``, ``file`` and ``mailto`` stay with the host, and a scheme another
+        extension holds raises :class:`HostCallError`. Claiming a scheme again replaces the handler.
+
+        Handlers run on a worker thread, one at a time in the order of the clicks, never on the thread that reads the
+        host's replies, so a handler can make a blocking host call. A handler that raises is reported on stderr.
+        Returns an idempotent unsubscribe callable that gives the scheme back unless a later claim replaced this one.
+        With no UI, nothing is claimed.
+        """
+        if not callable(handler):
+            raise TypeError("on_link_click requires a callable handler")
+        if not isinstance(scheme, str):
+            raise TypeError("on_link_click requires a scheme string")
+        with self.extension._state_lock:
+            has_ui = self.extension._has_ui
+        if not has_ui:
+            return lambda: None
+        return self.extension._add_link_click_handler(self, scheme, handler)
+
     def on_width_change(self, handler: "Callable[[int], None]") -> "Callable[[], None]":
         """Subscribe to terminal resizes, receiving the new width.
 
@@ -3659,6 +3712,11 @@ class Extension:
         self._width_deliveries: deque[tuple[int, list[Any]]] = deque()
         self._width_worker_running = False
         self._width_dispatch_lock = threading.Lock()
+        # pig additive (D193): the handler of each OSC 8 scheme this extension claimed, and the clicks waiting for their worker thread.
+        self._link_click: dict[str, tuple[int, Any]] = {}
+        self._link_click_seq = 0
+        self._link_clicks: deque[tuple[Any, str]] = deque()
+        self._link_click_worker_running = False
         self._surface_lock = threading.Lock()
         self._surfaces: dict[str, _SurfaceRenderer] = {}
         self._commands: list[dict[str, Any]] = []
@@ -4717,6 +4775,7 @@ class Extension:
                 )
             return
         width_changed = False
+        link_click: tuple[str, str] | None = None
         footer_changed = branch_changed = False
         with self._state_lock:
             if method == "state_update":
@@ -4746,10 +4805,14 @@ class Extension:
                 if w > 0:
                     self._width = w
                     width_changed = True
+            elif method == "link_click":
+                link_click = (str(args.get("scheme") or ""), str(args.get("url") or ""))
             elif method == "height_change":
                 h = args.get("height", 0)
                 if h > 0:
                     self._height = h
+        if link_click is not None:
+            self._dispatch_link_click(*link_click)
         if footer_changed:
             self._notify_footer_data(branch_changed)
         if width_changed:
@@ -5663,6 +5726,89 @@ class Extension:
                 self._width_change = [w for w in self._width_change if w[0] != sub_id]
 
         return unsubscribe
+
+    def _add_link_click_handler(self, ctx: "Context", scheme: str, handler: Any) -> Callable[[], None]:
+        with self._state_lock:
+            self._link_click_seq += 1
+            sub_id = self._link_click_seq
+            previous = self._link_click.get(scheme)
+            self._link_click[scheme] = (sub_id, handler)
+        try:
+            ctx._call("ui.onLinkClick", {"scheme": scheme})
+        except BaseException:
+            with self._state_lock:
+                if self._link_click.get(scheme, (None,))[0] == sub_id:
+                    if previous is not None:
+                        self._link_click[scheme] = previous
+                    else:
+                        del self._link_click[scheme]
+            raise
+
+        done = threading.Event()
+
+        def unsubscribe() -> None:
+            if done.is_set():
+                return
+            done.set()
+            with self._state_lock:
+                if self._link_click.get(scheme, (None,))[0] != sub_id:
+                    return
+                del self._link_click[scheme]
+            try:
+                ctx._call("ui.offLinkClick", {"scheme": scheme})
+            except Exception:  # noqa: BLE001 - the scheme is already given back locally; a closed connection has nothing to release
+                pass
+
+        return unsubscribe
+
+    def _dispatch_link_click(self, scheme: str, url: str) -> None:
+        """Queue a click for the scheme's handler. Handlers run on a worker thread in click order, so one that blocks on a host call never stops the thread that reads the reply."""
+        with self._state_lock:
+            claim = self._link_click.get(scheme)
+        if claim is None:
+            return
+        with self._width_dispatch_lock:
+            if self._shutdown.is_set():
+                return
+            self._link_clicks.append((claim[1], url))
+            if self._link_click_worker_running:
+                return
+            self._link_click_worker_running = True
+            worker = threading.Thread(target=self._run_link_clicks, name="pig-link-click", daemon=True)
+            with self._request_threads_lock:
+                self._request_threads.add(worker)
+        try:
+            worker.start()
+        except Exception as exc:  # noqa: BLE001 - a worker that cannot start drops the queued clicks and the reader keeps serving
+            with self._request_threads_lock:
+                self._request_threads.discard(worker)
+            with self._width_dispatch_lock:
+                self._link_clicks.clear()
+                self._link_click_worker_running = False
+            print(f"pig: start link click handlers: {exc}", file=sys.stderr)
+
+    def _run_link_clicks(self) -> None:
+        try:
+            while True:
+                with self._width_dispatch_lock:
+                    if not self._link_clicks or self._shutdown.is_set():
+                        self._link_clicks.clear()
+                        self._link_click_worker_running = False
+                        return
+                    handler, url = self._link_clicks.popleft()
+                try:
+                    handler(url)
+                except Exception:  # noqa: BLE001 - one click's failure must not stop the next
+                    if not self._shutdown.is_set():
+                        print(f"pig: link click handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
+        except BaseException:
+            with self._width_dispatch_lock:
+                self._link_clicks.clear()
+                self._link_click_worker_running = False
+            raise
+        finally:
+            with self._request_threads_lock:
+                self._request_threads.discard(threading.current_thread())
 
     def _cancel_parent_calls_locked(self, req_id: str) -> list[threading.Event]:
         events = []

@@ -12,13 +12,16 @@ use pig_sdk::{
     RemoteComponentResult, SpriteDefinition, TerminalInputResult, TerminalInputSubscription, ToolDefinition,
     ToolRenderShell, ToolResult, ViewComponent,
 };
-use pig_sdk::{EditorBase, EditorComponent, JsString};
+use pig_sdk::{EditorBase, EditorComponent, JsString, LinkClickSubscription};
 use serde_json::{Value, json};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
 use std::{thread, time::Duration};
+
+/// The claim link-probe makes: it lasts as long as its guard.
+static LINK_CLAIM: Mutex<Option<LinkClickSubscription>> = Mutex::new(None);
 
 struct FocusedList {
     items: [&'static str; 3],
@@ -1846,6 +1849,38 @@ fn main() {
                     ctx.notify(&err.to_string(), "error");
                     CommandResult::Ok
                 }
+            }
+        },
+    );
+    ext.command(
+        "tui-probe",
+        "Exercise the host's TUI handle",
+        |ctx, _args| {
+            let tui = ctx.tui();
+            for result in [tui.invalidate(), tui.request_render(false), tui.request_render(true)] {
+                if let Err(err) = result {
+                    return CommandResult::Error(err.to_string());
+                }
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "link-probe",
+        "Exercise OSC 8 link claims and their host errors",
+        |ctx, _args| {
+            match ctx.on_link_click("https", |_| {}) {
+                Ok(_) => return CommandResult::Error("the reserved scheme https was claimed".to_string()),
+                Err(err) => ctx.notify(&err.to_string(), "error"),
+            }
+            let clicked = ctx.clone();
+            match ctx.on_link_click("probe-link", move |url| clicked.notify(&format!("click:{url}"), "info")) {
+                // The claim lasts as long as its guard: the fixture keeps it for the life of the process.
+                Ok(guard) => {
+                    LINK_CLAIM.lock().unwrap().replace(guard);
+                    CommandResult::Ok
+                }
+                Err(err) => CommandResult::Error(err.to_string()),
             }
         },
     );

@@ -202,6 +202,16 @@ type Extension struct {
 	widthRunning    bool
 	widthStopped    bool
 
+	// linkClickMu guards linkClickFuncs, the handler of each OSC 8 scheme the extension claimed (D193), and the
+	// clicks waiting for their worker goroutine: a handler can block on a host call, so it never runs on the
+	// message loop or the read loop (see notifyLinkClick).
+	linkClickMu      sync.Mutex
+	linkClickFuncs   map[string]linkClickSub
+	linkClickNextID  uint64
+	linkClickQueue   []linkClickDelivery
+	linkClickRunning bool
+	linkClickStopped bool
+
 	// surfaceMu guards surfaces, the footer and header renderers keyed by the
 	// host method that installs them, and viewSurfaces, the latest widget,
 	// header and footer views (D107).
@@ -1211,6 +1221,7 @@ func (e *Extension) loop() error {
 
 func (e *Extension) stopRequests() error {
 	e.stopWidthDeliveries()
+	e.stopLinkClicks()
 	if e.runCancel != nil {
 		e.runCancel()
 	}
@@ -1805,6 +1816,16 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		e.mu.Lock()
 		e.uiTheme = theme
 		e.mu.Unlock()
+	// pig additive (D193): a click on an OSC 8 link of a scheme the extension claimed.
+	case "link_click":
+		var payload struct {
+			Scheme string `json:"scheme"`
+			URL    string `json:"url"`
+		}
+		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
+			return
+		}
+		e.notifyLinkClick(payload.Scheme, payload.URL)
 	case "width_change":
 		var payload struct {
 			Width int `json:"width"`
@@ -2327,4 +2348,69 @@ func (t *toolCallInput) edit() (any, bool) {
 		return t.input, true
 	}
 	return json.RawMessage(ordered), true
+}
+
+// linkClickSub is the handler an extension registered for a scheme.
+type linkClickSub struct {
+	id      uint64
+	handler LinkClickHandler
+}
+
+// linkClickDelivery is one click and the handler registered when it arrived.
+type linkClickDelivery struct {
+	url     string
+	handler LinkClickHandler
+}
+
+// notifyLinkClick queues a click for the scheme's handler. Handlers run on their own goroutine, one at a time in the
+// order the host sent the clicks.
+func (e *Extension) notifyLinkClick(scheme, url string) {
+	e.linkClickMu.Lock()
+	defer e.linkClickMu.Unlock()
+	sub, ok := e.linkClickFuncs[scheme]
+	if !ok || e.linkClickStopped {
+		return
+	}
+	e.linkClickQueue = append(e.linkClickQueue, linkClickDelivery{url: url, handler: sub.handler})
+	if e.linkClickRunning {
+		return
+	}
+	e.linkClickRunning = true
+	e.requestWG.Go(e.runLinkClicks)
+}
+
+// runLinkClicks delivers queued clicks until none is left.
+func (e *Extension) runLinkClicks() {
+	ctx := Context{ext: e}
+	for {
+		e.linkClickMu.Lock()
+		if len(e.linkClickQueue) == 0 || e.linkClickStopped {
+			e.linkClickQueue = nil
+			e.linkClickRunning = false
+			e.linkClickMu.Unlock()
+			return
+		}
+		delivery := e.linkClickQueue[0]
+		e.linkClickQueue = e.linkClickQueue[1:]
+		e.linkClickMu.Unlock()
+		e.callLinkClickHandler(ctx, delivery)
+	}
+}
+
+// callLinkClickHandler isolates one handler's panic, as a handler panic fails one request and not the process.
+func (e *Extension) callLinkClickHandler(ctx Context, delivery linkClickDelivery) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "extension: recovered from panic in a link click handler: %v\n%s\n", r, debug.Stack())
+		}
+	}()
+	delivery.handler(ctx, delivery.url)
+}
+
+// stopLinkClicks drops the queued clicks; the running handler finishes, and stopRequests waits for it.
+func (e *Extension) stopLinkClicks() {
+	e.linkClickMu.Lock()
+	e.linkClickStopped = true
+	e.linkClickQueue = nil
+	e.linkClickMu.Unlock()
 }

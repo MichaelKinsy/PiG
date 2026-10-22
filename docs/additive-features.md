@@ -1506,3 +1506,42 @@ Remove when: Pi bounds what its bash block keeps, or adds a caller of `getOutput
 
 Approval: owner, 2026-10-14, TERN-CLAUDE-CHANNEL 2026-10-14T09:34:28Z (owner decisions: D176 approved). Earlier: tui squad lead, 2026-10-13 (TO-T2: replace `GetOutput`, record the retention change).
 SCRUTINIZED:approved
+
+## D192 Subprocess SDKs expose Pi's TUI handle (`invalidate`, `requestRender`)
+
+Stock disposition: required substrate. Stock PiG owns the extension API surface of Pi's `ctx.ui` and its TUI; no Piglet behavior is involved.
+
+What: Pi hands a component factory (`setWidget`, `setFooter`, `setHeader`, `ui.custom`) the TUI as its `tui` argument, and an extension that redraws its transcript output after its own state changed calls `tui.invalidate()` and then `tui.requestRender()` on it. `invalidate()` drops the render cache of every component, so a Markdown transformer runs again; `requestRender(force)` schedules a repaint. A Go, Python or Rust extension runs out of process and has no factory to receive the handle, so `ctx.TUI()` (Go), `ctx.tui` (Python) and `ctx.tui()` (Rust) return it directly: `Invalidate()` and `RequestRender(force)`, wire calls `ui.tui.invalidate` and `ui.tui.requestRender` (`{"force": bool}`). The host runs the first on the owner loop as Pi's TUI does and requests the repaint of the second on the current renderer. With no UI both do nothing. The Node runtime's `tui` object gains `invalidate()` and a `requestRender(force)` that also reaches the host's TUI (one call per tick); before, `requestRender` redrew only the factory's own surface.
+
+Why: Pi's TUI methods are reachable only from a factory. Without them a subprocess extension cannot make the transcript draw its display-only Markdown transform again after the state the transform reads changed (pi-stretchtext folds and unfolds stretches this way).
+
+Remove when: PiG runs component factories out of process, or Pi gives extensions a TUI handle outside factories.
+
+Call-site markers:
+- `coding/extension/host/subprocess/ui_bridge.go` (`handleInvalidateTUI`, `handleRequestRender`).
+- `internal/codingagent/ext_ui_tui_handle.go` (`InvalidateTUI`, `RequestTUIRender`).
+- `extensions/sdk/context.go` (`TUI`), `extensions/sdk-py/pig_sdk/__init__.py` (`TUI`, `Context.tui`), `extensions/sdk-rs/src/context.rs` (`Tui`, `Context::tui`), `coding/extension/host/subprocess/runtime-node/runtime.mjs` (`factoryTui`).
+
+Locked by: `test/extension-conformance` row `tui-probe` (`tui_calls`, in every SDK and transport: the host's TUI receives `invalidate`, `requestRender:false`, `requestRender:true` in that order); `coding/extension/host/subprocess/ui_bridge_tui_test.go`; `internal/codingagent/ext_ui_tui_handle_test.go`.
+PORT_MAP path: n/a.
+SCRUTINIZED:pending
+
+## D193 An extension claims the scheme of OSC 8 hyperlinks
+
+Stock disposition: inert capability. Stock PiG owns the mechanism; an extension or Piglet that selects it owns the scheme and what a click does. No extension claims a scheme by default.
+
+What: in the fullscreen TUI a left click on an OSC 8 hyperlink opens its address with the platform opener (Pi's `openBrowser`). An extension calls `ctx.OnLinkClick(scheme, handler)` (Go; Python `ctx.on_link_click`, Rust `ctx.on_link_click`, Node `await ctx.ui.onLinkClick`) to claim a scheme such as `stretchtext`; wire calls `ui.onLinkClick` and `ui.offLinkClick` (`{"scheme"}`). A click on a link whose address has the scheme goes to the extension as the host notification `link_click` (`{"scheme","url"}`), and nothing is opened. A scheme is lower case letters, digits, `+`, `-` and `.`, starting with a letter (`invalid_scheme`); `http`, `https`, `file` and `mailto` are reserved and stay with the host (`invalid_scheme`); a scheme another extension holds is refused (`scheme_in_use`); claiming a scheme again replaces the handler. A claim ends when the extension unsubscribes, disconnects or reloads, and moves with the extension to a new UI binding. Clicks reach the handler one at a time, in order, off the thread that reads the host's replies. With no UI nothing is claimed.
+
+Why: Pi has no hook for a click on transcript text. pi-stretchtext reaches clicks by replacing `Markdown.prototype.handleMouse` of pi-tui, which a process that does not share pi-tui's objects cannot do. A link is the unit a click already finds in the drawn frame, so a scheme claim gives an extension the click on what it drew without reading the frame or the layout.
+
+Remove when: Pi gives extensions a hook for pointer input on transcript content.
+
+Call-site markers:
+- `coding/extension/tui_handle.go` (`LinkSchemeRegistrar`, `ValidateLinkScheme`).
+- `coding/extension/host/subprocess/ui_bridge.go` (`handleOnLinkClick`, `handleOffLinkClick`, `linkClickHandler`, `replayLinkClaims`).
+- `internal/codingagent/ext_ui_tui_handle.go` (`RegisterLinkScheme`, `linkSchemes`) and `internal/codingagent/interactive_tui.go` (the `OpenURL` of the fullscreen renderer).
+- `extensions/sdk/context.go` (`OnLinkClick`) and `extension.go` (`notifyLinkClick`), `extensions/sdk-py/pig_sdk/__init__.py`, `extensions/sdk-rs/src/link_click.rs`, `coding/extension/host/subprocess/runtime-node/runtime.mjs` (`addLinkClickHandler`), `extensions/sdk-ts/index.d.ts`.
+
+Locked by: `test/extension-conformance` row `link-probe` (`link_probe`, every SDK and transport: a reserved scheme is refused with the host's message and a click on a claimed scheme reaches the handler with its address); `coding/extension/host/subprocess/ui_bridge_link_test.go`; `internal/codingagent/ext_ui_tui_handle_test.go` (a click on a claimed scheme opens nothing, an unclaimed address still reaches the opener).
+PORT_MAP path: n/a.
+SCRUTINIZED:pending

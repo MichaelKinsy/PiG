@@ -1375,6 +1375,24 @@ def new_extension() -> pig_sdk.Extension:
         raise RuntimeError("invalid sprite definition was accepted")
 
     ext.command("sprite-probe", "Exercise sprite registration and host errors", sprite_probe)
+
+    def tui_probe(ctx: pig_sdk.Context, args: str) -> None:
+        ctx.tui.invalidate()
+        ctx.tui.request_render()
+        ctx.tui.request_render(True)
+
+    ext.command("tui-probe", "Exercise the host's TUI handle", tui_probe)
+
+    def link_probe(ctx: pig_sdk.Context, args: str) -> None:
+        try:
+            ctx.on_link_click("https", lambda url: None)
+        except pig_sdk.HostCallError as err:
+            ctx.notify(str(err), "error")
+        else:
+            raise RuntimeError("the reserved scheme https was claimed")
+        ctx.on_link_click("probe-link", lambda url: ctx.notify(f"click:{url}", "info"))
+
+    ext.command("link-probe", "Exercise OSC 8 link claims and their host errors", link_probe)
     ext.command("scoped-models-probe", "Report the model scope", lambda ctx, _args: ctx.notify(json.dumps(ctx.scoped_models()), "info"))
     ext.command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", context_probe)
 

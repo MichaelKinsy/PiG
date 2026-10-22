@@ -1577,6 +1577,7 @@ function createNoOpUI(ui) {
     input: async () => undefined,
     notify: () => {},
     onTerminalInput: () => () => {},
+    onLinkClick: async () => () => {},
     setStatus: () => {},
     setWorkingMessage: () => {},
     setWorkingVisible: () => {},
@@ -1604,6 +1605,8 @@ function createNoOpUI(ui) {
     setLogin: ui.setLogin,
     // pig divergence (D2): sprite validation remains owned by the host.
     registerSprite: ui.registerSprite,
+    // pig additive (D193): OSC 8 link claims are the host's, as the sprite catalogue is.
+    onLinkClick: ui.onLinkClick,
     onWidthChange: ui.onWidthChange,
   };
 }
@@ -1706,6 +1709,14 @@ class RuntimeUI {
   async setLogin(definition) { return this.runtime.call("ui.setLogin", definition); }
   // pig divergence (D2): an extension's sprite joins /sprite.
   async registerSprite(definition) { return this.runtime.call("ui.registerSprite", definition); }
+  // pig additive (D193): claims the scheme of OSC 8 hyperlinks. A click on a link with the scheme goes to handler(url) and the host opens
+  // nothing. Resolves with the function that gives the scheme back; rejects when the host refuses the scheme (reserved, or held by
+  // another extension).
+  async onLinkClick(scheme, handler) {
+    if (typeof scheme !== "string") throw new TypeError("onLinkClick requires a scheme string");
+    if (typeof handler !== "function") throw new TypeError("onLinkClick requires a handler function");
+    return this.runtime.addLinkClickHandler(scheme, handler);
+  }
   setTitle(title) { this.runtime.fireAndForget("ui.setTitle", { title }); }
   async custom(factory, options = {}) {
     // rpc-mode.ts custom(): RPC mode has no custom UI, so it resolves undefined and the factory never runs; the host call keeps the ui_prompt scope.
@@ -2002,6 +2013,13 @@ export class Runtime {
     // waits for a consume decision. Empty means the host never round-trips.
     this.terminalInputHandlers = [];
     this.widthChangeHandlers = [];
+    // pig additive (D193): the handler of each OSC 8 scheme this extension claimed; clicks run one at a time, in order.
+    this.linkClickHandlers = new Map();
+    this.linkClickSeq = 0;
+    this.linkClickChain = Promise.resolve();
+    // requestHostRender coalesces the repaints a factory's tui asks for in one tick into one host call.
+    this.hostRenderQueued = false;
+    this.hostRenderForce = false;
     this.commands = new Map();
     this.shortcuts = new Map();
     this.flags = new Map();
@@ -3385,10 +3403,13 @@ export class Runtime {
   factoryTui(requestOwn = () => {}) {
     const self = this;
     return {
-      requestRender: () => {
+      requestRender: (force = false) => {
         requestOwn();
         self.requestOverlayFrames();
+        self.requestHostRender(force === true);
       },
+      // pig additive (D192): TUI.invalidate(): every component of the host's TUI drops its render cache, Markdown transform results included.
+      invalidate: () => self.fireAndForget("ui.tui.invalidate", {}),
       showOverlay: (child, childOptions) => self.showChildOverlay(child, childOptions),
       hideOverlay: () => self.hideTopOverlay(),
       setFocus: target => self.setTuiFocus(target),
@@ -3548,6 +3569,20 @@ export class Runtime {
       overlay.lastRenderAt = performance.now();
       renderNow();
     };
+  }
+
+  // requestHostRender is the part of TUI.requestRender that reaches the host's TUI: a repaint, a full one when force is set. Requests made in
+  // one tick make one call.
+  requestHostRender(force) {
+    this.hostRenderForce ||= force;
+    if (this.hostRenderQueued) return;
+    this.hostRenderQueued = true;
+    queueMicrotask(() => {
+      const forced = this.hostRenderForce;
+      this.hostRenderQueued = false;
+      this.hostRenderForce = false;
+      this.fireAndForget("ui.tui.requestRender", { force: forced });
+    });
   }
 
   // requestOverlayFrames is Pi's TUI.requestRender for a factory's tui: the whole TUI draws again, so every mounted component of
@@ -4017,6 +4052,16 @@ export class Runtime {
           this.applyState(state);
         } catch {}
         return;
+      case "link_click": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          args = {};
+        }
+        if (typeof args?.scheme === "string" && typeof args?.url === "string") this.runLinkClick(args.scheme, args.url);
+        return;
+      }
       case "width_change": {
         let args = notify.args;
         try {
@@ -5017,6 +5062,39 @@ export class Runtime {
       const i = this.widthChangeHandlers.indexOf(handler);
       if (i >= 0) this.widthChangeHandlers.splice(i, 1);
     };
+  }
+
+  // pig additive (D193): claims a scheme of OSC 8 hyperlinks for handler. Claiming it again replaces the handler.
+  async addLinkClickHandler(scheme, handler) {
+    const id = ++this.linkClickSeq;
+    const previous = this.linkClickHandlers.get(scheme);
+    this.linkClickHandlers.set(scheme, { id, handler });
+    try {
+      await this.call("ui.onLinkClick", { scheme });
+    } catch (error) {
+      if (this.linkClickHandlers.get(scheme)?.id === id) {
+        if (previous) this.linkClickHandlers.set(scheme, previous);
+        else this.linkClickHandlers.delete(scheme);
+      }
+      throw error;
+    }
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      if (this.linkClickHandlers.get(scheme)?.id !== id) return;
+      this.linkClickHandlers.delete(scheme);
+      this.fireAndForget("ui.offLinkClick", { scheme });
+    };
+  }
+
+  // runLinkClick delivers a click to the scheme's handler after the clicks before it have finished.
+  runLinkClick(scheme, url) {
+    const claim = this.linkClickHandlers.get(scheme);
+    if (!claim) return;
+    this.linkClickChain = this.linkClickChain.then(() => claim.handler(url)).catch((error) => {
+      try { process.stderr.write(`pig: link click handler failed: ${error?.stack || String(error)}\n`); } catch {}
+    });
   }
 
   addTerminalInputHandler(handler) {

@@ -803,6 +803,15 @@ const (
 	CallUISetLogin = "ui.setLogin"
 	// pig divergence (D2): an extension's sprite joins /sprite.
 	CallUIRegisterSprite = "ui.registerSprite"
+	// Pi's `tui` handle of a widget factory: TUI.invalidate() and TUI.requestRender(force). Args of the
+	// second are {"force": bool}. Both are ignored by a UI that draws no TUI.
+	CallUIInvalidateTUI = "ui.tui.invalidate"
+	CallUIRequestRender = "ui.tui.requestRender"
+	// pig additive (D193): an extension claims the scheme of OSC 8 hyperlinks ({"scheme"}); a click on one
+	// reaches it as NotifyLinkClick ({"scheme","url"}) and nothing is opened.
+	CallUIOnLinkClick    = "ui.onLinkClick"
+	CallUIOffLinkClick   = "ui.offLinkClick"
+	NotifyLinkClick      = "link_click"
 	NotifyUICustomInput  = "ui.custom.input"
 	NotifyUICustomRender = "ui.custom.render"
 	NotifyUICustomClose  = "ui.custom.close"

@@ -592,6 +592,7 @@ impl Context {
             terminal_input: self.terminal_input.clone(),
             terminal_input_seq: self.terminal_input_seq.clone(),
             width_change: self.width_change.clone(),
+            link_clicks: self.link_clicks.clone(),
             width_change_seq: self.width_change_seq.clone(),
             model_streams: self.model_streams.clone(),
             model_stream_seq: self.model_stream_seq.clone(),
@@ -1456,6 +1457,7 @@ impl Extension {
             terminal_input_seq,
             width_change,
             width_change_seq,
+            link_clicks: Arc::new(crate::link_click::LinkClicks::default()),
             model_streams,
             model_stream_seq,
             overlays,
@@ -1474,6 +1476,7 @@ impl Extension {
         let tool_batches = crate::tool_start_order::ToolBatches::default();
         let stop_requests = |reason: &str| -> io::Result<()> {
             width_deliveries.stop();
+            base_ctx.link_clicks.stop();
             for cancel in active_requests.lock().unwrap().values() {
                 cancel.cancel(reason);
             }
@@ -1706,6 +1709,17 @@ impl Extension {
                                     .lock()
                                     .unwrap()
                                     .apply_theme_change(notify.args.as_ref());
+                            }
+                            // pig additive (D193): a click on an OSC 8 link of a scheme this extension claimed.
+                            "link_click" => {
+                                if let Some(args) = &notify.args {
+                                    if let (Some(scheme), Some(url)) = (
+                                        args.get("scheme").and_then(|s| s.as_str()),
+                                        args.get("url").and_then(|u| u.as_str()),
+                                    ) {
+                                        base_ctx.link_clicks.submit(scheme, url.to_string(), &request_threads);
+                                    }
+                                }
                             }
                             "width_change" => {
                                 if let Some(args) = &notify.args {

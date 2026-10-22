@@ -1881,6 +1881,98 @@ func (c Context) OnTerminalInput(handler TerminalInputHandler) (func(), error) {
 	return unsubscribe, nil
 }
 
+// pig additive (D192): TUI is the handle of Pi's TUI that a widget factory receives as its `tui` argument. A subprocess extension has no
+// factory to receive it, so [Context.TUI] hands the same two calls out directly.
+type TUI struct{ ctx Context }
+
+// TUI returns the handle of the host's TUI.
+func (c Context) TUI() TUI { return TUI{ctx: c} }
+
+// hasUIUnchecked reads whether the host runs a UI without [Context.HasUI]'s stale-session check: a worker that
+// outlives its session reports a host error from its call, as any retained Context does, and does not panic.
+func (c Context) hasUIUnchecked() bool {
+	c.ext.mu.RLock()
+	defer c.ext.mu.RUnlock()
+	return c.ext.hasUI
+}
+
+// Invalidate is TUI.invalidate(): every component drops its render cache, Markdown transform results included, so
+// the next frame draws them again. It does not schedule that frame; follow it with [TUI.RequestRender], as Pi's
+// callers do. With no UI it does nothing.
+func (t TUI) Invalidate() error {
+	if !t.ctx.hasUIUnchecked() {
+		return nil
+	}
+	result, err := t.ctx.callHost("ui.tui.invalidate", map[string]any{})
+	return callResultError(result, err)
+}
+
+// RequestRender is TUI.requestRender(force): it schedules a repaint, which the host coalesces to its frame
+// cadence; force draws every row again. With no UI it does nothing.
+func (t TUI) RequestRender(force bool) error {
+	if !t.ctx.hasUIUnchecked() {
+		return nil
+	}
+	result, err := t.ctx.callHost("ui.tui.requestRender", map[string]any{"force": force})
+	return callResultError(result, err)
+}
+
+// LinkClickHandler receives the address of a clicked OSC 8 link.
+type LinkClickHandler func(ctx Context, url string)
+
+// OnLinkClick claims the scheme of OSC 8 hyperlinks (pig additive D193): in the fullscreen TUI a left click on a
+// link whose address has the scheme, such as `stretchtext:3`, goes to handler and the host opens nothing. A scheme
+// is lower case letters, digits, +, - and ., starting with a letter; http, https, file and mailto stay with the
+// host, and a scheme another extension holds is an error. Claiming a scheme again replaces the handler.
+//
+// Handlers run on their own goroutine, one at a time in the order of the clicks, never on the message loop or the
+// goroutine that reads the host's replies, so a handler can make a blocking host call. A handler that panics is
+// recovered. The returned unsubscribe is idempotent and gives the scheme back unless a later claim replaced this
+// one. With no UI, nothing is claimed.
+func (c Context) OnLinkClick(scheme string, handler LinkClickHandler) (func(), error) {
+	if handler == nil {
+		return func() {}, fmt.Errorf("OnLinkClick: handler must not be nil")
+	}
+	if !c.hasUIUnchecked() {
+		return func() {}, nil
+	}
+	e := c.ext
+	e.linkClickMu.Lock()
+	if e.linkClickFuncs == nil {
+		e.linkClickFuncs = map[string]linkClickSub{}
+	}
+	e.linkClickNextID++
+	id := e.linkClickNextID
+	previous, hadPrevious := e.linkClickFuncs[scheme]
+	e.linkClickFuncs[scheme] = linkClickSub{id: id, handler: handler}
+	e.linkClickMu.Unlock()
+
+	result, err := c.callHost("ui.onLinkClick", map[string]any{"scheme": scheme})
+	if err := callResultError(result, err); err != nil {
+		e.linkClickMu.Lock()
+		if e.linkClickFuncs[scheme].id == id {
+			if hadPrevious {
+				e.linkClickFuncs[scheme] = previous
+			} else {
+				delete(e.linkClickFuncs, scheme)
+			}
+		}
+		e.linkClickMu.Unlock()
+		return func() {}, err
+	}
+	return sync.OnceFunc(func() {
+		e.linkClickMu.Lock()
+		current, held := e.linkClickFuncs[scheme]
+		if !held || current.id != id {
+			e.linkClickMu.Unlock()
+			return
+		}
+		delete(e.linkClickFuncs, scheme)
+		e.linkClickMu.Unlock()
+		_, _ = c.callHost("ui.offLinkClick", map[string]any{"scheme": scheme})
+	}), nil
+}
+
 // SetEditorComponent installs an editor in place of the host's, as Pi's ctx.ui.setEditorComponent does. The
 // factory is an [EditorFactory]: it receives the host's default editor, which the component embeds as its
 // `super`. A nil factory restores the host's editor. With no UI, or in RPC mode, it ignores the factory, as Pi does.

@@ -339,7 +339,13 @@ func (m *InteractiveMode) createInteractiveTui(ctx context.Context) interactiveT
 	m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{
 		TuiMode: "fullscreen", Output: m.rendererOut, Terminal: terminal, LogDirectory: m.opts.AgentDir,
 		FullscreenCopyOnSelect: &copyOnSelect, FullscreenWheelScrollLines: &wheelScrollLines, CopySelection: m.effectiveCopyClipboard(),
-		OpenURL: func(url string) error { return m.effectiveOpenURL()(url) }, OnRightClickPaste: m.handleRightClickPaste,
+		OpenURL: func(url string) error {
+			// pig additive (D193): a scheme an extension claimed is the extension's to handle; nothing is opened.
+			if m.linkSchemes.dispatch(url) {
+				return nil
+			}
+			return m.effectiveOpenURL()(url)
+		}, OnRightClickPaste: m.handleRightClickPaste,
 	})
 	m.altScreen = m.tuiInst.(*tui.TuiAltScreen)
 	m.tuiInst.SetOnDebug(m.handleDebugCommand)
