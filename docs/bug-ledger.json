@@ -1806,6 +1806,25 @@
       ]
     },
     {
+      "id": "BF-0e225b4",
+      "title": "fix(runtimecell): keep the Python runner's _run callable without the built event",
+      "symptom": "fix(runtimecell): keep the Python runner's _run callable without the built event",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0e225b41ec",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-0e3411c",
       "title": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…",
       "symptom": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
@@ -2083,6 +2102,25 @@
         "test/parity/scenarios/providers-faux-streaming/14-provider-immediate-abort.toml",
         "test/parity/scenarios/rpc/55-rpc-abort-during-tool-next-request.toml"
       ]
+    },
+    {
+      "id": "BF-1356aae",
+      "title": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…",
+      "symptom": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture modules to the root SDK version",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "1356aae997",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-1364791",
@@ -8179,6 +8217,29 @@
       ]
     },
     {
+      "id": "BF-4649166",
+      "title": "fix(sdk): place the arrival-order start in the request scope so a tool_call round trip keeps its 68…",
+      "symptom": "fix(sdk): place the arrival-order start in the request scope so a tool_call round trip keeps its 68 allocations; test the emptydrop claims; keep an empty operations list",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "46491664b6",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/create_agent_session_test.go::TestResolveSDKToolSelectionEmptyExcludeToolsIsAbsent",
+        "coding/extension/host/subprocess/host_builtin_tool_test.go::TestBuiltinToolDefinitionsHaveNoEmptyPromptGuidelines",
+        "coding/extension/host/subprocess/host_builtin_tool_test.go::TestBuiltinToolOptionsKeepAnEmptyOperationsList"
+      ]
+    },
+    {
       "id": "BF-46abed3",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -8755,6 +8816,28 @@
       ]
     },
     {
+      "id": "BF-4ac21c8",
+      "title": "fix(jsloop): run a tick whose tool call already ended at once, though no wait is open",
+      "symptom": "fix(jsloop): run a tick whose tool call already ended at once, though no wait is open",
+      "rootCause": "The host sees no wait while an extension tool awaits its own timer, so a tick of an ended tool call that reached the host late was held for the next turn and written behind agent_settled. The runtime marks a call tick only while a sibling tool still runs, so the loop turns: the call runs at once, behind the callbacks held before it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4ac21c86c4",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/timer_turns_test.go::TestNodeTickCallsOfAToolRunAfterItsEndWhenTheyArriveLate",
+        "internal/jsloop/turns_test.go::TestTurnsRunALateTickAtOnceWhileNoWaitIsOpen"
+      ]
+    },
+    {
       "id": "BF-4afdbac",
       "title": "`ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map…",
       "symptom": "`ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map iteration reached first, so a trust.json with several wrong-typed values reported a random key; Pi's `Object.entries` order (array-index keys, then insertion order) decides, and `read` now walks `orderedjson` keys.",
@@ -8866,6 +8949,27 @@
         "tui/tui_input_pipeline_test.go::TestInputListenersRunInRegistrationOrderAndTransformData",
         "tui/tui_input_pipeline_test.go::TestTerminalColorSchemeNotificationsFollowTheRendererLifecycle",
         "tui/tui_input_pipeline_test.go::TestTerminalColorSchemeReportIsConsumedBeforeInputListeners"
+      ]
+    },
+    {
+      "id": "BF-4c45afa",
+      "title": "fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns…",
+      "symptom": "fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns gofmt-clean",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4c45afaf73",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/bundle_test.go::TestEveryPackageSourceIsBundled"
       ]
     },
     {
@@ -9756,6 +9860,25 @@
         "coding/extension/host/subprocess/node_highlight_load_test.go::TestNodeHighlightLanguageListMatchesIndex",
         "coding/extension/host/subprocess/node_highlight_load_test.go::TestNodeLoadsHighlightLanguagesWithoutHoldingTheEventLoop"
       ]
+    },
+    {
+      "id": "BF-54283ce",
+      "title": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
+      "symptom": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "54283ceb0f",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-542b536",
@@ -11288,6 +11411,25 @@
       "tests": []
     },
     {
+      "id": "BF-5f22b85",
+      "title": "fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last…",
+      "symptom": "fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last holder lets go",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5f22b85fa3",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-60c4c6f",
       "title": "A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its…",
       "symptom": "A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its arguments are `{}` and `argumentsError` holds the reason and the text the model sent, which tool validation reports back to the model.",
@@ -12077,6 +12219,33 @@
         "coding/cli/rpc_resume_integration_test.go::TestRPCModeSessionReplacementAndExport",
         "coding/cli/rpc_set_model_await_test.go::TestRPCSetModelAppliesAfterTheBatchesLaterCommands",
         "coding/cli/rpc_set_model_pipeline_test.go::TestRPCPipelinedSetModelsApplyInInputOrder"
+      ]
+    },
+    {
+      "id": "BF-65932e6",
+      "title": "fix(extensions): run a tick call after the tool_execution_end of the tool call that queued its callback…",
+      "symptom": "fix(extensions): run a tick call after the tool_execution_end of the tool call that queued its callback, whichever reaches the host first",
+      "rootCause": "A timer or immediate callback a Node tool queued while a sibling tool still awaits runs, in Pi, right after the first tool's tool_execution_end. The runtime is another process: it writes the callback's host call a few hundred microseconds after the tool's answer, and the host passed the tick boundary of that tool in about the same time. A call that arrived after the boundary was held for the next tool_execution_end of any tool, so scenario 69 (rpc-sibling-tool-timer-call-order) wrote the immediate and timeout0 notifications behind the sibling's own notification in 8 of 20 single-pair runs on ordering/d5-timer-calls alone and 4 of 20 on the train.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "65932e6efb",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape",
+        "coding/extension/host/subprocess/timer_turns_test.go::TestNodeTickCallsOfAToolRunAfterItsEndWhenTheyArriveLate",
+        "coding/extension/host/subprocess/timer_turns_test.go::TestNodeTimerCallbackCallsWaitForTheLoopTurn",
+        "internal/jsloop/turns_test.go::TestTurnsForgetATickBoundaryWhenTheToolCallStartsAgain",
+        "internal/jsloop/turns_test.go::TestTurnsRunATickAfterItsToolCallsEndWhicheverArrivesFirst",
+        "internal/jsloop/turns_test.go::TestTurnsRunTicksAtTheTickBoundaryBeforeTimers",
+        "test/extension-conformance/timer_calls_test.go::TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun"
       ]
     },
     {
@@ -26034,6 +26203,25 @@
       ]
     },
     {
+      "id": "BF-c1ed918",
+      "title": "fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and…",
+      "symptom": "fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and args_raw fields",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c1ed91817e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c1fedc2",
       "title": "The durable `read` tool reads a file that grows while it is read, such as an active log, instead of failing…",
       "symptom": "The durable `read` tool reads a file that grows while it is read, such as an active log, instead of failing with \"changed while it was read\".",
@@ -28652,6 +28840,25 @@
       ]
     },
     {
+      "id": "BF-d3b3618",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d3b36181ab",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-d42aebb",
       "title": "`ai.ValidateToolArguments` and `ai.ValidateToolCall` list a failed validation's errors in the order the…",
       "symptom": "`ai.ValidateToolArguments` and `ai.ValidateToolCall` list a failed validation's errors in the order the tool's schema declares its properties, as Pi does, instead of sorted by property name.",
@@ -29086,6 +29293,44 @@
         "coding/source/parse_git_oracle_test.go::TestParseGitMatchesPi",
         "internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode"
       ]
+    },
+    {
+      "id": "BF-d7c7f86",
+      "title": "fix(runtimecell): start a packed cell's members in order so a later member's factory cannot take the factory…",
+      "symptom": "fix(runtimecell): start a packed cell's members in order so a later member's factory cannot take the factory turn from an earlier one",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d7c7f86a12",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-d80425c",
+      "title": "fix(train): gate repairs after merging train 3 and the ordering stack",
+      "symptom": "fix(train): gate repairs after merging train 3 and the ordering stack",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d80425c2e2",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-d80c1cd",
@@ -33509,6 +33754,25 @@
         "internal/ignorerules/ignore_oracle_test.go::TestIgnoredMatchesPiIgnorePackage",
         "internal/ignorerules/ignorerules_test.go::TestIgnoreRulesFollowTheIgnorePackage"
       ]
+    },
+    {
+      "id": "BF-f48b2c1",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f48b2c1af9",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-f4d85f8",
