@@ -1,4 +1,5 @@
 {
   "lastChangelogVersion": "0.83.0",
+  "quietStartup": true,
   "defaultTools": ["read", "bash", "edit", "write", "codemode"]
 }

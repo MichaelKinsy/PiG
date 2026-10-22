@@ -11,7 +11,16 @@
 # The settings activate codemode through defaultTools, so its prepareLoadout hook is in the active loadout when a later registration refreshes it.
 # The extension registers a tool so the reload has a registration after the builtins' own, as the issue's reproduction does.
 #
-# Upstream evidence: pinned Pi 1.3.0 prints only `Reloaded keybindings, extensions, skills, prompts, themes, and context files` for the same input.
+# Upstream evidence: pinned Pi 1.4.0 prints only `Reloaded keybindings, extensions, skills, prompts, themes, and context files` for the same input.
+#
+# Comparator: output_equal over the whole 120x400 pane after the reload. Probed against pinned Pi 1.4.0 (4a080252) and PiG on 2026-10-22 under Node 24.22.1
+# (`go test -tags=parity ./test/parity/runner -args -pig-parity.dir=<dir holding this scenario> -pig-parity.runs=8`): 8 of 8 pairs are byte-identical. The
+# pane holds the status line `Reloaded keybindings, extensions, skills, prompts, themes, and context files`, the empty transcript rows, the editor box and the
+# footer (cwd, context usage, model) and nothing else: no extension error block, which is what the issue #267 reproduction showed.
+# Both settings files set quietStartup, as quiet-pig-home and quiet-pi-agent do. Without it the first full-screen comparison differs in the startup banner alone:
+# PiG draws its own logo and an 8-row banner where Pi draws a 6-row one ("PiG can explain its own features..." against "Pi can explain..."), and because the
+# editor is anchored at the bottom of the tall pane that shifts the status line two rows. The banner is not the behavior under test, so the fixtures hide it in both
+# binaries; no normalize_replace is used and nothing the reload prints is normalized.
 
 name = "86-reload-builtin-tool-registration"
 description = "/reload reports no extension error when factories register tools while loading"
@@ -50,4 +59,5 @@ wait_timeout_seconds = 30
 both_reach_ready = true
 both_contain = ["Reloaded keybindings"]
 both_not_contain = ["ctx is stale", "Extension \"builtin:", "panic:", "goroutine "]
+output_equal = true
 runs = 3
