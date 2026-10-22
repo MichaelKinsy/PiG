@@ -5,8 +5,6 @@ import (
 	"runtime"
 	"strings"
 	"unicode/utf8"
-
-	"golang.org/x/net/idna"
 )
 
 // Error is an error Node's url.fileURLToPath throws, with its code. URIError
@@ -27,18 +25,12 @@ func (e *Error) Thrown() string {
 }
 
 var (
-	errInvalidURL         = &Error{Code: "ERR_INVALID_URL", Message: "Invalid URL"}
-	errInvalidURLScheme   = &Error{Code: "ERR_INVALID_URL_SCHEME", Message: "The URL must be of scheme file"}
-	errPathNotAbsolute    = &Error{Code: "ERR_INVALID_FILE_URL_PATH", Message: "File URL path must be absolute"}
-	errURIMalformed       = &Error{Message: "URI malformed"}
-	errEncodedSeparators  = &Error{Code: "ERR_INVALID_FILE_URL_PATH", Message: `File URL path must not include encoded \ or / characters`}
-	errEncodedSlash       = &Error{Code: "ERR_INVALID_FILE_URL_PATH", Message: "File URL path must not include encoded / characters"}
-	whatwgDomainToUnicode = idna.New(
-		idna.MapForLookup(),
-		idna.Transitional(false),
-		idna.StrictDomainName(false),
-		idna.CheckHyphens(false),
-	)
+	errInvalidURL        = &Error{Code: "ERR_INVALID_URL", Message: "Invalid URL"}
+	errInvalidURLScheme  = &Error{Code: "ERR_INVALID_URL_SCHEME", Message: "The URL must be of scheme file"}
+	errPathNotAbsolute   = &Error{Code: "ERR_INVALID_FILE_URL_PATH", Message: "File URL path must be absolute"}
+	errURIMalformed      = &Error{Message: "URI malformed"}
+	errEncodedSeparators = &Error{Code: "ERR_INVALID_FILE_URL_PATH", Message: `File URL path must not include encoded \ or / characters`}
+	errEncodedSlash      = &Error{Code: "ERR_INVALID_FILE_URL_PATH", Message: "File URL path must not include encoded / characters"}
 )
 
 // FileURLToPath converts raw as Node's url.fileURLToPath(raw, {windows})
@@ -77,7 +69,11 @@ func FileURLToPath(raw string, windows bool) (string, error) {
 }
 
 // DomainToUnicode is Node's url.domainToUnicode for a host FileHost returned:
-// an IP address is unchanged, and a domain's IDNA labels become Unicode.
+// an IP address is unchanged, and a domain's IDNA labels become Unicode. As in
+// ada's to_unicode, which never fails, a label that starts with "xn--" is
+// decoded only when it is ASCII, decodes as Punycode to a non-empty non-ASCII
+// label that is stable under mapping and normalization and is a valid label;
+// any other label is kept as it is.
 func DomainToUnicode(host string) string {
 	if strings.HasPrefix(host, "[") {
 		return host
@@ -85,11 +81,20 @@ func DomainToUnicode(host string) string {
 	if _, err := netip.ParseAddr(host); err == nil {
 		return host
 	}
-	unicode, err := whatwgDomainToUnicode.ToUnicode(host)
-	if err != nil {
-		return ""
+	labels := strings.Split(host, ".")
+	for i, label := range labels {
+		if !strings.HasPrefix(label, "xn--") {
+			continue
+		}
+		if decoded, ok := decodeACELabel(label); ok {
+			labels[i] = decoded
+		}
 	}
-	return unicode
+	return strings.Join(labels, ".")
+}
+
+func isASCII(s string) bool {
+	return !strings.ContainsFunc(s, func(r rune) bool { return r >= utf8.RuneSelf })
 }
 
 // PrepareInput applies the URL parser's C0/space trimming and tab/newline removal.

@@ -123,7 +123,7 @@ func (u URL) WithPathname(path string) string {
 
 // ResolveAbsolutePath is `new URL(path, base).toString()` for a path that starts with a single "/" and is already in its serialized form (no dot segments, nothing the
 // path percent-encode set changes): the scheme, userinfo and host of the base, the path, no query and no fragment. A file base whose first path segment starts with a
-// drive letter ("C:", the two-character test of Node's URL parser) keeps that segment unless the path starts with a drive letter itself. It fails where the
+// drive letter ("C:", exactly two characters as in ada 4, Node 24.22.1 and 26.12.1; Node 22.19 and 24.19 test only a segment's first two) keeps that segment unless the path starts with a drive letter itself. It fails where the
 // constructor throws: a base whose path is opaque (no authority and no leading slash) cannot be a base.
 func (u URL) ResolveAbsolutePath(path string) (string, error) {
 	if u.authority == "" && !strings.HasPrefix(u.Pathname, "/") {
@@ -131,7 +131,7 @@ func (u URL) ResolveAbsolutePath(path string) (string, error) {
 	}
 	if u.Protocol == "file:" && !startsWithWindowsDriveLetter(path[min(1, len(path)):]) {
 		first, _, _ := strings.Cut(strings.TrimPrefix(u.Pathname, "/"), "/")
-		if len(first) >= 2 && isNormalizedWindowsDriveLetter(first[:2]) {
+		if isNormalizedWindowsDriveLetter(first) {
 			path = "/" + first + path
 		}
 	}

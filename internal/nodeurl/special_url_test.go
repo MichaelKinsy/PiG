@@ -39,14 +39,16 @@ func TestSpecialURLPathPreservesProtocolDriveRules(t *testing.T) {
 	}
 }
 
-// Node's `new URL("https://xn--.example")` throws (measured on Node v24.19): a label that is only the xn-- prefix has no punycode to decode.
-func TestSpecialHostRejectsAnEmptyPunycodeLabel(t *testing.T) {
-	for _, host := range []string{"xn--.example", "XN--", "a.xn--", "a.xn--.b"} {
+// Node's `new URL("https://xn--.example")` is valid in Node 24.22.1 and 26.12.1 (ada 4), which only lowercases an ASCII host and never decodes or validates its "xn--" labels; Node 22.19 and 24.19 (ada 2 and 3) throw for it. A host with a non-ASCII character still goes through UTS #46, and ada rejects its label that is only the xn-- prefix.
+func TestSpecialHostKeepsAnASCIIPunycodeLabelAsIs(t *testing.T) {
+	for host, want := range map[string]string{"xn--.example": "xn--.example", "XN--": "xn--", "a.xn--": "a.xn--", "a.XN--a.b": "a.xn--a.b", "xn--mnich-kva.example": "xn--mnich-kva.example"} {
+		if got, err := SpecialHost(host); err != nil || got != want {
+			t.Errorf("SpecialHost(%q) = %q, %v, want %q", host, got, err, want)
+		}
+	}
+	for _, host := range []string{"xn--.é", "é.xn--", "xn--é"} {
 		if got, err := SpecialHost(host); err == nil {
 			t.Errorf("SpecialHost(%q) = %q, want an error", host, got)
 		}
-	}
-	if got, err := SpecialHost("xn--mnich-kva.example"); err != nil || got != "xn--mnich-kva.example" {
-		t.Errorf("SpecialHost of a valid punycode label = %q, %v", got, err)
 	}
 }

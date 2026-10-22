@@ -59,8 +59,8 @@ func parseSpecialHost(server string, file bool) (string, error) {
 		return "[" + serializeIPv6(addr) + "]", nil
 	}
 	decoded := strings.ToValidUTF8(string(percentDecode(server)), string(utf8.RuneError))
-	ascii, err := whatwgDomainToASCII.ToASCII(decoded)
-	if err != nil || hasInvalidPunycodeLabel(decoded) || ascii == "" || strings.ContainsFunc(ascii, isForbiddenDomainCodePoint) {
+	ascii, ok := domainToASCII(decoded)
+	if !ok || ascii == "" || strings.ContainsFunc(ascii, isForbiddenDomainCodePoint) {
 		return "", fmt.Errorf("invalid %s host %q", kind, server)
 	}
 	if endsInANumber(ascii) {
@@ -74,6 +74,15 @@ func parseSpecialHost(server string, file bool) (string, error) {
 		return "", nil
 	}
 	return ascii, nil
+}
+
+// domainToASCII is the WHATWG domain to ASCII (beStrict false) as ada 4 implements it in Node 24.22 and 26: an ASCII domain is only lowercased, so an "xn--" label in it is never decoded, validated or rejected (Node 22.19 and 24.19 run UTS #46 over it, ada 3, and reject "xn--", "xn--a" and the like); any other domain is mapped, validated and encoded by UTS #46.
+func domainToASCII(domain string) (string, bool) {
+	if isASCII(domain) {
+		return strings.ToLower(domain), true
+	}
+	ascii, err := whatwgDomainToASCII.ToASCII(domain)
+	return ascii, err == nil && !hasInvalidPunycodeLabel(domain)
 }
 
 // labelSeparators maps the UTS #46 label separators that NFKC leaves alone to a full stop.
@@ -93,15 +102,11 @@ func dropIgnoredCodePoint(r rune) rune {
 	return r
 }
 
-// hasInvalidPunycodeLabel reports a label that is only the "xn--" prefix, or that starts with it and holds a non-ASCII character. Node rejects both; x/net/idna decodes an empty payload and drops the label, and accepts the mixed label by encoding it again. UTS #46 maps the ideographic, fullwidth and halfwidth ideographic full stops to the label separator and compatibility forms to ASCII before the label split, and ignores the code points dropIgnoredCodePoint drops, so the check reads the NFKC form with those separators replaced and those code points dropped.
-// An ASCII host maps to itself apart from case, which the prefix test folds.
+// hasInvalidPunycodeLabel reports, for a non-ASCII domain, a label that is only the "xn--" prefix, or that starts with it and holds a non-ASCII character. Node rejects both; x/net/idna decodes an empty payload and drops the label, and accepts the mixed label by encoding it again. UTS #46 maps the ideographic, fullwidth and halfwidth ideographic full stops to the label separator and compatibility forms to ASCII before the label split, and ignores the code points dropIgnoredCodePoint drops, so the check reads the NFKC form with those separators replaced and those code points dropped.
 func hasInvalidPunycodeLabel(host string) bool {
-	mapped := host
-	if strings.ContainsFunc(host, func(r rune) bool { return r >= utf8.RuneSelf }) {
-		mapped = labelSeparators.Replace(strings.Map(dropIgnoredCodePoint, norm.NFKC.String(host)))
-	}
+	mapped := labelSeparators.Replace(strings.Map(dropIgnoredCodePoint, norm.NFKC.String(host)))
 	for label := range strings.SplitSeq(mapped, ".") {
-		if len(label) >= 4 && strings.EqualFold(label[:4], "xn--") && (len(label) == 4 || strings.ContainsFunc(label, func(r rune) bool { return r >= 0x80 })) {
+		if len(label) >= 4 && strings.EqualFold(label[:4], "xn--") && (len(label) == 4 || !isASCII(label)) {
 			return true
 		}
 	}
