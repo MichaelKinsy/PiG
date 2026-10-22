@@ -21545,6 +21545,17 @@
       "shapeHash": "sha256:55f7d0bd8e942a52089cd26a697b1d13677f650c9d5e64d9d8cf1a282c7c78ef"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ResolvedSystemOneCompat",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ResolvedSystemOneCompat",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ResolvedSystemOneCompat"
+      },
+      "shapeHash": "sha256:a304001f0b57654faf51e8abf3d1fa38eb8d24b350d3180bb044fc80167ec313"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ResponsesInputItem",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ResponsesInputItem",
@@ -22810,6 +22821,105 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneCompat",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneCompat",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "SystemOneCompat"
+      },
+      "shapeHash": "sha256:7fbacdbe4603a12e04cb64fdba1b44eab10535122192601c398f220d81b71d93"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageAsset",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageAsset",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "SystemOneImageAsset"
+      },
+      "shapeHash": "sha256:15e12ccaf56c4d225261f6a821121b45f9ce61b5475de74a871f2e4410767fb9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageAsset.MarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageAsset.MarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageAssets",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageAssets",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "SystemOneImageAssets"
+      },
+      "shapeHash": "sha256:41fc3e263adf122caec335e055817d02b732cdbe995634a3314b436731ecfbed"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageAssets.MarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageAssets.MarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageInput",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageInput",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "SystemOneImageInput"
+      },
+      "shapeHash": "sha256:9ec16359a2c206e4fd36a2bc4ad0d11f1ba3ef4e7616b956c2366fa8709e12ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageInputAssets",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageInputAssets",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "SystemOneImageInput"
+      },
+      "shapeHash": "sha256:9ec16359a2c206e4fd36a2bc4ad0d11f1ba3ef4e7616b956c2366fa8709e12ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageInputImages",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageInputImages",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "SystemOneImageInput"
+      },
+      "shapeHash": "sha256:9ec16359a2c206e4fd36a2bc4ad0d11f1ba3ef4e7616b956c2366fa8709e12ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneImageInputStateImageURLs",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneImageInputStateImageURLs",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "SystemOneImageInput"
+      },
+      "shapeHash": "sha256:9ec16359a2c206e4fd36a2bc4ad0d11f1ba3ef4e7616b956c2366fa8709e12ff"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneTransport",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "SystemOneTransport",
@@ -22852,6 +22962,17 @@
         "type": "SystemOneWireRequest"
       },
       "shapeHash": "sha256:7a71487b9fd0f1871e97b91e9d205cb78137a52b7d7951ee0274f3da256e4703"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneWireRequest.Body",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneWireRequest.Body",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() map[string]any"
+      },
+      "shapeHash": "sha256:8fd6b172652468ab086fb7eaa418a41ccd86c4de48801816cacc27cd53cbf80c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#SystemText",
@@ -25976,6 +26097,17 @@
         "type": "func(message *oaiMessage, cc *oaiCacheControl) bool"
       },
       "shapeHash": "sha256:a25f039bc4e146a7b1a00b341831769dc262cea919c9279effd964c3bc0d831e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#addSystemOneImages",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "addSystemOneImages",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(label string, model ClassifierModel, input SystemOneImageInput, images []ImageContent, request *SystemOneWireRequest) error"
+      },
+      "shapeHash": "sha256:73ae033cc086f2baa14cb52eb8c1f23786336962bc8dfc82372cd8ac3e828314"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#adjustBedrockBudgetThinking",
@@ -41736,9 +41868,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[59]map[ModelThinkingLevel]*string"
+        "type": "[60]map[ModelThinkingLevel]*string"
       },
-      "shapeHash": "sha256:bc14e7e197818eb868a666c3d9299fc8247a02a0e406ec33075c1ae138c934a4"
+      "shapeHash": "sha256:de7f664ae015a004f44f062e01f6b63851d67983c2917630fdc4fea57f51a0c6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",
@@ -47552,6 +47684,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/ai#maxSafeInteger",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "maxSafeInteger",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#maxSystemOneDataURLImages",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "maxSystemOneDataURLImages",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -61539,6 +61682,28 @@
         "type": "func[M RoleMessage](entry M) (SystemMessage, bool)"
       },
       "shapeHash": "sha256:0af5cf642eacafd17e9ecfff21396929ec0766ee1c025b0d7b9b7fce6e812bd5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#systemOneAssetFormats",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "systemOneAssetFormats",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "map[string]string"
+      },
+      "shapeHash": "sha256:745c198d1e8b89727fedc49d3ee1a081d44e828b69940e1f62928394d51a0f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#systemOneImageOptInHeaders",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "systemOneImageOptInHeaders",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "ProviderHeaders"
+      },
+      "shapeHash": "sha256:df0154c1c86c7354cb4b9475a9d6dc7a9d9d82f7fe0e80ddf19080b5e4a9b1d5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#takeScratch",
@@ -240621,6 +240786,17 @@
       "shapeHash": "sha256:047ff8a18793ba531f025b147e31234bfeebf4f77be45a0f0dbdb2f8c99dbd68"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#overlaySystemOneCompat",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "overlaySystemOneCompat",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(base *github.com/MichaelKinsy/PiG/ai.SystemOneCompat, compat *providerCompat) github.com/MichaelKinsy/PiG/ai.SystemOneCompat"
+      },
+      "shapeHash": "sha256:fedac1763884d9ff78fd8d87be85300e690be93b75bc290e84db5dfe52a8632a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#overlayValue",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "overlayValue",
@@ -254107,6 +254283,17 @@
       "shapeHash": "sha256:b4552dc697f3ce962f6209c53a6abd4f3f8ae9024aba9574c6b935a52b9c9ea0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#withModelsJSONCompat",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "withModelsJSONCompat",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model github.com/MichaelKinsy/PiG/ai.AnyModel, compat *providerCompat) github.com/MichaelKinsy/PiG/ai.AnyModel"
+      },
+      "shapeHash": "sha256:d392c9355f7e204ec17dc10a8f065eb54fb199ca7d7ebc84744ecf17efc41b52"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#withParityFixturePath",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "withParityFixturePath",
@@ -256217,6 +256404,17 @@
         "type": "func(opts ...Opt) *Schema"
       },
       "shapeHash": "sha256:691c7d3d379b81218ad3c14953061876e1fb9f0e071214f45ebb069dbeeb578b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#SystemOneCompatSchema",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "SystemOneCompatSchema",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *Schema"
+      },
+      "shapeHash": "sha256:85b7a9cb76af224a912e703674404e5d443dabe176e1118e6fb666c8f1f3a7d7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#ThinkingLevelMapSchema",

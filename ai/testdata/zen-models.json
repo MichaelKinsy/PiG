@@ -41,10 +41,6 @@
   },
   {
     "provider": "opencode",
-    "id": "claude-sonnet-4"
-  },
-  {
-    "provider": "opencode",
     "id": "claude-sonnet-4-5"
   },
   {
@@ -117,10 +113,6 @@
   },
   {
     "provider": "opencode",
-    "id": "deepseek-v4-flash-vision-exp"
-  },
-  {
-    "provider": "opencode",
     "id": "deepseek-v4-pro"
   },
   {
@@ -130,6 +122,10 @@
   {
     "provider": "opencode",
     "id": "deepseek-v4.1-flash-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "flint-40b-free"
   },
   {
     "provider": "opencode",

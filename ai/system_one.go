@@ -50,9 +50,9 @@ type SystemOneWireRequest struct {
 	State     any
 	Questions SystemOneWireQuestions
 	// Assets are the images as System One assets, keyed by the names the state references.
-	Assets *SystemOneImageAssets
+	Assets *SystemOneImageAssets `json:",omitempty"`
 	// Images are the images as data URLs, Clef's extension to System One.
-	Images []string
+	Images []string `json:",omitempty"`
 }
 
 // Body is the request's members in Pi's insertion order: state, questions, then assets or images.
