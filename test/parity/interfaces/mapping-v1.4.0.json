@@ -11005,8 +11005,25 @@
     },
     {
       "id": "pkg:ai/.#ClassifierModel",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bbb17c6abd87252a086aef32f4cec98bbee00e47b12485b15ecf97a87f45b472"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bbb17c6abd87252a086aef32f4cec98bbee00e47b12485b15ecf97a87f45b472",
+      "rationale": "Derived by the interface gap detector: ClassifierModel is Go ai/model_types.go#ClassifierModel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/model_types.go#ClassifierModel"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals"
+      ]
     },
     {
       "id": "pkg:ai/.#ClassifierModel::property:api",
@@ -11054,8 +11071,25 @@
     },
     {
       "id": "pkg:ai/.#ClassifierModel::property:compat",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:89da03970afecc8c889e2e7b0b7ad235c5ff01e7dcba1536e19bd359aa7414f4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:89da03970afecc8c889e2e7b0b7ad235c5ff01e7dcba1536e19bd359aa7414f4",
+      "rationale": "Derived by the interface gap detector: ClassifierModel::property:compat is Go ai/model_types.go#ClassifierModel.Compat (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/model_types.go#ClassifierModel.Compat"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/models_catalog_codec.go#anyModelRecord"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/.#ClassifierModel::property:contextWindow",
@@ -32953,18 +32987,68 @@
     },
     {
       "id": "pkg:ai/.#SystemOneCompat",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ba2844fd1155175cb64d3a20646d39c05e98d49b65b7ea3dba6be7079a3ff51"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9ba2844fd1155175cb64d3a20646d39c05e98d49b65b7ea3dba6be7079a3ff51",
+      "rationale": "Derived by the interface gap detector: SystemOneCompat is Go ai/system_one.go#SystemOneCompat (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneCompat"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/.#SystemOneCompat::property:imageInput",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a6c25f516149ae8d038680259b5eadbe4ad10a5f93026a5cb045ab156b4d38ae"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a6c25f516149ae8d038680259b5eadbe4ad10a5f93026a5cb045ab156b4d38ae",
+      "rationale": "Derived by the interface gap detector: SystemOneCompat::property:imageInput is Go ai/system_one.go#SystemOneCompat.ImageInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneCompat.ImageInput"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/.#SystemOneCompat::property:sendImageOptInHeader",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b890dd611619d4c73f8c8e7e35a2a47396cc73f9e36fa687e194d518c4dacc72"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b890dd611619d4c73f8c8e7e35a2a47396cc73f9e36fa687e194d518c4dacc72",
+      "rationale": "Derived by the interface gap detector: SystemOneCompat::property:sendImageOptInHeader is Go ai/system_one.go#SystemOneCompat.SendImageOptInHeader (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneCompat.SendImageOptInHeader"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/.#TextContent",
@@ -47183,18 +47267,67 @@
     },
     {
       "id": "pkg:ai/api/system-one-shared#ResolvedSystemOneCompat",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a8bf8f89ee6b90bde7b7919bac2022e7d6778754896c19e594735776d7cc620d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a8bf8f89ee6b90bde7b7919bac2022e7d6778754896c19e594735776d7cc620d",
+      "rationale": "Derived by the interface gap detector: ResolvedSystemOneCompat is Go ai/system_one.go#ResolvedSystemOneCompat (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#ResolvedSystemOneCompat"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne"
+      ]
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneImageInput",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9019c23139dafd251ccf61f1ffdba37769a5c87bedd341250b48f6a9c68c0785"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9019c23139dafd251ccf61f1ffdba37769a5c87bedd341250b48f6a9c68c0785",
+      "rationale": "Derived by the interface gap detector: SystemOneImageInput is Go ai/system_one.go#SystemOneImageInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneImageInput"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#addSystemOneImages"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneTransport",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f70440f1a2cbcb413ee9c44e97b6c81ce78decb037732cdf1a4e16b9e0b33363"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f70440f1a2cbcb413ee9c44e97b6c81ce78decb037732cdf1a4e16b9e0b33363",
+      "rationale": "Derived by the interface gap detector: SystemOneTransport is Go ai/system_one.go#SystemOneTransport (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneTransport"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRejectsAnotherAPIAndImagesWithoutSending",
+        "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRunsTheTransportEnvelope",
+        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne"
+      ]
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneTransport::property:api",
@@ -47220,13 +47353,43 @@
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneTransport::property:detectCompat",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a0a2b36a9d5743a7a29f8fd4b0f433c20fcc51881483ae294cf0d339dbb9a6b5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a0a2b36a9d5743a7a29f8fd4b0f433c20fcc51881483ae294cf0d339dbb9a6b5",
+      "rationale": "Derived by the interface gap detector: SystemOneTransport::property:detectCompat is Go ai/system_one.go#SystemOneTransport.DetectCompat (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneTransport.DetectCompat"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne"
+      ]
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneTransport::property:detectCompat::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:38bbab11931f46dbfdbf5e0b8c266f527b046671af389dd3461b25a9f8db97a4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:38bbab11931f46dbfdbf5e0b8c266f527b046671af389dd3461b25a9f8db97a4",
+      "rationale": "Derived by the interface gap detector: SystemOneTransport::property:detectCompat::call:0 is Go ai/system_one.go#SystemOneTransport.DetectCompat (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneTransport.DetectCompat"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne"
+      ]
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneTransport::property:label",
@@ -47384,18 +47547,65 @@
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneWireRequest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:95764391a23bb422494064f0e253f8071b68470823c98bc190f80e312e979594"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:95764391a23bb422494064f0e253f8071b68470823c98bc190f80e312e979594",
+      "rationale": "Derived by the interface gap detector: SystemOneWireRequest is Go ai/system_one.go#SystemOneWireRequest (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneWireRequest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRunsTheTransportEnvelope",
+        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne",
+        "test:ai/system_one_timestamp_test.go#TestClassifySystemOneStampsEveryResultWithItsStartTime"
+      ]
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneWireRequest::property:assets",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2b335598cf6b15780dca913b77cd1fd8523b53334cc5a56887e041ddb94ae418"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2b335598cf6b15780dca913b77cd1fd8523b53334cc5a56887e041ddb94ae418",
+      "rationale": "Derived by the interface gap detector: SystemOneWireRequest::property:assets is Go ai/system_one.go#SystemOneWireRequest.Assets (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneWireRequest.Assets"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#SystemOneWireRequest.Body"
+      ],
+      "evidence": [
+        "reach:ai/system_one.go#SystemOneWireRequest.Body"
+      ]
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneWireRequest::property:images",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0ef6a44d3d166a059d8c7dfac7080c133614aa9ab2ad7b2bd931acae9ca47bf8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0ef6a44d3d166a059d8c7dfac7080c133614aa9ab2ad7b2bd931acae9ca47bf8",
+      "rationale": "Derived by the interface gap detector: SystemOneWireRequest::property:images is Go ai/system_one.go#SystemOneWireRequest.Images (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneWireRequest.Images"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#SystemOneWireRequest.Body"
+      ],
+      "evidence": [
+        "reach:ai/system_one.go#SystemOneWireRequest.Body"
+      ]
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneWireRequest::property:questions",
@@ -47419,8 +47629,23 @@
     },
     {
       "id": "pkg:ai/api/system-one-shared#SystemOneWireRequest::property:state",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f75c0293a57ff4b53cbfe638ee048d2dac0ef05267847315d6ee32cb9c10ec04"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f75c0293a57ff4b53cbfe638ee048d2dac0ef05267847315d6ee32cb9c10ec04",
+      "rationale": "Derived by the interface gap detector: SystemOneWireRequest::property:state is Go ai/system_one.go#SystemOneWireRequest.State (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneWireRequest.State"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRunsTheTransportEnvelope"
+      ]
     },
     {
       "id": "pkg:ai/api/transform-messages#SplitErrorToolResult",
@@ -53713,8 +53938,25 @@
     },
     {
       "id": "pkg:ai/compat#ClassifierModel",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bbb17c6abd87252a086aef32f4cec98bbee00e47b12485b15ecf97a87f45b472"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bbb17c6abd87252a086aef32f4cec98bbee00e47b12485b15ecf97a87f45b472",
+      "rationale": "Derived by the interface gap detector: ClassifierModel is Go ai/model_types.go#ClassifierModel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/model_types.go#ClassifierModel"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals"
+      ]
     },
     {
       "id": "pkg:ai/compat#ClassifierModel::property:api",
@@ -53762,8 +54004,25 @@
     },
     {
       "id": "pkg:ai/compat#ClassifierModel::property:compat",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:89da03970afecc8c889e2e7b0b7ad235c5ff01e7dcba1536e19bd359aa7414f4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:89da03970afecc8c889e2e7b0b7ad235c5ff01e7dcba1536e19bd359aa7414f4",
+      "rationale": "Derived by the interface gap detector: ClassifierModel::property:compat is Go ai/model_types.go#ClassifierModel.Compat (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/model_types.go#ClassifierModel.Compat"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/models_catalog_codec.go#anyModelRecord"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/compat#ClassifierModel::property:contextWindow",
@@ -77898,18 +78157,68 @@
     },
     {
       "id": "pkg:ai/compat#SystemOneCompat",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ba2844fd1155175cb64d3a20646d39c05e98d49b65b7ea3dba6be7079a3ff51"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9ba2844fd1155175cb64d3a20646d39c05e98d49b65b7ea3dba6be7079a3ff51",
+      "rationale": "Derived by the interface gap detector: SystemOneCompat is Go ai/system_one.go#SystemOneCompat (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneCompat"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/compat#SystemOneCompat::property:imageInput",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a6c25f516149ae8d038680259b5eadbe4ad10a5f93026a5cb045ab156b4d38ae"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a6c25f516149ae8d038680259b5eadbe4ad10a5f93026a5cb045ab156b4d38ae",
+      "rationale": "Derived by the interface gap detector: SystemOneCompat::property:imageInput is Go ai/system_one.go#SystemOneCompat.ImageInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneCompat.ImageInput"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/compat#SystemOneCompat::property:sendImageOptInHeader",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b890dd611619d4c73f8c8e7e35a2a47396cc73f9e36fa687e194d518c4dacc72"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b890dd611619d4c73f8c8e7e35a2a47396cc73f9e36fa687e194d518c4dacc72",
+      "rationale": "Derived by the interface gap detector: SystemOneCompat::property:sendImageOptInHeader is Go ai/system_one.go#SystemOneCompat.SendImageOptInHeader (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneCompat.SendImageOptInHeader"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/compat#TextContent",
@@ -88172,23 +88481,88 @@
     },
     {
       "id": "pkg:ai/providers/compat-schema#SystemOneCompat",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a3d35775be72b6208dbf19b526604cba21416642f126333995e92ad787c6372a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a3d35775be72b6208dbf19b526604cba21416642f126333995e92ad787c6372a",
+      "rationale": "Derived by the interface gap detector: SystemOneCompat is Go ai/system_one.go#SystemOneCompat (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneCompat"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/providers/compat-schema#SystemOneCompat::property:imageInput",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3ac69bfc4cf9694a36483740017e295695ab4cae56c0603bd5f114ac08fbf710"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3ac69bfc4cf9694a36483740017e295695ab4cae56c0603bd5f114ac08fbf710",
+      "rationale": "Derived by the interface gap detector: SystemOneCompat::property:imageInput is Go ai/system_one.go#SystemOneCompat.ImageInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneCompat.ImageInput"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/providers/compat-schema#SystemOneCompat::property:sendImageOptInHeader",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b890dd611619d4c73f8c8e7e35a2a47396cc73f9e36fa687e194d518c4dacc72"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b890dd611619d4c73f8c8e7e35a2a47396cc73f9e36fa687e194d518c4dacc72",
+      "rationale": "Derived by the interface gap detector: SystemOneCompat::property:sendImageOptInHeader is Go ai/system_one.go#SystemOneCompat.SendImageOptInHeader (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/system_one.go#SystemOneCompat.SendImageOptInHeader"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/system_one.go#ClassifySystemOne"
+      ],
+      "evidence": [
+        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ]
     },
     {
       "id": "pkg:ai/providers/compat-schema#SystemOneCompatSchema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9df03a8be66eb80ed8445e39a028177fbe924bf42817125a4f942d0ba9225ee7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9df03a8be66eb80ed8445e39a028177fbe924bf42817125a4f942d0ba9225ee7",
+      "rationale": "Derived by the interface gap detector: SystemOneCompatSchema is Go internal/codingagent/configschema/compat_b.go#SystemOneCompatSchema (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/configschema/compat_b.go#SystemOneCompatSchema"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/configschema/compat_b.go#SystemOneCompatSchema"
+      ],
+      "evidence": [
+        "test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"
+      ]
     },
     {
       "id": "pkg:ai/providers/compat-schema#ThinkingTokenBudgetField",
@@ -170155,8 +170529,8 @@
       ],
       "evidence": [
         "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted",
-        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
-        "test:coding/extension_model_types_wire_test.go#TestExtensionProviderConfigKeepsTypedModelsAndImplementations"
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifierImagesUpstream",
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -170178,8 +170552,8 @@
       ],
       "evidence": [
         "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted",
-        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
-        "test:coding/extension_model_types_wire_test.go#TestExtensionProviderConfigKeepsTypedModelsAndImplementations"
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifierImagesUpstream",
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -170793,8 +171167,8 @@
       ],
       "evidence": [
         "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted",
-        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
-        "test:coding/model_runtime_images_upstream_test.go#TestModelRuntimeImagesUpstream"
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifierImagesUpstream",
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"
       ]
     },
     {
@@ -170815,8 +171189,8 @@
       ],
       "evidence": [
         "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted",
-        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
-        "test:coding/model_runtime_images_upstream_test.go#TestModelRuntimeImagesUpstream"
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifierImagesUpstream",
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"
       ]
     },
     {
