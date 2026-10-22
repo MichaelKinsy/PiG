@@ -851,8 +851,10 @@ func unsupportedFields(row modelRow) []string {
 func hasChatCompat(compat *ModelCompat) bool {
 	rest := *compat
 	rest.ImageInput, rest.SendImageOptInHeader = "", nil
-	encoded, err := json.Marshal(rest)
-	return err != nil || string(encoded) != "{}"
+	var encoded bytes.Buffer
+	encoder := json.NewEncoder(&encoded)
+	encoder.SetEscapeHTML(false)
+	return encoder.Encode(rest) != nil || encoded.String() != "{}\n"
 }
 
 // systemOneCompatLiteral is the Go literal of a classifier model's System One compat.

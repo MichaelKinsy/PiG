@@ -73,8 +73,23 @@ type SystemOneWireRequest struct {
 	Questions SystemOneWireQuestions
 	// Assets are the images as System One assets, keyed by the names the state references.
 	Assets *SystemOneImageAssets `json:",omitempty"`
-	// Images are the images as data URLs, Clef's extension to System One.
-	Images []string `json:",omitempty"`
+	// Images are the images as data URLs, Clef's extension to System One. nil is an absent `images` member and an empty slice
+	// is an explicit `[]` (system-one-shared.ts SystemOneRequest.images?: string[]); Body and MarshalJSON both keep that difference.
+	Images []string
+}
+
+// MarshalJSON writes the request's members in field order, with an absent assets or images member left out and an empty images list kept as [].
+func (r SystemOneWireRequest) MarshalJSON() ([]byte, error) {
+	wire := struct {
+		State     any
+		Questions SystemOneWireQuestions
+		Assets    *SystemOneImageAssets `json:",omitempty"`
+		Images    *[]string             `json:",omitempty"`
+	}{State: r.State, Questions: r.Questions, Assets: r.Assets}
+	if r.Images != nil {
+		wire.Images = &r.Images
+	}
+	return json.Marshal(wire)
 }
 
 // Body is the request's members in Pi's insertion order: state, questions, then assets or images.
@@ -397,6 +412,7 @@ var typesafeSystemOneTransport = SystemOneTransport{
 	Label: "System One API",
 	// OpenRouter by provider ID, which survives baseUrl overrides, or by host, which covers regional endpoints.
 	DetectCompat: func(model ClassifierModel) ResolvedSystemOneCompat {
+		//portlint:allow providerliteral typesafe-system-one.ts:20 detectCompat tests model.provider === "openrouter" || model.baseUrl.includes("openrouter.ai")
 		if model.Provider == "openrouter" || strings.Contains(model.BaseURL, "openrouter.ai") {
 			return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputStateImageURLs}
 		}

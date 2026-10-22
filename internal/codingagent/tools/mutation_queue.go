@@ -147,16 +147,23 @@ func (t *MutationTicket) WaitContext(ctx context.Context) error {
 		select {
 		case <-prev:
 		case <-ctx.Done():
-			go func() {
-				for _, prev := range t.prev[i:] {
-					<-prev
-				}
-				t.Release()
-			}()
+			t.handOff(t.prev[i:])
 			return ctx.Err()
 		}
 	}
 	return nil
+}
+
+// handOff releases t once every mutation in rest has completed, for a ticket whose WaitContext gave up. The goroutine runs no caller
+// code: it only receives from channels the queue closes and closes t's own, so there is no caller panic for it to contain, and a
+// recover here would hide a double Release instead of surfacing it.
+func (t *MutationTicket) handOff(rest []<-chan struct{}) {
+	go func() {
+		for _, prev := range rest {
+			<-prev
+		}
+		t.Release()
+	}()
 }
 
 // Release signals this ticket's completion to the next queued caller, and
