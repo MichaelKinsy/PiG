@@ -116,9 +116,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/api/cloudflare-workers-ai-system-one.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"]
+rationale = "Pi 7f225f25 adds image input to the Cloudflare Workers AI System One transport: the Clef models take images as data URLs (at most four, rejected before sending), the Jev ids take System One assets, and the image form comes from compat before the model ID. Ported in ai/system_one.go (ClassifyCloudflareWorkersAISystemOne and the shared detected-compat path); the four new subtests of TestCloudflareWorkersAISystemOneUpstream assert the exact request bodies, the compat precedence and the four-image rejection with no request."
 
 [[files]]
 path = "packages/ai/src/api/cloudflare.ts"
@@ -319,9 +319,9 @@ rationale = "BuildBaseOptions keeps StreamOptions.Identity (ai/simple_options.go
 [[files]]
 path = "packages/ai/src/api/system-one-shared.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream", "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"]
+rationale = "Pi 7f225f25 adds the shared image path of the System One transports: SystemOneCompat (imageInput assets, images or state-image-urls; sendImageOptInHeader), a per-transport detectCompat, SystemOneWireRequest assets, images and state, and the text-only rejection that now names the model ('<API> does not support image input for <id>'). Ported in ai/system_one.go (addImages and the detected compat, with compat overriding per field); the TypeSafe and Cloudflare upstream tests assert the wire forms, the opt-in header only with images, the unsupported image format rejection and the per-field override."
 
 [[files]]
 path = "packages/ai/src/api/transform-messages.ts"
@@ -340,9 +340,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/api/typesafe-system-one.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"]
+rationale = "Pi 7f225f25 gives the TypeSafe System One transport its image forms: TypeSafe assets with the typesafe-danger-zone-images opt-in header, and OpenRouter's image_url parts in the state. Ported in ClassifyTypesafeSystemOne (ai/system_one.go); the TypeSafe image subtests of TestTypesafeSystemOneUpstream assert both forms, the formats TypeSafe rejects before sending, and OpenRouter's form for the typesafe and cloudflare ids routed through it."
 
 [[files]]
 path = "packages/ai/src/auth/context.ts"
@@ -718,9 +718,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/providers/compat-schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "71023aec\u21928efd314f: Pi 4954d760 exports CompatSchemasByApi and maps azure-openai-responses and openai-codex-responses to the OpenAI Responses compat schema; the merged ProviderCompatSchema is unchanged by it. Pi 7f225f25 adds SystemOneCompatSchema (imageInput: assets, images or state-image-urls; sendImageOptInHeader) and maps typesafe-system-one and cloudflare-workers-ai-system-one to it. Ported as configschema.SystemOneCompatSchema (internal/codingagent/configschema/compat_b.go) with the same two api keys; TestCompatSchemaExportsMatchPi compares the export with Pi's, and schemas/models.schema.json is regenerated from it."
 
 [[files]]
 path = "packages/ai/src/providers/data-json.d.ts"
@@ -1264,9 +1264,9 @@ rationale = "Pi 2ec55d80 adds the pi.ai.request and pi.ai.poll span schema and o
 [[files]]
 path = "packages/ai/src/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream", "test:ai/identity_test.go#TestClientIdentityJSON", "test:ai/identity_test.go#TestMergeClientIdentityFieldByField"]
+rationale = "Pi adc5fa9f adds StreamOptions.identity (ClientIdentity); ai.StreamOptions.Identity carries it, with ClientIdentity JSON and the field-by-field merge locked by the two identity tests. Pi 7f225f25 adds ClassifierModel.compat (SystemOneCompat); ai.ClassifierModel.Compat (ai/model_types.go) carries it through the catalog codec, and the OpenRouter classifier catalog case of TestClassifierModelsUpstream asserts the explicit compat."
 
 [[files]]
 path = "packages/ai/src/utils/abort-signals.ts"
@@ -1446,9 +1446,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/utils/version.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/identity_test.go#TestClientIdentityVersionDefaultsToTheProductVersion"]
+rationale = "PI_AI_VERSION is ai.ProductVersion, PiG's composite version (D65), the default version of the detailed User-Agent. Pi 4a080252 (Release v1.4.0) moves the constant to 1.4.0; PiG's value derives from the upstream pin (internal/coding/pigversion), already at 1.4.0, so there is no separate constant to change."
 
 [[files]]
 path = "packages/chord/src/cell.ts"
@@ -2335,9 +2335,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifierImagesUpstream"]
+rationale = "Pi 7f225f25 applies a provider's models.json compat to its classifier models, so compat set on an OpenRouter or Cloudflare provider reaches the System One image form, and keeps OpenRouter's explicit image form when its baseUrl is routed through a proxy. Ported in internal/codingagent/native_provider_composer.go; the two new subtests of TestModelRuntimeClassifierImagesUpstream drive models.json through the composer and ModelRuntime.Classify and assert the proxy case and the overlaid compat."
 
 [[files]]
 path = "packages/coding-agent/src/core/radius.ts"

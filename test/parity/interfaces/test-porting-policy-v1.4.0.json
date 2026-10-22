@@ -874,6 +874,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/classifier-images-live.test.ts",
+      "upstreamTestHash": "sha256:90aa9ce656d02fb924d429249f57f643c21adb956bdc3ef6e420b21a80fe3b97",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling. Production-path review at Pi 1.4.0: live image classification through the TypeSafe, Cloudflare Workers AI and OpenRouter System One services (red and blue PNG in separate requests); live e2e, skipped without credentials."
+    },
+    {
       "path": "packages/ai/test/classifier-models.test.ts",
       "upstreamTestHash": "sha256:1b3463bfb5dc78bb3220d35dd75a043c2b8162c86bd20125f980eb621d792174",
       "area": "providers",

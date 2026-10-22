@@ -471,13 +471,24 @@
     },
     {
       "path": "packages/ai/test/classifier-images-live.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:90aa9ce656d02fb924d429249f57f643c21adb956bdc3ef6e420b21a80fe3b97"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:90aa9ce656d02fb924d429249f57f643c21adb956bdc3ef6e420b21a80fe3b97",
+      "evidence": [
+        "ai/classifier_images_live_test.go#TestTypeSafeImageClassificationLive",
+        "ai/classifier_images_live_test.go#TestCloudflareWorkersAIImageClassificationLive",
+        "ai/classifier_images_live_test.go#TestOpenRouterImageClassificationLive"
+      ],
+      "rationale": "New in Pi 7f225f25 (v1.4.0). The file has three describe blocks (TypeSafe jev-latest, five Cloudflare Workers AI ids, two OpenRouter ids), each skipped without its credentials; the inventory counts the three it/it.each sites (:54 and the two it.each tables). The Go port keeps every id, the 512x512 red and blue PNG pair, the one-question choice context, the requirement that the model lists image input, and the separate red and blue requests whose choice answers must be red and blue. Each block resolves its credentials through testenv.RequireLiveEnv (TYPESAFE_API_KEY; CLOUDFLARE_API_KEY with CLOUDFLARE_ACCOUNT_ID; OPENROUTER_API_KEY) and skips without them. The tests are behind the live build tag and run with -tags live. They compile against the shipped classifier models, but no live service was called, so remote acceptance of the images is unverified; the hermetic request-shape evidence for the same transports is in the typesafe-system-one and cloudflare-workers-ai-system-one rows."
     },
     {
       "path": "packages/ai/test/classifier-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1b3463bfb5dc78bb3220d35dd75a043c2b8162c86bd20125f980eb621d792174"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1b3463bfb5dc78bb3220d35dd75a043c2b8162c86bd20125f980eb621d792174",
+      "evidence": [
+        "ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "coding/extension_model_types_wire_test.go#TestExtensionClassifyAction"
+      ],
+      "rationale": "Pi 7f225f25 changes the 'routes OpenRouter classifier models through the System One API' case (:248) to expect compat {imageInput: state-image-urls, sendImageOptInHeader: false}, explicit so images keep OpenRouter's form when the baseUrl is overridden. The Go subtest of the same name asserts model.Compat.ImageInput == SystemOneImageInputStateImageURLs and a false SendImageOptInHeader on the catalog models, which the regenerated classifier catalog (ai/classifier_models_generated.go) now carries. Earlier review, retained: All 5 cases. 'keeps chat and classifier entries...', 'exposes Jev only through classifier catalog accessors', the three 'routes \u003cprovider\u003e Jev' rows and 'routes OpenRouter classifier models' are TestClassifierModelsUpstream subtests. 'rejects chat models at the classifier entry point at runtime' (:94) casts a chat model to ClassifierModel; ai.Models.Classify takes *ClassifierModel so the cast cannot compile in Go, and the reachable runtime entry that accepts any model (the extension classify action, coding.ModelRuntime via ai.AssertClassifierModel) is covered by TestExtensionClassifyAction asserting an error result containing 'is not a classifier model'. 1.1.0 adds three cases, all subtests of TestClassifierModelsUpstream (ai/classifier_models_upstream_test.go): images rejected before the provider call for text-only classifier models, GPT-6 Luna routed through the Decisions API with images (chat entry stays separate), and Decisions models listed only for API key credentials. Pi 3daa2028→b06c1f2c: Pi 195120a9 moves the OpenCode classifier base URLs from /zen/v1 to /inference/v1; TestClassifierModelsUpstream carries the new URLs."
     },
     {
       "path": "packages/ai/test/cloudflare-ai-binding.test.ts",
@@ -504,8 +515,12 @@
     },
     {
       "path": "packages/ai/test/cloudflare-workers-ai-system-one.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4cec794ad0dc3cace4a00e794d1187e084ca287378ced787f688e341fd73be08"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4cec794ad0dc3cace4a00e794d1187e084ca287378ced787f688e341fd73be08",
+      "evidence": [
+        "ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+      ],
+      "rationale": "All 9 cases are subtests of TestCloudflareWorkersAISystemOneUpstream (each cites its upstream line). Pi 7f225f25 adds four: 'sends images to Clef as data URLs' (:135), 'reads the image form from compat before the model ID' (:167), 'rejects more than four images for Clef before sending' (:189) and 'sends images to %s as System One assets' for typesafe/jev and typesafe/jev-1.14.0 (:205). The Go subtests of the same names assert the exact request bodies (data-URL image parts for Clef, assets and the opt-in header for the Jev ids), the compat precedence over the model ID, and the four-image error with no request sent, through ai.ClassifyCloudflareWorkersAISystemOne and the detected-compat path in ai/system_one.go."
     },
     {
       "path": "packages/ai/test/compat-env.test.ts",
@@ -827,8 +842,13 @@
     },
     {
       "path": "packages/ai/test/image-model-data.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dae59f008c4083eaa4b83c303d34a1fdbd14372cef16aec940b6a5cab1c2aa28"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dae59f008c4083eaa4b83c303d34a1fdbd14372cef16aec940b6a5cab1c2aa28",
+      "evidence": [
+        "cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterCatalogParsingUpstream",
+        "cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterCatalogParity"
+      ],
+      "rationale": "All 4 cases are subtests of TestOpenRouterCatalogParsingUpstream. Pi 18e56a06 expects compat {imageInput: state-image-urls, sendImageOptInHeader: false} on the decision models of 'emits decision models as System One classifier models' (:82); cmd/gen-models/openrouter_catalog.go now sets that compat on every classifier it builds and the Go subtest compares the whole classifier record including it."
     },
     {
       "path": "packages/ai/test/image-tool-result.test.ts",
@@ -1863,8 +1883,12 @@
     },
     {
       "path": "packages/ai/test/typesafe-system-one.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a13662f3e488419ec002ef835d0759f8f6b1ee94ca772a55d8df83a85aff6082"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a13662f3e488419ec002ef835d0759f8f6b1ee94ca772a55d8df83a85aff6082",
+      "evidence": [
+        "ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+      ],
+      "rationale": "All 15 cases are subtests of TestTypesafeSystemOneUpstream with the upstream titles. Pi 7f225f25 renames 'rejects image input before sending' to 'rejects image input for text-only models before sending' (:123, the message now names the model: '\u003cAPI\u003e does not support image input for jev-latest', for System One and Cloudflare) and adds 'sends images to TypeSafe as assets with the opt-in header' (:136), 'rejects image formats TypeSafe does not accept before sending' (:176), 'sends images to OpenRouter as image_url parts in the state' (:189), the table 'sends OpenRouter's image form to %s' (:222) and 'lets compat override detected image settings per field' (:258). The Go subtests assert the exact wire bodies (assets, image_url state parts), the typesafe-danger-zone-images header present only with images, the pre-send rejections with no request, and the per-field compat override."
     },
     {
       "path": "packages/ai/test/unicode-surrogate.test.ts",
@@ -4200,8 +4224,13 @@
     },
     {
       "path": "packages/coding-agent/test/model-runtime-classifiers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:61131d81e23ec2a86b2cdca6e61a33275dc154eb75a60514144c71bfb4794407"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:61131d81e23ec2a86b2cdca6e61a33275dc154eb75a60514144c71bfb4794407",
+      "evidence": [
+        "coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
+        "coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifierImagesUpstream"
+      ],
+      "rationale": "All 3 cases. 'lists Jev separately and classifies with runtime-resolved auth' (:68) is the first subtest of TestModelRuntimeClassifiersUpstream. Pi 7f225f25 adds 'keeps OpenRouter's image form when models.json routes OpenRouter through a proxy' (:88) and 'applies provider compat from models.json to classifier models' (:103); both are subtests of TestModelRuntimeClassifierImagesUpstream, which drive models.json through the native provider composer (internal/codingagent/native_provider_composer.go) and ModelRuntime.Classify and assert the image request form and the overlaid compat."
     },
     {
       "path": "packages/coding-agent/test/model-runtime-cloudflare-compat.test.ts",
