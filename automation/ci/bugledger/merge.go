@@ -24,12 +24,17 @@ func canonical(l *Ledger) {
 }
 
 // keepPrior replaces each generated entry by the committed entry of the same bug when that entry records its fix commits. Regenerating then
-// leaves the entries of other branches as they are, including their commit lists, which differ between clones of different ages. An entry
+// leaves the entries of other branches as they are, including their commit lists, which differ between clones of different ages, except that a recorded test the tree no longer has is dropped. An entry
 // with no commit yet is generated again, so it picks up its commit once it exists.
-func keepPrior(l *Ledger, prior []Entry) {
+func keepPrior(l *Ledger, prior []Entry, root string) {
 	have := map[string][]Entry{}
 	for _, p := range prior {
 		if len(p.Commits) > 0 {
+			// A test a port retired or renamed since the entry was committed no longer names anything.
+			p.Tests = slices.DeleteFunc(slices.Clone(p.Tests), func(t string) bool { return !testExists(root, t) })
+			if p.Tests == nil {
+				p.Tests = []string{}
+			}
 			k := identity(p)
 			have[k] = append(have[k], p)
 		}

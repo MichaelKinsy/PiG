@@ -70,7 +70,7 @@ func runWith(root, since string, check, strict, refresh bool) error {
 	}
 	if !check && !refresh {
 		if prior, _, err := readCommitted(root); err == nil {
-			keepPrior(l, prior.Entries)
+			keepPrior(l, prior.Entries, root)
 		}
 	}
 	canonical(l)
