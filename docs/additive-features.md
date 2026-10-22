@@ -1532,7 +1532,8 @@ Locked by: `TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs`, `TestNodeTimerCal
 
 Remove when: Pi runs extensions in a separate process, or the Node runtime shares the agent's event loop.
 
-Approval: owner, ordering design decision D5 (2026-10-20): add the wire field that tags timer-originated host calls, in the host and every runtime at once, with no negotiation.
+Approval: owner, ordering design decision D5 (2026-10-20): add the wire field that tags timer-originated host calls, in the host and every runtime at once, with no negotiation. Owner sign-off of the record, 2026-10-22 (0.5.2 release).
+SCRUTINIZED:approved
 
 ## D191 Outbound TLS refuses chains through the compromised eMudhra intermediates and the roots NSS removed after them
 
