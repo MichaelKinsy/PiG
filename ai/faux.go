@@ -640,7 +640,7 @@ func (p *FauxProviderHandle) streamWithDeltas(turn *continuationTurn, ctx contex
 				}
 				state := builder.toolCalls[index]
 				state.arguments.WriteString(chunk)
-				builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: chunk, Partial: builder.partial})
+				builder.pushToolCallDelta(state.contentIndex, chunk)
 			}
 			contentIndex := builder.toolCalls[index].contentIndex
 			builder.endToolCallWith(index, func(call *ToolCall) {

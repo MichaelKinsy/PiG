@@ -20,6 +20,8 @@ type eventDelivery struct {
 // eventWaiter is a pending iterator.next(). A push assigns it an event, or the end of the stream, under the stream lock.
 type eventWaiter struct {
 	onReady func(eventDelivery) func()
+	// materialize says the waiting consumer reads the partial of the event it is delivered at its tick (Events, ObserveEvents), so a producer may build that partial when it pushes the event.
+	materialize bool
 }
 
 func (waiter *eventWaiter) deliver(delivery eventDelivery) func() {
@@ -127,8 +129,10 @@ func (s *AssistantMessageEventStream) push(event AssistantMessageEvent, replacem
 		s.queue = append(s.queue, event)
 	} else {
 		waiter := s.waiters[0]
-		s.waiters[0] = nil
-		s.waiters = s.waiters[1:]
+		// Shifting down keeps the slice's capacity, so the next wait registers without allocating (re-slicing from the front would not).
+		remaining := copy(s.waiters, s.waiters[1:])
+		s.waiters[remaining] = nil
+		s.waiters = s.waiters[:remaining]
 		if continuation := waiter.deliver(eventDelivery{event: event}); continuation != nil {
 			continuations = append(continuations, continuation)
 		}
@@ -180,6 +184,13 @@ func (s *AssistantMessageEventStream) Events(ctx context.Context) iter.Seq[Assis
 	return s.events(ctx, true)
 }
 
+// materializingWaiter reports whether the consumer that the next push would deliver to is waiting for an event whose partial it materializes.
+func (s *AssistantMessageEventStream) materializingWaiter() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.waiters) > 0 && s.waiters[0].materialize
+}
+
 // events is Events with optional delivery-time materialization. A forwarder passes false so a hop between streams neither copies nor observes the partial.
 func (s *AssistantMessageEventStream) events(ctx context.Context, materialize bool) iter.Seq[AssistantMessageEvent] {
 	if ctx == nil {
@@ -188,6 +199,7 @@ func (s *AssistantMessageEventStream) events(ctx context.Context, materialize bo
 	return func(yield func(AssistantMessageEvent) bool) {
 		if turn, ok := ctx.Value(continuationTurnKey{}).(*continuationTurn); ok && turn != nil {
 			iterator := newContinuationEventIterator(ctx, s, turn.executor)
+			iterator.waiter.materialize = materialize
 			defer iterator.close()
 			for {
 				delivery := awaitContinuation(turn, iterator.next())
@@ -196,7 +208,7 @@ func (s *AssistantMessageEventStream) events(ctx context.Context, materialize bo
 				}
 			}
 		}
-		for _, event := range s.observeEvents(ctx, materialize) {
+		for _, event := range s.observeEventScopes(ctx, materialize, false) {
 			if !yield(event) {
 				return
 			}

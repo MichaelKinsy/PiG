@@ -52,7 +52,7 @@ func (cell *assistantMessageCell) publish(message *AssistantMessage, replacement
 	// The previous snapshot's content is immutable once published, so the copy below may share what has not changed. A call that
 	// still defers a text the cell has settled is published as its settled call (settledCalls).
 	cell.mu.RLock()
-	previous, settled := cell.current.Content, cell.settledCalls(message.Content)
+	previous, settled := cell.current, cell.settledCalls(message.Content)
 	cell.mu.RUnlock()
 	next := cloneAssistantMessageFrom(*message, previous, settled)
 	cell.mu.Lock()
@@ -89,6 +89,14 @@ func (cell *assistantMessageCell) view() *AssistantMessage {
 	}
 	// Queue entries share this stable handle rather than retaining one public-field snapshot per publication.
 	return cell.full
+}
+
+// currentHandle is a handle whose exported fields equal the cell's current publication, settled, as delivered would make one for a consumer that ticks now.
+func (cell *assistantMessageCell) currentHandle() *AssistantMessage {
+	cell.mu.Lock()
+	defer cell.mu.Unlock()
+	cell.settleLocked(nil)
+	return newDeliveredHandle(cell.current, assistantMessageObservation{cell: cell, seq: cell.seq})
 }
 
 // Observe returns independently owned message data at the current publication. Full views advance all fields; shallow views retain copied scalars and the nested objects present at their copy boundary. An ordinary message is deep-copied; native JSON scalar values and nil containers retain their representation. Nil stays nil.
@@ -218,9 +226,7 @@ func (message *AssistantMessage) ShallowCopy() *AssistantMessage {
 		return &copy
 	}
 	current, references, seq := message.observation.capture(message)
-	copy := clonePublishedAssistantMessage(current)
-	copy.observation = &assistantMessageObservation{cell: message.observation.cell, shallow: &references, seq: seq}
-	return &copy
+	return newDeliveredHandle(current, assistantMessageObservation{cell: message.observation.cell, shallow: &references, seq: seq})
 }
 
 // capture reads the state message observes, settled (assistantMessageCell.settleLocked), and the cell publication it belongs to.
@@ -266,9 +272,50 @@ func (message *AssistantMessage) delivered() *AssistantMessage {
 		return message
 	}
 	current, _, seq := observation.capture(message)
-	owned := clonePublishedAssistantMessage(current)
-	owned.observation = &assistantMessageObservation{cell: cell, shallow: observation.shallow, seq: seq}
-	return &owned
+	return newDeliveredHandle(current, assistantMessageObservation{cell: cell, shallow: observation.shallow, seq: seq})
+}
+
+// deliveredHandle is the storage of one handle delivered returns: the message, its observation and, for a message of a few blocks, the content it holds, in one allocation.
+type deliveredHandle struct {
+	message     AssistantMessage
+	observation assistantMessageObservation
+	blocks      [2]AssistantContentBlock
+	// cacheWrite1h and reasoning hold the optional usage counters the handle's usage points at.
+	cacheWrite1h, reasoning int
+}
+
+// newDeliveredHandle is clonePublishedAssistantMessage of current with observation, as one allocation unless the content is long.
+func newDeliveredHandle(current AssistantMessage, observation assistantMessageObservation) *AssistantMessage {
+	handle := &deliveredHandle{message: current, observation: observation}
+	message := &handle.message
+	message.observation = &handle.observation
+	if current.Content != nil {
+		var out []AssistantContentBlock
+		if n := len(current.Content); n <= len(handle.blocks) {
+			out = handle.blocks[:n:n]
+		} else {
+			out = make([]AssistantContentBlock, n)
+		}
+		cloneAssistantContentInto(out, current.Content, clonePublishedJSONValue)
+		message.Content = out
+	}
+	if current.Usage.CacheWrite1h != nil {
+		handle.cacheWrite1h = *current.Usage.CacheWrite1h
+		message.Usage.CacheWrite1h = &handle.cacheWrite1h
+	}
+	if current.Usage.Reasoning != nil {
+		handle.reasoning = *current.Usage.Reasoning
+		message.Usage.Reasoning = &handle.reasoning
+	}
+	message.Diagnostics = cloneDiagnostics(current.Diagnostics)
+	message.Deferred = cloneDeferredHandle(current.Deferred)
+	if current.EndTurn != nil {
+		message.EndTurn = new(*current.EndTurn)
+	}
+	if current.DurationMs != nil {
+		message.DurationMs = new(*current.DurationMs)
+	}
+	return message
 }
 
 // RefreshEvent returns the event with its partial's exported fields set to the stream state at this call. A host dispatcher calls it when it delivers a retained event to a listener after an awaited step, so the listener's direct field reads match what a JavaScript listener sees at that tick. Events without a partial are returned unchanged.

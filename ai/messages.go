@@ -496,6 +496,12 @@ func cloneAssistantContentWith(blocks []AssistantContentBlock, cloneArguments fu
 		return nil
 	}
 	out := make([]AssistantContentBlock, len(blocks))
+	cloneAssistantContentInto(out, blocks, cloneArguments)
+	return out
+}
+
+// cloneAssistantContentInto fills out, which holds len(blocks) blocks, with cloneAssistantContentWith's copies of blocks.
+func cloneAssistantContentInto(out, blocks []AssistantContentBlock, cloneArguments func(any) any) {
 	for i, block := range blocks {
 		switch value := block.(type) {
 		case TextContent, ThinkingContent:
@@ -510,7 +516,6 @@ func cloneAssistantContentWith(blocks []AssistantContentBlock, cloneArguments fu
 			panic(fmt.Sprintf("unsupported assistant content block %T", block))
 		}
 	}
-	return out
 }
 
 func cloneToolResultMessageContent(blocks []ToolResultMessageContent) []ToolResultMessageContent {

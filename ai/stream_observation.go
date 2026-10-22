@@ -19,6 +19,32 @@ type StreamObservation struct {
 	acquiring  bool
 	ended      bool
 	completion completionClass
+	// escaped is set once a host callback obtained the observation from its context, so the observation may be held beyond its callback.
+	escaped bool
+}
+
+// reusable reports whether an observation that an iterator did not hand to its consumer ended with nothing referring to it, so the iterator's next callback may run under it again.
+func (observation *StreamObservation) reusable() bool {
+	observation.mu.Lock()
+	defer observation.mu.Unlock()
+	return observation.ended && !observation.escaped && observation.suspensions == 0 && !observation.detached && !observation.acquiring
+}
+
+// reset makes an ended, reusable observation the scope of a new callback.
+func (observation *StreamObservation) reset() {
+	observation.mu.Lock()
+	observation.ended = false
+	observation.completion = completionReady
+	observation.mu.Unlock()
+}
+
+func (observation *StreamObservation) markEscaped() *StreamObservation {
+	if observation != nil {
+		observation.mu.Lock()
+		observation.escaped = true
+		observation.mu.Unlock()
+	}
+	return observation
 }
 
 // completionClass is the callback queue that settles the promise an asynchronous wait resolves.
@@ -44,6 +70,10 @@ func (observation *StreamObservation) Context(ctx context.Context) context.Conte
 
 // StreamObservationFromContext returns the host observation, if this callback belongs to a scoped stream continuation. A callback that runs while a provider response turn holds execution belongs to that turn, even when its context was derived from a consumer that is parked in an await: an awaiting host callback must release the turn that is running.
 func StreamObservationFromContext(ctx context.Context) *StreamObservation {
+	return streamObservationFromContext(ctx).markEscaped()
+}
+
+func streamObservationFromContext(ctx context.Context) *StreamObservation {
 	if ctx == nil {
 		return nil
 	}
@@ -334,8 +364,13 @@ func (stream *AssistantMessageEventStream) ObservePublishedEvents(ctx context.Co
 	return stream.observeEvents(ctx, false)
 }
 
-//perf:hot
 func (stream *AssistantMessageEventStream) observeEvents(ctx context.Context, materialize bool) iter.Seq2[*StreamObservation, AssistantMessageEvent] {
+	return stream.observeEventScopes(ctx, materialize, true)
+}
+
+// observeEventScopes is the iterator under Events, ObserveEvents and ObservePublishedEvents. expose says the consumer receives the observation, which it may keep; Events does not pass it on, so one that ended with nothing referring to it scopes the next callback again.
+//perf:hot
+func (stream *AssistantMessageEventStream) observeEventScopes(ctx context.Context, materialize, expose bool) iter.Seq2[*StreamObservation, AssistantMessageEvent] {
 	if ctx == nil {
 		panic("assistant message event stream: nil iterator context")
 	}
@@ -350,14 +385,20 @@ func (stream *AssistantMessageEventStream) observeEvents(ctx context.Context, ma
 		consume := func(turn *continuationTurn) {
 			executor := turn.executor
 			iterator := newContinuationEventIterator(ctx, stream, executor)
+			iterator.waiter.materialize = materialize
 			defer iterator.close()
 			owner := currentGoroutineID()
+			var observation *StreamObservation
 			for {
 				delivery := awaitContinuation(turn, iterator.next())
 				if delivery.done {
 					return
 				}
-				observation := &StreamObservation{turn: turn, owner: owner}
+				if expose || observation == nil || !observation.reusable() {
+					observation = &StreamObservation{turn: turn, owner: owner}
+				} else {
+					observation.reset()
+				}
 				executor.mu.Lock()
 				executor.observation = observation
 				executor.mu.Unlock()

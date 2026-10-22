@@ -114,7 +114,7 @@ func (builder *assistantStreamBuilder) textBlockDelta(contentIndex int, delta st
 	block := builder.partial.Content[contentIndex].(TextContent)
 	block.Text = builder.appendContent(contentIndex, block.Text, delta)
 	builder.partial.Content[contentIndex] = block
-	builder.push(TextDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.partial})
+	builder.pushTextDelta(contentIndex, delta)
 }
 
 func (builder *assistantStreamBuilder) textBlockEnd(contentIndex int, content, signature string) {
@@ -143,7 +143,7 @@ func (builder *assistantStreamBuilder) thinkingBlockDelta(contentIndex int, delt
 	block := builder.partial.Content[contentIndex].(ThinkingContent)
 	block.Thinking = builder.appendContent(contentIndex, block.Thinking, delta)
 	builder.partial.Content[contentIndex] = block
-	builder.push(ThinkingDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.partial})
+	builder.pushThinkingDelta(contentIndex, delta)
 }
 
 func (builder *assistantStreamBuilder) thinkingBlockSignature(contentIndex int, signature string) {
@@ -182,7 +182,7 @@ func (builder *assistantStreamBuilder) textDelta(delta string) {
 	block := builder.partial.Content[builder.activeText].(TextContent)
 	block.Text = builder.appendContent(builder.activeText, block.Text, delta)
 	builder.partial.Content[builder.activeText] = block
-	builder.push(TextDeltaEvent{ContentIndex: builder.activeText, Delta: delta, Partial: builder.partial})
+	builder.pushTextDelta(builder.activeText, delta)
 }
 
 func (builder *assistantStreamBuilder) textSignature(signature string) {
@@ -227,7 +227,7 @@ func (builder *assistantStreamBuilder) thinkingDelta(delta string, redacted bool
 	block.Thinking = builder.appendContent(builder.activeThinking, block.Thinking, delta)
 	block.Redacted = block.Redacted || redacted
 	builder.partial.Content[builder.activeThinking] = block
-	builder.push(ThinkingDeltaEvent{ContentIndex: builder.activeThinking, Delta: delta, Partial: builder.partial})
+	builder.pushThinkingDelta(builder.activeThinking, delta)
 }
 
 func (builder *assistantStreamBuilder) thinkingSignature(signature string) {
@@ -292,7 +292,7 @@ func (builder *assistantStreamBuilder) toolCallDelta(delta streamToolCallDelta) 
 		block.scratch.partialJson = state.arguments.String()
 	}
 	builder.partial.Content[state.contentIndex] = block
-	builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta.argumentsDelta, Partial: builder.partial})
+	builder.pushToolCallDelta(state.contentIndex, delta.argumentsDelta)
 }
 
 // Finalization updates the existing output slot without replacing its streamed identity.
@@ -452,7 +452,7 @@ func (builder *assistantStreamBuilder) endToolCallWith(index int, finalize func(
 		}
 		builder.partial.Content[state.contentIndex] = block
 		if emit {
-			builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta, Partial: builder.partial})
+			builder.pushToolCallDelta(state.contentIndex, delta)
 		}
 	case finalArgumentsAPI(builder.partial.API):
 		block.SetFinalArguments(state.arguments.String())
@@ -553,16 +553,53 @@ func (builder *assistantStreamBuilder) push(event AssistantMessageEvent) {
 	case DoneEvent, ErrorEvent:
 		builder.settleArguments()
 	}
-	view := builder.publish()
-	if builder.partialCopy != nil {
-		view = builder.partialCopy(view)
-	}
+	view := builder.publishedView()
 	event = mapAssistantEventPartial(event, func(message *AssistantMessage) *AssistantMessage {
 		if message == builder.partial {
 			return view
 		}
 		return message
 	})
+	builder.send(event)
+}
+
+// pushNonTerminal pushes the event that build makes for the published view of the partial. A delta event is built with its view in place, so it is boxed into the event interface once; push boxes the event with the producer's partial and again with the view.
+func (builder *assistantStreamBuilder) pushNonTerminal(build func(partial *AssistantMessage) AssistantMessageEvent) {
+	builder.send(build(builder.publishedView()))
+}
+
+func (builder *assistantStreamBuilder) pushTextDelta(contentIndex int, delta string) {
+	builder.pushNonTerminal(func(partial *AssistantMessage) AssistantMessageEvent {
+		return TextDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: partial}
+	})
+}
+
+func (builder *assistantStreamBuilder) pushThinkingDelta(contentIndex int, delta string) {
+	builder.pushNonTerminal(func(partial *AssistantMessage) AssistantMessageEvent {
+		return ThinkingDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: partial}
+	})
+}
+
+func (builder *assistantStreamBuilder) pushToolCallDelta(contentIndex int, delta string) {
+	builder.pushNonTerminal(func(partial *AssistantMessage) AssistantMessageEvent {
+		return ToolCallDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: partial}
+	})
+}
+
+// publishedView publishes the partial and returns the message its events carry.
+func (builder *assistantStreamBuilder) publishedView() *AssistantMessage {
+	view := builder.publish()
+	if builder.publishesViews() && builder.stream.materializingWaiter() {
+		// The consumer that takes the event next reads its partial at its tick, which is now unless the producer publishes again first: the event carries that partial, so the consumer's refresh of it finds it current and allocates nothing.
+		view = builder.cell.currentHandle()
+	}
+	if builder.partialCopy != nil {
+		view = builder.partialCopy(view)
+	}
+	return view
+}
+
+func (builder *assistantStreamBuilder) send(event AssistantMessageEvent) {
 	if err := builder.stream.Push(event); err != nil {
 		builder.failInvariant(err)
 	}

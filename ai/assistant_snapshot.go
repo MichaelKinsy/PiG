@@ -8,17 +8,38 @@ import (
 	"unicode/utf8"
 )
 
-// cloneAssistantMessageFrom is cloneAssistantMessage for the next snapshot of a message whose previous snapshot is previous. A tool call whose arguments equal the previous snapshot's shares its immutable copy instead of copying again, so publishing an event copies only what changed since the last event. settled may be nil: see cloneAssistantContentFrom.
-func cloneAssistantMessageFrom(message AssistantMessage, previous, settled []AssistantContentBlock) AssistantMessage {
-	content := message.Content
-	message = cloneAssistantMessage(withoutContent(message))
-	message.Content = cloneAssistantContentFrom(content, previous, settled)
+// cloneAssistantMessageFrom is cloneAssistantMessage for the next snapshot of a message whose previous snapshot is previous (the zero message for none). A tool call whose arguments equal the previous snapshot's shares its immutable copy instead of copying again, and so do usage counters that have not changed, so publishing an event copies only what changed since the last event. settled may be nil: see cloneAssistantContentFrom.
+func cloneAssistantMessageFrom(message, previous AssistantMessage, settled []AssistantContentBlock) AssistantMessage {
+	content, usage := message.Content, message.Usage
+	message = cloneAssistantMessage(withoutContentAndUsage(message))
+	message.Content = cloneAssistantContentFrom(content, previous.Content, settled)
+	message.Usage = cloneUsageFrom(usage, previous.Usage)
 	return message
 }
 
-// withoutContent is message with no content, so cloneAssistantMessage skips the copy the caller makes itself.
-func withoutContent(message AssistantMessage) AssistantMessage {
+// cloneUsageFrom is cloneUsage for the next snapshot of usage whose previous snapshot is previous: a counter that equals the previous snapshot's shares its pointer, which a snapshot's readers copy before they hand it out.
+func cloneUsageFrom(usage, previous Usage) Usage {
+	if usage.CacheWrite1h != nil {
+		if previous.CacheWrite1h != nil && *previous.CacheWrite1h == *usage.CacheWrite1h {
+			usage.CacheWrite1h = previous.CacheWrite1h
+		} else {
+			usage.CacheWrite1h = new(*usage.CacheWrite1h)
+		}
+	}
+	if usage.Reasoning != nil {
+		if previous.Reasoning != nil && *previous.Reasoning == *usage.Reasoning {
+			usage.Reasoning = previous.Reasoning
+		} else {
+			usage.Reasoning = new(*usage.Reasoning)
+		}
+	}
+	return usage
+}
+
+// withoutContentAndUsage is message with no content and no optional usage counters, so cloneAssistantMessage skips the copies the caller makes itself.
+func withoutContentAndUsage(message AssistantMessage) AssistantMessage {
 	message.Content = nil
+	message.Usage.CacheWrite1h, message.Usage.Reasoning = nil, nil
 	return message
 }
 
