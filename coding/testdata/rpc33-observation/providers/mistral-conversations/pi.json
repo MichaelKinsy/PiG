@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.3.0+02726086",
+  "piVersion": "1.4.0",
   "node": "v24.19.0",
   "api": "mistral-conversations",
   "bodies": {
@@ -136,7 +136,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 32
+                "durationMs": 31
               }
             },
             {
@@ -174,7 +174,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 32
+                "durationMs": 31
               }
             },
             {
@@ -212,7 +212,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 32
+                "durationMs": 31
               }
             }
           ]
@@ -687,7 +687,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 33
+            "durationMs": 28
           }
         },
         {
@@ -798,7 +798,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 33,
+            "durationMs": 28,
             "thinkingLevel": "off"
           }
         }
@@ -1100,7 +1100,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -1138,7 +1138,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -1176,7 +1176,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -1214,7 +1214,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             }
           ]
@@ -1346,7 +1346,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -1384,7 +1384,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -1422,7 +1422,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -1563,7 +1563,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 178,
+            "durationMs": 174,
             "thinkingLevel": "off"
           }
         }
@@ -1730,7 +1730,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 181
+                "durationMs": 180
               }
             },
             {
@@ -1768,7 +1768,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 181
+                "durationMs": 180
               }
             }
           ]
@@ -1945,7 +1945,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 183
+                "durationMs": 184
               }
             },
             {
@@ -1983,7 +1983,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 183
+                "durationMs": 184
               }
             }
           ]
@@ -2334,7 +2334,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 209,
+            "durationMs": 201,
             "thinkingLevel": "off"
           }
         }
@@ -2477,7 +2477,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 360
+                "durationMs": 354
               }
             },
             {
@@ -2515,7 +2515,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 360
+                "durationMs": 354
               }
             },
             {
@@ -2553,7 +2553,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 360
+                "durationMs": 354
               }
             }
           ]
@@ -2668,7 +2668,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 356
+                "durationMs": 352
               }
             },
             {
@@ -2706,7 +2706,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 356
+                "durationMs": 352
               }
             },
             {
@@ -2744,7 +2744,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 356
+                "durationMs": 352
               }
             },
             {
@@ -2782,7 +2782,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 356
+                "durationMs": 352
               }
             }
           ]
@@ -2930,7 +2930,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 355
+                "durationMs": 354
               }
             },
             {
@@ -2968,7 +2968,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 355
+                "durationMs": 354
               }
             },
             {
@@ -3006,7 +3006,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 355,
+                "durationMs": 354,
                 "thinkingLevel": "off"
               }
             }
@@ -3147,7 +3147,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 383,
+            "durationMs": 379,
             "thinkingLevel": "off"
           }
         }
@@ -3695,7 +3695,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -3733,7 +3733,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -3771,7 +3771,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -5001,7 +5001,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -5047,7 +5047,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -5093,7 +5093,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -5139,7 +5139,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -5185,7 +5185,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -5231,7 +5231,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             }
           ]
@@ -6212,7 +6212,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 30,
+            "durationMs": 29,
             "thinkingLevel": "off"
           }
         }
@@ -6780,7 +6780,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -6826,7 +6826,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -7295,7 +7295,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7341,7 +7341,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7387,7 +7387,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7433,7 +7433,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7479,7 +7479,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7525,7 +7525,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -8500,7 +8500,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 180,
+            "durationMs": 174,
             "thinkingLevel": "off"
           }
         }
@@ -9061,7 +9061,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 382
+                "durationMs": 381
               }
             },
             {
@@ -9107,7 +9107,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 382
+                "durationMs": 381
               }
             }
           ]
@@ -9705,7 +9705,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 383
+                "durationMs": 378
               }
             },
             {
@@ -9751,7 +9751,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 383
+                "durationMs": 378
               }
             }
           ]
@@ -10317,7 +10317,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 384
+                "durationMs": 378
               }
             },
             {
@@ -10363,7 +10363,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 384,
+                "durationMs": 378,
                 "thinkingLevel": "off"
               }
             }
@@ -10708,7 +10708,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 411,
+            "durationMs": 406,
             "thinkingLevel": "off"
           }
         }
@@ -11321,7 +11321,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1040
+                "durationMs": 1031
               }
             },
             {
@@ -11367,7 +11367,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1040
+                "durationMs": 1031
               }
             }
           ]
@@ -12017,7 +12017,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1032
+                "durationMs": 1031
               }
             },
             {
@@ -12063,7 +12063,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1032
+                "durationMs": 1031
               }
             }
           ]
@@ -12681,7 +12681,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1034
+                "durationMs": 1032
               }
             },
             {
@@ -12727,7 +12727,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1034,
+                "durationMs": 1032,
                 "thinkingLevel": "off"
               }
             }
@@ -13072,7 +13072,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 1064,
+            "durationMs": 1057,
             "thinkingLevel": "off"
           }
         }
@@ -13638,7 +13638,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 304
               }
             },
             {
@@ -13684,7 +13684,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 304
               }
             }
           ]
@@ -14848,7 +14848,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 304
               }
             },
             {
@@ -14894,7 +14894,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 304
               }
             },
             {
@@ -14940,7 +14940,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 304
               }
             },
             {
@@ -14986,7 +14986,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306,
+                "durationMs": 304,
                 "thinkingLevel": "off"
               }
             }
@@ -15331,7 +15331,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 331,
+            "durationMs": 328,
             "thinkingLevel": "off"
           }
         }
@@ -15731,7 +15731,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 5
+                "durationMs": 4
               }
             },
             {
@@ -15781,7 +15781,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 5
+                "durationMs": 4
               }
             },
             {
@@ -15831,7 +15831,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 5
+                "durationMs": 4
               }
             },
             {
@@ -15881,7 +15881,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 5
+                "durationMs": 4
               }
             },
             {
@@ -15931,7 +15931,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 5
+                "durationMs": 4
               }
             }
           ]
@@ -16155,7 +16155,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -16205,7 +16205,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -16255,7 +16255,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -16305,7 +16305,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -16355,7 +16355,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -16405,7 +16405,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -16455,7 +16455,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -16505,7 +16505,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -16555,7 +16555,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -16605,7 +16605,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 4
+                "durationMs": 3
               }
             }
           ]
@@ -17553,7 +17553,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 34,
+            "durationMs": 28,
             "thinkingLevel": "off"
           }
         }
@@ -17953,7 +17953,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -18003,7 +18003,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -18053,7 +18053,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -18103,7 +18103,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -18153,7 +18153,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 155
               }
             }
           ]
@@ -18353,7 +18353,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -18403,7 +18403,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -18453,7 +18453,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -18503,7 +18503,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -18553,7 +18553,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -18603,7 +18603,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -18653,7 +18653,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -18703,7 +18703,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -18753,7 +18753,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -18803,7 +18803,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             }
           ]
@@ -19113,7 +19113,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -19163,7 +19163,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -19213,7 +19213,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -19263,7 +19263,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -19313,7 +19313,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -19363,7 +19363,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -19413,7 +19413,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -19727,7 +19727,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 181,
+            "durationMs": 175,
             "thinkingLevel": "off"
           }
         }
@@ -20217,7 +20217,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 258
+                "durationMs": 254
               }
             },
             {
@@ -20267,7 +20267,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 258
+                "durationMs": 254
               }
             },
             {
@@ -20317,7 +20317,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 258
+                "durationMs": 254
               }
             }
           ]
@@ -20838,7 +20838,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 256
+                "durationMs": 253
               }
             },
             {
@@ -20888,7 +20888,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 256
+                "durationMs": 253
               }
             },
             {
@@ -20938,7 +20938,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 256
+                "durationMs": 253
               }
             }
           ]
@@ -21851,7 +21851,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 283,
+            "durationMs": 279,
             "thinkingLevel": "off"
           }
         }
@@ -22373,7 +22373,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 657
+                "durationMs": 656
               }
             },
             {
@@ -22423,7 +22423,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 657
+                "durationMs": 656
               }
             },
             {
@@ -22473,7 +22473,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 657
+                "durationMs": 656
               }
             }
           ]
@@ -23026,7 +23026,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 660
+                "durationMs": 656
               }
             },
             {
@@ -23076,7 +23076,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 660
+                "durationMs": 656
               }
             },
             {
@@ -23126,7 +23126,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 660
+                "durationMs": 656
               }
             }
           ]
@@ -23657,7 +23657,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 658
+                "durationMs": 656
               }
             },
             {
@@ -23707,7 +23707,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 658
+                "durationMs": 656
               }
             },
             {
@@ -23757,7 +23757,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 658,
+                "durationMs": 656,
                 "thinkingLevel": "off"
               }
             }
@@ -24071,7 +24071,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 685,
+            "durationMs": 678,
             "thinkingLevel": "off"
           }
         }
@@ -24573,7 +24573,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 304
               }
             },
             {
@@ -24623,7 +24623,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 304
               }
             },
             {
@@ -24673,7 +24673,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 304
               }
             }
           ]
@@ -25174,7 +25174,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 307
+                "durationMs": 304
               }
             },
             {
@@ -25224,7 +25224,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 307
+                "durationMs": 304
               }
             },
             {
@@ -25274,7 +25274,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 307
+                "durationMs": 304
               }
             },
             {
@@ -25324,7 +25324,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 307
+                "durationMs": 304
               }
             }
           ]
@@ -25835,7 +25835,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 305
+                "durationMs": 304
               }
             },
             {
@@ -25885,7 +25885,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 305
+                "durationMs": 304
               }
             },
             {
@@ -25935,7 +25935,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 305,
+                "durationMs": 304,
                 "thinkingLevel": "off"
               }
             }
@@ -26249,7 +26249,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 331,
+            "durationMs": 328,
             "thinkingLevel": "off"
           }
         }
@@ -26439,7 +26439,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -26474,7 +26474,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 4
+                "durationMs": 3
               }
             }
           ]
@@ -26585,7 +26585,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -26620,7 +26620,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -26655,7 +26655,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -26690,7 +26690,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -26725,7 +26725,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 4
+                "durationMs": 2
               }
             }
           ]
@@ -27110,7 +27110,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 32,
+            "durationMs": 27,
             "thinkingLevel": "off"
           }
         }
@@ -27438,7 +27438,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -27473,7 +27473,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -27508,7 +27508,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -27543,7 +27543,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -27578,7 +27578,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -27769,7 +27769,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 155
+                "durationMs": 152
               }
             },
             {
@@ -27804,7 +27804,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 155,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -27955,7 +27955,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 179,
+            "durationMs": 173,
             "thinkingLevel": "off"
           }
         }
@@ -28391,7 +28391,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 229
+                "durationMs": 228
               }
             },
             {
@@ -28426,7 +28426,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 229
+                "durationMs": 228
               }
             }
           ]
@@ -28621,7 +28621,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 228
+                "durationMs": 227
               }
             },
             {
@@ -28656,7 +28656,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 228,
+                "durationMs": 227,
                 "thinkingLevel": "off"
               }
             }
@@ -28807,7 +28807,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 254,
+            "durationMs": 251,
             "thinkingLevel": "off"
           }
         }
@@ -29013,7 +29013,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 379
+                "durationMs": 378
               }
             },
             {
@@ -29048,7 +29048,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 379
+                "durationMs": 378
               }
             }
           ]
@@ -29267,7 +29267,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 380
+                "durationMs": 377
               }
             },
             {
@@ -29302,7 +29302,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 380
+                "durationMs": 377
               }
             }
           ]
@@ -29509,7 +29509,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 380
+                "durationMs": 378
               }
             },
             {
@@ -29544,7 +29544,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 380,
+                "durationMs": 378,
                 "thinkingLevel": "off"
               }
             }
@@ -29695,7 +29695,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 416,
+            "durationMs": 401,
             "thinkingLevel": "off"
           }
         }
@@ -30358,7 +30358,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 305
+                "durationMs": 303
               }
             },
             {
@@ -30393,7 +30393,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 305,
+                "durationMs": 303,
                 "thinkingLevel": "off"
               }
             }
@@ -30544,7 +30544,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 332,
+            "durationMs": 326,
             "thinkingLevel": "off"
           }
         }
@@ -30695,7 +30695,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 4
+                "durationMs": 3
               }
             },
             {
@@ -30729,7 +30729,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 4
+                "durationMs": 3
               }
             }
           ]
@@ -30896,7 +30896,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -30930,7 +30930,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 3
+                "durationMs": 2
               }
             }
           ]
@@ -31082,7 +31082,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 2
+                "durationMs": 1
               }
             },
             {
@@ -31116,7 +31116,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 2,
+                "durationMs": 1,
                 "thinkingLevel": "off"
               }
             }
@@ -31250,7 +31250,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 30,
+            "durationMs": 28,
             "thinkingLevel": "off"
           }
         }
@@ -31401,7 +31401,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 157
+                "durationMs": 153
               }
             },
             {
@@ -31435,7 +31435,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 157
+                "durationMs": 153
               }
             }
           ]
@@ -31596,7 +31596,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -31630,7 +31630,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -31782,7 +31782,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -31816,7 +31816,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 153,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -31944,7 +31944,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 173,
+            "durationMs": 172,
             "thinkingLevel": "off"
           }
         }
@@ -32095,7 +32095,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 180
+                "durationMs": 178
               }
             },
             {
@@ -32129,7 +32129,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 180
+                "durationMs": 178
               }
             }
           ]
@@ -32638,7 +32638,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 198,
+            "durationMs": 197,
             "thinkingLevel": "off"
           }
         }
@@ -32793,7 +32793,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 228
+                "durationMs": 227
               }
             },
             {
@@ -32827,7 +32827,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 228
+                "durationMs": 227
               }
             }
           ]
@@ -32992,7 +32992,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 231
+                "durationMs": 229
               }
             },
             {
@@ -33026,7 +33026,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 231
+                "durationMs": 229
               }
             }
           ]
@@ -33182,7 +33182,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 229
+                "durationMs": 227
               }
             },
             {
@@ -33216,7 +33216,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 229,
+                "durationMs": 227,
                 "thinkingLevel": "off"
               }
             }
@@ -33344,7 +33344,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 250,
+            "durationMs": 247,
             "thinkingLevel": "off"
           }
         }
@@ -33495,7 +33495,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 455
+                "durationMs": 453
               }
             },
             {
@@ -33529,7 +33529,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 455
+                "durationMs": 453
               }
             }
           ]
@@ -33690,7 +33690,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 453
+                "durationMs": 452
               }
             },
             {
@@ -33724,7 +33724,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 453
+                "durationMs": 452
               }
             }
           ]
@@ -33876,7 +33876,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 453
+                "durationMs": 456
               }
             },
             {
@@ -33910,7 +33910,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 453,
+                "durationMs": 456,
                 "thinkingLevel": "off"
               }
             }
@@ -34038,7 +34038,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 477,
+            "durationMs": 472,
             "thinkingLevel": "off"
           }
         }
@@ -34396,7 +34396,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 2
+                "durationMs": 3
               }
             },
             {
@@ -34430,7 +34430,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 2
+                "durationMs": 3
               }
             }
           ]
@@ -34753,7 +34753,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 36,
+            "durationMs": 28,
             "thinkingLevel": "off"
           }
         }
@@ -34906,7 +34906,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 155
+                "durationMs": 152
               }
             },
             {
@@ -34940,7 +34940,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 155
+                "durationMs": 152
               }
             }
           ]
@@ -35104,7 +35104,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -35138,7 +35138,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -35292,7 +35292,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -35326,7 +35326,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 154,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -35454,7 +35454,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 179,
+            "durationMs": 173,
             "thinkingLevel": "off"
           }
         }
@@ -35608,7 +35608,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 205
+                "durationMs": 204
               }
             },
             {
@@ -35642,7 +35642,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 205
+                "durationMs": 204
               }
             }
           ]
@@ -35806,7 +35806,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 204
+                "durationMs": 203
               }
             },
             {
@@ -35840,7 +35840,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 204
+                "durationMs": 203
               }
             }
           ]
@@ -35995,7 +35995,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 202
+                "durationMs": 203
               }
             },
             {
@@ -36029,7 +36029,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 202,
+                "durationMs": 203,
                 "thinkingLevel": "off"
               }
             }
@@ -36157,7 +36157,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 224,
+            "durationMs": 222,
             "thinkingLevel": "off"
           }
         }
@@ -36323,7 +36323,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 355
+                "durationMs": 353
               }
             },
             {
@@ -36357,7 +36357,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 355
+                "durationMs": 353
               }
             }
           ]
@@ -36734,7 +36734,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 358
+                "durationMs": 353
               }
             },
             {
@@ -36768,7 +36768,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 358,
+                "durationMs": 353,
                 "thinkingLevel": "off"
               }
             }
@@ -36896,7 +36896,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 382,
+            "durationMs": 373,
             "thinkingLevel": "off"
           }
         }
@@ -37049,7 +37049,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 455
+                "durationMs": 452
               }
             },
             {
@@ -37083,7 +37083,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 455
+                "durationMs": 452
               }
             }
           ]
@@ -37435,7 +37435,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 455
+                "durationMs": 452
               }
             },
             {
@@ -37469,7 +37469,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 455,
+                "durationMs": 452,
                 "thinkingLevel": "off"
               }
             }
@@ -37597,7 +37597,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 476,
+            "durationMs": 471,
             "thinkingLevel": "off"
           }
         }
@@ -37812,7 +37812,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -37846,7 +37846,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -37880,7 +37880,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -37914,7 +37914,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 4
+                "durationMs": 2
               }
             }
           ]
@@ -38103,7 +38103,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 31
+            "durationMs": 29
           }
         },
         {
@@ -38179,7 +38179,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 31,
+            "durationMs": 29,
             "thinkingLevel": "off"
           }
         }
@@ -38420,7 +38420,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -38454,7 +38454,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -38488,7 +38488,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -38605,7 +38605,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -38639,7 +38639,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -38745,7 +38745,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 175,
+            "durationMs": 172,
             "thinkingLevel": "off"
           }
         }
@@ -39052,7 +39052,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 179
+                "durationMs": 177
               }
             }
           ]
@@ -39203,7 +39203,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 180,
+                "durationMs": 178,
                 "thinkingLevel": "off"
               }
             }
@@ -39309,7 +39309,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 204,
+            "durationMs": 203,
             "thinkingLevel": "off"
           }
         }
@@ -39885,7 +39885,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 256,
+            "durationMs": 251,
             "thinkingLevel": "off"
           }
         }
@@ -40001,7 +40001,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -40035,7 +40035,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -40126,7 +40126,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 155
+                "durationMs": 152
               }
             },
             {
@@ -40160,7 +40160,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 155
+                "durationMs": 152
               }
             },
             {
@@ -40194,7 +40194,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 155
+                "durationMs": 152
               }
             }
           ]
@@ -40311,7 +40311,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -40345,7 +40345,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -40451,7 +40451,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 180,
+            "durationMs": 178,
             "thinkingLevel": "off"
           }
         }
@@ -40954,7 +40954,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 30
+            "durationMs": 27
           }
         },
         {
@@ -41030,7 +41030,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 30,
+            "durationMs": 27,
             "thinkingLevel": "off"
           }
         }
@@ -41145,7 +41145,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -41179,7 +41179,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -41269,7 +41269,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 156
+                "durationMs": 153
               }
             },
             {
@@ -41303,7 +41303,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 156
+                "durationMs": 153
               }
             },
             {
@@ -41337,7 +41337,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 156
+                "durationMs": 153
               }
             }
           ]
@@ -41593,7 +41593,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 175,
+            "durationMs": 172,
             "thinkingLevel": "off"
           }
         }
@@ -41742,7 +41742,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 177
+                "durationMs": 179
               }
             }
           ]
@@ -41898,7 +41898,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 178
+                "durationMs": 180
               }
             }
           ]
@@ -42048,7 +42048,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 178,
+                "durationMs": 177,
                 "thinkingLevel": "off"
               }
             }
@@ -42154,7 +42154,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 204,
+            "durationMs": 202,
             "thinkingLevel": "off"
           }
         }
@@ -42307,7 +42307,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 228
+                "durationMs": 229
               }
             }
           ]
@@ -42467,7 +42467,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 233
+                "durationMs": 228
               }
             }
           ]
@@ -42621,7 +42621,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 230,
+                "durationMs": 227,
                 "thinkingLevel": "off"
               }
             }
@@ -42727,7 +42727,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 257,
+            "durationMs": 251,
             "thinkingLevel": "off"
           }
         }
@@ -42842,7 +42842,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -42876,7 +42876,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -42966,7 +42966,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -43000,7 +43000,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -43034,7 +43034,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -43150,7 +43150,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -43184,7 +43184,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -43290,7 +43290,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 181,
+            "durationMs": 177,
             "thinkingLevel": "off"
           }
         }
@@ -43796,7 +43796,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 30
+            "durationMs": 27
           }
         },
         {
@@ -43872,7 +43872,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 30,
+            "durationMs": 27,
             "thinkingLevel": "off"
           }
         }
@@ -43988,7 +43988,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -44022,7 +44022,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -44113,7 +44113,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -44147,7 +44147,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -44181,7 +44181,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -44203,1712 +44203,6 @@
             "parse",
             "deliver:message_update",
             "push:s251:error",
-            "deliver:message_update",
-            "deliver:message_end",
-            "deliver:turn_end",
-            "deliver:agent_end"
-          ],
-          "states": [
-            {
-              "at": 7,
-              "event": "message_start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 13,
-              "event": "message_update",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 15,
-              "event": "message_update",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
-              }
-            },
-            {
-              "at": 16,
-              "event": "message_end",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154,
-                "thinkingLevel": "off"
-              }
-            }
-          ]
-        }
-      ],
-      "rpc": [
-        {
-          "type": "message_start",
-          "message": {
-            "role": "assistant",
-            "content": [],
-            "api": "mistral-conversations",
-            "provider": "p",
-            "model": "strict",
-            "usage": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "totalTokens": 0,
-              "cost": {
-                "input": 0,
-                "output": 0,
-                "cacheRead": 0,
-                "cacheWrite": 0,
-                "total": 0
-              }
-            },
-            "stopReason": "pending"
-          }
-        },
-        {
-          "type": "message_update",
-          "usage": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "totalTokens": 0,
-            "cost": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "total": 0
-            }
-          },
-          "assistantMessageEvent": {
-            "type": "text_start",
-            "contentIndex": 0
-          }
-        },
-        {
-          "type": "message_update",
-          "usage": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "totalTokens": 0,
-            "cost": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "total": 0
-            }
-          },
-          "assistantMessageEvent": {
-            "type": "text_delta",
-            "contentIndex": 0,
-            "delta": "par"
-          }
-        },
-        {
-          "type": "message_end",
-          "message": {
-            "role": "assistant",
-            "content": [
-              {
-                "type": "text",
-                "text": "par"
-              }
-            ],
-            "api": "mistral-conversations",
-            "provider": "p",
-            "model": "strict",
-            "usage": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "totalTokens": 0,
-              "cost": {
-                "input": 0,
-                "output": 0,
-                "cacheRead": 0,
-                "cacheWrite": 0,
-                "total": 0
-              }
-            },
-            "stopReason": "error",
-            "responseId": "chatcmpl-strict",
-            "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 177,
-            "thinkingLevel": "off"
-          }
-        }
-      ]
-    },
-    {
-      "fixture": "nochoices",
-      "delivery": "chunked",
-      "paths": [
-        {
-          "path": "direct",
-          "trace": [
-            "push:s252:start",
-            "read",
-            "deliver:start",
-            "decode:120",
-            "parse",
-            "push:s252:text_start",
-            "push:s252:text_delta",
-            "read",
-            "deliver:text_start",
-            "deliver:text_delta",
-            "decode:18",
-            "parse",
-            "push:s252:error",
-            "deliver:error"
-          ],
-          "states": [
-            {
-              "at": 3,
-              "event": "start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 9,
-              "event": "text_start",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 10,
-              "event": "text_delta",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 14,
-              "event": "error",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 180
-              }
-            }
-          ]
-        },
-        {
-          "path": "runtime",
-          "trace": [
-            "push:s253:start",
-            "read",
-            "push:s254:start",
-            "push:s255:start",
-            "push:s256:start",
-            "deliver:start",
-            "decode:120",
-            "parse",
-            "push:s253:text_start",
-            "push:s253:text_delta",
-            "read",
-            "push:s254:text_start",
-            "push:s254:text_delta",
-            "push:s255:text_start",
-            "push:s255:text_delta",
-            "push:s256:text_start",
-            "push:s256:text_delta",
-            "deliver:text_start",
-            "deliver:text_delta",
-            "decode:18",
-            "parse",
-            "push:s253:error",
-            "push:s254:error",
-            "push:s255:error",
-            "push:s256:error",
-            "deliver:error"
-          ],
-          "states": [
-            {
-              "at": 6,
-              "event": "start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 18,
-              "event": "text_start",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 19,
-              "event": "text_delta",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 26,
-              "event": "error",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 180
-              }
-            }
-          ]
-        },
-        {
-          "path": "agent",
-          "trace": [
-            "deliver:agent_start",
-            "deliver:turn_start",
-            "deliver:message_start",
-            "deliver:message_end",
-            "push:s257:start",
-            "read",
-            "deliver:message_start",
-            "decode:120",
-            "parse",
-            "push:s257:text_start",
-            "push:s257:text_delta",
-            "read",
-            "deliver:message_update",
-            "deliver:message_update",
-            "decode:18",
-            "parse",
-            "push:s257:error",
-            "deliver:message_end",
-            "deliver:turn_end",
-            "deliver:agent_end"
-          ],
-          "states": [
-            {
-              "at": 7,
-              "event": "message_start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 13,
-              "event": "message_update",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 14,
-              "event": "message_update",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 18,
-              "event": "message_end",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 180,
-                "thinkingLevel": "off"
-              }
-            }
-          ]
-        }
-      ],
-      "rpc": [
-        {
-          "type": "message_start",
-          "message": {
-            "role": "assistant",
-            "content": [],
-            "api": "mistral-conversations",
-            "provider": "p",
-            "model": "strict",
-            "usage": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "totalTokens": 0,
-              "cost": {
-                "input": 0,
-                "output": 0,
-                "cacheRead": 0,
-                "cacheWrite": 0,
-                "total": 0
-              }
-            },
-            "stopReason": "pending"
-          }
-        },
-        {
-          "type": "message_update",
-          "usage": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "totalTokens": 0,
-            "cost": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "total": 0
-            }
-          },
-          "assistantMessageEvent": {
-            "type": "text_start",
-            "contentIndex": 0
-          }
-        },
-        {
-          "type": "message_update",
-          "usage": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "totalTokens": 0,
-            "cost": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "total": 0
-            }
-          },
-          "assistantMessageEvent": {
-            "type": "text_delta",
-            "contentIndex": 0,
-            "delta": "par"
-          }
-        },
-        {
-          "type": "message_end",
-          "message": {
-            "role": "assistant",
-            "content": [
-              {
-                "type": "text",
-                "text": "par"
-              }
-            ],
-            "api": "mistral-conversations",
-            "provider": "p",
-            "model": "strict",
-            "usage": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "totalTokens": 0,
-              "cost": {
-                "input": 0,
-                "output": 0,
-                "cacheRead": 0,
-                "cacheWrite": 0,
-                "total": 0
-              }
-            },
-            "stopReason": "error",
-            "responseId": "chatcmpl-strict",
-            "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 203,
-            "thinkingLevel": "off"
-          }
-        }
-      ]
-    },
-    {
-      "fixture": "nochoices",
-      "delivery": "split",
-      "paths": [
-        {
-          "path": "direct",
-          "trace": [
-            "push:s258:start",
-            "read",
-            "deliver:start",
-            "decode:40",
-            "read",
-            "decode:40",
-            "read",
-            "decode:40",
-            "parse",
-            "push:s258:text_start",
-            "push:s258:text_delta",
-            "read",
-            "deliver:text_start",
-            "deliver:text_delta",
-            "decode:18",
-            "parse",
-            "push:s258:error",
-            "deliver:error"
-          ],
-          "states": [
-            {
-              "at": 3,
-              "event": "start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 13,
-              "event": "text_start",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 14,
-              "event": "text_delta",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 18,
-              "event": "error",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 230
-              }
-            }
-          ]
-        },
-        {
-          "path": "runtime",
-          "trace": [
-            "push:s259:start",
-            "read",
-            "push:s260:start",
-            "push:s261:start",
-            "push:s262:start",
-            "deliver:start",
-            "decode:40",
-            "read",
-            "decode:40",
-            "read",
-            "decode:40",
-            "parse",
-            "push:s259:text_start",
-            "push:s259:text_delta",
-            "read",
-            "push:s260:text_start",
-            "push:s260:text_delta",
-            "push:s261:text_start",
-            "push:s261:text_delta",
-            "push:s262:text_start",
-            "push:s262:text_delta",
-            "deliver:text_start",
-            "deliver:text_delta",
-            "decode:18",
-            "parse",
-            "push:s259:error",
-            "push:s260:error",
-            "push:s261:error",
-            "push:s262:error",
-            "deliver:error"
-          ],
-          "states": [
-            {
-              "at": 6,
-              "event": "start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 22,
-              "event": "text_start",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 23,
-              "event": "text_delta",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 30,
-              "event": "error",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 234
-              }
-            }
-          ]
-        },
-        {
-          "path": "agent",
-          "trace": [
-            "deliver:agent_start",
-            "deliver:turn_start",
-            "deliver:message_start",
-            "deliver:message_end",
-            "push:s263:start",
-            "read",
-            "deliver:message_start",
-            "decode:40",
-            "read",
-            "decode:40",
-            "read",
-            "decode:40",
-            "parse",
-            "push:s263:text_start",
-            "push:s263:text_delta",
-            "read",
-            "deliver:message_update",
-            "deliver:message_update",
-            "decode:18",
-            "parse",
-            "push:s263:error",
-            "deliver:message_end",
-            "deliver:turn_end",
-            "deliver:agent_end"
-          ],
-          "states": [
-            {
-              "at": 7,
-              "event": "message_start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 17,
-              "event": "message_update",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 18,
-              "event": "message_update",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 22,
-              "event": "message_end",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 228,
-                "thinkingLevel": "off"
-              }
-            }
-          ]
-        }
-      ],
-      "rpc": [
-        {
-          "type": "message_start",
-          "message": {
-            "role": "assistant",
-            "content": [],
-            "api": "mistral-conversations",
-            "provider": "p",
-            "model": "strict",
-            "usage": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "totalTokens": 0,
-              "cost": {
-                "input": 0,
-                "output": 0,
-                "cacheRead": 0,
-                "cacheWrite": 0,
-                "total": 0
-              }
-            },
-            "stopReason": "pending"
-          }
-        },
-        {
-          "type": "message_update",
-          "usage": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "totalTokens": 0,
-            "cost": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "total": 0
-            }
-          },
-          "assistantMessageEvent": {
-            "type": "text_start",
-            "contentIndex": 0
-          }
-        },
-        {
-          "type": "message_update",
-          "usage": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "totalTokens": 0,
-            "cost": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "total": 0
-            }
-          },
-          "assistantMessageEvent": {
-            "type": "text_delta",
-            "contentIndex": 0,
-            "delta": "par"
-          }
-        },
-        {
-          "type": "message_end",
-          "message": {
-            "role": "assistant",
-            "content": [
-              {
-                "type": "text",
-                "text": "par"
-              }
-            ],
-            "api": "mistral-conversations",
-            "provider": "p",
-            "model": "strict",
-            "usage": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "totalTokens": 0,
-              "cost": {
-                "input": 0,
-                "output": 0,
-                "cacheRead": 0,
-                "cacheWrite": 0,
-                "total": 0
-              }
-            },
-            "stopReason": "error",
-            "responseId": "chatcmpl-strict",
-            "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 254,
-            "thinkingLevel": "off"
-          }
-        }
-      ]
-    },
-    {
-      "fixture": "nochoices",
-      "delivery": "tail",
-      "paths": [
-        {
-          "path": "direct",
-          "trace": [
-            "push:s264:start",
-            "read",
-            "deliver:start",
-            "decode:138",
-            "parse",
-            "push:s264:text_start",
-            "push:s264:text_delta",
-            "parse",
-            "deliver:text_start",
-            "push:s264:error",
-            "deliver:text_delta",
-            "deliver:error"
-          ],
-          "states": [
-            {
-              "at": 3,
-              "event": "start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 9,
-              "event": "text_start",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending",
-                "responseId": "chatcmpl-strict"
-              }
-            },
-            {
-              "at": 11,
-              "event": "text_delta",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
-              }
-            },
-            {
-              "at": 12,
-              "event": "error",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
-              }
-            }
-          ]
-        },
-        {
-          "path": "runtime",
-          "trace": [
-            "push:s265:start",
-            "read",
-            "push:s266:start",
-            "push:s267:start",
-            "push:s268:start",
-            "deliver:start",
-            "decode:138",
-            "parse",
-            "push:s265:text_start",
-            "push:s265:text_delta",
-            "parse",
-            "push:s266:text_start",
-            "push:s265:error",
-            "push:s266:text_delta",
-            "push:s267:text_start",
-            "push:s266:error",
-            "push:s267:text_delta",
-            "push:s268:text_start",
-            "push:s267:error",
-            "push:s268:text_delta",
-            "deliver:text_start",
-            "push:s268:error",
-            "deliver:text_delta",
-            "deliver:error"
-          ],
-          "states": [
-            {
-              "at": 6,
-              "event": "start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 21,
-              "event": "text_start",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 152
-              }
-            },
-            {
-              "at": 23,
-              "event": "text_delta",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 152
-              }
-            },
-            {
-              "at": 24,
-              "event": "error",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "par"
-                  }
-                ],
-                "api": "mistral-conversations",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "responseId": "chatcmpl-strict",
-                "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 152
-              }
-            }
-          ]
-        },
-        {
-          "path": "agent",
-          "trace": [
-            "deliver:agent_start",
-            "deliver:turn_start",
-            "deliver:message_start",
-            "deliver:message_end",
-            "push:s269:start",
-            "read",
-            "deliver:message_start",
-            "decode:138",
-            "parse",
-            "push:s269:text_start",
-            "push:s269:text_delta",
-            "parse",
-            "deliver:message_update",
-            "push:s269:error",
             "deliver:message_update",
             "deliver:message_end",
             "deliver:turn_end",
@@ -46144,7 +44438,1713 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 179,
+            "durationMs": 172,
+            "thinkingLevel": "off"
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "nochoices",
+      "delivery": "chunked",
+      "paths": [
+        {
+          "path": "direct",
+          "trace": [
+            "push:s252:start",
+            "read",
+            "deliver:start",
+            "decode:120",
+            "parse",
+            "push:s252:text_start",
+            "push:s252:text_delta",
+            "read",
+            "deliver:text_start",
+            "deliver:text_delta",
+            "decode:18",
+            "parse",
+            "push:s252:error",
+            "deliver:error"
+          ],
+          "states": [
+            {
+              "at": 3,
+              "event": "start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 9,
+              "event": "text_start",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 10,
+              "event": "text_delta",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 14,
+              "event": "error",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 178
+              }
+            }
+          ]
+        },
+        {
+          "path": "runtime",
+          "trace": [
+            "push:s253:start",
+            "read",
+            "push:s254:start",
+            "push:s255:start",
+            "push:s256:start",
+            "deliver:start",
+            "decode:120",
+            "parse",
+            "push:s253:text_start",
+            "push:s253:text_delta",
+            "read",
+            "push:s254:text_start",
+            "push:s254:text_delta",
+            "push:s255:text_start",
+            "push:s255:text_delta",
+            "push:s256:text_start",
+            "push:s256:text_delta",
+            "deliver:text_start",
+            "deliver:text_delta",
+            "decode:18",
+            "parse",
+            "push:s253:error",
+            "push:s254:error",
+            "push:s255:error",
+            "push:s256:error",
+            "deliver:error"
+          ],
+          "states": [
+            {
+              "at": 6,
+              "event": "start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 18,
+              "event": "text_start",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 19,
+              "event": "text_delta",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 26,
+              "event": "error",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 179
+              }
+            }
+          ]
+        },
+        {
+          "path": "agent",
+          "trace": [
+            "deliver:agent_start",
+            "deliver:turn_start",
+            "deliver:message_start",
+            "deliver:message_end",
+            "push:s257:start",
+            "read",
+            "deliver:message_start",
+            "decode:120",
+            "parse",
+            "push:s257:text_start",
+            "push:s257:text_delta",
+            "read",
+            "deliver:message_update",
+            "deliver:message_update",
+            "decode:18",
+            "parse",
+            "push:s257:error",
+            "deliver:message_end",
+            "deliver:turn_end",
+            "deliver:agent_end"
+          ],
+          "states": [
+            {
+              "at": 7,
+              "event": "message_start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 13,
+              "event": "message_update",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 14,
+              "event": "message_update",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 18,
+              "event": "message_end",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 177,
+                "thinkingLevel": "off"
+              }
+            }
+          ]
+        }
+      ],
+      "rpc": [
+        {
+          "type": "message_start",
+          "message": {
+            "role": "assistant",
+            "content": [],
+            "api": "mistral-conversations",
+            "provider": "p",
+            "model": "strict",
+            "usage": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "totalTokens": 0,
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "total": 0
+              }
+            },
+            "stopReason": "pending"
+          }
+        },
+        {
+          "type": "message_update",
+          "usage": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 0,
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 0
+            }
+          },
+          "assistantMessageEvent": {
+            "type": "text_start",
+            "contentIndex": 0
+          }
+        },
+        {
+          "type": "message_update",
+          "usage": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 0,
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 0
+            }
+          },
+          "assistantMessageEvent": {
+            "type": "text_delta",
+            "contentIndex": 0,
+            "delta": "par"
+          }
+        },
+        {
+          "type": "message_end",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "par"
+              }
+            ],
+            "api": "mistral-conversations",
+            "provider": "p",
+            "model": "strict",
+            "usage": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "totalTokens": 0,
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "total": 0
+              }
+            },
+            "stopReason": "error",
+            "responseId": "chatcmpl-strict",
+            "errorMessage": "Invalid Mistral streaming event",
+            "durationMs": 201,
+            "thinkingLevel": "off"
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "nochoices",
+      "delivery": "split",
+      "paths": [
+        {
+          "path": "direct",
+          "trace": [
+            "push:s258:start",
+            "read",
+            "deliver:start",
+            "decode:40",
+            "read",
+            "decode:40",
+            "read",
+            "decode:40",
+            "parse",
+            "push:s258:text_start",
+            "push:s258:text_delta",
+            "read",
+            "deliver:text_start",
+            "deliver:text_delta",
+            "decode:18",
+            "parse",
+            "push:s258:error",
+            "deliver:error"
+          ],
+          "states": [
+            {
+              "at": 3,
+              "event": "start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 13,
+              "event": "text_start",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 14,
+              "event": "text_delta",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 18,
+              "event": "error",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 228
+              }
+            }
+          ]
+        },
+        {
+          "path": "runtime",
+          "trace": [
+            "push:s259:start",
+            "read",
+            "push:s260:start",
+            "push:s261:start",
+            "push:s262:start",
+            "deliver:start",
+            "decode:40",
+            "read",
+            "decode:40",
+            "read",
+            "decode:40",
+            "parse",
+            "push:s259:text_start",
+            "push:s259:text_delta",
+            "read",
+            "push:s260:text_start",
+            "push:s260:text_delta",
+            "push:s261:text_start",
+            "push:s261:text_delta",
+            "push:s262:text_start",
+            "push:s262:text_delta",
+            "deliver:text_start",
+            "deliver:text_delta",
+            "decode:18",
+            "parse",
+            "push:s259:error",
+            "push:s260:error",
+            "push:s261:error",
+            "push:s262:error",
+            "deliver:error"
+          ],
+          "states": [
+            {
+              "at": 6,
+              "event": "start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 22,
+              "event": "text_start",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 23,
+              "event": "text_delta",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 30,
+              "event": "error",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 228
+              }
+            }
+          ]
+        },
+        {
+          "path": "agent",
+          "trace": [
+            "deliver:agent_start",
+            "deliver:turn_start",
+            "deliver:message_start",
+            "deliver:message_end",
+            "push:s263:start",
+            "read",
+            "deliver:message_start",
+            "decode:40",
+            "read",
+            "decode:40",
+            "read",
+            "decode:40",
+            "parse",
+            "push:s263:text_start",
+            "push:s263:text_delta",
+            "read",
+            "deliver:message_update",
+            "deliver:message_update",
+            "decode:18",
+            "parse",
+            "push:s263:error",
+            "deliver:message_end",
+            "deliver:turn_end",
+            "deliver:agent_end"
+          ],
+          "states": [
+            {
+              "at": 7,
+              "event": "message_start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 17,
+              "event": "message_update",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 18,
+              "event": "message_update",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 22,
+              "event": "message_end",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 227,
+                "thinkingLevel": "off"
+              }
+            }
+          ]
+        }
+      ],
+      "rpc": [
+        {
+          "type": "message_start",
+          "message": {
+            "role": "assistant",
+            "content": [],
+            "api": "mistral-conversations",
+            "provider": "p",
+            "model": "strict",
+            "usage": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "totalTokens": 0,
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "total": 0
+              }
+            },
+            "stopReason": "pending"
+          }
+        },
+        {
+          "type": "message_update",
+          "usage": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 0,
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 0
+            }
+          },
+          "assistantMessageEvent": {
+            "type": "text_start",
+            "contentIndex": 0
+          }
+        },
+        {
+          "type": "message_update",
+          "usage": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 0,
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 0
+            }
+          },
+          "assistantMessageEvent": {
+            "type": "text_delta",
+            "contentIndex": 0,
+            "delta": "par"
+          }
+        },
+        {
+          "type": "message_end",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "par"
+              }
+            ],
+            "api": "mistral-conversations",
+            "provider": "p",
+            "model": "strict",
+            "usage": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "totalTokens": 0,
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "total": 0
+              }
+            },
+            "stopReason": "error",
+            "responseId": "chatcmpl-strict",
+            "errorMessage": "Invalid Mistral streaming event",
+            "durationMs": 250,
+            "thinkingLevel": "off"
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "nochoices",
+      "delivery": "tail",
+      "paths": [
+        {
+          "path": "direct",
+          "trace": [
+            "push:s264:start",
+            "read",
+            "deliver:start",
+            "decode:138",
+            "parse",
+            "push:s264:text_start",
+            "push:s264:text_delta",
+            "parse",
+            "deliver:text_start",
+            "push:s264:error",
+            "deliver:text_delta",
+            "deliver:error"
+          ],
+          "states": [
+            {
+              "at": 3,
+              "event": "start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 9,
+              "event": "text_start",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 11,
+              "event": "text_delta",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 152
+              }
+            },
+            {
+              "at": 12,
+              "event": "error",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 152
+              }
+            }
+          ]
+        },
+        {
+          "path": "runtime",
+          "trace": [
+            "push:s265:start",
+            "read",
+            "push:s266:start",
+            "push:s267:start",
+            "push:s268:start",
+            "deliver:start",
+            "decode:138",
+            "parse",
+            "push:s265:text_start",
+            "push:s265:text_delta",
+            "parse",
+            "push:s266:text_start",
+            "push:s265:error",
+            "push:s266:text_delta",
+            "push:s267:text_start",
+            "push:s266:error",
+            "push:s267:text_delta",
+            "push:s268:text_start",
+            "push:s267:error",
+            "push:s268:text_delta",
+            "deliver:text_start",
+            "push:s268:error",
+            "deliver:text_delta",
+            "deliver:error"
+          ],
+          "states": [
+            {
+              "at": 6,
+              "event": "start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 21,
+              "event": "text_start",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 153
+              }
+            },
+            {
+              "at": 23,
+              "event": "text_delta",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 153
+              }
+            },
+            {
+              "at": 24,
+              "event": "error",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 153
+              }
+            }
+          ]
+        },
+        {
+          "path": "agent",
+          "trace": [
+            "deliver:agent_start",
+            "deliver:turn_start",
+            "deliver:message_start",
+            "deliver:message_end",
+            "push:s269:start",
+            "read",
+            "deliver:message_start",
+            "decode:138",
+            "parse",
+            "push:s269:text_start",
+            "push:s269:text_delta",
+            "parse",
+            "deliver:message_update",
+            "push:s269:error",
+            "deliver:message_update",
+            "deliver:message_end",
+            "deliver:turn_end",
+            "deliver:agent_end"
+          ],
+          "states": [
+            {
+              "at": 7,
+              "event": "message_start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 13,
+              "event": "message_update",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending",
+                "responseId": "chatcmpl-strict"
+              }
+            },
+            {
+              "at": 15,
+              "event": "message_update",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 151
+              }
+            },
+            {
+              "at": 16,
+              "event": "message_end",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "par"
+                  }
+                ],
+                "api": "mistral-conversations",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "responseId": "chatcmpl-strict",
+                "errorMessage": "Invalid Mistral streaming event",
+                "durationMs": 151,
+                "thinkingLevel": "off"
+              }
+            }
+          ]
+        }
+      ],
+      "rpc": [
+        {
+          "type": "message_start",
+          "message": {
+            "role": "assistant",
+            "content": [],
+            "api": "mistral-conversations",
+            "provider": "p",
+            "model": "strict",
+            "usage": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "totalTokens": 0,
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "total": 0
+              }
+            },
+            "stopReason": "pending"
+          }
+        },
+        {
+          "type": "message_update",
+          "usage": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 0,
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 0
+            }
+          },
+          "assistantMessageEvent": {
+            "type": "text_start",
+            "contentIndex": 0
+          }
+        },
+        {
+          "type": "message_update",
+          "usage": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 0,
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 0
+            }
+          },
+          "assistantMessageEvent": {
+            "type": "text_delta",
+            "contentIndex": 0,
+            "delta": "par"
+          }
+        },
+        {
+          "type": "message_end",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "par"
+              }
+            ],
+            "api": "mistral-conversations",
+            "provider": "p",
+            "model": "strict",
+            "usage": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "totalTokens": 0,
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "total": 0
+              }
+            },
+            "stopReason": "error",
+            "responseId": "chatcmpl-strict",
+            "errorMessage": "Invalid Mistral streaming event",
+            "durationMs": 178,
             "thinkingLevel": "off"
           }
         }
@@ -46287,7 +46287,7 @@
             },
             "stopReason": "aborted",
             "errorMessage": "This operation was aborted",
-            "durationMs": 4
+            "durationMs": 2
           }
         }
       ]

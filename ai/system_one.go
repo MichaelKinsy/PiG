@@ -378,7 +378,7 @@ var typesafeSystemOneTransport = SystemOneTransport{
 		}
 		return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputAssets, SendImageOptInHeader: true}
 	},
-	URL:   func(model ClassifierModel) string { return serviceURL(model.BaseURL, "systemone") },
+	URL: func(model ClassifierModel) string { return serviceURL(model.BaseURL, "systemone") },
 	Payload: func(model ClassifierModel, request SystemOneWireRequest) map[string]any {
 		body := request.Body()
 		body["model"] = model.ID
@@ -432,7 +432,7 @@ var cloudflareSystemOneTransport = SystemOneTransport{
 		}
 		return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputAssets}
 	},
-	URL:   func(model ClassifierModel) string { return serviceURL(model.BaseURL, "run") },
+	URL: func(model ClassifierModel) string { return serviceURL(model.BaseURL, "run") },
 	Payload: func(model ClassifierModel, request SystemOneWireRequest) map[string]any {
 		return map[string]any{"model": model.ID, "input": request.Body()}
 	},

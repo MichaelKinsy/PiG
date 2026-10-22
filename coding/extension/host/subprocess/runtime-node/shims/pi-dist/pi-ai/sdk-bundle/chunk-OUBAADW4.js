@@ -1,10 +1,10 @@
 import {
   classifySystemOne
-} from "./chunk-I7FMPVJ6.js";
+} from "./chunk-BXWIDDEK.js";
 import {
   isRecord
-} from "./chunk-JHVQGPIW.js";
-import "./chunk-4QEFVS4X.js";
+} from "./chunk-THKX7O6U.js";
+import "./chunk-KSWS3LLN.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -13,6 +13,8 @@ import {
 var transport = {
   api: "typesafe-system-one",
   label: "System One API",
+  // OpenRouter by provider ID, which survives baseUrl overrides, or by host, which covers regional endpoints.
+  detectCompat: /* @__PURE__ */ __name((model) => model.provider === "openrouter" || model.baseUrl.includes("openrouter.ai") ? { imageInput: "state-image-urls", sendImageOptInHeader: false } : { imageInput: "assets", sendImageOptInHeader: true }, "detectCompat"),
   url: /* @__PURE__ */ __name((model) => new URL("systemone", `${model.baseUrl.replace(/\/+$/u, "")}/`), "url"),
   payload: /* @__PURE__ */ __name((model, request) => ({ model: model.id, ...request }), "payload"),
   output: /* @__PURE__ */ __name((body) => {

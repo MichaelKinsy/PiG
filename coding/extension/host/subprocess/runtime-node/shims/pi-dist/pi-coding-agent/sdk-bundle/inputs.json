@@ -243,7 +243,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/provider-composer.js",
-      "sha256": "6d999237300aa0e2fecefc3ffe4c99bd8ab85fffe5d930f415dec8fef36e7d45"
+      "sha256": "7f9af66194b7bc0764ab43bd26420e2d8d11b313f0b052739d552655fe8b8a83"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/radius.js",

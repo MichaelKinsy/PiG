@@ -27,7 +27,7 @@
     },
     {
       "path": "pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.js",
-      "sha256": "1473f75df7e75c45ea4c153f24ec69172a5c582318fcfbd553387c9627e57828"
+      "sha256": "5716639fed706375c8dd9040feb964617edebae16aeae902387682c0da04eb87"
     },
     {
       "path": "pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.lazy.js",
@@ -107,11 +107,11 @@
     },
     {
       "path": "pi-dist/pi-ai/api/system-one-shared.js",
-      "sha256": "4744c71be78d764c6d45f7c9fe0bdfa9dfe8d13c803ad07af5d28ba7d4ae0859"
+      "sha256": "392c6e7d279b016424ff44f9c1c4b4ce4068f3d132b5243461532c14dd83ed18"
     },
     {
       "path": "pi-dist/pi-ai/api/typesafe-system-one.js",
-      "sha256": "130ebdcc5e4891d49563dc06db26b00217278ccc02bb1e327c417b5e550c6f47"
+      "sha256": "0c708b9b8a80a4401d38b131f5d9f359d5e8c1b0d38753a6a808d2d624dc2c2a"
     },
     {
       "path": "pi-dist/pi-ai/api/typesafe-system-one.lazy.js",
@@ -259,7 +259,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "cb10a248d7552fb39c5bb378d43fdfeab66489e19610bdbd09304ee0b78d3744"
+      "sha256": "cc48ce3d6fe8d1a6919782b0b0bf5239a750a7880d7c075de3c1966d879f9ff6"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -291,7 +291,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-workers-ai.json",
-      "sha256": "89e822178dee9fc8702c8d4ea0f30b85f7525ce4e38b5e26cc5d62cc2784a93a"
+      "sha256": "36c80c7d7606465001706d5b5d8612d825d8c501d20efb994599960693d37d43"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/deepseek.json",
@@ -319,7 +319,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/huggingface.json",
-      "sha256": "0628929a39d2b802593ec1efcc38ea5c4308fe216155bb4508327c274b78075b"
+      "sha256": "a76d8fa3043d72c80a11c7ff4bcbba07ecb0c87913d8d38dc3cd1001d44b0706"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/kimi-coding.json",
@@ -351,7 +351,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/nvidia.json",
-      "sha256": "dcf20f026f1a5cbb9001adf35e4831dcf761b0dde866d5eddf63015aa41151ec"
+      "sha256": "4a80c26d6ad935eb5954b5be23239c899e231cdf7a49bbe2d2b4130ffc74b15d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai-codex.json",
@@ -367,11 +367,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "d5c2f8d9d90c0bc5e64f7039c2b573844f3f65f939bb4f60c904897cab8f1910"
+      "sha256": "8858aafc35dddc64e504a029413ad11b2f3657429acb96330532a5e042ce5f5e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "d5d70c43888d0e508b32a24a950000162dad6410970dfa5ff4faadef24a0fc91"
+      "sha256": "601a908570175a93712f282030d331661fa49ff21139160186271d21445c798e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
@@ -387,7 +387,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/radius.json",
-      "sha256": "5448d4a6d4311c300c88b8bdb0e38e6474c70616e6b9f1fb723f6d041a6a0fb6"
+      "sha256": "49da11ea2e6881e72b3cc32b05f5326cf539332896b47751636f4c19a69911c4"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/together.json",
@@ -395,11 +395,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/typesafe.json",
-      "sha256": "a4429a2f696d5cc5273969af61a7310bda07d6bdcd27bf9ac9c76c534cc43716"
+      "sha256": "631b03f70597ad656e8f45a393ab46bd4137459b9b499708ac3d5d9d9decd3f2"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/vercel-ai-gateway.json",
-      "sha256": "8baa932dcf5d5fd2a6a6d7fa19169b41237504520cc000557a7638cdb4ddaf54"
+      "sha256": "6e44f86808a629ded1b9e26b30908d104ad94b7bd2168a3b35c2390069c66899"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",
@@ -791,7 +791,7 @@
     },
     {
       "path": "pi-dist/pi-ai/utils/version.js",
-      "sha256": "7e49a136381630a1debba6321773887e56ad376aa85476ffee58f3c6c9964073"
+      "sha256": "ea6a3455dc4fd0dbf9414c31a58d2baab2c7e7e4830526842f8ef27ccf4d0912"
     }
   ]
 }

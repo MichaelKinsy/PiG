@@ -338,6 +338,9 @@ type jsonModel struct {
 	Enabled          *bool                 `json:"enabled"`
 	Lab              string                `json:"lab"`
 	Providers        []jsonCatalogProvider `json:"providers"`
+	// Free is carried by Pi v1.4.0's radius data (data/radius.json, recursive/flint) and read by no Pi code: Pi's catalog passes the JSON
+	// through untyped, so the field is accepted here and stays in the model's record, exactly as in Pi.
+	Free *bool `json:"free"`
 	// record is the compacted entry JSON.
 	record string
 }
