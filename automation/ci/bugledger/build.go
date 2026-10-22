@@ -336,7 +336,14 @@ func (b *builder) locate(first map[string]intro, text string) string {
 	}
 	words := wordSet(text)
 	best, bestScore := "", 0.0
-	for k, in := range first {
+	// Two fragments that score alike and were written in the same second are told apart by their text, not by the order a map lists them in.
+	keys := make([]string, 0, len(first))
+	for k := range first {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	for _, k := range keys {
+		in := first[k]
 		if !in.Fragment || k == text {
 			continue
 		}

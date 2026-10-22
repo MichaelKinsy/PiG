@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1358,6 +1359,229 @@ func TestPendingEntriesAreNamedAfterTheirText(t *testing.T) {
 	for _, id := range both {
 		if !pendingID.MatchString(id) {
 			t.Errorf("pending ID %q is not named after the entry's text", id)
+		}
+	}
+}
+
+// commitAt commits with a fixed author and committer date, so a test can say which commit is older and gets the same hashes on every run.
+func commitAt(t *testing.T, r testRepo, date, msg string, paths ...string) string {
+	t.Helper()
+	t.Setenv("GIT_AUTHOR_DATE", date)
+	t.Setenv("GIT_COMMITTER_DATE", date)
+	return r.commit(msg, paths...)
+}
+
+// writeLedger replaces the committed ledger by l, listing the entries in the order l has them.
+func writeLedger(t *testing.T, r testRepo, l *Ledger) {
+	t.Helper()
+	data, err := marshalJSON(l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.write(jsonPath, string(data))
+	r.write(pagePath, renderMarkdown(l))
+}
+
+// entriesByFirstCommit counts the committed entries by their first fix commit, and returns the number of entries.
+func entriesByFirstCommit(t *testing.T, r testRepo) (map[string]int, int) {
+	t.Helper()
+	l, _, err := readCommitted(r.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := map[string]int{}
+	for _, e := range l.Entries {
+		if len(e.Commits) > 0 {
+			counts[e.Commits[0].Hash]++
+		}
+	}
+	return counts, len(l.Entries)
+}
+
+func committedBytes(t *testing.T, r testRepo) []byte {
+	t.Helper()
+	var out []byte
+	for _, p := range []string{jsonPath, pagePath} {
+		data, err := os.ReadFile(filepath.Join(r.root, p))
+		if err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, data...)
+	}
+	return out
+}
+
+// squashedThenMerged builds the history of a branch that a squash landing replaced the development commits of, and that then merged a branch cut
+// from the development history, which brings back all but the last of those commits and adds one fix. The development fixes share one title, so
+// their entries share one identity, and the committed ledger, written on the development history, lists the entry of fixes[dup] twice, as an
+// earlier regeneration left it. With reversed, the committed files list their entries in reverse order. It returns the repository, the
+// development fixes and the fix the merged branch adds.
+func squashedThenMerged(t *testing.T, dup int, reversed bool) (r testRepo, fixes []string, other string) {
+	t.Helper()
+	fixedGitDates(t)
+	r = newFixture(t)
+	r.run("checkout", "-q", "-b", "dev")
+	for i := range 3 {
+		name := "crash" + strconv.Itoa(i) + ".go"
+		r.write(name, "package x\n\n// crash "+strconv.Itoa(i)+"\n")
+		fixes = append(fixes, r.commit("Fix the crash", name))
+	}
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	l, _, err := readCommitted(r.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Entries) != 3 {
+		t.Fatalf("the development ledger has %d entries, want 3", len(l.Entries))
+	}
+	at := slices.IndexFunc(l.Entries, func(e Entry) bool { return e.Commits[0].Hash == fixes[dup][:10] })
+	if at < 0 {
+		t.Fatalf("no entry for %s in %v", fixes[dup], l.Entries)
+	}
+	twin := l.Entries[at]
+	twin.ID += "-2"
+	l.Entries = append(l.Entries, twin)
+	canonical(l)
+	if reversed {
+		slices.Reverse(l.Entries)
+	}
+	writeLedger(t, r, l)
+	r.commit("Add the ledger", jsonPath, pagePath)
+
+	r.run("branch", "follow", fixes[1])
+	r.run("checkout", "-q", "follow")
+	r.write("other.go", "package x\n")
+	other = r.commit("Fix a different crash", "other.go")
+	r.run("checkout", "-q", "main")
+	r.run("checkout", "-q", "dev", "--", ".")
+	r.commit("Land the development branch (#7)", ".")
+	r.run("branch", "-D", "-q", "dev")
+	merge(t, r, "follow")
+	return r, fixes, other
+}
+
+// A squash landing keeps the development commits out of the history, and a merge of a branch cut from the development history brings some of
+// them back. When the committed ledger lists the entry of a commit twice (an earlier regeneration left the copy), the first regeneration must drop
+// the copy and nothing else, and the second must change nothing. Matching the committed entries to the generated ones by their position among
+// equal titles dropped the entry that sorted last, whatever its commit, and then another on every run. The copy of the entry of the commit that
+// stays out of the merged history is a kept entry like any other and stays, as on the branch the squash landed on.
+func TestRegenerationAfterAMergeThatBringsBackSquashedCommitsDropsOnlyTheDuplicate(t *testing.T) {
+	for dup := range 3 {
+		t.Run("copy of entry "+strconv.Itoa(dup), func(t *testing.T) {
+			r, fixes, other := squashedThenMerged(t, dup, false)
+			if err := run(r.root, "0.4.1", true, false); err == nil {
+				t.Fatal("the committed ledger lacks the entry of the merged-in fix, so the check must fail")
+			}
+			if err := run(r.root, "0.4.1", false, false); err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]int{other[:10]: 1}
+			for _, f := range fixes {
+				want[f[:10]] = 1
+			}
+			wantTotal := len(want)
+			if dup == len(fixes)-1 {
+				want[fixes[dup][:10]] = 2
+				wantTotal++
+			}
+			if counts, total := entriesByFirstCommit(t, r); !maps.Equal(counts, want) || total != wantTotal {
+				t.Fatalf("entries by first commit after the regeneration = %v (%d entries), want %v", counts, total, want)
+			}
+			if err := run(r.root, "0.4.1", true, false); err != nil {
+				t.Fatalf("the regenerated ledger must pass the check: %v", err)
+			}
+			once := committedBytes(t, r)
+			if err := run(r.root, "0.4.1", false, false); err != nil {
+				t.Fatal(err)
+			}
+			if twice := committedBytes(t, r); !bytes.Equal(once, twice) {
+				t.Fatal("a second regeneration with no new commit changed the ledger")
+			}
+		})
+	}
+}
+
+// The order in which the committed files list their entries is not part of the history, so it must not change the regenerated ledger.
+func TestRegenerationDoesNotDependOnTheOrderOfTheCommittedEntries(t *testing.T) {
+	for dup := range 3 {
+		t.Run("copy of entry "+strconv.Itoa(dup), func(t *testing.T) {
+			var got [2][]byte
+			for i, reversed := range []bool{false, true} {
+				r, _, _ := squashedThenMerged(t, dup, reversed)
+				if err := run(r.root, "0.4.1", false, false); err != nil {
+					t.Fatal(err)
+				}
+				got[i] = committedBytes(t, r)
+			}
+			if !bytes.Equal(got[0], got[1]) {
+				t.Fatal("the regenerated ledger depends on the order of the committed entries")
+			}
+		})
+	}
+}
+
+// mergedOlderFix builds a release branch whose committed ledger lists two fixes that share a title, then merges a branch with a third fix of that
+// title that is older than both. It returns the repository and the three fix commits, the committed two first.
+func mergedOlderFix(t *testing.T) (testRepo, []string) {
+	t.Helper()
+	fixedGitDates(t)
+	r := newFixture(t)
+	base := r.run("rev-parse", "HEAD")
+	var fixes []string
+	for i, day := range []string{"2026-02-10", "2026-02-11"} {
+		name := "crash" + strconv.Itoa(i) + ".go"
+		r.write(name, "package x\n\n// crash "+strconv.Itoa(i)+"\n")
+		fixes = append(fixes, commitAt(t, r, day+"T12:00:00Z", "Fix the crash", name))
+	}
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	commitAt(t, r, "2026-02-12T12:00:00Z", "Add the ledger", jsonPath, pagePath)
+	r.run("checkout", "-q", "-b", "side", base)
+	r.write("side.go", "package x\n")
+	fixes = append(fixes, commitAt(t, r, "2026-02-05T12:00:00Z", "Fix the crash", "side.go"))
+	r.run("checkout", "-q", "main")
+	merge(t, r, "side")
+	return r, fixes
+}
+
+// A fix that a merge brings in, older than the committed fixes of the same title, is a new entry. Taking the place of a committed entry (the
+// generated entries are in the order of their commit times, the committed ones in the order of their IDs) lists another fix twice and leaves
+// this one out of the ledger.
+func TestAMergedFixOlderThanCommittedFixesOfTheSameTitleStaysAnEntry(t *testing.T) {
+	r, fixes := mergedOlderFix(t)
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int{fixes[0][:10]: 1, fixes[1][:10]: 1, fixes[2][:10]: 1}
+	if counts, total := entriesByFirstCommit(t, r); !maps.Equal(counts, want) || total != 3 {
+		t.Fatalf("entries by first commit = %v (%d entries), want %v", counts, total, want)
+	}
+	if err := run(r.root, "0.4.1", true, false); err != nil {
+		t.Fatalf("the regenerated ledger must pass the check: %v", err)
+	}
+	once := committedBytes(t, r)
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	if twice := committedBytes(t, r); !bytes.Equal(once, twice) {
+		t.Fatal("a second regeneration with no new commit changed the ledger")
+	}
+}
+
+// A fragment the fold into CHANGELOG.md reworded is matched to the fragments by word overlap. Two fragments that score alike and were written in
+// the same second must not be told apart by the order a map lists them in: the same history must give the same ledger on every run.
+func TestLocateDoesNotDependOnTheOrderOfAMap(t *testing.T) {
+	first := map[string]intro{
+		"The loop no longer hangs on exit.":  {Hash: "aaaaaaaaaa", Fragment: true},
+		"The loop no longer stalls on exit.": {Hash: "bbbbbbbbbb", Fragment: true},
+	}
+	b := &builder{order: map[string]int{"aaaaaaaaaa": 7, "bbbbbbbbbb": 7}}
+	for range 100 {
+		if got := b.locate(first, "The loop no longer freezes on exit."); got != "aaaaaaaaaa" {
+			t.Fatalf("locate = %q, want the fragment that sorts first, aaaaaaaaaa", got)
 		}
 	}
 }
