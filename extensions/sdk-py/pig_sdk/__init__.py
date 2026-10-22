@@ -2461,7 +2461,6 @@ _RPC_SYNCHRONOUS_UI_EFFECTS = frozenset({
 })
 
 
-@dataclass
 class TUI:
     """The handle of Pi's TUI that a widget factory receives as its ``tui`` argument (``TUI.invalidate``, tui.ts:366; ``TUI.requestRender``, tui.ts:990).
 
@@ -2487,6 +2486,7 @@ class TUI:
             self._ctx._call("ui.tui.requestRender", {"force": bool(force)})
 
 
+@dataclass
 class Context:
     extension: "Extension"
     tool_call_id: str | None = None

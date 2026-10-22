@@ -116,3 +116,90 @@ impl LinkClicks {
         state.queue.clear();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    fn recording(tx: mpsc::Sender<String>, label: &'static str) -> LinkClickHandler {
+        Box::new(move |url| {
+            let _ = tx.send(format!("{label}:{url}"));
+        })
+    }
+
+    #[test]
+    fn clicks_reach_the_claimed_scheme_in_order_and_other_schemes_reach_nobody() {
+        let clicks = Arc::new(LinkClicks::default());
+        let threads = Arc::new(RequestThreads::default());
+        let (tx, rx) = mpsc::channel();
+        clicks.claim("probe", recording(tx, "h"));
+        for url in ["probe:1", "probe:2", "probe:3"] {
+            clicks.submit("probe", url.to_string(), &threads);
+        }
+        clicks.submit("other", "other:1".to_string(), &threads);
+        let got: Vec<String> = (0..3).map(|_| rx.recv_timeout(Duration::from_secs(5)).unwrap()).collect();
+        assert_eq!(got, ["h:probe:1", "h:probe:2", "h:probe:3"]);
+        assert!(rx.recv_timeout(Duration::from_millis(50)).is_err(), "a click on another scheme reached a handler");
+    }
+
+    #[test]
+    fn a_handler_that_panics_does_not_stop_the_next_click() {
+        let clicks = Arc::new(LinkClicks::default());
+        let threads = Arc::new(RequestThreads::default());
+        let (tx, rx) = mpsc::channel();
+        clicks.claim(
+            "probe",
+            Box::new(move |url| {
+                if url == "probe:boom" {
+                    panic!("handler exploded");
+                }
+                let _ = tx.send(url.to_string());
+            }),
+        );
+        clicks.submit("probe", "probe:boom".to_string(), &threads);
+        clicks.submit("probe", "probe:after".to_string(), &threads);
+        assert_eq!(rx.recv_timeout(Duration::from_secs(5)).unwrap(), "probe:after");
+    }
+
+    #[test]
+    fn release_gives_the_scheme_back_once_and_only_to_the_claim_that_holds_it() {
+        let clicks = Arc::new(LinkClicks::default());
+        let (tx, _rx) = mpsc::channel();
+        let (first, _) = clicks.claim("probe", recording(tx.clone(), "first"));
+        let (second, replaced) = clicks.claim("probe", recording(tx, "second"));
+        assert_eq!(replaced.map(|(id, _)| id), Some(first));
+        assert!(!clicks.release("probe", first), "a replaced claim released the scheme of the claim that replaced it");
+        assert!(clicks.release("probe", second));
+        assert!(!clicks.release("probe", second), "the second release took something back");
+    }
+
+    #[test]
+    fn a_refused_claim_restores_the_earlier_one_unless_a_newer_claim_holds_the_scheme() {
+        let clicks = Arc::new(LinkClicks::default());
+        let threads = Arc::new(RequestThreads::default());
+        let (tx, rx) = mpsc::channel();
+        clicks.claim("probe", recording(tx.clone(), "first"));
+        let (refused, previous) = clicks.claim("probe", recording(tx.clone(), "refused"));
+        clicks.restore("probe", refused, previous);
+        clicks.submit("probe", "probe:1".to_string(), &threads);
+        assert_eq!(rx.recv_timeout(Duration::from_secs(5)).unwrap(), "first:probe:1");
+
+        let (stale, previous) = clicks.claim("probe", recording(tx.clone(), "stale"));
+        let (newer, _) = clicks.claim("probe", recording(tx, "newer"));
+        clicks.restore("probe", stale, previous);
+        assert!(clicks.release("probe", newer), "restoring a claim that was already replaced took the newer claim's scheme");
+    }
+
+    #[test]
+    fn stop_drops_the_queued_clicks() {
+        let clicks = Arc::new(LinkClicks::default());
+        let threads = Arc::new(RequestThreads::default());
+        let (tx, rx) = mpsc::channel();
+        clicks.claim("probe", recording(tx, "h"));
+        clicks.stop();
+        clicks.submit("probe", "probe:1".to_string(), &threads);
+        assert!(rx.recv_timeout(Duration::from_millis(50)).is_err(), "a click after stop reached the handler");
+    }
+}

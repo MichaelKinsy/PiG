@@ -241,6 +241,15 @@ func TestConformance_TransportsMatch(t *testing.T) {
 					t.Errorf("%s: ui_prompt events lack %q: %q", tc.name, promptEvent, got.UIPromptEvents)
 				}
 			}
+			// tui.ts:366 (TUI.invalidate), :990 (TUI.requestRender): each SDK's `tui` handle reaches the host's TUI with the calls it made, in order. The host
+			// counts nothing an SDK did not send, so an SDK that makes none, the baseline included, fails here and not only against the baseline.
+			if want := []string{"invalidate", "requestRender:false", "requestRender:true"}; !slices.Equal(got.TUICalls, want) {
+				t.Errorf("%s: the TUI handle's calls = %q, want %q", tc.name, got.TUICalls, want)
+			}
+			// D193: the reserved scheme is refused with the host's message, and the click on the claimed scheme reaches the handler with its address.
+			if want := []string{`invalid_scheme: link scheme "https" is reserved: the host keeps opening it:error`, "click:probe-link:1:info"}; !slices.Equal(got.LinkProbe, want) {
+				t.Errorf("%s: link probe = %q, want %q", tc.name, got.LinkProbe, want)
+			}
 			if i == 0 {
 				baseline = got
 				baselineName = tc.name

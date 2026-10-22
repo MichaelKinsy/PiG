@@ -870,7 +870,11 @@ export default function (pi) {
         return { render: () => [], invalidate() {} };
       });
       tui.invalidate();
+      // Pi's TUI coalesces the render requests of one tick into one repaint, as the runtime does: each request is made on its own tick, so the host
+      // sees every call the other SDKs make.
+      await new Promise((resolve) => setImmediate(resolve));
       tui.requestRender();
+      await new Promise((resolve) => setImmediate(resolve));
       tui.requestRender(true);
       ctx.ui.setWidget("tui-probe", undefined);
     },
