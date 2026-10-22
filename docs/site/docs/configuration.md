@@ -1,6 +1,6 @@
 # Configuration
 
-PiG reads configuration from two places: the agent directory, which applies to every project you open, and the `.pig` directory inside a project. PiG also loads instruction files such as `AGENTS.md` from the directories around your working directory. The layout follows Pi 1.3.0 ([Pi's configuration reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/configuration.md)), with PiG's directory names.
+PiG reads configuration from two places: the agent directory, which applies to every project you open, and the `.pig` directory inside a project. PiG also loads instruction files such as `AGENTS.md` from the directories around your working directory. The layout follows Pi 1.4.0 ([Pi's configuration reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/configuration.md)), with PiG's directory names.
 
 PiG keeps its state under `~/.pig` by default. It does not read or write Pi's `~/.pi` directory unless you explicitly select shared directories, so PiG and Pi can run side by side without sharing settings, credentials or sessions. This separation and its opt-in are divergence D2.
 
@@ -61,7 +61,7 @@ This page writes the agent directory as `<agent-dir>`.
 | `<agent-dir>/exit.log` | One line for each interactive exit that no user action asked for, such as SIGHUP, SIGTERM or a closed terminal (D102). |
 | `<agent-dir>/crash-output/` | Output of a goroutine panic or runtime fatal error, turned into a crash record at the next start (D102). |
 
-PiG creates the agent directory, `sessions/` and each project's session directory with mode 0700 (owner only). Pi 1.3.0 creates them with the process umask (D132, [Pi #10770](https://github.com/earendil-works/pi/issues/10770)).
+PiG creates the agent directory, `sessions/` and each project's session directory with mode 0700 (owner only). Pi 1.4.0 creates them with the process umask (D132, [Pi #10770](https://github.com/earendil-works/pi/issues/10770)).
 
 When the configuration root is read-only, PiG does not warn that it cannot stage the extension SDKs or write the Piglet verification cache (D157). `pig diagnose` reports a read-only configuration root and what PiG does not write there.
 
@@ -75,7 +75,7 @@ Use `PIG_USE_PI_DIRS=1 pig` to select Pi's agent directory and project `.pi` res
 
 Shared mode uses `PI_CODING_AGENT_DIR` or `~/.pi/agent` and `PI_CODING_AGENT_SESSION_DIR`, not the corresponding `PIG_CODING_AGENT_*` overrides. `--session-dir` still wins. The configuration root (`PIG_HOME`, else `$XDG_CONFIG_HOME/pig`, else `~/.pig`) continues to hold PiG-owned SDK caches, documentation, Piglet state and sprite selection. Project trust still applies. PiG does not copy or merge configuration trees.
 
-PiG and Pi 1.3.0 use compatible settings, auth and session formats. Auth, settings, trust and dynamic model-catalog cache writes use Pi's lock-directory protocol. Settings writes preserve unknown keys, and PiG does not write `models.json`. Use Pi-compatible Packages and resources in shared settings. Do not edit one session from two processes at once. Stop older PiG processes before sharing their files. PiG automatically reclaims stale empty regular lock files from v0.2.0 after checking that no older writer holds them (D73). A file is stale after 10 seconds for synchronous auth, settings and trust operations, or 30 seconds for asynchronous auth and model-cache operations. A fresh file remains in place and uses the normal contention timeout or caller cancellation. If an older PiG holds a stale lock, acquisition uses the normal timeout and asks you to stop that process. Only an empty regular file is such a legacy lock file. Anything else at a lock path follows Pi's protocol. A fresh entry is contention. A stale lock directory is removed, and so is a link to a stale directory on Windows, whose target stays. A stale nonempty file, a link to a stale file, a dangling link, a nonempty lock directory, and on Unix any stale link stay in place, and acquisition fails.
+PiG and Pi 1.4.0 use compatible settings, auth and session formats. Auth, settings, trust and dynamic model-catalog cache writes use Pi's lock-directory protocol. Settings writes preserve unknown keys, and PiG does not write `models.json`. Use Pi-compatible Packages and resources in shared settings. Do not edit one session from two processes at once. Stop older PiG processes before sharing their files. PiG automatically reclaims stale empty regular lock files from v0.2.0 after checking that no older writer holds them (D73). A file is stale after 10 seconds for synchronous auth, settings and trust operations, or 30 seconds for asynchronous auth and model-cache operations. A fresh file remains in place and uses the normal contention timeout or caller cancellation. If an older PiG holds a stale lock, acquisition uses the normal timeout and asks you to stop that process. Only an empty regular file is such a legacy lock file. Anything else at a lock path follows Pi's protocol. A fresh entry is contention. A stale lock directory is removed, and so is a link to a stale directory on Windows, whose target stays. A stale nonempty file, a link to a stale file, a dangling link, a nonempty lock directory, and on Unix any stale link stay in place, and acquisition fails.
 
 Powerline and pi-acp can then find PiG's sessions. Run the adapter with `PIG_USE_PI_DIRS=1 PI_ACP_PI_COMMAND="$(command -v pig)" pi-acp`. Use one adapter per home: it owns `~/.pi/pi-acp/session-map.json`. Keep the default `~/.pi/agent` location for packages that hard-code it; pi-acp does not relocate its template directories with `PI_CODING_AGENT_DIR`.
 
@@ -133,7 +133,7 @@ PiG loads the files in this order:
 
 The file closest to your working directory comes last, so its instructions appear after the general ones.
 
-In a Git worktree that sits inside its main checkout, PiG skips the main checkout's context file when the worktree root has its own file with the same name. This prevents the same repository instructions from loading twice. A worktree file that is a symlink to the main checkout's file still loads once. Pi 1.1.0 loaded no project context file in that case; Pi 1.3.0 fixed it ([Pi #10681](https://github.com/earendil-works/pi/issues/10681)).
+In a Git worktree that sits inside its main checkout, PiG skips the main checkout's context file when the worktree root has its own file with the same name. This prevents the same repository instructions from loading twice. A worktree file that is a symlink to the main checkout's file still loads once. Pi 1.1.0 loaded no project context file in that case; Pi 1.4.0 fixed it ([Pi #10681](https://github.com/earendil-works/pi/issues/10681)).
 
 Context files do not need project trust. PiG loads them even when you decline to trust the project. Pi behaves the same way.
 

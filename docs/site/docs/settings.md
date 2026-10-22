@@ -1,6 +1,6 @@
 # Settings
 
-PiG reads settings from `~/.pig/agent/settings.json`. The file is optional. Every key is optional, and a key you leave out keeps its default. PiG uses the settings keys of Pi 1.3.0 ([Pi's settings reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/settings.md)) and adds the PiG-only keys marked below.
+PiG reads settings from `~/.pig/agent/settings.json`. The file is optional. Every key is optional, and a key you leave out keeps its default. PiG uses the settings keys of Pi 1.4.0 ([Pi's settings reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/settings.md)) and adds the PiG-only keys marked below.
 
 Set `PIG_HOME` to move the whole configuration root. Set `PIG_CODING_AGENT_DIR` to move only this directory.
 
@@ -13,7 +13,7 @@ Set `PIG_HOME` to move the whole configuration root. Set `PIG_CODING_AGENT_DIR` 
 }
 ```
 
-Add `"$schema": "https://pi.dev/schemas/settings.schema.json"` to `settings.json` for editor validation and completion. PiG keeps the key when it writes the file. The schema is the one Pi 1.3.0 publishes. It does not list the PiG-only keys, but it accepts them.
+Add `"$schema": "https://pi.dev/schemas/settings.schema.json"` to `settings.json` for editor validation and completion. PiG keeps the key when it writes the file. The schema is the one Pi 1.4.0 publishes. It does not list the PiG-only keys, but it accepts them.
 
 Use `/settings` to change a setting from inside a session. PiG writes the file for you and applies the change without a restart.
 
@@ -32,7 +32,7 @@ PiG reads the project file only after you trust the project. An untrusted projec
 
 If PiG is killed (`kill -9`, power loss), it can leave `settings.json.lock` next to the settings file. A lock younger than 10 seconds counts as held, so the next start waits about 0.2 seconds for each settings load, then warns `Invalid settings file ...: Lock file is already being held` and goes on with the defaults it has. After 10 seconds the lock is taken over. You can also delete the `settings.json.lock` directory. Pi behaves the same way.
 
-A value of the wrong JSON type, such as `{"skills": 5}` or `{"enabledModels": [5]}`, is ignored, and PiG applies the other settings of the file. PiG prints one warning for each file that held such values, for example `Warning: Invalid settings file <path>: ignored settings of the wrong type: "skills" (expected an array of strings)`. Pi 1.3.0 exits with a `TypeError` for these values, or reads a string as a list of one-character patterns (D158).
+A value of the wrong JSON type, such as `{"skills": 5}` or `{"enabledModels": [5]}`, is ignored, and PiG applies the other settings of the file. PiG prints one warning for each file that held such values, for example `Warning: Invalid settings file <path>: ignored settings of the wrong type: "skills" (expected an array of strings)`. Pi 1.4.0 exits with a `TypeError` for these values, or reads a string as a list of one-character patterns (D158).
 
 An empty default column means PiG has no value for the key until you set one, or the value depends on what it detects.
 
@@ -50,7 +50,7 @@ An empty default column means PiG has no value for the key until you set one, or
 | `retry` | object | see meaning | Agent retry policy: `enabled` (default `true`), `maxRetries` (default `3`), `baseDelayMs` (default `2000`) and `maxAgentDelayMs` (the cap on each retry delay, default `60000`). An explicit `0` is kept. See [provider retries](#provider-retries) for `retry.provider`. |
 | `httpProxy` | string | unset | Global HTTP/HTTPS proxy URL. Sets only absent `HTTP_PROXY` and `HTTPS_PROXY` environment variables. Provider requests use CONNECT tunnels; `NO_PROXY` controls bypasses. Global setting only. |
 | `websocketConnectTimeoutMs` | number | `15000` | WebSocket opening-handshake timeout in milliseconds. `0` or `"disabled"` turns it off. Explicit request options override the setting. |
-| `httpIdleTimeoutMs` | number | `300000` | Idle timeout for provider requests, in milliseconds: the wait for response headers and for each part of the body. `0` or `"disabled"` turns it off. Keepalive comments and pings do not restart it, so a stream that sends only keepalives ends with an error after this timeout. Pi 1.3.0 waits for ever on such a stream (D131, [Pi #10761](https://github.com/earendil-works/pi/issues/10761)). |
+| `httpIdleTimeoutMs` | number | `300000` | Idle timeout for provider requests, in milliseconds: the wait for response headers and for each part of the body. `0` or `"disabled"` turns it off. Keepalive comments and pings do not restart it, so a stream that sends only keepalives ends with an error after this timeout. Pi 1.4.0 waits for ever on such a stream (D131, [Pi #10761](https://github.com/earendil-works/pi/issues/10761)). |
 | `cacheWarming` | string | `streaming` | `off`, `streaming`, or `idle`. Keeps the provider's prompt cache warm with periodic requests. Global setting only: PiG ignores it in a project file. See [cache warming](#cache-warming). |
 
 ### Provider retries
@@ -143,7 +143,7 @@ To turn cache warming off, choose `off` for **Cache warming** in `/settings`, or
 | `themes` | string[] |  | Theme paths to load. |
 | `enableSkillCommands` | boolean | `true` | Offer skills as `/skill:name` commands. |
 
-Resource paths in the global file resolve from the agent directory. Paths in the project file resolve from the project's `.pig` directory. Absolute paths and a leading `~` work. Resource lists accept glob exclusions with `!pattern`, exact inclusion with `+path`, and exact exclusion with `-path`. A leading `~` in these patterns expands to your home directory, for example `!~/claude-backup/skills/pdf`, as in Pi 1.3.0. Pi 1.1.0 matched the `~` literally, so such a pattern matched nothing ([Pi #10765](https://github.com/earendil-works/pi/issues/10765)).
+Resource paths in the global file resolve from the agent directory. Paths in the project file resolve from the project's `.pig` directory. Absolute paths and a leading `~` work. Resource lists accept glob exclusions with `!pattern`, exact inclusion with `+path`, and exact exclusion with `-path`. A leading `~` in these patterns expands to your home directory, for example `!~/claude-backup/skills/pdf`, as in Pi 1.4.0. Pi 1.1.0 matched the `~` literally, so such a pattern matched nothing ([Pi #10765](https://github.com/earendil-works/pi/issues/10765)).
 
 The built-in extensions are named `builtin:mcp`, `builtin:llama.cpp`, `builtin:codemode`, and `builtin:tool-search` in `extensions`. They load by default; `-builtin:mcp` turns one off. A `+builtin:<name>` or `-builtin:<name>` entry in the project file overrides the global file. `pig config` lists them under Built-in. `--no-extensions` turns them off too, and `-e builtin:<name>` loads one explicitly.
 

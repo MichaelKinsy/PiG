@@ -1,6 +1,6 @@
 # Keybindings
 
-PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional. If it is absent, PiG uses the defaults in this page. The action names and defaults are those of Pi 1.3.0 ([Pi's keybindings reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/keybindings.md)).
+PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional. If it is absent, PiG uses the defaults in this page. The action names and defaults are those of Pi 1.4.0 ([Pi's keybindings reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/keybindings.md)).
 
 Each entry maps one action to one key or a list of keys. To change a binding, write the action name and the keys you want:
 
@@ -13,7 +13,7 @@ Each entry maps one action to one key or a list of keys. To change a binding, wr
 
 A binding in the file replaces the default for that action. It does not add to it. Bindings you do not name keep their defaults. Set an action to `[]` to leave the action with no key.
 
-For validation and completion in your editor, add `"$schema": "https://pi.dev/schemas/keybindings.schema.json"` to the file. PiG ignores the `$schema` key when it loads the bindings. Pi 1.3.0 added this schema.
+For validation and completion in your editor, add `"$schema": "https://pi.dev/schemas/keybindings.schema.json"` to the file. PiG ignores the `$schema` key when it loads the bindings. Pi 1.4.0 added this schema.
 
 Set `PIG_CODING_AGENT_DIR` to read the file from a different directory. After you edit the file, run `/reload` to apply the change to the running session.
 
@@ -192,7 +192,7 @@ During initial theme detection and managed-tool setup, submitting keeps the text
 | `tui.select.confirm` | `enter` | Confirm selection |
 | `tui.select.cancel` | `escape`, `ctrl+c` | Cancel selection |
 
-PiG moves the selection by one visible page on PageUp and PageDown in every selection list: select and settings lists, the open autocomplete list, and the model, session, tree, OAuth, scoped-models, config, trust and extension selectors. The transcript behind an open list does not scroll. Pi 1.3.0 scrolls the fullscreen transcript on these keys while a selector is open, and lists without a page action ignore them (D155, [Pi #7629](https://github.com/earendil-works/pi/issues/7629)). An extension overlay cannot capture the page keys yet, so they still scroll the transcript there.
+PiG moves the selection by one visible page on PageUp and PageDown in every selection list: select and settings lists, the open autocomplete list, and the model, session, tree, OAuth, scoped-models, config, trust and extension selectors. The transcript behind an open list does not scroll. Pi 1.4.0 scrolls the fullscreen transcript on these keys while a selector is open, and lists without a page action ignore them (D155, [Pi #7629](https://github.com/earendil-works/pi/issues/7629)). An extension overlay cannot capture the page keys yet, so they still scroll the transcript there.
 
 ### Fullscreen transcript
 
@@ -260,7 +260,7 @@ The key names are:
 
 A `super` binding needs a terminal that reports the modifier on its own, usually through the Kitty keyboard protocol.
 
-A shifted symbol such as `+` matches the character the key produces, so `ctrl++` responds under the Kitty keyboard protocol and modifyOtherKeys. Pi 1.1.0 did not match these bindings; Pi 1.3.0 does.
+A shifted symbol such as `+` matches the character the key produces, so `ctrl++` responds under the Kitty keyboard protocol and modifyOtherKeys. Pi 1.1.0 did not match these bindings; Pi 1.4.0 does.
 
 Terminals do not all report the same keys. If a binding does not respond, the terminal usually consumed the key before PiG saw it. See [terminal setup](/docs/latest/terminal-setup).
 

@@ -8,7 +8,7 @@ Most hosted providers accept an API key, and some also accept a browser or devic
 
 Extensions written in Go, Rust or Python reach Provider objects across a process boundary, so some of Pi's in-heap Provider behavior is not available to them (D78). Registered native Provider methods are callable across processes. Go, Rust and Python `getProvider` cannot retrieve every built-in or composed raw Provider object and report the unavailable carrier as an error. A registered configuration that such an extension reads is a snapshot, not a live alias of the author's object, so property writes do not synchronize. Node extensions in one process keep Pi's behavior. Normal model selection, authentication, refresh, cancellation and registration cleanup are unchanged.
 
-PiG ships the same built-in chat providers and classifier models as Pi 1.3.0. `typesafe` has only classifier models, and `cloudflare-workers-ai`, `openai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
+PiG ships the same built-in chat providers and classifier models as Pi 1.4.0. `typesafe` has only classifier models, and `cloudflare-workers-ai`, `openai`, `opencode`, `openrouter` and `vercel-ai-gateway` list them beside their chat models. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in chat models use.
 
 | Provider key | Name | Wire | Credential |
 |---|---|---|---|
@@ -79,9 +79,9 @@ PiG reads the identity token (a JWT) from the file on every exchange, so a rotat
 
 Federation applies to the `anthropic` provider only. Other `anthropic-messages` providers still require a key or an authorization header.
 
-When Anthropic rejects the strict tool set of a request for grammar size, tool count or union limits, PiG sends the request once more with every `strict: "prefer"` tool non-strict. A `strict: "require"` tool keeps the error. Pi 1.3.0 does the same; Pi 1.1.0 failed every turn ([Pi #10409](https://github.com/earendil-works/pi/issues/10409)).
+When Anthropic rejects the strict tool set of a request for grammar size, tool count or union limits, PiG sends the request once more with every `strict: "prefer"` tool non-strict. A `strict: "require"` tool keeps the error. Pi 1.4.0 does the same; Pi 1.1.0 failed every turn ([Pi #10409](https://github.com/earendil-works/pi/issues/10409)).
 
-Anthropic Messages requests differ from Pi 1.3.0 in two places:
+Anthropic Messages requests differ from Pi 1.4.0 in two places:
 
 - A CRLF that a proxy splits across two network chunks does not end the line early. Pi aborts the turn with `Could not parse Anthropic SSE event message_start` (D121, Pi #10390).
 - An explicit `anthropic-beta` header, from a model's `headers` or the request, no longer makes a managed-effort request fail with `Extra inputs are not permitted`: PiG sends each managed field only with its beta (D130, Pi #10759).
@@ -90,7 +90,7 @@ Anthropic Messages requests differ from Pi 1.3.0 in two places:
 
 `PI_CACHE_RETENTION` sets the prompt cache retention that PiG passes to the provider.
 
-Mistral requests include `prompt_cache_key` and an automatic `x-affinity` header when the request has a session ID and cache retention is not `none`. Explicit affinity headers remain unchanged, including an empty header. Replayed assistant messages use `prefix: false`; they are completed turns, not completion prefixes. The request timeout covers only the wait for the response headers, so a long stream is not aborted after 60 seconds. A request that gets no headers in time fails with `Mistral response headers timed out after <N>ms`. Pi 1.3.0 does the same; Pi 1.1.0 applied the timeout to the whole request ([Pi #10609](https://github.com/earendil-works/pi/issues/10609)).
+Mistral requests include `prompt_cache_key` and an automatic `x-affinity` header when the request has a session ID and cache retention is not `none`. Explicit affinity headers remain unchanged, including an empty header. Replayed assistant messages use `prefix: false`; they are completed turns, not completion prefixes. The request timeout covers only the wait for the response headers, so a long stream is not aborted after 60 seconds. A request that gets no headers in time fails with `Mistral response headers timed out after <N>ms`. Pi 1.4.0 does the same; Pi 1.1.0 applied the timeout to the whole request ([Pi #10609](https://github.com/earendil-works/pi/issues/10609)).
 
 Google Gemini and Vertex requests encode the system instruction as user-role content, matching Pi's Google SDK. They omit the tool-calling mode when no explicit choice or strict tool schema requires it. Explicit `none` and `any` choices take precedence over strict `VALIDATED` mode. For Gemini 2.x models, PiG sends the images of a run of tool results after the last function response of the run, so all function responses of one model turn stay in one user turn. Pi sends each image right after its result, which Gemini 2.x rejects after parallel tool calls (D115).
 
@@ -104,7 +104,7 @@ PiG stores credentials in `~/.pig/agent/auth.json`. Agent startup creates a miss
 
 `auth.json` can contain API keys and OAuth tokens. Keep it private and do not commit it.
 
-Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 1.3.0's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
+Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 1.4.0's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
 
 ### Interactive login and logout
 
@@ -352,7 +352,7 @@ ECS task credentials and IRSA work through the standard `AWS_CONTAINER_CREDENTIA
 
 Claude Opus 5 uses adaptive thinking and supports native `xhigh` effort on Bedrock. PiG recognizes the model ID or the display name of an application inference profile and adds prompt-cache points for supported Claude models. For GovCloud model IDs, GovCloud ARNs, or a configured `us-gov-` region, PiG omits `thinking.display`, which the GovCloud schema rejects.
 
-Bedrock Converse requests merge adjacent messages of the same role into one message. A prompt sent after an abort during tool execution, or after a dropped assistant turn, therefore does not fail with a role-alternation error. Pi 1.3.0 sends the two user messages side by side (D116).
+Bedrock Converse requests merge adjacent messages of the same role into one message. A prompt sent after an abort during tool execution, or after a dropped assistant turn, therefore does not fail with a role-alternation error. Pi 1.4.0 sends the two user messages side by side (D116).
 
 ### Cloudflare AI Gateway
 

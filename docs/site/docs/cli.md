@@ -1,6 +1,6 @@
 # Command line
 
-This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.3.0 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
+This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.4.0 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
 
 ## CLI verbs
 
@@ -11,7 +11,7 @@ pig [options] [prompt]
 | Verb | Purpose |
 |---|---|
 | `pig` | Start interactive TUI in current directory. |
-| `pig --print <prompt>`, `pig -p <prompt>` | One-shot: send prompt, print response, exit. When the model stops at its output token limit, PiG prints the partial text, writes `Response was truncated: the model reached its output token limit.` to stderr and exits 1. Pi 1.3.0 added this; Pi 1.1.0 exited 0 without a warning. |
+| `pig --print <prompt>`, `pig -p <prompt>` | One-shot: send prompt, print response, exit. When the model stops at its output token limit, PiG prints the partial text, writes `Response was truncated: the model reached its output token limit.` to stderr and exits 1. Pi 1.4.0 added this; Pi 1.1.0 exited 0 without a warning. |
 | `pig --mode json <prompt>` | One-shot: write JSONL events to stdout, then exit. See [JSON event stream](json.md). |
 | `pig --model <provider/model>` | Override model for this run. |
 | `pig -e <path>` (repeatable) | Load an extension file or directory, or a built-in extension such as `builtin:mcp`. |
@@ -104,7 +104,7 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--approve`, `-a` | Trust project-local files for this run. |
 | `--no-approve`, `-na` | Ignore project-local files for this run. |
 | `--offline` | Turn off startup network operations, as `PI_OFFLINE=1` does. |
-| `--no-stdin` | Ignore piped stdin. Use it when the process that starts PiG leaves the stdin pipe open and never closes it. Without it, PiG waits for end of input, as Pi does. Pi 1.3.0 has no such option and treats `--no-stdin` as an unknown extension flag (D150, [Pi #10415](https://github.com/earendil-works/pi/issues/10415)). |
+| `--no-stdin` | Ignore piped stdin. Use it when the process that starts PiG leaves the stdin pipe open and never closes it. Without it, PiG waits for end of input, as Pi does. Pi 1.4.0 has no such option and treats `--no-stdin` as an unknown extension flag (D150, [Pi #10415](https://github.com/earendil-works/pi/issues/10415)). |
 | `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. See [Piglets](/docs/latest/piglets). |
 
 Extensions can register their own options, such as `--plan` from a plan-mode extension.

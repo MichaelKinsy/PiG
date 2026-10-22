@@ -1,6 +1,6 @@
 # Windows setup
 
-PiG supports source builds on Windows. Do not treat Windows as release-supported until native release verification passes for the published artifact. The command environment follows Pi 1.3.0 ([Pi's Windows guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/windows.md)).
+PiG supports source builds on Windows. Do not treat Windows as release-supported until native release verification passes for the published artifact. The command environment follows Pi 1.4.0 ([Pi's Windows guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/windows.md)).
 
 ## Build from source
 

@@ -1,6 +1,6 @@
 # Terminal UI
 
-PiG provides a Go-native terminal interface that follows the observable behavior of Pi 1.3.0. The interactive application includes the startup header, transcript, editor, overlays, and footer.
+PiG provides a Go-native terminal interface that follows the observable behavior of Pi 1.4.0. The interactive application includes the startup header, transcript, editor, overlays, and footer.
 
 This page describes the PiG user and extension boundary. It does not expose PiG's internal TUI packages as a stable application SDK.
 
@@ -132,13 +132,13 @@ PiG supports fullscreen and regular terminal modes. Fullscreen is the default. S
 
 The TUI responds to terminal resize. It calculates width in terminal cells and preserves Unicode and ANSI rendering boundaries. Markdown horizontal rules use at most 80 content columns, including in expanded compaction summaries. Changing output padding retains user-message Markdown transforms and their pending work.
 
-A single character wider than the editor's wrap width, such as a tab in an editor two cells wide, stays on one row and overflows it. Pi 1.3.0 exhausts its stack on this input (D159).
+A single character wider than the editor's wrap width, such as a tab in an editor two cells wide, stays on one row and overflows it. Pi 1.4.0 exhausts its stack on this input (D159).
 
 ## Error notices
 
 Provider errors appear in the assistant response without a second `Provider request failed` status. After a non-retryable assistant error, PiG shows a `/bug` hint once during the interactive run. Aborted or cancelled requests do not trigger the hint. See [Slash commands](/docs/latest/slash-commands) for the `/bug` report workflow and its D62 delivery difference.
 
-If an update or another `pig` replaced or removed the `pig` executable while a session runs, or another `pig` pruned an extension cell or runtime file the session uses, PiG shows a warning once when an error is shown, in place of the `/bug` hint: `The pig installation this session runs from was removed or replaced. Features that load code on demand can fail until restart.` (`The pig extension files this session runs from were removed or replaced.` for a pruned extension file), followed by the `pig --session <id>` command that continues the session. PiG checks only when an error appears, never on a timer, and does not read a version from the replaced file. This is a PiG adaptation of Pi 1.3.0's install-change warning (D95).
+If an update or another `pig` replaced or removed the `pig` executable while a session runs, or another `pig` pruned an extension cell or runtime file the session uses, PiG shows a warning once when an error is shown, in place of the `/bug` hint: `The pig installation this session runs from was removed or replaced. Features that load code on demand can fail until restart.` (`The pig extension files this session runs from were removed or replaced.` for a pruned extension file), followed by the `pig --session <id>` command that continues the session. PiG checks only when an error appears, never on a timer, and does not read a version from the replaced file. This is a PiG adaptation of Pi 1.4.0's install-change warning (D95).
 
 Markdown wraps long unbroken text without truncating it. Link detection scans each word once so long text does not trigger repeated searches through the same suffix.
 
@@ -177,7 +177,7 @@ For subprocess extensions:
 
 PiG suppresses identical frames. The host render path reads only the latest completed local frame.
 
-In fullscreen mode, a component opened with `ctx.ui.custom` receives mouse events as in Pi: clicks, presses, drags, the wheel and hover, with coordinates local to the component. Go (`sdk.MouseHandler`), Rust and Python (`handle_mouse`) and Node (Pi's `handleMouse`) extensions all receive them. Select and settings lists in component-kit views respond to clicks and the wheel. A wheel event that no component handles scrolls the transcript, also while an overlay has focus, as in Pi 1.3.0. Pi 1.1.0 passed it to the focused overlay as raw input. An overlay that scrolls with the wheel must handle mouse events.
+In fullscreen mode, a component opened with `ctx.ui.custom` receives mouse events as in Pi: clicks, presses, drags, the wheel and hover, with coordinates local to the component. Go (`sdk.MouseHandler`), Rust and Python (`handle_mouse`) and Node (Pi's `handleMouse`) extensions all receive them. Select and settings lists in component-kit views respond to clicks and the wheel. A wheel event that no component handles scrolls the transcript, also while an overlay has focus, as in Pi 1.4.0. Pi 1.1.0 passed it to the focused overlay as raw input. An overlay that scrolls with the wheel must handle mouse events.
 
 A custom session entry renders through its registered entry renderer. Ctrl+O re-runs the renderer with the new expansion state. A renderer that fails shows a `[type] renderer failed: ...` box in place of the entry.
 

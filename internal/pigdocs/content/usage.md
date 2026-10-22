@@ -1,6 +1,6 @@
 # Using PiG
 
-Run `pig` in the directory you want to work in to start the interactive TUI. PiG uses that directory to discover files, instructions and configuration, and to group saved sessions. PiG commands include top-level CLI verbs, slash commands inside the TUI, and keyboard shortcuts. The interactive use follows Pi 1.3.0 ([Pi's terminal usage guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/usage.md)).
+Run `pig` in the directory you want to work in to start the interactive TUI. PiG uses that directory to discover files, instructions and configuration, and to group saved sessions. PiG commands include top-level CLI verbs, slash commands inside the TUI, and keyboard shortcuts. The interactive use follows Pi 1.4.0 ([Pi's terminal usage guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/usage.md)).
 
 - [Command line](commands.md) lists the CLI verbs, the generic subcommands, and the `pig docs` commands for the embedded reference bundle.
 - [Slash commands](commands.md) lists the commands you type in the TUI editor.
@@ -35,7 +35,7 @@ Extensions can register more shortcuts. An extension shortcut on a key of a rese
 | Return queued messages to the editor | Press `Alt+Up` (`Alt+Q` on Windows and WSL) |
 | Stop the current task | Press `Escape` |
 
-A message sent with `Enter` waits until the current response and its tool calls finish, then steers the next response. A follow-up sent with `Alt+Enter` waits until PiG finishes the current task. Returning queued messages to the editor keeps queued extension custom messages queued. Pi 1.3.0 drops those custom messages (D135, [Pi #9886](https://github.com/earendil-works/pi/issues/9886)).
+A message sent with `Enter` waits until the current response and its tool calls finish, then steers the next response. A follow-up sent with `Alt+Enter` waits until PiG finishes the current task. Returning queued messages to the editor keeps queued extension custom messages queued. Pi 1.4.0 drops those custom messages (D135, [Pi #9886](https://github.com/earendil-works/pi/issues/9886)).
 
 ## Autocomplete
 

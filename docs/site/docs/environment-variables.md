@@ -2,7 +2,7 @@
 
 PiG reads these variables at startup. Each one has a setting or a default that covers the normal case, so set a variable only when you need to change PiG from outside its configuration: in a container, in CI, or while debugging.
 
-Variables named `PI_*` are read for compatibility with Pi 1.3.0 ([Pi's environment variable reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/environment-variables.md)). Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings. Provider credential variables, such as `ANTHROPIC_API_KEY`, are listed in [Providers](/docs/latest/providers) and in `pig --help`.
+Variables named `PI_*` are read for compatibility with Pi 1.4.0 ([Pi's environment variable reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/environment-variables.md)). Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings. Provider credential variables, such as `ANTHROPIC_API_KEY`, are listed in [Providers](/docs/latest/providers) and in `pig --help`.
 
 ## Location
 

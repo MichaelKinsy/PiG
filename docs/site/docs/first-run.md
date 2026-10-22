@@ -2,7 +2,7 @@
 
 This page takes you from nothing installed to one finished task. It has four steps: install, choose a model, run a walkthrough and leave. Each step shows what PiG prints.
 
-PiG's first start asks three short questions (theme, header picture and usage data). It does not help you pick a model or run a first task. This page is the guide for those steps. It covers the same ground as Pi 1.3.0's quickstart ([Pi's quickstart](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/quickstart.md)), with PiG's commands and folders.
+PiG's first start asks three short questions (theme, header picture and usage data). It does not help you pick a model or run a first task. This page is the guide for those steps. It covers the same ground as Pi 1.4.0's quickstart ([Pi's quickstart](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/quickstart.md)), with PiG's commands and folders.
 
 ## 1. Install
 
@@ -93,7 +93,7 @@ The first time, PiG shows a setup screen with three questions. Press `Enter` to 
 
 1. **Pick a theme.** `System` uses your terminal's colours.
 2. **Pick a sprite.** The picture of a pig at the top of the screen. It changes nothing else. Change it later with `/sprite`.
-3. **Opt-in to anonymous usage data sharing?** Use `↓` to move to `Don't share` if you do not want to send usage data, then press `Enter`. To change it later, set `"enableAnalytics"` to `true` or `false` in `~/.pig/agent/settings.json`. The screen's text also mentions a privacy command. Neither Pi 1.3.0 nor PiG has one. PiG shows Pi's text with only the program name changed (Pi `first-time-setup.ts:77`).
+3. **Opt-in to anonymous usage data sharing?** Use `↓` to move to `Don't share` if you do not want to send usage data, then press `Enter`. To change it later, set `"enableAnalytics"` to `true` or `false` in `~/.pig/agent/settings.json`. The screen's text also mentions a privacy command. Neither Pi 1.4.0 nor PiG has one. PiG shows Pi's text with only the program name changed (Pi `first-time-setup.ts:77`).
 
 PiG saves your answers in `~/.pig/agent/settings.json` and does not ask again. Pi shows this screen only for its own release with `PI_EXPERIMENTAL=1` set. PiG shows it on the first interactive start (divergence D88, `coding/cli/extensions.go:93-95`). PiG skips the screen when the `PIG_CODING_AGENT_DIR` environment variable is set, and when it runs a single prompt with `-p`.
 
@@ -118,7 +118,7 @@ Type `/login` and press `Enter`:
 ```
 
 - **Sign in with an account** is for a subscription you already pay for, such as ChatGPT or GitHub Copilot. PiG then takes you through that provider's own sign-in.
-- **Sign in with an API key** is for a key from a provider's website. PiG lists the providers. Type part of the provider's name to shorten the list, then press `Enter`. PiG asks for the key and masks what you type: dots, a character count and the last four characters (PiG's `maskSecretInput` setting, divergence D80; Pi 1.3.0 shows the key as typed). It stores the key in `~/.pig/agent/auth.json`, readable by your user only ([Providers](/docs/latest/providers#authentication)).
+- **Sign in with an API key** is for a key from a provider's website. PiG lists the providers. Type part of the provider's name to shorten the list, then press `Enter`. PiG asks for the key and masks what you type: dots, a character count and the last four characters (PiG's `maskSecretInput` setting, divergence D80; Pi 1.4.0 shows the key as typed). It stores the key in `~/.pig/agent/auth.json`, readable by your user only ([Providers](/docs/latest/providers#authentication)).
 
 PiG does not test the key when you save it. It confirms the save and picks a model for you, for example:
 

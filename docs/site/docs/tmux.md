@@ -1,6 +1,6 @@
 # tmux Setup
 
-PiG works inside tmux, but tmux strips modifier information from certain keys by default. Without configuration, `Shift+Enter` and `Ctrl+Enter` are usually indistinguishable from plain `Enter`. The setup is the same as for Pi 1.3.0 ([Pi's tmux guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/tmux.md)).
+PiG works inside tmux, but tmux strips modifier information from certain keys by default. Without configuration, `Shift+Enter` and `Ctrl+Enter` are usually indistinguishable from plain `Enter`. The setup is the same as for Pi 1.4.0 ([Pi's tmux guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/tmux.md)).
 
 ## Recommended Configuration
 

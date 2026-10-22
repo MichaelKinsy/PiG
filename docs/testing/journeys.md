@@ -20,7 +20,7 @@ JOURNEY_ONLY=compaction JOURNEY_SEED=3 go test -tags parity ./test/journeys -run
 | `JOURNEY_TIMEOUT_SCALE` | multiplies every wait deadline on a loaded host |
 | `JOURNEY_STRICT_NORMALIZERS` | with the whole set, fails a normalizer that no longer matches anything |
 
-The comparator is the pinned Pi (Pi 1.3.0). `make parity-deps` builds it from source at the pinned commit and links it into `extensions/sdk-ts`. `JOURNEY_PI_BIN` or `PIG_PARITY_PI_BIN` names another Pi binary. With `PIG_PARITY_PI_PUBLISHED=1` and a release-tag pin, the journeys also accept the published package that mise installed. Put `fd` and `rg` on `PATH` for the `@` file mentions.
+The comparator is the pinned Pi (Pi 1.4.0). `make parity-deps` builds it from source at the pinned commit and links it into `extensions/sdk-ts`. `JOURNEY_PI_BIN` or `PIG_PARITY_PI_BIN` names another Pi binary. With `PIG_PARITY_PI_PUBLISHED=1` and a release-tag pin, the journeys also accept the published package that mise installed. Put `fd` and `rg` on `PATH` for the `@` file mentions.
 
 ## Checks in every journey
 

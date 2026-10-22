@@ -6,7 +6,7 @@ The outputs below come from PiG run against a scripted test model, with each key
 
 Settings are merged from two files, and a key in the project file wins: `~/.pig/agent/settings.json` (yours) and `<project>/.pig/settings.json` (the project's, read only after you trust the project). Some keys are read from the global file only and are ignored in a project file: `defaultProjectTrust`, `httpProxy`, `cacheWarming`, `extensionsAutoUpgrade`, `extensionsTypescriptRuntime` and `deviceId`.
 
-If the file is not valid JSON, PiG warns at startup (`Invalid settings file …`) and uses defaults for what it cannot read. A value of the wrong JSON type, such as `"skills": 5`, is ignored with one warning that names it, and the other keys apply. Pi 1.3.0 exits with a `TypeError` instead (D158). After an edit, start PiG again (or `/reload`) and look at the first lines of the screen.
+If the file is not valid JSON, PiG warns at startup (`Invalid settings file …`) and uses defaults for what it cannot read. A value of the wrong JSON type, such as `"skills": 5`, is ignored with one warning that names it, and the other keys apply. Pi 1.4.0 exits with a `TypeError` instead (D158). After an edit, start PiG again (or `/reload`) and look at the first lines of the screen.
 
 ## Choose the model, and how hard it thinks
 
@@ -222,7 +222,7 @@ PiG-only (D80). When you enter an API key in `/login`, PiG shows dots, a charact
 
 ## Every other key
 
-Each row gives a value to try, what it does and the line in Pi 1.3.0's `packages/coding-agent/src/core/settings-schema.ts` that defines it. These were not run on this page. Most are visible in the first screen after you restart, in `/settings`, or in the behaviour named.
+Each row gives a value to try, what it does and the line in Pi 1.4.0's `packages/coding-agent/src/core/settings-schema.ts` that defines it. These were not run on this page. Most are visible in the first screen after you restart, in `/settings`, or in the behaviour named.
 
 | Key | Example | What you see | Pi |
 |---|---|---|---|

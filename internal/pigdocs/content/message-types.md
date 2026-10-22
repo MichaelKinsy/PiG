@@ -1,6 +1,6 @@
 # Message types
 
-PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 1.3.0 ([Pi's message types reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/message-types.md)).
+PiG uses one message format in session files, in JSON and RPC events, and in the Go SDK. This page defines the messages and the content blocks inside them. The JSON field names match Pi 1.4.0 ([Pi's message types reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/message-types.md)).
 
 Every message has a `role` field that names its type. A message `timestamp` is a Unix time in milliseconds. Session entries use ISO 8601 timestamps instead. See [session file format](session-format.md).
 

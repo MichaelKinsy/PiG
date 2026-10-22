@@ -16611,7 +16611,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D155 | Selection lists page with PageUp and PageDown (Pi #7629) | [BF-D155](#bf-d155) |
 | D156 | MCP server `url` expands environment references (Pi #10654) | [BF-D156](#bf-d156) |
 | D157 | PiG's startup additions stay quiet when the config root cannot be written | deliberate difference |
-| D158 | A setting of the wrong JSON type is ignored (Pi 1.3.0 throws) | deliberate difference |
+| D158 | A setting of the wrong JSON type is ignored (Pi 1.4.0 throws) | deliberate difference |
 | D159 | A single grapheme wider than the editor's wrap width stays one chunk instead of exhausting the stack | deliberate difference |
 | D165 | The durable image processor is native Go, not Photon's WebAssembly | deliberate difference |
 | D167 | A history longer than the model's context window is summarized in chunks | [BF-85908ae](#bf-85908ae) |

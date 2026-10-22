@@ -7,7 +7,7 @@ This page builds, checks and runs one Go extension, then edits it and reloads it
 
 You also need a text editor to change `extension.go` in step 4. Any editor that saves plain text works.
 
-An extension adds behaviour: a tool the model can call, a slash command you can type, a handler for an event. [Extensions](/docs/latest/extensions) is the reference. PiG's extension events and the `tool_call` result follow Pi 1.3.0 ([Pi's extensions reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/extensions.md)); Pi's extensions are TypeScript, and the Go SDK on this page is a PiG addition. A skill or a prompt template needs no code, and is the better choice for instructions ([Skills](/docs/latest/skills), [Prompt templates](/docs/latest/prompt-templates)).
+An extension adds behaviour: a tool the model can call, a slash command you can type, a handler for an event. [Extensions](/docs/latest/extensions) is the reference. PiG's extension events and the `tool_call` result follow Pi 1.4.0 ([Pi's extensions reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/extensions.md)); Pi's extensions are TypeScript, and the Go SDK on this page is a PiG addition. A skill or a prompt template needs no code, and is the better choice for instructions ([Skills](/docs/latest/skills), [Prompt templates](/docs/latest/prompt-templates)).
 
 Run the commands below in a terminal, in a folder where you keep projects. `./review` means a folder named `review` inside the current folder.
 

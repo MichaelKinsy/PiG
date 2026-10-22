@@ -1,6 +1,6 @@
 # Sessions
 
-A session is one conversation with its full history. By default, PiG saves its log from the first user message. Use `--no-session` to keep the Session log in memory. Sessions work as in Pi 1.3.0 ([Pi's sessions guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/sessions.md)), apart from the differences named on this page.
+A session is one conversation with its full history. By default, PiG saves its log from the first user message. Use `--no-session` to keep the Session log in memory. Sessions work as in Pi 1.4.0 ([Pi's sessions guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/sessions.md)), apart from the differences named on this page.
 
 Every Session has an ID, including print (`-p`), JSON, RPC, and `--no-session` runs. A new Session gets a UUIDv7 unless you supply `--session-id`. Extensions can read the ID before the first model response. `--no-session` disables Session file persistence; it does not remove the ID or prevent an extension from keeping its own session-keyed data.
 
@@ -8,13 +8,13 @@ A saved Session keeps in memory only the entries its current context uses: the l
 
 ## Where sessions are stored
 
-Sessions live under `~/.pig/agent/sessions/`, in a directory per project. The directory name is the project path with separators replaced, wrapped in `--`, so sessions for different projects never mix. PiG creates these directories with mode 0700, so only you can list them. Pi 1.3.0 creates them with the process umask (D132, [Pi #10770](https://github.com/earendil-works/pi/issues/10770)).
+Sessions live under `~/.pig/agent/sessions/`, in a directory per project. The directory name is the project path with separators replaced, wrapped in `--`, so sessions for different projects never mix. PiG creates these directories with mode 0700, so only you can list them. Pi 1.4.0 creates them with the process umask (D132, [Pi #10770](https://github.com/earendil-works/pi/issues/10770)).
 
 Each persisted session uses a JSON Lines file. PiG selects its path when the Session is created, but the file does not exist until the session holds a user or assistant message. Setup entries alone, such as a model or thinking-level change, do not create it.
 
 Set `sessionDir` in [settings](/docs/latest/settings) to store sessions elsewhere. `PIG_CODING_AGENT_SESSION_DIR` and `--session-dir` override it.
 
-When PiG resumes a session that has messages, the tools that the session's latest system message lists as active are active again, in that order, including tools that you or an extension turned on during the session. A listed tool that is not registered yet, such as a tool of an MCP server that is still connecting, turns on when it registers. Pi 1.3.0 restores the default tools instead, so a tool you had turned off comes back (D166, [Pi #10785](https://github.com/earendil-works/pi/issues/10785)).
+When PiG resumes a session that has messages, the tools that the session's latest system message lists as active are active again, in that order, including tools that you or an extension turned on during the session. A listed tool that is not registered yet, such as a tool of an MCP server that is still connecting, turns on when it registers. Pi 1.4.0 restores the default tools instead, so a tool you had turned off comes back (D166, [Pi #10785](https://github.com/earendil-works/pi/issues/10785)).
 
 PiG saves a new session when the first user message is added, so the prompt stays on disk if the first turn never finishes. On exit, the resume hint uses `pig --session <id>`. It adds `--session-dir` only when the session directory differs from the default for the working directory, including after `-c`, `-r`, or `--session`.
 

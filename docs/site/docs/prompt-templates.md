@@ -16,7 +16,7 @@ PiG loads prompt templates from:
 
 Disable discovery with `--no-prompt-templates`. Run `/reload` after you add or change a template in an active session.
 
-A leading `~` in a `prompts` setting entry expands to your home directory, also in `!`, `+`, `-` and wildcard entries such as `"!~/prompts/old.md"`, as in Pi 1.3.0.
+A leading `~` in a `prompts` setting entry expands to your home directory, also in `!`, `+`, `-` and wildcard entries such as `"!~/prompts/old.md"`, as in Pi 1.4.0.
 
 ## Format
 

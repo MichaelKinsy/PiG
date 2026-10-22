@@ -203,7 +203,7 @@ PiG's own management commands use full-word noun/verb forms such as `pig package
 
 ### Enable or disable one installed Resource
 
-Use Package filters when you no longer want one Resource without removing the whole Package. Package filters apply after manifest selection, so they cannot restore a resource excluded by the manifest. Within a filter, plain patterns select resources, `!pattern` excludes glob matches, `+path` restores an exact path, and `-path` disables an exact path even if it was restored. These groups apply in that order, regardless of their order in the array. An empty filter array disables every resource of that type. A leading `~` in a pattern expands to your home directory, as it does in a plain entry and as in Pi 1.3.0. Pi 1.1.0 matched such a pattern against the literal text (Pi #10765).
+Use Package filters when you no longer want one Resource without removing the whole Package. Package filters apply after manifest selection, so they cannot restore a resource excluded by the manifest. Within a filter, plain patterns select resources, `!pattern` excludes glob matches, `+path` restores an exact path, and `-path` disables an exact path even if it was restored. These groups apply in that order, regardless of their order in the array. An empty filter array disables every resource of that type. A leading `~` in a pattern expands to your home directory, as it does in a plain entry and as in Pi 1.4.0. Pi 1.1.0 matched such a pattern against the literal text (Pi #10765).
 
 ```bash
 pig config

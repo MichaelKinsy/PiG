@@ -2,7 +2,7 @@
 
 PiG runs every shell command in a new, non-interactive Bash process. Non-interactive Bash does not expand aliases, and it does not read the startup files that your interactive terminal reads. An alias that works in your terminal therefore fails inside PiG until you load it.
 
-Two settings control this. `shellPath` chooses the Bash executable. `shellCommandPrefix` runs setup before every command. They work as in Pi 1.3.0 ([Pi's shell command guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/shell-aliases.md)).
+Two settings control this. `shellPath` chooses the Bash executable. `shellCommandPrefix` runs setup before every command. They work as in Pi 1.4.0 ([Pi's shell command guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/shell-aliases.md)).
 
 ## Which shell runs a command
 

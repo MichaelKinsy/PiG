@@ -62,7 +62,7 @@ PiG scans:
 
 `~/.pig/skills/` (without `agent`) is not scanned. A skill there is silently ignored. Project skills load only after you trust the project ([Security](/docs/latest/security)).
 
-The `skills` setting adds files and directories and filters discovered skills ([Settings](/docs/latest/settings)). A leading `~` expands to your home directory in plain entries and in `!`, `+`, `-` and wildcard entries, for example `"!~/claude-backup/skills/pdf"`, as in Pi 1.3.0. Pi 1.1.0 matched such a pattern against the literal text, so it matched nothing (Pi #10765).
+The `skills` setting adds files and directories and filters discovered skills ([Settings](/docs/latest/settings)). A leading `~` expands to your home directory in plain entries and in `!`, `+`, `-` and wildcard entries, for example `"!~/claude-backup/skills/pdf"`, as in Pi 1.4.0. Pi 1.1.0 matched such a pattern against the literal text, so it matched nothing (Pi #10765).
 
 A piglet controls whether this scan runs, so a locked-down agent picks up nothing it did not declare:
 

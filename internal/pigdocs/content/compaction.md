@@ -88,9 +88,9 @@ When the session already has a compaction, PiG passes the earlier summary to the
 
 When the cut falls inside one long turn, PiG summarizes the start of that turn separately, with the sections `## Original Request`, `## Progress So Far` and `## Context Needed to Continue`.
 
-PiG leaves thinking blocks out of the conversation it sends for summarization, as Pi 1.3.0 does, so a message with only thinking adds nothing. Pi 1.1.0 sent every thinking block whole, so a long thinking-only response could make the summary request overflow the model ([Pi #9602](https://github.com/earendil-works/pi/issues/9602)).
+PiG leaves thinking blocks out of the conversation it sends for summarization, as Pi 1.4.0 does, so a message with only thinking adds nothing. Pi 1.1.0 sent every thinking block whole, so a long thinking-only response could make the summary request overflow the model ([Pi #9602](https://github.com/earendil-works/pi/issues/9602)).
 
-When the messages to summarize are longer than the model's context window, PiG splits them into chunks that each fit one summary request and summarizes them in order. Each chunk's request carries the previous chunk's summary in `<previous-summary>`. A history that fits the window is one request, as in Pi. Pi 1.3.0 sends one request that the provider rejects (D167).
+When the messages to summarize are longer than the model's context window, PiG splits them into chunks that each fit one summary request and summarizes them in order. Each chunk's request carries the previous chunk's summary in `<previous-summary>`. A history that fits the window is one request, as in Pi. Pi 1.4.0 sends one request that the provider rejects (D167).
 
 PiG then appends the files the summarized part touched, as `<read-files>` and `<modified-files>` lists. A file that was both read and changed appears only under `<modified-files>`. The same two lists are stored as `readFiles` and `modifiedFiles` in the entry's `details`.
 
@@ -100,7 +100,7 @@ The result is a `compaction` entry in the session file with `summary`, `firstKep
 
 When you move to another point with `/tree`, PiG asks whether to summarize the branch you leave. Choose `No summary`, `Summarize`, or `Summarize with custom prompt`. Set `branchSummary.skipPrompt` to `true` to skip the question and move without a summary.
 
-A branch summary uses the same sections as a compaction summary, without `## Critical Context`. PiG stores it as a `branch_summary` entry and adds the same file lists. When the provider rejects a branch summary request as too large, PiG retries with the newest half of the entries until the provider accepts it or one message is left. Pi 1.3.0 reports the overflow error (D167).
+A branch summary uses the same sections as a compaction summary, without `## Critical Context`. PiG stores it as a `branch_summary` entry and adds the same file lists. When the provider rejects a branch summary request as too large, PiG retries with the newest half of the entries until the provider accepts it or one message is left. Pi 1.4.0 reports the overflow error (D167).
 
 ## Extension hooks
 
@@ -116,7 +116,7 @@ Extensions can observe or replace compaction and branch summaries. The events us
 
 `reason` is `manual` for `/compact`, `threshold` when the context passed its limit, and `overflow` when the provider rejected a request as too large.
 
-A `session_compact` handler that adds context with `sendMessage({ triggerTurn: false })` during an overflow compaction has its message in the Session before the interrupted turn retries. Pi 1.3.0 defers the message to the end of the run, so the retry runs without it (D138, [Pi #9051](https://github.com/earendil-works/pi/issues/9051)).
+A `session_compact` handler that adds context with `sendMessage({ triggerTurn: false })` during an overflow compaction has its message in the Session before the interrupted turn retries. Pi 1.4.0 defers the message to the end of the run, so the retry runs without it (D138, [Pi #9051](https://github.com/earendil-works/pi/issues/9051)).
 
 See [extensions](extensions.md) for the extension API.
 

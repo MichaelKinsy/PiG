@@ -53,7 +53,7 @@ The check mark shows the theme in use. Move to `dark` and press `Enter`. The col
 
 To try a theme for one run without saving it, use `--use-theme`: `pig --use-theme light`. A theme file of your own goes in `~/.pig/agent/themes/` and appears in this list. The format is Pi's, and the complete list of colours it needs is in Pi's theme documentation (linked below).
 
-PiG checks every theme file against Pi's theme schema when it loads it, at startup and on reload. Pi 1.3.0 made the schema strict, so a theme file that loaded in Pi 1.1.0 can now be rejected. A theme file may hold only the documented top-level fields: `$schema`, `name`, `appearance`, `vars`, `colors` and `export`. Every key under `colors` and `export` must be a documented colour token. Put reusable colours of your own under `vars`. Point `$schema` at `https://pi.dev/schemas/theme.schema.json` for editor validation and completion.
+PiG checks every theme file against Pi's theme schema when it loads it, at startup and on reload. Pi 1.4.0 made the schema strict, so a theme file that loaded in Pi 1.1.0 can now be rejected. A theme file may hold only the documented top-level fields: `$schema`, `name`, `appearance`, `vars`, `colors` and `export`. Every key under `colors` and `export` must be a documented colour token. Put reusable colours of your own under `vars`. Point `$schema` at `https://pi.dev/schemas/theme.schema.json` for editor validation and completion.
 
 ## Automatic switching
 
@@ -113,7 +113,7 @@ A theme is data, but the Package that distributes it can also contain executable
 
 ## Upstream compatibility
 
-PiG follows the theme behavior of Pi 1.3.0 where the Go TUI exposes the same observable contract. The TypeScript package `@earendil-works/pi-tui` is a Pi package, not a PiG Go API.
+PiG follows the theme behavior of Pi 1.4.0 where the Go TUI exposes the same observable contract. The TypeScript package `@earendil-works/pi-tui` is a Pi package, not a PiG Go API.
 
 See [Pi's theme documentation](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/themes.md) for the complete theme format and its color tokens.
 
