@@ -27,7 +27,7 @@ func TestToolsGrepPort(t *testing.T) {
 		}
 		requireTextParts(t, runGrep(t, dir, map[string]any{"pattern": "match", "path": path, "limit": 1, "context": 1}), []string{"context.txt-1- before", "context.txt:2: match one", "context.txt-3- after", "[1 matches limit reached. Use limit=2 for more, or refine pattern]"}, []string{"match two"})
 	})
-	// .upstream/v1.3.0+02726086/packages/coding-agent/test/tools.test.ts:912 (earendil-works/pi#11203)
+	// .upstream/v1.4.0/packages/coding-agent/test/tools.test.ts:912 (earendil-works/pi#11203)
 	t.Run("should ignore RIPGREP_CONFIG_PATH", func(t *testing.T) {
 		dir := t.TempDir()
 		configFile := filepath.Join(dir, "rg-config")

@@ -91,6 +91,13 @@ func generatedModelJSON(model GeneratedModel) map[string]any {
 	set("enabled", model.Enabled != nil, model.Enabled)
 	set("lab", model.Lab != "", model.Lab)
 	set("providers", len(model.Providers) > 0, model.Providers)
+	// Pi's catalog is untyped JSON: radius/recursive/flint carries `free`, which has no typed member and lives in the record.
+	var record struct {
+		Free *bool `json:"free"`
+	}
+	if err := json.Unmarshal([]byte(model.Record), &record); err == nil {
+		set("free", record.Free != nil, record.Free)
+	}
 	return out
 }
 
@@ -119,6 +126,9 @@ func TestGeneratedCatalogsMatchPublishedPackage(t *testing.T) {
 		}
 		if model.InputLimits != nil {
 			entry["inputLimits"] = model.InputLimits
+		}
+		if model.Compat != nil {
+			entry["compat"] = model.Compat
 		}
 		classifier = append(classifier, entry)
 	}

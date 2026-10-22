@@ -105,10 +105,10 @@ func TestOpenRouterCatalogParsingUpstream(t *testing.T) {
 			t.Fatalf("catalog = %+v, want empty", catalog)
 		}
 	})
-	// packages/ai/test/image-model-data.test.ts:96
+	// packages/ai/test/image-model-data.test.ts:96 (compat expectation: Pi 18e56a06)
 	t.Run("emits decision models as System One classifier models", func(t *testing.T) {
 		catalog := buildOpenRouterCatalog(nil, nil, []openRouterModelListItem{decisionModel, decisionModel})
-		want := []openRouterClassifierModel{{Type: "classifier", ID: "typesafe/jev-1.13", Name: "TypeSafe: Jev 1.13", API: "typesafe-system-one", Provider: "openrouter", BaseURL: "https://openrouter.ai/api/v1", Input: []string{"text"}, Cost: jsonCost{Input: 0.042}, ContextWindow: 32000}}
+		want := []openRouterClassifierModel{{Type: "classifier", ID: "typesafe/jev-1.13", Name: "TypeSafe: Jev 1.13", API: "typesafe-system-one", Provider: "openrouter", BaseURL: "https://openrouter.ai/api/v1", Input: []string{"text"}, Cost: jsonCost{Input: 0.042}, ContextWindow: 32000, Compat: &ModelCompat{ImageInput: "state-image-urls", SendImageOptInHeader: new(false)}}}
 		if len(catalog.Chat) != 0 || !reflect.DeepEqual(catalog.Classifiers, want) {
 			t.Fatalf("classifiers = %+v, want %+v", catalog.Classifiers, want)
 		}

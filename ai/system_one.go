@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"strings"
 	"time"
@@ -40,6 +41,27 @@ type SystemOneImageAssets struct {
 	Assets []SystemOneImageAsset
 }
 
+// All yields the assets in insertion order.
+func (a SystemOneImageAssets) All() iter.Seq2[string, SystemOneImageAsset] {
+	return func(yield func(string, SystemOneImageAsset) bool) {
+		for i, name := range a.Names {
+			if !yield(name, a.Assets[i]) {
+				return
+			}
+		}
+	}
+}
+
+// Get returns the asset with the given name.
+func (a SystemOneImageAssets) Get(name string) (SystemOneImageAsset, bool) {
+	for i, have := range a.Names {
+		if have == name {
+			return a.Assets[i], true
+		}
+	}
+	return SystemOneImageAsset{}, false
+}
+
 func (a SystemOneImageAssets) MarshalJSON() ([]byte, error) {
 	return writeJSONObject(len(a.Names), func(i int) string { return a.Names[i] }, func(i int) ([]byte, error) { return a.Assets[i].MarshalJSON() })
 }
@@ -50,9 +72,9 @@ type SystemOneWireRequest struct {
 	State     any
 	Questions SystemOneWireQuestions
 	// Assets are the images as System One assets, keyed by the names the state references.
-	Assets *SystemOneImageAssets
+	Assets *SystemOneImageAssets `json:",omitempty"`
 	// Images are the images as data URLs, Clef's extension to System One.
-	Images []string
+	Images []string `json:",omitempty"`
 }
 
 // Body is the request's members in Pi's insertion order: state, questions, then assets or images.

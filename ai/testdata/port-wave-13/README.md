@@ -1,10 +1,10 @@
-# Pi 1.3.0 Anthropic E2E case snapshot
+# Pi 1.4.0 Anthropic E2E case snapshot
 
 `anthropic_e2e_cases.json` lists the Anthropic Messages models of the published pinned pi-ai catalog and the probes the upstream acceptance tests select from them.
 
-SHA-256: `b6a71cdc8f8c29f82898b92221c500e9027df5682803e23ff5b49885f5629d4f`.
+SHA-256: `8f3804005d16b914d1040b8bc56ecf95da1dd5acfb69cf9ad91cff40a9c2ec3a`.
 
-The snapshot contains the 408 Anthropic Messages model identities of the pinned pi-ai catalog (Pi 1.3.0+bd3c9b82), 10 configured probes, and 9 forced-eager probes. The selector preserves the priority and JavaScript `localeCompare` rules in `packages/ai/test/anthropic-eager-tool-input-e2e.test.ts:34-85` and `packages/ai/test/anthropic-long-cache-retention-e2e.test.ts:22-70`. The test checks the complete catalog denominator independently against Pig's catalog. It does not replace a remote response with fixture data.
+The snapshot contains the 407 Anthropic Messages model identities of the pinned pi-ai catalog (Pi 1.4.0), 10 configured probes, and 9 forced-eager probes. The selector preserves the priority and JavaScript `localeCompare` rules in `packages/ai/test/anthropic-eager-tool-input-e2e.test.ts:34-85` and `packages/ai/test/anthropic-long-cache-retention-e2e.test.ts:22-70`. The test checks the complete catalog denominator independently against Pig's catalog. It does not replace a remote response with fixture data.
 
 The owning regeneration command is `node test/parity/testdata/generate-anthropic-e2e-cases.mjs > ai/testdata/port-wave-13/anthropic_e2e_cases.json` after `make model-catalogs` installs the pinned package. Applied to the 0.87.1 data, the same selector reproduces the previous reviewed snapshot byte for byte in content.
 
