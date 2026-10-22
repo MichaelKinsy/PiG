@@ -7,8 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"time"
 )
 
 // agent-session.ts:3433-3436: pi.appendEntry emits entry_appended, and JSON mode prints every session event (print-mode.ts subscribes with
@@ -25,7 +24,9 @@ func TestJSONModePrintsEntryAppendedForEveryExtensionSDK(t *testing.T) {
 	for _, sdk := range []string{"node", "go", "python", "rust"} {
 		t.Run(sdk, func(t *testing.T) {
 			home := t.TempDir()
-			ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
+			// The one-shot run loads the Go and Rust fixtures cold (Rust compiles its crate dependencies on first use, 130 s on the
+			// Windows runner), so the whole run is bounded by the cold-build budget the RPC sibling gives its session_start wait.
+			ctx, cancel := context.WithTimeout(t.Context(), probeWait(t, 10*time.Minute))
 			defer cancel()
 			cmd := exec.CommandContext(ctx, binary, "--mode", "json", "--model", "test-faux/faux-1", "--no-session", "-e", filepath.Join(fixtures, sdk), "-p", "/robust-note first")
 			cmd.Dir = t.TempDir()
@@ -33,7 +34,7 @@ func TestJSONModePrintsEntryAppendedForEveryExtensionSDK(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
 			if err := cmd.Run(); err != nil {
-				t.Fatalf("pig: %v\nstderr: %s", err, stderr.String())
+				t.Fatalf("pig: %v (context: %v)\nstderr: %s", err, ctx.Err(), stderr.String())
 			}
 			// Pi emits one entry_appended per pi.appendEntry (agent-session.ts appendEntry), so the line appears exactly once.
 			found := 0

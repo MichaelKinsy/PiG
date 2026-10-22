@@ -124,7 +124,7 @@ func registerLifecycle(e *sdk.Extension) {
 				docs := []string{}
 				for _, line := range lines {
 					if line = strings.TrimSpace(line); strings.HasSuffix(line, ".md") {
-						docs = append(docs, line[strings.LastIndex(line, "/")+1:])
+						docs = append(docs, line[strings.LastIndexAny(line, `/\`)+1:])
 					}
 				}
 				return map[string]any{"first": lines[0], "docs": docs}
