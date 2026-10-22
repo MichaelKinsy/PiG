@@ -120,6 +120,12 @@ PiG does not replay an interrupted operation automatically. Automatic replay cou
 
 See [Extensions](/docs/latest/extensions#connection-and-liveness-model).
 
+## Distrusted certificate authorities
+
+PiG's own HTTPS and WebSocket connections (model providers, OAuth, MCP, package and tool downloads, self-update) refuse a certificate chain that includes one of eight eMudhra intermediate CAs or one of three roots. The private keys of the eight intermediates can be recovered by anyone from their public certificates (Mozilla bug 2083449, October 2026); Sectigo cross-signed the same keys, and Apple and Microsoft still trust that root. The three roots are the ones Mozilla removed from NSS 3.131.1: `emSign ECC Root CA - G3`, `emSign Root CA - C1` and `emSign ECC Root CA - C3`.
+
+The check compares public-key digests, so it also refuses the cross-signed certificates, and it runs on top of the operating system's trust store, which can keep trusting these CAs until its vendor updates. When PiG's check refuses a chain, the error names the server and the CA. Go 1.27.3's own verifier, which PiG's pinned toolchain carries, already refuses the eight intermediates with `x509: no valid chains built`; PiG's check adds the three roots and covers a build with an older Go. No setting turns it off; a connection made with a provider's opt-in `insecure` option skips verification altogether, so it has no verified chain to check. The connections that extension processes open themselves use that runtime's trust store: run Node.js 22.23.4, 24.22.1, 26.12.1 or later, which carry the same distrust.
+
 ## Piglet Binary verification
 
 A Piglet Binary verifies its embedded Piglet and component plan before command dispatch. A Binary built with `--sign-key` also verifies its Ed25519 signature offline and refuses to run when its executable, manifest, or signature changed. When its file is unchanged since its last passing start, it skips the hash of its executable bytes. See [Verification cache](/docs/latest/piglet-binaries#verification-cache) for what that keeps and gives up. The startup check is a self-check: it does not stop an attacker who can rewrite the Binary.

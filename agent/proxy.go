@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultClient (pig additive (D191))
 
 	"github.com/MichaelKinsy/PiG/ai"
 )

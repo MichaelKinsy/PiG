@@ -17,7 +17,7 @@ The qualified verification toolchain is:
 - Go 1.27.3;
 - macOS 13 or later for native macOS builds;
 - Git;
-- Node.js 24.19.0;
+- Node.js 24.22.1;
 - npm 12.1.0;
 - Python 3.12;
 - Rust and Cargo 1.97.1;

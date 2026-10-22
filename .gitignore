@@ -47,6 +47,8 @@ Thumbs.db
 *.pem
 # The public key that verifies signed self-update manifests (docs/project/RELEASING.md).
 !automation/release/update-trust.pem
+# Public CA certificates (no private keys) of the October 2026 eMudhra incident, the test data of internal/tlsdistrust.
+!internal/tlsdistrust/tlsdistrusttest/testdata/*.pem
 *.key
 *.p12
 *.pfx

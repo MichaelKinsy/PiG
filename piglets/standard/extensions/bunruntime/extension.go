@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+	_ "github.com/MichaelKinsy/PiG/piglets/standard/internal/tlsdistrust" // hardens http.DefaultClient, the installer's download client (pig additive (D191))
 )
 
 const usage = "Usage: /bun-runtime [status|install|verify|remove]"

@@ -14,6 +14,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultClient (pig additive (D191))
 )
 
 type modelsDevModel struct {

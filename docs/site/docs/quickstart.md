@@ -22,7 +22,7 @@ You need these tools only to build PiG from source. Build the `pig` executable w
 The complete verification suite also uses:
 
 - Git;
-- Node.js 24.19.0 and npm 12.1.0;
+- Node.js 24.22.1 and npm 12.1.0;
 - Python 3.12;
 - Rust 1.97.1;
 - tmux on Unix.

@@ -3,6 +3,7 @@ package ai
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
 )
 
 const (
@@ -354,6 +356,12 @@ func optionTimeout(value *int) time.Duration {
 	return time.Duration(*value) * time.Millisecond
 }
 
+// codexWebSocketTLSConfig is the WebSocket handshake's TLS configuration.
+// pig additive (D191): its chain is checked like every other TLS peer's.
+func codexWebSocketTLSConfig() *tls.Config {
+	return tlsdistrust.Harden(&tls.Config{MinVersion: tls.VersionTLS12})
+}
+
 func acquireCodexWebSocket(ctx context.Context, endpoint string, headers http.Header, sessionID, accountID string, connectTimeout time.Duration) (*acquiredCodexWebSocket, error) {
 	cacheNewConnection := sessionID != ""
 	if sessionID != "" {
@@ -406,7 +414,7 @@ func acquireCodexWebSocket(ctx context.Context, endpoint string, headers http.He
 	}
 	var connectionMu sync.Mutex
 	var dialingConnection net.Conn
-	dialer := websocket.Dialer{Proxy: proxyFromEnvironment, HandshakeTimeout: connectTimeout}
+	dialer := websocket.Dialer{Proxy: proxyFromEnvironment, HandshakeTimeout: connectTimeout, TLSClientConfig: codexWebSocketTLSConfig()}
 	dialer.NetDialContext = func(dialCtx context.Context, network, address string) (net.Conn, error) {
 		connection, dialErr := (&net.Dialer{}).DialContext(dialCtx, network, address)
 		connectionMu.Lock()
