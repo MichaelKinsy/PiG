@@ -1,0 +1,811 @@
+ProductName:		macOS
+ProductVersion:		15.7.9
+BuildVersion:		24G830
+3
+=== ok run 1
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2672
+=== ok run 2
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=15 child exited=1 window size changes=2845
+=== ok run 3
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=15 child exited=1 window size changes=3644
+=== ok run 4
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3619
+=== ok run 5
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2447
+=== ok run 6
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2963
+=== ok run 7
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=3768
+=== ok run 8
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3217
+=== ok run 9
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=4198
+=== ok run 10
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3040
+=== ok run 11
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3041
+=== ok run 12
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3012
+=== ok run 13
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3160
+=== ok run 14
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=3427
+=== ok run 15
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2831
+=== ok run 16
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=3030
+=== ok run 17
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2980
+=== ok run 18
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2676
+=== ok run 19
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=20 child exited=1 window size changes=3167
+=== ok run 20
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2730
+=== ok run 21
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3120
+=== ok run 22
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3436
+=== ok run 23
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2922
+=== ok run 24
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=17 child exited=1 window size changes=2556
+=== ok run 25
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3658
+=== ok run 26
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=3128
+=== ok run 27
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=3133
+=== ok run 28
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=3004
+=== ok run 29
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2692
+=== ok run 30
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=3037
+=== ok run 31
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2637
+=== ok run 32
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2628
+=== ok run 33
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2885
+=== ok run 34
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3134
+=== ok run 35
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3393
+=== ok run 36
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2646
+=== ok run 37
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3128
+=== ok run 38
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3288
+=== ok run 39
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=7 child exited=1 window size changes=2905
+=== ok run 40
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2824
+=== ok run 41
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3166
+=== ok run 42
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3130
+=== ok run 43
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3468
+=== ok run 44
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=11 child exited=1 window size changes=2961
+=== ok run 45
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3274
+=== ok run 46
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3104
+=== ok run 47
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3341
+=== ok run 48
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3163
+=== ok run 49
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3057
+=== ok run 50
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3618
+=== ok run 51
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2120
+=== ok run 52
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2854
+=== ok run 53
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3183
+=== ok run 54
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2500
+=== ok run 55
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2720
+=== ok run 56
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2432
+=== ok run 57
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2931
+=== ok run 58
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3159
+=== ok run 59
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2793
+=== ok run 60
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3224
+=== ok run 61
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3357
+=== ok run 62
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2792
+=== ok run 63
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2873
+=== ok run 64
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2862
+=== ok run 65
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2563
+=== ok run 66
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=3604
+=== ok run 67
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2491
+=== ok run 68
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2577
+=== ok run 69
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3044
+=== ok run 70
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2872
+=== ok run 71
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2531
+=== ok run 72
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2369
+=== ok run 73
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2470
+=== ok run 74
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3310
+=== ok run 75
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2437
+=== ok run 76
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2622
+=== ok run 77
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2867
+=== ok run 78
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2916
+=== ok run 79
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=3 child exited=1 window size changes=2805
+=== ok run 80
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2773
+=== ok run 81
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2820
+=== ok run 82
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=15 child exited=1 window size changes=3092
+=== ok run 83
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2977
+=== ok run 84
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2598
+=== ok run 85
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2518
+=== ok run 86
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2527
+=== ok run 87
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3007
+=== ok run 88
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3379
+=== ok run 89
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2796
+=== ok run 90
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2790
+=== ok run 91
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2892
+=== ok run 92
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2563
+=== ok run 93
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2837
+=== ok run 94
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3669
+=== ok run 95
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3120
+=== ok run 96
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=2931
+=== ok run 97
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2778
+=== ok run 98
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2832
+=== ok run 99
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3107
+=== ok run 100
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=2820
+=== ok run 101
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2862
+=== ok run 102
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2599
+=== ok run 103
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2895
+=== ok run 104
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3066
+=== ok run 105
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2808
+=== ok run 106
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3095
+=== ok run 107
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2684
+=== ok run 108
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3035
+=== ok run 109
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=3 child exited=1 window size changes=2469
+=== ok run 110
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2603
+=== ok run 111
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2765
+=== ok run 112
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2658
+=== ok run 113
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3298
+=== ok run 114
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2864
+=== ok run 115
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2700
+=== ok run 116
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2792
+=== ok run 117
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2425
+=== ok run 118
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2527
+=== ok run 119
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2375
+=== ok run 120
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3140
+=== ok run 121
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2918
+=== ok run 122
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2821
+=== ok run 123
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2931
+=== ok run 124
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2834
+=== ok run 125
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3181
+=== ok run 126
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=2640
+=== ok run 127
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2798
+=== ok run 128
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2745
+=== ok run 129
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=3172
+=== ok run 130
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3407
+=== ok run 131
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2327
+=== ok run 132
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2944
+=== ok run 133
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2840
+=== ok run 134
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=7 child exited=1 window size changes=2770
+=== ok run 135
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3106
+=== ok run 136
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2797
+=== ok run 137
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2679
+=== ok run 138
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2941
+=== ok run 139
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3081
+=== ok run 140
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2561
+=== ok run 141
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=2884
+=== ok run 142
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=9 child exited=1 window size changes=2956
+=== ok run 143
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=2319
+=== ok run 144
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=3045
+=== ok run 145
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=2915
+=== ok run 146
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=3 child exited=1 window size changes=2475
+=== ok run 147
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3204
+=== ok run 148
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3142
+=== ok run 149
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=2760
+=== ok run 150
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2555
+=== ok run 151
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=10 child exited=1 window size changes=3354
+=== ok run 152
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3172
+=== ok run 153
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3242
+=== ok run 154
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3194
+=== ok run 155
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3065
+=== ok run 156
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2704
+=== ok run 157
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2794
+=== ok run 158
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=14 child exited=1 window size changes=3022
+=== ok run 159
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2720
+=== ok run 160
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3188
+=== ok run 161
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2563
+=== ok run 162
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=3013
+=== ok run 163
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2840
+=== ok run 164
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2897
+=== ok run 165
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2709
+=== ok run 166
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3102
+=== ok run 167
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2525
+=== ok run 168
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2681
+=== ok run 169
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2676
+=== ok run 170
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=6 child exited=1 window size changes=3058
+=== ok run 171
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2720
+=== ok run 172
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2570
+=== ok run 173
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2803
+=== ok run 174
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2951
+=== ok run 175
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=15 child exited=1 window size changes=2756
+=== ok run 176
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=5 child exited=1 window size changes=3271
+=== ok run 177
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2773
+=== ok run 178
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2952
+=== ok run 179
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2813
+=== ok run 180
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2826
+=== ok run 181
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3111
+=== ok run 182
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2902
+=== ok run 183
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2973
+=== ok run 184
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2865
+=== ok run 185
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3276
+=== ok run 186
+    zz_probe_report_test.go:9: REPORT redeliveries_total=5 signals: urgent I/O condition=5 child exited=1 window size changes=3151
+=== ok run 187
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2670
+=== ok run 188
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=3362
+=== ok run 189
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2355
+=== ok run 190
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=3054
+=== ok run 191
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2489
+=== ok run 192
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2968
+=== ok run 193
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=2852
+=== ok run 194
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2446
+=== ok run 195
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2660
+=== ok run 196
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2766
+=== ok run 197
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2919
+=== ok run 198
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2592
+=== ok run 199
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=15 child exited=1 window size changes=2903
+=== ok run 200
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3124
+=== ok run 201
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2964
+=== ok run 202
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2672
+=== ok run 203
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2725
+=== ok run 204
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2488
+=== ok run 205
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2986
+=== ok run 206
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3207
+=== ok run 207
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2701
+=== ok run 208
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2466
+=== ok run 209
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2673
+=== ok run 210
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=17 child exited=1 window size changes=2874
+=== ok run 211
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2935
+=== ok run 212
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3037
+=== ok run 213
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2690
+=== ok run 214
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=3171
+=== ok run 215
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2656
+=== ok run 216
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2633
+=== ok run 217
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3340
+=== ok run 218
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2615
+=== ok run 219
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2806
+=== ok run 220
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2650
+=== ok run 221
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3224
+=== ok run 222
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=3155
+=== ok run 223
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2895
+=== ok run 224
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2958
+=== ok run 225
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2846
+=== ok run 226
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=3251
+=== ok run 227
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3023
+=== ok run 228
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2845
+=== ok run 229
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2572
+=== ok run 230
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2603
+=== ok run 231
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2643
+=== ok run 232
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3344
+=== ok run 233
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2648
+=== ok run 234
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2758
+=== ok run 235
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2420
+=== ok run 236
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2662
+=== ok run 237
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2900
+=== ok run 238
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=3 child exited=1 window size changes=3175
+=== ok run 239
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2870
+=== ok run 240
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2408
+=== ok run 241
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=3 child exited=1 window size changes=2896
+=== ok run 242
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2575
+=== ok run 243
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2817
+=== ok run 244
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3447
+=== ok run 245
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=3061
+=== ok run 246
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=15 child exited=1 window size changes=3175
+=== ok run 247
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2733
+=== ok run 248
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2543
+=== ok run 249
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2760
+=== ok run 250
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2975
+=== ok run 251
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2880
+=== ok run 252
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3048
+=== ok run 253
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2281
+=== ok run 254
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=20 child exited=1 window size changes=2700
+=== ok run 255
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2627
+=== ok run 256
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2825
+=== ok run 257
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2913
+=== ok run 258
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2779
+=== ok run 259
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2632
+=== ok run 260
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2684
+=== ok run 261
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2809
+=== ok run 262
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2911
+=== ok run 263
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2777
+=== ok run 264
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=5 child exited=1 window size changes=2803
+=== ok run 265
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2637
+=== ok run 266
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=3018
+=== ok run 267
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=2700
+=== ok run 268
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3063
+=== ok run 269
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=3201
+=== ok run 270
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2559
+=== ok run 271
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2572
+=== ok run 272
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=2 child exited=1 window size changes=3291
+=== ok run 273
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2562
+=== ok run 274
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2399
+=== ok run 275
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2785
+=== ok run 276
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3326
+=== ok run 277
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2858
+=== ok run 278
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3178
+=== ok run 279
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2509
+=== ok run 280
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2571
+=== ok run 281
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=9 child exited=1 window size changes=3026
+=== ok run 282
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=3 child exited=1 window size changes=2725
+=== ok run 283
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2472
+=== ok run 284
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2709
+=== ok run 285
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3204
+=== ok run 286
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2845
+=== ok run 287
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2627
+=== ok run 288
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2884
+=== ok run 289
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=3 child exited=1 window size changes=3289
+=== ok run 290
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3363
+=== ok run 291
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2882
+=== ok run 292
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2889
+=== ok run 293
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2843
+=== ok run 294
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=2827
+=== ok run 295
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3227
+=== ok run 296
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2737
+=== ok run 297
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2853
+=== ok run 298
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2865
+=== ok run 299
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3068
+=== ok run 300
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=2882
+=== ok run 301
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=3377
+=== ok run 302
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3038
+=== ok run 303
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=3042
+=== ok run 304
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2554
+=== ok run 305
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=3 child exited=1 window size changes=2519
+=== ok run 306
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3045
+=== ok run 307
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3283
+=== ok run 308
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2439
+=== ok run 309
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=4 child exited=1 window size changes=2914
+=== ok run 310
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2692
+=== ok run 311
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=3017
+=== ok run 312
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2985
+=== ok run 313
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2687
+=== ok run 314
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3111
+=== ok run 315
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=2951
+=== ok run 316
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=18 child exited=1 window size changes=2957
+=== ok run 317
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=9 child exited=1 window size changes=3317
+=== ok run 318
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2881
+=== ok run 319
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=10 child exited=1 window size changes=2897
+=== ok run 320
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3046
+=== ok run 321
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=2 child exited=1 window size changes=3110
+=== ok run 322
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3149
+=== ok run 323
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3151
+=== ok run 324
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2380
+=== ok run 325
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=3087
+=== ok run 326
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2744
+=== ok run 327
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=2580
+=== ok run 328
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=3324
+=== ok run 329
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3288
+=== ok run 330
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2776
+=== ok run 331
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=10 child exited=1 window size changes=2762
+=== ok run 332
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=3052
+=== ok run 333
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2819
+=== ok run 334
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=12 child exited=1 window size changes=3392
+=== ok run 335
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=2963
+=== ok run 336
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=2804
+=== ok run 337
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=13 child exited=1 window size changes=2947
+=== ok run 338
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=10 child exited=1 window size changes=2577
+=== ok run 339
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=8 child exited=1 window size changes=3109
+=== ok run 340
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2771
+=== ok run 341
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3080
+=== ok run 342
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2661
+=== ok run 343
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=2306
+=== ok run 344
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=5 child exited=1 window size changes=2693
+=== ok run 345
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2807
+=== ok run 346
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=16 child exited=1 window size changes=3506
+=== ok run 347
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2613
+=== ok run 348
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3069
+=== ok run 349
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=16 child exited=1 window size changes=2288
+=== ok run 350
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3042
+=== ok run 351
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3329
+=== ok run 352
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=3 child exited=1 window size changes=2684
+=== ok run 353
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3328
+=== ok run 354
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2397
+=== ok run 355
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2663
+=== ok run 356
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3410
+=== ok run 357
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2863
+=== ok run 358
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2879
+=== ok run 359
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2639
+=== ok run 360
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=2879
+=== ok run 361
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2568
+=== ok run 362
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3114
+=== ok run 363
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3267
+=== ok run 364
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=9 child exited=1 window size changes=2763
+=== ok run 365
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=3 child exited=1 window size changes=2819
+=== ok run 366
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2908
+=== ok run 367
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3306
+=== ok run 368
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2767
+=== ok run 369
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=11 child exited=1 window size changes=3176
+=== ok run 370
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3025
+=== ok run 371
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=2916
+=== ok run 372
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=3232
+=== ok run 373
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3227
+=== ok run 374
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2828
+=== ok run 375
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3098
+=== ok run 376
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2874
+=== ok run 377
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=3355
+=== ok run 378
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2792
+=== ok run 379
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2652
+=== ok run 380
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=3100
+=== ok run 381
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=3188
+=== ok run 382
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2652
+=== ok run 383
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=6 child exited=1 window size changes=2692
+=== ok run 384
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3118
+=== ok run 385
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=12 child exited=1 window size changes=3208
+=== ok run 386
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2958
+=== ok run 387
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=7 child exited=1 window size changes=2801
+=== ok run 388
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=2672
+=== ok run 389
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=5 child exited=1 window size changes=3163
+=== ok run 390
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2957
+=== ok run 391
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=4 child exited=1 window size changes=3221
+=== ok run 392
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2814
+=== ok run 393
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3271
+=== ok run 394
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=2846
+=== ok run 395
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=2912
+=== ok run 396
+    zz_probe_report_test.go:9: REPORT redeliveries_total=1 signals: urgent I/O condition=5 child exited=1 window size changes=2695
+=== ok run 397
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=14 child exited=1 window size changes=3058
+=== ok run 398
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=2914
+=== ok run 399
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=12 child exited=1 window size changes=3167
+=== ok run 400
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=8 child exited=1 window size changes=3177
+=== ok run 401
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=9 child exited=1 window size changes=2889
+=== ok run 402
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=7 child exited=1 window size changes=3741
+=== ok run 403
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=10 child exited=1 window size changes=3293
+SUMMARY burners=0 signals=200us runs=403 fails=0
