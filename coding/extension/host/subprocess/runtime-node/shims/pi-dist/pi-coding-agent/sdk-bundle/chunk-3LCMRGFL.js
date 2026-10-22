@@ -4,13 +4,7 @@ import {
   fetchWithRetry,
   getPiUserAgent,
   processImage
-<<<<<<<< HEAD:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-3IL6XAUW.js
-} from "./chunk-XR2AOT5Z.js";
-|||||||| 4eee0072e6:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-3YI37CVX.js
-} from "./chunk-5EKWCXVB.js";
-========
-} from "./chunk-RKAYAUZW.js";
->>>>>>>> origin/wip/pi-1.4.0-snapshot:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-2HWLWU7U.js
+} from "./chunk-ZYMNLKUS.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,

@@ -107,6 +107,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-184ed40](#bf-184ed40) | fix(hljs): a language's reach does not depend on the first text it highlights; red cases for resumeLimit | PiG's own defect | All platforms | Unreleased |
 | [BF-1886fff](#bf-1886fff) | The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the… | PiG's own defect | All platforms | Unreleased |
 | [BF-1896331](#bf-1896331) | Changing the thinking level in interactive mode (cycle key, `/thinking`, the settings selector) goes through… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-18b1c05](#bf-18b1c05) | A PiG TLS client no longer accepts a certificate chain through a compromised eMudhra intermediate or a root… | PiG's own defect | All platforms | Unreleased |
+| [BF-18b1c05-2](#bf-18b1c05-2) | The CI images no longer ship the three removed emSign roots: `ca-certificates` 20261020-r0 in the ci-go lock… | PiG's own defect | All platforms | Unreleased |
 | [BF-18daf7f](#bf-18daf7f) | The Go SDK's typed branch entry keeps the text, thinking and tool calls of an assistant message whose tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-18f7d39](#bf-18f7d39) | Codemode `@options` errors report V8's JSON error text, tool and schema declarations keep unpaired… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-1971aae](#bf-1971aae) | A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed… | PiG's own defect | All platforms | 0.5.0 |
@@ -397,6 +399,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-644a9f2](#bf-644a9f2) | Changelog link rewriting and `git` source parsing match a URL scheme case-insensitively as Pi's regex with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644a9f2-2](#bf-644a9f2-2) | A Node extension's `ctx.ui.custom` factory can call `tui.showOverlay`, `tui.hideOverlay` and `tui.setFocus`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644b3e0](#bf-644b3e0) | A codemode script that calls `text()` tens of thousands of times no longer blocks the process: adjacent text… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-645bcf8](#bf-645bcf8) | The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH`… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-645bcf8-2](#bf-645bcf8-2) | Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-645bcf8-3](#bf-645bcf8-3) | The upstream pin moves to Pi `02726086` | PiG's own defect | All platforms | Unreleased |
 | [BF-65426f3](#bf-65426f3) | fix(rpc): pipelined set_models apply in input order, after the batch's synchronous responses | PiG's own defect | All platforms | Unreleased |
 | [BF-65932e6](#bf-65932e6) | fix(extensions): run a tick call after the tool_execution_end of the tool call that queued its callback… | PiG's own defect | All platforms | Unreleased |
 | [BF-663e84b](#bf-663e84b) | The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead… | PiG's own defect | All platforms | 0.5.0 |
@@ -2348,6 +2353,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `18963311a1` (2026-10-08)
 - **Tests:** `coding/session_extension_events_upstream_test.go::TestSessionEmitsThinkingLevelSelectOnlyForAChangeWithTheEffectiveLevel`, `coding/session_extension_events_upstream_test.go::TestSessionEmitsTurnStartWithThePerRunTurnIndexAndATimestamp`, `coding/session_extension_events_upstream_test.go::TestSessionSetThinkingLevelOnMainDispatchesOnlyTheMutation`, `internal/codingagent/interactive_session_append_test.go::TestSelectThinkingLevelShowsAFailedSessionAppend`, `internal/codingagent/thinking_selector_test.go::TestSelectThinkingLevelDoesNotHoldTheInputLoopOnTheNotification`, `internal/codingagent/thinking_selector_test.go::TestThinkingLevelPersistsOnlyWhenSaved`, `test/extension-conformance/event_payload_test.go::TestConformance_EventPayloadsReachEverySDKUnchanged`, `test/extension-conformance/event_unsubscribe_every_test.go::TestConformance_EventUnsubscribeEveryEvent`
 - **Release note:** Changing the thinking level in interactive mode (cycle key, `/thinking`, the settings selector) goes through the Session like Pi's `session.setThinkingLevel`: the level is clamped to the model, the `thinking_level_select` event carries the clamped level, and a handler that is slow to start no longer holds the input loop.
+
+### BF-18b1c05
+
+**A PiG TLS client no longer accepts a certificate chain through a compromised eMudhra intermediate or a root…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A PiG TLS client no longer accepts a certificate chain through a compromised eMudhra intermediate or a root Mozilla removed after it; the error names the CA.
+- **Root cause:** Mozilla bug 2083449: the private keys of eight eMudhra intermediates are recoverable from their certificates, and Sectigo cross-signed them. internal/tlsdistrust refuses any verified chain whose SPKI digest is one of the eight keys or one of the three roots NSS 3.131.1 removed, on every outbound TLS client (D191). Node pins follow the 2026-10-21 security releases; the ci-go and ci-parity locks take the CA bundles without the removed roots.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `18b1c05f72` (2026-10-21)
+- **Tests:** `ai/bedrock_tlsdistrust_test.go::TestBedrockHTTPClientsCheckTheChain`, `ai/tlsdistrust_test.go::TestCodexWebSocketTLSConfigChecksTheChain`, `ai/tlsdistrust_test.go::TestStreamingTransportHookNamesTheCA`, `ai/tlsdistrust_test.go::TestStreamingTransportRefusesACompromisedCA`, `ai/tlsdistrust_test.go::TestStreamingTransportRefusesTheRemovedRoots`, `internal/codingagent/selfupdate_tlsdistrust_test.go::TestSelfUpdateRefusesACompromisedCAEvenWhenTheSidecarTrustsIt`, `internal/tlsdistrust/blocklist_test.go::TestBlocklist`, `internal/tlsdistrust/blocklist_test.go::TestHookRefusesWhatGoAccepts` and 12 more in docs/bug-ledger.json
+- **Release note:** A PiG TLS client no longer accepts a certificate chain through a compromised eMudhra intermediate or a root Mozilla removed after it; the error names the CA.
+
+### BF-18b1c05-2
+
+**The CI images no longer ship the three removed emSign roots: `ca-certificates` 20261020-r0 in the ci-go lock…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The CI images no longer ship the three removed emSign roots: `ca-certificates` 20261020-r0 in the ci-go lock, 20260909-r3 and a newer Wolfi base (glibc 2.44) in the ci-parity lock, which also takes `c-ares` 1.34.9 and `nodejs-24` 24.22.1.
+- **Root cause:** Mozilla bug 2083449: the private keys of eight eMudhra intermediates are recoverable from their certificates, and Sectigo cross-signed them. internal/tlsdistrust refuses any verified chain whose SPKI digest is one of the eight keys or one of the three roots NSS 3.131.1 removed, on every outbound TLS client (D191). Node pins follow the 2026-10-21 security releases; the ci-go and ci-parity locks take the CA bundles without the removed roots.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `18b1c05f72` (2026-10-21)
+- **Tests:** `ai/bedrock_tlsdistrust_test.go::TestBedrockHTTPClientsCheckTheChain`, `ai/tlsdistrust_test.go::TestCodexWebSocketTLSConfigChecksTheChain`, `ai/tlsdistrust_test.go::TestStreamingTransportHookNamesTheCA`, `ai/tlsdistrust_test.go::TestStreamingTransportRefusesACompromisedCA`, `ai/tlsdistrust_test.go::TestStreamingTransportRefusesTheRemovedRoots`, `internal/codingagent/selfupdate_tlsdistrust_test.go::TestSelfUpdateRefusesACompromisedCAEvenWhenTheSidecarTrustsIt`, `internal/tlsdistrust/blocklist_test.go::TestBlocklist`, `internal/tlsdistrust/blocklist_test.go::TestHookRefusesWhatGoAccepts` and 12 more in docs/bug-ledger.json
+- **Release note:** The CI images no longer ship the three removed emSign roots: `ca-certificates` 20261020-r0 in the ci-go lock, 20260909-r3 and a newer Wolfi base (glibc 2.44) in the ci-parity lock, which also takes `c-ares` 1.34.9 and `nodejs-24` 24.22.1.
 
 ### BF-18daf7f
 
@@ -6368,6 +6401,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `644b3e0a2a` (2026-10-09)
 - **Tests:** `coding/extension/builtin/codemode/join_adjacent_text_test.go::TestJoinAdjacentTextIsLinearInTheNumberOfItems`, `coding/extension/builtin/codemode/join_adjacent_text_test.go::TestJoinAdjacentTextMatchesUpstreamOnMixedItems`
 - **Release note:** A codemode script that calls `text()` tens of thousands of times no longer blocks the process: adjacent text items are joined in linear time (Pi #10678).
+
+### BF-645bcf8
+
+**The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH`…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH` file cannot change the tool's contract (literal, glob, limit).
+- **Root cause:** Pi puts --no-config first in ripgrep's argument list, so a user's RIPGREP_CONFIG_PATH cannot change the grep tool's contract. Pi 02726086 (#11227) finds the tool results that answered a recovered attempt's calls in the projected context, so every recovery caller omits the pair together; checkCompaction and the Session lose their lastAssistantToolResults plumbing.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `645bcf8a88` (2026-10-21)
+- **Tests:** `coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult`
+- **Release note:** The grep tool passes `--no-config` to ripgrep, as Pi does at `8c4e8738`, so a user's `RIPGREP_CONFIG_PATH` file cannot change the tool's contract (literal, glob, limit).
+
+### BF-645bcf8-2
+
+**Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that answered the attempt's calls in the agent transcript and omits them with it, so a resumed session no longer persists orphaned tool results that providers reject (Pi `02726086`, #11227).
+- **Root cause:** Pi puts --no-config first in ripgrep's argument list, so a user's RIPGREP_CONFIG_PATH cannot change the grep tool's contract. Pi 02726086 (#11227) finds the tool results that answered a recovered attempt's calls in the projected context, so every recovery caller omits the pair together; checkCompaction and the Session lose their lastAssistantToolResults plumbing.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ae40b2b820` (2026-10-20), `645bcf8a88` (2026-10-21)
+- **Tests:** `coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult`, `tui/markdown_cjk_test.go::TestMarkdownCJKEmphasisPiCases`
+- **Release note:** Recovery of a truncated assistant attempt (retry and overflow/length compaction) finds the tool results that answered the attempt's calls in the agent transcript and omits them with it, so a resumed session no longer persists orphaned tool results that providers reject (Pi `02726086`, #11227).
+
+### BF-645bcf8-3
+
+**The upstream pin moves to Pi `02726086`**
+
+- **Source:** PiG's own defect
+- **Symptom:** The upstream pin moves to Pi `02726086`.
+- **Root cause:** Pi puts --no-config first in ripgrep's argument list, so a user's RIPGREP_CONFIG_PATH cannot change the grep tool's contract. Pi 02726086 (#11227) finds the tool results that answered a recovered attempt's calls in the projected context, so every recovery caller omits the pair together; checkCompaction and the Session lose their lastAssistantToolResults plumbing.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Commit that wrote the release note (the fix commit is not identified):** `645bcf8a88` (2026-10-21)
+- **Tests:** `coding/session_recovery_test.go::TestPrePromptRecoveryOfAResumedLengthStopOmitsTheTruncatedCallAndItsResult`
+- **Release note:** The upstream pin moves to Pi `02726086`.
 
 ### BF-65426f3
 

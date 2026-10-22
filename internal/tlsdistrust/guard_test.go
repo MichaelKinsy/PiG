@@ -1,6 +1,7 @@
 package tlsdistrust_test
 
 import (
+	"bytes"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -236,7 +237,7 @@ func TestPigletModulesCarryAnIdenticalCopy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if string(got) != string(want) {
+		if !bytes.Equal(got, want) {
 			t.Errorf("piglets/%s/internal/tlsdistrust/tlsdistrust.go differs from internal/tlsdistrust/tlsdistrust.go: copy it again", module)
 		}
 		source, err := os.ReadFile(filepath.Join(root, user))
