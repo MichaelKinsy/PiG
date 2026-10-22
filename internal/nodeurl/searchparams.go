@@ -60,8 +60,8 @@ func (u URL) WithSearchParam(name, value string) string {
 }
 
 // ResolveRelativePath is `new URL(ref, base)` for a relative path reference, one that has no scheme and does not start with "/", "?" or "#": the base's path up to and including its last "/" followed by ref, parsed again
-// as a URL (dot segments, percent-encoding), with the base's query and fragment dropped. A base whose path is opaque cannot be a base. An empty path counts as "/". A file base whose only path segment starts with a letter and
-// ":" keeps that segment, as the parser's path shortening does for a Windows drive letter (Node applies it to any such prefix, not only "a:").
+// as a URL (dot segments, percent-encoding), with the base's query and fragment dropped. A base whose path is opaque cannot be a base. An empty path counts as "/". A file base whose only path segment is a letter and
+// ":" keeps that segment, as the parser's path shortening does for a Windows drive letter (ada 4, Node 24.22.1 and 26.12.1, take exactly two characters; Node 22.19 and 24.19 take any segment that starts with them).
 func (u URL) ResolveRelativePath(ref string) (URL, error) {
 	if u.authority == "" && !strings.HasPrefix(u.Pathname, "/") {
 		return URL{}, errInvalidURL
@@ -70,12 +70,10 @@ func (u URL) ResolveRelativePath(ref string) (URL, error) {
 	if last := strings.LastIndexByte(u.Pathname, '/'); last >= 0 {
 		directory = u.Pathname[:last+1]
 	}
-	if u.Protocol == "file:" && len(u.Pathname) >= 3 && strings.Count(u.Pathname, "/") == 1 && isASCIILetter(u.Pathname[1]) && u.Pathname[2] == ':' {
+	if u.Protocol == "file:" && strings.Count(u.Pathname, "/") == 1 && isNormalizedWindowsDriveLetter(u.Pathname[1:]) {
 		directory = u.Pathname + "/"
 	}
 	base := u
 	base.fragment = ""
 	return ParseURL(base.href(directory+ref, ""))
 }
-
-func isASCIILetter(c byte) bool { return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' }

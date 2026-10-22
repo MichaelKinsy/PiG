@@ -55,7 +55,8 @@ func TestParseHTTPURLMatchesNodeURL(t *testing.T) {
 		{"http://host?a", ok("http:", "host", "", "?a", "")},
 		{"http://host#b", ok("http:", "host", "", "", "#b")},
 		{"http://host/p?q#f", ok("http:", "host", "", "?q", "#f")},
-		{"http://xn--/", nil},
+		// ada 4 (Node 24.22.1, 26.12.1) only lowercases an ASCII host, so an "xn--" label is kept as it is; ada 3 (Node 22.19, 24.19) rejects it.
+		{"http://xn--/", ok("http:", "xn--", "", "", "")},
 		{"http://ex%41mple.com/", ok("http:", "example.com", "", "", "")},
 		{"http://%/", nil},
 		{"http://a..b/", ok("http:", "a..b", "", "", "")},

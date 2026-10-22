@@ -49,7 +49,7 @@ func TestParseMatchesNodeURL(t *testing.T) {
 	compareParseWithNode(t, parseInputs())
 }
 
-// compareParseWithNode requires ParseURL to agree with Node's URL on every input.
+// compareParseWithNode requires ParseURL to agree with Node's URL on every input. The oracles of this package follow the qualified Node (.node-version, Node 24.22.1; Node 26.12.1 agrees on every one), which carries ada 4: Node 22.19 (ada 2.9) and Node 24.19 (ada 3.4) answer differently on an ASCII host with an "xn--" label (they decode and validate it, and reject "xn--" and "xn--a"), on a file base's first path segment that only starts with a drive letter ("file:///C:ab/c"), and, in Node 22.19, on a few path and dot-segment spellings. CI runs them on the qualified Node only (automation/make/ci.mk, ci-node-runtime).
 func compareParseWithNode(t *testing.T, inputs []string) {
 	t.Helper()
 	payload, err := json.Marshal(inputs)

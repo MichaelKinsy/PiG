@@ -43,6 +43,28 @@ func TestParseMatchesNodeURLOnInvalidPunycodeLabels(t *testing.T) {
 	})
 }
 
+// TestParseMatchesNodeURLOnPunycodeLabelsBesideNonASCII pins the hosts where UTS #46 still runs, one with a non-ASCII character: every "xn--" label in it must decode and validate, as ada decodes it (an ASCII host is only lowercased, so no label of one is checked).
+func TestParseMatchesNodeURLOnPunycodeLabelsBesideNonASCII(t *testing.T) {
+	rng := rand.New(rand.NewSource(20261021))
+	labels := []string{"xn--", "xn--a", "xn--mnich-kva", "xn--ls8h", "xn--a-", "xn--Mnchen-3ya", "xn--zzzzzz", "xn--mgbh0fb", "XN--LS8H", "xn--xn--a"}
+	const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789-"
+	for range 300 {
+		payload := make([]byte, 1+rng.Intn(8))
+		for i := range payload {
+			payload[i] = alphabet[rng.Intn(len(alphabet))]
+		}
+		// x/net's Punycode decoder rejects a payload whose only delimiter is its first byte ("xn---wit2j", which ada decodes as "xn--wit2j"), so those payloads stay out of this corpus.
+		if payload[0] != '-' || strings.Contains(string(payload[1:]), "-") {
+			labels = append(labels, "xn--"+string(payload))
+		}
+	}
+	var inputs []string
+	for _, label := range labels {
+		inputs = append(inputs, "https://"+label+".é/", "https://é."+label+"/", "https://a."+label+".b\u3002ß/")
+	}
+	compareParseWithNode(t, inputs)
+}
+
 // TestInvalidPunycodeLabelCheckDropsEveryCodePointTheMappingIgnores keeps the label check's ignored set in step with the x/net/idna mapping: a code point the mapping removes must not hide an "xn--" label from the check.
 func TestInvalidPunycodeLabelCheckDropsEveryCodePointTheMappingIgnores(t *testing.T) {
 	for r := rune(utf8.RuneSelf); r <= unicode.MaxRune; r++ {
