@@ -64,24 +64,25 @@ func (h *Host) handleBuiltinToolDefinition(call *CallPayload) (*CallResultPayloa
 	return &CallResultPayload{Result: data}, nil
 }
 
-// builtinCallbacks are the callbacks of one CallBuiltinToolExecute, which stay in the extension. A callback runs under the call's context.
-type builtinCallbacks struct {
-	conn   *Conn
-	handle string
-	ctx    context.Context
+// builtinPeer is the extension a built-in tool call reaches back into: the functions of the call's options and its onUpdate stay there.
+type builtinPeer interface {
+	// callback runs one function of the call's options (RequestBuiltinToolCallback) and returns its result, empty when it has none. An error is the callback's throw.
+	callback(ctx context.Context, handle, member string, args json.RawMessage) (json.RawMessage, error)
+	// update delivers one partial result to the call's onUpdate (RequestExecuteToolUpdate); an error is onUpdate's throw.
+	update(ctx context.Context, executeID string, result json.RawMessage) error
+	// bashOperations is the options' operations.exec of the shell tools, under the callbacks' handle.
+	bashOperations(handle string) tools.BashOperations
 }
 
-// call sends one RequestBuiltinToolCallback and returns the callback's result. An error answer is the callback's throw.
-func (c *builtinCallbacks) call(member string, args any) (json.RawMessage, error) {
-	encoded, err := json.Marshal(args)
+// connBuiltinPeer reaches an extension in another process over its connection.
+type connBuiltinPeer struct{ conn *Conn }
+
+func (p connBuiltinPeer) callback(ctx context.Context, handle, member string, args json.RawMessage) (json.RawMessage, error) {
+	payload, err := json.Marshal(BuiltinToolCallback{Handle: handle, Member: member, Args: args})
 	if err != nil {
 		return nil, err
 	}
-	payload, err := json.Marshal(BuiltinToolCallback{Handle: c.handle, Member: member, Args: encoded})
-	if err != nil {
-		return nil, err
-	}
-	resp, err := c.conn.Request(c.ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestBuiltinToolCallback, Args: payload}})
+	resp, err := p.conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestBuiltinToolCallback, Args: payload}})
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +93,87 @@ func (c *builtinCallbacks) call(member string, args any) (json.RawMessage, error
 		return nil, nil
 	}
 	return resp.Response.Result, nil
+}
+
+func (p connBuiltinPeer) update(ctx context.Context, executeID string, result json.RawMessage) error {
+	payload, err := json.Marshal(ExecuteToolUpdate{ExecuteID: executeID, Result: result})
+	if err != nil {
+		return err
+	}
+	resp, err := p.conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestExecuteToolUpdate, Args: payload}})
+	if err == nil && resp.Response != nil && resp.Response.Error != nil {
+		err = errors.New(resp.Response.Error.Message)
+	}
+	return err
+}
+
+func (p connBuiltinPeer) bashOperations(handle string) tools.BashOperations {
+	return &remoteBashOperations{conn: p.conn, handle: handle}
+}
+
+// BuiltinToolPeer is the extension a fused extension's built-in tool call reaches back into, in this process: [BuiltinToolExecute]'s counterpart of the
+// connection an extension in another process answers on.
+type BuiltinToolPeer struct {
+	// Callback runs one function of the call's options under handle (builtin_tool_callback) and returns the JSON of its result, nil when it has none. An error
+	// is the callback's throw.
+	Callback func(ctx context.Context, handle, member string, args []byte) ([]byte, error)
+	// Update delivers the JSON of one partial result to the call's onUpdate (executeTool's update); an error is onUpdate's throw.
+	Update func(ctx context.Context, executeID string, result []byte) error
+	// Exec is operations.exec of the options' bash operations under handle (user_bash exec): it streams output to onData in order and returns Pi's
+	// `{ exitCode }`, or the error exec rejects with. The command ends with ctx.
+	Exec func(ctx context.Context, handle, command, cwd string, timeout *float64, env map[string]string, onData func([]byte)) (*int, error)
+}
+
+func (p BuiltinToolPeer) callback(ctx context.Context, handle, member string, args json.RawMessage) (json.RawMessage, error) {
+	return p.Callback(ctx, handle, member, args)
+}
+
+func (p BuiltinToolPeer) update(ctx context.Context, executeID string, result json.RawMessage) error {
+	return p.Update(ctx, executeID, result)
+}
+
+func (p BuiltinToolPeer) bashOperations(handle string) tools.BashOperations {
+	return directBashOperations{peer: p, handle: handle}
+}
+
+// directBashOperations runs a shell tool's operations.exec through a [BuiltinToolPeer].
+type directBashOperations struct {
+	peer   BuiltinToolPeer
+	handle string
+}
+
+func (o directBashOperations) Exec(ctx context.Context, command, cwd string, options extension.BashOperationsExecOptions) (extension.BashOperationsResult, error) {
+	var env map[string]string
+	if options.Env != nil {
+		env = make(map[string]string, len(options.Env))
+		for _, entry := range options.Env {
+			if name, value, ok := strings.Cut(entry, "="); ok {
+				env[name] = value
+			}
+		}
+	}
+	exitCode, err := o.peer.Exec(ctx, o.handle, command, cwd, options.Timeout, env, func(data []byte) {
+		if options.OnData != nil {
+			options.OnData(data)
+		}
+	})
+	return extension.BashOperationsResult{ExitCode: exitCode}, err
+}
+
+// builtinCallbacks are the callbacks of one CallBuiltinToolExecute, which stay in the extension. A callback runs under the call's context.
+type builtinCallbacks struct {
+	peer   builtinPeer
+	handle string
+	ctx    context.Context
+}
+
+// call runs one function of the call's options in the extension and returns its result. An error is the callback's throw.
+func (c *builtinCallbacks) call(member string, args any) (json.RawMessage, error) {
+	encoded, err := json.Marshal(args)
+	if err != nil {
+		return nil, err
+	}
+	return c.peer.callback(c.ctx, c.handle, member, encoded)
 }
 
 // callbackFailure is the panic a callback that cannot return an error (Pi's spawnHook is synchronous and throws) raises inside the tool, which the call
@@ -356,7 +438,7 @@ func newBuiltinTool(name, cwd string, options *BuiltinToolOptions, binDir string
 		bash := &tools.BashToolOptions{CommandPrefix: options.CommandPrefix, ShellPath: options.ShellPath, ExposeSessionEnvironment: options.ExposeSessionEnvironment}
 		if callbacks != nil {
 			if slices.Contains(supplied, "exec") {
-				bash.Operations = &remoteBashOperations{conn: callbacks.conn, handle: callbacks.handle}
+				bash.Operations = callbacks.peer.bashOperations(callbacks.handle)
 			}
 			if options.SpawnHook {
 				bash.SpawnHook = callbacks.spawnHook()
@@ -367,7 +449,7 @@ func newBuiltinTool(name, cwd string, options *BuiltinToolOptions, binDir string
 		powershell := &tools.PowerShellToolOptions{ExposeSessionEnvironment: options.ExposeSessionEnvironment}
 		if callbacks != nil {
 			if slices.Contains(supplied, "exec") {
-				powershell.Operations = &remoteBashOperations{conn: callbacks.conn, handle: callbacks.handle}
+				powershell.Operations = callbacks.peer.bashOperations(callbacks.handle)
 			}
 			if options.SpawnHook {
 				powershell.SpawnHook = callbacks.spawnHook()
@@ -419,7 +501,7 @@ func (h *Host) builtinToolContext(ctx context.Context) context.Context {
 // handleBuiltinToolExecute serves CallBuiltinToolExecute: `execute` of a built-in tool's definition. The tool runs under the call's context, which ends with
 // the calling request when the extension forwarded its signal, and under the extension's own cancel. Partial results reach the extension as requests, in
 // order, before the result.
-func (h *Host) handleBuiltinToolExecute(ctx context.Context, conn *Conn, call *CallPayload) (result *CallResultPayload, failure error) {
+func (h *Host) handleBuiltinToolExecute(ctx context.Context, conn *Conn, call *CallPayload) (*CallResultPayload, error) {
 	var args BuiltinToolExecuteArgs
 	if err := json.Unmarshal(call.Args, &args); err != nil {
 		return nil, fmt.Errorf("decode %s: %w", call.Method, err)
@@ -432,17 +514,41 @@ func (h *Host) handleBuiltinToolExecute(ctx context.Context, conn *Conn, call *C
 	}
 	// The extension's next call, including the cancel, applies after this call started.
 	extension.CallInitiated(ctx)
-	if args.Aborted {
-		cancel()
-	}
 	if args.Context {
 		runCtx = h.builtinToolContext(runCtx)
 	}
+	wire, err := executeBuiltinTool(runCtx, args, h.builtinToolBinDir(), connBuiltinPeer{conn})
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: wire}, nil
+}
+
+// BuiltinToolExecute is `execute` of a built-in tool's definition for args (ExecuteID and Context are not used: a call with a context goes over its extension's
+// connection): the tool the host runs for an extension. The connection handler serves an extension in another process with the same code, and a fused
+// extension, which shares this process, calls it directly through [sdk.HostHelpers], so the call depends on no extension's connection. It returns the JSON of
+// the tool's result, or the error the tool throws. The tool ends with ctx, as it does with args.Aborted.
+func BuiltinToolExecute(ctx context.Context, argsJSON []byte, binDir string, peer BuiltinToolPeer) ([]byte, error) {
+	var args BuiltinToolExecuteArgs
+	if err := json.Unmarshal(argsJSON, &args); err != nil {
+		return nil, fmt.Errorf("decode %s: %w", CallBuiltinToolExecute, err)
+	}
+	args.Context = false
+	return executeBuiltinTool(ctx, args, binDir, peer)
+}
+
+// executeBuiltinTool runs the tool args name under ctx, with the functions of its options and its onUpdate in the extension peer reaches.
+func executeBuiltinTool(ctx context.Context, args BuiltinToolExecuteArgs, binDir string, peer builtinPeer) (result json.RawMessage, failure error) {
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if args.Aborted {
+		cancel()
+	}
 	var callbacks *builtinCallbacks
 	if args.Callbacks != "" {
-		callbacks = &builtinCallbacks{conn: conn, handle: args.Callbacks, ctx: runCtx}
+		callbacks = &builtinCallbacks{peer: peer, handle: args.Callbacks, ctx: runCtx}
 	}
-	tool, err := newBuiltinTool(args.Name, args.Cwd, args.Options, h.builtinToolBinDir(), callbacks)
+	tool, err := newBuiltinTool(args.Name, args.Cwd, args.Options, binDir, callbacks)
 	if err != nil {
 		return nil, err
 	}
@@ -470,14 +576,7 @@ func (h *Host) handleBuiltinToolExecute(ctx context.Context, conn *Conn, call *C
 			if finished {
 				return
 			}
-			payload, err := json.Marshal(ExecuteToolUpdate{ExecuteID: args.ExecuteID, Result: agentToolResultWire(partial)})
-			if err == nil {
-				var resp *Envelope
-				if resp, err = conn.Request(updateCtx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestExecuteToolUpdate, Args: payload}}); err == nil && resp.Response != nil && resp.Response.Error != nil {
-					err = errors.New(resp.Response.Error.Message)
-				}
-			}
-			if err != nil && updateErr == nil {
+			if err := peer.update(updateCtx, args.ExecuteID, agentToolResultWire(partial)); err != nil && updateErr == nil {
 				updateErr = err
 			}
 		}
@@ -497,7 +596,7 @@ func (h *Host) handleBuiltinToolExecute(ctx context.Context, conn *Conn, call *C
 		// upstream: the tool throws; the Go tools return the thrown message as a result the agent loop turns into an error result.
 		return nil, errors.New(textOf(toolResult))
 	}
-	return &CallResultPayload{Result: agentToolResultWire(toolResult)}, nil
+	return agentToolResultWire(toolResult), nil
 }
 
 func textOf(result agent.AgentToolResult) string {
@@ -526,17 +625,43 @@ func (h *Host) handleBuiltinToolLocalExec(ctx context.Context, conn *Conn, call 
 		defer stop()
 	}
 	extension.CallInitiated(ctx)
+	exitCode, err := LocalExec(runCtx, args, h.builtinToolBinDir(), func(data []byte) error {
+		payload, err := json.Marshal(BuiltinToolExecData{ExecuteID: args.ExecuteID, Data: base64.StdEncoding.EncodeToString(data)})
+		if err != nil {
+			return err
+		}
+		resp, err := conn.Request(context.WithoutCancel(runCtx), &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestBuiltinToolExecData, Args: payload}})
+		if err == nil && resp.Response != nil && resp.Response.Error != nil {
+			err = errors.New(resp.Response.Error.Message)
+		}
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(BuiltinToolLocalExecResult{ExitCode: exitCode})
+	return &CallResultPayload{Result: data}, err
+}
+
+// LocalExec is `exec` of createLocalBashOperations / createLocalPowerShellOperations for args (ExecuteID is not used): the command the host runs for an
+// extension. The connection handler serves an extension in another process with it, and a fused extension, which shares this process, calls it directly
+// through [sdk.HostHelpers], so the command does not depend on any extension's connection, as Pi's exec depends on none. It returns Pi's `{ exitCode }` (nil
+// for a command a signal ended), or the error Pi's exec rejects with. Output chunks reach onData in order before it returns, and a chunk is lent for the
+// call. An onData error ends the command: nobody can read the rest, and the error is LocalExec's. ctx ends the command, as does args.Aborted.
+func LocalExec(ctx context.Context, args BuiltinToolLocalExecArgs, binDir string, onData func([]byte) error) (*int, error) {
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	if args.Aborted {
 		cancel()
 	}
 	var operations tools.BashOperations
 	switch args.Shell {
 	case "bash":
-		local := tools.CreateLocalBashOperations(&tools.LocalBashOptions{ShellPath: args.ShellPath, BinDir: h.builtinToolBinDir()})
+		local := tools.CreateLocalBashOperations(&tools.LocalBashOptions{ShellPath: args.ShellPath, BinDir: binDir})
 		operations = local
 	case "powershell":
 		local := tools.NewLocalPowerShellOperations()
-		local.BinDir = h.builtinToolBinDir()
+		local.BinDir = binDir
 		operations = local
 	default:
 		return nil, fmt.Errorf("unknown shell %q", args.Shell)
@@ -556,20 +681,12 @@ func (h *Host) handleBuiltinToolLocalExec(ctx context.Context, conn *Conn, call 
 			options.Env = append(options.Env, name+"="+(*args.Env)[name])
 		}
 	}
-	// Output chunks reach the extension in order and before the reply. A failed delivery ends the command: nobody can read the rest.
 	var deliveryErr error
 	options.OnData = func(data []byte) {
 		if deliveryErr != nil {
 			return
 		}
-		payload, err := json.Marshal(BuiltinToolExecData{ExecuteID: args.ExecuteID, Data: base64.StdEncoding.EncodeToString(data)})
-		if err == nil {
-			var resp *Envelope
-			if resp, err = conn.Request(context.WithoutCancel(runCtx), &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestBuiltinToolExecData, Args: payload}}); err == nil && resp.Response != nil && resp.Response.Error != nil {
-				err = errors.New(resp.Response.Error.Message)
-			}
-		}
-		if err != nil {
+		if err := onData(data); err != nil {
 			deliveryErr = err
 			cancel()
 		}
@@ -581,6 +698,5 @@ func (h *Host) handleBuiltinToolLocalExec(ctx context.Context, conn *Conn, call 
 	if err != nil {
 		return nil, err
 	}
-	data, err := json.Marshal(BuiltinToolLocalExecResult{ExitCode: exec.ExitCode})
-	return &CallResultPayload{Result: data}, err
+	return exec.ExitCode, nil
 }

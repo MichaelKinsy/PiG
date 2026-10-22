@@ -25136,6 +25136,31 @@
       "tests": []
     },
     {
+      "id": "BF-c47bafd",
+      "title": "A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id…",
+      "symptom": "A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id, params)` and the other `create\u003cTool\u003eTool` forms) no longer fails with \"extension stopped while waiting for builtinTool.execute response\" when another extension in the same process stops while the tool runs.",
+      "rootCause": "The sibling of the createLocalBashOperations().exec fix: createXTool(cwd, options).execute(id, params) without an extension context sent builtinTool.execute over runningExtension()'s connection, the first running extension in the process, so it ended with that extension's shutdown (\"extension stopped while waiting for builtinTool.execute response\").",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id, params)` and the other `create\u003cTool\u003eTool` forms) no longer fails with \"extension stopped while waiting for builtinTool.execute response\" when another extension in the same process stops while the tool runs. The call has no `Context`, so it was sent over the connection of the first running extension in the process. The host now runs the tool for a fused extension directly, reaching back into the extension in the same process for the functions of its options and its streamed updates.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c47bafd99d",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/builtin_local_exec_fused_test.go::TestConformance_FusedBuiltinToolWithoutContextIsNotCarriedByAnotherExtension",
+        "test/extension-conformance/builtin_local_exec_fused_test.go::TestConformance_FusedLocalExecIsNotCarriedByAnotherExtension",
+        "test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs",
+        "test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolOverrideDelegatesAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-c4ad739",
       "title": "Extension shortcut conflict warnings name both extensions (\"registered by both A and B",
       "symptom": "Extension shortcut conflict warnings name both extensions (\"registered by both A and B.",
@@ -31427,6 +31452,29 @@
         "ai/tool_flow_result_reset_test.go::TestTransformMessagesResultBeforeCallDoesNotAnswerIt",
         "ai/transform_messages_allocs_test.go::TestTransformMessagesDoesNotReboxUnchangedMessages",
         "test/pipeline-diff/system_only_test.go::TestSystemOnlyHistoryFailsBeforeSendingLikePi"
+      ]
+    },
+    {
+      "id": "BF-e973464",
+      "title": "A fused Go extension's `createLocalBashOperations().exec` (and `createLocalPowerShellOperations`) no longer…",
+      "symptom": "A fused Go extension's `createLocalBashOperations().exec` (and `createLocalPowerShellOperations`) no longer fails with \"extension stopped while waiting for builtinTool.localExec response\" when another extension in the same process stops while the command runs; a command past its `timeout` rejects with Pi's `timeout:\u003cseconds\u003e`.",
+      "rootCause": "localShellExec has no Context, so it sent builtinTool.localExec over runningExtension()'s connection: the first running extension in the process. A fused extension shares the process with every other fused extension, so a command with a timeout ended with \"extension stopped while waiting for builtinTool.localExec response\" when that extension stopped while the command ran, where Pi's exec rejects with \"timeout:\u003cseconds\u003e\" and depends on no extension.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A fused Go extension's `createLocalBashOperations().exec` (and `createLocalPowerShellOperations`) no longer fails with \"extension stopped while waiting for builtinTool.localExec response\" when another extension in the same process stops while the command runs; a command past its `timeout` rejects with Pi's `timeout:\u003cseconds\u003e`. The call has no `Context`, so it was sent over the connection of the first running extension in the process, and ended with that extension, whichever made the call. The host now runs the command for a fused extension directly, as it already does for the other helpers that have no `Context`, so the command depends on no extension, as Pi's exec depends on none.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e97346436d",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/local_exec_test.go::TestLocalExecReportsPisTimeoutAndEndsWithADeliveryFailure",
+        "test/extension-conformance/builtin_local_exec_fused_test.go::TestConformance_FusedLocalExecIsNotCarriedByAnotherExtension"
       ]
     },
     {

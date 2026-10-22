@@ -112203,6 +112203,17 @@
       "shapeHash": "sha256:5dd1228400903c25331f6e917df7a93dd8156b34f1701892dde584ff1500342f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/fusepack#managedToolsDir",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/fusepack",
+      "name": "managedToolsDir",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/fusepack#registerFactory",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/fusepack",
       "name": "registerFactory",
@@ -118770,6 +118781,17 @@
       "shapeHash": "sha256:d5b60fb4c5dfad4d0dd5bb3fcf0b7fef525ff31f08f116eb044b275c46bd4b46"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#BuiltinToolExecute",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "BuiltinToolExecute",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, argsJSON []byte, binDir string, peer BuiltinToolPeer) ([]byte, error)"
+      },
+      "shapeHash": "sha256:ed9b00d79de162b06deec29a7e6958d8a6f36f033ff003a7c498c4e25fc66bce"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#BuiltinToolExecuteArgs",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "BuiltinToolExecuteArgs",
@@ -118812,6 +118834,50 @@
         "type": "BuiltinToolOptions"
       },
       "shapeHash": "sha256:eba35973d48428fe6c20016410edf9d52374918d082235b59797973e99130bab"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#BuiltinToolPeer",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "BuiltinToolPeer",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "BuiltinToolPeer"
+      },
+      "shapeHash": "sha256:a63f34a4153ad41f0bfa3e03293694a33c72a212b067b042b83406a0117bd758"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#BuiltinToolPeer.bashOperations",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "BuiltinToolPeer.bashOperations",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(handle string) github.com/MichaelKinsy/PiG/internal/codingagent/tools.BashOperations"
+      },
+      "shapeHash": "sha256:d64bd5fb239af4597479a7ce92fee909fd699d6d3ea35a64433803ade72303be"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#BuiltinToolPeer.callback",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "BuiltinToolPeer.callback",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, handle string, member string, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, error)"
+      },
+      "shapeHash": "sha256:608fd9ce28d9095082e7477dd475ac791f54e7c0e24460766d8aa9ae12a50ed2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#BuiltinToolPeer.update",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "BuiltinToolPeer.update",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, executeID string, result github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) error"
+      },
+      "shapeHash": "sha256:cd0972c7c1e2397a53126079612288914815b86514f194870a6254b8f803838f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallBuiltinToolDefinition",
@@ -122791,9 +122857,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, conn *Conn, call *CallPayload) (result *CallResultPayload, failure error)"
+        "type": "func(ctx context.Context, conn *Conn, call *CallPayload) (*CallResultPayload, error)"
       },
-      "shapeHash": "sha256:6ac78f15456ba745c616e78ad267d76aa4da7b8b370e99041273ef2a12f324f6"
+      "shapeHash": "sha256:3fb7723bcac0ac54523006d93762b9da9cffc1fdcd1576c08d9adba31018379d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.handleBuiltinToolLocalExec",
@@ -125225,6 +125291,17 @@
         "type": "LoadThemeResult"
       },
       "shapeHash": "sha256:f41cef052be9d9f9eae476588e9349137951127f089973c3179af4ca3e79319b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#LocalExec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "LocalExec",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, args BuiltinToolLocalExecArgs, binDir string, onData func([]byte) error) (*int, error)"
+      },
+      "shapeHash": "sha256:5cb90782c14ef808f371af0fbc56d2146bf080d8519056409aba4a09d90944ce"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#LoopTurnArgs",
@@ -131926,6 +132003,17 @@
       "shapeHash": "sha256:681ebf621c9a5d57e607d873c5455f7566b8f953ecd8b6eafe669ac9615027b6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#builtinPeer",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "builtinPeer",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "builtinPeer"
+      },
+      "shapeHash": "sha256:868e53cd13b4cd6d64db71e3fec21203e403387c1b3fc7df0217f0d51f853d21"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#busEmission",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "busEmission",
@@ -132806,6 +132894,50 @@
       "shapeHash": "sha256:d41d62c8551485e5a5c014b41a25b2251566f452813345ad93466da5792091bc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connBuiltinPeer",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connBuiltinPeer",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "connBuiltinPeer"
+      },
+      "shapeHash": "sha256:5b9caf908b08837710ef758acc6f004569a0fed8b3efd2f69d622972a1247b61"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connBuiltinPeer.bashOperations",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connBuiltinPeer.bashOperations",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(handle string) github.com/MichaelKinsy/PiG/internal/codingagent/tools.BashOperations"
+      },
+      "shapeHash": "sha256:d64bd5fb239af4597479a7ce92fee909fd699d6d3ea35a64433803ade72303be"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connBuiltinPeer.callback",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connBuiltinPeer.callback",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, handle string, member string, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, error)"
+      },
+      "shapeHash": "sha256:608fd9ce28d9095082e7477dd475ac791f54e7c0e24460766d8aa9ae12a50ed2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connBuiltinPeer.update",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connBuiltinPeer.update",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, executeID string, result github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) error"
+      },
+      "shapeHash": "sha256:cd0972c7c1e2397a53126079612288914815b86514f194870a6254b8f803838f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connChildSessions",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "connChildSessions",
@@ -133642,6 +133774,28 @@
       "shapeHash": "sha256:a1f0e5abff6dd402f627ad808a05f74d02bec03de766f47ad17fd684b8b07a88"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#directBashOperations",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "directBashOperations",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "directBashOperations"
+      },
+      "shapeHash": "sha256:dc60851a2f5d4b402d3cd1878ed6b01d5d46561db10c7b826befc31ec222a950"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#directBashOperations.Exec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "directBashOperations.Exec",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, command string, cwd string, options github.com/MichaelKinsy/PiG/coding/extension.BashOperationsExecOptions) (github.com/MichaelKinsy/PiG/coding/extension.BashOperationsResult, error)"
+      },
+      "shapeHash": "sha256:4fab246e5b310041caf0c8b0cd5059735a52816ea1d98cef11eaa9c91802444c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#dispatchMark",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "dispatchMark",
@@ -134465,6 +134619,17 @@
         "type": "func(execID string) string"
       },
       "shapeHash": "sha256:9e17844616bcfc06583b872260e66155372946ea0240c1f62b1b1d9267e73f1f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#executeBuiltinTool",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "executeBuiltinTool",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, args BuiltinToolExecuteArgs, binDir string, peer builtinPeer) (result github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, failure error)"
+      },
+      "shapeHash": "sha256:724719f41b0a4beba048233612d8784df5d774cd95bd28fa040d6f723648acdd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expandableComponent",
@@ -176553,6 +176718,17 @@
       "shapeHash": "sha256:eaf7e062c2ee8ec5705f425a33f09e49f53cc76f77b0afe66c2f575dd3918762"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#BuiltinToolPeer",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "BuiltinToolPeer",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "BuiltinToolPeer"
+      },
+      "shapeHash": "sha256:a63f34a4153ad41f0bfa3e03293694a33c72a212b067b042b83406a0117bd758"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#BundledFiles",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "BundledFiles",
@@ -192305,6 +192481,17 @@
       "shapeHash": "sha256:0b45a89b626949f1fc577a0a78089aadbecc34a794f2f3f0d933d2cb3144d112"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinExecuteCall",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "builtinExecuteCall",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "builtinExecuteCall"
+      },
+      "shapeHash": "sha256:f1fb8e26896dc09dbde07cfef89a7495eeb47f15071b7f7166084307b9fb1967"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinRegistry",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "builtinRegistry",
@@ -192347,6 +192534,17 @@
         "type": "func(ctx *Context, toolCallID string, params any, signal context.Context, forwardSignal bool, onUpdate func(AgentToolResult)) (AgentToolResult, error)"
       },
       "shapeHash": "sha256:495b580a4df7d9a43104ccbd769fca5c449905902f5d7cf2cc96eb5afe4c498e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinSpec.executeDirect",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "builtinSpec.executeDirect",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(hook *HostHelpers, toolCallID string, rawParams []byte, signal context.Context, onUpdate func(AgentToolResult)) (AgentToolResult, error)"
+      },
+      "shapeHash": "sha256:2626848a069f1f349aacdc3e453233de3d9d32d127955f6db5641490cd81834e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinSpec.setOperations",
@@ -195374,6 +195572,17 @@
       "shapeHash": "sha256:eaae9f093dbbe0aa8279bd6fd58d921a358dac7ca15be525a159b50f6e0c12a1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#invokeBuiltinCallback",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "invokeBuiltinCallback",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(callbacks *builtinCallbacks, member string, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (result any, failure error)"
+      },
+      "shapeHash": "sha256:d53a5724074ec37e95298ad5dd4abe6a7f6f398e5c46d86ef38513e6f7da912d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#isArrayIndex",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "isArrayIndex",
@@ -195856,6 +196065,28 @@
         "type": "func(name *string) (encoding/json.RawMessage, error)"
       },
       "shapeHash": "sha256:6cdd9e62111a33e1746a7a0e33ad40072d2eefa5bd980c11765a505e7ff329aa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#localExecCall",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "localExecCall",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "localExecCall"
+      },
+      "shapeHash": "sha256:011e18c2e6677e572d6d000619d68a71d3cc6e5c810c5bbf6102d125dbb51470"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#localExecReply",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "localExecReply",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "localExecReply"
+      },
+      "shapeHash": "sha256:c00b112a31cbff974f38eb79ea68c61acffd08e2be704f86e0cc584c5150cf13"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#localOption",

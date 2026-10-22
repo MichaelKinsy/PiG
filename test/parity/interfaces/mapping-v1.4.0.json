@@ -134080,7 +134080,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host_builtin_tool.go#Host.handleBuiltinToolLocalExec"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#LocalExec"
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
@@ -134103,7 +134103,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host_builtin_tool.go#Host.handleBuiltinToolLocalExec"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#LocalExec"
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",

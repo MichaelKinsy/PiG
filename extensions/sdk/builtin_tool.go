@@ -571,6 +571,11 @@ func (s builtinSpec) execute(ctx *Context, toolCallID string, params any, signal
 	}
 	if ext == nil {
 		ctx = nil
+		// A fused extension shares the host's process, so the host runs the tool for it directly: a call without a Context has no connection of its own, and one
+		// that rode the first running extension's would end with that extension, whichever made the call.
+		if hook := installedHelpers(); hook != nil && hook.BuiltinToolExecute != nil {
+			return s.executeDirect(hook, toolCallID, rawParams, signal, onUpdate)
+		}
 		if ext, err = runningExtension(); err != nil {
 			return AgentToolResult{}, err
 		}
@@ -606,18 +611,7 @@ func (s builtinSpec) execute(ctx *Context, toolCallID string, params any, signal
 			}()
 		}
 	}
-	call := struct {
-		Name         string              `json:"name"`
-		Cwd          string              `json:"cwd"`
-		Options      *builtinWireOptions `json:"options,omitempty"`
-		ToolCallID   string              `json:"toolCallId"`
-		Params       json.RawMessage     `json:"params"`
-		ExecuteID    string              `json:"executeId"`
-		WantsUpdates bool                `json:"wantsUpdates,omitempty"`
-		Context      bool                `json:"context,omitempty"`
-		Callbacks    string              `json:"callbacks,omitempty"`
-		Aborted      bool                `json:"aborted,omitempty"`
-	}{s.name, s.cwd, &s.options, toolCallID, rawParams, executeID, onUpdate != nil, ctx != nil, handle, signal != nil && signal.Err() != nil}
+	call := builtinExecuteCall{s.name, s.cwd, &s.options, toolCallID, rawParams, executeID, onUpdate != nil, ctx != nil, handle, signal != nil && signal.Err() != nil}
 
 	// A signal other than the request's detaches the call from the request, and aborts it through a second call ordered after the call's frame.
 	detached := !forwardSignal
@@ -666,6 +660,84 @@ func (s builtinSpec) execute(ctx *Context, toolCallID string, params any, signal
 	return out, nil
 }
 
+// builtinExecuteCall is the arguments of builtinTool.execute, and the JSON [HostHelpers.BuiltinToolExecute] takes.
+type builtinExecuteCall struct {
+	Name         string              `json:"name"`
+	Cwd          string              `json:"cwd"`
+	Options      *builtinWireOptions `json:"options,omitempty"`
+	ToolCallID   string              `json:"toolCallId"`
+	Params       json.RawMessage     `json:"params"`
+	ExecuteID    string              `json:"executeId"`
+	WantsUpdates bool                `json:"wantsUpdates,omitempty"`
+	Context      bool                `json:"context,omitempty"`
+	Callbacks    string              `json:"callbacks,omitempty"`
+	Aborted      bool                `json:"aborted,omitempty"`
+}
+
+// executeDirect is execute of a call without a Context for a fused extension: the host runs the tool in this process through hook, and reaches the functions of
+// the options and onUpdate through peer, which are in this process too. The tool ends with signal.
+func (s builtinSpec) executeDirect(hook *HostHelpers, toolCallID string, rawParams []byte, signal context.Context, onUpdate func(AgentToolResult)) (AgentToolResult, error) {
+	var handle string
+	if s.callbacks != nil {
+		var release func()
+		handle, release = registerBuiltinCallbacks(s.callbacks)
+		defer release()
+	}
+	call := builtinExecuteCall{Name: s.name, Cwd: s.cwd, Options: &s.options, ToolCallID: toolCallID, Params: rawParams, WantsUpdates: onUpdate != nil, Callbacks: handle, Aborted: signal != nil && signal.Err() != nil}
+	raw, err := json.MarshalJS(call)
+	if err != nil {
+		return AgentToolResult{}, fmt.Errorf("encode arguments of %s: %w", s.name, err)
+	}
+	if signal == nil {
+		signal = context.Background()
+	}
+	peer := BuiltinToolPeer{
+		Callback: func(_ context.Context, _, member string, args []byte) ([]byte, error) {
+			result, err := invokeBuiltinCallback(s.callbacks, member, args)
+			if err != nil || result == nil {
+				return nil, err
+			}
+			return json.MarshalJS(result)
+		},
+		Update: func(_ context.Context, _ string, result []byte) (failure error) {
+			if onUpdate == nil {
+				return nil
+			}
+			var partial AgentToolResult
+			if err := json.Unmarshal(result, &partial); err != nil {
+				return fmt.Errorf("decode %s: %w", requestExecuteToolUpdate, err)
+			}
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					if err, ok := recovered.(error); ok {
+						failure = err
+					} else {
+						failure = fmt.Errorf("%v", recovered)
+					}
+				}
+			}()
+			onUpdate(partial)
+			return nil
+		},
+		Exec: func(ctx context.Context, _, command, cwd string, timeout *float64, env map[string]string, onData func([]byte)) (*int, error) {
+			if s.callbacks == nil || s.callbacks.bash == nil {
+				return nil, errors.New("unknown bash operations")
+			}
+			result, err := s.callbacks.bash.Exec(command, cwd, BashExecOptions{OnData: onData, Signal: ctx, Timeout: timeout, Env: env})
+			return result.ExitCode, err
+		},
+	}
+	encoded, err := hook.BuiltinToolExecute(signal, raw, peer)
+	if err != nil {
+		return AgentToolResult{}, err
+	}
+	var out AgentToolResult
+	if err := json.Unmarshal(encoded, &out); err != nil {
+		return AgentToolResult{}, fmt.Errorf("host reply to builtinTool.execute: %w", err)
+	}
+	return out, nil
+}
+
 // dispatchBuiltinToolCallback runs one function of a call's options for the host's requestBuiltinToolCallback.
 func (e *Extension) dispatchBuiltinToolCallback(args json.RawMessage) (result any, failure error) {
 	var request struct {
@@ -682,7 +754,14 @@ func (e *Extension) dispatchBuiltinToolCallback(args json.RawMessage) (result an
 	if callbacks == nil {
 		return nil, fmt.Errorf("unknown built-in tool callbacks: %s", request.Handle)
 	}
-	// A throw in the callback is its error.
+	return invokeBuiltinCallback(callbacks, request.Member, request.Args)
+}
+
+// invokeBuiltinCallback runs one function of a call's options. A throw in the callback is its error.
+func invokeBuiltinCallback(callbacks *builtinCallbacks, member string, args json.RawMessage) (result any, failure error) {
+	if callbacks == nil {
+		return nil, errors.New("unknown built-in tool callbacks")
+	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = nil
@@ -693,7 +772,7 @@ func (e *Extension) dispatchBuiltinToolCallback(args json.RawMessage) (result an
 			}
 		}
 	}()
-	return callbacks.call(request.Member, request.Args)
+	return callbacks.call(member, args)
 }
 
 type pathArg struct {
@@ -840,7 +919,7 @@ type LocalBashOperationsOptions struct {
 // to rewrite commands while it keeps Pi's local shell behavior (for example in a user_bash handler or a bash tool's operations). The command runs on the
 // host; Exec streams its output to OnData in order and returns when the command ends, with Pi's `{ exitCode }`, or with the error Pi's exec rejects with
 // ("aborted" when Signal was cancelled, "timeout:<seconds>" when Timeout elapsed). Exec runs over the connection of the running extension, so it needs
-// [Extension.Run] to have started.
+// [Extension.Run] to have started; a fused extension's Exec runs the command in the host's own process through [HostHelpers.LocalExec] and needs no connection.
 func CreateLocalBashOperations(options *LocalBashOperationsOptions) BashOperations {
 	var shellPath string
 	if options != nil {
@@ -858,19 +937,27 @@ func CreateLocalPowerShellOperations() PowerShellOperations {
 	}}
 }
 
+// localExecCall is the arguments of builtinTool.localExec, and the JSON [HostHelpers.LocalExec] takes.
+type localExecCall struct {
+	Shell     string             `json:"shell"`
+	ShellPath string             `json:"shellPath,omitempty"`
+	Command   string             `json:"command"`
+	Cwd       string             `json:"cwd"`
+	Timeout   *float64           `json:"timeout,omitempty"`
+	Env       *map[string]string `json:"env,omitempty"`
+	ExecuteID string             `json:"executeId"`
+	Aborted   bool               `json:"aborted,omitempty"`
+}
+
+// localExecReply is Pi's `{ exitCode }`, the reply of builtinTool.localExec.
+type localExecReply struct {
+	ExitCode *int `json:"exitCode"`
+}
+
 func localShellExec(shell, shellPath, command, cwd string, o BashExecOptions) (BashExecResult, error) {
-	ext, err := runningExtension()
-	if err != nil {
-		return BashExecResult{}, err
-	}
-	executeID := fmt.Sprintf("execute-%d", ext.executeSeq.Add(1))
 	var dataErr error
 	var dataMu sync.Mutex
-	builtinRegistry.mu.Lock()
-	if builtinRegistry.execData == nil {
-		builtinRegistry.execData = map[string]func([]byte) error{}
-	}
-	builtinRegistry.execData[executeID] = func(data []byte) (failure error) {
+	deliver := func(data []byte) (failure error) {
 		dataMu.Lock()
 		defer dataMu.Unlock()
 		if o.OnData == nil || dataErr != nil {
@@ -890,25 +977,54 @@ func localShellExec(shell, shellPath, command, cwd string, o BashExecOptions) (B
 		o.OnData(data)
 		return nil
 	}
+	call := localExecCall{Shell: shell, ShellPath: shellPath, Command: command, Cwd: cwd, Timeout: o.Timeout, Aborted: o.Signal != nil && o.Signal.Err() != nil}
+	if o.Env != nil {
+		call.Env = &o.Env
+	}
+	// A fused extension shares the host's process, so the host runs the command for it directly, as Pi's exec runs it in the extension's own process. The call
+	// has no Context, so no connection is its own: one that rode the first running extension's would end with that extension, whichever the caller is.
+	if hook := installedHelpers(); hook != nil && hook.LocalExec != nil {
+		raw, err := json.MarshalJS(call)
+		if err != nil {
+			return BashExecResult{}, err
+		}
+		signal := o.Signal
+		if signal == nil {
+			signal = context.Background()
+		}
+		encoded, execErr := hook.LocalExec(signal, raw, deliver)
+		dataMu.Lock()
+		failed := dataErr
+		dataMu.Unlock()
+		if failed != nil {
+			return BashExecResult{}, failed
+		}
+		if execErr != nil {
+			return BashExecResult{}, execErr
+		}
+		var reply localExecReply
+		if err := json.Unmarshal(encoded, &reply); err != nil {
+			return BashExecResult{}, fmt.Errorf("host reply to builtinTool.localExec: %w", err)
+		}
+		return BashExecResult(reply), nil
+	}
+	ext, err := runningExtension()
+	if err != nil {
+		return BashExecResult{}, err
+	}
+	executeID := fmt.Sprintf("execute-%d", ext.executeSeq.Add(1))
+	call.ExecuteID = executeID
+	builtinRegistry.mu.Lock()
+	if builtinRegistry.execData == nil {
+		builtinRegistry.execData = map[string]func([]byte) error{}
+	}
+	builtinRegistry.execData[executeID] = deliver
 	builtinRegistry.mu.Unlock()
 	defer func() {
 		builtinRegistry.mu.Lock()
 		delete(builtinRegistry.execData, executeID)
 		builtinRegistry.mu.Unlock()
 	}()
-	call := struct {
-		Shell     string             `json:"shell"`
-		ShellPath string             `json:"shellPath,omitempty"`
-		Command   string             `json:"command"`
-		Cwd       string             `json:"cwd"`
-		Timeout   *float64           `json:"timeout,omitempty"`
-		Env       *map[string]string `json:"env,omitempty"`
-		ExecuteID string             `json:"executeId"`
-		Aborted   bool               `json:"aborted,omitempty"`
-	}{shell, shellPath, command, cwd, o.Timeout, nil, executeID, o.Signal != nil && o.Signal.Err() != nil}
-	if o.Env != nil {
-		call.Env = &o.Env
-	}
 	stop := make(chan struct{})
 	var watcher sync.WaitGroup
 	pending, err := ext.conn.beginCallFor("", callBuiltinToolLocalExec, call)
@@ -944,13 +1060,11 @@ func localShellExec(shell, shellPath, command, cwd string, o BashExecOptions) (B
 	if result == nil {
 		return BashExecResult{}, errors.New("host returned no result for builtinTool.localExec")
 	}
-	var reply struct {
-		ExitCode *int `json:"exitCode"`
-	}
+	var reply localExecReply
 	if err := json.Unmarshal(result.Result, &reply); err != nil {
 		return BashExecResult{}, fmt.Errorf("host reply to builtinTool.localExec: %w", err)
 	}
-	return BashExecResult{ExitCode: reply.ExitCode}, nil
+	return BashExecResult(reply), nil
 }
 
 // dispatchBuiltinExecData delivers one output chunk of a local execution to its OnData, and returns what the host waits for: nil, or OnData's throw.
