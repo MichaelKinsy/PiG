@@ -33,8 +33,12 @@ import { errorMessage, reviveError, SessionFailed, StorageRequestError } from ".
 import { contained } from "./session/session.ts"
 import { structuredOutputError } from "./structured.ts"
 import { validateToolArguments } from "@earendil-works/pi-ai/utils/validation"
+import { type ClientIdentity, mergeClientIdentity, PI_ATTRIBUTION, withClientIdentity } from "@earendil-works/pi-ai/utils/identity"
 
 const errorText = errorMessage
+
+/** Request identity of a Harness's model requests: pi-ai's defaults with provider attribution to pi (harness.ts DEFAULT_HARNESS_IDENTITY). */
+export const DEFAULT_HARNESS_IDENTITY: ClientIdentity = { attribution: PI_ATTRIBUTION }
 
 export const ROOT_CONVERSATION_ID = 1
 const decoder = new TextDecoder()
@@ -56,6 +60,12 @@ export function useStorageProfile(map: Partial<Record<StorageProfile, StoragePro
 
 export interface FacadeOptions {
   models: ModelsLike
+  /**
+   * How model requests identify the app to providers, merged field by field over `DEFAULT_HARNESS_IDENTITY` (provider attribution to pi).
+   * It applies to every request through the Harness's models, including hooks and tools, and overrides the identity the `models` was
+   * created with; a request's own `identity` overrides it. Pass `{ attribution: null }` to send no attribution headers (types.ts HarnessOptions.identity).
+   */
+  identity?: ClientIdentity
   registry: HostRegistrySource
   settings?: any
   env?: EffectRuntime["env"]
@@ -150,6 +160,8 @@ export class Harness {
     // harness.ts constructor: `onReport` cannot fail what reports to it, and a clock that throws falls back to Date.now (reported once).
     const reported = safeReport(rawOptions.onReport)
     const options: FacadeOptions = { ...rawOptions, onReport: reported, now: safeNow(rawOptions.now, reported) }
+    // harness.ts currentModels: a Harness reaches its models through pi-ai's withClientIdentity, so each request carries `identity` as its last option. A Session has no models.
+    if (options.mode !== "session") options.models = withClientIdentity(options.models as never, mergeClientIdentity(DEFAULT_HARNESS_IDENTITY, options.identity) ?? DEFAULT_HARNESS_IDENTITY) as never
     // A Session has no built-in tasks: only a Harness needs them in its registry.
     const missing = options.mode === "session" ? [] : ["pi.generation", "pi.tool", "pi.compaction"].filter(name => options.registry.snapshot().task(name) === undefined)
     if (missing.length > 0) throw new Error(`Registry lacks built-in tasks ${missing.join(", ")}; create it with createRegistry()`)

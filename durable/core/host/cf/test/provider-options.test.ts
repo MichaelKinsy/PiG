@@ -1,5 +1,5 @@
 // A provider receives the stream options Pi Durable's generation builds, in Pi's key order: generation.ts builds
-// `{ ...streamOptions, signal: runtime.signal, sessionId, ...(reasoning) }`, so `signal` comes before `sessionId`. Key order is
+// `{ ...streamOptions, signal: runtime.signal, sessionId, ...(reasoning) }`, so `signal` comes before `sessionId`; the Harness's models (withClientIdentity) then add `identity` last. Key order is
 // observable to a provider that enumerates, serializes or spreads its options into a request.
 import assert from "node:assert/strict"
 import { readFileSync, rmSync } from "node:fs"
