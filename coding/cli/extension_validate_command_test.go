@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -806,7 +807,7 @@ cp -R "$VALIDATE_FIXTURE"/. "$root/node_modules/sdk-fixture/"
 	if valid, out := runValidateOnlyJSON(t, "npm:sdk-fixture@1.0.0"); !valid {
 		t.Fatalf("uninstalled npm source reported invalid: %s", out)
 	}
-	if after, err := os.ReadFile(settingsPath); err != nil || string(after) != string(settings) {
+	if after, err := os.ReadFile(settingsPath); err != nil || !bytes.Equal(after, settings) {
 		t.Fatalf("settings changed: %q, %v", after, err)
 	}
 	if _, err := os.Stat(filepath.Join(agentDir, "npm")); !os.IsNotExist(err) {

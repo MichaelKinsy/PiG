@@ -215,7 +215,7 @@ func validateResolvedInstallSources(cwd string, sm *codingagent.SettingsManager,
 			if err != nil {
 				return nil, err
 			}
-			defer os.RemoveAll(scratch)
+			defer func() { _ = os.RemoveAll(scratch) }()
 			// git and npm write progress to stdout; keep it off the report.
 			if !codingagent.IsStdoutTakenOver() {
 				if err := codingagent.TakeOverStdout(); err == nil {
