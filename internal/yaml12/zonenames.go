@@ -13,6 +13,8 @@ import (
 )
 
 // zoneTimeline is the zone name V8 prints for a zone from 1970 to 2038. The zone prints names[0] at the epoch and the other name after the first change; changes holds the change instants, in seconds, as unsigned varint deltas in standard base64.
+//
+// The table is the qualified Node's (.node-version, 24.22.1; Node 26.12.1 generates the same table), because ICU's names move between Node releases. ICU's TimeZone::getDisplayName names a zone by its CLDR metazone at the wall-clock instant of the running process. The tz 2026e data that Node 24.22 bundles (Node 24.19.0 has tz 2026b) maps Africa/Casablanca and Africa/El_Aaiun to Europe_Western again from 2026-09-20 01:00 UTC, when Morocco returned to permanent UTC (tz 2026c): from that instant Node 24.22.1 prints "Western European Standard Time" and "Western European Summer Time" for them, and before it, like Node 24.19.0 at any time, "GMT+00:00" and "GMT+01:00". The table holds the names printed since that instant. The same tz data makes EST5EDT, CST6CDT, MST7MDT and PST8PDT zones of their own (tz 2026d), which ICU names by offset ("GMT-05:00") instead of as America/New_York's and its siblings, and moves change instants of America/Bogota, Edmonton, Inuvik, Rainy_River, Winnipeg, Yellowknife, Asia/Tehran and their Canada/ and Iran aliases. Node 22.19.0 (ICU 77.1, CLDR 47, tz 2025b) differs again: it prints "West Africa Standard Time" where ICU 78.3 prints "West Africa Time", and "GMT" for Casablanca.
 type zoneTimeline struct {
 	id      string
 	names   []string
