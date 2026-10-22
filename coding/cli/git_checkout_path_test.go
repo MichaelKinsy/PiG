@@ -2,6 +2,7 @@ package cli
 
 import (
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -99,6 +100,30 @@ func TestGitCloneRepoPerPlatform(t *testing.T) {
 	} {
 		if got := packagemanager.GitCloneRepo(tc.goos, tc.repo); got != tc.want {
 			t.Errorf("gitCloneRepo(%s, %q) = %q, want %q", tc.goos, tc.repo, got, tc.want)
+		}
+	}
+}
+
+// A local file:// source's checkout path embeds the whole source path and can
+// pass Windows' MAX_PATH, so the Windows clone enables core.longpaths (for the
+// clone's own directory creation and persisted in the repository); elsewhere
+// the command is the plain clone.
+func TestGitCloneArgsPerPlatform(t *testing.T) {
+	long := `C:\agent\git\localhost\C\` + strings.Repeat(`Users\x\`, 40)
+	for _, tc := range []struct {
+		goos string
+		want []string
+	}{
+		{"windows", []string{"-c", "core.longpaths=true", "clone", "-c", "core.longpaths=true", "file:///C:/src/piglet", long}},
+		{"linux", []string{"clone", "file://localhost/src/piglet", long}},
+		{"darwin", []string{"clone", "file://localhost/src/piglet", long}},
+	} {
+		repo := "file://localhost/src/piglet"
+		if tc.goos == "windows" {
+			repo = "file://localhost/C:/src/piglet"
+		}
+		if got := packagemanager.GitCloneArgs(tc.goos, repo, long); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("GitCloneArgs(%s) = %q, want %q", tc.goos, got, tc.want)
 		}
 	}
 }

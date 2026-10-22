@@ -497,7 +497,7 @@ func InstallGitCheckout(sm *codingagent.SettingsManager, ref sourceref.Ref, chec
 	if !strings.Contains(repo, "://") && !strings.HasPrefix(repo, "git@") {
 		repo = "https://" + repo
 	}
-	if err := RunPackageProcess("", "git", "clone", GitCloneRepo(runtime.GOOS, repo), checkout); err != nil {
+	if err := RunPackageProcess("", "git", GitCloneArgs(runtime.GOOS, repo, checkout)...); err != nil {
 		return err
 	}
 	if ref.GitRef != "" {
@@ -558,6 +558,20 @@ func GitCheckoutRelative(goos, root string, ref sourceref.Ref) (string, error) {
 		return "", err
 	}
 	return filepath.Rel(absoluteRoot, resolved)
+}
+
+// GitCloneArgs is the git command line that clones repo into checkout. Windows
+// limits a path to MAX_PATH (260) unless git is told otherwise, and a local
+// file:// source's checkout directory embeds the whole source path, so there the
+// clone enables core.longpaths, both for the clone itself (leading directories)
+// and in the new repository's config for the later checkout, fetch and reset.
+// pig additive (D18): upstream rejects file:// sources.
+func GitCloneArgs(goos, repo, checkout string) []string {
+	args := []string{"clone", GitCloneRepo(goos, repo), checkout}
+	if goos == "windows" {
+		return append([]string{"-c", "core.longpaths=true", "clone", "-c", "core.longpaths=true"}, args[1:]...)
+	}
+	return args
 }
 
 // GitCloneRepo is the URL git clones for repo. Git for Windows reads
