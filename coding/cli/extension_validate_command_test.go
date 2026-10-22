@@ -681,6 +681,15 @@ func Extension() *sdk.Extension {
 	}
 }
 
+func validateOnlySDKFixture(t *testing.T) string {
+	t.Helper()
+	fixture, err := filepath.Abs(filepath.Join("..", "extension", "host", "subprocess", "testdata", "sdk-fixture"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fixture
+}
+
 func validateOnlyFixtureEnv(t *testing.T) (home, agentDir string) {
 	t.Helper()
 	home = shortTempDir(t)
@@ -693,9 +702,8 @@ func validateOnlyFixtureEnv(t *testing.T) (home, agentDir string) {
 	return home, agentDir
 }
 
-func validateOnlyGitFixture(t *testing.T) string {
+func validateOnlyGitFixture(t *testing.T, fixture string) string {
 	t.Helper()
-	fixture := filepath.Join("..", "extension", "host", "subprocess", "testdata", "sdk-fixture")
 	work := filepath.Join(t.TempDir(), "work")
 	if err := os.CopyFS(work, os.DirFS(fixture)); err != nil {
 		t.Fatal(err)
@@ -734,8 +742,9 @@ func TestInstallValidateOnlyValidatesUninstalledGitSourceInScratchDir(t *testing
 	if testing.Short() {
 		t.Skip("skipping extension build in short mode")
 	}
+	fixture := validateOnlySDKFixture(t)
 	_, agentDir := validateOnlyFixtureEnv(t)
-	source := validateOnlyGitFixture(t)
+	source := validateOnlyGitFixture(t, fixture)
 	if valid, out := runValidateOnlyJSON(t, source); !valid {
 		t.Fatalf("uninstalled git source reported invalid: %s", out)
 	}
@@ -750,8 +759,9 @@ func TestInstallValidateOnlyValidatesInstalledGitSource(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping extension build in short mode")
 	}
+	fixture := validateOnlySDKFixture(t)
 	_, agentDir := validateOnlyFixtureEnv(t)
-	source := validateOnlyGitFixture(t)
+	source := validateOnlyGitFixture(t, fixture)
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -769,11 +779,8 @@ func TestInstallValidateOnlyValidatesUninstalledNPMSourceInScratchDir(t *testing
 	if testing.Short() {
 		t.Skip("skipping extension build in short mode")
 	}
+	fixture := validateOnlySDKFixture(t)
 	_, agentDir := validateOnlyFixtureEnv(t)
-	fixture, err := filepath.Abs(filepath.Join("..", "extension", "host", "subprocess", "testdata", "sdk-fixture"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	t.Setenv("VALIDATE_FIXTURE", fixture)
 	npm := writeStubScript(t, filepath.Join(t.TempDir(), "npm"), `#!/bin/sh
 root=""
