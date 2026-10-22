@@ -1,4 +1,0 @@
-### Changed
-
-- The `pig` binary is 3.7 MB smaller than before (linux/amd64: 70,348,960 to 66,601,120 bytes, the same toolchain and flags; linux/arm64 65,929,376 to 62,193,824, darwin/arm64 67,663,426 to 63,880,962, windows/amd64 72,019,456 to 68,270,592). The embedded Node runtime no longer carries source maps, TypeScript declaration files, the shim vendoring manifest, the documentation screenshots or the Node interactive mode's `clankolas.png` (nothing at run time reads them), which takes its archive from 7,696,169 to 4,581,071 bytes. Extensions, Pi's documentation and examples, and every run-time path are unchanged. <!-- fix: 1177f5f1 -->
-- The Go and Rust extension SDK bundles embedded in `pig` no longer include their own test files (the Rust bundle's `src/*tests.rs` modules, which are `#[cfg(test)]`, and the Go `_test.go` files), 630,784 bytes less in the binary. The bundles an extension builds against are otherwise the same. <!-- fix: ade09fc2 -->

@@ -1,3 +1,0 @@
-### Fixed
-
-- CI: the scoped-model selector parity scenarios no longer capture the selector before the catalog refresh settles. Both binaries show "Refreshing model catalogs…" until `refreshModelCatalogs` settles and "Model catalogs refreshed." after it. `13-scoped-models-fuzzy-filter` finished at "> mtw", and `08-scoped-models-selector` and `13-scoped-google-catalog` waited a fixed two seconds, so under load a capture could hold either binary's refreshing line (6 of 25 runs of the first and 21 of 50 of the other two failed on `main` with 250 busy loops); each step now waits for the status on the visible screen. <!-- fix: 895c0830 -->

@@ -1,8 +1,0 @@
-### Changed
-
-- The Go, Rust and Python extension SDKs' `resolveTranscriptTools` (`sdk.ResolveTranscriptTools`, `resolve_transcript_tools`) takes pi-ai's `TranscriptToolSupport` (`"none"`, `"additions"` or `"changes"`; Go has `sdk.TranscriptToolSupportNone`, `TranscriptToolSupportAdditions` and `TranscriptToolSupportChanges`, Rust `TranscriptToolSupport`) where it took a boolean, and reports `foldedSystemMessages` (Go `FoldedSystemMessages`, Rust `folded_system_messages`), the number of leading system messages whose tool changes the top-level list already holds, where it reported `anchorsAdditions`. A caller that passed `true` passes `"additions"`, and one that passed `false` passes `"none"`. Carried forward from Pi 1.4.0 (`packages/ai/src/utils/transcript.ts`).
-
-### Fixed
-
-- The Go, Rust and Python extension SDKs' `isContextOverflow` treats an HTTP 413 error as a context overflow whatever the provider or the body says: a failed message that begins with `413` (then a space, a colon or the end) or with `<provider> API error (413):`. Carried forward from Pi 1.4.0 (`packages/ai/src/utils/overflow.ts`). <!-- fix: d7df8b0c4d -->
-- The Go, Rust and Python extension SDKs' `isRetryableAssistantError` retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, retries on `stream disconnected before completion`, and does not retry a ChatGPT Business workspace usage-limit error (`subscription_sharing_workplace_individual_usage_limit_exceeded`). Carried forward from Pi 6e491cfa, 29057ece and cedefc53. <!-- fix: d7df8b0c4d -->

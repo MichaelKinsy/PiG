@@ -1,3 +1,0 @@
-### Changed
-
-- A long session on the Anthropic Messages and OpenAI Completions APIs spends less CPU building each request. The request re-sends the whole conversation, and every message in it was encoded again on every turn; a message is now encoded once and its bytes are written where it goes, found by what it holds (so an edited, replaced or re-converted message is encoded again), and the request body is the same. In an RPC session of one tool call and reply per turn (linux/arm64), the median turn CPU is 3.33 ms at 200 turns against 3.93 ms before (A/A 4.03 ms) and 3.27 ms at 1000 turns against 4.18 ms (A/A 4.17 ms); at 20 turns it is unchanged (2.44 ms against 2.47 ms, inside the run-to-run spread). Peak memory at 1000 turns is 83.1 MiB against 81.2 MiB.
