@@ -12,8 +12,9 @@ Read these files before adding or changing extension behavior:
 6. `test/extension-conformance/conformance_test.go`: cross-SDK behavior gate.
 7. `test/extension-conformance/sdkscenarios/`: the scenario table. A scenario is data: the extension every SDK's scenario driver (`testdata/scenario-driver*`) registers, the host steps `TestSDKScenarios` runs against the real host, and the observation every SDK must produce. Add a capability as a scenario here, not as a copy per SDK. A row an SDK fails today goes in the scenario's `Red` map with the owner of the fix and the observation the SDK produces today (`Got`). `make test-sdk-conformance` runs the table. A red row must produce exactly its `Got`, and the entry must be deleted when the row passes.
 8. `docs/extension-sdk-consistency.md`: for every Pi extension API member and event, whether each SDK has it and whether a conformance fixture of that SDK reaches it. A member an SDK has and no fixture reaches is a hole: it needs an entry in `test/parity/sdk-conformance-gaps.toml` with an owner and the row that closes it, and `go run ./test/parity/cmd/sdksurface` fails on an unlisted hole and on an entry whose hole closed. Close a hole with a scenario row, not a per-SDK test.
-9. `docs/performance/extension-ipc.md`: the wire's framing, queue and stderr guarantees, the benchmarks, the open-loop round-trip test and the soak test (`TestExtensionSoak`, leak and latency budgets) with the commands that run them.
-10. `examples/extensions/`: one runnable example per SDK (`go-factory`, `rust-factory`, `python-factory`, `node-factory`) and `plan-mode`. `TestExamplesRunThroughTheHost` loads each example into a real host and calls its tool.
+9. `docs/extension-sdk-exports.md`: the disposition, per runtime, of every runtime export and class member of the packages Pi serves to extensions (`pi-tui` helpers, `createAgentSession`, `StringEnum`, ...). A `gap:<lane>` cell is an export a Node extension can import that this SDK cannot yet offer; `test/parity/sdk-exports.toml` names the lane that owns it. Check it before you assume an import has a native equivalent.
+10. `docs/performance/extension-ipc.md`: the wire's framing, queue and stderr guarantees, the benchmarks, the open-loop round-trip test and the soak test (`TestExtensionSoak`, leak and latency budgets) with the commands that run them.
+11. `examples/extensions/`: one runnable example per SDK (`go-factory`, `rust-factory`, `python-factory`, `node-factory`) and `plan-mode`. `TestExamplesRunThroughTheHost` loads each example into a real host and calls its tool.
 
 ## Hard rules
 
@@ -83,7 +84,7 @@ ext.OnEvent("before_agent_start", func(_ sdk.Context, data map[string]any) (any,
 })
 ```
 
-Node and Python handlers edit the section object or dictionary. Rust handlers edit the ordered JSON value and can use `on_event_result` to return an error. Native Go reference handlers use `extension.BeforeAgentStartOptions(ctx)` to access the shared per-run options and mutate its `Sections`, an `*ai.OrderedSections`. `BeforeAgentStartEvent.SystemPromptOptions` remains a value for source compatibility; assign collection replacements through the accessor. This transport carries section values, not cross-process object aliases.
+Node and Python handlers edit the section object or dictionary. Rust handlers register with `Extension::on_before_agent_start` and edit the ordered JSON value with `event.edit_system_prompt_options(|options| ...)`, returning an `Err` to report an error. Native Go reference handlers use `extension.BeforeAgentStartOptions(ctx)` to access the shared per-run options and mutate its `Sections`, an `*ai.OrderedSections`. `BeforeAgentStartEvent.SystemPromptOptions` remains a value for source compatibility; assign collection replacements through the accessor. This transport carries section values, not cross-process object aliases.
 
 `context` handlers: Pi keeps every system message in place when a handler returns the conversation it received (the same message objects, edited or not) and replaces them with one leading system message when it returns anything else. Node, Python and Go decide this by object identity. A Rust handler holds values, so it states it: return `None` for a conversation left as received, return `pig_sdk::context_unchanged()` after editing messages in place, and any list it returns, even an equal one, is a replacement.
 
@@ -95,7 +96,7 @@ In a `before_agent_start` handler, `event.systemPrompt` and `ctx.getSystemPrompt
 - Python reads `data["systemPrompt"]` and `ctx.get_system_prompt()`.
 - Go reads `data["systemPrompt"].(*sdk.SystemPrompt).Get()` and `ctx.GetSystemPrompt()`. A Go map cannot run a getter, so the value is an `*sdk.SystemPrompt`, not a string; it encodes as the current prompt string.
 - A host-process Go extension reads `evt.SystemPrompt.Get()` and `extension.FromContext(ctx).GetSystemPrompt()`, and edits the shared options through `extension.BeforeAgentStartOptions(ctx)`. `BeforeAgentStartEvent.SystemPrompt` is an `*extension.SystemPrompt`, not a string.
-- Rust reads `ctx.current_system_prompt(data)` for both. The handler holds `data` mutably, so `ctx` cannot read it: `ctx.get_system_prompt()` returns the prompt last rendered, for the options the handler received or those `current_system_prompt` last read.
+- Rust reads `event.system_prompt()` and `ctx.get_system_prompt()`. A Rust handler borrows its event exclusively, so `Extension::on_before_agent_start` hands it a `BeforeAgentStartEvent` with no `data` to edit: `event.payload()` is what the host sent without `systemPrompt` and `systemPromptOptions`, `event.system_prompt_options()` copies the shared options, and `event.set_system_prompt_options(options)` and `event.edit_system_prompt_options(|options| ...)` write them. The event and the context share one cell, so a `ctx.get_system_prompt()` after an edit renders the edit, and `event.snapshot()` is the whole event as Pi's object. Registering `before_agent_start` through `on_event` or `on_event_result` fails every emission with an error that names `on_before_agent_start`.
 
 ### Per-run tool loadout
 
@@ -111,7 +112,7 @@ ext.OnEvent("before_agent_start", func(_ sdk.Context, data map[string]any) (any,
 })
 ```
 
-Node handlers use the array (`event.systemPromptOptions.selectedTools.push("my_tool")`), Python handlers the list, and Rust handlers the JSON array. Native Go reference handlers assign `extension.BeforeAgentStartOptions(ctx).SelectedTools`. Duplicate names are removed in first-seen order before admission. Non-string entries cannot select registered tools. A final `null` list rejects the prompt after the handler chain; a later handler can repair it. An invalid section name also rejects the prompt, but only after the deduplicated loadout is admitted, so the loadout stays active as in Pi. Rejection emits no `agent_start` or `agent_settled`. The idle system prompt returns to the base options even though the edited loadout stays active.
+Node handlers use the array (`event.systemPromptOptions.selectedTools.push("my_tool")`), Python handlers the list, and Rust handlers the JSON array inside `event.edit_system_prompt_options`. Native Go reference handlers assign `extension.BeforeAgentStartOptions(ctx).SelectedTools`. Duplicate names are removed in first-seen order before admission. Non-string entries cannot select registered tools. A final `null` list rejects the prompt after the handler chain; a later handler can repair it. An invalid section name also rejects the prompt, but only after the deduplicated loadout is admitted, so the loadout stays active as in Pi. Rejection emits no `agent_start` or `agent_settled`. The idle system prompt returns to the base options even though the edited loadout stays active.
 
 ### Parallel work: start together, then join
 
@@ -490,6 +491,30 @@ Sessions reach hundreds of megabytes and tens of thousands of entries, and the h
 Prefer the context branch (what the model will see, trimmed at the last compaction) over the full history. Read the whole history only when the feature truly needs it, and never do so inside `session_start` or a per-turn handler. Defer such work to a background goroutine or task and paint from retained state first.
 
 Compute incrementally: keep running totals and update them from each new entry instead of rescanning the branch. Stream or peek (read only the fields you need, skip entries you do not care about) rather than materializing every entry. Before shipping, measure the handler on a large synthetic session (hundreds of MB, tens of thousands of entries, many compactions) and check both latency and peak memory.
+
+## Child agent sessions (`createAgentSession`)
+
+Pi's `createAgentSession` builds an independent `AgentSession` an extension can prompt, observe and abort without touching the session that runs it. Node extensions call Pi's own implementation. Go, Python and Rust extensions call `ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{...})`, `ctx.create_agent_session(CreateAgentSessionOptions(...))` and `ctx.create_agent_session(CreateAgentSessionOptions { .. })`; the host builds the child `coding.Session` over the parent's model runtime, so every provider the extensions registered is available to it (`modelRuntime: ctx.modelRegistry.runtime` in Pi).
+
+```go
+session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
+	Model:       model, // from ctx.ModelRegistry().Find(provider, id), as Pi takes a Model
+	Tools:       []string{"my_tool"},
+	InMemory:    true,
+	Settings:    map[string]any{"compaction": map[string]any{"enabled": false}},
+	CustomTools: []sdk.ToolDefinition{myTool}, // execute runs in this extension
+})
+if err != nil { return nil, err }
+defer session.Dispose()
+session.Subscribe(func(event map[string]any) { /* Pi's AgentSessionEvent JSON */ })
+err = session.Prompt(context.Background(), "text") // returns when the run settled and every listener saw its last event
+```
+
+The Promise contract is kept as blocking calls: creation returns once resources are loaded and the model resolved, and fails with Pi's message; `Prompt` returns when the run settled, after the listeners ran through the run's last event, and raises what Pi's rejects (for example `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.`, or `No API key found for <provider>.` for a model without credentials); `Abort` returns once the session is idle and the pending `Prompt` then returns normally; `Dispose` is synchronous and idempotent. Listeners run in event order on one goroutine, thread or task of the session, never on the connection's reader, so a listener may call the session. A cancelled context passed to `Prompt` aborts the run in Go; Python and Rust call `abort()`.
+
+The session belongs to the extension's connection: closing the connection aborts the run, cancels the tools' contexts and disposes the session, as Node's `independent-session-owner.mjs` does. `message_update` events travel as a keyframe followed by operations (`child_session_delta.go`) and the listener receives the full event Pi's `subscribe` delivers (`message` and `assistantMessageEvent.partial`), so a long output costs wire bytes linear in its length.
+
+Differences from Pi, each tested: a `model` the host's registry does not hold raises `Model <provider>/<id> not found` (Pi uses the object as given; a wire object carries no stream function), and Pi's `sessionManager`, `settingsManager`, `resourceLoader` and `modelRuntime` objects are in-process handles that do not cross the wire (`settings` and `resources` select what they would). `Dispose` is Pi's: the session is disconnected and its listeners dropped, a later prompt still runs the agent, and the host releases the session when the connection closes. The expected observations (event order, the leading system message, error messages) come from running Pi's own `createAgentSession` (`test/extension-conformance/testdata/child-session-want.json`).
 
 ## Adding a new extension API surface
 

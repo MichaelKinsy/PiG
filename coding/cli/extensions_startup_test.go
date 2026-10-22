@@ -113,17 +113,9 @@ export default function(pi) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				probe := exec.CommandContext(testbudget.Context(t), "node", "-e", `
-const pid=Number(process.argv[1]);
-const deadline=Date.now()+5000;
-function poll() {
- try { process.kill(pid,0); } catch(error) { if(error.code==="ESRCH") return; throw error; }
- if(Date.now()>=deadline) throw new Error("extension process remains alive");
- setTimeout(poll,10);
-}
-poll();`, strconv.Itoa(pid))
-				if output, err := probe.CombinedOutput(); err != nil {
-					t.Fatalf("extension process %d survived entrypoint exit: %v\n%s", pid, err, output)
+				// The entrypoint SIGKILLs its extension processes and exits without waiting for them. Wait for the exit itself: the process may still be dying because the kernel has not yet run it, or be a zombie its new parent has not reaped; both are gone for the user.
+				if err := waitProcessExit(testbudget.Context(t), pid); err != nil {
+					t.Fatalf("extension process %d survived entrypoint exit: %v", pid, err)
 				}
 
 				if strings.Contains(string(observed), "project\n") != trusted {

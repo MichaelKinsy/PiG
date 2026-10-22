@@ -1,0 +1,1061 @@
+{
+	"afterSet": {
+		"getAllModelThinkingLevels": {
+			"p/m": "low"
+		},
+		"getAutocompleteMaxVisible": 7,
+		"getBlockImages": true,
+		"getBranchSummarySettings": {
+			"reserveTokens": 16384,
+			"skipPrompt": false
+		},
+		"getBranchSummarySkipPrompt": false,
+		"getCacheWarmingMode": "idle",
+		"getClearOnShrink": true,
+		"getCodeBlockIndent": "  ",
+		"getCollapseChangelog": true,
+		"getCompactionEnabled": true,
+		"getDefaultModel": "sonnet",
+		"getDefaultProjectTrust": "never",
+		"getDefaultProvider": "anthropic",
+		"getDefaultThinkingLevel": "high",
+		"getDefaultTools": null,
+		"getDoubleEscapeAction": "tree",
+		"getEditorPaddingX": 2,
+		"getEnableAnalytics": false,
+		"getEnableInstallTelemetry": false,
+		"getEnableSkillCommands": false,
+		"getEnabledModels": [
+			"m1",
+			"m2"
+		],
+		"getExtensionPaths": [
+			"pe"
+		],
+		"getExternalEditorCommand": "vim",
+		"getFollowUpMode": "one-at-a-time",
+		"getFullscreenCopyOnSelect": false,
+		"getFullscreenExitOutput": "resume-hint",
+		"getFullscreenScrollbar": "hidden",
+		"getFullscreenWheelScrollLines": 3,
+		"getGlobalSettings": {
+			"autocompleteMaxVisible": 7,
+			"cacheWarming": "idle",
+			"collapseChangelog": true,
+			"compaction": {
+				"enabled": true,
+				"reserveTokens": 1234
+			},
+			"defaultModel": "opus",
+			"defaultProjectTrust": "never",
+			"defaultProvider": "anthropic",
+			"defaultThinkingLevel": "high",
+			"doubleEscapeAction": "tree",
+			"editorPaddingX": 2,
+			"enableAnalytics": false,
+			"enableInstallTelemetry": false,
+			"enableSkillCommands": false,
+			"enabledModels": [
+				"m1",
+				"m2"
+			],
+			"extensions": [
+				"a",
+				"b"
+			],
+			"externalEditor": "vim",
+			"followUpMode": "one-at-a-time",
+			"fullscreenCopyOnSelect": false,
+			"fullscreenExitOutput": "resume-hint",
+			"fullscreenScrollbar": "hidden",
+			"fullscreenWheelScrollLines": 3,
+			"hideThinkingBlock": true,
+			"httpIdleTimeoutMs": 5000,
+			"images": {
+				"autoResize": false,
+				"blockImages": true
+			},
+			"lastChangelogVersion": "9.9.9",
+			"markdown": {
+				"mermaid": "off"
+			},
+			"modelThinkingLevels": {
+				"p/m": "low"
+			},
+			"npmCommand": [
+				"pnpm",
+				"dlx"
+			],
+			"outputPad": 0,
+			"packages": [
+				"npm:a",
+				{
+					"extensions": [
+						"x"
+					],
+					"source": "npm:b"
+				}
+			],
+			"prompts": [
+				"p1"
+			],
+			"quietStartup": "header",
+			"retry": {
+				"enabled": false,
+				"maxRetries": 5
+			},
+			"sessionShareDestination": "gist",
+			"shellCommandPrefix": "set -e",
+			"shellPath": "/bin/sh",
+			"showCacheMissNotices": false,
+			"showHardwareCursor": true,
+			"skills": [
+				"s1"
+			],
+			"steeringMode": "one-at-a-time",
+			"terminal": {
+				"clearOnShrink": true,
+				"imageWidthCells": 40,
+				"showImages": false,
+				"showTerminalProgress": true
+			},
+			"theme": "light",
+			"themes": [
+				"t1"
+			],
+			"transport": "sse",
+			"treeFilterMode": "user-only",
+			"tuiMode": "fullscreen",
+			"unmodelled": {
+				"kept": 1
+			},
+			"warnings": {
+				"anthropicExtraUsage": true
+			}
+		},
+		"getHideThinkingBlock": true,
+		"getHttpIdleTimeoutMs": 5000,
+		"getImageAutoResize": false,
+		"getImageWidthCells": 40,
+		"getLastChangelogVersion": "9.9.9",
+		"getMermaidRenderingMode": "off",
+		"getNpmCommand": [
+			"pnpm",
+			"dlx"
+		],
+		"getOutputPad": 0,
+		"getPackages": [
+			"npm:proj"
+		],
+		"getProjectSettings": {
+			"compaction": {
+				"reserveTokens": 99
+			},
+			"defaultModel": "sonnet",
+			"extensions": [
+				"pe"
+			],
+			"packages": [
+				"npm:proj"
+			],
+			"prompts": [
+				"pp"
+			],
+			"skills": [
+				"ps"
+			],
+			"themes": [
+				"pt"
+			]
+		},
+		"getPromptTemplatePaths": [
+			"pp"
+		],
+		"getProviderRetrySettings": {
+			"maxRetryDelayMs": 60000
+		},
+		"getQuietStartup": "header",
+		"getRetryEnabled": false,
+		"getRetrySettings": {
+			"baseDelayMs": 2000,
+			"enabled": false,
+			"maxAgentDelayMs": 60000,
+			"maxRetries": 5
+		},
+		"getSessionDir": null,
+		"getSessionShareDestination": "gist",
+		"getSettings": {
+			"autocompleteMaxVisible": 7,
+			"cacheWarming": "idle",
+			"collapseChangelog": true,
+			"compaction": {
+				"enabled": true,
+				"reserveTokens": 99
+			},
+			"defaultModel": "sonnet",
+			"defaultProjectTrust": "never",
+			"defaultProvider": "anthropic",
+			"defaultThinkingLevel": "high",
+			"doubleEscapeAction": "tree",
+			"editorPaddingX": 2,
+			"enableAnalytics": false,
+			"enableInstallTelemetry": false,
+			"enableSkillCommands": false,
+			"enabledModels": [
+				"m1",
+				"m2"
+			],
+			"extensions": [
+				"pe"
+			],
+			"externalEditor": "vim",
+			"followUpMode": "one-at-a-time",
+			"fullscreenCopyOnSelect": false,
+			"fullscreenExitOutput": "resume-hint",
+			"fullscreenScrollbar": "hidden",
+			"fullscreenWheelScrollLines": 3,
+			"hideThinkingBlock": true,
+			"httpIdleTimeoutMs": 5000,
+			"images": {
+				"autoResize": false,
+				"blockImages": true
+			},
+			"lastChangelogVersion": "9.9.9",
+			"markdown": {
+				"mermaid": "off"
+			},
+			"modelThinkingLevels": {
+				"p/m": "low"
+			},
+			"npmCommand": [
+				"pnpm",
+				"dlx"
+			],
+			"outputPad": 0,
+			"packages": [
+				"npm:proj"
+			],
+			"prompts": [
+				"pp"
+			],
+			"quietStartup": "header",
+			"retry": {
+				"enabled": false,
+				"maxRetries": 5
+			},
+			"sessionShareDestination": "gist",
+			"shellCommandPrefix": "set -e",
+			"shellPath": "/bin/sh",
+			"showCacheMissNotices": false,
+			"showHardwareCursor": true,
+			"skills": [
+				"ps"
+			],
+			"steeringMode": "one-at-a-time",
+			"terminal": {
+				"clearOnShrink": true,
+				"imageWidthCells": 40,
+				"showImages": false,
+				"showTerminalProgress": true
+			},
+			"theme": "light",
+			"themes": [
+				"pt"
+			],
+			"transport": "sse",
+			"treeFilterMode": "user-only",
+			"tuiMode": "fullscreen",
+			"unmodelled": {
+				"kept": 1
+			},
+			"warnings": {
+				"anthropicExtraUsage": true
+			}
+		},
+		"getShellCommandPrefix": "set -e",
+		"getShellPath": "/bin/sh",
+		"getShowCacheMissNotices": false,
+		"getShowHardwareCursor": true,
+		"getShowImages": false,
+		"getShowTerminalProgress": true,
+		"getSkillPaths": [
+			"ps"
+		],
+		"getSteeringMode": "one-at-a-time",
+		"getTerminalCapabilityOverrides": {},
+		"getTheme": "light",
+		"getThemePaths": [
+			"pt"
+		],
+		"getThemeSetting": "light",
+		"getThinkingBudgets": null,
+		"getTransport": "sse",
+		"getTreeFilterMode": "user-only",
+		"getTuiMode": "fullscreen",
+		"getWarnings": {
+			"anthropicExtraUsage": true
+		},
+		"getWebSocketConnectTimeoutMs": null,
+		"isProjectTrusted": true
+	},
+	"cleared": {
+		"enabled": null,
+		"file": {
+			"defaultModel": "kept",
+			"defaultProvider": "external"
+		},
+		"npm": null,
+		"prefix": null,
+		"shellPath": null
+	},
+	"distrusted": {
+		"merged": {
+			"defaultModel": "kept",
+			"defaultProvider": "external"
+		},
+		"project": {},
+		"trusted": false,
+		"write": "error: refusing to write project settings"
+	},
+	"errors": {
+		"again": 0,
+		"count": 1,
+		"hasMessage": true,
+		"pathSuffix": true,
+		"scope": "project"
+	},
+	"files": {
+		"global": {
+			"autocompleteMaxVisible": 7,
+			"cacheWarming": "idle",
+			"collapseChangelog": true,
+			"compaction": {
+				"enabled": true,
+				"reserveTokens": 1234
+			},
+			"defaultModel": "opus",
+			"defaultProjectTrust": "never",
+			"defaultProvider": "anthropic",
+			"defaultThinkingLevel": "high",
+			"deviceId": "\u003cuuid\u003e",
+			"doubleEscapeAction": "tree",
+			"editorPaddingX": 2,
+			"enableAnalytics": false,
+			"enableInstallTelemetry": false,
+			"enableSkillCommands": false,
+			"enabledModels": [
+				"m1",
+				"m2"
+			],
+			"extensions": [
+				"a",
+				"b"
+			],
+			"externalEditor": "vim",
+			"followUpMode": "one-at-a-time",
+			"fullscreenCopyOnSelect": false,
+			"fullscreenExitOutput": "resume-hint",
+			"fullscreenScrollbar": "hidden",
+			"fullscreenWheelScrollLines": 3,
+			"hideThinkingBlock": true,
+			"httpIdleTimeoutMs": 5000,
+			"images": {
+				"autoResize": false,
+				"blockImages": true
+			},
+			"lastChangelogVersion": "9.9.9",
+			"markdown": {
+				"mermaid": "off"
+			},
+			"npmCommand": [
+				"pnpm",
+				"dlx"
+			],
+			"outputPad": 0,
+			"packages": [
+				"npm:a",
+				{
+					"extensions": [
+						"x"
+					],
+					"source": "npm:b"
+				}
+			],
+			"prompts": [
+				"p1"
+			],
+			"quietStartup": "header",
+			"retry": {
+				"enabled": false,
+				"maxRetries": 5
+			},
+			"sessionShareDestination": "gist",
+			"shellCommandPrefix": "set -e",
+			"shellPath": "/bin/sh",
+			"showCacheMissNotices": false,
+			"showHardwareCursor": true,
+			"skills": [
+				"s1"
+			],
+			"steeringMode": "one-at-a-time",
+			"terminal": {
+				"clearOnShrink": true,
+				"imageWidthCells": 40,
+				"showImages": false,
+				"showTerminalProgress": true
+			},
+			"theme": "light",
+			"themes": [
+				"t1"
+			],
+			"transport": "sse",
+			"treeFilterMode": "user-only",
+			"tuiMode": "fullscreen",
+			"unmodelled": {
+				"kept": 1
+			},
+			"warnings": {
+				"anthropicExtraUsage": true
+			}
+		},
+		"project": {
+			"compaction": {
+				"reserveTokens": 99
+			},
+			"defaultModel": "sonnet",
+			"extensions": [
+				"pe"
+			],
+			"packages": [
+				"npm:proj"
+			],
+			"prompts": [
+				"pp"
+			],
+			"skills": [
+				"ps"
+			],
+			"themes": [
+				"pt"
+			]
+		}
+	},
+	"initial": {
+		"getAllModelThinkingLevels": {},
+		"getAutocompleteMaxVisible": 5,
+		"getBlockImages": false,
+		"getBranchSummarySettings": {
+			"reserveTokens": 16384,
+			"skipPrompt": false
+		},
+		"getBranchSummarySkipPrompt": false,
+		"getCacheWarmingMode": "streaming",
+		"getClearOnShrink": false,
+		"getCodeBlockIndent": "  ",
+		"getCollapseChangelog": false,
+		"getCompactionEnabled": false,
+		"getDefaultModel": "sonnet",
+		"getDefaultProjectTrust": "ask",
+		"getDefaultProvider": "anthropic",
+		"getDefaultThinkingLevel": null,
+		"getDefaultTools": null,
+		"getDoubleEscapeAction": "tree",
+		"getEditorPaddingX": 0,
+		"getEnableAnalytics": false,
+		"getEnableInstallTelemetry": true,
+		"getEnableSkillCommands": true,
+		"getEnabledModels": [
+			"a*"
+		],
+		"getExtensionPaths": [],
+		"getExternalEditorCommand": "vim",
+		"getFollowUpMode": "one-at-a-time",
+		"getFullscreenCopyOnSelect": true,
+		"getFullscreenExitOutput": "transcript",
+		"getFullscreenScrollbar": "auto",
+		"getFullscreenWheelScrollLines": "auto",
+		"getGlobalSettings": {
+			"compaction": {
+				"enabled": false,
+				"reserveTokens": 1234
+			},
+			"defaultModel": "opus",
+			"defaultProvider": "anthropic",
+			"enabledModels": [
+				"a*"
+			],
+			"externalEditor": "vim",
+			"packages": [
+				"npm:pkg-a",
+				{
+					"extensions": [
+						"x"
+					],
+					"source": "npm:pkg-b"
+				}
+			],
+			"quietStartup": true,
+			"retry": {
+				"maxRetries": 5
+			},
+			"steeringMode": "all",
+			"theme": "dark",
+			"unmodelled": {
+				"kept": 1
+			}
+		},
+		"getHideThinkingBlock": false,
+		"getHttpIdleTimeoutMs": 300000,
+		"getImageAutoResize": true,
+		"getImageWidthCells": 60,
+		"getLastChangelogVersion": null,
+		"getMermaidRenderingMode": "streaming",
+		"getNpmCommand": null,
+		"getOutputPad": 1,
+		"getPackages": [
+			"npm:pkg-a",
+			{
+				"extensions": [
+					"x"
+				],
+				"source": "npm:pkg-b"
+			}
+		],
+		"getProjectSettings": {
+			"compaction": {
+				"reserveTokens": 99
+			},
+			"defaultModel": "sonnet",
+			"skills": [
+				"./s"
+			]
+		},
+		"getPromptTemplatePaths": [],
+		"getProviderRetrySettings": {
+			"maxRetryDelayMs": 60000
+		},
+		"getQuietStartup": true,
+		"getRetryEnabled": true,
+		"getRetrySettings": {
+			"baseDelayMs": 2000,
+			"enabled": true,
+			"maxAgentDelayMs": 60000,
+			"maxRetries": 5
+		},
+		"getSessionDir": null,
+		"getSessionShareDestination": "auto",
+		"getSettings": {
+			"compaction": {
+				"enabled": false,
+				"reserveTokens": 99
+			},
+			"defaultModel": "sonnet",
+			"defaultProvider": "anthropic",
+			"enabledModels": [
+				"a*"
+			],
+			"externalEditor": "vim",
+			"packages": [
+				"npm:pkg-a",
+				{
+					"extensions": [
+						"x"
+					],
+					"source": "npm:pkg-b"
+				}
+			],
+			"quietStartup": true,
+			"retry": {
+				"maxRetries": 5
+			},
+			"skills": [
+				"./s"
+			],
+			"steeringMode": "all",
+			"theme": "dark",
+			"unmodelled": {
+				"kept": 1
+			}
+		},
+		"getShellCommandPrefix": null,
+		"getShellPath": null,
+		"getShowCacheMissNotices": false,
+		"getShowHardwareCursor": false,
+		"getShowImages": true,
+		"getShowTerminalProgress": false,
+		"getSkillPaths": [
+			"./s"
+		],
+		"getSteeringMode": "all",
+		"getTerminalCapabilityOverrides": {},
+		"getTheme": "dark",
+		"getThemePaths": [],
+		"getThemeSetting": "dark",
+		"getThinkingBudgets": null,
+		"getTransport": "auto",
+		"getTreeFilterMode": "default",
+		"getTuiMode": "fullscreen",
+		"getWarnings": {},
+		"getWebSocketConnectTimeoutMs": null,
+		"isProjectTrusted": true
+	},
+	"memory": {
+		"compaction": {
+			"enabled": false,
+			"keepRecentTokens": 20000,
+			"reserveTokens": 16384
+		},
+		"merged": {
+			"compaction": {
+				"enabled": false
+			},
+			"defaultProvider": "mem",
+			"retry": {
+				"maxRetries": 9
+			}
+		},
+		"provider": "mem",
+		"retry": {
+			"baseDelayMs": 2000,
+			"enabled": true,
+			"maxAgentDelayMs": 60000,
+			"maxRetries": 9
+		},
+		"trusted": true
+	},
+	"memoryAfter": {
+		"global": {
+			"compaction": {
+				"enabled": false
+			},
+			"defaultModel": "mm",
+			"defaultProvider": "mem",
+			"retry": {
+				"maxRetries": 9
+			}
+		},
+		"merged": {
+			"compaction": {
+				"enabled": false
+			},
+			"defaultModel": "ov",
+			"defaultProvider": "mem",
+			"retry": {
+				"maxRetries": 9
+			}
+		},
+		"model": "ov"
+	},
+	"modelBudget": {
+		"keep": 20000,
+		"reserve": 99,
+		"reserveNone": 99,
+		"settings": {
+			"enabled": false,
+			"keepRecentTokens": 20000,
+			"reserveTokens": 99
+		},
+		"thinking": null
+	},
+	"modelThinking": "low",
+	"persisted": {
+		"getAllModelThinkingLevels": {},
+		"getAutocompleteMaxVisible": 7,
+		"getBlockImages": true,
+		"getBranchSummarySettings": {
+			"reserveTokens": 16384,
+			"skipPrompt": false
+		},
+		"getBranchSummarySkipPrompt": false,
+		"getCacheWarmingMode": "idle",
+		"getClearOnShrink": true,
+		"getCodeBlockIndent": "  ",
+		"getCollapseChangelog": true,
+		"getCompactionEnabled": true,
+		"getDefaultModel": "sonnet",
+		"getDefaultProjectTrust": "never",
+		"getDefaultProvider": "anthropic",
+		"getDefaultThinkingLevel": "high",
+		"getDefaultTools": null,
+		"getDoubleEscapeAction": "tree",
+		"getEditorPaddingX": 2,
+		"getEnableAnalytics": false,
+		"getEnableInstallTelemetry": false,
+		"getEnableSkillCommands": false,
+		"getEnabledModels": [
+			"m1",
+			"m2"
+		],
+		"getExtensionPaths": [
+			"pe"
+		],
+		"getExternalEditorCommand": "vim",
+		"getFollowUpMode": "one-at-a-time",
+		"getFullscreenCopyOnSelect": false,
+		"getFullscreenExitOutput": "resume-hint",
+		"getFullscreenScrollbar": "hidden",
+		"getFullscreenWheelScrollLines": 3,
+		"getGlobalSettings": {
+			"autocompleteMaxVisible": 7,
+			"cacheWarming": "idle",
+			"collapseChangelog": true,
+			"compaction": {
+				"enabled": true,
+				"reserveTokens": 1234
+			},
+			"defaultModel": "opus",
+			"defaultProjectTrust": "never",
+			"defaultProvider": "anthropic",
+			"defaultThinkingLevel": "high",
+			"deviceId": "\u003cuuid\u003e",
+			"doubleEscapeAction": "tree",
+			"editorPaddingX": 2,
+			"enableAnalytics": false,
+			"enableInstallTelemetry": false,
+			"enableSkillCommands": false,
+			"enabledModels": [
+				"m1",
+				"m2"
+			],
+			"extensions": [
+				"a",
+				"b"
+			],
+			"externalEditor": "vim",
+			"followUpMode": "one-at-a-time",
+			"fullscreenCopyOnSelect": false,
+			"fullscreenExitOutput": "resume-hint",
+			"fullscreenScrollbar": "hidden",
+			"fullscreenWheelScrollLines": 3,
+			"hideThinkingBlock": true,
+			"httpIdleTimeoutMs": 5000,
+			"images": {
+				"autoResize": false,
+				"blockImages": true
+			},
+			"lastChangelogVersion": "9.9.9",
+			"markdown": {
+				"mermaid": "off"
+			},
+			"npmCommand": [
+				"pnpm",
+				"dlx"
+			],
+			"outputPad": 0,
+			"packages": [
+				"npm:a",
+				{
+					"extensions": [
+						"x"
+					],
+					"source": "npm:b"
+				}
+			],
+			"prompts": [
+				"p1"
+			],
+			"quietStartup": "header",
+			"retry": {
+				"enabled": false,
+				"maxRetries": 5
+			},
+			"sessionShareDestination": "gist",
+			"shellCommandPrefix": "set -e",
+			"shellPath": "/bin/sh",
+			"showCacheMissNotices": false,
+			"showHardwareCursor": true,
+			"skills": [
+				"s1"
+			],
+			"steeringMode": "one-at-a-time",
+			"terminal": {
+				"clearOnShrink": true,
+				"imageWidthCells": 40,
+				"showImages": false,
+				"showTerminalProgress": true
+			},
+			"theme": "light",
+			"themes": [
+				"t1"
+			],
+			"transport": "sse",
+			"treeFilterMode": "user-only",
+			"tuiMode": "fullscreen",
+			"unmodelled": {
+				"kept": 1
+			},
+			"warnings": {
+				"anthropicExtraUsage": true
+			}
+		},
+		"getHideThinkingBlock": true,
+		"getHttpIdleTimeoutMs": 5000,
+		"getImageAutoResize": false,
+		"getImageWidthCells": 40,
+		"getLastChangelogVersion": "9.9.9",
+		"getMermaidRenderingMode": "off",
+		"getNpmCommand": [
+			"pnpm",
+			"dlx"
+		],
+		"getOutputPad": 0,
+		"getPackages": [
+			"npm:proj"
+		],
+		"getProjectSettings": {
+			"compaction": {
+				"reserveTokens": 99
+			},
+			"defaultModel": "sonnet",
+			"extensions": [
+				"pe"
+			],
+			"packages": [
+				"npm:proj"
+			],
+			"prompts": [
+				"pp"
+			],
+			"skills": [
+				"ps"
+			],
+			"themes": [
+				"pt"
+			]
+		},
+		"getPromptTemplatePaths": [
+			"pp"
+		],
+		"getProviderRetrySettings": {
+			"maxRetryDelayMs": 60000
+		},
+		"getQuietStartup": "header",
+		"getRetryEnabled": false,
+		"getRetrySettings": {
+			"baseDelayMs": 2000,
+			"enabled": false,
+			"maxAgentDelayMs": 60000,
+			"maxRetries": 5
+		},
+		"getSessionDir": null,
+		"getSessionShareDestination": "gist",
+		"getSettings": {
+			"autocompleteMaxVisible": 7,
+			"cacheWarming": "idle",
+			"collapseChangelog": true,
+			"compaction": {
+				"enabled": true,
+				"reserveTokens": 99
+			},
+			"defaultModel": "sonnet",
+			"defaultProjectTrust": "never",
+			"defaultProvider": "anthropic",
+			"defaultThinkingLevel": "high",
+			"deviceId": "\u003cuuid\u003e",
+			"doubleEscapeAction": "tree",
+			"editorPaddingX": 2,
+			"enableAnalytics": false,
+			"enableInstallTelemetry": false,
+			"enableSkillCommands": false,
+			"enabledModels": [
+				"m1",
+				"m2"
+			],
+			"extensions": [
+				"pe"
+			],
+			"externalEditor": "vim",
+			"followUpMode": "one-at-a-time",
+			"fullscreenCopyOnSelect": false,
+			"fullscreenExitOutput": "resume-hint",
+			"fullscreenScrollbar": "hidden",
+			"fullscreenWheelScrollLines": 3,
+			"hideThinkingBlock": true,
+			"httpIdleTimeoutMs": 5000,
+			"images": {
+				"autoResize": false,
+				"blockImages": true
+			},
+			"lastChangelogVersion": "9.9.9",
+			"markdown": {
+				"mermaid": "off"
+			},
+			"npmCommand": [
+				"pnpm",
+				"dlx"
+			],
+			"outputPad": 0,
+			"packages": [
+				"npm:proj"
+			],
+			"prompts": [
+				"pp"
+			],
+			"quietStartup": "header",
+			"retry": {
+				"enabled": false,
+				"maxRetries": 5
+			},
+			"sessionShareDestination": "gist",
+			"shellCommandPrefix": "set -e",
+			"shellPath": "/bin/sh",
+			"showCacheMissNotices": false,
+			"showHardwareCursor": true,
+			"skills": [
+				"ps"
+			],
+			"steeringMode": "one-at-a-time",
+			"terminal": {
+				"clearOnShrink": true,
+				"imageWidthCells": 40,
+				"showImages": false,
+				"showTerminalProgress": true
+			},
+			"theme": "light",
+			"themes": [
+				"pt"
+			],
+			"transport": "sse",
+			"treeFilterMode": "user-only",
+			"tuiMode": "fullscreen",
+			"unmodelled": {
+				"kept": 1
+			},
+			"warnings": {
+				"anthropicExtraUsage": true
+			}
+		},
+		"getShellCommandPrefix": "set -e",
+		"getShellPath": "/bin/sh",
+		"getShowCacheMissNotices": false,
+		"getShowHardwareCursor": true,
+		"getShowImages": false,
+		"getShowTerminalProgress": true,
+		"getSkillPaths": [
+			"ps"
+		],
+		"getSteeringMode": "one-at-a-time",
+		"getTerminalCapabilityOverrides": {},
+		"getTheme": "light",
+		"getThemePaths": [
+			"pt"
+		],
+		"getThemeSetting": "light",
+		"getThinkingBudgets": null,
+		"getTransport": "sse",
+		"getTreeFilterMode": "user-only",
+		"getTuiMode": "fullscreen",
+		"getWarnings": {
+			"anthropicExtraUsage": true
+		},
+		"getWebSocketConnectTimeoutMs": null,
+		"isProjectTrusted": true
+	},
+	"reload": {
+		"merged": {
+			"compaction": {
+				"reserveTokens": 99
+			},
+			"defaultModel": "sonnet",
+			"defaultProvider": "external",
+			"extensions": [
+				"pe"
+			],
+			"packages": [
+				"npm:proj"
+			],
+			"prompts": [
+				"pp"
+			],
+			"skills": [
+				"ps"
+			],
+			"themes": [
+				"pt"
+			]
+		},
+		"model": "sonnet",
+		"provider": "external"
+	},
+	"removed": {
+		"deviceId": true,
+		"thinking": null,
+		"trackingId": null
+	},
+	"retrusted": {
+		"projectModel": "sonnet",
+		"trusted": true
+	},
+	"storage": {
+		"broken": [
+			{
+				"hasMessage": true,
+				"noPath": true,
+				"scope": "global"
+			}
+		],
+		"failing": [
+			{
+				"message": "disk full",
+				"scope": "global"
+			},
+			{
+				"message": "disk full",
+				"scope": "project"
+			}
+		],
+		"loaded": {
+			"calls": [
+				"global:text",
+				"project:none"
+			],
+			"errors": 0,
+			"quiet": true,
+			"theme": "dark"
+		},
+		"projectWrote": {
+			"calls": [
+				"project:none",
+				"project:write"
+			],
+			"paths": [
+				"./e"
+			],
+			"project": {
+				"extensions": [
+					"./e"
+				]
+			}
+		},
+		"reloaded": {
+			"calls": [
+				"global:text",
+				"project:none"
+			],
+			"theme": "solarized"
+		},
+		"untrusted": {
+			"calls": [
+				"global:text"
+			],
+			"theme": "solarized",
+			"trusted": false
+		},
+		"wrote": {
+			"calls": [
+				"global:text",
+				"global:write"
+			],
+			"global": {
+				"quietStartup": true,
+				"theme": "light"
+			},
+			"project": true,
+			"theme": "light"
+		}
+	},
+	"untrustedMemory": {
+		"trusted": false,
+		"write": "error: refusing to write project settings"
+	}
+}

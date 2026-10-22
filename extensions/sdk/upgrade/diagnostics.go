@@ -156,6 +156,9 @@ func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		if _, isGetter := getterByName(name); isGetter && importsSDK(diagnostic, source, files) {
 			return RuleContextGetters, "Context." + name, true
 		}
+		if name == "Find" && importsSDK(diagnostic, source, files) {
+			return RuleModelRegistryFind, "ModelRegistry.Find", true
+		}
 		return "", "", false
 	}
 	if isArityDiagnostic(message) {
@@ -190,6 +193,9 @@ func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		return RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders", true
 	case credentialType().MatchString(message) && importsSDK(diagnostic, source, files):
 		return credentialChange(diagnostic, source, files)
+	}
+	if method, found := dialogResultMethod(diagnostic, source, files); found {
+		return RuleDialogResults, "Context." + method, true
 	}
 	return "", "", false
 }
@@ -444,4 +450,46 @@ func getterCalledAt(diagnostic Diagnostic, source FileSource, files map[string]*
 		return true
 	})
 	return name, name != ""
+}
+
+var dialogMethods = map[string]bool{"Select": true, "SelectWithOptions": true, "Input": true, "InputWithOptions": true, "Editor": true, "Confirm": true, "ConfirmWithOptions": true}
+
+// dialogResultVariable matches the variable a diagnostic rejects for its type any: `cannot use choice (variable of interface type any) as string value`.
+func dialogResultVariable() *regexp.Regexp {
+	return regexp.MustCompile(`\b([A-Za-z_]\w*) \(variable of (?:interface )?type any\)`)
+}
+
+// dialogResultMethod returns the SDK dialog method whose result the diagnostic's variable was assigned from: the variable of an any-typed error that a
+// `value, ok, err := ctx.Select(...)` declared. It reads the extension's syntax tree, not the message alone.
+func dialogResultMethod(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (string, bool) {
+	match := dialogResultVariable().FindStringSubmatch(diagnostic.Message)
+	if match == nil || !importsSDK(diagnostic, source, files) {
+		return "", false
+	}
+	parsed := loadFile(diagnostic, source, files)
+	if parsed == nil {
+		return "", false
+	}
+	var method string
+	ast.Inspect(parsed.syntax, func(node ast.Node) bool {
+		assign, isAssign := node.(*ast.AssignStmt)
+		if !isAssign || method != "" || len(assign.Rhs) != 1 {
+			return method == ""
+		}
+		call, isCall := assign.Rhs[0].(*ast.CallExpr)
+		if !isCall {
+			return true
+		}
+		selector, isSelector := call.Fun.(*ast.SelectorExpr)
+		if !isSelector || !dialogMethods[selector.Sel.Name] {
+			return true
+		}
+		for _, lhs := range assign.Lhs {
+			if ident, isIdent := lhs.(*ast.Ident); isIdent && ident.Name == match[1] {
+				method = selector.Sel.Name
+			}
+		}
+		return true
+	})
+	return method, method != ""
 }

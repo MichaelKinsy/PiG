@@ -169,10 +169,11 @@ def new_extension():
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%q);
- e.on_event_result("before_agent_start",|_,data| {
-  data["systemPromptOptions"]["sections"]["plan_mode"]=Schema::String("Plan only.".into());
-  if data["prompt"]=="error" {return Err("section failure".into())}
-  if data["prompt"]=="result" {let mut result=Schema::Object(Default::default());result["systemPrompt"]=Schema::String("Exact prompt.".into());return Ok(Some(result))};Ok(None)
+ e.on_before_agent_start(|_,event| {
+  event.edit_system_prompt_options(|options| options["sections"]["plan_mode"]=Schema::String("Plan only.".into()));
+  let prompt=&event.payload()["prompt"];
+  if prompt=="error" {return Err("section failure".into())}
+  if prompt=="result" {let mut result=Schema::Object(Default::default());result["systemPrompt"]=Schema::String("Exact prompt.".into());return Ok(Some(result))};Ok(None)
  });
  e
 }`, name)

@@ -62,6 +62,9 @@ const (
 	RuleTransformHeaders    = "provider-stream-transform-headers-removed"
 	RuleProviderCredential  = "provider-credential-ordered"
 	RuleSystemPromptGetter  = "before-agent-start-system-prompt-getter"
+	RuleReadonlySession     = "context-session-manager-readonly"
+	RuleModelRegistryFind   = "model-registry-find-returns-error"
+	RuleDialogResults       = "dialog-results-are-json-values"
 )
 
 // getter is one Context method that gained an error result. Params is the
@@ -187,12 +190,13 @@ func Rules() []Rule {
 		},
 		{
 			ID:      RuleNotComparable,
-			Summary: "ToolInfo, OAuthCredentials and RemoteOverlayOptions are no longer comparable",
+			Summary: "ToolInfo, OAuthCredentials, RemoteOverlayOptions and Editor are no longer comparable",
 			Remedy:  "Compare the fields you need, or use reflect.DeepEqual. Do not use these types as map keys or compare them with ==.",
 			Changes: []Change{
 				{Symbol: "ToolInfo", Old: "comparable struct", New: "struct with a slice and a raw message", Since: "0.3.0"},
 				{Symbol: "OAuthCredentials", Old: "comparable struct", New: "struct that is not comparable", Since: "0.3.0"},
 				{Symbol: "RemoteOverlayOptions", Old: "comparable struct", New: "struct with a function field (OnHandle) and a pointer to OverlayOptions", Since: "0.5.0"},
+				{Symbol: "Editor", Old: "comparable struct", New: "struct with the handler table of CustomEditor's actions (hooks)", Since: "0.5.2"},
 			},
 		},
 		{
@@ -218,6 +222,12 @@ func Rules() []Rule {
 			},
 		},
 		{
+			ID:      RuleDialogResults,
+			Summary: "Select, Input, Editor and Confirm return the JSON value the client answered with, as an any",
+			Remedy:  "Assert the type you expect: `answer, ok, err := ctx.Select(...)` then `choice, _ := answer.(string)`, and `confirmed, _ := answer.(bool)` for Confirm. Pi's RPC mode passes a client's JSON through unchecked, so the answer can be a number, nil, a map or a slice. A cancelled dialog is nil where it was the empty string.",
+			Changes: dialogResultChanges(),
+		},
+		{
 			ID:       RuleSystemPromptGetter,
 			Summary:  `before_agent_start's data["systemPrompt"] is an *SystemPrompt that renders the handler's current options`,
 			Rewrites: true,
@@ -226,8 +236,39 @@ func Rules() []Rule {
 				{Symbol: systemPromptSymbol, Old: "string", New: "*SystemPrompt", Since: systemPromptSince},
 			},
 		},
+		{
+			ID:      RuleReadonlySession,
+			Summary: "ctx.SessionManager is Pi's ReadonlySessionManager; SessionManager is the class an extension constructs",
+			Remedy:  "Name the type sdk.ReadonlySessionManager where you named sdk.SessionManager for the value of ctx.SessionManager(); the calls through ctx.SessionManager() do not change. To own a session log, construct sdk.SessionManager with SessionManagerCreate, SessionManagerOpen or SessionManagerInMemory.",
+			Changes: []Change{
+				{Symbol: "SessionManager", Old: "the read-only view of the host's session log (the type of ctx.SessionManager())", New: "Pi's SessionManager class, which an extension constructs", Since: "0.5.2"},
+				{Symbol: "SetupSessionManager.SessionManager", Old: "field of SetupSessionManager", New: "removed", Since: "0.5.2"},
+			},
+		},
+		{
+			ID:      RuleModelRegistryFind,
+			Summary: "ModelRegistry.Find returns an error as its last result",
+			Remedy:  "Receive the error and return it from the handler: `model, err := ctx.ModelRegistry().Find(provider, id)`. A nil model with a nil error means no model matches; a host or transport failure is the error.",
+			Changes: []Change{
+				{Symbol: "ModelRegistry.Find", Old: "func(string, string) map[string]any", New: "func(string, string) (map[string]any, error)", Since: "0.5.2"},
+			},
+		},
 	}
 }
+
+func dialogResultChanges() []Change {
+	var changes []Change
+	for _, name := range []string{"Select", "SelectWithOptions", "Input", "InputWithOptions", "Editor"} {
+		changes = append(changes, Change{Symbol: "Context." + name, Old: "func(...) (string, bool, error)", New: "func(...) (any, bool, error)", Since: dialogResultsSince})
+	}
+	for _, name := range []string{"Confirm", "ConfirmWithOptions"} {
+		changes = append(changes, Change{Symbol: "Context." + name, Old: "func(...) (bool, error)", New: "func(...) (any, error)", Since: dialogResultsSince})
+	}
+	return changes
+}
+
+// dialogResultsSince is the SDK release whose dialogs return JSON values.
+const dialogResultsSince = "0.5.2"
 
 // RuleByID returns the rule with the given ID.
 func RuleByID(id string) (Rule, bool) {

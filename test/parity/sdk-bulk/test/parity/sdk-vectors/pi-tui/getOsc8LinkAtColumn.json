@@ -1,0 +1,1472 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-tui@1.3.0",
+ "module": "pi-tui",
+ "export": "getOsc8LinkAtColumn",
+ "cases": [
+  {
+   "name": "case 0000",
+   "args": [
+    "\u001b]8;;http://a\u0007link\u001b]8;;\u0007",
+    0
+   ],
+   "result": "http://a"
+  },
+  {
+   "name": "case 0001",
+   "args": [
+    "\u0007\u001b[39m\u0007  ß\u001b[1;5A⌚\u001b]8;;\u001b\\é\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[49m",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    "⚠️\u001b]0;title\u0007é\u001b[?25l🇬🇧🇫🇷\u001b[23mस्त्रx⚠️İ\u001b]8;;\u0007",
+    7
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    "\u001b_pi:c\u0007\u001b[200~​ન્નa b\u001b]8;;http://x.test/a\u0007\u001b[7m \u001b]8;;\u001b\\foo-bar\u001b[31m\u0007",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    "—|\u001b]8;;unterminated👍🏽",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    "\u001b[49m⁠a\u001b8 \u001b[49m\u001b[4m\u001b[9m\u0007\u001b]8;;\u001b\\स्त्र、क्ष",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    "\u001b[H\u001b[31m👍🏽」😀\u001b[2K🫱🏻‍🫲🏿path/to/file.ts\u001b]133;A\u0007̀\u001b[9mำ\u001b[5n\u001b]8;;http://x.test/a\u0007",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    "a\u001b[H\u001b[0m\u001b_pi:c\u0007world\u001b]8;;\u001b\\\u001b[5n‍12345",
+    12
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0008",
+   "args": [
+    "x\u001bP1$r\u001b\\12345🇺🇸ન્નかな\u001b]8;;\u0007日本語のテキスト😀\u001b[5n  \u001b[7m\u001b[\u001b(B",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0009",
+   "args": [
+    "12345\u001b[ hello12345\u001b]8;;\u001b\\…﻿\u001b=",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0010",
+   "args": [
+    "\u001b[?25l\u001b]133;B\u001b\\\u001bc🇺🇸\u001b]8;;http://x.test/a\u0007|©️ \u001b[0m12345ä",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0011",
+   "args": [
+    "  \u001b]8;;http://x.test/a\u0007…\u001b[1;38;5;196mx\u001b(B",
+    5
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0012",
+   "args": [
+    "\u001b[2m\u001b]8;;unterminated⁠\u001b[4m  「\u001b[31foo-bar\u001b[38:2::1:2:3m\u001b[9m",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0013",
+   "args": [
+    "ক্ষ\u001b]8;;unterminated\u001b[H、The quick brown fox\u001b[2m\u001b7 ",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0014",
+   "args": [
+    "ＡＢＣ🏴‍☠️foo-bar\u001b[4:3m\u001b[1m  \u001b]8;id=1;https://e.com/p?q=1\u001b\\‍  ＡＢＣᄀ가ຳ\u001b[39m",
+    12
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0015",
+   "args": [
+    " क्‍षworld\u001b]8;;\u0007 ⌚a bન્ન\u001b[5né \u001b[23m\u001b[\u001b]8;;http://x.test/a\u0007",
+    1
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0016",
+   "args": [
+    "world\u001b[27m\u001b]8;;\u0007\u001b[1m⁠foo-bar\u001b>\u001b_Gf=100,a=T;AAAA\u001b\\。क्ष\u001b[2m\u001b[1m",
+    1
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0017",
+   "args": [
+    "\u001b[29mかな\u001b]8;;unterminatedx \u001b]8;;unterminated\u001b[\u001b[3mक्ष\u001b[23m",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0018",
+   "args": [
+    "\u001b[2K\u001b[1;5A🧑🏾‍🦰\u001b[3mThe quick brown fox\u001b[0m\u001b]8;;\u001b\\afoo-bar",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0019",
+   "args": [
+    "\u001b[m\u001b]8;;\u001b\\\u001b=\u001bX sos\u001b\\\u001b>👍🏽\u001b]8;;http://x.test/a\u0007\u001b[0m\u0000The quick brown fox",
+    12
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0020",
+   "args": [
+    "\u001b[4:3m\u001b[4:3m\u001b]8;;\u0007\u001b[38:2::1:2:3m。é~/src👍🏽  \f\u001b(B\u001b=",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0021",
+   "args": [
+    "\u001b]8;;unterminated\u001b[0mİxক্ষＡＢＣ\u001b[29m\u001b[0m  ",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0022",
+   "args": [
+    "क्ष\u001b]8;;\u0007…~/src—a👍🏽⁠☺️\u001b[38:2::1:2:3m",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0023",
+   "args": [
+    "👨‍👩‍👧‍👦\u001b_pi:c\u0007\u001b]8;;\u001b\\path/to/file.ts ั",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0024",
+   "args": [
+    "\u001b[38;2;10;20;30mé✔\u001b]8;;\u001b\\\u001b[22mpath/to/file.ts\u001b[5n⚠\u001b[38:2::1:2:3m\t🤝\u001b[31",
+    7
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0025",
+   "args": [
+    "你好，世界\u001b]8;;http://x.test/a\u0007foo-bar\u001b[38:2::1:2:3m\u001b=　",
+    8
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0026",
+   "args": [
+    "The quick brown fox✓\u001b]8;;\u0007xกำééक्‍ष\u001b[\u001b[23m\u001b[48;2;1;2;3m",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0027",
+   "args": [
+    "1️⃣😀กำ\u001b]8;;http://x.test/a\u0007—path/to/file.ts— ລຳworld\u001b>",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0028",
+   "args": [
+    "—…\u001b[1m\u0001\u001b]8;;http://x.test/a\u0007world\u001b[0m\u001b]8;;\u0007⌚hello\u001b[1;5A\u001b[H",
+    4
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0029",
+   "args": [
+    "…\u001b\u001b[H⭐\u001b]8;;http://x.test/a\u0007กำa",
+    5
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0030",
+   "args": [
+    "\u001b]8;;unterminated",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0031",
+   "args": [
+    "path/to/file.ts「ＡＢＣ\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[1;5Aa b\u001b🤝path/to/file.ts👨‍👩‍👧‍👦\u001b]8;;unterminated\u001b]0;title\u0007\u001b",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0032",
+   "args": [
+    "\u001b=カナ#️⃣hello\u001b[27m\u001b[\u001b]8;id=1;https://e.com/p?q=1\u001b\\foo-bar\u001b[4m\u001b[49m",
+    12
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0033",
+   "args": [
+    "🏴‍☠️\u001b[31m\u001b^pm\u001b\\\u001b]8;;unterminated↔️ \u001b[38:2::1:2:3m1️⃣\u001b8",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0034",
+   "args": [
+    "Z̴̢̛̗͓☺️⬜️İ\u001b[27m각‍\u001b]8;id=1;https://e.com/p?q=1\u001b\\ßລຳ🏴‍☠️foo-bar",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0035",
+   "args": [
+    "\u001b(Bé\u001bP1$r\u001b\\a b\u001b7\u001bP1$r\u001b\\日本語のテキスト\u001b[38:2::1:2:3m~/src☺️\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[1;5A",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0036",
+   "args": [
+    "a\u001b[5né̀\u001b_Gf=100,a=T;AAAA\u001b\\\u001b[38;2;10;20;30mhello✔\u001b[23m\u001b…\u001b]8;;\u0007\u001b]133;A\u0007\u001b]0;title\u0007",
+    5
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0037",
+   "args": [
+    "—a b\u001b8helloß👍🏽\u001b[31क्ष\u001b[999999999m\u001b[48;2;1;2;3m\u001b]8;;\u0007­",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0038",
+   "args": [
+    "⁠\u001b[0m\u001b[27m\u001b[48;2;1;2;3m\u001b]8;;\u0007|\u001b[1;38;5;196mhello👩‍💻。\u001b[58;5;1m\u001b>",
+    7
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0039",
+   "args": [
+    "\u001b[1;38;5;196m\u001b_Gf=100,a=T;AAAA\u001b\\👨‍👩‍👧‍👦🧑🏾‍🦰\u001b[29m\u001b]8;;http://x.test/a\u0007The quick brown fox👩‍💻foo-bar‌\u001f\u001bX sos\u001b\\",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0040",
+   "args": [
+    "ລຳ\u001b[1;38;5;196m…\u001b[1m~/src\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[H—\u001b[2m\u001bP1$r\u001b\\\u001b7स्त्र",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0041",
+   "args": [
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\　İ\u001b[7m\u001f\u001b[29m\u001b[3m\u001b[48;2;1;2;3m⁠\u0001\u001b…\u001b]0;title\u000712345",
+    4
+   ],
+   "result": "https://e.com/p?q=1"
+  },
+  {
+   "name": "case 0042",
+   "args": [
+    "world\u001b]8;;\u0007—\u0001é❤️\u001b[4mapath/to/file.ts⁠\u001b(B\u001b]8;;\u0007\u001b[38;2;10;20;30m",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0043",
+   "args": [
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001f\u001b[23m🏳️‍🌈#️⃣\u001b>\u001b[29m\u001b]8;;\u0007\u001b[58;5;1m🇺🇸world",
+    4
+   ],
+   "result": "https://e.com/p?q=1"
+  },
+  {
+   "name": "case 0044",
+   "args": [
+    "\u001b[23m\u001b[5n\u001b[5n」\u001b8hello\u001b[58;5;1m\u001b[49mस्त्र\u001b]8;;unterminated日本語のテキスト\u001b]0;title\u0007\u001b[1m12345",
+    5
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0045",
+   "args": [
+    "✓\u001b[999999999m\u001b[3mİ\u001bP1$r\u001b\\̀\u001b[31m\u001b]8;;\u0007\u001b[27m\u001b[5n",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0046",
+   "args": [
+    "ᄀ가\u001b^pm\u001b\\กำ🏳️‍🌈\u0001Z̴̢̛̗͓\u001b_pi:c\u0007「a b\u001b[49m\u001b[m\u001b]8;;unterminated⬜️",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0047",
+   "args": [
+    "||ລຳ \u001b]8;;\u001b\\\u001b[1;38;5;196m12345\u001b[49mຳ",
+    8
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0048",
+   "args": [
+    "\t\u001b8\u001b]8;;http://x.test/a\u0007\u001b[23m\u001b[38:2::1:2:3m\u0001",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0049",
+   "args": [
+    " \u000bThe quick brown fox\u001b[5n\u001b[2K\u001b]8;;unterminatedfoo-bar",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0050",
+   "args": [
+    "  İ12345\u001b]8;;unterminated\u001b[1;38;5;196m\u001b[48;2;1;2;3m\u001b[27m\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0051",
+   "args": [
+    "\u001b]8;;\u001b\\xक्‍षpath/to/file.ts。⬜️\u001b[999999999m",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0052",
+   "args": [
+    "\t\u001b[999999999m👍🏽Z̴̢̛̗͓ำั\u001b]8;;\u0007 ﻿",
+    7
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0053",
+   "args": [
+    "\u001b8foo-bar\u001b[38;2;10;20;30ma\u001b[24m\u001b]8;;http://x.test/a\u0007\u000b👍🏽\u001b[49m\u001b[38;2;10;20;30m\u001b‌ ",
+    5
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0054",
+   "args": [
+    "\u001b[27m↔️\u001b[4:3m\u001b[ma b⚠\u001b]8;;http://x.test/a\u0007\u001b[1mx\u001b_pi:c\u0007éfoo-bar\u001b^pm\u001b\\",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0055",
+   "args": [
+    "🤝\u001b]8;;\u001b\\\u001b_pi:c\u0007​⭐path/to/file.ts  \u001b[22m\u001b[22m\u001b[mfoo-barß",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0056",
+   "args": [
+    "漢字각 。⁠\u001b]8;id=1;https://e.com/p?q=1\u001b\\🫱🏻‍🫲🏿world\u001b8\b  world",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0057",
+   "args": [
+    "̀\u001b]8;;unterminated⌚",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0058",
+   "args": [
+    "ক্ষpath/to/file.ts\u001b[23mfoo-bar\t \u001b[H\u001b]8;;\u0007—\u001b=  \u001b]8;;\u0007a bfoo-bar",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0059",
+   "args": [
+    "path/to/file.ts\u001b]8;;\u0007~/src­\u001b[38:2::1:2:3m",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0060",
+   "args": [
+    "\u001b[38;2;10;20;30m—ન્ન\u001b[38:2::1:2:3m\u001b]8;;http://x.test/a\u0007🏳️‍🌈hello\u001b^pm\u001b\\ß\u001b[mé\b",
+    3
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0061",
+   "args": [
+    "a bस्त्रक्‍ष\u001b]8;;\u0007\u001b[24m✓\u001b[58;5;1mß\u001b[27m",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0062",
+   "args": [
+    "カナé\u001b[4m\u001b[0m\u001b]0;title\u0007\u001b=\u001b]8;;\u0007\u001f\u001b[a hello",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0063",
+   "args": [
+    "The quick brown fox\u001b[23mx\u001b]8;;\u001b\\x~/src\u001b[3m\u001b>",
+    1
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0064",
+   "args": [
+    "\u001b[?25l\u001b_Gf=100,a=T;AAAA\u001b\\\u0000\u001b[24ma b\u001b7\u001b]8;;\u001b\\\u001b_Gf=100,a=T;AAAA\u001b\\\u001b[1;38;5;196m각\u001b[3m한국어\u001b7é",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0065",
+   "args": [
+    "\u001b]0;title\u0007\u001b[31m\u001b>👍🏽  hello\u001bc\u001b]8;;unterminatedfoo-bar\u001b[H\u001b]133;B\u001b\\",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0066",
+   "args": [
+    "\u001b]8;;http://x.test/a\u0007\u001b[999999999m\u001b]1337;File=inline=1:AAAA\u0007\u001b[0m\f\u001bThe quick brown fox\u001b7  ß",
+    10
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0067",
+   "args": [
+    "\u001b(B👨‍👩‍👧‍👦🏳️‍🌈#️⃣🇺🇸\u001b]8;;\u0007a \u001b]0;title\u0007กำ",
+    8
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0068",
+   "args": [
+    "﻿😀\u001b[\u001b]8;;unterminated\u001b^pm\u001b\\\u001b[27m\u001b[5n\u001b[9mhello",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0069",
+   "args": [
+    "world\u001b]8;;\u001b\\1️⃣\u001b[7m👩‍💻12345",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0070",
+   "args": [
+    "\u001b[5nfoo-bar✔\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[1;5A\u001b]133;A\u0007✓\u001b[2m",
+    7
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0071",
+   "args": [
+    "\u001b[29m~/src⬜️👩‍💻\u001f\u001b[200~\u001b]8;;unterminated",
+    7
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0072",
+   "args": [
+    "—\u001b[58;5;1m\u001b8\u001b[38:2::1:2:3m\u001b[29m12345Z̴̢̛̗͓\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007\u001b[999999999m\u001b[5n",
+    10
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0073",
+   "args": [
+    "\u001b]8;;\u0007~/src|\u001b[23mpath/to/file.ts\u001b_Gf=100,a=T;AAAA\u001b\\\u001b[22mZ̴̢̛̗͓a",
+    8
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0074",
+   "args": [
+    "\u001b[29mäかな…⚠️👍🏽\u0001🏳️‍🌈\u001b[48;2;1;2;3m|\u001b]8;;http://x.test/a\u0007\u001b[38;2;10;20;30m",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0075",
+   "args": [
+    "12345\u001bc\u001b]8;;\u001b\\",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0076",
+   "args": [
+    " a b\u001b]8;;unterminated\u001b]8;;\u0007\u001b[39ma bન્ન↔️\u001bX sos\u001b\\\u001b]1337;File=inline=1:AAAA\u0007\u001b[24m",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0077",
+   "args": [
+    "12345\u001b]8;;\u001b\\각\u001b>12345foo-bar ✓ \u001b[39m⚠️\u001b[31m",
+    12
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0078",
+   "args": [
+    "\u001b]8;;\u0007\u001b[31🔥\u001b]8;;unterminated\u001b[24m\u001b[7m\u001b[?25lhello日本語のテキスト\u001b^pm\u001b\\\u001b]8;;unterminated　",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0079",
+   "args": [
+    "\u001b>😀﻿\u001b[1;5A‍ä\u001b[9mＡＢＣ﻿\u001b]1337;File=inline=1:AAAA\u0007\u001b_pi:c\u0007\u001b]8;;unterminated\u001b]1337;File=inline=1:AAAA\u0007…",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0080",
+   "args": [
+    "👨‍👩‍👧‍👦\u001b]8;;\u0007你好，世界\u001b^pm\u001b\\",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0081",
+   "args": [
+    "—स्त्र\u001b]8;;\u001b\\ß̀\u001b[1;5A\u001b[22m」﻿\u001b[H\u001b[27m",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0082",
+   "args": [
+    "\u001b]8;;\u0007The quick brown fox\u001b[3mİ",
+    8
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0083",
+   "args": [
+    "x⭐ß\u001b[7m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[24m",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0084",
+   "args": [
+    "~/src\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b_pi:c\u0007🏳️‍🌈\u0000\u0000\u001b]1337;File=inline=1:AAAA\u0007「\u001b[1m\u001b(Bລຳᄀ가",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0085",
+   "args": [
+    "\u001b]8;;\u001b\\12345한국어|̀… \u001b[?25l",
+    7
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0086",
+   "args": [
+    "\u001b[24m\u001b[31m\u001b]8;;\u0007­🏳️‍🌈path/to/file.ts。 ",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0087",
+   "args": [
+    "|🧑🏾‍🦰\u001b]133;A\u0007\u001b[H\u001b]8;;\u001b\\\u001b]8;;unterminated",
+    8
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0088",
+   "args": [
+    "\u001b8🔥\u001b[?25l\u001b^pm\u001b\\ 12345ᄀ가\u001b]8;;\u001b\\\u001bＡＢＣ\u001b(B你好，世界",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0089",
+   "args": [
+    "⚠~/srcworldລຳ\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007한국어\u001b[999999999mかなß",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0090",
+   "args": [
+    "😀😀👍🏽日本語のテキスト\u001b]8;;unterminatedhelloัक्‍ष\u001b]8;;\u0007\u001b[1;38;5;196m\u001b]0;title\u0007",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0091",
+   "args": [
+    "\u001b[4:3mfoo-bar\u0001\u001b[38:2::1:2:3m\u001b]8;;http://x.test/a\u0007ัำ\u001b]8;;unterminated\u001b[?25l각⬜️İ\u001b(B1️⃣",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0092",
+   "args": [
+    "🫱🏻‍🫲🏿\u001b[999999999m🇬🇧🇫🇷\u001b]8;;\u0007\u001b^pm\u001b\\İ❤日本語のテキスト\u001b[4m\u001b]133;B\u001b\\  |­\u001b[1;38;5;196m",
+    8
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0093",
+   "args": [
+    "a⌚「日本語のテキスト\u001b[48;2;1;2;3m\u001b[0mThe quick brown fox\u001b[38:2::1:2:3m\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0094",
+   "args": [
+    "\u001b]8;;http://x.test/a\u0007한국어ᄀ가\u001b812345",
+    6
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0095",
+   "args": [
+    "  The quick brown fox\u001b]8;;unterminated⭐ᄀ가 ~/src\u001b]0;title\u0007é",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0096",
+   "args": [
+    "…\u001b[9m\u001b]8;;unterminated﻿\u000b\u001b[38;2;10;20;30m\u001b7❤️\u001b[48;2;1;2;3mworld\u001bX sos\u001b\\ᄀ가12345\u001b[m",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0097",
+   "args": [
+    "\u001b_Gf=100,a=T;AAAA\u001b\\a\u001b[5n\u001b[2m日本語のテキスト🇺🇸\u001b]8;;http://x.test/a\u0007\u001b[49m",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0098",
+   "args": [
+    "\u001b[2mpath/to/file.ts\u001fຳ\u001b]8;;\u001b\\",
+    12
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0099",
+   "args": [
+    "　\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0100",
+   "args": [
+    "\u001b[22m\u001f\u001b[58;5;1m12345\u001b[49m👍🏽~/srca你好，世界\u001b]8;;\u0007\u001b[31m\u001b[5nx",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0101",
+   "args": [
+    "\u001b[48;2;1;2;3m　🏴‍☠️🫱🏻‍🫲🏿\u001b[H\u001b]8;;\u001b\\‍🫱🏻‍🫲🏿\u001b[22mຳ12345ำ❤️\u001b[2K",
+    8
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0102",
+   "args": [
+    "  path/to/file.ts…\u001b[0m\u001b[29m\u001b]8;;http://x.test/a\u0007カナ\f👩‍💻\u001b[38:2::1:2:3m",
+    1
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0103",
+   "args": [
+    "かな\u001b_Gf=100,a=T;AAAA\u001b\\ \u001b[?25l\u001b[4:3m\u001b]8;;http://x.test/a\u0007\u001bc~/srcxhello\u000b",
+    5
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0104",
+   "args": [
+    "\u001b]133;B\u001b\\、foo-bar\u001b(B\u001b[m\u001b>❤️\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[9m",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0105",
+   "args": [
+    "\u001b=स्त्र\u001b[999999999m\u001b[2K\u001b[3m\u001b]8;;http://x.test/a\u0007⬜️\u001b[23m\f\u001b]133;A\u0007カナ\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    7
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0106",
+   "args": [
+    "\u001b(B|क्‍ष\u001b[24m\u001b]133;B\u001b\\xxworld\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b8 ",
+    7
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0107",
+   "args": [
+    "\u001b7\u001bc\u001b]8;;http://x.test/a\u0007\u001bกำ\u001b[49mhello\u001b[5n\u001b[58;5;1m",
+    8
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0108",
+   "args": [
+    "\u001b(B🏳️‍🌈、\u001b[49ma b\u001b[31🏴‍☠️\u001b[2mＡＢＣ\u001b[2K\u001b]8;id=1;https://e.com/p?q=1\u001b\\「",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0109",
+   "args": [
+    "\u001b[39m\u001b>hello\u001b[9mpath/to/file.ts\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    12
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0110",
+   "args": [
+    "\u001b\u001b[0m\u001bc🤝~/srcThe quick brown fox\u001b[1;5A\u001b]8;;\u0007🔥\u001b[m",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0111",
+   "args": [
+    "\u001b[m⬜️éfoo-bar🫱🏻‍🫲🏿ຳस्त्र\u001b[58;5;1m\u001bP1$r\u001b\\」\u001b]8;;\u0007",
+    12
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0112",
+   "args": [
+    "world\u0001\u001b[5n\u001b>\u001b[27m\u001b[4m\u000b🇬🇧🇫🇷\u001b]8;;\u0007The quick brown fox",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0113",
+   "args": [
+    "\u001b]8;;\u001b\\\u001b[29m🔥12345你好，世界\u0001",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0114",
+   "args": [
+    "path/to/file.ts\u001b[2m\u001b[4m\u001b]8;;unterminated」hello\u001b[23mक्‍षé",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0115",
+   "args": [
+    "한국어각\u001b]8;id=1;https://e.com/p?q=1\u001b\\　👩‍💻\u001b[200~\u001b[58;5;1m\u001b]8;;http://x.test/a\u0007…क्ष ক্ষ☺️",
+    8
+   ],
+   "result": "https://e.com/p?q=1"
+  },
+  {
+   "name": "case 0116",
+   "args": [
+    "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b]8;;unterminated\u001b[27m\u001b]8;;http://x.test/a\u0007",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0117",
+   "args": [
+    "\u001bX sos\u001b\\The quick brown foxä\u001b[\u0007\u001b[?25l🫱🏻‍🫲🏿a b\u001b]8;id=1;https://e.com/p?q=1\u001b\\  \u001b7」",
+    1
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0118",
+   "args": [
+    "\u001bX sos\u001b\\\u001b[58;5;1m \u001b]8;;unterminated⌚İa⬜️",
+    12
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0119",
+   "args": [
+    "\u001b[1;5A\u001b>Z̴̢̛̗͓\u001bc\u001b]8;;\u0007foo-bar\u001b]8;;\u001b\\",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0120",
+   "args": [
+    "ຳ\u001b]0;title\u0007👍🏽　\u001b]8;;\u001b\\\u001b]8;;unterminated…\u001b[4m ~/src✓",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0121",
+   "args": [
+    "\u001b[2m\u001b[38;2;10;20;30ma b\u001b_Gf=100,a=T;AAAA\u001b\\\u001b]8;;unterminated　↔️",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0122",
+   "args": [
+    "\u001bP1$r\u001b\\\u001b]133;A\u0007\u001b]8;;\u001b\\\u0001⌚İ",
+    5
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0123",
+   "args": [
+    "\u001bX sos\u001b\\\u001b[4m\u001bc\u001b^pm\u001b\\\u001b]8;;unterminated\u001b[0m",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0124",
+   "args": [
+    "é|😀foo-bar\u001b(B\u001b]8;;http://x.test/a\u0007\u001b]1337;File=inline=1:AAAA\u0007\u001b[2m12345\u001b[27m\u001b]133;A\u0007",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0125",
+   "args": [
+    "​😀\u001b[1;38;5;196mન્ન\u001b]8;id=1;https://e.com/p?q=1\u001b\\worldThe quick brown fox\té﻿",
+    12
+   ],
+   "result": "https://e.com/p?q=1"
+  },
+  {
+   "name": "case 0126",
+   "args": [
+    "\u001b]8;;\u0007The quick brown fox\u001b[999999999m",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0127",
+   "args": [
+    "12345a\u001b]8;;http://x.test/a\u0007\u001b[4:3m\u001b[0m\u001b]8;;\u0007The quick brown foxᄀ가\u001b^pm\u001b\\",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0128",
+   "args": [
+    "‍\u001b[23mThe quick brown fox\u001b[3m\u001b^pm\u001b\\\u001b]8;id=1;https://e.com/p?q=1\u001b\\world\u001bX sos\u001b\\|\u001b[4:3m\u001b]8;;\u0007",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0129",
+   "args": [
+    "क्‍ष\u001b[38;2;10;20;30m\u001b[29m\u001b[39m\u001b[29m你好，世界\u001b]8;;http://x.test/a\u0007\u0007",
+    9
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0130",
+   "args": [
+    "path/to/file.ts\u001b[23m\u001b[24m\u001b[200~\u001b[200~⚠️\u001b]8;;\u001b\\foo-bar\u001b[m",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0131",
+   "args": [
+    "\u001b[999999999m\u001b[4:3m\u001b]8;;\u001b\\\u001bcThe quick brown foxຳ\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0132",
+   "args": [
+    "\u001b]8;;\u001b\\\u001b[4m\u001b7path/to/file.ts\u001b[H\u001bX sos\u001b\\a b🤝\u001bThe quick brown foxa\u001bP1$r\u001b\\ລຳ",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0133",
+   "args": [
+    "\u001b[31mpath/to/file.tsfoo-bar…स्त्र\u001b[24m\u001b^pm\u001b\\1️⃣\u001b]8;;unterminated👨‍👩‍👧‍👦",
+    11
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0134",
+   "args": [
+    "🫱🏻‍🫲🏿hello🇺🇸👨‍👩‍👧‍👦\u001b]8;;unterminated",
+    10
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0135",
+   "args": [
+    "\u001b]8;;http://x.test/a\u0007\u0000\u001b[7m\u001b[1m\u001b[5n。",
+    0
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0136",
+   "args": [
+    "\u001b[58;5;1m\u001b]8;;\u001b\\\u001b[1m、\u001b]8;;http://x.test/a\u0007」 Z̴̢̛̗͓…a",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0137",
+   "args": [
+    "\u001b[999999999m\u001b>\u001b]8;;unterminated  12345\u001b[H🇬🇧🇫🇷—x",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0138",
+   "args": [
+    "foo-barำ\u001b]8;;http://x.test/a\u0007」path/to/file.ts\u001b8world\u001b]8;;\u001b\\😀\u001bX sos\u001b\\\u001b[|path/to/file.ts",
+    1
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0139",
+   "args": [
+    "🇬🇧🇫🇷12345world↔️\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    6
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0140",
+   "args": [
+    "\u001b\u001b[H\u001b_pi:c\u0007\u001b[23m\u001b]8;;\u001b\\\b\u001b>\u001b_pi:c\u0007Z̴̢̛̗͓ক্ষé—",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0141",
+   "args": [
+    "你好，世界\u001b[m\u0000 a bำ\u001b]1337;File=inline=1:AAAA\u0007\u001b]8;id=1;https://e.com/p?q=1\u001b\\﻿\u001b8~/src\u001b[23mx\u001b[",
+    5
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0142",
+   "args": [
+    "foo-bar\u001b[31क्‍ष\u001b(B\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[38:2::1:2:3mThe quick brown fox|",
+    4
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0143",
+   "args": [
+    "  é\u001b]8;;http://x.test/a\u0007\u001b[mᄀ가क्‍षa\u001b>한국어 🇺🇸\u001b(B\u001b[39m",
+    5
+   ],
+   "result": "http://x.test/a"
+  },
+  {
+   "name": "case 0144",
+   "args": [
+    "\u001b]8;;\u0007✓\u001b=\u001b[22m\u001b[22m☺️\u001b[1;5Aİ\u001b_Gf=100,a=T;AAAA\u001b\\\u0000\u001b]8;;http://x.test/a\u0007a",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0145",
+   "args": [
+    "\u001b[1;38;5;196m\u001b[29m\u001b[23mhello⁠foo-bar⚠\u001b[1;5A\u001b]8;;http://x.test/a\u0007\u001b[9m~/src",
+    1
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0146",
+   "args": [
+    "\u001b[9m|\u001b]8;id=1;https://e.com/p?q=1\u001b\\̀\u001b[27m\u001b]8;;\u001b\\\u001b[m\u001b[999999999m",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0147",
+   "args": [
+    "\t",
+    3
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0148",
+   "args": [
+    "漢字漢字",
+    2
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  },
+  {
+   "name": "case 0149",
+   "args": [
+    "\u001b_pi:c\u0007x",
+    0
+   ],
+   "result": {
+    "$": "undefined"
+   }
+  }
+ ]
+}

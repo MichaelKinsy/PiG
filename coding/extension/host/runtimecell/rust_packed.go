@@ -34,6 +34,9 @@ type RustExtension struct {
 	Crate   string
 	Factory string
 	Hash    string
+	// Verify, when set, reports an error when the extension's source no longer matches Hash. A caller that derived Hash from the
+	// source files sets it, so that a build proves the compiler read the source that was hashed (see cellInputsUnchanged).
+	Verify func() error
 }
 
 // RustPackedCell describes a generated Rust packed-cell artifact.
@@ -127,6 +130,9 @@ func BuildRustPackedCell(ctx context.Context, cacheRoot, key string, extensions 
 						return "", failure
 					}
 					return "", cacheBuildFailure(failure)
+				}
+				if err := cellInputsUnchanged(key, hash, rustPackedCellHash(cacheRoot, key, normalized, sdkRoot), rustExtensionVerifiers(normalized)); err != nil {
+					return "", err
 				}
 				return filepath.Join(cargoTargetDirectory(scratch), "release", packageName+strings.TrimPrefix(artifactName, "runner")), nil
 			})
@@ -342,12 +348,12 @@ func renderRustCargoToml(extensions []RustExtension, sdkRoot, packageName string
 func renderRustRunner(extensions []RustExtension) string {
 	var b strings.Builder
 	b.WriteString("use std::env;\nuse std::io::BufRead;\nuse std::process;\nuse std::sync::{Arc, Condvar, Mutex};\nuse std::thread;\n\n")
-	b.WriteString("#[derive(Clone, Copy)]\nstruct Item { name: &'static str, env: &'static str, run: fn(String) -> std::io::Result<()> }\n\n")
+	b.WriteString("#[derive(Clone, Copy)]\nstruct Item { name: &'static str, env: &'static str, run: fn(String, Box<dyn FnOnce() + Send>) -> std::io::Result<()> }\n\n")
 	b.WriteString(rustRunnerState)
 	b.WriteString("fn main() {\n")
 	b.WriteString("    let items: Vec<Item> = vec![\n")
 	for _, ext := range extensions {
-		fmt.Fprintf(&b, "        Item { name: %q, env: %q, run: |sock| build(&sock, %s::%s).run_with_socket(&sock) },\n", ext.Name, SocketEnvName(ext.Name), ext.Crate, ext.Factory)
+		fmt.Fprintf(&b, "        Item { name: %q, env: %q, run: |sock, built| { let extension = build(&sock, %s::%s); built(); extension.run_with_socket(&sock) } },\n", ext.Name, SocketEnvName(ext.Name), ext.Crate, ext.Factory)
 	}
 	b.WriteString("    ];\n")
 	b.WriteString(rustRunnerMain)
@@ -382,10 +388,13 @@ fn unescape_field(field: &str) -> String {
     field.replace("%09", "\t").replace("%0A", "\n").replace("%0D", "\r").replace("%25", "%")
 }
 
-fn start(item: Item, sock: String, shared: Shared) {
+// start runs a member on a thread of its own and returns a receiver that ends once the member's factory has returned, panicked or never ran.
+fn start(item: Item, sock: String, shared: Shared) -> std::sync::mpsc::Receiver<()> {
     shared.0.lock().unwrap().live += 1;
+    let (built_sender, built) = std::sync::mpsc::channel::<()>();
     thread::spawn(move || {
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (item.run)(sock.clone())));
+        let built: Box<dyn FnOnce() + Send> = Box::new(move || { let _ = built_sender.send(()); });
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (item.run)(sock.clone(), built)));
         let result = match result { Ok(result) => result, Err(_) => Err(std::io::Error::other("extension panicked")) };
         if let Err(err) = &result { eprintln!("{}: {}", item.name, err); let _ = pig_sdk::report_load_failure(&sock); }
         let (state, cond) = &*shared;
@@ -394,6 +403,7 @@ fn start(item: Item, sock: String, shared: Shared) {
         if result.is_err() { state.failed = true; }
         cond.notify_all();
     });
+    built
 }
 
 `
@@ -409,7 +419,10 @@ const rustRunnerMain = `    let shared: Shared = Arc::new((Mutex::new(State::def
             Err(_) => { eprintln!("{} not set for {}", item.env, item.name); process::exit(1); }
         };
         started += 1;
-        start(item, sock, shared.clone());
+        // The host accepts the members in order and serves a connection only after the members before it. A factory that calls the host before it returns (a
+        // subscription on the event bus) waits for that service, so a later member must not take the factory turn before an earlier one: it would hold the turn
+        // while the host waits for the earlier member's connection.
+        let _ = start(item, sock, shared.clone()).recv();
     }
     {
         let shared = shared.clone();

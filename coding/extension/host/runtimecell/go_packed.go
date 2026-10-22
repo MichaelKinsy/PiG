@@ -46,6 +46,9 @@ type GoExtension struct {
 	Factory          string
 	Hash             string
 	WorkspaceModules []string
+	// Verify, when set, reports an error when the extension's source no longer matches Hash. A caller that derived Hash from the
+	// source files sets it, so that a build proves the compiler read the source that was hashed (see cellInputsUnchanged).
+	Verify func() error
 }
 
 // goPackedBuildFlags are the `go build` flags for a packed cell.
@@ -213,6 +216,9 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 						return "", failure
 					}
 					return "", cacheBuildFailure(failure)
+				}
+				if err := cellInputsUnchanged(key, hash, goPackedCellHash(cacheRoot, key, normalized, sdkRoot), goExtensionVerifiers(normalized)); err != nil {
+					return "", err
 				}
 				return out, nil
 			})
@@ -719,12 +725,12 @@ func renderGoRunner(extensions []GoExtension) string {
 	}
 	b.WriteString(")\n\n")
 	b.WriteString("func main() {\n")
-	b.WriteString("\ttype item struct { name string; env string; run func(string) error }\n")
+	b.WriteString("\ttype item struct { name string; env string; run func(string, func()) error }\n")
 	b.WriteString(goRunnerFactoryScope)
 	b.WriteString("\titems := []item{\n")
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
-		fmt.Fprintf(&b, "\t\t{name: %q, env: %q, run: func(sock string) error { return build(sock, func() runnable { return %s.%s() }).RunWithSocket(sock) }},\n", ext.Name, SocketEnvName(ext.Name), pkgName, ext.Factory)
+		fmt.Fprintf(&b, "\t\t{name: %q, env: %q, run: func(sock string, built func()) error { extension := build(sock, func() runnable { return %s.%s() }); built(); return extension.RunWithSocket(sock) }},\n", ext.Name, SocketEnvName(ext.Name), pkgName, ext.Factory)
 	}
 	b.WriteString("\t}\n")
 	b.WriteString(goRunnerBody)
@@ -758,12 +764,16 @@ const goRunnerBody = `	var mu sync.Mutex
 	cond := sync.NewCond(&mu)
 	live, parked, inputClosed := 0, false, false
 	var failures []error
-	start := func(it item, sock string) {
+	start := func(it item, sock string) <-chan struct{} {
 		mu.Lock()
 		live++
 		mu.Unlock()
+		ready := make(chan struct{})
+		var once sync.Once
+		built := func() { once.Do(func() { close(ready) }) }
 		go func() {
-			err := it.run(sock)
+			defer built()
+			err := it.run(sock, built)
 			if err != nil && !errors.Is(err, net.ErrClosed) {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", it.name, err)
 				if c, dialErr := net.Dial("unix", sock); dialErr == nil { _ = c.Close() }
@@ -776,6 +786,7 @@ const goRunnerBody = `	var mu sync.Mutex
 			cond.Broadcast()
 			mu.Unlock()
 		}()
+		return ready
 	}
 	active := os.Getenv("PIG_EXT_ACTIVE_MEMBERS")
 	for _, it := range items {
@@ -783,7 +794,8 @@ const goRunnerBody = `	var mu sync.Mutex
 		sock := os.Getenv(it.env)
 		if sock == "" && len(items) == 1 { sock = os.Getenv("PIG_EXT_SOCKET") }
 		if sock == "" { mu.Lock(); failures = append(failures, fmt.Errorf("%s not set for %s", it.env, it.name)); mu.Unlock(); continue }
-		start(it, sock)
+		// The host accepts the members in order and serves a connection only after the members before it. A factory that calls the host before it returns (a subscription on the event bus) waits for that service, so a later member must not take the factory turn before an earlier one: it would hold the turn while the host waits for the earlier member's connection.
+		<-start(it, sock)
 	}
 	// The host percent-encodes the four characters that delimit a control line (packed_go.go encodeAdmissionField); one pass decodes each escape.
 	unescape := strings.NewReplacer("%25", "%", "%09", "\t", "%0A", "\n", "%0D", "\r")

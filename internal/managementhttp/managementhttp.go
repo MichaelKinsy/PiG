@@ -10,6 +10,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultTransport, which withoutConnectionReuse clones (pig additive (D191))
 )
 
 // retryableStatusCodes mirrors upstream RETRYABLE_STATUS_CODES.

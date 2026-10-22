@@ -21,6 +21,7 @@ import (
 	"maps"
 	"math"
 	"net/http"
+	"os"
 	"reflect"
 	"slices"
 	"strconv"
@@ -313,6 +314,9 @@ func Extension() *sdk.Extension {
 		factoryAgentDir = "error: " + factoryAgentDirErr.Error()
 	}
 	registerAutocompleteFixture(ext)
+	registerPiAiHelpersFixture(ext)
+	registerHostPathsFixture(ext)
+	registerHostHelpersFixture(ext)
 	schemaRejected := RejectInvalidToolSchema(ext)
 	ext.Command("schema-probe", "Report schema rejection", func(ctx sdk.Context, _ string) error {
 		ctx.Notify(fmt.Sprintf("schema-rejected:%t", schemaRejected), "info")
@@ -366,6 +370,38 @@ func Extension() *sdk.Extension {
 		}
 		return nil
 	})
+	ext.Command("exec-abort-probe", "Abort a running exec through its signal", func(ctx sdk.Context, args string) error {
+		var probe struct {
+			Command string   `json:"command"`
+			Args    []string `json:"args"`
+			PidFile string   `json:"pidFile"`
+			Pre     bool     `json:"pre"`
+		}
+		if err := json.Unmarshal([]byte(args), &probe); err != nil {
+			return err
+		}
+		signal, abort := context.WithCancel(context.Background())
+		defer abort()
+		if probe.Pre {
+			abort()
+		} else {
+			go func() {
+				for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+					if _, err := os.Stat(probe.PidFile); err == nil {
+						break
+					}
+				}
+				abort()
+			}()
+		}
+		result, err := ctx.ExecWithOptions(probe.Command, probe.Args, sdk.ExecOptions{Signal: signal})
+		if err != nil {
+			ctx.Notify("rejected:"+err.Error(), "info")
+			return nil
+		}
+		ctx.Notify(fmt.Sprintf("exec-abort:killed=%t;code=%d;stdout=%s", result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout)), "info")
+		return nil
+	})
 	ext.Command("thinking-model", "Read the thinking level and switch the model", func(ctx sdk.Context, _ string) error {
 		level, err := ctx.GetThinkingLevel()
 		if err != nil {
@@ -383,6 +419,7 @@ func Extension() *sdk.Extension {
 		ctx.Notify(string(data), "info")
 		return nil
 	})
+	ext.Command("replicated-accessors", "Read the replicated accessors after each write", replicatedAccessorsProbe)
 	ext.Command("active_tools_set", "Set the active tools to the comma-separated names", func(ctx sdk.Context, args string) error {
 		ctx.SetActiveTools(strings.Split(strings.TrimSpace(args), ","))
 		return nil
@@ -477,6 +514,8 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	ext.Command("registry-session", "Read registry and session facades", registrySessionProbe)
+	ext.Command("registry-edges", "Read the registry answers that depend on the provider state", registryEdgesProbe)
+	ext.Command("registry-unbound-reads", "Report find and a session read against a host that cannot answer", registryUnboundReadsProbe)
 	ext.MessageRenderer("conformance-message", func(_ sdk.Context, message map[string]any, options sdk.MessageRenderOptions, width int) ([]string, error) {
 		if message["content"] == "padding-options" {
 			wire, err := json.Marshal(options)
@@ -611,11 +650,14 @@ func Extension() *sdk.Extension {
 	})
 
 	var abortObserved atomic.Bool
+	var abortReason atomic.Value
+	abortReason.Store("")
 	ext.Tool("abort_tool", "Wait for the abort signal", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if err := ctx.OnUpdate("waiting"); err != nil {
 			return nil, err
 		}
 		<-ctx.Done()
+		abortReason.Store(ctx.CancellationReason())
 		abortObserved.Store(true)
 		return "aborted", nil
 	})
@@ -629,6 +671,10 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("abort_probe", "Report whether abort_tool saw its abort signal", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("abort:%t", abortObserved.Load()), "info")
+		return nil
+	})
+	ext.Command("abort_reason", "Report the cancellation reason abort_tool saw", func(ctx sdk.Context, args string) error {
+		ctx.Notify("reason:"+abortReason.Load().(string), "info")
 		return nil
 	})
 
@@ -669,6 +715,62 @@ func Extension() *sdk.Extension {
 			return nil, err
 		}
 		return map[string]string{"content": fmt.Sprintf("dialog:%v=%s", params["title"], selected)}, nil
+	})
+
+	// A tool that notifies inline and, from a goroutine timer_release releases, after its handler returned (D189).
+	timerGate := make(chan struct{}, 16)
+	var staleMu sync.Mutex
+	var stale *sdk.Context
+	ext.Tool("timer_defer", "Notify inline and from deferred work", sdk.Schema{"type": "object"}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		staleMu.Lock()
+		stale = &ctx
+		staleMu.Unlock()
+		ctx.Notify("inline:sync", "info")
+		go func() {
+			<-timerGate
+			ctx.Notify("deferred:goroutine", "info")
+		}()
+		return map[string]string{"content": "queued"}, nil
+	})
+	// timer_stale awaits a host call it makes through the context of the earlier timer_defer request, which Pi-port extensions keep (an activeCtx), and returns once it was applied. The call is not detached work: the handler waits for it, so the host must not hold it for a loop turn that waits for the handler.
+	ext.Tool("timer_stale", "Await a host call made through an earlier request's context", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
+		staleMu.Lock()
+		earlier := stale
+		staleMu.Unlock()
+		if earlier == nil {
+			return nil, fmt.Errorf("timer_defer has not run")
+		}
+		earlier.Notify("stale:awaited", "info")
+		return map[string]string{"content": "applied"}, nil
+	})
+	ext.Tool("timer_release", "Release the deferred work", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
+		timerGate <- struct{}{}
+		return map[string]string{"content": "released"}, nil
+	})
+
+	// order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+	ext.Tool("order_probe", "Make a host call and an update in the first tick", sdk.Schema{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		ctx.Notify(fmt.Sprintf("order-call=%v", params["n"]), "info")
+		ctx.Notify(fmt.Sprintf("order-then=%v", params["n"]), "info")
+		if err := ctx.OnUpdate(sdk.ToolResult{Content: fmt.Sprintf("order-update=%v", params["n"])}); err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": fmt.Sprintf("order-done n=%v", params["n"])}, nil
+	})
+
+	// mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs): Pi registers it in the queue
+	// before the edit or write call that follows it in a batch.
+	ext.Tool("mutation_order_probe", "Take the file mutation queue in the first statement and append a tag to the file", sdk.Schema{"type": "object", "properties": map[string]any{"file": map[string]any{"type": "string"}, "tag": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		file, _ := params["file"].(string)
+		tag, _ := params["tag"].(string)
+		_, err := sdk.WithFileMutationQueue(file, func() (struct{}, error) {
+			before, _ := os.ReadFile(file)
+			return struct{}{}, os.WriteFile(file, append(before, tag+"\n"...), 0o600)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "mutated " + tag}, nil
 	})
 
 	ext.Tool("throw_probe", "Throw a value of the requested kind", sdk.Schema{"type": "object", "properties": map[string]any{"kind": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
@@ -907,6 +1009,63 @@ func Extension() *sdk.Extension {
 			parts = append(parts, strings.Join([]string{c.Name, c.Description, c.Source, c.SourceInfo.Path, c.SourceInfo.Scope}, "|"))
 		}
 		ctx.Notify("getThinkingLevel="+level+";getCommands="+strings.Join(parts, ","), "info")
+		return nil
+	})
+
+	// rw_prompt_state registers two tools and activates one, reading the system prompt state after each write. Pi's getters read the Session, so every read answers the writes before it.
+	ext.Command("rw_prompt_state", "Read the system prompt state after registering and activating tools", func(ctx sdk.Context, _ string) error {
+		tool := func(name string) sdk.ToolDefinition {
+			return sdk.ToolDefinition{Name: name, Label: name, Description: name, PromptSnippet: name + "-snippet", Parameters: sdk.Schema{"type": "object"}, Execute: func(sdk.Context, map[string]any) (any, error) { return "ok", nil }}
+		}
+		ctx.RegisterTool(tool("rw-alpha"))
+		ctx.RegisterTool(tool("rw-beta"))
+		registered, err := ctx.GetSystemPromptOptions()
+		if err != nil {
+			return err
+		}
+		ctx.SetActiveTools([]string{"rw-beta"})
+		options, err := ctx.GetSystemPromptOptions()
+		if err != nil {
+			return err
+		}
+		prompt, err := ctx.GetSystemPrompt()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_prompt_state=registered:%s;selected:%s;beta:%t;alpha:%t", registered.ToolSnippets["rw-alpha"], strings.Join(options.SelectedTools, ","), strings.Contains(prompt, "rw-beta-snippet"), strings.Contains(prompt, "rw-alpha-snippet")), "info")
+		return nil
+	})
+
+	// rw_idle_after_trigger sends a message that starts a run and reads isIdle at once; rw_idle_in_settled does the same, once, from an agent_settled handler, where the Session holds the message back until the handlers return.
+	ext.Command("rw_idle_after_trigger", "Read isIdle after a message that starts a run", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		idle, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_after_trigger=%t", idle), "info")
+		return nil
+	})
+	settledOnce := &atomic.Bool{}
+	ext.Command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", func(sdk.Context, string) error {
+		ext.OnEvent("agent_settled", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			if !settledOnce.CompareAndSwap(false, true) {
+				return nil, nil
+			}
+			trigger := true
+			if err := hctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+				return nil, err
+			}
+			idle, err := hctx.IsIdle()
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify(fmt.Sprintf("rw_idle_in_settled=%t", idle), "info")
+			return nil, nil
+		})
 		return nil
 	})
 
@@ -1151,7 +1310,7 @@ func Extension() *sdk.Extension {
 				return err
 			}
 		}
-		return ctx.AppendEntry("ui-availability", fmt.Sprintf("hasUI=%t selected=%s", ctx.HasUI(), selected))
+		return ctx.AppendEntry("ui-availability", fmt.Sprintf("hasUI=%t selected=%s", ctx.HasUI(), dialogText(selected)))
 	})
 
 	ext.Command("ui-state-barrier", "Read UI state after a dialog", func(ctx sdk.Context, _ string) error {
@@ -1172,7 +1331,7 @@ func Extension() *sdk.Extension {
 		if err != nil {
 			return err
 		}
-		ctx.Notify(fmt.Sprintf("selected=%s expanded=%t named=%s missing=%t success=%t error=%s", selected, expanded, named.(map[string]any)["name"], missing == nil, success, message), "info")
+		ctx.Notify(fmt.Sprintf("selected=%s expanded=%t named=%s missing=%t success=%t error=%s", dialogText(selected), expanded, named.(map[string]any)["name"], missing == nil, success, message), "info")
 		return nil
 	})
 
@@ -1370,7 +1529,7 @@ func Extension() *sdk.Extension {
 			return errors.Join(selectErr, inputErr, editorErr, confirmErr)
 		}
 		ctx.Notify(fmt.Sprintf("select=%s input=%s editor=%s confirm=%t",
-			selected, input, edited, confirmed), "info")
+			dialogText(selected), dialogText(input), dialogText(edited), confirmed == true), "info")
 		return nil
 	})
 
@@ -1401,6 +1560,9 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("overlay-width default=%v percent=%v", defaultWidth, percentWidth), "info")
 		return nil
 	})
+
+	registerKitWidgets(ext)
+	registerEditorHooks(ext)
 
 	ext.Command("kit-probe", "Exercise the component kit (D107)", func(ctx sdk.Context, args string) error {
 		result, err := ctx.Custom(&kitProbe{}, sdk.RemoteOverlayOptions{Title: "Kit"})
@@ -1589,15 +1751,24 @@ func Extension() *sdk.Extension {
 
 	ext.Command("model-stream-probe", "Exercise model streaming", func(ctx sdk.Context, _ string) error {
 		registry := ctx.ModelRegistry()
-		current := registry.Find("conformance", "current")
+		current, err := registry.Find("conformance", "current")
+		if err != nil {
+			return err
+		}
 		if current == nil || fmt.Sprint(current["id"]) != "current" {
 			return fmt.Errorf("find current = %#v", current)
 		}
-		found := registry.Find("conformance", "declared")
+		found, err := registry.Find("conformance", "declared")
+		if err != nil {
+			return err
+		}
 		if found == nil || fmt.Sprint(found["id"]) != "declared" || fmt.Sprint(found["provider"]) != "conformance" {
 			return fmt.Errorf("find declared = %#v", found)
 		}
-		slash := registry.Find("conformance", "org/model/name")
+		slash, err := registry.Find("conformance", "org/model/name")
+		if err != nil {
+			return err
+		}
 		if slash == nil || fmt.Sprint(slash["id"]) != "org/model/name" {
 			return fmt.Errorf("find slash = %#v", slash)
 		}
@@ -1627,10 +1798,18 @@ func Extension() *sdk.Extension {
 		if len(input) != 0 || cost["input"] != float64(0) || len(tiers) != 1 || compat["supportsStrictMode"] != false {
 			return fmt.Errorf("find slash shape = %#v", slash)
 		}
-		if missing := registry.Find("conformance", "missing"); missing != nil {
+		missing, err := registry.Find("conformance", "missing")
+		if err != nil {
+			return err
+		}
+		if missing != nil {
 			return fmt.Errorf("find missing = %#v", missing)
 		}
-		if overrideOnly := registry.Find("conformance", "override-only"); overrideOnly != nil {
+		overrideOnly, err := registry.Find("conformance", "override-only")
+		if err != nil {
+			return err
+		}
+		if overrideOnly != nil {
 			return fmt.Errorf("find override-only = %#v", overrideOnly)
 		}
 		auth, err := registry.GetApiKeyAndHeaders(found)
@@ -2007,6 +2186,7 @@ func Extension() *sdk.Extension {
 		"frontmatter": helperReport(factoryCall, "frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"),
 		"error":       helperReport(factoryCall, "frontmatter", "---\na: [\n---\nx"),
 		"date":        helperReport(factoryCall, "date", "2020-01-02T03:04:05.678Z"),
+		"strip":       helperReport(factoryCall, "strip", "---\nz: 1\n---\nbody text\n"),
 	}
 	ext.Command("helper_probe", "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", func(ctx sdk.Context, args string) error {
 		var c struct {
@@ -2174,6 +2354,8 @@ func Extension() *sdk.Extension {
 			result = map[string]any{"text": text, "wasTruncated": was}
 		case "size":
 			result = map[string]any{"text": sdk.FormatSize(c.Bytes)}
+		case "limits":
+			result = map[string]any{"maxLines": sdk.DefaultMaxLines, "maxBytes": sdk.DefaultMaxBytes}
 		default:
 			return fmt.Errorf("unknown truncation helper %q", c.Fn)
 		}
@@ -2184,6 +2366,7 @@ func Extension() *sdk.Extension {
 		ctx.Notify("truncate:"+string(wire)+":end", "info")
 		return nil
 	})
+	registerBuiltinToolProbe(ext)
 	// message_probe reads the event payload in its JSON argument with the SDK's messageRole and messageText helpers
 	// (TestConformance_MessageHelpersAgreeAcrossSDKs).
 	ext.Command("message_probe", "Report messageRole and messageText of a JSON event payload", func(ctx sdk.Context, args string) error {
@@ -2316,6 +2499,46 @@ func Extension() *sdk.Extension {
 		ctx.Notify("host_info:"+string(wire)+":end", "info")
 		return nil
 	})
+	// ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+	ext.Command("ui_dialog_values_probe", "Report the typed result of each dialog", func(ctx sdk.Context, args string) error {
+		report := func(name string, value any, ok bool) {
+			text := "<undefined>"
+			if ok {
+				encoded, _ := json.Marshal(value)
+				text = string(encoded)
+			}
+			ctx.Notify(name+"="+text, "info")
+		}
+		for _, title := range []string{"S1", "S2", "S3", "S4"} {
+			value, ok, err := ctx.Select(title, []string{"a", "b"})
+			if err != nil {
+				return err
+			}
+			report(title, value, ok)
+		}
+		for _, title := range []string{"C1", "C2", "C3", "C4"} {
+			value, err := ctx.Confirm(title, "m")
+			if err != nil {
+				return err
+			}
+			report(title, value, true)
+		}
+		for _, title := range []string{"I1", "I2"} {
+			value, ok, err := ctx.Input(title, "p")
+			if err != nil {
+				return err
+			}
+			report(title, value, ok)
+		}
+		for _, title := range []string{"E1", "E2"} {
+			value, ok, err := ctx.Editor(title, "p")
+			if err != nil {
+				return err
+			}
+			report(title, value, ok)
+		}
+		return nil
+	})
 	// ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
 	ext.Command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", func(ctx sdk.Context, args string) error {
 		ctx.SetWorkingMessage("Thinking hard")
@@ -2337,11 +2560,11 @@ func Extension() *sdk.Extension {
 	// dialog-stack-probe opens its dialogs at the same time, each from its own goroutine, and reports each one's answer as it settles
 	// (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
 	ext.Command("dialog-stack-probe", "Open concurrent dialogs from one command", func(ctx sdk.Context, scenario string) error {
-		answer := func(value string, ok bool) string {
+		answer := func(value any, ok bool) string {
 			if !ok {
 				return "cancelled"
 			}
-			return value
+			return fmt.Sprint(value)
 		}
 		dialogs := map[string]func() (string, error){
 			"A": func() (string, error) {
@@ -2350,7 +2573,7 @@ func Extension() *sdk.Extension {
 			},
 			"B": func() (string, error) {
 				confirmed, err := ctx.Confirm("B", "message")
-				return strconv.FormatBool(confirmed), err
+				return fmt.Sprint(confirmed), err
 			},
 			"S": func() (string, error) {
 				value, ok, err := ctx.Select("S", []string{"s1", "s2"})
@@ -2358,7 +2581,7 @@ func Extension() *sdk.Extension {
 			},
 			"C": func() (string, error) {
 				confirmed, err := ctx.Confirm("C", "message")
-				return strconv.FormatBool(confirmed), err
+				return fmt.Sprint(confirmed), err
 			},
 			"I": func() (string, error) { value, ok, err := ctx.Input("I", "placeholder"); return answer(value, ok), err },
 			"E": func() (string, error) { value, ok, err := ctx.Editor("E", "prefill"); return answer(value, ok), err },
@@ -2384,6 +2607,23 @@ func Extension() *sdk.Extension {
 			return err
 		}
 		ctx.Notify("stack done", "info")
+		return nil
+	})
+	// ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of
+	// each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
+	ext.Command("ui_wire_empties_probe", "Call the UI members with empty and unset arguments", func(ctx sdk.Context, args string) error {
+		ctx.SetStatus("k", "")
+		ctx.ClearStatus("k")
+		ctx.Notify("", "")
+		ctx.Notify("typed", "warning")
+		ctx.SetTitle("")
+		ctx.SetEditorText("")
+		_, _, _ = ctx.Select("T", []string{})
+		_, _ = ctx.Confirm("", "")
+		_, _, _ = ctx.Input("T1", "")
+		_, _, _ = ctx.Input("T3", "ph")
+		_, _, _ = ctx.Editor("E1", "")
+		_, _, _ = ctx.Editor("E3", "pre")
 		return nil
 	})
 	// tool_call_guard_probe reports which tool names isToolCallEventType accepts for each tool_call event it receives (TestConformance_ToolCallGuardAgreesAcrossSDKs).
@@ -2421,6 +2661,7 @@ func Extension() *sdk.Extension {
 	ext.Command("editor-install-embed", "Install a custom editor that embeds the working status", func(ctx sdk.Context, args string) error {
 		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent { return &embeddingEditor{conformanceEditor{Editor: base}} })
 	})
+	registerHeadlessUIProbe(ext)
 
 	ext.Command("ui-probe", "Exercise SDK UI wrappers", func(ctx sdk.Context, args string) error {
 		_ = ctx.SetWorkingIndicator(sdk.WorkingIndicatorOptions{"frames": []string{"*"}})
@@ -2665,6 +2906,10 @@ func Extension() *sdk.Extension {
 		return nil, nil
 	})
 	ext.OnEvent("tool_result", func(ctx sdk.Context, event map[string]any) (any, error) {
+		if event["toolName"] == "order_probe" {
+			ctx.Notify(fmt.Sprintf("order-result=%v", event["toolCallId"]), "info")
+			return nil, nil
+		}
 		var held []string
 		for _, guard := range []struct {
 			name string
@@ -2740,6 +2985,9 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("tool-end=%v:%v:%v:%v:%v", event["toolName"], len(content), image["data"], nested["value"], event["isError"]), "info")
 		return nil, nil
 	})
+
+	registerStatePushProbe(ext)
+	registerSignalAbort(ext)
 
 	return ext
 }
@@ -2909,8 +3157,44 @@ func (e *conformanceEditor) HandleInput(data string) error {
 			return err
 		}
 		return e.Editor.SetText("raw:lines=" + strings.Join(lines, "|"))
+	case "K":
+		// The default editor's queries and setters (TestEditorComponentGoBaseQueriesReachTheHost): the answers come back as text.
+		cursor, err := e.GetCursor()
+		if err != nil {
+			return err
+		}
+		expanded, err := e.GetExpandedText()
+		if err != nil {
+			return err
+		}
+		showing, err := e.IsShowingAutocomplete()
+		if err != nil {
+			return err
+		}
+		if err := e.SetPaddingX(3); err != nil {
+			return err
+		}
+		if err := e.SetAutocompleteMaxVisible(7); err != nil {
+			return err
+		}
+		return e.Editor.SetText(fmt.Sprintf("raw:cursor=%d,%d|expanded=%s|autocomplete=%t", cursor.Line, cursor.Col, expanded, showing))
 	}
 	return e.Editor.HandleInput(data)
+}
+
+// InsertTextAtCursor wraps the host's text in angle brackets and AddToHistory prefixes it, unless it starts with "raw:" (TestEditorComponentOverridesReachSuper).
+func (e *conformanceEditor) InsertTextAtCursor(text string) error {
+	if strings.HasPrefix(text, "raw:") {
+		return e.Editor.InsertTextAtCursor(text)
+	}
+	return e.Editor.InsertTextAtCursor("<" + text + ">")
+}
+
+func (e *conformanceEditor) AddToHistory(text string) error {
+	if strings.HasPrefix(text, "raw:") {
+		return e.Editor.AddToHistory(text)
+	}
+	return e.Editor.AddToHistory("history:" + text)
 }
 
 func (e *conformanceEditor) SetText(text string) error {
@@ -3076,4 +3360,30 @@ func nonNilMaps(values []map[string]any) []map[string]any {
 		return []map[string]any{}
 	}
 	return values
+}
+
+// registerSignalAbort contributes the signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a
+// handler that holds the signal and reads it again right after the abort sees it aborted, in the same turn.
+func registerSignalAbort(ext *sdk.Extension) {
+	state := func(signal interface{ Err() error }) string {
+		switch {
+		case signal == nil:
+			return "none"
+		case signal.Err() != nil:
+			return "aborted"
+		}
+		return "live"
+	}
+	ext.Command("signal-abort", "Abort the run and report ctx.signal", func(ctx sdk.Context, _ string) error {
+		held := ctx.Signal()
+		ctx.Abort()
+		ctx.Notify("abort:"+state(held)+":"+state(ctx.Signal()), "info")
+		return nil
+	})
+}
+
+// dialogText is a dialog's string answer: a select, input or editor result is whatever JSON the client sent (Pi's RPC mode does not check its type), and undefined is nil.
+func dialogText(value any) string {
+	text, _ := value.(string)
+	return text
 }

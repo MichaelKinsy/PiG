@@ -51,12 +51,11 @@ impl Host {
         host.send(Envelope {
             msg_type: "ready".into(),
             ready: Some(ReadyMsg {
-                session_name: String::new(),
                 cwd: "/tmp".into(),
                 mode: "print".into(),
                 width: 80,
                 height: 24,
-                model: String::new(),
+                source_info: None,
                 state: None,
             }),
             ..Default::default()
@@ -90,9 +89,11 @@ impl Host {
             msg_type: "request".into(),
             id: Some(id.into()),
             request: Some(RequestMsg {
-                terminal_input: None,
+                child_session: None, terminal_input: None,
                 stream: None,
                 stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                 method: method.into(),
                 tool: (!tool.is_empty()).then(|| tool.into()),
                 event: event.map(Into::into),

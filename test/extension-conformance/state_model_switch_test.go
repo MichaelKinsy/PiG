@@ -25,12 +25,12 @@ func TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs(t *testing.T) {
 		t.Fatalf("catalog models %v %v", small, large)
 	}
 	recorders := []string{"chain-a", "chain-c"}
-	// Node reads ctx.model, which is replicated state. The Go, Python and Rust recorders also read their replicated model accessor (Go ctx.Model() replicates the id, Python ctx.model and Rust ctx.model() the name), so a host that pushes a stale model fails in every SDK, not only where the SDK asks the host.
+	// Node reads ctx.model, which is replicated state. The Go, Python and Rust recorders also read their replicated model accessor (Go ctx.Model(), Python ctx.model and Rust ctx.model() all replicate the id, Pi's ctx.model.id), so a host that pushes a stale model fails in every SDK, not only where the SDK asks the host.
 	wants := map[string]string{
 		"node":   "base append|chain-a=" + small.ID + "|chain-c=" + large.ID,
 		"go":     "base append|chain-a=" + small.ID + "/" + small.ID + "|chain-c=" + large.ID + "/" + large.ID,
-		"python": "base append|chain-a=" + small.ID + "/" + small.DisplayName + "|chain-c=" + large.ID + "/" + large.DisplayName,
-		"rust":   "base append|chain-a=" + small.ID + "/" + small.DisplayName + "|chain-c=" + large.ID + "/" + large.DisplayName,
+		"python": "base append|chain-a=" + small.ID + "/" + small.ID + "|chain-c=" + large.ID + "/" + large.ID,
+		"rust":   "base append|chain-a=" + small.ID + "/" + small.ID + "|chain-c=" + large.ID + "/" + large.ID,
 	}
 
 	for _, language := range []string{"go", "python", "rust", "node"} {
@@ -128,10 +128,12 @@ def new_extension():
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%q);
- e.on_event_result("before_agent_start",|ctx,data| {
+ e.on_before_agent_start(|ctx,event| {
   let id=ctx.get_model_info().map_err(|e| e.to_string())?.map(|m| m.id).unwrap_or_else(|| "none".to_string());
-  let appended=format!("{}|%s={}/{}",data["systemPromptOptions"]["appendSystemPrompt"].as_str().unwrap_or(""),id,ctx.model());
-  data["systemPromptOptions"]["appendSystemPrompt"]=Schema::String(appended);
+  event.edit_system_prompt_options(|options| {
+   let appended=format!("{}|%s={}/{}",options["appendSystemPrompt"].as_str().unwrap_or(""),id,ctx.model());
+   options["appendSystemPrompt"]=Schema::String(appended);
+  });
   Ok(None)
  });
  e

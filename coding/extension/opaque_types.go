@@ -232,6 +232,8 @@ type ExecOptions struct {
 	Timeout float64 `json:"timeout,omitempty"`
 	// CWD overrides the working directory. Empty uses the extension's CWD.
 	CWD string `json:"cwd,omitempty"`
+	// Signal is upstream's options.signal: when it is done the command ends as when ExecCommand's own context ends, with SIGTERM to the command alone. It does not cross the wire; a subprocess extension's signal reaches the host as the call's own cancellation.
+	Signal AbortSignal `json:"-"`
 }
 
 // ExecResult is the outcome of a shell command execution.

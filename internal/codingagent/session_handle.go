@@ -74,6 +74,8 @@ type InteractiveSessionHandle interface {
 	ScopedModels() []extension.ScopedModel
 	// SetScopedModels replaces the cycling scope.
 	SetScopedModels([]extension.ScopedModel)
+	// AvailableModelSnapshot is the Session ModelRuntime's available models, bound to their backends (Pi's session.modelRuntime.getAvailableSnapshot()). Cycling scope entries come from it.
+	AvailableModelSnapshot() []*ai.Model
 	// ExtensionCompact is the compact action Pi binds for extensions: it starts a manual compaction without waiting, reports the result to options.OnComplete and a failure to options.OnError, and drops the outcome without callbacks.
 	ExtensionCompact(*extension.CompactOptions)
 	// ExtensionSetModel answers an extension's pi.setModel: false without configured credentials, otherwise it switches as SetModel does and answers true.
@@ -134,6 +136,12 @@ type InteractiveSessionHandle interface {
 	SetCacheWarmingMode(CacheWarmingMode) error
 	// OnAgentSettled tells the cache warmer that an agent run settled.
 	OnAgentSettled()
+	// DeferCustomMessage holds a custom message an extension sent with triggerTurn false while a run streams, until the turn's tool results are complete. It reports false when no run is active.
+	DeferCustomMessage(agent.AgentMessage) bool
+	// HasDeferredCustomMessages reports whether a custom message waits for the end of its turn.
+	HasDeferredCustomMessages() bool
+	// FlushDeferredCustomMessages appends the custom messages held for the end of a turn.
+	FlushDeferredCustomMessages() error
 }
 
 // eventBarrier is the Session's FlushEvents marker on the Events channel.

@@ -211,6 +211,7 @@ func (c Context) setWidgetView(key string, view kit.View, options []WidgetOption
 			return callResultError(result, err)
 		}
 	}
+	c.ext.replaceSurfaceID(widgetRendererID(key), nil)
 	c.ext.replaceViewSurface(widgetViewSurfaceID(key), surface)
 	return surface.push(c)
 }
@@ -320,8 +321,10 @@ func (e *Extension) viewEvent(raw json.RawMessage) {
 			Label       string `json:"label"`
 			Description string `json:"description"`
 		} `json:"item"`
-		ID    string `json:"id"`
-		Value string `json:"value"`
+		ID     string      `json:"id"`
+		Value  string      `json:"value"`
+		Cursor *kit.Cursor `json:"cursor"`
+		Mouse  *kit.Mouse  `json:"mouse"`
 	}
 	if json.Unmarshal(raw, &payload) != nil || payload.Key == "" {
 		return
@@ -332,7 +335,7 @@ func (e *Extension) viewEvent(raw json.RawMessage) {
 	if overlay == nil {
 		return
 	}
-	event := &kit.Event{Node: payload.Node, Type: payload.Type, Index: payload.Index, ID: payload.ID, Value: payload.Value}
+	event := &kit.Event{Node: payload.Node, Type: payload.Type, Index: payload.Index, ID: payload.ID, Value: payload.Value, Cursor: payload.Cursor, Mouse: payload.Mouse}
 	if payload.Item != nil {
 		event.Item = &kit.SelectItem{Value: payload.Item.Value, Label: payload.Item.Label, Description: payload.Item.Description}
 	}

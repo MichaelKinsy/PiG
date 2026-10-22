@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/stackprime"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
 
@@ -114,14 +115,30 @@ func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendin
 func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingToolCall) executedToolCallBatch {
 	outcomes := make([]toolCallOutcome, 0, len(calls))
 	callCtxs := make([]context.Context, 0, len(calls))
+	var registration registrationOrder
 	for _, call := range calls {
 		r.h.emitToolExecutionStart(call)
 		outcome := r.h.prepareToolCall(ctx, call)
 		callCtx := ctx
 		if outcome.prepared != nil {
-			if orderer, ok := outcome.prepared.tool.(QueueOrderable); ok {
-				if ticket, has := orderer.ReserveMutationOrder(outcome.prepared.args); has {
-					callCtx = WithMutationTicket(ctx, ticket)
+			tool := outcome.prepared.tool
+			if mayTake, ok := tool.(MayTakeFileMutationQueue); ok && mayTake.MayTakeFileMutationQueue() {
+				callCtx = registration.extensionTool(callCtx, call.id)
+			}
+			if orderer, ok := tool.(QueueOrderable); ok {
+				registers, _ := tool.(RegistersInFileMutationQueue)
+				if registers != nil && registers.RegistersInFileMutationQueue() {
+					// An extension tool before this call may take the queue in its first statement: the call registers after that tool's start window
+					// (registrationOrder), on its own goroutine.
+					var late bool
+					if callCtx, late = registration.registersLate(callCtx, call.id, orderer, outcome.prepared.args); late {
+						orderer = nil
+					}
+				}
+				if orderer != nil {
+					if ticket, has := orderer.ReserveMutationOrder(outcome.prepared.args); has {
+						callCtx = WithMutationTicket(callCtx, ticket)
+					}
 				}
 			}
 		}
@@ -135,6 +152,7 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 		}
 	}
 
+	registration.prepared()
 	finalized := make([]finalizedToolCall, len(outcomes))
 	prepared := 0
 	for i, outcome := range outcomes {
@@ -153,8 +171,8 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 		var wg sync.WaitGroup
 		var failureMu sync.Mutex
 		var failure error
-		// The calls' tool_execution_end events follow the order their tools settle (SettleGate).
-		var settleGate SettleGate
+		// The calls' tool_execution_end events follow the order their tools settle (jsloop.SettleGate).
+		var settleGate jsloop.SettleGate
 		batch := toolBatches.Add(1)
 		for i, outcome := range outcomes {
 			if outcome.prepared == nil {
@@ -167,6 +185,11 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 			wg.Go(func() {
 				defer slot.Close()
 				stackprime.Prime()
+				if window := ToolStartWindowFromContext(callCtx, outcome.prepared.call.id); window != nil {
+					// The call's start window closes when the call ends at the latest, whether or not the extension reported its prefix over.
+					defer window.Close()
+				}
+				callCtx := enterRegistrationOrder(callCtx, outcome.prepared.call.id)
 				var err error
 				finalized[i], err = r.h.runPreparedToolCall(callCtx, *outcome.prepared)
 				if err != nil {
@@ -220,17 +243,32 @@ func (h *loopHost) runPreparedToolCall(ctx context.Context, prepared preparedToo
 		if err != nil {
 			return finalizedToolCall{}, err
 		}
-		finalized = h.finalizeExecutedToolCall(ctx, prepared, executed)
+		finalized = h.finalizeCalledTool(ctx, prepared, executed)
 	}
 	var err error
 	deliver := func() { err = h.deliver(toolExecutionEndEvent(finalized)) }
 	if slot := ToolSettleFromContext(ctx, prepared.call.id); slot != nil {
-		// A call ends after every call whose tool settled before its own (SettleGate).
+		// A call ends after every call whose tool settled before its own (jsloop.SettleGate).
 		slot.Run(deliver)
 	} else {
 		deliver()
 	}
 	return finalized, err
+}
+
+// finalizeCalledTool finalizes an executed call of a parallel batch. agent-loop.ts:619-647: each call continues from its own execute promise, so
+// the calls' after-tool-call hooks start in the order their tools settled, and a hook runs to its first await before the next one starts. The
+// call's hooks wait for the hooks of the calls that settled before it to start; the first extension handler a hook invokes reports its start
+// (ToolHookStartedFromContext), and the batch reports it once the hooks returned, so a call whose hooks started no handler cannot hold the later
+// calls back.
+func (h *loopHost) finalizeCalledTool(ctx context.Context, prepared preparedToolCall, executed finalizedToolCall) finalizedToolCall {
+	slot := ToolSettleFromContext(ctx, prepared.call.id)
+	if slot == nil {
+		return h.finalizeExecutedToolCall(ctx, prepared, executed)
+	}
+	began := slot.Begin()
+	defer began()
+	return h.finalizeExecutedToolCall(withToolHookStart(ctx, began), prepared, executed)
 }
 
 // failToolCallsFromTruncatedMessage fails every tool call of an assistant
@@ -466,6 +504,10 @@ func executeTool(ctx context.Context, prepared preparedToolCall, onUpdate ToolUp
 			result, err = AgentToolResult{}, errors.New(thrownMessage(recovered))
 		}
 	}()
+	// Pi's loop turns while a tool awaits its I/O, so the timer callbacks an extension queued run (jsloop.Turns). A tool that runs in an extension (ExtensionTool) turns the loop only if its own code awaits, which the extension runtime reports itself: it marks the calls of a timer that fires after the handler returned.
+	if extension, ok := prepared.tool.(ExtensionTool); !ok || !extension.RunsInExtension() {
+		defer jsloop.TurnsFrom(ctx).Wait()()
+	}
 	return prepared.tool.Execute(ctx, prepared.call.id, prepared.args, onUpdate)
 }
 

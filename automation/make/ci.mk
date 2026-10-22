@@ -5,8 +5,11 @@
 ci-preflight: build vet go-fix-clean
 ci-startup: startup-proxies
 ci-build: module-publication lint
+# The light pull-request run (automation/ci/ci-tiers.txt) lints the whole changed files (CI sets LINT_BASE=origin/main); the full run keeps the repository-wide lint.
+ci-build-pr: module-publication lint-changed
 # Short gates share one hosted job each, so their setup is paid once. CI runs them with make -k, so one failing gate does not hide the others.
 ci-checks: ci-startup ci-drift ci-closure
+ci-checks-pr: ci-startup ci-drift-pr ci-closure
 ci-toolchains: ci-race ci-integration ci-sdk ci-extensions
 # CI runs test-fast and test-cli in halves on separate jobs; each pair together is the whole target.
 ci-test-fast: test-fast-parallel
@@ -27,7 +30,9 @@ parity-fast-1:
 	@$(MAKE) -s parity-fast PARITY_SHARD=1/2
 parity-fast-2:
 	@$(MAKE) -s parity-fast PARITY_SHARD=2/2
-ci-drift: lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard port-lint source-hygiene test-provenance docs-drift bug-ledger-check any-trap perf-lint perf-scoreboard-check module-size
+# module-size's install proof is the one drift gate the light pull-request run leaves to the full run.
+ci-drift: ci-drift-pr module-size
+ci-drift-pr: lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard port-lint source-hygiene test-provenance docs-drift bug-ledger-check any-trap perf-lint race-coverage perf-scoreboard-check
 ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build
 ci-closure: closure-check
 # portmap-check runs the evidence tests of every proven PORT_MAP row under coverage. It builds each evidence package's test binary once and
@@ -97,4 +102,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: test-provenance test-expectation-lint ci-preflight ci-startup ci-build ci-checks ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance
+.PHONY: test-provenance test-expectation-lint ci-preflight ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance

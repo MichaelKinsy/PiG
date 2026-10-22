@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -29,6 +30,8 @@ import (
 //
 // pig-specific: no upstream equivalent.
 type UIBridge struct {
+	// waitForIdleBlocks reports whether a waitForIdle call waits now (extension.CommandActions.WaitForIdleBlocks); guarded by mu.
+	waitForIdleBlocks   func() bool
 	modelCatalogEncoder func() (json.RawMessage, error)
 	// modelCatalogBatches counts open BatchModelCatalogPublication calls; modelCatalogPending records a publication one of them deferred.
 	modelCatalogBatches int
@@ -94,7 +97,7 @@ type UIBridge struct {
 	uiCtx              extension.UIContext
 	uiReady            bool
 	promptScope        UIPromptScope
-	pendingStatuses    map[string]string
+	pendingStatuses    map[string]*string // nil: the extension sent no text (Pi's undefined)
 	pendingFooterSet   bool
 	pendingFooterClear bool
 	pendingFooter      []string
@@ -159,6 +162,9 @@ type UIBridge struct {
 
 	// OnRunSignalChanged is called when a run begins or ends. Set by the Host, which brings every runtime up to date with the active run's signal (see [UIBridge.RunSignalChanged]).
 	OnRunSignalChanged func()
+
+	// OnHostStateChanged is called when host state that runtimes replicate changed with no extension call or event to announce it. Set by the Host, which pushes the new state to every connected runtime off the caller's goroutine (see [UIBridge.HostStateChanged]).
+	OnHostStateChanged func()
 
 	// invalidateTUI triggers a TUI render cycle.
 	invalidateTUI func()
@@ -391,6 +397,9 @@ type HostCallbacks struct {
 	// catalogs. allowNetwork nil means the runtime default; providers nil
 	// means every provider. upstream: model-registry.ts refresh(options)
 	RefreshModelRegistry func(ctx context.Context, allowNetwork *bool, providers []string, force *bool) (map[string]any, error)
+
+	// CreateChildSession builds a child agent session for an extension: Pi's createAgentSession (core/sdk.ts). The session shares the model runtime of the Session the host serves, so providers the extensions registered are available to it. Nil refuses the call.
+	CreateChildSession ChildSessionFactory
 
 	// SessionRead answers a ReadonlySessionManager read computed from the
 	// host's session: the header facts (method "info"), and for the Go, Rust
@@ -781,7 +790,7 @@ func NewUIBridge(invalidateTUI func()) *UIBridge {
 		editorsByConn:   make(map[string]*editorProxy),
 		modelStreams:    make(map[modelStreamKey]context.CancelFunc),
 		uiCtx:           extension.NoopUIContext,
-		pendingStatuses: make(map[string]string),
+		pendingStatuses: make(map[string]*string),
 		invalidateTUI:   invalidateTUI,
 	}
 }
@@ -859,7 +868,7 @@ func (b *UIBridge) SetUIContext(ctx extension.UIContext) {
 	b.mu.Unlock()
 	if ready {
 		for key, text := range statuses {
-			ctx.SetStatus(key, text)
+			setStatus(ctx, key, text)
 		}
 		if editor := b.activeEditor(); editor != nil {
 			ctx.SetEditorComponent(extension.RemoteEditorFactory(editor))
@@ -978,6 +987,11 @@ func (b *UIBridge) SetActions(actions *HostCallbacks) {
 // actions subprocess extensions call, as Runner.BindCommandActions does for
 // in-process extensions. A nil action keeps the one already bound.
 func (b *UIBridge) BindCommandActions(actions extension.CommandActions) {
+	if actions.WaitForIdleBlocks != nil {
+		b.mu.Lock()
+		b.waitForIdleBlocks = actions.WaitForIdleBlocks
+		b.mu.Unlock()
+	}
 	// Upstream's waitForIdle has no effect to apply before it returns its
 	// Promise, so the call is initiated before it waits for the session.
 	if actions.WaitForIdleContext != nil {
@@ -1058,6 +1072,17 @@ func (b *UIBridge) RunSignalChanged() {
 	b.mu.Lock()
 	changed := b.OnRunSignalChanged
 	b.mu.Unlock()
+	if changed != nil {
+		changed()
+	}
+}
+
+// HostStateChanged tells the Host that state the runtimes replicate (the model, the thinking level, the session name, the settings, the MCP server list, the theme palette) changed without an extension call or an event to the extension, so every runtime learns it without waiting for its next request.
+// Upstream's `ctx.model`, `pi.getSettings()`, `pi.getSessionName()`, `pi.getMcpServers()` and `ctx.ui.theme` read the live Session, the MCP registry and the global theme at every call (runner.ts:906, loader.ts:411-414 and 495-497, interactive-mode.ts:2665); a runtime replicates them, so a timer or thread that reads between two requests sees the host's value only when the host pushes it. The owner of the change reports it here, after the state changed. It returns at once: the push runs on a task the Host joins at Shutdown, because the owner may be the UI loop, which never waits for an extension.
+func (b *UIBridge) HostStateChanged() {
+	b.mu.RLock()
+	changed := b.OnHostStateChanged
+	b.mu.RUnlock()
 	if changed != nil {
 		changed()
 	}
@@ -1243,6 +1268,8 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GenerateImages = fn.(func(context.Context, map[string]any, json.RawMessage, map[string]any) (json.RawMessage, error))
 	case "refreshModelRegistry":
 		b.actions.RefreshModelRegistry = fn.(func(context.Context, *bool, []string, *bool) (map[string]any, error))
+	case "createChildSession":
+		b.actions.CreateChildSession = fn.(ChildSessionFactory)
 	case "sessionRead":
 		b.actions.SessionRead = fn.(func(string, json.RawMessage) (any, error))
 	case "setSessionName":
@@ -1333,7 +1360,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 			"ui.setWorkingVisible", "ui.setHiddenThinkingLabel", "ui.setWidget", "ui.setFooter",
 			"ui.setHeader", "ui.setTitle", "ui.setEditorComponent", "ui.pasteToEditor",
 			"ui.setEditorText", "ui.setToolsExpanded", "ui.addAutocompleteProvider",
-			"ui.onTerminalInput", "ui.offTerminalInput":
+			"ui.onTerminalInput", "ui.offTerminalInput", CallUIBell:
 			return &CallResultPayload{}, nil
 		case CallUICustom:
 			extension.CallInitiated(ctx)
@@ -1364,6 +1391,12 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleSetHiddenThinkingLabel(ui, call.Args)
 	case "ui.setWidget":
 		return b.handleSetWidget(extName, owner, call.Args)
+	// pig additive (D19): a Pi extension rings the terminal bell by writing BEL to process.stdout, which a subprocess extension cannot reach.
+	case CallUIBell:
+		if beller, ok := ui.(extension.TerminalBeller); ok {
+			beller.Bell()
+		}
+		return &CallResultPayload{}, nil
 
 	// ── Category 2: User Interaction (blocking) ──────────────────────────
 	case "ui.select":
@@ -1545,7 +1578,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 
 	// Session control.
 	case "waitForIdle":
-		return b.handleWaitForIdle(ctx, actions)
+		return b.handleWaitForIdle(ctx, owner, call.ParentRequestID, actions)
 	case "newSession":
 		return b.handleNewSession(ctx, extName, owner, actions, call.Args)
 	case "fork":
@@ -2375,7 +2408,14 @@ func (b *UIBridge) handleCompact(ctx context.Context, actions *HostCallbacks, ar
 // Command-only session control
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func (b *UIBridge) handleWaitForIdle(ctx context.Context, actions *HostCallbacks) (*CallResultPayload, error) {
+func (b *UIBridge) handleWaitForIdle(ctx context.Context, owner *Conn, parentRequestID string, actions *HostCallbacks) (*CallResultPayload, error) {
+	if owner != nil {
+		// Pi's waitForIdle returns at once while the Session is idle (agent-session.ts), which includes a run that its own command sent and that has not begun: the handler is not suspended then.
+		b.mu.RLock()
+		blocks := b.waitForIdleBlocks
+		b.mu.RUnlock()
+		owner.settleBlockedCall(parentRequestID, blocks == nil || blocks())
+	}
 	if actions == nil || actions.WaitForIdle == nil {
 		extension.CallInitiated(ctx)
 		return &CallResultPayload{}, nil
@@ -2512,10 +2552,32 @@ func (b *UIBridge) handleReload(ctx context.Context, actions *HostCallbacks) (*C
 	return &CallResultPayload{}, nil
 }
 
+func stringOrEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// setStatus applies a status to ui: text nil is the extension's setStatus(key, undefined), which a UIContext with a [extension.StatusClearer] receives as ClearStatus and
+// any other as the empty text.
+func setStatus(ui extension.UIContext, key string, text *string) {
+	if text != nil {
+		ui.SetStatus(key, *text)
+		return
+	}
+	if clearer, ok := ui.(extension.StatusClearer); ok {
+		clearer.ClearStatus(key)
+		return
+	}
+	ui.SetStatus(key, "")
+}
+
 func (b *UIBridge) handleSetStatus(args json.RawMessage) (*CallResultPayload, error) {
+	// An absent or null text is Pi's undefined; an empty string is a text (rpc-mode.ts setStatus writes it).
 	var p struct {
-		Key  string `json:"key"`
-		Text string `json:"text"`
+		Key  string  `json:"key"`
+		Text *string `json:"text"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse setStatus args: %w", err)
@@ -2525,7 +2587,7 @@ func (b *UIBridge) handleSetStatus(args json.RawMessage) (*CallResultPayload, er
 	ui := b.uiCtx
 	onStateChanged := b.OnStateChanged
 	b.mu.Unlock()
-	ui.SetStatus(p.Key, p.Text)
+	setStatus(ui, p.Key, p.Text)
 	// Push the updated status to every connected extension so a footer or
 	// header factory reading footerData.getExtensionStatuses() sees it on
 	// its next render, matching upstream's synchronous requestRender.
@@ -2612,16 +2674,14 @@ func (b *UIBridge) handleSelect(ctx context.Context, ui extension.UIContext, arg
 		result, _ := json.Marshal(map[string]any{"selected": "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	selected, err := ui.Select(ctx, p.Title, p.Options, p.Opts)
-	if err != nil {
-		if !errors.Is(err, context.Canceled) {
-			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
-		}
-		result, _ := json.Marshal(map[string]any{"selected": "", "ok": false})
-		return &CallResultPayload{Result: result}, nil
+	var selected json.RawMessage
+	var err error
+	if values, ok := ui.(extension.DialogValueUIContext); ok {
+		selected, err = values.SelectValue(ctx, p.Title, p.Options, p.Opts)
+	} else {
+		selected, err = stringDialogValue(ui.Select(ctx, p.Title, p.Options, p.Opts))
 	}
-	result, _ := json.Marshal(map[string]any{"selected": selected, "ok": true})
-	return &CallResultPayload{Result: result}, nil
+	return dialogValueResult("selected", selected, err)
 }
 
 func (b *UIBridge) handleConfirm(ctx context.Context, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
@@ -2637,22 +2697,30 @@ func (b *UIBridge) handleConfirm(ctx context.Context, ui extension.UIContext, ar
 		result, _ := json.Marshal(map[string]any{"confirmed": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	confirmed, err := ui.Confirm(ctx, p.Title, p.Message, p.Opts)
+	var confirmed json.RawMessage
+	var err error
+	if values, ok := ui.(extension.DialogValueUIContext); ok {
+		confirmed, err = values.ConfirmValue(ctx, p.Title, p.Message, p.Opts)
+	} else {
+		var answer bool
+		answer, err = ui.Confirm(ctx, p.Title, p.Message, p.Opts)
+		confirmed = json.RawMessage(strconv.FormatBool(answer))
+	}
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
 			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
 		}
-		result, _ := json.Marshal(map[string]any{"confirmed": false})
-		return &CallResultPayload{Result: result}, nil
+		confirmed = json.RawMessage("false")
 	}
-	result, _ := json.Marshal(map[string]any{"confirmed": confirmed})
+	//portlint:allow mapkeyorder host-runtime IPC reply the Go, Rust, Python and Node SDKs read by member name, not Pi output; it has one member
+	result, _ := json.Marshal(map[string]json.RawMessage{"confirmed": confirmed})
 	return &CallResultPayload{Result: result}, nil
 }
 
 func (b *UIBridge) handleInput(ctx context.Context, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
 		Title       string                             `json:"title"`
-		Placeholder string                             `json:"placeholder"`
+		Placeholder *string                            `json:"placeholder"`
 		Opts        extension.ExtensionUIDialogOptions `json:"opts"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
@@ -2662,16 +2730,17 @@ func (b *UIBridge) handleInput(ctx context.Context, ui extension.UIContext, args
 		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	text, err := ui.Input(ctx, p.Title, p.Placeholder, p.Opts)
-	if err != nil {
-		if !errors.Is(err, context.Canceled) {
-			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
-		}
-		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
-		return &CallResultPayload{Result: result}, nil
+	var text json.RawMessage
+	var err error
+	if values, ok := ui.(extension.DialogValueUIContext); ok {
+		text, err = values.InputValue(ctx, p.Title, p.Placeholder, p.Opts)
+	} else if omitter, ok := ui.(extension.PlaceholderOmitter); ok && p.Placeholder == nil {
+		// An absent or null placeholder is Pi's undefined (the member is omitted from RPC's request); an empty string is a placeholder.
+		text, err = stringDialogValue(omitter.InputWithoutPlaceholder(ctx, p.Title, p.Opts))
+	} else {
+		text, err = stringDialogValue(ui.Input(ctx, p.Title, stringOrEmpty(p.Placeholder), p.Opts))
 	}
-	result, _ := json.Marshal(map[string]any{"text": text, "ok": true})
-	return &CallResultPayload{Result: result}, nil
+	return dialogValueResult("text", text, err)
 }
 
 func (b *UIBridge) handleCustom(ctx context.Context, extName string, owner *Conn, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
@@ -2966,8 +3035,8 @@ func updateOverlayView(target extension.RemoteOverlayHandle, view *viewSurface, 
 
 func (b *UIBridge) handleEditor(ctx context.Context, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
-		Title   string `json:"title"`
-		Prefill string `json:"prefill"`
+		Title   string  `json:"title"`
+		Prefill *string `json:"prefill"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse editor args: %w", err)
@@ -2976,15 +3045,41 @@ func (b *UIBridge) handleEditor(ctx context.Context, ui extension.UIContext, arg
 		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	text, err := ui.Editor(ctx, p.Title, p.Prefill)
+	var text json.RawMessage
+	var err error
+	if values, ok := ui.(extension.DialogValueUIContext); ok {
+		text, err = values.EditorValue(ctx, p.Title, p.Prefill)
+	} else if omitter, ok := ui.(extension.PrefillOmitter); ok && p.Prefill == nil {
+		// An absent or null prefill is Pi's undefined (the member is omitted from RPC's request); an empty string is a prefill.
+		text, err = stringDialogValue(omitter.EditorWithoutPrefill(ctx, p.Title))
+	} else {
+		text, err = stringDialogValue(ui.Editor(ctx, p.Title, stringOrEmpty(p.Prefill)))
+	}
+	return dialogValueResult("text", text, err)
+}
+
+// stringDialogValue is the JSON of a string-typed dialog result, for a bound UI that does not implement [extension.DialogValueUIContext].
+func stringDialogValue(text string, err error) (json.RawMessage, error) {
+	if err != nil {
+		return nil, err
+	}
+	encoded, _ := json.Marshal(text)
+	return encoded, nil
+}
+
+// dialogValueResult is the ui.select, ui.input and ui.editor reply: member carries the dialog's JSON result as the user's client sent it (rpc-mode.ts resolves
+// `"value" in r ? r.value : undefined`), so it can be any JSON value, `null` included. An undefined result (context.Canceled) is {member: "", ok: false}.
+func dialogValueResult(member string, value json.RawMessage, err error) (*CallResultPayload, error) {
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
 			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
 		}
-		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
+		//portlint:allow mapkeyorder host-runtime IPC reply the Go, Rust, Python and Node SDKs read by member name, not Pi output
+		result, _ := json.Marshal(map[string]any{member: "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	result, _ := json.Marshal(map[string]any{"text": text, "ok": true})
+	//portlint:allow mapkeyorder host-runtime IPC reply the Go, Rust, Python and Node SDKs read by member name, not Pi output
+	result, _ := json.Marshal(map[string]any{member: value, "ok": true})
 	return &CallResultPayload{Result: result}, nil
 }
 
@@ -3567,11 +3662,7 @@ func (b *UIBridge) hasExecAction() bool {
 }
 
 func (b *UIBridge) handleExec(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
-	var p struct {
-		Command string                 `json:"command"`
-		Args    []string               `json:"args"`
-		Options *extension.ExecOptions `json:"options,omitempty"`
-	}
+	var p ExecArgs
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse exec args: %w", err)
 	}
@@ -3920,8 +4011,9 @@ func (b *UIBridge) handleGetModel(actions *HostCallbacks, args json.RawMessage) 
 	if err := json.Unmarshal(args, &request); err != nil {
 		return nil, fmt.Errorf("parse getModel args: %w", err)
 	}
+	// An unbound lookup is a failure, not "no such model": Pi's registry always answers find, and undefined means the model is absent.
 	if actions == nil || actions.GetModel == nil {
-		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+		return nil, errors.New("model lookup is not bound")
 	}
 	result := actions.GetModel(request.Provider, request.ModelID)
 	if result == nil {
@@ -4093,8 +4185,9 @@ func (b *UIBridge) handleSessionRead(actions *HostCallbacks, args json.RawMessag
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse sessionRead args: %w", err)
 	}
+	// An unbound read is a failure, not an empty session: Pi's ReadonlySessionManager always exists, and a null here would be believed as "no entry" or as a list-typed read with nothing in it.
 	if actions == nil || actions.SessionRead == nil {
-		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+		return nil, errors.New("session reads are not bound")
 	}
 	value, err := actions.SessionRead(p.Method, p.Args)
 	if err != nil {
@@ -4209,8 +4302,18 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 	if owner == nil {
 		return nil, errors.New("modelStream requires a live extension connection")
 	}
-	if actions == nil || actions.StreamModel == nil {
+	var streamModel func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error)
+	switch {
+	case request.Runtime != "":
+		streamer, err := graphStreamerOf(ctx, request.Runtime)
+		if err != nil {
+			return nil, err
+		}
+		streamModel = streamer.StreamModel
+	case actions == nil || actions.StreamModel == nil:
 		return nil, errors.New("model streaming is not available")
+	default:
+		streamModel = actions.StreamModel
 	}
 	decodedRequest, err := decodeModelStreamRequest(request.Request)
 	if err != nil {
@@ -4230,7 +4333,7 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 		delete(b.modelStreams, key)
 		b.modelStreamMu.Unlock()
 	}()
-	stream, err := actions.StreamModel(providerCtx, request.Model, decodedRequest)
+	stream, err := streamModel(providerCtx, request.Model, decodedRequest)
 	if err != nil {
 		return nil, err
 	}

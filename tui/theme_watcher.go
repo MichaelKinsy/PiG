@@ -244,5 +244,6 @@ func (w *ThemeWatcher) reload(name string, generation uint64) {
 		} else {
 			activeTheme.Store(theme)
 		}
+		activeThemeObservers.Notify()
 	})
 }

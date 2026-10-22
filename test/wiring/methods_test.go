@@ -102,6 +102,12 @@ func callSenders(t *testing.T) []sdkSet {
 func TestSDKCallsHaveHostHandlers(t *testing.T) {
 	host := goPkg(t, "coding/extension/host/subprocess")
 	handled, _ := host.handledMethods(host.envelopeFieldType(t, "call"))
+	// The session graph calls (SessionManager, SettingsManager, ModelRuntime, package manager) are answered by the coding package's session graph, which the host dispatches to.
+	for _, pkg := range []string{"coding", "internal/codingagent"} {
+		for method, at := range goPkg(t, pkg).methodFieldConstants() {
+			handled.add(method, at)
+		}
+	}
 	l := newLedger(t, "call-handled", nil)
 	for _, sdk := range callSenders(t) {
 		for _, method := range sdk.set.sorted() {
@@ -157,6 +163,10 @@ func init() {
 		undeliveredHostFrames["notify runtime_input_end by "+sdk] = "sent only to a Node runtime, which reports command suspension after stdin's end"
 		// host.go buildExtension sets Extension.EventLoopTurn only for a Node runtime: the Node process takes one turn of its own event loop before a tool's result, which Pi runs on that loop; the Go, Python and Rust SDKs have no loop of that kind (TestEventLoopTurnIsOfferedOnlyForNodeRuntimes)
 		undeliveredHostFrames["request event_loop_turn by "+sdk] = "sent only to a Node runtime, which takes one turn of its own event loop before a tool's result"
+		// Turns.Arm (sendTimerDefer) tells only the Node runtimes of the host to hold their timer and immediate callbacks while an RPC command runs; the native SDKs have no event loop of Pi's kind to hold, and mark a deferred call themselves (callMsg.Timer).
+		undeliveredHostFrames["notify timer_defer by "+sdk] = "sent only to a Node runtime, which holds its timer and immediate callbacks while an RPC stdin command runs"
+		// endRequestWindowByReport answers the request_state report "blocked external_io", which only the Node runtime sends after a tool's execute returned its Promise; a native handler's window closes at its first Promise-returning host call or its answer.
+		undeliveredHostFrames["notify tool_window_settled by "+sdk] = "answers a Node runtime's report that a tool's execute awaits something that is not a host call; native handlers send no such report"
 	}
 	for _, sdk := range []string{"go", "py", "rust"} {
 		// admitSurface reports a retired surface only when it has an id, which only the Node runtime assigns. Surface ids are Pig transport mechanics for
@@ -167,6 +177,12 @@ func init() {
 		// oauth_bridge.go wraps a store proxy only for has_credential_store, which the Node runtime never declares. The D40 store is a Pig additive, not Pi;
 		// offering it from Node is an owner product item recorded in the release notes draft.
 		undeliveredHostFrames["request "+request+" by node"] = "sent only to an OAuth registration with has_credential_store, which the Node runtime never declares"
+	}
+	// child_session.go: only the Go, Python and Rust SDKs ask the host for a child session (childSession.*); Node runs Pi's own createAgentSession in the extension process (runtime-node/shims/independent-session.mjs) and its AgentSession emits to its listeners directly, so the host has nothing to forward (TestNodeCreateAgentSessionSentinelScenarioMatchesPi).
+	undeliveredHostFrames["notify childSession.event by node"] = "Node's createAgentSession runs in the extension process; its events never cross the wire"
+	// builtin_tool.go, session_graph.go: only the Go, Python and Rust SDKs build Pi's built-in tools and session graph objects through the host (builtinTool.*, sessionGraph.*); Node runs Pi's own factories and classes in the extension process, so the host never asks it for a callback.
+	for _, request := range []string{"builtin_tool_callback", "builtin_tool_exec_data", "sessionGraph.callback"} {
+		undeliveredHostFrames["request "+request+" by node"] = "Node runs Pi's own built-in tools and session graph in the extension process; its callbacks never cross the wire"
 	}
 	// view_wire.go: a Node frame carries the lines Pi's components rendered, so the host routes every key to ui.custom.input.
 	undeliveredHostFrames["notify ui.view.event by node"] = "a Node view frame is rendered lines; keys go to ui.custom.input (TestEverySDKReceivesEveryHostNotifyCapability)"
@@ -387,6 +403,9 @@ func TestProviderCallbacksAreHandled(t *testing.T) {
 	sdk := goPkg(t, "extensions/sdk")
 	handled := host.methodFieldConstants()
 	for method, at := range agent.methodFieldConstants() {
+		handled.add(method, at)
+	}
+	for method, at := range goPkg(t, "coding").methodFieldConstants() {
 		handled.add(method, at)
 	}
 	namespaces := sdk.subMethods(sdk.envelopeFieldType(t, "call"))

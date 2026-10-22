@@ -10,7 +10,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -220,17 +219,11 @@ func (m *InteractiveMode) wireInprocContextActions() {
 			return nil
 		},
 		// upstream: runner.ts:906-909 `get model()` returns getModel(), which is the Session's own Model object (agent-session.ts:3437 `getModel: () => this.model`).
-		GetModel:         m.sessionModel,
-		IsIdle:           m.extensionIsIdle,
-		GetSignal:        m.extensionSignal,
-		IsProjectTrusted: func() bool { return m.projectTrusted() },
-		HasPendingMessages: func() bool {
-			if m.agent == nil {
-				return false
-			}
-			steering, followUps := m.agent.PendingMessages()
-			return len(steering)+len(followUps) > 0
-		},
+		GetModel:           m.sessionModel,
+		IsIdle:             m.extensionIsIdle,
+		GetSignal:          m.extensionSignal,
+		IsProjectTrusted:   func() bool { return m.projectTrusted() },
+		HasPendingMessages: m.extensionHasPendingMessages,
 		Abort: func() {
 			if m.agent != nil {
 				m.abortFn()
@@ -262,6 +255,21 @@ func (m *InteractiveMode) wireInprocContextActions() {
 				}
 				return m.deliverUserMessage(content, deliverAs)
 			},
+			// upstream: agent-session.ts:3416-3426 (_bindExtensionCore sendMessage). The routing is the one the wire sendMessage action runs.
+			SendMessage: func(msg extension.CustomMessageRef, opts *extension.SendMessageOptions) error {
+				var options extension.SendMessageOptions
+				if opts != nil {
+					options = *opts
+				}
+				return m.sendExtensionMessage(msg, options)
+			},
+			// upstream: agent-session.ts:3416-3465 (_bindExtensionCore) binds these in every mode; the mode's bind replaces the Session's.
+			AppendEntry:      m.appendExtensionEntry,
+			SetSessionName:   m.setExtensionSessionName,
+			GetSessionName:   m.extensionSessionName,
+			SetModel:         m.setExtensionModel,
+			GetThinkingLevel: m.extensionThinkingLevel,
+			SetThinkingLevel: m.setExtensionThinkingLevel,
 		},
 		actions,
 		nil,
@@ -545,20 +553,8 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	})
 	b.SetHostAction("setActiveTools", m.setActiveToolsByName)
 	b.SetHostAction("refreshTools", func() error { return m.refreshSessionTools(true) })
-	b.SetHostAction("getThinkingLevel", func() string {
-		return string(m.agent.ThinkingLevel())
-	})
-	b.SetHostAction("setThinkingLevel", func(level string) {
-		if m.opts.SessionHandle != nil {
-			if err := m.opts.SessionHandle.SetThinkingLevel(ai.ModelThinkingLevel(level)); err != nil {
-				m.runOnMain(m.runCtx, func() { m.showError(err.Error()) })
-				return
-			}
-		} else {
-			m.agent.SetThinkingLevel(ai.ClampThinkingLevel(m.agent.Model(), ai.ModelThinkingLevel(level)))
-		}
-		m.runOnMain(m.runCtx, m.refreshThinkingLevel)
-	})
+	b.SetHostAction("getThinkingLevel", func() string { return string(m.extensionThinkingLevel()) })
+	b.SetHostAction("setThinkingLevel", func(level string) { m.setExtensionThinkingLevel(ai.ModelThinkingLevel(level)) })
 	b.SetHostAction("isIdle", m.extensionIsIdle)
 	b.SetHostAction("getSignal", m.extensionSignal)
 	b.SetHostAction("isProjectTrusted", func() bool { return m.projectTrusted() })
@@ -583,13 +579,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		_ = m.waitForIdle(m.runCtx)
 	})
 	b.SetHostAction("getScopedModels", m.extensionScopedModels)
-	b.SetHostAction("hasPendingMessages", func() bool {
-		if m.agent == nil {
-			return false
-		}
-		steering, followUps := m.agent.PendingMessages()
-		return len(steering)+len(followUps) > 0
-	})
+	b.SetHostAction("hasPendingMessages", m.extensionHasPendingMessages)
 	b.SetHostAction("shutdown", m.requestExtensionShutdown)
 	b.SetHostAction("waitForIdle", func(ctx context.Context) error {
 		extension.CallInitiated(ctx)
@@ -617,29 +607,9 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		if err != nil {
 			return false, err
 		}
-		// A Session answers the action itself: false without configured credentials, and it emits model_select only for a changed model (agent-session.ts:3343-3347, 2372-2384).
-		if m.opts.SessionHandle != nil {
-			switched, err := m.opts.SessionHandle.ExtensionSetModel(ctx, newModel)
-			if err != nil || !switched {
-				return false, err
-			}
-		} else if m.agent != nil {
-			m.agent.SetModel(newModel)
-		}
-		m.opts.Model = newModel
-		if m.statusLine != nil {
-			m.statusLine.SetModel(newModel)
-		}
-		// Host actions run off the owner loop, which owns the editor.
-		m.runOnMain(m.runCtx, m.refreshThinkingLevel)
-		return true, nil
+		return m.switchExtensionModel(ctx, newModel)
 	})
-	b.SetHostAction("getSessionName", func() string {
-		if m.currentSession() != nil {
-			return m.currentSession().GetSessionName()
-		}
-		return ""
-	})
+	b.SetHostAction("getSessionName", m.extensionSessionName)
 	b.SetHostAction("getSessionID", func() string {
 		if m.currentSession() != nil {
 			return m.currentSession().ID()
@@ -703,141 +673,9 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		}
 		return m.newRunner.Runtime().SetLabel(entryID, value)
 	})
-	b.SetHostAction("setSessionName", func(name string) error {
-		if m.currentSession() == nil {
-			return fmt.Errorf("session not available")
-		}
-		if m.opts.SessionHandle != nil {
-			if err := m.opts.SessionHandle.SetSessionName(name); err != nil {
-				return err
-			}
-		} else {
-			_, current, err := m.currentSession().AppendSessionInfoName(name)
-			if err != nil {
-				return err
-			}
-			emitSessionInfoChanged(m.newRunner, current)
-		}
-		name = m.currentSession().GetSessionName()
-		if m.statusLine != nil {
-			m.statusLine.SetName(name)
-		}
-		tui.SetTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
-		return nil
-	})
+	b.SetHostAction("setSessionName", m.setExtensionSessionName)
 	b.SetHostAction("sendMessage", func(msg extension.CustomMessageRef, opts subprocess.SendMessageOptions) error {
-		if m.currentSession() == nil {
-			return fmt.Errorf("session not available")
-		}
-		if strings.TrimSpace(msg.CustomType) == "" {
-			return fmt.Errorf("customType is required")
-		}
-		display := msg.Display
-		// Mirrors upstream sendCustomMessage (agent-session.ts:1453-1469), which
-		// branches on whether a turn is in flight, not on whether an agent
-		// exists:
-		//
-		//	deliverAs "nextTurn" → defer to the next turn
-		//	else if streaming    → followUp / steer on the running turn
-		//	else if triggerTurn  → start a turn from this message
-		//	else                 → persist and render, start nothing
-		//
-		// Conflating "an agent exists" with "a turn is running" stranded a
-		// triggerTurn message whenever the agent was idle: it went to a queue
-		// that only drains inside a running turn, and the persistence branch was
-		// skipped because it counted as queued, so the message was invisible in
-		// the UI and absent from the session until some later turn happened to
-		// drain it.
-		//
-		// The entry is written here only on the paths that do not hand the
-		// message to the agent. When the agent takes it, the agent persists it
-		// via OnMessagePersist at the point of delivery, so it cannot land
-		// between an assistant's tool_use and its tool_result and invalidate
-		// session replay.
-		route := routeCustomMessage(m.agent != nil, m.agent != nil && m.runStreaming(), opts.TriggerTurn != nil && *opts.TriggerTurn, opts.DeliverAs)
-		startTurn := route == customMessageStartTurn
-		queued := route == customMessageQueue
-		entry, err := m.currentSession().customMessageEntry(msg.CustomType, msg.Content, display, msg.Details, !queued && !startTurn)
-		if err != nil {
-			return err
-		}
-		// The agent renders a message it takes at its message_start (interactive_events.go); only a message that is persisted here without a run is rendered now.
-		if display && !queued && !startTurn {
-			m.runOnMain(m.runCtx, func() {
-				m.appendCustomMessage(entry)
-				m.tuiInst.Render()
-			})
-		}
-		if !queued && !startTurn {
-			return nil
-		}
-		agentMsg := agent.AgentMessage{Custom: map[string]any{
-			"role":       agent.RoleCustom,
-			"customType": msg.CustomType,
-			"content":    msg.Content,
-			"display":    display,
-			"timestamp":  time.Now().UnixMilli(),
-		}}
-		if msg.Details != nil {
-			agentMsg.Custom["details"] = msg.Details
-		}
-		deliverAs := opts.DeliverAs
-		if deliverAs == "" {
-			deliverAs = "followUp"
-		}
-		switch deliverAs {
-		case "followUp", "nextTurn", "steer":
-		default:
-			return fmt.Errorf("unsupported deliverAs %q", opts.DeliverAs)
-		}
-		startCustomTurn := func() error {
-			// Starting another run from agent_settled waits until every settled
-			// handler returns, matching upstream's deferred settled actions.
-			start := func() {
-				// Starting a turn mutates TUI and session state, so it runs on
-				// the owner loop. It re-checks there: a turn may have begun
-				// since.
-				_ = m.postToMain(m.runCtx, func() {
-					if m.agent == nil {
-						return
-					}
-					if m.enqueueIfTurnActive(func() { m.agent.FollowUp(agentMsg) }) {
-						m.updatePendingMessagesDisplay()
-						return
-					}
-					m.runCustomMessageTurn(m.runCtx, agentMsg)
-				})
-			}
-			if !m.deferSettledAction(start) {
-				start()
-			}
-			return nil
-		}
-		if startTurn {
-			return startCustomTurn()
-		}
-		if deliverAs == "nextTurn" {
-			m.agent.QueueNextTurn(agentMsg)
-			return nil
-		}
-		if !m.enqueueIfTurnActive(func() {
-			if deliverAs == "steer" {
-				m.agent.Steer(agentMsg)
-			} else {
-				m.agent.FollowUp(agentMsg)
-			}
-		}) {
-			// The run settled after routing: take the idle branch instead of
-			// queueing into a run that will never drain it.
-			if opts.TriggerTurn != nil && *opts.TriggerTurn {
-				return startCustomTurn()
-			}
-			if err := m.currentSession().AppendEntry(entry); err != nil {
-				return err
-			}
-			return nil
-		}
-		return m.postToMain(m.runCtx, m.updatePendingMessagesDisplay)
+		return m.sendExtensionMessage(msg, extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)})
 	})
 	b.SetHostAction("sendUserMessage", func(content any, opts subprocess.SendUserMessageOptions) error {
 		deliver := func() { _ = m.deliverUserMessage(content, extension.DeliverAs(opts.DeliverAs)) }
@@ -867,7 +705,48 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		})
 		return nil
 	})
-	return detachModelRegistry
+	stopSessionState := m.watchReplicatedState(b)
+	return func() {
+		stopSessionState()
+		detachModelRegistry()
+	}
+}
+
+// hostStateNotifier is what the extension host's UI bridge offers the owner of state its runtimes replicate: a report that the state changed with no extension call to announce it.
+type hostStateNotifier interface{ HostStateChanged() }
+
+// replicatedStateSession is a Session that reports the changes of the state an extension runtime replicates (model, thinking level, session name, settings).
+type replicatedStateSession interface {
+	ObserveReplicatedState(observe func()) func()
+}
+
+// watchReplicatedState reports each change of the state the extension runtimes replicate to bridge, and returns the function that stops. Pi's `ctx.model`, `pi.getSettings()` and `pi.getSessionName()` read the live Session (runner.ts:906, loader.ts:411-414), `ctx.ui.theme` is the global theme (interactive-mode.ts:2665), and a footer reads the live git branch and provider count (footer-data-provider.ts); a user's model switch or settings edit, the /name command, a theme selection, a branch checkout or a login changes them with no extension call and no event to an extension without a handler, so the runtimes learn of it when it happens, not at their next request. The report returns at once, so it never waits for an extension on the owner loop.
+func (m *InteractiveMode) watchReplicatedState(bridge SubprocessUIBridge) func() {
+	notifier, ok := bridge.(hostStateNotifier)
+	if !ok {
+		return func() {}
+	}
+	var stops []func()
+	m.toolMu.Lock()
+	m.toolsExpandedChanged = notifier.HostStateChanged
+	m.toolMu.Unlock()
+	stops = append(stops, func() {
+		m.toolMu.Lock()
+		m.toolsExpandedChanged = nil
+		m.toolMu.Unlock()
+	})
+	if session, ok := m.opts.SessionHandle.(replicatedStateSession); ok {
+		stops = append(stops, session.ObserveReplicatedState(notifier.HostStateChanged))
+	}
+	if m.statusLine != nil {
+		stops = append(stops, m.statusLine.ObserveChange(notifier.HostStateChanged))
+	}
+	stops = append(stops, tui.ObserveActiveTheme(notifier.HostStateChanged))
+	return func() {
+		for _, stop := range stops {
+			stop()
+		}
+	}
 }
 
 func hasAssistantUsageAfter(entries []SessionEntry, index int) bool {
@@ -1941,4 +1820,19 @@ func (m *InteractiveMode) refreshSessionTools(wait bool) error {
 		return nil
 	}
 	return m.postToMain(m.runCtx, m.rebuildToolSystemPrompt)
+}
+
+// extensionHasPendingMessages answers the extension-facing hasPendingMessages(): whether user messages wait in the steering or follow-up queue.
+// upstream: agent-session.ts:2443-2445 counts only those; extension custom messages queued with sendMessage are not pending messages.
+func (m *InteractiveMode) extensionHasPendingMessages() bool {
+	if m.agent == nil {
+		return false
+	}
+	steering, followUps := m.agent.PendingMessages()
+	for _, message := range slices.Concat(steering, followUps) {
+		if message.User != nil {
+			return true
+		}
+	}
+	return false
 }

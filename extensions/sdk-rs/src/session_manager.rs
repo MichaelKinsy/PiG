@@ -2,18 +2,18 @@ use crate::context::Context;
 use serde_json::{json, Value};
 use std::io;
 
-/// Reads the active host session and returns transport or host failures directly.
-pub struct SessionManager<'a> {
+/// Pi's `ReadonlySessionManager`: reads the active host session and returns transport or host failures directly.
+pub struct ReadonlySessionManager<'a> {
     context: &'a Context,
 }
 
 impl Context {
-    pub fn session_manager(&self) -> SessionManager<'_> {
-        SessionManager { context: self }
+    pub fn session_manager(&self) -> ReadonlySessionManager<'_> {
+        ReadonlySessionManager { context: self }
     }
 }
 
-impl SessionManager<'_> {
+impl ReadonlySessionManager<'_> {
     fn read(&self, method: &str, args: Value) -> io::Result<Value> {
         self.context.call_host("sessionRead", Some(json!({"method": method, "args": args})))
             .map(|value| value.unwrap_or(Value::Null))

@@ -314,6 +314,20 @@ func TestThemeQueriesAcrossSDKs(t *testing.T) {
 			if got["sourcePath"] != wantSource {
 				t.Errorf("%s: sourcePath = %v, want %v", name, got["sourcePath"], wantSource)
 			}
+			// Theme.sourceInfo: the resource loader's record of where the theme came from, absent for a theme it did not load.
+			var wantInfo any
+			if theme.SourceInfo != nil {
+				raw, err := json.Marshal(theme.SourceInfo)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := json.Unmarshal(raw, &wantInfo); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if !reflect.DeepEqual(got["sourceInfo"], wantInfo) {
+				t.Errorf("%s: sourceInfo = %v, want %v", name, got["sourceInfo"], wantInfo)
+			}
 			if name == "custom file theme, 256 colors" && wantSource == nil {
 				t.Errorf("the custom theme has no source path, so the row proves nothing")
 			}

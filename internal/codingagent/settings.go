@@ -21,6 +21,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
@@ -1704,9 +1705,13 @@ type SettingsManager struct {
 	projectLoadErr error
 	errors         []SettingsError
 	memory         *memorySettingsStorage
+	// storage is the extension-owned backend of SettingsManager.fromStorage; nil for file and memory storage.
+	storage SettingsStorage
 	// generation counts the changes of merged (setMergedLocked); extensionEncoding is the extension encoding of one generation.
 	generation        uint64
 	extensionEncoding atomic.Pointer[extensionSettingsEncoding]
+	// changeObservers run after each change of merged, with sm.mu held for writing.
+	changeObservers changeobservers.Observers
 	// globalObject and projectObject are the settings layers as Pi's SettingsManager holds them: the migrated file object, which a setter
 	// changes in place. mergedObject is their deepMergeSettings with each applied override (settings-manager.ts:195-212). Only their member
 	// order is read: the extension settings encoding lists the members of merged in it, as Pi's getSettings() clone of this.settings does.
@@ -1718,11 +1723,82 @@ func (sm *SettingsManager) setMergedLocked(merged Settings, object *orderedjson.
 	sm.merged = merged
 	sm.mergedObject = object
 	sm.generation++
+	sm.changeObservers.Notify()
+}
+
+// ObserveChange registers observe to run after every change of the effective settings: a setter, a reload, a trust change and an override. A change that leaves the merged settings equal still reports. observe runs on the goroutine that made the change, with the manager's lock held for writing, so it must return at once and must not call the manager. The returned function removes it and can be called repeatedly.
+func (sm *SettingsManager) ObserveChange(observe func()) func() {
+	return sm.changeObservers.Add(observe)
 }
 
 // remergeLocked makes deepMergeSettings(global, project) the merged settings, as Pi's setters and reload do. The caller holds sm.mu for writing.
 func (sm *SettingsManager) remergeLocked() {
 	sm.setMergedLocked(mergeSettings(sm.global, sm.project), mergeSettingsObjects(sm.globalObject, sm.projectObject))
+}
+
+// SettingsStorage is Pi's SettingsStorage (settings-manager.ts:166): the backend of SettingsManager.fromStorage. WithLock runs fn on the current text of the scope's settings ("global" or "project", nil when there is none); fn returns the text to store, nil to leave it, or an error that WithLock returns.
+type SettingsStorage interface {
+	WithLock(scope string, fn func(current *string) (*string, error)) error
+}
+
+// NewSettingsManagerFromStorage is upstream's SettingsManager.fromStorage(storage, options).
+// upstream: settings-manager.ts:325-327
+func NewSettingsManagerFromStorage(storage SettingsStorage, options SettingsManagerCreateOptions) *SettingsManager {
+	projectTrusted := options.ProjectTrusted == nil || *options.ProjectTrusted
+	sm := &SettingsManager{projectTrusted: projectTrusted, storage: storage}
+	sm.Load()
+	return sm
+}
+
+// errorPath is the file an error of a scope names: none for an extension's storage, as Pi's SettingsError.path is undefined there.
+func (sm *SettingsManager) errorPath(path string) string {
+	if sm.storage != nil {
+		return ""
+	}
+	return path
+}
+
+// loadScope reads one scope's settings from the file at path, or from the extension's storage.
+func (sm *SettingsManager) loadScope(scope, path string) (result Settings, object *orderedjson.Object, err error) {
+	if sm.storage == nil {
+		return loadSettingsFile(path)
+	}
+	result, object = Settings{}, orderedjson.New()
+	err = sm.storage.WithLock(scope, func(current *string) (*string, error) {
+		if current == nil || *current == "" {
+			return nil, nil
+		}
+		data := text.StripBomBytes([]byte(*current))
+		parsed, parseErr := parseSettingsJSON(data)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		result, object = parsed, settingsFileObject(data)
+		return nil, nil
+	})
+	if err != nil {
+		return Settings{}, orderedjson.New(), err
+	}
+	return result, object, nil
+}
+
+// saveScope writes one scope's settings change to the file at path, or to the extension's storage.
+func (sm *SettingsManager) saveScope(scope, path string, before, after Settings, order, replace []string) error {
+	if sm.storage == nil {
+		return saveSettingsPatchReplacing(path, before, after, order, replace)
+	}
+	return sm.storage.WithLock(scope, func(current *string) (*string, error) {
+		var data []byte
+		if current != nil {
+			data = []byte(*current)
+		}
+		patched, err := patchedSettingsBytes(data, current != nil, before, after, order, replace)
+		if err != nil {
+			return nil, err
+		}
+		out := string(patched)
+		return &out, nil
+	})
 }
 
 type memorySettingsStorage struct {
@@ -1841,15 +1917,15 @@ func (sm *SettingsManager) Load() {
 		}
 	} else {
 		globalPath := filepath.Join(sm.agentDir, "settings.json")
-		if global, object, err := loadSettingsFile(globalPath); err == nil {
+		if global, object, err := sm.loadScope("global", globalPath); err == nil {
 			sm.global = global
 			sm.globalObject = object
 			sm.globalLoadErr = nil
-			sm.noteIgnoredSettings("global", globalPath, global)
+			sm.noteIgnoredSettings("global", sm.errorPath(globalPath), global)
 		} else {
 			sm.globalLoadErr = err
 			if !errors.Is(err, os.ErrNotExist) {
-				sm.errors = append(sm.errors, SettingsError{Scope: "global", Path: globalPath, Error: err})
+				sm.errors = append(sm.errors, SettingsError{Scope: "global", Path: sm.errorPath(globalPath), Error: err})
 			}
 		}
 		if !sm.projectTrusted {
@@ -1860,15 +1936,15 @@ func (sm *SettingsManager) Load() {
 			return
 		}
 		projectPath := filepath.Join(ProjectConfigDir(sm.cwd), "settings.json")
-		if project, object, err := loadSettingsFile(projectPath); err == nil {
+		if project, object, err := sm.loadScope("project", projectPath); err == nil {
 			sm.project = project
 			sm.projectObject = object
 			sm.projectLoadErr = nil
-			sm.noteIgnoredSettings("project", projectPath, project)
+			sm.noteIgnoredSettings("project", sm.errorPath(projectPath), project)
 		} else {
 			sm.projectLoadErr = err
 			if !errors.Is(err, os.ErrNotExist) {
-				sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: projectPath, Error: err})
+				sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: sm.errorPath(projectPath), Error: err})
 			}
 		}
 	}
@@ -3180,8 +3256,8 @@ func (sm *SettingsManager) updateGlobalReplacing(order, replace []string, fn fun
 		return fmt.Errorf("global settings file has parse errors: %w", sm.globalLoadErr)
 	}
 	path := filepath.Join(sm.agentDir, "settings.json")
-	if err := saveSettingsPatchReplacing(path, before, sm.global, order, replace); err != nil {
-		sm.errors = append(sm.errors, SettingsError{Scope: "global", Path: path, Error: err})
+	if err := sm.saveScope("global", path, before, sm.global, order, replace); err != nil {
+		sm.errors = append(sm.errors, SettingsError{Scope: "global", Path: sm.errorPath(path), Error: err})
 		return err
 	}
 	return nil
@@ -3207,8 +3283,8 @@ func (sm *SettingsManager) UpdateProject(fn func(*Settings)) error {
 		return fmt.Errorf("project settings file has parse errors: %w", sm.projectLoadErr)
 	}
 	path := filepath.Join(ProjectConfigDir(sm.cwd), "settings.json")
-	if err := saveSettingsPatch(path, before, sm.project); err != nil {
-		sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: path, Error: err})
+	if err := sm.saveScope("project", path, before, sm.project, nil, nil); err != nil {
+		sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: sm.errorPath(path), Error: err})
 		return err
 	}
 	return nil
@@ -3405,35 +3481,11 @@ func saveSettingsPatchReplacing(path string, before, after Settings, order, repl
 	}
 	defer releaseSyncLock(release, &err)
 
-	current := orderedjson.New()
 	data, readErr := os.ReadFile(path)
-	if readErr == nil {
-		data = text.StripBomBytes(data)
-		if _, err := parseSettingsJSON(data); err != nil {
-			return err
-		}
-		var members map[string]json.RawMessage
-		if json.Unmarshal(data, &members) == nil {
-			if members != nil {
-				// settings-manager.ts:715 spreads the file's own object, so its keys keep their order.
-				if current, err = orderedjson.Parse(data); err != nil {
-					return err
-				}
-				if err := migrateSettingsObject(current); err != nil {
-					return err
-				}
-			}
-		} else if current, err = spreadNonObjectRoot(data); err != nil {
-			return err
-		}
-	} else if !errors.Is(readErr, os.ErrNotExist) {
+	if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
 		return nodeerrno.FromPathError(readErr)
 	}
-	if err := patchSettingsObject(current, before, after, order, replace); err != nil {
-		return err
-	}
-	// JSON.stringify(mergedSettings, null, 2) (settings-manager.ts:731) re-serializes the whole parsed file: no HTML escaping, JS number and string forms, array-index keys first.
-	encoded, err := stringifyIndented(rawObject(current))
+	encoded, err := patchedSettingsBytes(data, readErr == nil, before, after, order, replace)
 	if err != nil {
 		return err
 	}
@@ -3441,6 +3493,40 @@ func saveSettingsPatchReplacing(path string, before, after Settings, order, repl
 		return nodeerrno.FromPathError(err)
 	}
 	return nil
+}
+
+// patchedSettingsBytes is the settings text that results from applying a setter's change (before to after) to the stored text data, which exists when exists. It is the part of FileSettingsStorage.withLock's callback that persistScopedSettings runs.
+func patchedSettingsBytes(data []byte, exists bool, before, after Settings, order, replace []string) ([]byte, error) {
+	current := orderedjson.New()
+	if exists {
+		data = text.StripBomBytes(data)
+		if _, err := parseSettingsJSON(data); err != nil {
+			return nil, err
+		}
+		var members map[string]json.RawMessage
+		if json.Unmarshal(data, &members) == nil {
+			if members != nil {
+				// settings-manager.ts:715 spreads the file's own object, so its keys keep their order.
+				var err error
+				if current, err = orderedjson.Parse(data); err != nil {
+					return nil, err
+				}
+				if err := migrateSettingsObject(current); err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			var err error
+			if current, err = spreadNonObjectRoot(data); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if err := patchSettingsObject(current, before, after, order, replace); err != nil {
+		return nil, err
+	}
+	// JSON.stringify(mergedSettings, null, 2) (settings-manager.ts:731) re-serializes the whole parsed file: no HTML escaping, JS number and string forms, array-index keys first.
+	return stringifyIndented(rawObject(current))
 }
 
 // patchSettingsObject applies a setter's change of a settings layer from before to after to current, the layer's object, as persistScopedSettings

@@ -30,10 +30,17 @@ const minSHA = 7
 
 const gitTimeout = 60 * time.Second
 
+// fixTrailer is the trailer a squash commit carries for each commit it replaced: "Fix-Commit: <full sha>", the 40 hex
+// digits of a commit a fragment's name or fix marker may still name after the squash removed it from the history. An
+// abbreviated sha does not count: only the full name identifies one commit.
+var fixTrailer = regexp.MustCompile(`(?m)^Fix-Commit: ([0-9a-f]{40})[ \t]*$`)
+
 // history answers which commits are reachable from HEAD in the repository that holds the fragments.
 type history struct {
 	dir       string
 	reachable map[string]bool
+	// replaced maps the full sha a Fix-Commit trailer names to the commit of HEAD's history that carries the trailer.
+	replaced map[string]string
 }
 
 func (h *history) git(args ...string) (string, error) {
@@ -51,7 +58,7 @@ func (h *history) git(args ...string) (string, error) {
 // openHistory reads the commits reachable from HEAD. A shallow clone lacks the commits a fragment names, so it fails
 // instead of reporting them unreachable.
 func openHistory(dir string) (*history, error) {
-	h := &history{dir: dir, reachable: map[string]bool{}}
+	h := &history{dir: dir, reachable: map[string]bool{}, replaced: map[string]string{}}
 	shallow, err := h.git("rev-parse", "--is-shallow-repository")
 	if err != nil {
 		return nil, fmt.Errorf("the fragment checks resolve the commits fragments name against the history of HEAD, so %s must be in a git checkout: %w", dir, err)
@@ -68,13 +75,50 @@ func openHistory(dir string) (*history, error) {
 			h.reachable[c] = true
 		}
 	}
+	trailed, err := h.git("log", "HEAD", "--grep=^Fix-Commit: ", "--format=%H%x00%B%x01")
+	if err != nil {
+		return nil, err
+	}
+	for entry := range strings.SplitSeq(trailed, "\x01") {
+		commit, body, ok := strings.Cut(strings.TrimSpace(entry), "\x00")
+		if !ok {
+			continue
+		}
+		for _, m := range fixTrailer.FindAllStringSubmatch(body, -1) {
+			if _, taken := h.replaced[m[1]]; !taken {
+				h.replaced[m[1]] = commit
+			}
+		}
+	}
 	return h, nil
 }
 
-// reaches reports whether rev names a commit reachable from HEAD.
+// reaches reports whether rev names a commit that HEAD reaches: a commit reachable from HEAD, or one a squash commit of
+// HEAD's history replaced and names in a Fix-Commit trailer.
 func (h *history) reaches(rev string) bool {
 	out, err := h.git("rev-parse", "--verify", "--quiet", rev+"^{commit}")
-	return err == nil && h.reachable[strings.TrimSpace(out)]
+	if err == nil && h.reachable[strings.TrimSpace(out)] {
+		return true
+	}
+	return h.replacedBy(rev) != ""
+}
+
+// replacedBy returns the commit of HEAD's history whose Fix-Commit trailer names the commit that the hex prefix rev
+// abbreviates, or "" when no trailer names it, or when the prefix fits the full sha of more than one replaced commit.
+func (h *history) replacedBy(rev string) string {
+	if len(rev) < minSHA {
+		return ""
+	}
+	found := ""
+	for full := range h.replaced {
+		if strings.HasPrefix(full, rev) {
+			if found != "" && found != full {
+				return ""
+			}
+			found = full
+		}
+	}
+	return h.replaced[found]
 }
 
 // checkHistory reports the fragments whose name or fix markers name a commit that HEAD does not reach, and the bullets
@@ -99,7 +143,7 @@ func checkHistory(dir string, fragments []fragment) []error {
 	for _, f := range checked {
 		if m := nameSHA.FindStringSubmatch(f.name); m != nil && !h.reaches(m[1]) {
 			lane := strings.TrimSuffix(f.name, m[0])
-			problems = append(problems, fmt.Errorf("%s: the name <lane>-<sha>.md names %s, which is not a commit reachable from HEAD (a rebase, squash or amend replaced it, so its SHA is gone from this branch); rename the fragment after the commit it describes on this branch: git mv %s/%s %s/%s-<sha>.md, with <sha> from git rev-parse --short=10 <commit>", f.name, m[1], dir, f.name, dir, lane))
+			problems = append(problems, fmt.Errorf("%s: the name <lane>-<sha>.md names %s, which is not a commit reachable from HEAD (a rebase, squash or amend replaced it, so its SHA is gone from this branch, and no commit of its history carries a \"Fix-Commit: <full sha>\" trailer for it); rename the fragment after the commit it describes on this branch: git mv %s/%s %s/%s-<sha>.md, with <sha> from git rev-parse --short=10 <commit>", f.name, m[1], dir, f.name, dir, lane))
 		}
 		for _, section := range ledgerSections {
 			for _, item := range f.items[section] {
@@ -124,7 +168,7 @@ func checkMarker(h *history, name, section, item string) []error {
 			case len(sha) < minSHA:
 				problems = append(problems, fmt.Errorf("%s: the fix marker %q on the \"### %s\" bullet %q names fewer than %d hex digits of a commit; name the commit with git rev-parse --short=10 <commit>", name, sha, section, text, minSHA))
 			case !h.reaches(sha):
-				problems = append(problems, fmt.Errorf("%s: the fix marker %s on the \"### %s\" bullet %q names no commit reachable from HEAD (a rebase, squash or amend replaced it, so its SHA is gone from this branch); name the commit that replaced it: git log --oneline -- <the code the bullet describes>", name, sha, section, text))
+				problems = append(problems, fmt.Errorf("%s: the fix marker %s on the \"### %s\" bullet %q names no commit reachable from HEAD (a rebase, squash or amend replaced it, so its SHA is gone from this branch, and no commit of its history carries a \"Fix-Commit: <full sha>\" trailer for it); name the commit that replaced it: git log --oneline -- <the code the bullet describes>", name, sha, section, text))
 			}
 		}
 	}

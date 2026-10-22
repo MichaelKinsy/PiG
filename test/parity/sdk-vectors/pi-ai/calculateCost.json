@@ -1,0 +1,4064 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-ai@1.3.0",
+ "module": "pi-ai",
+ "export": "calculateCost",
+ "cases": [
+  {
+   "name": "case 0001",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.001125,
+    "total": 0.019275000000000004
+   }
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 200000,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200010,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.6,
+    "output": 0.00015000000000000001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.60015
+   }
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 200001,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200011,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.6000030000000001,
+    "output": 0.00015000000000000001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.600153
+   }
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 100000,
+     "output": 5,
+     "cacheRead": 50000,
+     "cacheWrite": 50001,
+     "totalTokens": 200006,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.3,
+    "output": 0.00007500000000000001,
+    "cacheRead": 0.015,
+    "cacheWrite": 0.18750375,
+    "total": 0.50257875
+   }
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 499999,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500001,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.499997,
+    "output": 0.000015,
+    "cacheRead": 3e-7,
+    "cacheWrite": 0,
+    "total": 1.5000123
+   }
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 500000,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.5,
+    "output": 0.000015,
+    "cacheRead": 3e-7,
+    "cacheWrite": 0,
+    "total": 1.5000153
+   }
+  },
+  {
+   "name": "case 0008",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 500001,
+     "output": 1,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.500003,
+    "output": 0.000015,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 1.500018
+   }
+  },
+  {
+   "name": "case 0009",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 100
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.00135,
+    "total": 0.019500000000000003
+   }
+  },
+  {
+   "name": "case 0010",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 300
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.0018,
+    "total": 0.019950000000000002
+   }
+  },
+  {
+   "name": "case 0011",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 0
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.001125,
+    "total": 0.019275000000000004
+   }
+  },
+  {
+   "name": "case 0012",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 3,
+     "cacheWrite": 4,
+     "totalTokens": 10,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 400
+    }
+   ],
+   "result": {
+    "input": 0.000003,
+    "output": 0.00003,
+    "cacheRead": 9e-7,
+    "cacheWrite": 0.000915,
+    "total": 0.0009489
+   }
+  },
+  {
+   "name": "case 0013",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 123456,
+     "output": 7891,
+     "cacheRead": 23456,
+     "cacheWrite": 789,
+     "totalTokens": 155592,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 77
+    }
+   ],
+   "result": {
+    "input": 0.37036800000000003,
+    "output": 0.118365,
+    "cacheRead": 0.007036799999999999,
+    "cacheWrite": 0.003132,
+    "total": 0.49890180000000006
+   }
+  },
+  {
+   "name": "case 0014",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 1,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 1,
+     "totalTokens": 4,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.000003,
+    "output": 0.000015,
+    "cacheRead": 3e-7,
+    "cacheWrite": 0.00000375,
+    "total": 0.00002205
+   }
+  },
+  {
+   "name": "case 0015",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75
+     }
+    },
+    {
+     "input": 3,
+     "output": 7,
+     "cacheRead": 11,
+     "cacheWrite": 13,
+     "totalTokens": 34,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "reasoning": 2
+    }
+   ],
+   "result": {
+    "input": 0.000009,
+    "output": 0.000105,
+    "cacheRead": 0.0000032999999999999997,
+    "cacheWrite": 0.00004875,
+    "total": 0.00016605
+   }
+  },
+  {
+   "name": "case 0016",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.001125,
+    "total": 0.019275000000000004
+   }
+  },
+  {
+   "name": "case 0017",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  {
+   "name": "case 0018",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 200000,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200010,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.6,
+    "output": 0.00015000000000000001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.60015
+   }
+  },
+  {
+   "name": "case 0019",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 200001,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200011,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.2000060000000001,
+    "output": 0.00022500000000000002,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 1.200231
+   }
+  },
+  {
+   "name": "case 0020",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 100000,
+     "output": 5,
+     "cacheRead": 50000,
+     "cacheWrite": 50001,
+     "totalTokens": 200006,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.6,
+    "output": 0.00011250000000000001,
+    "cacheRead": 0.03,
+    "cacheWrite": 0.3750075,
+    "total": 1.00512
+   }
+  },
+  {
+   "name": "case 0021",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 499999,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500001,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 2.999994,
+    "output": 0.0000225,
+    "cacheRead": 6e-7,
+    "cacheWrite": 0,
+    "total": 3.0000171
+   }
+  },
+  {
+   "name": "case 0022",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 500000,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 3,
+    "output": 0.0000225,
+    "cacheRead": 6e-7,
+    "cacheWrite": 0,
+    "total": 3.0000231
+   }
+  },
+  {
+   "name": "case 0023",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 500001,
+     "output": 1,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 3.000006,
+    "output": 0.0000225,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 3.0000285
+   }
+  },
+  {
+   "name": "case 0024",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 100
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.00135,
+    "total": 0.019500000000000003
+   }
+  },
+  {
+   "name": "case 0025",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 300
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.0018,
+    "total": 0.019950000000000002
+   }
+  },
+  {
+   "name": "case 0026",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 0
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.001125,
+    "total": 0.019275000000000004
+   }
+  },
+  {
+   "name": "case 0027",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 3,
+     "cacheWrite": 4,
+     "totalTokens": 10,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 400
+    }
+   ],
+   "result": {
+    "input": 0.000003,
+    "output": 0.00003,
+    "cacheRead": 9e-7,
+    "cacheWrite": 0.000915,
+    "total": 0.0009489
+   }
+  },
+  {
+   "name": "case 0028",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 123456,
+     "output": 7891,
+     "cacheRead": 23456,
+     "cacheWrite": 789,
+     "totalTokens": 155592,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 77
+    }
+   ],
+   "result": {
+    "input": 0.37036800000000003,
+    "output": 0.118365,
+    "cacheRead": 0.007036799999999999,
+    "cacheWrite": 0.003132,
+    "total": 0.49890180000000006
+   }
+  },
+  {
+   "name": "case 0029",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 1,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 1,
+     "totalTokens": 4,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.000003,
+    "output": 0.000015,
+    "cacheRead": 3e-7,
+    "cacheWrite": 0.00000375,
+    "total": 0.00002205
+   }
+  },
+  {
+   "name": "case 0030",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       }
+      ]
+     }
+    },
+    {
+     "input": 3,
+     "output": 7,
+     "cacheRead": 11,
+     "cacheWrite": 13,
+     "totalTokens": 34,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "reasoning": 2
+    }
+   ],
+   "result": {
+    "input": 0.000009,
+    "output": 0.000105,
+    "cacheRead": 0.0000032999999999999997,
+    "cacheWrite": 0.00004875,
+    "total": 0.00016605
+   }
+  },
+  {
+   "name": "case 0031",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.001,
+    "output": 0.002,
+    "cacheRead": 0.0015,
+    "cacheWrite": 0.0012,
+    "total": 0.0057
+   }
+  },
+  {
+   "name": "case 0032",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  {
+   "name": "case 0033",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 200000,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200010,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.19999999999999998,
+    "output": 0.000019999999999999998,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.20001999999999998
+   }
+  },
+  {
+   "name": "case 0034",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 200001,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200011,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.2000060000000001,
+    "output": 0.00022500000000000002,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 1.200231
+   }
+  },
+  {
+   "name": "case 0035",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 100000,
+     "output": 5,
+     "cacheRead": 50000,
+     "cacheWrite": 50001,
+     "totalTokens": 200006,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.6,
+    "output": 0.00011250000000000001,
+    "cacheRead": 0.03,
+    "cacheWrite": 0.3750075,
+    "total": 1.00512
+   }
+  },
+  {
+   "name": "case 0036",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 499999,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500001,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 2.999994,
+    "output": 0.0000225,
+    "cacheRead": 6e-7,
+    "cacheWrite": 0,
+    "total": 3.0000171
+   }
+  },
+  {
+   "name": "case 0037",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 500000,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 6,
+    "output": 0.00003,
+    "cacheRead": 0.0000012,
+    "cacheWrite": 0,
+    "total": 6.0000312
+   }
+  },
+  {
+   "name": "case 0038",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 500001,
+     "output": 1,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 6.000012,
+    "output": 0.00003,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 6.000042
+   }
+  },
+  {
+   "name": "case 0039",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 100
+    }
+   ],
+   "result": {
+    "input": 0.001,
+    "output": 0.002,
+    "cacheRead": 0.0015,
+    "cacheWrite": 0.001,
+    "total": 0.0055000000000000005
+   }
+  },
+  {
+   "name": "case 0040",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 300
+    }
+   ],
+   "result": {
+    "input": 0.001,
+    "output": 0.002,
+    "cacheRead": 0.0015,
+    "cacheWrite": 0.0006,
+    "total": 0.0051
+   }
+  },
+  {
+   "name": "case 0041",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 0
+    }
+   ],
+   "result": {
+    "input": 0.001,
+    "output": 0.002,
+    "cacheRead": 0.0015,
+    "cacheWrite": 0.0012,
+    "total": 0.0057
+   }
+  },
+  {
+   "name": "case 0042",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 3,
+     "cacheWrite": 4,
+     "totalTokens": 10,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 400
+    }
+   ],
+   "result": {
+    "input": 0.000001,
+    "output": 0.000004,
+    "cacheRead": 0.000009,
+    "cacheWrite": -0.000784,
+    "total": -0.00077
+   }
+  },
+  {
+   "name": "case 0043",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 123456,
+     "output": 7891,
+     "cacheRead": 23456,
+     "cacheWrite": 789,
+     "totalTokens": 155592,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 77
+    }
+   ],
+   "result": {
+    "input": 0.123456,
+    "output": 0.015782,
+    "cacheRead": 0.070368,
+    "cacheWrite": 0.003002,
+    "total": 0.21260800000000002
+   }
+  },
+  {
+   "name": "case 0044",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 1,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 1,
+     "totalTokens": 4,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.000001,
+    "output": 0.000002,
+    "cacheRead": 0.000003,
+    "cacheWrite": 0.000004,
+    "total": 0.000009999999999999999
+   }
+  },
+  {
+   "name": "case 0045",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": [
+       {
+        "inputTokensAbove": 500000,
+        "input": 12,
+        "output": 30,
+        "cacheRead": 1.2,
+        "cacheWrite": 15
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 6,
+        "output": 22.5,
+        "cacheRead": 0.6,
+        "cacheWrite": 7.5
+       },
+       {
+        "inputTokensAbove": 200000,
+        "input": 99,
+        "output": 99,
+        "cacheRead": 99,
+        "cacheWrite": 99
+       },
+       {
+        "inputTokensAbove": 0,
+        "input": 1,
+        "output": 2,
+        "cacheRead": 3,
+        "cacheWrite": 4
+       }
+      ]
+     }
+    },
+    {
+     "input": 3,
+     "output": 7,
+     "cacheRead": 11,
+     "cacheWrite": 13,
+     "totalTokens": 34,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "reasoning": 2
+    }
+   ],
+   "result": {
+    "input": 0.000003,
+    "output": 0.000014,
+    "cacheRead": 0.000033,
+    "cacheWrite": 0.000052,
+    "total": 0.000102
+   }
+  },
+  {
+   "name": "case 0046",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.001125,
+    "total": 0.019275000000000004
+   }
+  },
+  {
+   "name": "case 0047",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  {
+   "name": "case 0048",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 200000,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200010,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.6,
+    "output": 0.00015000000000000001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.60015
+   }
+  },
+  {
+   "name": "case 0049",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 200001,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200011,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.6000030000000001,
+    "output": 0.00015000000000000001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.600153
+   }
+  },
+  {
+   "name": "case 0050",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 100000,
+     "output": 5,
+     "cacheRead": 50000,
+     "cacheWrite": 50001,
+     "totalTokens": 200006,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.3,
+    "output": 0.00007500000000000001,
+    "cacheRead": 0.015,
+    "cacheWrite": 0.18750375,
+    "total": 0.50257875
+   }
+  },
+  {
+   "name": "case 0051",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 499999,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500001,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.499997,
+    "output": 0.000015,
+    "cacheRead": 3e-7,
+    "cacheWrite": 0,
+    "total": 1.5000123
+   }
+  },
+  {
+   "name": "case 0052",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 500000,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.5,
+    "output": 0.000015,
+    "cacheRead": 3e-7,
+    "cacheWrite": 0,
+    "total": 1.5000153
+   }
+  },
+  {
+   "name": "case 0053",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 500001,
+     "output": 1,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.500003,
+    "output": 0.000015,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 1.500018
+   }
+  },
+  {
+   "name": "case 0054",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 100
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.00135,
+    "total": 0.019500000000000003
+   }
+  },
+  {
+   "name": "case 0055",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 300
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.0018,
+    "total": 0.019950000000000002
+   }
+  },
+  {
+   "name": "case 0056",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 0
+    }
+   ],
+   "result": {
+    "input": 0.003,
+    "output": 0.015000000000000001,
+    "cacheRead": 0.00015,
+    "cacheWrite": 0.001125,
+    "total": 0.019275000000000004
+   }
+  },
+  {
+   "name": "case 0057",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 3,
+     "cacheWrite": 4,
+     "totalTokens": 10,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 400
+    }
+   ],
+   "result": {
+    "input": 0.000003,
+    "output": 0.00003,
+    "cacheRead": 9e-7,
+    "cacheWrite": 0.000915,
+    "total": 0.0009489
+   }
+  },
+  {
+   "name": "case 0058",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 123456,
+     "output": 7891,
+     "cacheRead": 23456,
+     "cacheWrite": 789,
+     "totalTokens": 155592,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 77
+    }
+   ],
+   "result": {
+    "input": 0.37036800000000003,
+    "output": 0.118365,
+    "cacheRead": 0.007036799999999999,
+    "cacheWrite": 0.003132,
+    "total": 0.49890180000000006
+   }
+  },
+  {
+   "name": "case 0059",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 1,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 1,
+     "totalTokens": 4,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.000003,
+    "output": 0.000015,
+    "cacheRead": 3e-7,
+    "cacheWrite": 0.00000375,
+    "total": 0.00002205
+   }
+  },
+  {
+   "name": "case 0060",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "tiers": []
+     }
+    },
+    {
+     "input": 3,
+     "output": 7,
+     "cacheRead": 11,
+     "cacheWrite": 13,
+     "totalTokens": 34,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "reasoning": 2
+    }
+   ],
+   "result": {
+    "input": 0.000009,
+    "output": 0.000105,
+    "cacheRead": 0.0000032999999999999997,
+    "cacheWrite": 0.00004875,
+    "total": 0.00016605
+   }
+  },
+  {
+   "name": "case 0061",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.0001,
+    "output": 0.0007,
+    "cacheRead": 0.000014999999999999999,
+    "cacheWrite": 0.000037037036700000004,
+    "total": 0.0008520370367000001
+   }
+  },
+  {
+   "name": "case 0062",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  {
+   "name": "case 0063",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 200000,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200010,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.02,
+    "output": 0.000007,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.020007
+   }
+  },
+  {
+   "name": "case 0064",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 200001,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200011,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.020000100000000003,
+    "output": 0.000007,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.020007100000000003
+   }
+  },
+  {
+   "name": "case 0065",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 100000,
+     "output": 5,
+     "cacheRead": 50000,
+     "cacheWrite": 50001,
+     "totalTokens": 200006,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.01,
+    "output": 0.0000035,
+    "cacheRead": 0.0014999999999999998,
+    "cacheWrite": 0.006172962906789,
+    "total": 0.017676462906789002
+   }
+  },
+  {
+   "name": "case 0066",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 499999,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500001,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.04999990000000001,
+    "output": 7e-7,
+    "cacheRead": 3e-8,
+    "cacheWrite": 0,
+    "total": 0.050000630000000004
+   }
+  },
+  {
+   "name": "case 0067",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 500000,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.05,
+    "output": 7e-7,
+    "cacheRead": 3e-8,
+    "cacheWrite": 0,
+    "total": 0.05000073
+   }
+  },
+  {
+   "name": "case 0068",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 500001,
+     "output": 1,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.050000100000000006,
+    "output": 7e-7,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.050000800000000005
+   }
+  },
+  {
+   "name": "case 0069",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 100
+    }
+   ],
+   "result": {
+    "input": 0.0001,
+    "output": 0.0007,
+    "cacheRead": 0.000014999999999999999,
+    "cacheWrite": 0.0000446913578,
+    "total": 0.0008596913578000001
+   }
+  },
+  {
+   "name": "case 0070",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 300
+    }
+   ],
+   "result": {
+    "input": 0.0001,
+    "output": 0.0007,
+    "cacheRead": 0.000014999999999999999,
+    "cacheWrite": 0.00006,
+    "total": 0.0008750000000000001
+   }
+  },
+  {
+   "name": "case 0071",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 0
+    }
+   ],
+   "result": {
+    "input": 0.0001,
+    "output": 0.0007,
+    "cacheRead": 0.000014999999999999999,
+    "cacheWrite": 0.000037037036700000004,
+    "total": 0.0008520370367000001
+   }
+  },
+  {
+   "name": "case 0072",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 3,
+     "cacheWrite": 4,
+     "totalTokens": 10,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 400
+    }
+   ],
+   "result": {
+    "input": 1.0000000000000001e-7,
+    "output": 0.0000014,
+    "cacheRead": 8.999999999999999e-8,
+    "cacheWrite": 0.00003111111155600001,
+    "total": 0.000032701111556000004
+   }
+  },
+  {
+   "name": "case 0073",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 123456,
+     "output": 7891,
+     "cacheRead": 23456,
+     "cacheWrite": 789,
+     "totalTokens": 155592,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 77
+    }
+   ],
+   "result": {
+    "input": 0.012345600000000002,
+    "output": 0.0055236999999999994,
+    "cacheRead": 0.0007036799999999999,
+    "cacheWrite": 0.000103301233768,
+    "total": 0.018676281233768004
+   }
+  },
+  {
+   "name": "case 0074",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 1,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 1,
+     "totalTokens": 4,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.0000000000000001e-7,
+    "output": 7e-7,
+    "cacheRead": 3e-8,
+    "cacheWrite": 1.23456789e-7,
+    "total": 9.53456789e-7
+   }
+  },
+  {
+   "name": "case 0075",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 0.1,
+      "output": 0.7,
+      "cacheRead": 0.03,
+      "cacheWrite": 0.123456789
+     }
+    },
+    {
+     "input": 3,
+     "output": 7,
+     "cacheRead": 11,
+     "cacheWrite": 13,
+     "totalTokens": 34,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "reasoning": 2
+    }
+   ],
+   "result": {
+    "input": 3.0000000000000004e-7,
+    "output": 0.0000049,
+    "cacheRead": 3.2999999999999996e-7,
+    "cacheWrite": 0.0000016049382569999998,
+    "total": 0.000007134938256999999
+   }
+  },
+  {
+   "name": "case 0076",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.0025,
+    "output": 0.01,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.0125
+   }
+  },
+  {
+   "name": "case 0077",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  {
+   "name": "case 0078",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 200000,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200010,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.5,
+    "output": 0.0001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.5001
+   }
+  },
+  {
+   "name": "case 0079",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 200001,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200011,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.5000025,
+    "output": 0.0001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.5001025
+   }
+  },
+  {
+   "name": "case 0080",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 100000,
+     "output": 5,
+     "cacheRead": 50000,
+     "cacheWrite": 50001,
+     "totalTokens": 200006,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.25,
+    "output": 0.00005,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.25005
+   }
+  },
+  {
+   "name": "case 0081",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 499999,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500001,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.2499975,
+    "output": 0.00001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 1.2500075000000002
+   }
+  },
+  {
+   "name": "case 0082",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 500000,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.25,
+    "output": 0.00001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 1.25001
+   }
+  },
+  {
+   "name": "case 0083",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 500001,
+     "output": 1,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 500002,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 1.2500025000000001,
+    "output": 0.00001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 1.2500125000000002
+   }
+  },
+  {
+   "name": "case 0084",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 100
+    }
+   ],
+   "result": {
+    "input": 0.0025,
+    "output": 0.01,
+    "cacheRead": 0,
+    "cacheWrite": 0.0005,
+    "total": 0.013000000000000001
+   }
+  },
+  {
+   "name": "case 0085",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 300
+    }
+   ],
+   "result": {
+    "input": 0.0025,
+    "output": 0.01,
+    "cacheRead": 0,
+    "cacheWrite": 0.0015,
+    "total": 0.014
+   }
+  },
+  {
+   "name": "case 0086",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 1000,
+     "output": 1000,
+     "cacheRead": 500,
+     "cacheWrite": 300,
+     "totalTokens": 2800,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 0
+    }
+   ],
+   "result": {
+    "input": 0.0025,
+    "output": 0.01,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.0125
+   }
+  },
+  {
+   "name": "case 0087",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 3,
+     "cacheWrite": 4,
+     "totalTokens": 10,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 400
+    }
+   ],
+   "result": {
+    "input": 0.0000025,
+    "output": 0.00002,
+    "cacheRead": 0,
+    "cacheWrite": 0.002,
+    "total": 0.0020225
+   }
+  },
+  {
+   "name": "case 0088",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 123456,
+     "output": 7891,
+     "cacheRead": 23456,
+     "cacheWrite": 789,
+     "totalTokens": 155592,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "cacheWrite1h": 77
+    }
+   ],
+   "result": {
+    "input": 0.30864,
+    "output": 0.07891000000000001,
+    "cacheRead": 0,
+    "cacheWrite": 0.000385,
+    "total": 0.3879350000000001
+   }
+  },
+  {
+   "name": "case 0089",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 1,
+     "output": 1,
+     "cacheRead": 1,
+     "cacheWrite": 1,
+     "totalTokens": 4,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    }
+   ],
+   "result": {
+    "input": 0.0000025,
+    "output": 0.00001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.0000125
+   }
+  },
+  {
+   "name": "case 0090",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "cost": {
+      "input": 2.5,
+      "output": 10,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    },
+    {
+     "input": 3,
+     "output": 7,
+     "cacheRead": 11,
+     "cacheWrite": 13,
+     "totalTokens": 34,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     },
+     "reasoning": 2
+    }
+   ],
+   "result": {
+    "input": 0.000007500000000000001,
+    "output": 0.00007000000000000001,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0.00007750000000000001
+   }
+  }
+ ]
+}

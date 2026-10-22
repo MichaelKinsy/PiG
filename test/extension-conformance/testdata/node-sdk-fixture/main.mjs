@@ -1,9 +1,13 @@
+import fs from "node:fs";
 import zlib from "node:zlib";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import * as piAi from "@earendil-works/pi-ai";
+import { join as joinPath } from "node:path";
 import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
 const { Container } = piTui;
 import {
-  createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, VERSION, formatSize, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
+  createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, getPackageDir, getShellConfig, generateDiffString, generateUnifiedPatch, sessionEntryToContextMessages, convertToPng, resizeImage, readStoredCredential, VERSION, formatSize, DEFAULT_MAX_LINES, DEFAULT_MAX_BYTES, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
   getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff,
 } from "@earendil-works/pi-coding-agent";
 
@@ -36,10 +40,42 @@ export default function (pi) {
       }
     }
   }});
+  pi.registerCommand("exec-abort-probe", { description: "Abort a running exec through its signal", handler: async (args, ctx) => {
+    const probe = JSON.parse(args);
+    const controller = new AbortController();
+    if (probe.pre) controller.abort();
+    else {
+      void (async () => {
+        for (const deadline = Date.now() + 15000; Date.now() < deadline && !existsSync(probe.pidFile);) await new Promise((resolve) => setTimeout(resolve, 10));
+        controller.abort();
+      })();
+    }
+    try {
+      const result = await pi.exec(probe.command, probe.args, { signal: controller.signal });
+      ctx.ui.notify(`exec-abort:killed=${result.killed};code=${result.code};stdout=${result.stdout.trim()}`, "info");
+    } catch (error) {
+      ctx.ui.notify(`rejected:${error.message}`, "info");
+    }
+  }});
   pi.registerCommand("thinking-model", { description: "Read the thinking level and switch the model", handler: async (_args, ctx) => {
     pi.setThinkingLevel("high");
     const ok = await pi.setModel({ provider: "probe", id: "model" });
     ctx.ui.notify(JSON.stringify([pi.getThinkingLevel(), ok]), "info");
+  }});
+  pi.registerCommand("replicated-accessors", { description: "Read the replicated accessors after each write", handler: async (_args, ctx) => {
+    const lastType = () => { const entries = ctx.sessionManager.getEntries(); return entries[entries.length - 1]?.type ?? ""; };
+    const out = { name0: ctx.sessionManager.getSessionName() ?? "", model0: ctx.model?.id ?? "", provider0: ctx.model?.provider ?? "" };
+    pi.setSessionName("renamed");
+    out.name1 = ctx.sessionManager.getSessionName() ?? "";
+    pi.setLabel("one", "lab");
+    out.entryAfterLabel = lastType();
+    pi.sendMessage({ customType: "probe", content: "hi", display: true });
+    out.entryAfterMessage = lastType();
+    await pi.setModel({ provider: "prov-after", id: "id-after" });
+    out.model1 = ctx.model?.id ?? "";
+    out.provider1 = ctx.model?.provider ?? "";
+    out.qualified1 = `${out.provider1}/${out.model1}`;
+    ctx.ui.notify(JSON.stringify(out), "info");
   }});
   pi.registerCommand("active_tools_set", { description: "Set the active tools to the comma-separated names", handler: async (args) => pi.setActiveTools(String(args).trim().split(",")) });
   pi.registerCommand("session_actions_unbound", { description: "Report what unbound session actions answer", handler: async (_args, ctx) => {
@@ -66,6 +102,7 @@ export default function (pi) {
       cwd:s.getCwd(), dir:s.getSessionDir(), id:s.getSessionId(), name:s.getSessionName()??null, leaf:s.getLeafId(),
       entry:s.getEntry("one"), missing:s.getEntry("missing")??null, label:s.getLabel("one")??null,
       entries:s.getEntries(), branch:s.getBranch("one"), tree:s.getTree(), contextEntries:s.buildContextEntries(), projection:s.buildSessionProjection(),
+      persisted:s.isPersisted(), usesDefaultDir:s.usesDefaultSessionDir(), children:s.getChildren("one"), sessionContext:s.buildSessionContext(),
       models:r.getAll(), available:r.getAvailable(), status:r.getProviderAuthStatus("registry-probe"),
       display:r.getProviderDisplayName("registry-probe"), error:r.getError()??null,
       config:r.getRegisteredProviderConfig("registry-probe")??null, ids:r.getRegisteredProviderIds(),
@@ -75,6 +112,15 @@ export default function (pi) {
     const refresh=await r.refresh({allowNetwork:false});
     out.refresh={aborted:refresh.aborted,errors:Object.fromEntries([...refresh.errors].map(([key,error])=>[key,error.message]))};
     ctx.ui.notify(JSON.stringify(out),"info");
+  }});
+  pi.registerCommand("registry-edges", { description: "Read the registry answers that depend on the provider state", handler: async (_args, ctx) => {
+    const r = ctx.modelRegistry;
+    const models = [...r.getAll(), {}];
+    ctx.ui.notify(JSON.stringify({
+      available: r.getAvailable(), hasAuth: models.map((model) => r.hasConfiguredAuth(model)), oauth: models.map((model) => r.isUsingOAuth(model)),
+      found: r.find("registry-probe", "a") ?? null, foundOff: r.find("registry-off", "d") ?? null,
+      missing: r.find("registry-probe", "zzz") ?? null, mismatch: r.find("registry-probe", "c") ?? null,
+    }), "info");
   }});
   // The session reads of Pi's Pi-order probe (session_read_order_test.go): the answers are written as JSON.stringify writes them.
   pi.registerCommand("session-order", { description: "Read the session as Pi returns it", handler: async (_args, ctx) => {
@@ -258,6 +304,65 @@ export default function (pi) {
     description: "Report the order in which calls start",
     parameters: { type: "object", properties: { n: { type: "number" } } },
     async execute(_id, params) { startedCalls += 1; return { content: [{ type: "text", text: `start#${startedCalls} n=${params.n}` }] }; },
+  });
+  // Notifies inline (before the handler returns, and from a microtask and a promise continuation) and from a setImmediate and a setTimeout(0) callback; the callbacks run once the handler returned (D189).
+  let staleCtx;
+  pi.registerTool({
+    name: "timer_defer",
+    description: "Notify inline and from deferred callbacks",
+    parameters: { type: "object" },
+    async execute(_id, _params, _signal, _onUpdate, ctx) {
+      staleCtx = ctx;
+      ctx.ui.notify("inline:sync", "info");
+      queueMicrotask(() => ctx.ui.notify("inline:microtask", "info"));
+      Promise.resolve().then(() => ctx.ui.notify("inline:promise", "info"));
+      process.nextTick(() => ctx.ui.notify("tick:nextTick", "info"));
+      setImmediate(() => ctx.ui.notify("deferred:immediate", "info"));
+      setTimeout(() => ctx.ui.notify("deferred:timeout", "info"), 0);
+      return { content: [{ type: "text", text: "queued" }] };
+    },
+  });
+  // Awaits a host call made through the context of the earlier timer_defer request, from a timer callback it waits for (Pi-port extensions keep such a context); the call must not wait for a loop turn that waits for this handler.
+  pi.registerTool({
+    name: "timer_stale",
+    description: "Await a host call made through an earlier request's context",
+    parameters: { type: "object" },
+    async execute() {
+      await new Promise((resolve) => setTimeout(() => { staleCtx.ui.notify("stale:awaited", "info"); resolve(); }, 0));
+      return { content: [{ type: "text", text: "applied" }] };
+    },
+  });
+  pi.registerTool({
+    name: "timer_release",
+    description: "Nothing: Node's callbacks need no release",
+    parameters: { type: "object" },
+    async execute() { return { content: [{ type: "text", text: "released" }] }; },
+  });
+  // order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+  pi.registerTool({
+    name: "order_probe",
+    description: "Make a host call and an update in the first tick",
+    parameters: { type: "object", properties: { n: { type: "number" } } },
+    async execute(_id, params, _signal, onUpdate, ctx) {
+      ctx.ui.notify(`order-call=${params.n}`, "info");
+      ctx.ui.notify(`order-then=${params.n}`, "info");
+      onUpdate({ content: [{ type: "text", text: `order-update=${params.n}` }] });
+      return { content: [{ type: "text", text: `order-done n=${params.n}` }] };
+    },
+  });
+  // mutation_order_probe takes the file mutation queue in its first statement (late: "loop" awaits the event loop first) and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+  pi.registerTool({
+    name: "mutation_order_probe",
+    description: "Take the file mutation queue and append a tag to the file",
+    parameters: { type: "object", properties: { file: { type: "string" }, tag: { type: "string" }, late: { type: "string" } } },
+    async execute(_id, params) {
+      if (params.late === "loop") await new Promise((resolve) => setImmediate(resolve));
+      await withFileMutationQueue(params.file, async () => {
+        const before = fs.existsSync(params.file) ? fs.readFileSync(params.file, "utf8") : "";
+        fs.writeFileSync(params.file, `${before}${params.tag}\n`);
+      });
+      return { content: [{ type: "text", text: `mutated ${params.tag}` }] };
+    },
   });
   pi.registerTool({
     name: "dialog_order",
@@ -562,6 +667,39 @@ export default function (pi) {
       ctx.ui.notify(`getThinkingLevel=${pi.getThinkingLevel()};getCommands=${commands.join(",")}`, "info");
     },
   });
+  // rw_prompt_state registers two tools and activates one, reading the system prompt state after each write.
+  pi.registerCommand("rw_prompt_state", {
+    description: "Read the system prompt state after registering and activating tools",
+    handler: async (_args, ctx) => {
+      const tool = (name) => ({ name, label: name, description: name, promptSnippet: `${name}-snippet`, parameters: { type: "object", properties: {} }, execute: async () => ({ content: [{ type: "text", text: "ok" }] }) });
+      pi.registerTool(tool("rw-alpha"));
+      pi.registerTool(tool("rw-beta"));
+      const registered = ctx.getSystemPromptOptions();
+      pi.setActiveTools(["rw-beta"]);
+      const options = ctx.getSystemPromptOptions();
+      const prompt = ctx.getSystemPrompt();
+      ctx.ui.notify(`rw_prompt_state=registered:${registered.toolSnippets?.["rw-alpha"] ?? ""};selected:${(options.selectedTools ?? []).join(",")};beta:${prompt.includes("rw-beta-snippet")};alpha:${prompt.includes("rw-alpha-snippet")}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_after_trigger", {
+    description: "Read isIdle after a message that starts a run",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      ctx.ui.notify(`rw_idle_after_trigger=${ctx.isIdle()}`, "info");
+    },
+  });
+  let rwSettledOnce = false;
+  pi.registerCommand("rw_idle_in_settled", {
+    description: "Read isIdle after a message that starts a run, sent from an agent_settled handler",
+    handler: async () => {
+      pi.on("agent_settled", async (_event, ctx) => {
+        if (rwSettledOnce) return;
+        rwSettledOnce = true;
+        pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+        ctx.ui.notify(`rw_idle_in_settled=${ctx.isIdle()}`, "info");
+      });
+    },
+  });
   pi.registerCommand("set_model", {
     description: "Switch to the model in the arguments",
     handler: async (args, ctx) => {
@@ -626,7 +764,7 @@ export default function (pi) {
       return { frontmatter: parsed.frontmatter, body: parsed.body, keys: keyLists(parsed.frontmatter) };
     } catch { return { error: true }; }
   };
-  const factoryHelpers = { frontmatter: helperReport("frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"), error: helperReport("frontmatter", "---\na: [\n---\nx"), date: helperReport("date", "2020-01-02T03:04:05.678Z") };
+  const factoryHelpers = { frontmatter: helperReport("frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"), error: helperReport("frontmatter", "---\na: [\n---\nx"), date: helperReport("date", "2020-01-02T03:04:05.678Z"), strip: helperReport("strip", "---\nz: 1\n---\nbody text\n") };
   pi.registerCommand("helper_probe", { description: "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", handler: async (args, ctx) => {
     const c = JSON.parse(args);
     ctx.ui.notify(`helper:${JSON.stringify(helperReport(c.fn, c.input))}:end`, "info");
@@ -663,8 +801,75 @@ export default function (pi) {
     if (c.fn === "head") result = truncateHead(c.content, options);
     else if (c.fn === "tail") result = truncateTail(c.content, options);
     else if (c.fn === "line") { const r = c.maxChars === undefined ? truncateLine(c.content) : truncateLine(c.content, c.maxChars); result = { text: r.text, wasTruncated: r.wasTruncated }; }
+    else if (c.fn === "limits") result = { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES };
     else result = { text: formatSize(c.bytes) };
     ctx.ui.notify(`truncate:${JSON.stringify(result)}:end`, "info");
+  } });
+  // builtin_probe: see the Go fixture (testfixture/builtin_tool.go). Pi's own create<Tool>ToolDefinition, create<Tool>Tool and createLocalBashOperations are the reference.
+  const builtinReport = (result) => {
+    const report = { content: result.content.map((block) => block.type === "text" ? { type: "text", text: block.text } : { type: block.type, mimeType: block.mimeType }), isError: !!result.isError };
+    if (result.details !== undefined && result.details !== null) { report.details = result.details; report.detailsJSON = JSON.stringify(result.details); }
+    if (result.structuredContent && typeof result.structuredContent === "object") { report.structuredKeys = Object.keys(result.structuredContent); report.exitCode = result.structuredContent.exit_code; }
+    return report;
+  };
+  const builtinOptions = (c, log) => {
+    const hook = c.hook ? (spawn) => { log.push(`spawnHook:${spawn.command}`); return { command: "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"", cwd: spawn.cwd, env: { ...spawn.env, HOOK_VAR: "hook-env" } }; } : undefined;
+    const custom = c.ops === "custom";
+    switch (c.tool) {
+      case "read": return { autoResizeImages: c.autoResizeImages ?? undefined, operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from(`OPS:${p}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
+      case "write": return { operations: custom ? { writeFile: async (p, content) => { log.push(`writeFile:${p}:${content}`); }, mkdir: async (d) => { log.push(`mkdir:${d}`); } } : undefined };
+      case "edit": return { operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from("hello world\n"); }, writeFile: async (p, content) => { log.push(`writeFile:${p}:${content}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
+      case "ls": return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return true; }, stat: async (p) => { log.push(`stat:${p}`); return { isDirectory: () => !p.includes(".") }; }, readdir: async (p) => { log.push(`readdir:${p}`); return ["b.txt", "a.txt", "sub"]; } } : undefined };
+      case "grep": return { operations: custom ? { isDirectory: async (p) => { log.push(`isDirectory:${p}`); throw new Error("no such path for the probe"); } } : undefined };
+      case "find": return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return false; }, glob: async (pattern) => { log.push(`glob:${pattern}`); return []; } } : undefined };
+      case "powershell": return { exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined };
+      default: return { commandPrefix: c.commandPrefix || undefined, exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined, spawnHook: hook, operations: custom ? { exec: async (command, cwd, o) => { log.push(`exec:${command}|cwd=${cwd}`); o.onData(Buffer.from(`custom:${command}`)); return { exitCode: 0 }; } } : undefined };
+    }
+  };
+  const builtinFactories = { read: [piCodingAgent.createReadToolDefinition, piCodingAgent.createReadTool], write: [piCodingAgent.createWriteToolDefinition, piCodingAgent.createWriteTool], edit: [piCodingAgent.createEditToolDefinition, piCodingAgent.createEditTool], bash: [piCodingAgent.createBashToolDefinition, piCodingAgent.createBashTool], grep: [piCodingAgent.createGrepToolDefinition, piCodingAgent.createGrepTool], find: [piCodingAgent.createFindToolDefinition, piCodingAgent.createFindTool], ls: [piCodingAgent.createLsToolDefinition, piCodingAgent.createLsTool], powershell: [piCodingAgent.createPowerShellToolDefinition, piCodingAgent.createPowerShellTool] };
+  pi.registerCommand("builtin_probe", { description: "Delegate to a built-in tool through the SDK and report what it returned", handler: async (args, ctx) => {
+    const c = JSON.parse(args);
+    const emit = (report) => ctx.ui.notify(`builtin:${JSON.stringify(report)}:end`, "info");
+    if (c.kind === "cwd") return emit({ cwd: ctx.cwd });
+    if (c.kind === "register") {
+      const read = createReadToolDefinition(c.factoryCwd);
+      pi.registerTool({ ...read, async execute(...a) { const r = await read.execute(...a); r.content = r.content.map((b, i) => i === 0 ? { ...b, text: `«delegated:${b.text}»` } : b); r.details = { delegated: true }; return r; } });
+      const bash = createBashToolDefinition(c.factoryCwd);
+      pi.registerTool({ ...bash, async execute(...a) { const r = await bash.execute(...a); r.content = r.content.map((b, i) => i === 0 ? { ...b, text: `«${b.text}»` } : b); return r; } });
+      return emit({ registered: [read.name, bash.name] });
+    }
+    if (c.kind === "sets") return emit({ coding: piCodingAgent.createCodingTools(c.factoryCwd).map((t) => t.name), readOnly: piCodingAgent.createReadOnlyTools(c.factoryCwd).map((t) => t.name) });
+    if (c.kind === "local") {
+      const operations = c.shell === "powershell" ? piCodingAgent.createLocalPowerShellOperations() : piCodingAgent.createLocalBashOperations();
+      const controller = new AbortController();
+      const chunks = [];
+      const report = {};
+      try {
+        const result = await operations.exec(c.command, c.factoryCwd, { onData: (data) => { chunks.push(Buffer.from(data).toString("utf8")); if (c.abortOnOutput) controller.abort(); }, signal: controller.signal, timeout: c.timeout ?? undefined, env: c.env ?? undefined });
+        report.exitCode = result.exitCode;
+      } catch (error) { report.error = error.message; }
+      report.output = chunks.join("");
+      return emit(report);
+    }
+    const log = [];
+    const [createDefinition, createTool] = builtinFactories[c.tool];
+    const options = builtinOptions(c, log);
+    if (c.kind === "definition") {
+      const def = createDefinition(c.factoryCwd, options);
+      return emit({ definition: { name: def.name, label: def.label, description: def.description, promptSnippet: def.promptSnippet ?? "", promptGuidelines: def.promptGuidelines ?? null, parameters: JSON.parse(JSON.stringify(def.parameters)), outputSchema: def.outputSchema ? JSON.parse(JSON.stringify(def.outputSchema)) : null, constrainedSampling: def.constrainedSampling ?? null, executionMode: def.executionMode ?? "", renderShell: def.renderShell ?? "" } });
+    }
+    const controller = new AbortController();
+    if (c.preAborted) controller.abort();
+    const updates = [];
+    const onUpdate = c.updates || c.abortOnOutput ? (partial) => { const text = partial.content.filter((b) => b.type === "text").map((b) => b.text).join("\n"); updates.push(text); if (c.abortOnOutput && text !== "") controller.abort(); } : undefined;
+    const report = {};
+    try {
+      const result = c.noContext ? await createTool(c.factoryCwd, options).execute("probe-call", c.params ?? {}, controller.signal, onUpdate) : await createDefinition(c.factoryCwd, options).execute("probe-call", c.params ?? {}, controller.signal, onUpdate, ctx);
+      report.result = builtinReport(result);
+    } catch (error) { report.error = error.message; }
+    if (c.updates) report.updates = updates;
+    report.calls = log;
+    emit(report);
   } });
   // message_probe: see the Go fixture.
   pi.registerCommand("message_probe", { description: "Report messageRole and messageText of a JSON event payload", handler: async (args, ctx) => {
@@ -706,8 +911,80 @@ export default function (pi) {
     }));
     ctx.ui.notify(`file_queue:${JSON.stringify({ log, errors: failed.sort((a, b) => a - b) })}:end`, "info");
   } });
+  // host_paths_probe reports getPackageDir() and getShellConfig() as the runtime answers them, for the default shell and for the existing and the missing custom shell path
+  // in args ("<existing>|<missing>") (TestConformance_HostPathsAgreeAcrossSDKs).
+  pi.registerCommand("host_paths_probe", { description: "Report getPackageDir and getShellConfig", handler: async (args, ctx) => {
+    const [existing, missing] = args.split("|");
+    const shell = (...custom) => {
+      try {
+        const config = getShellConfig(...custom);
+        return { shell: config.shell, args: config.args, ...(config.commandTransport ? { commandTransport: config.commandTransport } : {}) };
+      } catch (error) { return { error: error.message }; }
+    };
+    ctx.ui.notify(`host_paths:${JSON.stringify({ packageDir: getPackageDir(), default: shell(), custom: shell(existing), missing: shell(missing) })}:end`, "info");
+  } });
+  // host_helpers_probe runs the pi helpers over the golden file's inputs through Pi's own code (TestConformance_HostHelpersAgreeAcrossSDKs). args is
+  // "<golden>|<auth.json path>|<text to copy>". Pi's copyToClipboard runs in this process and writes the system clipboard, so it is not called here.
+  pi.registerCommand("host_helpers_probe", { description: "Run the pi helpers over the golden inputs", handler: async (args, ctx) => {
+    const [goldenPath, authPath] = args.split("|", 3);
+    const golden = JSON.parse(readFileSync(goldenPath, "utf8"));
+    const diffs = golden.diffs.map((c) => {
+      const lines = c.contextLines === undefined ? [] : [c.contextLines];
+      const report = { patch: generateUnifiedPatch(c.path ?? "src/a.ts", c.oldContent, c.newContent, ...lines) };
+      if (!c.patchOnly) { const diff = generateDiffString(c.oldContent, c.newContent, ...lines); report.diff = diff.diff; report.firstChangedLine = diff.firstChangedLine ?? null; }
+      return report;
+    });
+    const entries = golden.entries.map((c) => sessionEntryToContextMessages(c.entry));
+    const meta = (image) => (image ? { mimeType: image.mimeType, ...(image.originalWidth === undefined ? {} : { originalWidth: image.originalWidth, originalHeight: image.originalHeight, width: image.width, height: image.height, wasResized: image.wasResized }), decodes: image.data.length > 0 } : null);
+    const images = [];
+    for (const c of golden.images) {
+      if (c.op === "convert") images.push(meta(await convertToPng(c.data, c.mimeType)));
+      else { try { images.push(meta(await resizeImage(new Uint8Array(Buffer.from(c.data, "base64")), c.mimeType, c.options))); } catch { images.push(null); } }
+    }
+    const read = (provider, path) => readStoredCredential(provider, path) ?? null;
+    const creds = { explicit: read("anthropic", authPath), default: read("anthropic"), absentProvider: read("nobody", authPath), missingFile: read("anthropic", `${authPath}.missing`), notJSON: read("anthropic", `${authPath}.bad`) };
+    ctx.ui.notify(`host_helpers:${JSON.stringify({ diffs, entries, images, creds })}:end`, "info");
+  } });
+  // pi_ai_helpers_probe runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the test) through the runtime's pi-ai and
+  // reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).
+  pi.registerCommand("pi_ai_helpers_probe", { description: "Run the golden pi-ai helper calls", handler: async (args, ctx) => {
+    const golden = JSON.parse(readFileSync(args, "utf8"));
+    const cases = golden.cases.map((c) => {
+      const value = c.fn === "DEFAULT_MAX_AGENT_RETRY_DELAY_MS" ? piAi[c.fn] : piAi[c.fn](...c.args.map((arg) => (arg === null ? undefined : arg)));
+      return value === undefined ? [] : [value];
+    });
+    const signal = new AbortController().signal;
+    const auth = [];
+    for (const c of golden.auth.cases) {
+      const seen = [];
+      const result = await piAi.envApiKeyAuth(c.name, c.envVars).resolve({ ctx: { env: async (name) => { seen.push(name); return c.env[name]; } }, credential: c.credential ?? undefined, signal });
+      auth.push({ result: result ?? null, seen });
+    }
+    const prompts = [];
+    const credential = await piAi.envApiKeyAuth("Name", ["FIRST", "SECOND"]).login({ signal, prompt: async (request) => { prompts.push(request); return "typed-key"; } });
+    const timing = golden.timing.map((c) => {
+      const stream = piAi.createAssistantMessageEventStream();
+      const message = (isLater) => ({ role: "assistant", content: [], stopReason: c.kind === "error" ? "error" : "stop", ...(isLater || c.timestamp === "now" ? { timestamp: Date.now() } : c.timestamp === "old" ? { timestamp: 1 } : {}), ...(c.preset !== null && !isLater ? { durationMs: c.preset } : {}) });
+      const final = message(false);
+      const later = message(true);
+      if (c.kind === "done") stream.push({ type: "done", reason: "stop", message: final });
+      else if (c.kind === "error") stream.push({ type: "error", reason: "error", error: final });
+      else if (c.kind === "end") stream.end(final);
+      else { stream.push({ type: "done", reason: "stop", message: final }); stream.end(later); }
+      return { present: final.durationMs !== undefined, value: c.preset !== null && final.durationMs === c.preset ? c.preset : null, laterTimed: later.durationMs !== undefined };
+    });
+    ctx.ui.notify(`pi_ai_helpers:${JSON.stringify({ cases, timing, auth, login: { prompts, result: credential } })}:end`, "info");
+  } });
   pi.registerCommand("host_info_probe", { description: "Report getAgentDir, CONFIG_DIR_NAME and VERSION", handler: async (_args, ctx) => {
     ctx.ui.notify(`host_info:${JSON.stringify({ agentDir: getAgentDir(), configDirName: CONFIG_DIR_NAME, version: VERSION, factoryAgentDir })}:end`, "info");
+  } });
+  // ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+  pi.registerCommand("ui_dialog_values_probe", { description: "Report the typed result of each dialog", handler: async (_args, ctx) => {
+    const report = (name, value) => ctx.ui.notify(`${name}=${value === undefined ? "<undefined>" : JSON.stringify(value)}`, "info");
+    for (const title of ["S1", "S2", "S3", "S4"]) report(title, await ctx.ui.select(title, ["a", "b"]));
+    for (const title of ["C1", "C2", "C3", "C4"]) report(title, await ctx.ui.confirm(title, "m"));
+    for (const title of ["I1", "I2"]) report(title, await ctx.ui.input(title, "p"));
+    for (const title of ["E1", "E2"]) report(title, await ctx.ui.editor(title, "p"));
   } });
   pi.registerCommand("ui_forward_probe", { description: "Call the working, paste, editor-text and tools-expanded UI members", handler: async (_args, ctx) => {
     ctx.ui.setWorkingMessage("Thinking hard");
@@ -730,6 +1007,23 @@ export default function (pi) {
       : [ctx.ui.select("A", ["a1", "a2"]).then(settled("A")), ctx.ui.confirm("B", "message").then(settled("B"))];
     await Promise.all(dialogs);
     ctx.ui.notify("stack done", "info");
+  } });
+  // ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
+  pi.registerCommand("ui_wire_empties_probe", { description: "Call the UI members with empty and unset arguments", handler: async (_args, ctx) => {
+    ctx.ui.setStatus("k", "");
+    ctx.ui.setStatus("k", undefined);
+    ctx.ui.notify("");
+    ctx.ui.notify("typed", "warning");
+    ctx.ui.setTitle("");
+    ctx.ui.setEditorText("");
+    await ctx.ui.select("T", []);
+    await ctx.ui.confirm("", "");
+    await ctx.ui.input("T1");
+    await ctx.ui.input("T2", "");
+    await ctx.ui.input("T3", "ph");
+    await ctx.ui.editor("E1");
+    await ctx.ui.editor("E2", "");
+    await ctx.ui.editor("E3", "pre");
   } });
   pi.registerCommand("tool_call_guard_probe", { description: "Report the tool names the tool_call guard accepts", handler: async () => {
     pi.on("tool_call", async (event, ctx) => { ctx.ui.notify(`tool_call_guard:${["bash", "read", "probe", "other"].filter((name) => isToolCallEventType(name, event)).join(",")}:end`, "info"); });
@@ -990,6 +1284,323 @@ export default function (pi) {
       return { handled: true };
     }
   }
+  // kit-widget "<case key>": a widget kind's Pi vector case
+  // (D107, docs/plan/extension-component-kit.md §10), built from Pi's own
+  // components; the runtime derives its view while a frontend draws. As
+  // ui.custom's component it takes the keys and mouse events the components
+  // leave to the extension and notifies each callback they fire as
+  // "kit-widget-event=<type>:<value>". It never closes itself: the harness
+  // delivers the case's steps and then reads the callbacks, and a component
+  // that closed after the callbacks Pi fired would drop the steps still to
+  // come. The key is "<module>/<export>/<case name>" and the case's wire
+  // node is its vector's `root`.
+  const kitWidgetCases = {};
+  {
+    const branch = (expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.BranchSummaryMessageComponent({ summary: "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`." }, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const prefix = "pi-coding-agent/BranchSummaryMessageComponent/";
+    kitWidgetCases[`${prefix}collapsed`] = branch(false);
+    kitWidgetCases[`${prefix}click toggles`] = branch(false);
+    kitWidgetCases[`${prefix}right click ignored`] = branch(false);
+    kitWidgetCases[`${prefix}expanded`] = branch(true);
+    kitWidgetCases[`${prefix}outputPad 0 collapsed`] = branch(false, 0);
+    kitWidgetCases[`${prefix}outputPad 0 expanded`] = branch(true, 0);
+    kitWidgetCases[`${prefix}empty summary expanded`] = () => {
+      const node = new piCodingAgent.BranchSummaryMessageComponent({ summary: "" }, undefined, 1);
+      node.setExpanded(true);
+      return { root: node };
+    };
+  }
+  {
+    const compaction = (tokens, expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.CompactionSummaryMessageComponent({ summary: "Compacted the first **forty** turns:\n\n1. the build setup\n2. the failing test\n\nThe fix is pending.", tokensBefore: tokens }, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const prefix = "pi-coding-agent/CompactionSummaryMessageComponent/";
+    kitWidgetCases[`${prefix}collapsed`] = compaction(123456, false);
+    kitWidgetCases[`${prefix}click toggles`] = compaction(123456, false);
+    kitWidgetCases[`${prefix}right click ignored`] = compaction(123456, false);
+    kitWidgetCases[`${prefix}expanded`] = compaction(123456, true);
+    kitWidgetCases[`${prefix}outputPad 0 collapsed`] = compaction(123456, false, 0);
+    kitWidgetCases[`${prefix}outputPad 0 expanded`] = compaction(123456, true, 0);
+    kitWidgetCases[`${prefix}tokens 999`] = compaction(999, false);
+    kitWidgetCases[`${prefix}tokens 1234567 expanded`] = compaction(1234567, true);
+    kitWidgetCases[`${prefix}empty summary tokens 0 expanded`] = () => {
+      const node = new piCodingAgent.CompactionSummaryMessageComponent({ summary: "", tokensBefore: 0 }, undefined, 1);
+      node.setExpanded(true);
+      return { root: node };
+    };
+  }
+  {
+    const skill = (expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.SkillInvocationMessageComponent({ name: "code-review", content: "Review the diff for **bugs** first.\n\n- correctness\n- naming\n\nReport findings as a list." }, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const prefix = "pi-coding-agent/SkillInvocationMessageComponent/";
+    kitWidgetCases[`${prefix}collapsed`] = skill(false);
+    kitWidgetCases[`${prefix}click toggles`] = skill(false);
+    kitWidgetCases[`${prefix}right click ignored`] = skill(false);
+    kitWidgetCases[`${prefix}expanded`] = skill(true);
+    kitWidgetCases[`${prefix}outputPad 0 collapsed`] = skill(false, 0);
+    kitWidgetCases[`${prefix}outputPad 0 expanded`] = skill(true, 0);
+    kitWidgetCases[`${prefix}empty skill expanded`] = () => {
+      const node = new piCodingAgent.SkillInvocationMessageComponent({ name: "", content: "" }, undefined, 1);
+      node.setExpanded(true);
+      return { root: node };
+    };
+  }
+  {
+    const custom = (text, expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.CustomMessageComponent({ customType: "ci-status", content: text }, undefined, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const body = "Build **passed** in 12s\n\n- 214 tests\n- 0 failures";
+    const prefix = "pi-coding-agent/CustomMessageComponent/";
+    kitWidgetCases[`${prefix}default`] = custom(body, false);
+    kitWidgetCases[`${prefix}outputPad 0`] = custom(body, false, 0);
+    kitWidgetCases[`${prefix}expanded changes nothing`] = custom(body, true);
+    kitWidgetCases[`${prefix}empty text`] = custom("", false);
+    kitWidgetCases[`${prefix}no id`] = () => ({ root: new piCodingAgent.CustomMessageComponent({ customType: "note", content: "plain" }, undefined, undefined, 1) });
+  }
+  {
+    const cancellable = (message, { spinner, messageColor, indicator, frame } = {}) => ({ theme, note }) => {
+      const style = (token) => (token ? (text) => theme.fg(token, text) : (text) => text);
+      const loader = new piTui.CancellableLoader({ requestRender() {} }, style(spinner), style(messageColor), message, indicator);
+      loader.stop();
+      if (frame !== undefined) { loader.currentFrame = frame % loader.frames.length; loader.updateDisplay(); }
+      loader.onAbort = () => note("abort:");
+      const root = new Container();
+      root.addChild(loader);
+      return { root, focus: loader };
+    };
+    const bordered = (message, options) => ({ theme, note }) => {
+      const loader = new piCodingAgent.BorderedLoader({ requestRender() {} }, theme, message, options);
+      loader.loader.stop();
+      loader.onAbort = () => note("abort:");
+      const root = new Container();
+      root.addChild(loader);
+      return { root, focus: loader };
+    };
+    const framed = (build, frame) => (ctx) => {
+      const result = build(ctx);
+      const inner = result.focus.loader;
+      inner.currentFrame = frame % inner.frames.length;
+      inner.updateDisplay();
+      return result;
+    };
+    const wide = "A very long message that wraps around the narrow widths of the table";
+    const c = "pi-tui/CancellableLoader/";
+    for (const name of ["default", "escape aborts", "escape twice aborts twice", "other keys are ignored"]) kitWidgetCases[c + name] = cancellable("Working");
+    kitWidgetCases[`${c}default message`] = cancellable("Loading...");
+    kitWidgetCases[`${c}colors`] = cancellable("Working", { spinner: "accent", messageColor: "muted" });
+    kitWidgetCases[`${c}frame 3`] = cancellable("Working", { frame: 3 });
+    kitWidgetCases[`${c}indicator frames`] = cancellable("Working", { indicator: { frames: ["*", "+", "x"], intervalMs: 50 }, frame: 1 });
+    kitWidgetCases[`${c}hidden indicator`] = cancellable("Working", { indicator: { frames: [] } });
+    kitWidgetCases[`${c}wide message`] = cancellable(wide, { spinner: "accent" });
+    const b = "pi-coding-agent/BorderedLoader/";
+    for (const name of ["cancellable", "escape aborts", "escape twice aborts twice", "other keys are ignored"]) kitWidgetCases[b + name] = bordered("Fetching models");
+    for (const name of ["not cancellable", "escape ignored when not cancellable"]) kitWidgetCases[b + name] = bordered("Fetching models", { cancellable: false });
+    kitWidgetCases[`${b}default message`] = bordered("Loading...");
+    kitWidgetCases[`${b}frame 4`] = framed(bordered("Fetching models"), 4);
+    kitWidgetCases[`${b}wide message`] = bordered("Fetching the models of every configured provider, one after another");
+  }
+  {
+    const input = ({ value, focused = true, options = {}, token } = {}) => ({ theme, note }) => {
+      const component = new piTui.Input(token ? { ...options, placeholderStyle: (text) => theme.fg(token, text) } : options);
+      if (value) component.setValue(value);
+      component.focused = focused;
+      component.onSubmit = (text) => note(`submit:${text}`);
+      component.onEscape = () => note(`escape:${component.getValue()}`);
+      const root = new Container();
+      root.addChild(component);
+      return { root, focus: component };
+    };
+    const i = "pi-tui/Input/";
+    kitWidgetCases[`${i}empty`] = input({ focused: false });
+    for (const name of ["empty focused", "typing", "left then insert", "backspace and delete", "home and end", "kill word and yank", "kill to end", "paste scrolls", "submit"]) kitWidgetCases[i + name] = input();
+    kitWidgetCases[`${i}placeholder`] = input({ focused: false, options: { placeholder: "type here" } });
+    kitWidgetCases[`${i}placeholder focused colored`] = input({ options: { placeholder: "type here" }, token: "dim" });
+    kitWidgetCases[`${i}custom prompt`] = input({ options: { prompt: "$ " }, value: "ls -la" });
+    kitWidgetCases[`${i}value`] = input({ focused: false, value: "hello world" });
+    for (const name of ["value focused", "click moves the cursor", "right click ignored"]) kitWidgetCases[i + name] = input({ value: "hello world" });
+    kitWidgetCases[`${i}wide characters`] = input({ value: "漢字 and 😀 text" });
+    kitWidgetCases[`${i}submit newline key`] = input({ value: "preset" });
+    kitWidgetCases[`${i}escape`] = input({ value: "keep" });
+  }
+  {
+    const commands = [
+      { name: "help", description: "Show help" },
+      { name: "model", description: "Switch the model", argumentHint: "<name>" },
+      { name: "quit", description: "Exit" },
+      { name: "session", description: "Session info" },
+      { name: "settings", description: "Open settings" },
+      { name: "share" },
+      { name: "skills", description: "List skills" },
+      { name: "compact", description: "Compact the context" },
+    ];
+    const editor = ({ value, padding, acmax, border, disable, history = [], auto = false, focused = true } = {}) => ({ tui, theme, note }) => {
+      const options = {};
+      if (padding !== undefined) options.paddingX = padding;
+      if (acmax !== undefined) options.autocompleteMaxVisible = acmax;
+      const component = new piTui.Editor(tui, { borderColor: (text) => theme.fg("borderMuted", text), selectList: piCodingAgent.getSelectListTheme() }, options);
+      if (border) component.borderColor = (text) => theme.fg(border, text);
+      if (disable) component.disableSubmit = true;
+      for (const entry of history) component.addToHistory(entry);
+      if (auto) component.setAutocompleteProvider(new piTui.CombinedAutocompleteProvider(commands, process.cwd()));
+      if (value) component.setText(value);
+      component.focused = focused;
+      component.onSubmit = (text) => note(`submit:${text}`);
+      const root = new Container();
+      root.addChild(component);
+      return { root, focus: component };
+    };
+    const e = "pi-tui/Editor/";
+    kitWidgetCases[e + "empty"] = editor({ focused: false });
+    kitWidgetCases[e + "empty focused"] = editor();
+    kitWidgetCases[e + "value"] = editor({ value: "hello world", focused: false });
+    kitWidgetCases[e + "multiline value focused"] = editor({ value: "one\ntwo\nthree" });
+    kitWidgetCases[e + "wrapped line"] = editor({ value: "The quick brown fox jumps over the lazy dog and keeps running through the field" });
+    kitWidgetCases[e + "wide characters"] = editor({ value: "漢字 and 😀 text" });
+    kitWidgetCases[e + "typing"] = editor();
+    kitWidgetCases[e + "newline"] = editor();
+    kitWidgetCases[e + "backspace and delete"] = editor();
+    kitWidgetCases[e + "kill word and yank"] = editor();
+    kitWidgetCases[e + "undo"] = editor();
+    kitWidgetCases[e + "submit"] = editor();
+    kitWidgetCases[e + "paste"] = editor();
+    kitWidgetCases[e + "paste large"] = editor();
+    kitWidgetCases[e + "cursor movement"] = editor({ value: "one\ntwo\nthree" });
+    kitWidgetCases[e + "submit multiline"] = editor({ value: "one\ntwo" });
+    kitWidgetCases[e + "submit disabled"] = editor({ value: "keep", disable: true });
+    kitWidgetCases[e + "padding"] = editor({ value: "padded text", padding: 2 });
+    kitWidgetCases[e + "padding wrapped"] = editor({ value: "The quick brown fox jumps over the lazy dog and keeps running", padding: 3 });
+    kitWidgetCases[e + "border color"] = editor({ value: "colored", border: "accent" });
+    kitWidgetCases[e + "history"] = editor({ history: ["first", "second", "third"] });
+    kitWidgetCases[e + "history then edit"] = editor({ history: ["first", "second"] });
+    kitWidgetCases[e + "scrolls past the visible lines"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "scroll indicator below"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "more rows show more lines"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "few rows show five lines"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "page up and down"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30" });
+    kitWidgetCases[e + "click moves the cursor"] = editor({ value: "hello\nworld" });
+    kitWidgetCases[e + "click on the border"] = editor({ value: "hello\nworld" });
+    kitWidgetCases[e + "right click ignored"] = editor({ value: "hello" });
+    kitWidgetCases[e + "slash opens the menu"] = editor({ auto: true });
+    kitWidgetCases[e + "slash narrows"] = editor({ auto: true });
+    kitWidgetCases[e + "slash no match"] = editor({ auto: true });
+    kitWidgetCases[e + "slash tab accepts"] = editor({ auto: true });
+    kitWidgetCases[e + "slash arrow then tab"] = editor({ auto: true });
+    kitWidgetCases[e + "slash enter accepts"] = editor({ auto: true });
+    kitWidgetCases[e + "slash escape closes"] = editor({ auto: true });
+    kitWidgetCases[e + "slash click selects"] = editor({ auto: true });
+    kitWidgetCases[e + "text after the slash opens nothing"] = editor({ auto: true });
+    kitWidgetCases[e + "slash max visible 3"] = editor({ acmax: 3, auto: true });
+    kitWidgetCases[e + "slash with padding"] = editor({ padding: 2, auto: true });
+    kitWidgetCases[e + "autocomplete menu does not follow disabled submit"] = editor({ disable: true, auto: true });
+  }
+  // The child the scroll-view and mouse-region cases wrap: a text of wrapping rows, a markdown, an empty container, or a
+  // branch summary (which a click toggles).
+  const kitScrollLines = "Alpha line of the log\nBeta line of the log\nGamma line of the log that is long enough to wrap at the narrow widths\nDelta";
+  const kitScrollMarkdown = "# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`";
+  const kitScrollChild = (kind) => {
+    if (kind === "md") return new piTui.Markdown(kitScrollMarkdown, 1, 0, piCodingAgent.getMarkdownTheme());
+    if (kind === "region") return new piTui.Text("Region content\nsecond row", 1, 0);
+    if (kind === "empty") return new Container();
+    if (kind === "branch") return new piCodingAgent.BranchSummaryMessageComponent({ summary: "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`." }, undefined, 1);
+    return new piTui.Text(kitScrollLines, 1, 0);
+  };
+  {
+    const styled = (theme, token) => (token ? (text) => theme.fg(token, text) : undefined);
+    const scroll = (o, kind = "text", wrap) => ({ theme }) => {
+      const options = {};
+      if (o.follow) options.follow = o.follow;
+      if (o.primary) options.primary = true;
+      if (o.overscroll) options.overscroll = o.overscroll;
+      if (o.scrollbar) options.scrollbar = o.scrollbar;
+      if (o.track) options.scrollbarTrackStyle = styled(theme, o.track);
+      if (o.thumb) options.scrollbarThumbStyle = styled(theme, o.thumb);
+      if (o.delay !== undefined) options.scrollbarHideDelayMs = o.delay;
+      const view = new piTui.ScrollView(kitScrollChild(kind), options);
+      if (o.scrollTop !== undefined) view.scrollTo(o.scrollTop);
+      const root = new Container();
+      if (wrap === "hf") root.addChild(new piTui.Text("Header", 1, 0));
+      root.addChild(view);
+      if (wrap === "hf") root.addChild(new piTui.Text("Footer", 1, 0));
+      if (wrap === "after") root.addChild(new piTui.Text("after", 1, 0));
+      return { root };
+    };
+    const s = "pi-tui/ScrollView/";
+    kitWidgetCases[s + "default"] = scroll({}, "text", undefined);
+    kitWidgetCases[s + "scrollbar always"] = scroll({"scrollbar": "always"}, "text", undefined);
+    kitWidgetCases[s + "scrollbar auto"] = scroll({"scrollbar": "auto"}, "text", undefined);
+    kitWidgetCases[s + "scrollbar colors"] = scroll({"scrollbar": "always", "track": "dim", "thumb": "accent"}, "text", undefined);
+    kitWidgetCases[s + "follow end"] = scroll({"follow": "end"}, "text", undefined);
+    kitWidgetCases[s + "primary and contain"] = scroll({"overscroll": "contain", "primary": true}, "text", undefined);
+    kitWidgetCases[s + "hide delay"] = scroll({"scrollbar": "auto", "delay": 50}, "text", undefined);
+    kitWidgetCases[s + "scroll top clamps"] = scroll({"scrollTop": 3}, "text", undefined);
+    kitWidgetCases[s + "markdown child"] = scroll({"scrollbar": "always"}, "md", undefined);
+    kitWidgetCases[s + "after other rows"] = scroll({"scrollbar": "always"}, "text", "hf");
+    kitWidgetCases[s + "empty child"] = scroll({"scrollbar": "always"}, "empty", undefined);
+    kitWidgetCases[s + "wheel and click pass"] = scroll({}, "text", "after");
+  }
+  {
+    const region = (o, kind = "text", wrap) => ({ note }) => {
+      const mouseRegion = new piTui.MouseRegion(kitScrollChild(kind), (event) => {
+        if (o.types && !o.types.includes(event.type)) return undefined;
+        note(`mouse:${event.type}/${event.button}/${event.x}/${event.y}`);
+        const result = { handled: o.handled ?? true };
+        if (o.capture) result.capture = true;
+        if (o.focus) result.focus = true;
+        if (o.render !== undefined) result.render = o.render;
+        return result;
+      });
+      const root = new Container();
+      if (wrap === "ab") root.addChild(new piTui.Text("Above the region", 1, 0));
+      root.addChild(mouseRegion);
+      if (wrap === "ab") root.addChild(new piTui.Text("Below", 1, 0));
+      return { root };
+    };
+    const m = "pi-tui/MouseRegion/";
+    kitWidgetCases[m + "renders its child"] = region({}, "region", undefined);
+    kitWidgetCases[m + "every type by default"] = region({}, "region", undefined);
+    kitWidgetCases[m + "types filter"] = region({"types": ["click"]}, "region", undefined);
+    kitWidgetCases[m + "not handled"] = region({"handled": false}, "region", undefined);
+    kitWidgetCases[m + "capture"] = region({"capture": true}, "region", undefined);
+    kitWidgetCases[m + "focus and render"] = region({"focus": true, "render": false}, "region", undefined);
+    kitWidgetCases[m + "local coordinates"] = region({}, "region", "ab");
+    kitWidgetCases[m + "the child takes the event first"] = region({}, "branch", undefined);
+    kitWidgetCases[m + "right button"] = region({}, "region", undefined);
+  }
+  // kit-widget-cases
+  pi.registerCommand("kit-widget", {
+    description: "Show a widget kind's Pi vector case (D107)",
+    handler: async (key, ctx) => {
+      const build = kitWidgetCases[key];
+      if (!build) throw new Error(`kit-widget: unknown case ${JSON.stringify(key)}`);
+      await ctx.ui.custom((tui, theme, keys) => {
+        const note = (entry) => ctx.ui.notify(`kit-widget-event=${entry}`, "info");
+        // build returns the root component and, when a node of it holds the focus, that node.
+        const { root, focus } = build({ tui, theme, keys, note });
+        if (focus) root.handleInput = (data) => focus.handleInput(data);
+        else if (!root.handleInput) root.handleInput = () => {};
+        return root;
+      }, { overlayOptions: { title: "Kit" } });
+    },
+  });
   pi.registerCommand("mouse-probe", {
     description: "Exercise extension mouse input",
     handler: async (_args, ctx) => {
@@ -1048,6 +1659,37 @@ export default function (pi) {
         c.addChild(new piTui.Text(args, 0, 0));
         return c;
       });
+    },
+  });
+  // headless-ui-probe hands the runtime footer, header, custom, editor, terminal-input and theme calls; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
+  pi.registerCommand("headless-ui-probe", {
+    description: "Hand the runtime footer, header and custom component closures",
+    handler: async (path, ctx) => {
+      const mark = (line) => fs.appendFileSync(path, `${line}\n`);
+      ctx.ui.setFooter(() => {
+        mark("node:footer");
+        return { render: () => { mark("node:footer-render"); return ["node:footer"]; }, invalidate() {} };
+      });
+      ctx.ui.setHeader(() => {
+        mark("node:header");
+        return { render: () => { mark("node:header-render"); return ["node:header"]; }, invalidate() {} };
+      });
+      await ctx.ui.custom((_tui, _theme, _keybindings, done) => {
+        mark("node:custom");
+        return { render: () => { mark("node:custom-render"); return ["node:custom"]; }, handleInput: () => done("closed"), invalidate() {} };
+      });
+      ctx.ui.setEditorComponent(() => { mark("node:editor"); return { render: () => ["node:editor"], handleInput() {}, invalidate() {} }; });
+      mark(`node:getEditorComponent:${typeof ctx.ui.getEditorComponent()}`);
+      const unsubscribe = ctx.ui.onTerminalInput(() => { mark("node:terminal-input"); });
+      mark(`node:onTerminalInput:${typeof unsubscribe}`);
+      unsubscribe();
+      ctx.ui.setWorkingMessage("node:working");
+      ctx.ui.setWorkingIndicator({ frames: ["node:working"] });
+      try {
+        mark(`node:setTheme:${JSON.stringify(ctx.ui.setTheme(ctx.ui.theme))}`);
+      } catch (error) {
+        mark(`node:setTheme:threw:${error?.message}`);
+      }
     },
   });
   // kit-kinds sets the "kit-kinds" widget to the kinds kit-probe does not
@@ -1259,6 +1901,7 @@ export default function (pi) {
     if (event.input?.command === "blocked-command") return { block: true, reason: `blocked ${event.toolName}` };
   });
   pi.on("tool_result", async (event, ctx) => {
+    if (event.toolName === "order_probe") { ctx.ui.notify(`order-result=${event.toolCallId}`, "info"); return; }
     const held = [["bash", isBashToolResult], ["powershell", isPowerShellToolResult], ["read", isReadToolResult], ["edit", isEditToolResult], ["write", isWriteToolResult], ["grep", isGrepToolResult], ["find", isFindToolResult], ["ls", isLsToolResult]].filter(([, is]) => is(event)).map(([name]) => name);
     ctx.ui.notify(`tool-result-guards=${held.join(",")}`, "info");
     if (event.toolName !== "powershell" && event.toolName !== "bash") return;
@@ -1343,6 +1986,30 @@ export default function (pi) {
       ctx.ui.notify(`ui_prompt:${event.type}:${event.reason}:${event.kind}:${"title" in event ? event.title : "(none)"}`, "info");
     });
   }
+  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "thinking-level" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+  pi.registerCommand("state-push-probe", { description: "Read one replicated accessor from a timer between requests", handler: async (args, ctx) => {
+    const { kind, dir } = JSON.parse(args);
+    let read;
+    if (kind === "model") read = () => ctx.model?.id ?? "";
+    else if (kind === "session-name") read = () => pi.getSessionName() ?? "";
+    else if (kind === "theme") read = () => ctx.ui.theme.name ?? "";
+    else if (kind === "thinking-level") read = () => pi.getThinkingLevel();
+    else if (kind.startsWith("settings:")) read = () => JSON.stringify(pi.getSettings()[kind.slice("settings:".length)] ?? null);
+    else if (kind === "mcp") read = () => pi.getMcpServers().map((server) => server.name).join(",");
+    else throw new Error(`state-push-probe: unsupported kind ${JSON.stringify(kind)}`);
+    const guarded = () => { try { return read(); } catch (error) { return `error:${error.message}`; } };
+    const armed = guarded();
+    const deadline = Date.now() + 5000;
+    const timer = setInterval(() => {
+      const current = guarded();
+      if (current === armed && Date.now() < deadline) return;
+      clearInterval(timer);
+      const report = joinPath(dir, `state-push-${kind.replaceAll(":", "_")}`);
+      writeFileSync(`${report}.tmp`, `${armed}=>${current}`);
+      renameSync(`${report}.tmp`, report);
+    }, 2);
+  } });
+  registerSignalAbort(pi);
 }
 
 // The BashOperations every SDK fixture returns for the user_bash command "operations" (TestConformance_UserBashOperationsRunInTheExtension).
@@ -1373,4 +2040,17 @@ function conformanceBashOperations() {
       }
     },
   };
+}
+
+// The signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a handler that holds the signal and reads it again right after the abort sees it aborted, in the same turn.
+function registerSignalAbort(pi) {
+  const state = (signal) => (signal === undefined ? "none" : signal.aborted ? "aborted" : "live");
+  pi.registerCommand("signal-abort", {
+    description: "Abort the run and report ctx.signal",
+    handler: (_args, ctx) => {
+      const held = ctx.signal;
+      ctx.abort();
+      ctx.ui.notify(`abort:${state(held)}:${state(ctx.signal)}`, "info");
+    },
+  });
 }

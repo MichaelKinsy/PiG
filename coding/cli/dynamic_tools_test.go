@@ -83,7 +83,7 @@ func TestDynamicToolsModeBindingReachesProvider(t *testing.T) {
 		}
 	}()
 	defer func() { _ = session.Close(); <-done }()
-	bindSessionExtensionActions(runner, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(runner, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 	if err := session.EmitSessionStart("startup"); err != nil {
 		t.Fatal(err)
 	}

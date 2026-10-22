@@ -60,6 +60,11 @@ type SpriteRegistrar interface {
 	UnregisterSprites(owner string)
 }
 
+// TerminalBeller is a UI with a terminal to ring: Bell writes BEL between frames. A UI without one (print, JSON and RPC modes) does not implement it, and the call does nothing.
+type TerminalBeller interface {
+	Bell()
+}
+
 // ValidateSpriteDefinition validates and defensively copies a sprite definition. The grids, palette and text follow the
 // login definition's rules (ValidateLoginDefinition); the name has the login name's width and the tagline the login
 // tagline's.

@@ -228,6 +228,9 @@ type Session struct {
 	revision uint64
 }
 
+// sessionClock is the time a new session's header records; tests replace it to make two sessions share a timestamp, as Pi's `new Date()` does for two sessions created in one millisecond.
+var sessionClock = time.Now
+
 // NewSession creates an in-memory session with an ISO millisecond header timestamp and an optional parent session path.
 func NewSession(id, cwd string, parentSession ...string) *Session {
 	parent := ""
@@ -240,7 +243,7 @@ func NewSession(id, cwd string, parentSession ...string) *Session {
 			Type:          "session",
 			Version:       CurrentSessionVersion,
 			ID:            id,
-			Timestamp:     time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
+			Timestamp:     sessionClock().UTC().Format("2006-01-02T15:04:05.000Z"),
 			CWD:           cwd,
 		},
 		branchLeaf: -1,
@@ -992,6 +995,15 @@ func (s *Session) AppendUsage(kind, provider, model string, usage ai.Usage, note
 // compaction retains no preceding entries. The entry also records the current
 // projected system state, when there is one, stamped with the entry time.
 func (s *Session) AppendCompaction(summary, firstKeptEntryID string, tokensBefore int, details any, fromHook bool, usage *ai.Usage) (string, error) {
+	return s.appendCompaction(summary, firstKeptEntryID, tokensBefore, details, fromHook, false, usage)
+}
+
+// AppendCompactionHookUndefined is AppendCompaction for a caller that leaves fromHook undefined, as an extension's SessionManager.appendCompaction may: the entry then has no fromHook member.
+func (s *Session) AppendCompactionHookUndefined(summary, firstKeptEntryID string, tokensBefore int, details any, usage *ai.Usage) (string, error) {
+	return s.appendCompaction(summary, firstKeptEntryID, tokensBefore, details, false, true, usage)
+}
+
+func (s *Session) appendCompaction(summary, firstKeptEntryID string, tokensBefore int, details any, fromHook, fromHookUndefined bool, usage *ai.Usage) (string, error) {
 	now := time.Now().UTC()
 	// compactionSystemMessage only reads the context's latest system message, so it reads the kept projection rather than a copy of the
 	// whole context projected again.
@@ -1021,6 +1033,7 @@ func (s *Session) AppendCompaction(summary, firstKeptEntryID string, tokensBefor
 		Details:          details,
 		Usage:            usage,
 		FromHook:         fromHook,
+		FromHookAbsent:   fromHookUndefined,
 		SystemMessage:    systemMessage,
 	}
 	if err := s.AppendEntry(entry); err != nil {

@@ -42,7 +42,7 @@ func loadPackages(t *testing.T) map[string]*packages.Package {
 	loadOnce.Do(func() {
 		cfg := &packages.Config{Dir: moduleRoot, Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo}
 		var pkgs []*packages.Package
-		pkgs, loadErr = packages.Load(cfg, "./ai", "./coding/extension", "./coding/extension/host/subprocess", "./extensions/sdk", "./internal/codingagent")
+		pkgs, loadErr = packages.Load(cfg, "./ai", "./coding/extension", "./coding/extension/host/subprocess", "./extensions/sdk", "./internal/codingagent", "./coding")
 		loaded = map[string]*packages.Package{}
 		for _, pkg := range pkgs {
 			for _, err := range pkg.Errors {

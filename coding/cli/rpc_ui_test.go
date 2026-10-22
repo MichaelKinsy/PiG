@@ -210,7 +210,7 @@ func TestRPCExtensionUIResponseUnionIsReadPerDialog(t *testing.T) {
 		{"select cancelled beats value", "select", `,"cancelled":true,"value":"b"`, outcome{cancelled: true}},
 		{"select with only confirmed is undefined", "select", `,"confirmed":true`, outcome{cancelled: true}},
 		{"select with no member is undefined", "select", ``, outcome{cancelled: true}},
-		{"select null value is undefined", "select", `,"value":null`, outcome{cancelled: true}},
+		{"select null value is the client's null, read as an empty string", "select", `,"value":null`, outcome{}},
 		{"input value", "input", `,"value":"typed"`, outcome{value: "typed"}},
 		{"input empty value", "input", `,"value":""`, outcome{value: ""}},
 		{"input cancelled", "input", `,"cancelled":true`, outcome{cancelled: true}},

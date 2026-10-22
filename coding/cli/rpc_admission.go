@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/stackprime"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -43,7 +44,7 @@ func (p *rpcPromise[T]) then(fn func(T, error)) {
 	}
 	value, err := p.value, p.err
 	p.mu.Unlock()
-	p.turn.after(func() { fn(value, err) })
+	p.turn.Microtask(func() { fn(value, err) })
 }
 func (p *rpcPromise[T]) resolve(value T, err error) {
 	p.mu.Lock()
@@ -55,7 +56,7 @@ func (p *rpcPromise[T]) resolve(value T, err error) {
 	for i, fn := range waiting {
 		callbacks[i] = func() { fn(value, err) }
 	}
-	p.turn.enqueue(callbacks)
+	p.turn.Microtasks(callbacks...)
 }
 
 type rpcInputResult struct {
@@ -64,8 +65,10 @@ type rpcInputResult struct {
 	handled bool
 }
 type rpcAdmission struct {
-	ctx           context.Context
-	turn          *rpcResponseTurn
+	ctx  context.Context
+	turn *rpcResponseTurn
+	// turns is the mode's model of Pi's loop (D189).
+	turns         *jsloop.Turns
 	session       *coding.Session
 	runner        *inproc.Runner
 	catalog       headlessCommandCatalog
@@ -79,6 +82,8 @@ type rpcAdmission struct {
 	commandDone func()
 	// commandsInFlight, when set, counts the extension commands whose prompt response is not yet written.
 	commandsInFlight *atomic.Int32
+	// background is the gate that holds the deferred UI calls of a replacement an extension command requested until the last in-flight command answered.
+	background *rpcBackgroundGate
 	// commands joins in-flight extension commands for the shutdown flush; nil when no subprocess runtime can report a suspended command.
 	commands *rpcCommandJoin
 	// commandRuns holds the start of a run an extension command sent while a command's handler runs.
@@ -94,19 +99,34 @@ func (a *rpcAdmission) taskGroup() *rpcTaskGroup {
 	return &a.tasks
 }
 
+// commandTurn opens a Turns command for work that runs outside the executor. Pi runs the command's microtasks to the response without a timer callback between, so the extension runtimes hold theirs until the work's result settled and the loop drained what it queued: settled is called from the task that settles the result, and ends the command once that drain is over. abandoned ends it at once.
+func (a *rpcAdmission) commandTurn() (settled, abandoned func()) {
+	finish := a.turns.Command()
+	return func() {
+		idle := a.turn.Idle()
+		//portlint:allow asyncorder the goroutine ends the command's timer hold once the executor drained; it writes nothing the client sees, so no output order depends on it
+		go func() {
+			<-idle
+			finish()
+		}()
+	}, finish
+}
+
 func rpcAwaitWork[T any](a *rpcAdmission, slow bool, work func() (T, error)) *rpcPromise[T] {
 	if !slow {
 		value, err := work()
 		return rpcResolved(a.turn, value, err)
 	}
 	p := &rpcPromise[T]{turn: a.turn}
-	// The work ran outside the executor, so its result settles the promise from an event-loop task of its own, after the microtasks already queued (rpcResponseTurn.enqueueTasks).
+	settled, abandoned := a.commandTurn()
+	// The work ran outside the executor, so its result settles the promise from an event-loop task of its own, after the microtasks already queued (jsloop.Loop.Macrotask).
 	if !a.taskGroup().Go(func() {
 		value, err := work()
-		a.turn.enqueueTasks([]func(){func() { p.resolve(value, err) }})
+		a.turn.Macrotask(func() { p.resolve(value, err); settled() })
 	}) {
 		var zero T
 		p.resolve(zero, context.Canceled)
+		abandoned()
 	}
 	return p
 }
@@ -128,24 +148,27 @@ func rpcAwaitInOrder[T any](a *rpcAdmission, previous <-chan struct{}, work func
 		case <-a.ctx.Done():
 		}
 	}
+	settled, abandoned := a.commandTurn()
 	if !a.taskGroup().Go(func() {
 		value, err := work()
 		if early, ok := errors.AsType[rpcEarlyError](err); ok {
 			var zero T
-			a.turn.enqueueTasks([]func(){func() { p.resolve(zero, early.err) }})
+			a.turn.Macrotask(func() { p.resolve(zero, early.err); settled() })
 			await()
 			close(resolved)
 			return
 		}
 		await()
-		a.turn.enqueueTasks([]func(){func() {
+		a.turn.Macrotask(func() {
 			p.resolve(value, err)
 			close(resolved)
-		}})
+			settled()
+		})
 	}) {
 		var zero T
 		p.resolve(zero, context.Canceled)
 		close(resolved)
+		abandoned()
 	}
 	return p, resolved
 }
@@ -254,11 +277,15 @@ func (a *rpcAdmission) command(id rpcRequestID, name, args string) {
 		a.commandDone()
 	}
 	pending.then(func(_ struct{}, _ error) {
-		a.turn.after(func() {
+		a.turn.Microtask(func() {
 			// The answer releases a run the handler sent; it is deferred first, so it follows the response.
 			defer a.commandRuns.answered(flight, a)
 			if a.commandsInFlight != nil {
-				defer a.commandsInFlight.Add(-1)
+				defer func() {
+					if a.commandsInFlight.Add(-1) == 0 && a.background != nil {
+						a.background.endCommandHolds()
+					}
+				}()
 			}
 			if a.commands != nil {
 				if a.commands.isClosed() {
@@ -372,10 +399,10 @@ const extensionRunStageHops = 2
 func (a *rpcAdmission) extensionRunStage() *coding.ExtensionRunStage {
 	return &coding.ExtensionRunStage{
 		Prepare: func(ctx context.Context, prepare func(context.Context)) {
-			a.turn.after(func() { a.awaitPreparation(ctx, prepare) })
+			a.turn.Microtask(func() { a.awaitPreparation(ctx, prepare) })
 		},
 		Start: func(start func()) {
-			a.commandRuns.whenNoneRuns(func() { a.turn.afterHops(extensionRunStageHops, start) })
+			a.commandRuns.whenNoneRuns(func() { a.turn.Hops(extensionRunStageHops, start) })
 		},
 	}
 }
@@ -400,14 +427,14 @@ func (a *rpcAdmission) awaitPreparation(ctx context.Context, prepare func(contex
 func (a *rpcAdmission) prompt(id rpcRequestID, cmd RPCPromptCommand) {
 	if strings.HasPrefix(cmd.Message, "/") {
 		// An unresolved slash command still awaits _tryExecuteExtensionCommand(false).
-		a.turn.after(func() { a.promptInput(id, cmd) })
+		a.turn.Microtask(func() { a.promptInput(id, cmd) })
 		return
 	}
 	a.promptInput(id, cmd)
 }
 
 func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
-	fail := func(err error) { a.turn.after(func() { a.write(rpcError(id, "prompt", err.Error())) }) }
+	fail := func(err error) { a.turn.Microtask(func() { a.write(rpcError(id, "prompt", err.Error())) }) }
 	if a.session.IsCompacting() {
 		fail(fmt.Errorf("Cannot submit a prompt while compaction is in progress. Wait for compaction to finish and retry."))
 		return
@@ -439,7 +466,7 @@ func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
 				fail(err)
 				return
 			}
-			a.turn.after(func() { a.write(rpcDispositionSuccess(id, "prompt", coding.DispositionQueued)) })
+			a.turn.Microtask(func() { a.write(rpcDispositionSuccess(id, "prompt", coding.DispositionQueued)) })
 			return
 		}
 		if err := a.validateModel(); err != nil {
@@ -525,7 +552,7 @@ func (a *rpcAdmission) beforeAgentStart(id rpcRequestID, start *coding.RunStart,
 		// upstream: packages/coding-agent/src/core/agent-session.ts:_startRun awaits _prepareRun, an async function that
 		// returns the starting messages, so the run starts (and "started" is written) one microtask after the
 		// preparation settles; Pi 1.1.0 prepared inline in prompt().
-		a.turn.afterHops(a.beforeAgentStartHandlerHops()+1, func() {
+		a.turn.Hops(a.beforeAgentStartHandlerHops()+1, func() {
 			a.startPreparedPrompt(id, start, prepared, err, hasImages, fail)
 		})
 	})
@@ -574,8 +601,8 @@ func (a *rpcAdmission) startPreparedPrompt(id rpcRequestID, start *coding.RunSta
 			return
 		} // Acceptance is authoritative; subsequent failures belong to the run.
 		// _handleAgentEvent awaits _emitExtensionEvent, which awaits runner.emit. Dispatch the real first event at that boundary, then resume the loop separately.
-		a.turn.after(func() {
-			a.turn.after(func() {
+		a.turn.Microtask(func() {
+			a.turn.Microtask(func() {
 				start := func() (struct{}, error) {
 					err := run.Start()
 					if flushErr := a.session.FlushEvents(a.ctx); err == nil {

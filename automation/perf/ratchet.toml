@@ -184,16 +184,16 @@
 "process.rpc_turn.temp_entries_at_exit" = 0
 
 # binary: stripped stock pig per release platform (TestReleaseBinarySizeGate).
-"binary.pig.linux_amd64.bytes" = 70757152
-"binary.pig.linux_arm64.bytes" = 66557152
-"binary.pig.darwin_arm64.bytes" = 68287152
+"binary.pig.linux_amd64.bytes" = 67009312
+"binary.pig.linux_arm64.bytes" = 62821600
+"binary.pig.darwin_arm64.bytes" = 64504688
 # windows_amd64: owner-approved 2026-10-16 for the Pi v1.3.0 pin. Stripped size 72,289,792 at 9db1ecc0a3 -> 72,310,272 (+20,480 B); symbol growth: type data +12.8 KB, ai +6.1 KB, go/types +2.8 KB, tui/widthx +1.5 KB, coding/cli +0.6 KB.
-"binary.pig.windows_amd64.bytes" = 72415104
+"binary.pig.windows_amd64.bytes" = 68666240
 
 # process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider.
-"process.interactive_first_frame.allocs" = 34500
-"process.interactive_first_frame.bytes" = 13300000
-"process.interactive_first_frame.heap_live_bytes" = 4950000
+"process.interactive_first_frame.allocs" = 22700
+"process.interactive_first_frame.bytes" = 5650000
+"process.interactive_first_frame.heap_live_bytes" = 2150000
 "process.interactive_first_frame.children_at_exit" = 0
 
 # compaction: preparing a compaction, per branch entry (TestCompactionPreparePerEntryAllocationGate).
@@ -216,9 +216,13 @@
 "process.mem_tmux_idle.heap_live_bytes" = 6330000
 "process.mem_tmux_idle.go_nonreleased_bytes" = 17850000
 
-# tui: highlight.js grammar load on interactive start (TestGrammarLoadAllocationGate): eager grammars, every other grammar and the text tables, decoded from the embedded snapshots.
-"tui.hljs_grammar_load.allocs" = 1200
-"tui.hljs_grammar_load.bytes" = 8350000
+# tui: highlight.js grammar load. On interactive start (TestGrammarLoadAllocationGate) only the eager grammars and the text tables are decoded; the rest of the languages register without decoding. The first language outside the eager set (TestGrammarFirstUseAllocationGate: inflating and indexing the full snapshot, decoding that language) and the first auto-detection over every language (TestGrammarAutoDetectLoadAllocationGate: the whole full snapshot) pay later, once. Measured at 3ee123c6 before, 385 allocs and 2,302,072 B at start, 576 and 3,120,792 B, 1,857 and 6,467,824 B (linux/amd64); before 1,135 allocs and 7,780,440 B at start.
+"tui.hljs_grammar_load.allocs" = 400
+"tui.hljs_grammar_load.bytes" = 2350000
+"tui.hljs_language_first_use.allocs" = 590
+"tui.hljs_language_first_use.bytes" = 3170000
+"tui.hljs_autodetect_load.allocs" = 1890
+"tui.hljs_autodetect_load.bytes" = 6560000
 
 # scaling: the exponent of allocation cost against size at N, 10N and 100N (internal/perfgate.CheckScaling): cost grows as size^exponent, 0 constant, 1 linear, 2 quadratic. Sessions of 100, 1,000 and 10,000 entries in /tree: opening is linear in bytes (one record per entry), a cursor move or a search keystroke allocates for the visible window only.
 "tui.tree_open.allocs_exponent" = 0.2

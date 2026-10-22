@@ -173,13 +173,13 @@ type rendererDef struct {
 }
 
 type readyMsg struct {
-	SessionName string          `json:"session_name"`
-	Cwd         string          `json:"cwd"`
-	Mode        string          `json:"mode"`
-	Width       int             `json:"width"`
-	Height      int             `json:"height,omitempty"`
-	Model       string          `json:"model"`
-	State       json.RawMessage `json:"state,omitempty"` // initial StatePayload snapshot
+	Cwd    string          `json:"cwd"`
+	Mode   string          `json:"mode"`
+	Width  int             `json:"width"`
+	Height int             `json:"height,omitempty"`
+	State  json.RawMessage `json:"state,omitempty"` // initial StatePayload snapshot
+	// SourceInfo is the provenance the loader stamped on this extension (Context.ExtensionSourceInfo).
+	SourceInfo *SourceInfo `json:"sourceInfo,omitempty"`
 }
 
 type requestMsg struct {
@@ -192,6 +192,10 @@ type requestMsg struct {
 	Stream     *eventStreamMsg `json:"stream,omitempty"`
 	// Batch, on tool_call, names the parallel batch the call belongs to; absent for a call outside one, which takes part in no order (toolBatchOrders).
 	Batch string `json:"batch,omitempty"`
+	// ChildSession names the child agent session whose customTools define Tool (tool_call, tool_prepare_arguments).
+	ChildSession string `json:"child_session,omitempty"`
+	// ToolCallIndex, on tool_call, is the call's position in its assistant message's batch (Context.ToolCallIndex).
+	ToolCallIndex *int `json:"tool_call_index,omitempty"`
 
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any
@@ -212,6 +216,8 @@ type callMsg struct {
 	Method          string          `json:"method"`
 	Args            json.RawMessage `json:"args,omitempty"`
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
+	// Timer marks a call made through a request's context after the request's handler returned: deferred work, which Pi runs from a timer, an immediate or a later continuation, once the loop turns (D189).
+	Timer bool `json:"timer,omitempty"`
 }
 
 type callResultMsg struct {
@@ -536,6 +542,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 		return pendingCall{}, fmt.Errorf("extension connection closed")
 	default:
 	}
+	timer := false
 	if parent != nil {
 		parentRequestID, err = c.parentIDLocked(parent)
 		if err != nil {
@@ -545,6 +552,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 		callCtx = parent.request
 		if parent.completed {
 			callCtx = parent.runtime
+			timer = true
 		}
 	}
 	c.pending[id] = ch
@@ -557,7 +565,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 	if err := c.sendLocked(envelope{
 		Type: msgCall,
 		ID:   id,
-		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID},
+		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID, Timer: timer},
 	}); err != nil {
 		c.pendingMu.Lock()
 		delete(c.pending, id)

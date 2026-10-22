@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 
 ARG GO_BUILDER=cgr.dev/chainguard/go:latest-dev@sha256:72f9b391f511f88e7154aaaa5ee1e27fb6594575d9a406940f49786b30172803
-ARG WOLFI_BASE=cgr.dev/chainguard/wolfi-base:latest@sha256:a31344ab2cb8618db84f535eec56f76f6178b142cb92cb2e48676cc2dcebea72
+ARG WOLFI_BASE=cgr.dev/chainguard/wolfi-base:latest@sha256:81211e15a86ea1d5357f284482af45730c51de45eaf10ad9ce205d6bfc2df323
 
 # GO_VERSION must equal .go-version; make compliance checks it.
 ARG GO_VERSION=1.27.3

@@ -40,12 +40,12 @@ func TestPrintModelListOmitsStrippedAPIModels(t *testing.T) {
 			t.Setenv("ANTHROPIC_API_KEY", "x")
 			dir := t.TempDir()
 			if !pigstrip.Has(pigstrip.ListAPIs, string(tc.api)) {
-				if out := captureStdout(func() { printModelList(codingagent.NewModelRegistry(dir), dir, "") }); !strings.Contains(out, tc.model) {
+				if out := captureStdout(func() { printModelList(codingagent.NewModelRegistry(dir), "") }); !strings.Contains(out, tc.model) {
 					t.Fatalf("unstripped --list-models lacks %s:\n%s", tc.model, out)
 				}
 			}
 			t.Cleanup(pigstrip.Strip(pigstrip.ListAPIs, string(tc.api)))
-			out := captureStdout(func() { printModelList(codingagent.NewModelRegistry(dir), dir, "") })
+			out := captureStdout(func() { printModelList(codingagent.NewModelRegistry(dir), "") })
 			for line := range strings.SplitSeq(out, "\n") {
 				if provider, _, _ := strings.Cut(line, " "); provider == tc.provider {
 					t.Fatalf("--list-models lists a model of stripped %s: %q\n%s", tc.api, line, out)
@@ -115,7 +115,7 @@ func TestStrippedProviderCustomModelIsNeitherOfferedNorALoadError(t *testing.T) 
 			if loadErr := registry.LoadError(); loadErr != "" {
 				t.Fatalf("models.json with %s stripped: %s", tc.api, loadErr)
 			}
-			out := captureStdout(func() { printModelList(registry, dir, "") })
+			out := captureStdout(func() { printModelList(registry, "") })
 			for line := range strings.SplitSeq(out, "\n") {
 				if provider, _, _ := strings.Cut(line, " "); provider == tc.provider {
 					t.Fatalf("--list-models lists a model of stripped %s: %q\n%s", tc.api, line, out)

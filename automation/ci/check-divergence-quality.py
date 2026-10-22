@@ -94,6 +94,27 @@ def validate(record: Record, version: str, root: Path) -> list[str]:
     return errors
 
 
+# A parity row that says an extension capability exists in the Node runtime alone hides a native-SDK gap in prose.
+# The per-runtime disposition lives in test/parity/sdk-exports.toml (docs/extension-sdk-exports.md), where a gap
+# names its lane and owner; the parity row points there instead.
+NODE_ONLY = re.compile(r"(?i)\bnode(?:\s+runtime)?\s+only\b|\bgo/rust/python\s+(?:have|has)\s+no\b")
+
+
+def parity_prose_errors(root: Path) -> list[str]:
+    path = root / "docs" / "extension-api-parity.md"
+    if not path.exists():
+        return []
+    errors = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        match = NODE_ONLY.search(line)
+        if match:
+            errors.append(
+                f"{path.relative_to(root)}:{number}: {match.group(0)!r}: say which SDK cells are `gap:<lane>` in "
+                "docs/extension-sdk-exports.md (test/parity/sdk-exports.toml) instead of calling the capability Node-only"
+            )
+    return errors
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default=".")
@@ -111,6 +132,7 @@ def main() -> int:
         for record in ledger_records:
             count += 1
             errors.extend(validate(record, version, root))
+    errors.extend(parity_prose_errors(root))
     if errors:
         print("divergence quality: FAIL", file=sys.stderr)
         for error in errors:

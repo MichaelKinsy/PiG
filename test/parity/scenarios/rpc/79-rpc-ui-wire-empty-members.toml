@@ -1,0 +1,102 @@
+# Behavior family: rpc
+# Surface: the members of an RPC `extension_ui_request` that Pi writes empty or leaves out. rpc-mode.ts createExtensionUIContext builds each request as an object literal
+# and `output` serialises it with JSON.stringify: "", [] and 0 are written as the extension passed them, and only an undefined member (a status text, a notify type, an
+# input placeholder, an editor prefill, a dialog timeout without options) is omitted. PiG's encoder dropped every empty string and empty list (`omitempty`) and always wrote
+# `placeholder` and `prefill`, so a client could not tell `setStatus(k, "")` from `setStatus(k, undefined)`, or clear its editor with `set_editor_text ""`.
+# Dialogs with timeout 0 are not armed by Pi (`if (opts?.timeout)`), so the scenario answers them; the editor takes no options and is answered too.
+
+name = "79-rpc-ui-wire-empty-members"
+description = "RPC UI requests keep empty strings, empty lists and zero timeouts, and omit only what the extension left undefined."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/core/extensions/types.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 2
+
+[[rpc.steps]]
+line = '{"id":"e","type":"prompt","message":"/empties"}'
+wait_contains = ['"method":"select","title":"zero"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:zero}}","value":"picked"}'
+wait_contains = ['"method":"confirm","title":"zero-confirm"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:zero-confirm}}","confirmed":true}'
+wait_contains = ['"method":"input","title":"zero-input"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:zero-input}}","value":""}'
+wait_contains = ['"method":"editor","title":"editor-unset"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:editor-unset}}","cancelled":true}'
+wait_contains = ['"method":"editor","title":"editor-empty"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:editor-empty}}","value":"edited"}'
+wait_contains = ['"method":"editor","title":"editor-prefill"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:editor-prefill}}","value":""}'
+wait_contains = ['"message":"results:']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/ui-empty-members.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/ui-empty-members.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"e","type":"response","command":"prompt","success":true',
+  '"method":"notify","message":""}',
+  '"method":"notify","message":"typed","notifyType":"warning"}',
+  '"method":"notify","message":"","notifyType":"error"}',
+  '"method":"setStatus","statusKey":"k","statusText":""}',
+  '"method":"setStatus","statusKey":"k"}',
+  '"method":"setStatus","statusKey":"k","statusText":"text"}',
+  '"method":"setTitle","title":""}',
+  '"method":"set_editor_text","text":""}',
+  '"method":"select","title":"T","options":[],"timeout":50}',
+  '"method":"select","title":"","options":[],"timeout":50}',
+  '"method":"confirm","title":"","message":"","timeout":50}',
+  '"method":"input","title":"T","timeout":50}',
+  '"method":"input","title":"T","placeholder":"","timeout":50}',
+  '"method":"input","title":"T","placeholder":"p","timeout":50}',
+  '"method":"select","title":"zero","options":[],"timeout":0}',
+  '"method":"confirm","title":"zero-confirm","message":"","timeout":0}',
+  '"method":"input","title":"zero-input","timeout":0}',
+  '"method":"editor","title":"editor-unset"}',
+  '"method":"editor","title":"editor-empty","prefill":""}',
+  '"method":"editor","title":"editor-prefill","prefill":"x"}',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 10
+json_output_equal = true
+stderr_equal = true
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/configroot"
+	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultTransport, which pig setup downloads use (pig additive (D191))
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 

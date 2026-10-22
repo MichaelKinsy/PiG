@@ -16,9 +16,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
-	"github.com/MichaelKinsy/PiG/agent"
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // ToolAbortGrace is how long an aborted extension tool call waits for the tool to settle after its AbortSignal fires.
@@ -118,7 +117,9 @@ func (e *TransportError) Unwrap() error { return e.Err }
 // pig-specific: no upstream equivalent.
 type Conn struct {
 	// toolOrder keeps the tool_call requests of one batch in source order on the wire.
-	toolOrder extension.CallLane
+	toolOrder jsloop.Lane
+	// toolUpdates runs the onUpdate callbacks of every tool_call request of the connection on one lane, in the order the update frames were read: Pi's tools of a parallel batch call onUpdate on one thread, so the update called first reaches the listeners first.
+	toolUpdates *callLanes
 	// onDispatch records the owner before a request can run in a shared process.
 	onDispatch func()
 	// beforeCancel runs before the cancel frame of a cancelled request is queued. The Host uses it to send the run signal's abort first, so a handler the run's abort cancels finds ctx.signal aborted when it sees its own cancellation: upstream aborts one signal for both.
@@ -133,20 +134,33 @@ type Conn struct {
 	onLoopTurned func(args json.RawMessage)
 	// onLoopTurnTaken runs on the read loop for each NotifyLoopTurnTaken frame, with its arguments.
 	onLoopTurnTaken func(args json.RawMessage)
+	// onRequestStart, when set, runs on the goroutine that sends a request, before the request is written (Host.handleIncoming sets it for a Go, Rust or Python extension: the request's handler may await a call the host holds, so the host releases those calls first).
+	onRequestStart atomic.Pointer[func()]
+	// onTimerDeferAck runs on the read loop for each NotifyTimerDeferAck frame, with its arguments.
+	onTimerDeferAck func(args json.RawMessage)
+	// timerDefer numbers the NotifyTimerDefer frames sent on this connection and records the acks (timer_defer.go).
+	timerDefer timerDeferState
 	// loopTurnsClosed is set under the Host's loopTurns mutex once the read loop ended, so the connection is no recipient a forwarded turn waits for.
 	loopTurnsClosed bool
 	// onClosed runs once when the read loop ends.
 	onClosed func()
+	// fileMutations holds the file mutation queue tickets this connection was admitted to and has not exited; sharedTurns replaces it for a connection of a process several extensions run in. turnsLeft is guarded by the registry's mutex (host_file_mutation.go).
+	fileMutations fileMutationTurns
+	sharedTurns   *fileMutationTurns
+	turnsLeft     bool
 	// viewImages holds the image bytes this connection's views sent (D107).
 	viewImagesOnce sync.Once
 	viewImages     *viewImageStore
 	// reportView reports a rejected view of this connection's extension
 	// (D107). Set by the Host before the connection starts reading.
 	reportView func(surface string, err error)
-	name       string
-	conn       net.Conn
-	closing    atomic.Bool
-	closed     atomic.Bool
+	// terminalRows is the host's terminal height, which a view's editor reads
+	// (D107). Set by the Host before the connection starts reading.
+	terminalRows func() int
+	name         string
+	conn         net.Conn
+	closing      atomic.Bool
+	closed       atomic.Bool
 	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
 	modelRegistry bool
 
@@ -170,10 +184,14 @@ type Conn struct {
 	// abandonedClosed is set once the reader has exited: no late response can arrive.
 	abandonedClosed bool
 	updates         map[string]func(json.RawMessage)
+	// toolRequests holds the pending tool_call requests; guarded by pendingMu.
+	toolRequests map[string]struct{}
+	// startWindows closes the start window of a pending tool_call request that holds one (withRequestWindow); guarded by pendingMu.
+	startWindows map[string]requestWindowHandle
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
 	// dialogOrder orders the replies to the connection's dialog calls by the order their answers arrived (extension.WithDialogSettle).
-	dialogOrder agent.SettleGate
+	dialogOrder jsloop.SettleGate
 	// arrived runs on the read loop when the response of a request is read, before the response reaches its waiter.
 	arrived map[string]func()
 	// hostCalls counts, per request, the host calls the host applies for it.
@@ -194,8 +212,10 @@ type Conn struct {
 	// writeResults pools the channels that carry a frame's write result (writeResult).
 	writeResults sync.Pool
 	// suspending counts the suspension frames of a request that the read loop queued for the host and the host has not yet delivered. suspensionsSettled is closed and replaced whenever a count drops.
-	suspending         map[string]int
-	suspendedRequests  map[string]bool
+	suspending        map[string]int
+	suspendedRequests map[string]bool
+	// provisionalBlocks holds the requests whose runtime reported blocked on a host call that the read loop has not yet seen: the suspension is reported once the call frame names the call, because a waitForIdle that finds the Session idle suspends nothing (settleBlockedCall).
+	provisionalBlocks  map[string]struct{}
 	suspensionsSettled chan struct{}
 	// eventLoopTurns holds the channel of each RequestEventLoopTurn awaiting its NotifyEventLoopTurned, by turn number; lastEventLoopTurn numbers them.
 	eventLoopTurns    map[uint64]chan struct{}
@@ -276,6 +296,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 	}
 	parts, _ := c.(framePartsWriter)
 	return &Conn{
+		fileMutations:      fileMutationTurns{live: 1},
 		name:               name,
 		conn:               c,
 		parts:              parts,
@@ -283,6 +304,9 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		pending:            make(map[string]chan *Envelope),
 		abandoned:          make(map[string]chan struct{}),
 		updates:            make(map[string]func(json.RawMessage)),
+		toolRequests:       make(map[string]struct{}),
+		startWindows:       make(map[string]requestWindowHandle),
+		toolUpdates:        newCallLanes(),
 		answered:           make(map[string]func()),
 		arrived:            make(map[string]func()),
 		hostCallCounts:     make(map[string]func(dialog bool, delta int)),
@@ -655,15 +679,38 @@ func (c *Conn) requestWithInactivity(ctx context.Context, env *Envelope, inactiv
 	return c.request(ctx, env, inactivity, operation)
 }
 
+// callLane returns the ordering lane of a host call whose parent is the request parentID. The calls of every pending tool_call request share one lane:
+// Pi runs the tools of a parallel batch on one thread, so the calls they make apply in the order the extension sent them, whichever tool made each.
+// A tool call is never the nested request of a host call that waits for it, so the calls of one tool cannot be held behind a call of another that
+// waits for the first. Every other request, which a host call may send the extension and wait for, keeps a lane of its own.
+func (c *Conn) callLane(parentID string) string {
+	c.pendingMu.Lock()
+	_, tool := c.toolRequests[parentID]
+	c.pendingMu.Unlock()
+	if tool {
+		return toolCallLane
+	}
+	return parentID
+}
+
+// toolCallLane is the lane of the calls made by tool_call requests. A request id never starts with a space.
+const toolCallLane = " tool"
+
 // requestWithUpdates is Request for a tool call whose extension streams
 // partial results. onUpdate runs for each NotifyToolUpdate the request
 // receives, in frame order, off the read loop, and every update that arrived
-// before the response has run when this returns.
+// before the response has run when this returns. The updates of the
+// connection's tool_call requests share one lane, so they also run in frame
+// order across tools; another request (a provider stream, a user bash
+// command) has a lane of its own, so a slow consumer holds back no tool.
 func (c *Conn) requestWithUpdates(ctx context.Context, env *Envelope, onUpdate func(json.RawMessage)) (*Envelope, error) {
 	if env.ID == "" {
 		env.ID = "r" + strconv.FormatUint(c.nextID.Add(1), 10)
 	}
-	updates := newCallLanes()
+	updates := c.toolUpdates
+	if env.Request == nil || env.Request.Method != MethodToolCall {
+		updates = newCallLanes()
+	}
 	var queued sync.WaitGroup
 	c.pendingMu.Lock()
 	c.updates[env.ID] = func(result json.RawMessage) {
@@ -710,6 +757,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	respCh := make(chan *Envelope, 1)
 	c.pendingMu.Lock()
 	c.pending[env.ID] = respCh
+	if env.Request != nil && env.Request.Method == MethodToolCall {
+		c.toolRequests[env.ID] = struct{}{}
+	}
 	if fn := requestAnswered(ctx); fn != nil {
 		c.answered[env.ID] = fn
 	}
@@ -719,10 +769,16 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if fn := requestHostCalls(ctx); fn != nil {
 		c.hostCallCounts[env.ID] = fn
 	}
+	if window := requestWindow(ctx); window != nil {
+		c.startWindows[env.ID] = window
+	}
 	if fn := requestDrained(ctx); fn != nil {
 		c.drainable[env.ID] = &drainableRequest{drained: fn}
 	}
 	c.pendingMu.Unlock()
+	if start := c.onRequestStart.Load(); start != nil {
+		(*start)()
+	}
 	// A request with no inactivity lease and no suspension report has nothing to do on a started or progress state, and its blocked and completed states only release the invocation acknowledgment, which the read loop applies itself (deliverRequestState). Only a request that reacts to its states waits for them.
 	var stateCh chan RequestStatePayload
 	if inactivity > 0 || requestReportsSuspension(ctx) {
@@ -736,9 +792,11 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	defer func() {
 		c.pendingMu.Lock()
 		delete(c.pending, env.ID)
+		delete(c.toolRequests, env.ID)
 		delete(c.answered, env.ID)
 		delete(c.arrived, env.ID)
 		delete(c.hostCallCounts, env.ID)
+		delete(c.startWindows, env.ID)
 		delete(c.drainable, env.ID)
 		c.pendingMu.Unlock()
 		c.stateMu.Lock()
@@ -1016,6 +1074,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		close(c.inCh)
 		c.settleAllAbandoned()
 		c.stopAbortForwards()
+		c.turns().leave(c)
 		if c.onClosed != nil {
 			c.onClosed()
 		}
@@ -1075,8 +1134,21 @@ func (c *Conn) readLoop(ctx context.Context) {
 			c.inbound(&env)
 		}
 		if env.Type == MsgRequestState && env.RequestState != nil {
-			if env.RequestState.State == "blocked" || env.RequestState.State == "suspended" {
+			switch {
+			case env.RequestState.State == "blocked" && env.RequestState.Reason == "host_call":
+				// The call that follows names what the handler awaits.
+				c.stateMu.Lock()
+				if c.provisionalBlocks == nil {
+					c.provisionalBlocks = make(map[string]struct{})
+				}
+				c.provisionalBlocks[env.RequestState.RequestID] = struct{}{}
+				c.stateMu.Unlock()
+			case env.RequestState.State == "blocked" || env.RequestState.State == "suspended":
 				c.reportRequestPhase(env.RequestState.RequestID, invocation.Suspended)
+			case env.RequestState.State == "progress":
+				c.stateMu.Lock()
+				delete(c.provisionalBlocks, env.RequestState.RequestID)
+				c.stateMu.Unlock()
 			}
 			if env.RequestState.State == "suspended" {
 				// A suspension reports that the calls sent before it are in flight. The host loop delivers it after those calls applied their synchronous parts.
@@ -1092,6 +1164,20 @@ func (c *Conn) readLoop(ctx context.Context) {
 			}
 			if env.RequestState.State == "started" {
 				c.markRequestStarted(env.RequestState.RequestID)
+			}
+			if c.endsStartWindow(*env.RequestState) {
+				// The handler's synchronous prefix is over. The host loop delivers the report after the calls received before it applied their synchronous parts, so the prefix's registration in the file mutation queue precedes the window's end.
+				select {
+				case c.inCh <- &env: //perf:ok once per tool call whose handler awaits something that is not a host call (request_state blocked), not per frame
+				case <-ctx.Done(): //perf:ok the same select
+					return
+				}
+				continue
+			}
+			if c.holdsNoStartWindow(*env.RequestState) {
+				// A tool call outside the dispatcher's parallel batch (a sequential batch, a direct Execute) holds no start window, so no edit or write call waits for it: the runtime holds the tool's next
+				// fileMutation.enter after this report until the host says the waiting calls registered (NotifyToolWindowSettled), and with none waiting it says so now.
+				c.sendToolWindowSettled(env.RequestState.RequestID)
 			}
 			c.deliverRequestState(*env.RequestState)
 			continue
@@ -1110,6 +1196,12 @@ func (c *Conn) readLoop(ctx context.Context) {
 		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyLoopTurnTaken {
 			if c.onLoopTurnTaken != nil {
 				c.onLoopTurnTaken(env.Notify.Args)
+			}
+			continue
+		}
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyTimerDeferAck {
+			if c.onTimerDeferAck != nil {
+				c.onTimerDeferAck(env.Notify.Args)
 			}
 			continue
 		}
@@ -1157,6 +1249,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
 		if env.Type == MsgCall && env.Call != nil && env.ID != "" {
+			c.reportProvisionalBlocks(env.Call)
 			c.reserveHostCall(env.Call.ParentRequestID, env.ID)
 			if startsRun(env.Call.Method) && env.Call.ParentRequestID != "" {
 				c.reportRequestPhase(env.Call.ParentRequestID, invocation.Resumed)
@@ -1169,6 +1262,42 @@ func (c *Conn) readLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+// reportProvisionalBlocks reports the suspension of each request whose blocked report awaits this call frame (the call of that request, or one no request owns), in frame order: a runtime reports the suspension before it sends the call, because its handler waits for the answer. A waitForIdle call keeps its request's report for the host action (settleBlockedCall), which knows whether the Session is idle: Pi's `await ctx.waitForIdle()` returns at once then (agent-session.ts waitForIdle), so the handler is not suspended and the run its command sent starts after the command's response.
+func (c *Conn) reportProvisionalBlocks(call *CallPayload) {
+	c.stateMu.Lock()
+	if len(c.provisionalBlocks) == 0 {
+		c.stateMu.Unlock()
+		return
+	}
+	var report []string
+	for id := range c.provisionalBlocks {
+		// A call of another request is not the call this request's handler awaits; a call no request owns may be, for a detached call.
+		if call.ParentRequestID != "" && call.ParentRequestID != id {
+			continue
+		}
+		if call.Method == "waitForIdle" && id == call.ParentRequestID {
+			continue
+		}
+		report = append(report, id)
+		delete(c.provisionalBlocks, id)
+	}
+	c.stateMu.Unlock()
+	for _, id := range report {
+		c.reportRequestPhase(id, invocation.Suspended)
+	}
+}
+
+// settleBlockedCall ends the provisional block a waitForIdle call kept: the handler is suspended if the call waits, and is not if the Session was idle.
+func (c *Conn) settleBlockedCall(requestID string, waits bool) {
+	c.stateMu.Lock()
+	_, provisional := c.provisionalBlocks[requestID]
+	delete(c.provisionalBlocks, requestID)
+	c.stateMu.Unlock()
+	if provisional && waits {
+		c.reportRequestPhase(requestID, invocation.Suspended)
 	}
 }
 
@@ -1333,6 +1462,71 @@ func (c *Conn) deliverRequestState(state RequestStatePayload) {
 	case sink.ch <- state:
 	default:
 	}
+}
+
+// endsStartWindow reports whether state tells that the synchronous prefix of a tool_call request that holds a start window is over: the Node runtime reports
+// the handler blocked on something that is not a host call (external_io), or on the user, after the tool's execute returned its Promise. A handler of another SDK
+// is not reported this way: a native handler that waits does so in a host call, which closes the window when the host applies it.
+func (c *Conn) endsStartWindow(state RequestStatePayload) bool {
+	if state.State != "blocked" || (state.Reason != "external_io" && state.Reason != "user") {
+		return false
+	}
+	c.pendingMu.Lock()
+	_, ok := c.startWindows[state.RequestID]
+	c.pendingMu.Unlock()
+	return ok
+}
+
+// holdsNoStartWindow reports whether state is the report of endsStartWindow from a pending tool_call request that holds no start window.
+func (c *Conn) holdsNoStartWindow(state RequestStatePayload) bool {
+	if state.State != "blocked" || state.Reason != "external_io" {
+		return false
+	}
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	if _, tool := c.toolRequests[state.RequestID]; !tool {
+		return false
+	}
+	_, windowed := c.startWindows[state.RequestID]
+	return !windowed
+}
+
+// closeRequestWindow closes the start window of the request requestID, when it holds one: the request's handler has run to its first await.
+func (c *Conn) closeRequestWindow(requestID string) {
+	if requestID == "" {
+		return
+	}
+	c.pendingMu.Lock()
+	window := c.startWindows[requestID]
+	c.pendingMu.Unlock()
+	if window != nil {
+		window.Close()
+	}
+}
+
+// endRequestWindowByReport closes the start window of the request requestID after its runtime reported that the handler awaits something that is not a host
+// call, and tells the runtime when the calls that waited for the window registered in the file mutation queue (NotifyToolWindowSettled): Pi registered them
+// before the handler's next call, which the runtime holds until then.
+func (c *Conn) endRequestWindowByReport(requestID string) {
+	c.pendingMu.Lock()
+	window := c.startWindows[requestID]
+	c.pendingMu.Unlock()
+	if window == nil {
+		return
+	}
+	window.Close()
+	//portlint:allow golifetime AwaitSettled returns once the calls that waited for the window registered, which the dispatcher forces when the tool call ends, so the goroutine ends with the call
+	go func() {
+		window.AwaitSettled()
+		c.sendToolWindowSettled(requestID)
+	}()
+}
+
+// sendToolWindowSettled tells the runtime that the writes that waited for the start window of the tool_call request requestID registered, or that none waited.
+func (c *Conn) sendToolWindowSettled(requestID string) {
+	// A request id is the host's own "r" and a number, or the id of the request it nests in: plain ASCII, so strconv's quoting is JSON's.
+	args := []byte(`{"request_id":` + strconv.Quote(requestID) + `}`)
+	_ = c.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyToolWindowSettled, Args: args}})
 }
 
 // writeBatchFrames and writeBatchBytes bound the encoded frames the writer coalesces into one socket write.
@@ -2024,6 +2218,25 @@ func requestIssued(ctx context.Context) func() {
 	return fn
 }
 
+type requestWindowKey struct{}
+
+// requestWindowHandle is the start window of a tool_call request (agent.StartWindow): the request closes it once its handler ran to its first await: when the host
+// applied a host call the request made that returns a Promise in Pi (startsAsync), or when the runtime reported the handler blocked on something else. The window
+// ends with the request in any case.
+type requestWindowHandle interface {
+	Close()
+	AwaitSettled()
+}
+
+func withRequestWindow(ctx context.Context, window requestWindowHandle) context.Context {
+	return context.WithValue(ctx, requestWindowKey{}, window)
+}
+
+func requestWindow(ctx context.Context) requestWindowHandle {
+	window, _ := ctx.Value(requestWindowKey{}).(requestWindowHandle)
+	return window
+}
+
 type requestHostCallsKey struct{}
 
 // withRequestHostCalls has request run fn each time the host starts (delta 1) or finishes (delta -1) applying a host call that names the request as its parent. dialog reports a user dialog. fn runs on the goroutine that applies the call.
@@ -2125,4 +2338,22 @@ func applyRequestSuspension(ctx context.Context, state RequestStatePayload) {
 	if state.State == "suspended" {
 		fn(true)
 	}
+}
+
+// dispatchBarrier queues a marker behind the frames the read loop has passed to the host and returns a channel that closes once the host dispatched them. It is called on the read loop, so every frame read before the caller's is ahead of the marker.
+func (c *Conn) dispatchBarrier(ctx context.Context) <-chan struct{} {
+	mark := &dispatchMark{done: make(chan struct{})}
+	select {
+	case c.inCh <- &Envelope{barrier: mark}:
+	case <-ctx.Done():
+		mark.release()
+	}
+	return mark.done
+}
+
+// requestsInFlight reports whether a request the host sent has no response yet.
+func (c *Conn) requestsInFlight() bool {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	return len(c.pending) > 0
 }

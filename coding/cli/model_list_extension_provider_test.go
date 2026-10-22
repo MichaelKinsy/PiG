@@ -29,7 +29,7 @@ func TestPrintModelList_ShowsRegisteredExtensionProvider(t *testing.T) {
 		t.Error(err)
 	}
 
-	out := captureStdout(func() { printModelList(reg, dir, "") })
+	out := captureStdout(func() { printModelList(reg, "") })
 
 	if !strings.Contains(out, "parity-prov") || !strings.Contains(out, "parity-model") {
 		t.Fatalf("printModelList did not list the registered extension provider:\n%s", out)

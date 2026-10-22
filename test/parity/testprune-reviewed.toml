@@ -96,3 +96,150 @@ commit = "c371a134cc"
 class = "CITE"
 cite = "packages/ai/src/api/openai-responses-shared.ts:159"
 reason = "Pi caa6967b and 530015d9 (#11142) declare every tool in additional_tools items from the head of the input, precede each later item with the incremental-tools notice and announce removals as text (openai-responses-shared.ts:159-176), so the expected request shape and instructions of the tool-change cases change with them."
+
+[[entry]]
+path = "internal/jsloop/turns_test.go"
+commit = "4ac21c86c4ee0ee791d498fe55e2a330df6cf475"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The loop-turn hold is PiG's own scheduling of the host calls that deferred work makes (D189 in docs/additive-features.md); Pi has no counterpart, since Node's event loop orders them. The test changes from holding a tick the runtime made after its tool call ended to running it at once when no wait is open, and a tick of a call that has not ended still waits; no Pi behavior changes."
+
+[[entry]]
+path = "ai/user_agent_release_cache_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/ai/src/utils/identity.ts:75"
+reason = "Pi 04a93bad replaces getPiUserAgent() with formatUserAgent(identity?) (identity.ts:75); the test calls PiG's FormatUserAgent(nil) and asserts the same prefix, platform, release and architecture strings."
+
+[[entry]]
+path = "ai/user_agent_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/ai/src/utils/identity.ts:75"
+reason = "Pi 04a93bad replaces getPiUserAgent() with formatUserAgent(identity?) (identity.ts:75); the test calls PiG's FormatUserAgent(nil) and asserts the same prefix, platform, release and architecture strings."
+
+[[entry]]
+path = "coding/model_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/ai/src/utils/identity.ts:142"
+reason = "Pi adc5fa9f folds the install-telemetry-gated attribution headers into the request options of the client identity (getAttributionHeaders, identity.ts:142); the provider wrapper type the test asserts is renamed from providerAttributionProvider to requestOptionsProvider and the gating test goes with it."
+
+[[entry]]
+path = "coding/session_extension_hooks_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/coding-agent/src/core/sdk.ts:353"
+reason = "The transformHeaders hook (sdk.ts:353) now runs after the OpenCode session header instead of after the removed x-opencode-client attribution header (Pi adc5fa9f); the test deletes x-opencode-session and builds the wrapper with newRequestOptionsProvider."
+
+[[entry]]
+path = "durable/harness/harness_tools_models_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/durable/src/harness/types.ts:620"
+reason = "The Harness identity overrides the identity its Models was created with for every request through the Harness's models, including hooks and tools (types.ts:620); the models a tool or hook reads are now a view of the host's Models that adds that identity, so the test compares the catalog and a model lookup instead of Models identity."
+
+[[entry]]
+path = "durable/core/driver/schema_backup_core_test.go"
+commit = "590e52d551c5c3f567ee1f1c84d63211e15163e5"
+class = "DIVERGENCE"
+cite = "D188"
+reason = "D188's copy of an older-schema store is named <path>.schema-<N>.bak (schema-1.bak, then schema-1-2.bak), so no Pig format marker appears in it; the test expects the new name."
+
+[[entry]]
+path = "durable/storage/sqlite/node/schema_backup_test.go"
+commit = "590e52d551c5c3f567ee1f1c84d63211e15163e5"
+class = "DIVERGENCE"
+cite = "D188"
+reason = "D188's copy of an older-schema store is named <path>.schema-<N>.bak (schema-1.bak, then schema-1-2.bak), so no Pig format marker appears in it; the test expects the new name."
+
+[[entry]]
+path = "coding/session_resume_default_tools_port_test.go"
+commit = "43d259770e32ed1996d955e6eda8cccf3766ee04"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:271"
+reason = "Pi bd3c9b82 restores the whole branch's loadout on resume, replacing the initial tools with the loadout the transcript records (agent-session.ts:271); the test records tool additions and removals as system messages through new helpers and expects the restored active tools."
+
+[[entry]]
+path = "coding/cli/session_extension_actions_direct_test.go"
+commit = "5ac5e1ad05c81382ec16a379988df81efa17dd66"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The session extension actions move from package cli into package coding so every mode shares them; the test calls coding.ExtensionHostSessionActions and expects coding.ErrSessionNotReady where it expected errSessionNotReady, with the same behavior."
+
+[[entry]]
+path = "coding/extension/host/subprocess/timer_turns_test.go"
+commit = "df5b6822288fa9fb121512944f064a9510cfff21"
+class = "CITE"
+cite = "packages/agent/src/agent-loop.ts:931"
+reason = "Pi runs a process.nextTick callback right after the tool_execution_end of the tool that queued it (agent-loop.ts:931), before the timers; the test adds that tick and expects it after the microtask and promise callbacks and before the timer callbacks."
+
+[[entry]]
+path = "coding/extension/host/subprocess/child_session_delta_test.go"
+commit = "92cce7e40d5e980854fead710ab3a2b0240259ef"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "PiG's child-session update stream returns its patch operations as encoded bytes with a patch flag instead of a parsed path per member (a performance change of a PiG-only wire); the test follows the new frame signature and expects the same operations."
+
+[[entry]]
+path = "coding/extension/builtin/codemode/worker_admission_test.go"
+commit = "2209c440d3f3751098801bda2383e7c855d07b12"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The admission tests run real scripts and read a count of started workers that execute.go adds for them; the result assertion becomes Pi's toContainEqual of an exact text item. No admission behavior changes."
+
+[[entry]]
+path = "coding/extension/builtin/codemode/worker_admission_test.go"
+commit = "e73e536f2c495000842febe6a778f750b738a205"
+class = "CITE"
+cite = "packages/coding-agent/src/extensions/codemode/execute.ts:75"
+reason = "At the worker limit a script waits for a free slot in arrival order instead of failing (execute.ts:75); the test starts runs without waiting and expects them queued, with slots released as the workers exit."
+
+[[entry]]
+path = "piglets/standard/extensions/bunruntime/extension_test.go"
+commit = "da811523f5208e77fbbbccad9d0feed262c31151"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Bun runtime slot install lock is PiG's own (a Piglet with no Pi counterpart); the slot root now also holds the lock file, which the test lists."
+
+[[entry]]
+path = "internal/wordsegmenter/strip_test.go"
+commit = "80258869e13ab22d332b2606d85b32dd9433da94"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The embedded word dictionary files are named .bin.gz when compressed and .bin when not (a packaging choice of PiG's Intl.Segmenter replacement); the segmentation results are unchanged."
+
+[[entry]]
+path = "internal/wordsegmenter/strip_test.go"
+commit = "d7f3a6d3081011b994364641ccc14dea9c95b4c0"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The embedded word dictionary files are named .bin.gz when compressed and .bin when not (a packaging choice of PiG's Intl.Segmenter replacement); the segmentation results are unchanged."
+
+[[entry]]
+path = "internal/codingagent/ext_ui_dialog_displace_test.go"
+commit = "90f69085ce4e7da8d8617b769dfc9960d0f98775"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:2693"
+reason = "Pi bdd9f039 stacks extension dialogs (pushExtensionDialog, interactive-mode.ts:2693): a dialog that opens while another is shown hides it without settling it, and the earlier one shows again when the new one closes; the displacement test becomes the stacking test."
+
+[[entry]]
+path = "extensions/sdk-rs/bundle_inventory_test.go"
+commit = "ade09fc2d8b0c61b25b60153d1cde780b7842ce6"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Rust SDK bundle no longer embeds the SDK's own test files (a packaging change with no Pi counterpart); the inventory test expects the sources a build uses and names go generate in its failure message."
+
+[[entry]]
+path = "extensions/sdk/bundle_test.go"
+commit = "ade09fc2d8b0c61b25b60153d1cde780b7842ce6"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Go SDK bundle no longer embeds the SDK's own test files (a packaging change with no Pi counterpart); the inventory test expects the sources a build uses and names go generate in its failure message."
+
+[[entry]]
+path = "extensions/sdk/file_mutation_queue_test.go"
+commit = "0275c62f295865e48253b66d650b923c691b0b33"
+class = "CITE"
+cite = "packages/coding-agent/src/core/tools/file-mutation-queue.ts:32"
+reason = "withFileMutationQueue (file-mutation-queue.ts:32) is Pi's one queue for built-in tools and extensions in its single process; an SDK process now takes its turn from the host's queue through fileMutation.enter and fileMutation.exit, and the test drives those calls over a scripted host connection and expects the same call order."

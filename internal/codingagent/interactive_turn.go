@@ -155,6 +155,15 @@ func (m *InteractiveMode) runInputHandlers(ctx context.Context, text string, ima
 	return RunInputHandlers(ctx, m.newRunner, text, images, source, behavior)
 }
 
+// limitsModel is the model whose limits apply to the conversation: under a virtual selection, the physical model that answered last, else the
+// selected model (agent-session.ts:641-643 _limitsModel).
+func (m *InteractiveMode) limitsModel() *ai.Model {
+	if routed := m.RoutedModelSelection(); routed != nil {
+		return routed.Model
+	}
+	return m.agent.Model()
+}
+
 // runPromptTurnWithImages starts a turn for prompt, which input handlers and
 // expansion have already processed. The user message renders from the agent's
 // message_start event, as upstream interactive mode renders it: output that
@@ -167,7 +176,7 @@ func (m *InteractiveMode) runPromptTurnWithImages(ctx context.Context, prompt st
 		if m.opts.SettingsManager != nil {
 			autoResize = m.opts.SettingsManager.GetImageAutoResize()
 		}
-		content = NormalizePromptContent(content, autoResize, m.agent.Model(), imageprocessing.ProcessImage)
+		content = NormalizePromptContent(content, autoResize, m.limitsModel(), imageprocessing.ProcessImage)
 		// upstream: packages/coding-agent/src/core/agent-session.ts:_startRun
 		return m.agent.SendContent(runCtx, content)
 	})
@@ -438,7 +447,18 @@ func (m *InteractiveMode) settleTurn(ctx context.Context, err error) error {
 
 func (m *InteractiveMode) settleTurnWithPrompt(ctx context.Context, err error, finishPrompt func()) error {
 	for {
+		// Custom messages deferred to the end of a turn are appended when the run ends (upstream _flushPendingCustomMessages in the finally of
+		// _runAgentPrompt). The flush runs outside queueMu because it publishes events the owner loop consumes; a message deferred after it is seen
+		// by the check below, which keeps the run open to flush again.
+		if session := m.opts.SessionHandle; session != nil {
+			err = errors.Join(err, session.FlushDeferredCustomMessages())
+		}
 		m.queueMu.Lock()
+		deferred := m.opts.SessionHandle != nil && m.opts.SessionHandle.HasDeferredCustomMessages()
+		if deferred {
+			m.queueMu.Unlock()
+			continue
+		}
 		if err != nil || ctx.Err() != nil || !m.agent.HasQueuedMessages() {
 			// Clear the outgoing prompt before publishing idle or releasing replacement waiters.
 			if finishPrompt != nil {

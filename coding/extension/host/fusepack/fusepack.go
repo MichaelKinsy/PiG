@@ -7,12 +7,14 @@
 package fusepack
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net"
 	"sort"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
 // fusedServes maps an extension name to its in-process serve func. Populated by
@@ -31,11 +33,17 @@ func registerFactory(name string, factory sdk.Factory) {
 			}
 			_ = conn.Close()
 		}()
-		ext := factory()
-		if ext == nil {
+		// The connection is the factory's own while it runs, so a factory's pi.events.emit reaches the host at once, as a subprocess extension's does.
+		var built bool
+		err = sdk.ServeFactory(conn, func() *sdk.Extension {
+			ext := factory()
+			built = ext != nil
+			return ext
+		})
+		if !built && err != nil {
 			return fmt.Errorf("construct fused extension %q: factory returned nil", name)
 		}
-		return ext.RunWithConn(conn)
+		return err
 	}
 }
 
@@ -56,8 +64,8 @@ func Register() {
 	sdk.SetHostHelpers(HostHelpers())
 }
 
-// HostHelpers are the host's parsers for a fused extension. Its factory runs in this process, before any connection to the host exists, so the SDK's
-// frontmatter and Date.parse helpers call them directly.
+// HostHelpers are the host's parsers and file mutation queue for a fused extension. Its factory runs in this process, before any connection to the host exists, so
+// the SDK's frontmatter and Date.parse helpers call them directly, and its withFileMutationQueue is the process-wide queue the built-in edit and write tools use.
 func HostHelpers() *sdk.HostHelpers {
 	return &sdk.HostHelpers{
 		ParseFrontmatter: func(content string) (sdk.ParsedFrontmatter, error) {
@@ -65,6 +73,43 @@ func HostHelpers() *sdk.HostHelpers {
 			return sdk.ParsedFrontmatter{Frontmatter: frontmatter, Body: body}, err
 		},
 		ParseDate: subprocess.ParseDateMs,
+		GenerateDiffString: func(oldContent, newContent string, contextLines *int) sdk.DiffString {
+			result := subprocess.GenerateDiffString(oldContent, newContent, contextLines)
+			return sdk.DiffString{Diff: result.Diff, FirstChangedLine: result.FirstChangedLine}
+		},
+		GenerateUnifiedPatch: subprocess.GenerateUnifiedPatch,
+		CopyToClipboard:      subprocess.CopyToClipboard,
+		ConvertToPng: func(data, mimeType string) (sdk.ConvertedImage, bool) {
+			result := subprocess.ConvertToPng(data, mimeType)
+			if result.Image == nil {
+				return sdk.ConvertedImage{}, false
+			}
+			return sdk.ConvertedImage{Data: result.Image.Data, MimeType: result.Image.MimeType}, true
+		},
+		ResizeImage: func(input []byte, mimeType string, options *sdk.ImageResizeOptions) (sdk.ResizedImage, bool, error) {
+			args := subprocess.ResizeImageArgs{Data: base64.StdEncoding.EncodeToString(input), MimeType: mimeType}
+			if options != nil {
+				args.Options = &struct {
+					MaxWidth    int `json:"maxWidth,omitempty"`
+					MaxHeight   int `json:"maxHeight,omitempty"`
+					MaxBytes    int `json:"maxBytes,omitempty"`
+					JPEGQuality int `json:"jpegQuality,omitempty"`
+				}{options.MaxWidth, options.MaxHeight, options.MaxBytes, options.JPEGQuality}
+			}
+			result, err := subprocess.ResizeImage(args)
+			if err != nil || result.Image == nil {
+				return sdk.ResizedImage{}, false, err
+			}
+			image := result.Image
+			return sdk.ResizedImage{Data: image.Data, MimeType: image.MimeType, OriginalWidth: float64(*image.OriginalWidth), OriginalHeight: float64(*image.OriginalHeight), Width: float64(*image.Width), Height: float64(*image.Height), WasResized: *image.WasResized}, true, nil
+		},
+		BuiltinToolDefinition: subprocess.BuiltinToolDefinitionJSON,
+		HighlightCode:         subprocess.HighlightCodeLines,
+		LoadTheme:             subprocess.LoadThemeJSON,
+		WithFileMutationQueue: func(filePath string, fn func() error) error {
+			_, err := tools.WithFileMutationQueue(filePath, func() (struct{}, error) { return struct{}{}, fn() })
+			return err
+		},
 	}
 }
 

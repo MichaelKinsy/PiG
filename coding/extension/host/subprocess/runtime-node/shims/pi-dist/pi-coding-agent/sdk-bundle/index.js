@@ -122,7 +122,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-2HWLWU7U.js";
+} from "./chunk-3LCMRGFL.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -157,7 +157,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-RKAYAUZW.js";
+} from "./chunk-ZYMNLKUS.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,

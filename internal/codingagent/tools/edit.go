@@ -77,6 +77,10 @@ func (t *EditTool) Schema() ai.ToolSchema {
 // executionMode, and the file mutation queue serialises edits to one file.
 func (t *EditTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }
 
+// RegistersInFileMutationQueue implements agent.RegistersInFileMutationQueue: the parallel dispatcher registers this call in the queue after the extension
+// tools before it in the batch started, as Pi runs their synchronous prefixes first.
+func (t *EditTool) RegistersInFileMutationQueue() bool { return true }
+
 // ReserveMutationOrder implements agent.QueueOrderable: the parallel
 // dispatcher calls this synchronously, in tool-call order, before spawning
 // this call's goroutine, so this edit's place in the shared file mutation

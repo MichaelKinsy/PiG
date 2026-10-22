@@ -23,6 +23,7 @@ import (
 // raw call frames as the extension would.
 type callOrderFixture struct {
 	t      *testing.T
+	host   *Host
 	conn   *Conn
 	ext    net.Conn
 	writeM sync.Mutex
@@ -30,6 +31,8 @@ type callOrderFixture struct {
 	resultMu sync.Mutex
 	results  map[string]*CallResultPayload
 	resultCh chan struct{}
+	// requests receives the request frames the host writes, in write order.
+	requests chan Envelope
 }
 
 func newCallOrderFixture(t *testing.T, handle func(call *CallPayload) (*CallResultPayload, error)) *callOrderFixture {
@@ -50,13 +53,58 @@ func newBridgeCallOrderFixture(t *testing.T, bridge *UIBridge) *callOrderFixture
 func startCallOrderFixture(t *testing.T, h *Host) *callOrderFixture {
 	t.Helper()
 	hostSide, extSide := net.Pipe()
+	return startCallOrderFixtureOn(t, h, hostSide, extSide)
+}
+
+// newSocketCallOrderFixture is newCallOrderFixture over a loopback socket, whose buffer lets the extension's frames reach the host's read loop
+// back to back, as an extension process's do; a net.Pipe hands each frame over with a goroutine switch, so every call would apply before the
+// next frame is read.
+func newSocketCallOrderFixture(t *testing.T, handle func(call *CallPayload) (*CallResultPayload, error)) *callOrderFixture {
+	t.Helper()
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	h.SetCallHandler(func(_ string, call *CallPayload) (*CallResultPayload, error) { return handle(call) })
+	hostSide, extSide := socketPair(t)
+	return startCallOrderFixtureOn(t, h, hostSide, extSide)
+}
+
+// socketPair returns the two ends of a loopback connection.
+func socketPair(t *testing.T) (hostSide, extSide net.Conn) {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = listener.Close() }()
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		c, err := listener.Accept()
+		if err != nil {
+			close(accepted)
+			return
+		}
+		accepted <- c
+	}()
+	extSide, err = net.Dial("tcp", listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ok bool
+	hostSide, ok = <-accepted
+	if !ok {
+		t.Fatal("the host side of the socket never connected")
+	}
+	return hostSide, extSide
+}
+
+func startCallOrderFixtureOn(t *testing.T, h *Host, hostSide, extSide net.Conn) *callOrderFixture {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	conn := NewConn("order", hostSide)
 	conn.Start(ctx)
 	me := withConn(&managedExt{config: ExtConfig{Name: "order"}, host: h}, conn)
 	me.shuttingDown.Store(true)
 	go h.handleIncoming(me, me.connection())
-	f := &callOrderFixture{t: t, ext: extSide, conn: conn, results: map[string]*CallResultPayload{}, resultCh: make(chan struct{}, 1)}
+	f := &callOrderFixture{t: t, host: h, ext: extSide, conn: conn, results: map[string]*CallResultPayload{}, resultCh: make(chan struct{}, 1), requests: make(chan Envelope, 256)}
 	go f.readFrames()
 	t.Cleanup(func() {
 		cancel()
@@ -66,7 +114,7 @@ func startCallOrderFixture(t *testing.T, h *Host) *callOrderFixture {
 	return f
 }
 
-// readFrames records the call results the host sends to the extension and drops every other frame.
+// readFrames records the call results the host sends to the extension, queues its request frames on requests, and drops every other frame.
 func (f *callOrderFixture) readFrames() {
 	for {
 		var length [4]byte
@@ -78,7 +126,17 @@ func (f *callOrderFixture) readFrames() {
 			return
 		}
 		var envelope Envelope
-		if json.Unmarshal(data, &envelope) != nil || envelope.Type != MsgCallResult || envelope.CallResult == nil {
+		if json.Unmarshal(data, &envelope) != nil {
+			continue
+		}
+		if envelope.Type == MsgRequest && envelope.Request != nil {
+			select {
+			case f.requests <- envelope:
+			default:
+			}
+			continue
+		}
+		if envelope.Type != MsgCallResult || envelope.CallResult == nil {
 			continue
 		}
 		f.resultMu.Lock()

@@ -1,6 +1,9 @@
 package coding
 
-import "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+import (
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
+)
 
 // ExtensionHost is the extension host behind the runner of the Sessions a [Runtime] creates. Pi runs extensions in its own process, so a mode reaches them through AgentSession alone; Pig runs file extensions in subprocesses (D19), and a mode reaches the controls of those processes through the Session that owns them, with [Session.ExtensionHost].
 //
@@ -14,10 +17,14 @@ type ExtensionHost interface {
 	SetRuntimeDrainHandler(fn func())
 	// SetSettleTailHandler installs the handler that receives the count of extension calls that keep a settle tail open.
 	SetSettleTailHandler(fn func(suspended int))
+	// SetBackgroundCallGate installs the hold on the UI calls that no request started: a call waits while the gate returns a channel and runs when it closes.
+	SetBackgroundCallGate(gate func() <-chan struct{})
 	// SetCommandSuspendHandler installs the handler that receives the count of in-flight extension commands that are suspended.
 	SetCommandSuspendHandler(fn func(suspended int))
 	// SetCommandWindowHandler installs the handler that receives the count of in-flight extension commands still inside their own window.
 	SetCommandWindowHandler(fn func(suspended int))
+	// SetTimerTurns gives the host the mode's model of Pi's event loop, so a host call an extension runtime marks as made by a timer or an immediate waits for the loop's turn.
+	SetTimerTurns(turns *jsloop.Turns)
 	// Invalidate makes this Session's extension host reject every later call of its extension processes with message, the stale message of the runner that fronted them.
 	Invalidate(message string)
 	// EndInput tells every host of the process, and each host created later, that no further input can arrive.

@@ -1,0 +1,64 @@
+# Behavior family: rpc
+# Surface: a tool's prepareLoadout hook that reads state the run changes shapes the second request of the run. The tool `watch` hooks the loadout: before it has run its model-facing description is "Watch, before the tool ran."; once it has run, the description is "Watch, after the tool ran." and the declaration of `other` is hidden.
+# Pi runs every active tool's hook before each turn of a run: prepareNextTurnWithContext calls _preparePromptAndToolLoadout, which calls _applyToolLoadout (agent-session.ts:899-933, 1743-1755). The system message that precedes the second request therefore replaces watch's description and removes `other`, which get_messages reports as the second system message's toolsAdded and toolsRemoved.
+#
+# PiG applied the loadout at the start of a run and on loadout changes only, so its second request still carried the description and the tool of the first.
+
+name = "80-rpc-prepare-loadout-every-turn"
+description = "RPC: a prepareLoadout hook that reads state a tool changed shapes the second request of the same run: the new description and the hidden declaration reach the transcript's second system message."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"run","type":"prompt","message":"Run: ext tool watch {}"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"id":"messages","type":"response","command":"get_messages"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/prepare-loadout-state.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--no-builtin-tools", "--system-prompt", "RPC loadout probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/prepare-loadout-state.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--no-builtin-tools", "--system-prompt", "RPC loadout probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  'Watch, before the tool ran.',
+  'Watch, after the tool ran.',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 3
+json_output_equal = true
+
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+roots = ["cwd"]
+reason = "D2: alias only the exact isolated cwd in the cwd section; retain the tags and every other character."
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Message wall clocks vary per process; retain field presence and type."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration_ms"
+reason = "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."

@@ -496,6 +496,13 @@ any-trap: ## Fail on JSON decodes into interface values the baseline does not li
 perf-lint: ## Fail on performance antipatterns the baseline does not list (ratchet)
 	@./automation/ci/cached-gate.sh perf-lint -- go run ./automation/ci/perflint
 
+# race-coverage fails when a package that starts goroutines or timers and has tests is in no nightly -race group of automation/ci/race-packages.txt (and is not exempt there with a reason).
+race-coverage: ## Fail on a concurrency package that no nightly -race group runs
+	@python3 -B -m unittest discover -s automation/ci -p test_race_coverage.py
+	@./automation/ci/race-coverage.sh
+
+.PHONY: race-coverage
+
 # alloc-baseline ratchets allocs/op of the benchmarks of the hot packages (automation/ci/allocbase). It runs them all at
 # -benchtime=5x with GOMAXPROCS=1, which takes about an hour, so it belongs in a nightly job, not in `make check`.
 alloc-baseline: ## Fail when a hot-path benchmark's allocs/op rises or falls from the committed baseline (slow; nightly)
@@ -512,6 +519,9 @@ docs-drift: ## Fail when generated documentation no longer matches its source
 # bug-ledger needs the full git history (fetch-depth: 0 in CI); it reads the commits since the previous release, CHANGELOG.md, changelog.d and the divergence records.
 bug-ledger: ## Regenerate the public bug fix ledger (docs/bug-ledger.json and docs/site/docs/bug-ledger.md) from the history, changelog and divergence records
 	@go run ./automation/ci/bugledger
+
+bug-ledger-refresh: ## Recompute every bug ledger entry from the history, as a release does (make bug-ledger keeps the committed entries whose fix is recorded)
+	@go run ./automation/ci/bugledger -refresh
 
 bug-ledger-check: ## Fail when a fix has no ledger entry, an entry names a missing test, or the committed ledger is stale
 	@go run ./automation/ci/bugledger -check
@@ -545,7 +555,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard port-lint any-trap perf-lint check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
@@ -799,7 +809,7 @@ parity-deps: interface-deps ## Build the Pi comparator from source at the pin (P
 	@test -d "$(PI_PACKAGE_ROOT)" || { echo "exact Pi package not found: $(PI_PACKAGE_ROOT)" >&2; exit 1; }
 	@$(PIN_TOOL) check-oracle
 
-.PHONY: port-lens pin-show pin-sync pin-check pin-bump pin-ledgers vendor-pi-dist bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
+.PHONY: bug-ledger-refresh port-lens pin-show pin-sync pin-check pin-bump pin-ledgers vendor-pi-dist bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
 
 include automation/make/parity.mk
 include automation/make/ci.mk

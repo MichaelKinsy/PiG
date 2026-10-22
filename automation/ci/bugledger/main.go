@@ -25,12 +25,20 @@ func main() {
 	root := flag.String("root", ".", "repository root")
 	since := flag.String("since", "0.4.1", "release the ledger starts after")
 	check := flag.Bool("check", false, "fail when the committed ledger is out of date instead of writing it")
+	refresh := flag.Bool("refresh", false, "recompute every entry from the history instead of keeping the committed entries whose fix is recorded (a release does this)")
+	summary := flag.Bool("summary", false, "print the entry counts of the committed ledger")
 	strict := flag.Bool("strict", false, "with -check, compare commit hashes and tests exactly")
 	notes := flag.String("notes", "", "print the draft release notes for this version to standard output instead of writing the ledger")
 	flag.Parse()
 	abs, err := filepath.Abs(*root)
 	if err != nil {
 		fail(err)
+	}
+	if *summary {
+		if err := printSummary(abs); err != nil {
+			fail(err)
+		}
+		return
 	}
 	if *notes != "" {
 		text, err := releaseNotes(abs, *since, *notes)
@@ -40,7 +48,7 @@ func main() {
 		fmt.Print(text)
 		return
 	}
-	if err := run(abs, *since, *check, *strict); err != nil {
+	if err := runWith(abs, *since, *check, *strict, *refresh); err != nil {
 		fail(err)
 	}
 }
@@ -51,10 +59,21 @@ func fail(err error) {
 }
 
 func run(root, since string, check, strict bool) error {
+	return runWith(root, since, check, strict, false)
+}
+
+// runWith writes or checks the ledger. Writing keeps the committed entries whose fix is recorded unless refresh is set (see keepPrior); the strict check compares with the ledger the history implies, so it refreshes.
+func runWith(root, since string, check, strict, refresh bool) error {
 	l, err := build(root, since)
 	if err != nil {
 		return err
 	}
+	if !check && !refresh {
+		if prior, _, err := readCommitted(root); err == nil {
+			keepPrior(l, prior.Entries, root)
+		}
+	}
+	canonical(l)
 	data, err := marshalJSON(l)
 	if err != nil {
 		return err
@@ -76,4 +95,22 @@ func run(root, since string, check, strict bool) error {
 		return nil
 	}
 	return verify(root, l, data, page, strict)
+}
+
+// printSummary prints the counts the page does not carry: a committed count would change in every pull request that adds an entry.
+func printSummary(root string) error {
+	l, _, err := readCommitted(root)
+	if err != nil {
+		return err
+	}
+	counts := map[string]int{}
+	untested := 0
+	for _, e := range l.Entries {
+		counts[e.Class]++
+		if len(e.Tests) == 0 {
+			untested++
+		}
+	}
+	fmt.Printf("%s. %s, %s, %s. %s have no recorded test.\n", plural(len(l.Entries), "bug", "bugs"), plural(counts[ClassOwn], "own defect", "own defects"), plural(counts[ClassAheadOfPi], "fixed ahead of Pi", "fixed ahead of Pi"), plural(counts[ClassPiPort], "Pi fix ported", "Pi fixes ported"), plural(untested, "bug", "bugs"))
+	return nil
 }

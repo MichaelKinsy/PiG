@@ -21,13 +21,20 @@ var eagerGrammars []byte
 var allGrammars []byte
 
 // Registry is one highlight.js instance: its registered languages, aliases and every grammar object they reach. Highlighting compiles and mutates those objects, as highlight.js does, so a Registry serializes its callers.
+//
+// The languages loadAllHighlightLanguages adds are registered when it runs, but their grammar objects are decoded when a language is first looked up (see deferred.go); registration state, language order and aliases are the same as if every grammar were decoded at once.
 type Registry struct {
 	mu        sync.Mutex
 	languages map[string]*Mode
 	order     []string
 	aliases   map[string]string
-	nodes     []any
+	// nodes holds the grammar objects by snapshot node number; a node of a language not yet decoded is nil.
+	nodes []any
+	// allLoaded is set by LoadAllLanguages: the full language set is registered.
 	allLoaded bool
+	// deferred is the full snapshot, once a lookup needed it, until every language in it is decoded. indexed stays set after that.
+	deferred *deferredGrammars
+	indexed  bool
 }
 
 // NewRegistry returns a registry with the languages Pi's syntax-highlight module registers when it loads.
@@ -37,16 +44,11 @@ func NewRegistry() *Registry {
 	return r
 }
 
-// LoadAllLanguages registers the complete language set, as Pi's loadAllHighlightLanguages imports highlight.js/lib/index.js. Later calls do nothing.
+// LoadAllLanguages registers the complete language set, as Pi's loadAllHighlightLanguages imports highlight.js/lib/index.js: from here on every language and alias in it is found. A language's grammar is decoded when it is first looked up, and the whole set when the first auto-detection considers every language. Later calls do nothing.
 func (r *Registry) LoadAllLanguages() {
-	snapshot := decodeSnapshot(allGrammars, snapshotGrammars)
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.allLoaded {
-		return
-	}
 	r.allLoaded = true
-	r.registerSnapshot(snapshot)
 }
 
 // SupportsLanguage is syntax-highlight.ts supportsLanguage: hljs.getLanguage(name) !== undefined.
@@ -200,34 +202,47 @@ func (r *Registry) HighlightAuto(code string, languageSubset []string) (html str
 func (r *Registry) Languages() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.indexDeferred()
 	return slices.Clone(r.order)
 }
 
-// getLanguage is hljs.getLanguage: the name lowercased, then a registered name or an alias.
+// getLanguage is hljs.getLanguage: the name lowercased, then a registered name or an alias. A language of the full set that is not decoded yet is decoded here.
 func (r *Registry) getLanguage(name string) *Mode {
 	name = toLowerCase(name)
 	if language := r.languages[name]; language != nil {
 		return language
 	}
+	// The eager languages' aliases are final: no language of the full set takes the name of one or re-points one (TestDeferredLookupsMatchEagerLoad), so a hit needs no index.
 	if alias, ok := r.aliases[name]; ok {
-		return r.languages[alias]
+		if language := r.languages[alias]; language != nil {
+			return language
+		}
 	}
-	return nil
+	if !r.allLoaded {
+		return nil
+	}
+	r.indexDeferred()
+	return r.lookupDeferred(name)
 }
 
 // registerLanguage is hljs.registerLanguage after the language definition has run.
 func (r *Registry) registerLanguage(name string, language *Mode) {
+	if _, ok := r.languages[name]; !ok {
+		r.order = append(r.order, name)
+	}
+	r.setLanguage(name, language)
+	for _, alias := range language.lang().aliases {
+		r.aliases[toLowerCase(alias)] = name
+	}
+}
+
+// setLanguage names a language that has no name of its own and makes it the one registered as name.
+func (r *Registry) setLanguage(name string, language *Mode) {
 	if language.lang().name == "" {
 		language.setLang().name = name
 		language.present |= keyName
 	}
-	if _, ok := r.languages[name]; !ok {
-		r.order = append(r.order, name)
-	}
 	r.languages[name] = language
-	for _, alias := range language.lang().aliases {
-		r.aliases[toLowerCase(alias)] = name
-	}
 }
 
 // registerSnapshot materializes a snapshot's objects, links their references and replays its registrations in order.
@@ -235,9 +250,22 @@ func (r *Registry) registerSnapshot(s *snapshot) {
 	if s.FirstNode != len(r.nodes) {
 		panic(fmt.Sprintf("hljs: grammar snapshot starts at node %d, registry has %d", s.FirstNode, len(r.nodes)))
 	}
-	// The snapshot's modes, language properties, keyword objects, keyword classes and mode "contains" lists live in one backing array each: the registry keeps every grammar object for its lifetime, so one allocation per kind replaces one per object.
+	r.nodes = slices.Grow(r.nodes, len(s.Nodes))[:s.FirstNode+len(s.Nodes)]
+	ids := make([]int, len(s.Nodes))
+	for i := range ids {
+		ids[i] = s.FirstNode + i
+	}
+	r.materialize(ids, s.Nodes)
+	for _, registration := range s.Registrations {
+		r.registerLanguage(registration.name, r.nodes[registration.node].(*Mode))
+	}
+}
+
+// materialize creates the grammar objects of nodes, which are the snapshot nodes numbered ids, links their references and stores them in r.nodes. Every node a node refers to is in r.nodes already or in nodes.
+func (r *Registry) materialize(ids []int, nodes []snapshotNode) {
+	// The nodes' modes, language properties, keyword objects, keyword classes and mode "contains" lists live in one backing array each: the registry keeps every grammar object for its lifetime, so one allocation per kind replaces one per object.
 	var modeCount, languageCount, rareCount, keywordsCount, classCount, containsCount int
-	for _, node := range s.Nodes {
+	for _, node := range nodes {
 		switch node.Kind {
 		case "mode":
 			modeCount++
@@ -263,8 +291,7 @@ func (r *Registry) registerSnapshot(s *snapshot) {
 	keywords := make([]keywordsObject, keywordsCount)
 	contains := make([]modeRef, containsCount)
 	classes := make([]keywordClass, classCount)
-	r.nodes = slices.Grow(r.nodes, len(s.Nodes))
-	for _, node := range s.Nodes {
+	for i, node := range nodes {
 		switch node.Kind {
 		case "mode":
 			mode := &modes[0]
@@ -278,20 +305,20 @@ func (r *Registry) registerSnapshot(s *snapshot) {
 				mode.rarer = &rares[0]
 				rares = rares[1:]
 			}
-			r.nodes = append(r.nodes, mode)
+			r.nodes[ids[i]] = mode
 		case "keywords":
 			n := keywordClassCount(node.Props)
 			keywords[0].classes, classes = classes[:0:n], classes[n:]
-			r.nodes = append(r.nodes, &keywords[0])
+			r.nodes[ids[i]] = &keywords[0]
 			keywords = keywords[1:]
 		case "aliases":
-			r.nodes = append(r.nodes, map[string]string{})
+			r.nodes[ids[i]] = map[string]string{}
 		default:
 			panic("hljs: unknown grammar node kind " + node.Kind)
 		}
 	}
-	for i, node := range s.Nodes {
-		target := r.nodes[s.FirstNode+i]
+	for i, node := range nodes {
+		target := r.nodes[ids[i]]
 		for _, prop := range node.Props {
 			switch target := target.(type) {
 			case *Mode:
@@ -305,9 +332,6 @@ func (r *Registry) registerSnapshot(s *snapshot) {
 				target[prop.key] = prop.value.text
 			}
 		}
-	}
-	for _, registration := range s.Registrations {
-		r.registerLanguage(registration.name, r.nodes[registration.node].(*Mode))
 	}
 }
 

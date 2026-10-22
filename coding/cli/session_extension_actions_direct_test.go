@@ -13,9 +13,9 @@ import (
 // Session exists yet setSessionName fails, getSessionName is empty and getSettings is nil.
 func TestSessionExtensionActionsActOnTheLiveSession(t *testing.T) {
 	var live *coding.Session
-	actions, _ := sessionExtensionActions(func() *coding.Session { return live }, nil)
-	if err := actions.SetSessionName("early"); !errors.Is(err, errSessionNotReady) {
-		t.Fatalf("SetSessionName before the Session exists = %v, want errSessionNotReady", err)
+	actions, _ := coding.ExtensionHostSessionActions(func() *coding.Session { return live }, nil)
+	if err := actions.SetSessionName("early"); !errors.Is(err, coding.ErrSessionNotReady) {
+		t.Fatalf("SetSessionName before the Session exists = %v, want coding.ErrSessionNotReady", err)
 	}
 	if name := actions.GetSessionName(); name != "" {
 		t.Fatalf("GetSessionName before the Session exists = %q", name)

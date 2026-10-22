@@ -83,7 +83,7 @@ These are the call names the host accepts. SDK bindings wrap each into a method 
 ### UI bridge
 
 - `ui.notify(message, level)` - toast in the footer. `level` is `info | warn | error`.
-- `ui.setStatus(key, text)` - pin a small status line keyed by `key`. Empty text clears.
+- `ui.setStatus(key, text)` - pin a small status line keyed by `key`. In the interactive footer empty text clears; in RPC mode it is written as given, and `ClearStatus(key)` (Go), `clear_status(key)` (Python, Rust) or `setStatus(key, undefined)` (Node) is the request that carries no text.
 - `ui.setLogin(definition)` - validate and install a native login in the shared header slot.
 - `ui.setWorkingMessage(message)`, `ui.setWorkingVisible(bool)`, `ui.setWorkingIndicator(options)` - control the bordered loader.
 - `ui.setHiddenThinkingLabel(label)` - label shown when reasoning is hidden.
@@ -229,6 +229,9 @@ extension entry.
 - `setEditorComponent(factory)` / `getEditorComponent()` - replace the editor widget.
   - Go: `Context.SetEditorComponent(factory sdk.EditorFactory) error` and `Context.GetEditorComponent() any` (a non-nil result is an `sdk.EditorFactory`). Rust: `Context::set_editor_component(factory)` and `Context::get_editor_component() -> Option<EditorFactory>`. Python: `Context.set_editor_component(factory)` and `Context.get_editor_component()`.
   - The factory receives the host's default editor, which the component embeds as its `super`. A nil or `undefined` factory, or the SDK's clear call, restores the host's editor.
+  - The base carries what Pi's `CustomEditor` keeps as public fields. Set `onEscape`, `onCtrlD`, `onPasteImage`, `onExtensionShortcut` or an `actionHandlers` entry (`onAction(action, handler)`) on it and the component's handler replaces the host's for that action: `handleInput` runs the extension shortcut first, then, as Pi's `CustomEditor` does, the paste-image, interrupt (only while no autocomplete shows) and exit (only on an empty editor) actions and the other app actions. Go: `Editor.SetOnEscape`, `SetOnCtrlD`, `SetOnPasteImage`, `SetOnExtensionShortcut`, `OnAction` and the live `ActionHandlers()` map. Rust: `EditorBase::set_on_escape`, `set_on_ctrl_d`, `set_on_paste_image`, `set_on_extension_shortcut`, `on_action` and `action_handlers()`. Python: the `on_escape`, `on_ctrl_d`, `on_paste_image`, `on_extension_shortcut` and `action_handlers` attributes of `EditorBase`, and `on_action`.
+  - The base also reaches the members `CustomEditor` inherits from `Editor`: `borderColor(text)`, `disableSubmit`, `focused`, `getPaddingX()`, `getAutocompleteMaxVisible()`, `setAutocompleteProvider(CombinedAutocompleteProvider(commands, basePath))` (a `kit.Autocomplete`), and the host's `onSubmit(text)` and `onChange(text)` callbacks, which it calls.
+  - The host calls the component's `setWorkingStatusIndicator(status)` when an editor that embeds the working status gets a new status, a new frame of it, or none, and its `invalidate()` when the theme changes. Go: override `Editor.SetWorkingStatusIndicator` and `Editor.Invalidate`. Rust: `EditorComponent::set_working_status_indicator` and `invalidate`. Python: the methods of `EditorComponent`.
   - The getter returns the factory this extension installed last, in every runtime. It returns nothing before an install, after the editor is cleared, with no UI, and in RPC mode, where installing does nothing, as in Pi. It never returns another extension's factory.
 - `setToolsExpanded(bool)` / `getToolsExpanded()`.
 

@@ -1,0 +1,39 @@
+# Pi 1402973a rpc-mode.ts:91-131 createDialogPromise: `opts.signal.aborted` resolves the default (undefined, false) with no request; an abort after the request resolves the default and drops the pending request.
+# The client never answers, so a dialog that ignores its signal leaves the command (and the response) pending until the harness timeout.
+name = "69-rpc-dialog-signal-abort"
+description = "RPC dialogs honor options.signal: a pre-aborted signal writes no request, a later abort resolves the default"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/extensions/types.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+
+# The command finishes by itself once its two timers fired; wait for its response before stdin closes, whatever the start-up time.
+[[rpc.steps]]
+line = '{"id":"s","type":"prompt","message":"/dialog-signal"}'
+wait_contains = ['"id":"s","type":"response"']
+wait_timeout_seconds = 20
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/dialog-signal.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/dialog-signal.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = ['"title":"late-select"', '"message":"pre:[null,false,null]"', '"message":"late:null"', '"message":"later:false"', '"id":"s","type":"response","command":"prompt","success":true']
+both_not_contain = ['pre-select', 'pre-confirm', 'pre-input', '"success":false', 'extension_error']
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."

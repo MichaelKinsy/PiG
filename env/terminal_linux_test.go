@@ -61,15 +61,20 @@ func signalMask(line, field string) (uint64, error) {
 	return strconv.ParseUint(strings.TrimSpace(strings.TrimPrefix(line, field+":")), 16, 64)
 }
 
-// resetSignals is the signals 1 through 31, the ones pty.rs's pre_exec hook sets to their default (`for signal in 1..32`).
-// A signal above them keeps the disposition the program's ancestry gave it, in Pi's daemon as in PiG's: glibc's posix_spawn,
-// which GNU make 4.4 runs its recipes with, leaves SIGCANCEL (32) and SIGSETXID (33), signals glibc keeps for itself and
-// sigaction refuses to change, ignored in every process below a recipe, so a test run by `make test` sees 0x80000000.
-const resetSignals = 1<<31 - 1
-
 // pty.rs resets every signal its hook covers to its default before exec, so a daemon started with SIGINT and SIGHUP ignored (from a
 // background job or nohup) still gives the terminal's program Ctrl-C and hangup.
+//
+// The reset covers signals 1 through 31 only (`for signal in 1..32`, as the daemon's own loop does): a signal above that
+// range, which glibc reserves for its threads (32 and 33), keeps the disposition the daemon inherited. GNU make 4.4 starts
+// its recipes with 32 and 33 ignored, so a test run under `make test-fast` reaches the daemon with SigIgn 0x180000000 and
+// the program ends with 0x80000000 under Pi's daemon and ours alike; the assertion is the daemon's contract (signals 1
+// through 31), not the launcher's state.
 func TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem(t *testing.T) {
+	// resetSignals is the signals 1 through 31, the ones pty.rs's pre_exec hook sets to their default (`for signal in 1..32`).
+	// A signal above them keeps the disposition the program's ancestry gave it, in Pi's daemon as in PiG's: glibc's posix_spawn,
+	// which GNU make 4.4 runs its recipes with, leaves SIGCANCEL (32) and SIGSETXID (33), signals glibc keeps for itself and
+	// sigaction refuses to change, ignored in every process below a recipe, so a test run by `make test` sees 0x80000000.
+	const resetSignals = 1<<31 - 1 // bit n-1 is signal n
 	eachDaemon(t, func(t *testing.T) {
 		connection := NewConnection(ConnectionOptions{Command: []string{"sh", "-c", `trap '' INT HUP; exec "$0" "$@"`, terminalDaemon}})
 		t.Cleanup(connection.Close)

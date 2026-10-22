@@ -117,7 +117,7 @@ its standalone telemetry and evaluation packages. See
 - Main verification gate: `make check`
 - Full verification and coverage refresh: `make verify`
 
-`pig --version` prints PiG's version as `<PiG release>+<Pi release>`, for example `0.5.0+1.4.0` (D63): the Pi release is semver build metadata, so the version sorts as the PiG release. `pig version` prints the PiG release and the pinned Pi release as separate fields. Neither command reads user configuration.
+`pig --version` prints PiG's version as `<PiG release>+<Pi release>`, for example `0.5.1+1.4.0` (D63): the Pi release is semver build metadata, so the version sorts as the PiG release. `pig version` prints the PiG release and the pinned Pi release as separate fields. Neither command reads user configuration.
 
 ## Repository map
 
@@ -222,7 +222,7 @@ Requirements:
 - Go 1.27.3
 - Git
 - macOS 13 or later for native macOS builds
-- Node.js 24.19.0 and npm 12.1.0 for parity tooling
+- Node.js 24.22.1 and npm 12.1.0 for parity tooling
 - Python 3.12 for Python SDK tests
 - Rust 1.97.1 for Rust SDK tests
 - tmux for terminal parity tests on Unix

@@ -1,0 +1,50 @@
+# Behavior family: extensions-runtime
+# Scenario: an extension tool wrapped in withFileMutationQueue and the built-in write and edit tools mutate one file in one parallel batch.
+#
+# Pi has ONE withFileMutationQueue (core/tools/file-mutation-queue.ts: a module-level Map) that the built-in edit and write tools and every extension share
+# (docs/extensions.md: "File-mutating tools should wrap the complete read-modify-write operation with withFileMutationQueue()"). Faux provider emits one assistant
+# message with three calls, which run in parallel by default (agent.ts):
+#   1. write(parity-parallel-mutation-target.txt, "base\n")
+#   2. patch_file(parity-parallel-mutation-target.txt, "patched-A")   (extension tool: reads, pauses 200 ms, writes the text it read plus the line)
+#   3. edit(parity-parallel-mutation-target.txt, base -> BASE)
+# The queue runs the three critical sections one after the other, so the file ends as "BASE\npatched-A\n" whichever of 2 and 3 goes first (the order of 2 and 3 is not
+# what this scenario asserts); without one shared queue the edit lands while patch_file holds a stale read, and patch_file's write drops the edit. A second turn reads
+# the file back and the faux provider answers "parallel-mutation-done" only when both edits are in it.
+#
+# Upstream evidence (2026-10-20):
+#   cd test/parity/scenarios/extensions-runtime
+#   PI_CODING_AGENT_DIR=testdata/pi-agent \
+#     pi --no-extensions -e ../../testdata/test-faux-provider.ts -e testdata/ext/parity-patch-file.mjs \
+#     --model test-faux/faux-1 --print "Run: parallel extension file mutation"
+#   output: "parallel-mutation-done"
+#   exit: 0
+
+name = "86-parallel-extension-file-mutation"
+description = "An extension tool under withFileMutationQueue and built-in write and edit on one file keep every edit"
+covers = [
+  "packages/coding-agent/src/core/tools/file-mutation-queue.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-patch-file.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-patch-file.mjs",
+]
+
+[print]
+prompt = "Run: parallel extension file mutation"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["parallel-mutation-done"]
+output_equal = true
+runs = 3

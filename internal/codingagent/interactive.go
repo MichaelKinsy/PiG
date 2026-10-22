@@ -414,6 +414,8 @@ type InteractiveMode struct {
 	toolOrder     []*tui.ToolExecutionComponent
 	bashOrder     []*tui.BashExecutionComponent // row 2.8a: Ctrl+O drives bash blocks too
 	toolsExpanded bool
+	// toolsExpandedChanged reports a toggle of toolsExpanded to the extension host, whose runtimes replicate it. Guarded by toolMu.
+	toolsExpandedChanged func()
 	// builtInHeaderExpanded starts from verbose || toolsExpanded, then follows explicit expansion and restoration. Guarded by toolMu.
 	builtInHeaderExpanded bool
 	// builtInHeaderLogo is the clickable logo of the built-in header as last rendered; the render loop writes it and the
@@ -655,7 +657,7 @@ type InteractiveMode struct {
 	activeSelectorDispose func()
 }
 
-// loadRemainingHighlightLanguages loads every syntax grammar on a task the mode owns, then repaints on the owner loop, so code highlighted with the startup grammars picks up the rest. A mode that has stopped repaints nothing.
+// loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then repaints on the owner loop, so code highlighted with the startup grammars picks up the rest. A mode that has stopped repaints nothing.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
 func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 	ctx := m.backgroundCtx
@@ -665,6 +667,8 @@ func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 			m.tuiInst.Invalidate()
 			m.tuiInst.RequestRender()
 		})
+		// After the repaint is queued, so the collection never delays it.
+		releaseStartupHeap()
 	})
 }
 

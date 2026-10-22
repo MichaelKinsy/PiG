@@ -18,6 +18,14 @@ class BashExecOptions:
     env: dict[str, str] | None = None
 
 
+@dataclass
+class BashOperations:
+    """Pi's BashOperations: pluggable command execution. ``exec(command, cwd, options)`` receives a ``BashExecOptions`` and returns Pi's ``{"exitCode": n}`` (or
+    the exit code); raise to reject, with the message "aborted" when the signal was set."""
+
+    exec: Callable[..., Any]
+
+
 class _BashOperationsTable:
     """The BashOperations objects a user_bash reply named by handle, until the host releases them."""
 
@@ -32,6 +40,10 @@ class _BashOperationsTable:
             handle = f"bash-{self._seq}"
             self._objects[handle] = operations
             return handle
+
+    def register_as(self, handle: str, operations: Any) -> None:
+        with self._lock:
+            self._objects[handle] = operations
 
     def get(self, handle: str) -> Any:
         with self._lock:

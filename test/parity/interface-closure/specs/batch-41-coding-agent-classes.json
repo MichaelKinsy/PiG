@@ -92,7 +92,7 @@
    "coding/extension/host/inproc/runner.go#Runner.EmitError"
   ],
   "production": [
-   "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+   "call:coding/session_extension_host.go#BindSessionExtensionActions"
   ],
   "evidence": [
    "test:internal/codingagent/interactive_extension_errors_test.go#TestInteractiveShowsExtensionRunnerErrors"

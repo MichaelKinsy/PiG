@@ -109,7 +109,7 @@ done < <(cd "$dist/pi-ai" && grep -lE '^import .* from "typebox(/value|/compile)
 # pi-coding-agent and pi-agent-core use their complete public module graphs.
 node "$root/automation/gen/vendor-pi-closure.mjs" "$shims" "$(cat <<JSON
 {
-  "entries": ["$core/dist/index.js", "$agent/dist/index.js", "$agent/dist/core/sdk.js", "$agent/dist/utils/image-resize-worker.js", "$agent/dist/extensions/codemode/worker.js"],
+  "entries": ["$core/dist/index.js", "$agent/dist/index.js", "$agent/dist/core/sdk.js", "$agent/dist/core/tools/file-mutation-queue.js", "$agent/dist/utils/image-resize-worker.js", "$agent/dist/extensions/codemode/worker.js"],
   "packages": {
     "@earendil-works/pi-coding-agent": { "root": "$agent", "to": "pi-dist/pi-coding-agent" },
     "@earendil-works/pi-agent-core": { "root": "$core", "to": "pi-dist/pi-agent-core" },
@@ -120,7 +120,8 @@ node "$root/automation/gen/vendor-pi-closure.mjs" "$shims" "$(cat <<JSON
   },
   "overrides": {
     "@earendil-works/pi-coding-agent/index.js": "pi-coding-agent.mjs",
-    "@earendil-works/pi-coding-agent/core/sdk.js": "independent-session.mjs"
+    "@earendil-works/pi-coding-agent/core/sdk.js": "independent-session.mjs",
+    "@earendil-works/pi-coding-agent/core/tools/file-mutation-queue.js": "file-mutation-queue-bridge.mjs"
   },
   "externalPrefixes": { "highlight.js/lib/": "highlight.js/lib/" },
   "external": {

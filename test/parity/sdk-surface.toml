@@ -171,11 +171,10 @@ python = "Context.exec"
 [[row]]
 key = "pi.exec(options.signal)"
 node = "api.exec"
-go = "Context.Done"
-rust = "Context::is_cancelled"
-python = "Context.is_cancelled"
-wire = "none"
-partial = "the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary"
+go = "ExecOptions.Signal"
+rust = "ExecOptions.signal"
+python = "Context.exec(signal)"
+wire = "subprocess.ExecArgs.ownSignal"
 
 [[row]]
 key = "pi.exec(options.timeout)"
@@ -412,10 +411,12 @@ python = "Context.session_manager"
 
 [[row]]
 key = "ctx.model"
-go = "Context.GetModelInfo"
-rust = "Context::get_model_info"
-python = "Context.get_model_info"
-partial = "the current model's metadata from the host's model registry"
+go = "Context.Model"
+rust = "Context::model"
+python = "Context.model"
+go_partial = "the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through ModelProvider, the rest of the Model object through GetModelInfo"
+rust_partial = "the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info"
+python_partial = "the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info"
 
 [[row]]
 key = "ctx.thinkingLevel"
@@ -691,7 +692,9 @@ go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
 wire = "none"
-partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+go_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+rust_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+python_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
 
 [[row]]
 key = "ctx.ui.select(opts.timeout)"
@@ -709,7 +712,9 @@ go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
 wire = "none"
-partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+go_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+rust_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+python_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
 
 [[row]]
 key = "ctx.ui.confirm(opts.timeout)"
@@ -727,7 +732,9 @@ go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
 wire = "none"
-partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+go_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+rust_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+python_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
 
 [[row]]
 key = "ctx.ui.input(opts.timeout)"
@@ -814,9 +821,9 @@ key = "ctx.ui.custom(options.onHandle)"
 node = "RuntimeUI.custom"
 node_partial = "mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73"
 wire = "subprocess.RemoteOverlayOpenPayload.hasHandle"
-go = "-"
-rust = "-"
-python = "-"
+go = "RemoteOverlayOptions.OnHandle"
+rust = "Context::custom_component_with_handle"
+python = "_RemoteOverlayState.on_handle"
 
 [[row]]
 key = "ctx.ui.addAutocompleteProvider"

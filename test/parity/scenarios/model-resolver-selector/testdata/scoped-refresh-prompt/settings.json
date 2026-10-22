@@ -1,0 +1,8 @@
+{
+  "defaultProvider": "fixture",
+  "defaultModel": "model-a",
+  "enabledModels": ["fixture/model-a", "fixture/model-b"],
+  "retry": { "enabled": false },
+  "quietStartup": true,
+  "lastChangelogVersion": "0.83.0"
+}

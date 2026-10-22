@@ -566,6 +566,23 @@ func TestManualChangesAreNamedNotRewritten(t *testing.T) {
 	}
 }
 
+// A ModelRegistry.Find use written for the single-result signature is named with its old and new shape; the change has no mechanical rewrite.
+func TestModelRegistryFindChangeIsNamed(t *testing.T) {
+	result, _ := planSource(t, `func handler(ctx sdk.Context) error {
+	model := ctx.ModelRegistry().Find("p", "m")
+	fmt.Println(model)
+	return nil
+}
+`)
+	if result.Changed() || len(result.Remaining) != 1 {
+		t.Fatalf("result = %+v", result)
+	}
+	drift := result.Remaining[0]
+	if drift.Rule != upgrade.RuleModelRegistryFind || drift.Symbol != "ModelRegistry.Find" || drift.Rewrites || drift.New != "func(string, string) (map[string]any, error)" {
+		t.Fatalf("drift = %+v", drift)
+	}
+}
+
 // A provider object written for map[string]any credentials names each changed field with its old and new shape; the change has no mechanical rewrite.
 func TestProviderCredentialChangesAreNamed(t *testing.T) {
 	result, _ := planSource(t, `var provider = sdk.Provider{
@@ -697,5 +714,26 @@ func inDir(dir string) upgrade.FileSource {
 			path = filepath.Join(dir, path)
 		}
 		return os.ReadFile(path)
+	}
+}
+
+// A dialog's result is an any: a use that still treats it as a string or a bool fails to compile, and the plan names the dialog method with its old and new shape; the
+// change has no mechanical rewrite because the extension chooses what to do with a non-string answer.
+func TestDialogResultChangesAreNamed(t *testing.T) {
+	result, _ := planSource(t, `func handler(ctx sdk.Context) error {
+	choice, ok, err := ctx.Select("Pick", []string{"a"})
+	if err != nil || !ok {
+		return err
+	}
+	var label string = choice
+	return ctx.AppendEntry("picked", label)
+}
+`)
+	if result.Changed() || len(result.Remaining) != 1 {
+		t.Fatalf("result = %+v", result)
+	}
+	drift := result.Remaining[0]
+	if drift.Rule != upgrade.RuleDialogResults || drift.Symbol != "Context.Select" || drift.Rewrites || drift.New != "func(...) (any, bool, error)" {
+		t.Fatalf("drift = %+v", drift)
 	}
 }

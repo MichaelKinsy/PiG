@@ -310,7 +310,6 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 
 	// Pi's subscriber converts, serializes and writes before Session persistence (print-mode.ts:108-111). Listeners are the only sinks: nothing reads Events, so the Session discards them, acknowledges delivery barriers itself, and executes each event on its producer's goroutine instead of handing it to an Events consumer. A conversion or serialization failure fails the run, as upstream's throwing toJsonEvent rejects prompt(). One subscription runs per Session.
 	subscribe := func(session *coding.Session) {
-		session.DiscardEvents()
 		if opts.Mode == "json" {
 			unsubscribe := session.Subscribe(func(event agent.AgentEvent) {
 				convertMu.Lock()
@@ -358,7 +357,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 
 	// currentCommands is the command catalog of the current Session. Prompts read it at the moment they are sent.
 	var currentCommands atomic.Pointer[headlessCommandCatalog]
-	var detachModelRegistry, stopRunSignal func()
+	var detachModelRegistry, stopRunSignal, stopHostState func()
 	var publishedCommands atomic.Pointer[headlessCommandCatalog]
 	// bind wires the Session to this mode as upstream rebindSession does: extension bindings, command actions, then the event subscription. It emits session_start for the Session's own reason, which is startup for the first Session.
 	// A reload binds the same Session to a replacement runner: the Session has reloaded its resources and rebuilt its system prompt, and the event subscription stays (agent-session.ts:3575-3625).
@@ -371,12 +370,23 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if stopRunSignal != nil {
 			stopRunSignal()
 		}
-		detachModelRegistry = wireSubprocessModelRegistry(bridge, session, services)
-		stopRunSignal = watchSessionRunSignal(bridge, session)
-		bindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
+		if stopHostState != nil {
+			stopHostState()
+		}
+		detachModelRegistry = coding.BindSessionModelOperations(bridge, session, services)
+		stopRunSignal = coding.WatchSessionRunSignal(bridge, session)
+		stopHostState = coding.WatchHostState(bridge, session)
+		coding.BindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
+		// writing is set once session_start is dispatched; a reload binds the same Session, whose writer stays subscribed.
+		var writing atomic.Bool
+		writing.Store(reloading)
 		var emitEntryAppended func(RPCEntryAppendedEvent)
 		if opts.Mode == "json" {
-			emitEntryAppended = func(event RPCEntryAppendedEvent) { writeJSONLine(jsonOut, event) }
+			emitEntryAppended = func(event RPCEntryAppendedEvent) {
+				if writing.Load() {
+					writeJSONLine(jsonOut, event)
+				}
+			}
 		}
 		bindSessionAppendEntry(bridge, current, emitEntryAppended)
 		runner := session.ExtensionRunner()
@@ -389,7 +399,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			runner.BindCommandActions(rt.ExtensionCommandActions(session))
 		}
 		flagValues := services.ExtensionFlagValues()
-		bindSessionExtensionActions(runner, bridge, current, extension.ContextActions{
+		coding.BindSessionExtensionActions(runner, bridge, current, extension.ContextActions{
 			ModelRegistry: services.Registry(),
 			// upstream: agent-session.ts:3440 isProjectTrusted reads the Session's settings manager.
 			IsProjectTrusted: services.SettingsManager().IsProjectTrusted,
@@ -422,7 +432,8 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if !reloading {
 			// The system prompt names the docs bundle, and a tool call is how the model reads it.
 			session.Agent().AddBeforeToolCallHook(writeDocsBundleBeforeToolCall)
-			subscribe(session)
+			// Nothing reads Events; the JSON writer subscribes after session_start below.
+			session.DiscardEvents()
 		}
 		// Drive the extension session lifecycle so extensions that initialize on
 		// session_start (and clean up on session_shutdown) run in print mode too,
@@ -430,6 +441,11 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if err := session.EmitSessionStartTransition(event.Reason, event.PreviousSessionFile); err != nil {
 			return err
 		}
+		// print-mode.ts:76-108 subscribes the writer after `await session.bindExtensions()`, so what a session_start handler emitted (events, entry_appended) is not written. A reload keeps the writer subscribed.
+		if !reloading {
+			subscribe(session)
+		}
+		writing.Store(true)
 		commands.promptTemplates = session.PromptTemplates()
 		commands.skills = session.ResourceLoader().GetSkills().Skills
 		publishedCommands.Store(new(commands))
@@ -457,6 +473,9 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		}
 		if stopRunSignal != nil {
 			stopRunSignal()
+		}
+		if stopHostState != nil {
+			stopHostState()
 		}
 	}()
 
@@ -560,15 +579,18 @@ func sendPrintPrompt(ctx context.Context, sess *coding.Session, commands headles
 	if err != nil || handled {
 		return handled, err
 	}
-	// An absent startup selection becomes Pi's Agent DEFAULT_MODEL. Its unknown provider fails credential preflight, not the lower-level SendContent model guard; commands and handled input above do not need credentials.
+	// Skill commands and prompt templates expand before the model and auth checks (agent-session.ts:2095-2100, then 2118-2136), so an unreadable /skill: reports its skill_expansion error ahead of a missing-auth error.
+	text = commands.expandPrompt(text)
+	// An absent startup selection becomes Pi's Agent DEFAULT_MODEL. Its unknown provider fails credential preflight, not the lower-level run-start model guard; commands and handled input above do not need credentials.
 	if model := sess.Model(); model == nil || model.Provider == nil && model.ProviderMeta.ProviderID == "unknown" {
 		return false, errors.New(codingagent.FormatNoAPIKeyFoundMessage("unknown"))
 	}
-	// AgentSession.prompt (agent-session.ts:2033-2052) rejects a prompt whose provider has no usable auth before it reaches the provider.
+	// AgentSession.prompt (agent-session.ts:2118-2136) rejects a prompt whose provider has no usable auth before it reaches the provider.
 	if err := sess.ValidatePromptModelAuth(ctx); err != nil {
 		return false, err
 	}
-	_, err = sess.SendContent(ctx, coding.BuildUserContent(commands.expandPrompt(text), images))
+	// The command check above is the only one: AgentSession.prompt does not dispatch a command on text an input handler or template produced (agent-session.ts:2067-2074, 2138).
+	_, err = sess.SendContentWithPreflight(ctx, coding.BuildUserContent(text, images), nil)
 	return false, err
 }
 

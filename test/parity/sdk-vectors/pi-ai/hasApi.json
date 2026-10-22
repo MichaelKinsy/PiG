@@ -1,0 +1,257 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-ai@1.3.0",
+ "module": "pi-ai",
+ "export": "hasApi",
+ "cases": [
+  {
+   "name": "case 0001",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x"
+    },
+    "x"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x"
+    },
+    "y"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x"
+    },
+    "z"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x",
+     "type": "chat"
+    },
+    "x"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x",
+     "type": "chat"
+    },
+    "y"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x",
+     "type": "chat"
+    },
+    "z"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x",
+     "type": "image"
+    },
+    "x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0008",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x",
+     "type": "image"
+    },
+    "y"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0009",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "x",
+     "type": "image"
+    },
+    "z"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0010",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "y",
+     "type": "classifier"
+    },
+    "x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0011",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "y",
+     "type": "classifier"
+    },
+    "y"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0012",
+   "args": [
+    {
+     "id": "a",
+     "provider": "p",
+     "api": "y",
+     "type": "classifier"
+    },
+    "z"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0013",
+   "args": [
+    {
+     "id": "b",
+     "provider": "p",
+     "api": "x"
+    },
+    "x"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0014",
+   "args": [
+    {
+     "id": "b",
+     "provider": "p",
+     "api": "x"
+    },
+    "y"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0015",
+   "args": [
+    {
+     "id": "b",
+     "provider": "p",
+     "api": "x"
+    },
+    "z"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0016",
+   "args": [
+    {
+     "id": "a",
+     "provider": "q",
+     "api": "x"
+    },
+    "x"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0017",
+   "args": [
+    {
+     "id": "a",
+     "provider": "q",
+     "api": "x"
+    },
+    "y"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0018",
+   "args": [
+    {
+     "id": "a",
+     "provider": "q",
+     "api": "x"
+    },
+    "z"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0019",
+   "args": [
+    {},
+    "x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0020",
+   "args": [
+    {},
+    "y"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0021",
+   "args": [
+    {},
+    "z"
+   ],
+   "result": false
+  }
+ ]
+}

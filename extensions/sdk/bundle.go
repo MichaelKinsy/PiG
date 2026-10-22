@@ -3,7 +3,6 @@
 package sdk
 
 import (
-	"embed"
 	"io/fs"
 	"slices"
 	"strings"
@@ -23,14 +22,15 @@ import (
 // bundle.go is intentionally excluded from the embed set: the staged copy is a
 // minimal, dependency-free `package sdk` that does not carry the embed itself.
 //
-// The pattern embeds every non-test .go file, the module declaration, and its
-// license rather than naming source files individually, so a new SDK source file
-// is staged without a second edit here. A named list silently shipped extensions
-// a partial SDK when session_mirror.go was added: the file compiled into pig, was
-// never staged, and every extension kept building against an SDK missing it.
+// bundle_embed.go lists every non-test .go file, the module declaration, and
+// the license: go:embed cannot leave test files out of a pattern, so the list is
+// generated (go generate) rather than written as a glob. A named list silently
+// shipped extensions a partial SDK when session_mirror.go was added: the file
+// compiled into pig, was never staged, and every extension kept building against
+// an SDK missing it. TestBundledFilesCoversModule fails when the list and the
+// source tree disagree, and its message names the command that regenerates it.
 //
-//go:embed LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/kitwire/*.go upgrade/*.go
-var Source embed.FS
+//go:generate go run ../../automation/gen/embed-bundle.go -pkg sdk -out bundle_embed.go -skip _test.go -skip bundle.go -skip bundle_embed.go LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/jsloop/*.go internal/kitwire/*.go tui/*.go tui/internal/*/*.go upgrade/*.go
 
 // BundledFiles lists the embedded filenames in a stable order. It is the
 // canonical set a stager must write to produce a compilable SDK module.

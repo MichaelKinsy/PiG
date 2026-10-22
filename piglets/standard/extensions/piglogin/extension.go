@@ -49,10 +49,11 @@ func selectSpriteInteractively(ctx sdk.Context) error {
 	for i, variant := range Variants {
 		options[i] = fmt.Sprintf("%s: %s", variant.Name, variant.Tagline)
 	}
-	selected, ok, err := ctx.Select("Choose a PiG Standard sprite", options)
+	answer, ok, err := ctx.Select("Choose a PiG Standard sprite", options)
 	if err != nil || !ok {
 		return err
 	}
+	selected, _ := answer.(string)
 	for i, option := range options {
 		if selected == option {
 			return activateVariant(ctx, Variants[i].ID)

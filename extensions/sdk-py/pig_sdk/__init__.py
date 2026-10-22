@@ -33,10 +33,15 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, NotRequired, Protocol, TypeAlias, TypedDict
 from . import editor_component as _editor_component
-from .editor_component import EditorBase as EditorBase, EditorComponent as EditorComponent, EditorFactory as EditorFactory
+from .editor_component import EditorBase as EditorBase, EditorComponent as EditorComponent, EditorFactory as EditorFactory, EditorStatus as EditorStatus
 from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
-from .session_manager import SessionManager, SetupSessionManager
-from .host_info import HostInfoUnavailable as HostInfoUnavailable, get_agent_dir as get_agent_dir, get_config_dir_name as get_config_dir_name, get_version as get_version
+from .session_manager import ReadonlySessionManager, SessionManager, SetupSessionManager
+from .settings_manager import SettingsManager
+from .resource_loader import DefaultResourceLoader
+from .model_runtime import ModelRuntime
+from .package_manager import DefaultPackageManager
+from .project_trust import ProjectTrustStore, has_trust_requiring_project_resources
+from .host_info import HostInfoUnavailable as HostInfoUnavailable, ShellConfig as ShellConfig, get_agent_dir as get_agent_dir, get_config_dir_name as get_config_dir_name, get_package_dir as get_package_dir, get_shell_config as get_shell_config, get_version as get_version
 from .file_mutation_queue import with_file_mutation_queue as with_file_mutation_queue
 from .language import get_language_from_path as get_language_from_path
 from .compaction_cutpoint import CutPointResult as CutPointResult, find_cut_point as find_cut_point, find_turn_start_index as find_turn_start_index
@@ -48,18 +53,58 @@ from .branch_summary import (
     collect_entries_for_branch_summary as collect_entries_for_branch_summary,
     prepare_branch_entries as prepare_branch_entries,
 )
+from .child_session import AgentSession as AgentSession, CreateAgentSessionOptions as CreateAgentSessionOptions, ResourceOptions as ResourceOptions, _ChildSessions, create_agent_session as _create_agent_session
 from .image_dimension_note import ResizedImage as ResizedImage, format_dimension_note as format_dimension_note
 from .llm_convert import convert_to_llm as convert_to_llm
-from .serialize_conversation import serialize_conversation as serialize_conversation
-from .host_helpers import ParsedFrontmatter as ParsedFrontmatter, parse_date as parse_date, parse_frontmatter as parse_frontmatter, set_host_helpers as set_host_helpers, strip_frontmatter as strip_frontmatter
+from .serialize_conversation import _ordered_keys, serialize_conversation as serialize_conversation
+from .session_entry_messages import session_entry_to_context_messages as session_entry_to_context_messages
+from .stored_credential import read_stored_credential as read_stored_credential
+from .pi_ai_helpers import (
+    DEFAULT_MAX_AGENT_RETRY_DELAY_MS as DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
+    calculate_cost as calculate_cost,
+    clamp_thinking_level as clamp_thinking_level,
+    collapse_system_messages as collapse_system_messages,
+    content_text as content_text,
+    create_initial_system_message as create_initial_system_message,
+    env_api_key_auth as env_api_key_auth,
+    get_model_type as get_model_type,
+    has_api as has_api,
+    is_model_type as is_model_type,
+    models_are_equal as models_are_equal,
+    get_current_system_message as get_current_system_message,
+    get_current_system_prompt as get_current_system_prompt,
+    get_current_tools as get_current_tools,
+    get_declared_tools as get_declared_tools,
+    get_initial_system_message as get_initial_system_message,
+    get_supported_thinking_levels as get_supported_thinking_levels,
+    get_system_message_text as get_system_message_text,
+    has_non_additive_tool_changes as has_non_additive_tool_changes,
+    is_context_overflow as is_context_overflow,
+    is_recoverable_length as is_recoverable_length,
+    is_retryable_assistant_error as is_retryable_assistant_error,
+    normalize_context as normalize_context,
+    render_system_message_update as render_system_message_update,
+    resolve_transcript as resolve_transcript,
+    resolve_transcript_tools as resolve_transcript_tools,
+    retry_delay_ms as retry_delay_ms,
+    string_enum as string_enum,
+    without_initial_system_message as without_initial_system_message,
+)
+from .host_helpers import ConvertedImage as ConvertedImage, DiffString as DiffString, ImageResizeOptions as ImageResizeOptions, ParsedFrontmatter as ParsedFrontmatter, convert_to_png as convert_to_png, copy_to_clipboard as copy_to_clipboard, generate_diff_string as generate_diff_string, generate_unified_patch as generate_unified_patch, resize_image as resize_image, parse_date as parse_date, parse_frontmatter as parse_frontmatter, set_host_helpers as set_host_helpers, strip_frontmatter as strip_frontmatter
 from .compaction_usage import DEFAULT_COMPACTION_SETTINGS as DEFAULT_COMPACTION_SETTINGS, CompactionSettings as CompactionSettings, calculate_context_tokens as calculate_context_tokens, get_last_assistant_usage as get_last_assistant_usage, should_compact as should_compact
 from .session_skill_helpers import CURRENT_SESSION_VERSION as CURRENT_SESSION_VERSION, VIRTUAL_MODEL_STATE_ENTRY as VIRTUAL_MODEL_STATE_ENTRY, ParsedSkillBlock as ParsedSkillBlock, format_skills_for_prompt as format_skills_for_prompt, get_latest_compaction_entry as get_latest_compaction_entry, parse_skill_block as parse_skill_block
+from .theme_helpers import EditorTheme as EditorTheme, MarkdownTheme as MarkdownTheme, SelectListTheme as SelectListTheme, SettingsListTheme as SettingsListTheme, get_editor_theme as get_editor_theme, get_markdown_theme as get_markdown_theme, get_select_list_theme as get_select_list_theme, get_settings_list_theme as get_settings_list_theme, highlight_code as highlight_code, init_theme as init_theme
+from .visual_truncate import VisualTruncateResult as VisualTruncateResult, truncate_to_visual_lines as truncate_to_visual_lines
+from .keybinding_hints import format_key_text as format_key_text, key_display_text as key_display_text, key_hint as key_hint, key_text as key_text, raw_key_hint as raw_key_hint
 from .truncate import DEFAULT_MAX_BYTES as DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES as DEFAULT_MAX_LINES, GREP_MAX_LINE_LENGTH as GREP_MAX_LINE_LENGTH, TruncationResult as TruncationResult, format_size as format_size, truncate_head as truncate_head, truncate_line as truncate_line, truncate_tail as truncate_tail
 from ._color import color_ansi, parse_color, style_text_with_ansi
 from . import kit as kit
+from . import _tui_state
+from . import tui as tui  # loaded here with every other module: tests/test_staged_directory_independence.py
 from .kit import ViewComponent as ViewComponent
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
-from .user_bash import BashExecOptions as BashExecOptions, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
+from .state_feed import StateFeed
+from .user_bash import BashExecOptions as BashExecOptions, BashOperations as BashOperations, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
 from .provider import (
     Provider, ProviderSignal,
     ProviderAuth as ProviderAuth, APIKeyAuth as APIKeyAuth, OAuthAuth as OAuthAuth,
@@ -1387,6 +1432,22 @@ class ModelEventStream:
         self._result: dict[str, Any] | None = None
         self._started = threading.Event()
         self._start_error = None
+        # A stream made by create_assistant_message_event_stream times its response as pi-ai's AssistantMessageEventStream does (see _time_message); one the SDK makes for a
+        # host operation does not, because the host already timed that response.
+        self._timed = False
+        self._started_at = 0
+        self._started_monotonic = 0.0
+
+    def _time_message(self, message: Any) -> None:
+        """AssistantMessageEventStream's #time (packages/ai/src/utils/event-stream.ts): the final message gets durationMs, the milliseconds since the stream was created on a
+        monotonic clock, unless the message already has one or its timestamp predates the stream (a response that started elsewhere, such as a deferred result fetched later,
+        stays untimed). The caller holds the condition."""
+        if not self._timed or self._terminal or not isinstance(message, dict) or "durationMs" in message:
+            return
+        timestamp = message.get("timestamp")
+        if isinstance(timestamp, (int, float)) and not isinstance(timestamp, bool) and timestamp < self._started_at:
+            return
+        message["durationMs"] = max(0, math.floor((time.monotonic() - self._started_monotonic) * 1000 + 0.5))
 
     def mark_started(self, error=None):
         with self._condition:
@@ -1400,6 +1461,7 @@ class ModelEventStream:
                 return
             self._events.append(event)
             if event.get("type") in {"done", "error"}:
+                self._time_message(event.get("message") if event.get("type") == "done" else event.get("error"))
                 self._terminal = True
                 self._result = event.get("message") if event.get("type") == "done" else event.get("error")
             self._condition.notify_all()
@@ -1408,6 +1470,7 @@ class ModelEventStream:
         with self._condition:
             if self._terminal:
                 return
+            self._time_message(result)
             self._terminal = True
             self._result = result
             self._condition.notify_all()
@@ -1449,6 +1512,16 @@ class ModelEventStream:
             while not self._terminal:
                 self._condition.wait()
             return self._result
+
+
+def create_assistant_message_event_stream() -> ModelEventStream:
+    """pi-ai's createAssistantMessageEventStream: a provider-owned event stream of one assistant response. It times the response as Pi's does: the final message (the done event's
+    message, the error event's error, or the result passed to ``end``) gets durationMs, measured from this call, unless it already has one or its timestamp predates the stream."""
+    stream = ModelEventStream()
+    stream._timed = True
+    stream._started_at = int(time.time() * 1000)
+    stream._started_monotonic = time.monotonic()
+    return stream
 
 
 def _model_stream_error_event(error: Exception, model: dict[str, Any]) -> dict[str, Any]:
@@ -1554,11 +1627,17 @@ class ModelRegistry:
         """Remove a virtual model (``unregisterVirtualModel``)."""
         self._context.unregister_virtual_model(provider, model_id)
 
+    def _provider_state(self, model: dict[str, Any]) -> dict[str, Any]:
+        """The registry state of the model's provider. A model with no string provider has no provider state: Pi's ``model.provider`` lookup in the configured and OAuth sets misses (model-runtime.ts:543-553)."""
+        providers = self._state()["providers"]
+        provider = model.get("provider")
+        return providers.get(provider, {}) if isinstance(provider, str) else {}
+
     def has_configured_auth(self, model: dict[str, Any]) -> bool:
-        return self._state()["providers"].get(model["provider"], {}).get("configured", False)
+        return self._provider_state(model).get("configured", False)
 
     def is_using_oauth(self, model: dict[str, Any]) -> bool:
-        return self._state()["providers"].get(model["provider"], {}).get("usingOAuth", False)
+        return self._provider_state(model).get("usingOAuth", False)
 
     def get_provider_auth_status(self, provider: str) -> dict[str, Any]:
         return self._state()["providers"].get(provider, {}).get("authStatus", {"configured": False})
@@ -1642,7 +1721,7 @@ class ModelRegistry:
     def stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> ModelEventStream:
         return self._stream(model, request, options, False)
 
-    def _stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None, simple: bool) -> ModelEventStream:
+    def _stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None, simple: bool, runtime: str | None = None) -> ModelEventStream:
         stream = ModelEventStream()
         extension = self._context.extension
         with extension._model_stream_lock:
@@ -1664,6 +1743,8 @@ class ModelRegistry:
         def run() -> None:
             try:
                 call = {"streamId": stream_id, "model": model, "request": payload, "simple": simple}
+                if runtime:
+                    call["runtime"] = runtime
                 call.update({name: True for name in callbacks})
                 self._context._call("modelStream", call)
             except Exception as exc:  # noqa: BLE001 - transport failure becomes terminal model error
@@ -1733,10 +1814,12 @@ class Theme:
 
     name: str | None
     source_path: str | None
+    source_info: dict[str, Any] | None
 
     def __init__(self) -> None:
         self.name = None
         self.source_path = None
+        self.source_info = None
         self._foregrounds: dict[str, str] = {}
         self._backgrounds: dict[str, str] = {}
         self._modifiers = True
@@ -1755,6 +1838,8 @@ class Theme:
         self.name = name if isinstance(name, str) else None
         source_path = palette.get("sourcePath")
         self.source_path = source_path if isinstance(source_path, str) and source_path != "" else None
+        source_info = palette.get("sourceInfo")
+        self.source_info = dict(source_info) if isinstance(source_info, dict) else None
         self._mode = "256color" if palette.get("mode") == "256color" else "truecolor"
         appearance = palette.get("appearance")
         self._appearance = appearance if appearance in ("light", "dark") else None
@@ -1942,6 +2027,22 @@ class _NestedCallEvent(threading.Event):
         self._nested.finish()
 
 
+from .builtin_tool import (  # noqa: E402 - after the classes it builds on
+    BashToolOptions as BashToolOptions, BuiltinTool as BuiltinTool, BuiltinToolDefinition as BuiltinToolDefinition, EditOperations as EditOperations, EditToolOptions as EditToolOptions,
+    FindOperations as FindOperations, FindToolOptions as FindToolOptions, GrepOperations as GrepOperations, GrepToolOptions as GrepToolOptions, LsOperations as LsOperations,
+    LsStat as LsStat, LsToolOptions as LsToolOptions, ModelImageResizeOptions as ModelImageResizeOptions, PowerShellToolOptions as PowerShellToolOptions,
+    ReadOperations as ReadOperations, ReadToolOptions as ReadToolOptions, ToolsOptions as ToolsOptions, WriteOperations as WriteOperations, WriteToolOptions as WriteToolOptions,
+    create_bash_tool as create_bash_tool, create_bash_tool_definition as create_bash_tool_definition, create_coding_tools as create_coding_tools,
+    create_edit_tool as create_edit_tool, create_edit_tool_definition as create_edit_tool_definition, create_find_tool as create_find_tool,
+    create_find_tool_definition as create_find_tool_definition, create_grep_tool as create_grep_tool, create_grep_tool_definition as create_grep_tool_definition,
+    create_local_bash_operations as create_local_bash_operations, create_local_powershell_operations as create_local_powershell_operations,
+    create_ls_tool as create_ls_tool, create_ls_tool_definition as create_ls_tool_definition, create_powershell_tool as create_powershell_tool,
+    create_powershell_tool_definition as create_powershell_tool_definition, create_read_only_tools as create_read_only_tools, create_read_tool as create_read_tool,
+    create_read_tool_definition as create_read_tool_definition, create_write_tool as create_write_tool, create_write_tool_definition as create_write_tool_definition,
+    dispatch_callback as _dispatch_builtin_callback, dispatch_exec_data as _dispatch_builtin_exec_data,
+)
+
+
 # pig additive (D19): normal completion retires the request parent while retained Contexts keep the same socket generation.
 @dataclass
 class _RequestParent:
@@ -1970,9 +2071,12 @@ class _SurfaceRenderer:
     width_change. Only the newest width is rendered when several arrive together.
     """
 
-    def __init__(self, method: str, render: "Callable[[int], list[str]]") -> None:
+    def __init__(self, method: str, render: "Callable[[int], list[str]]", key: str | None = None, options: dict[str, Any] | None = None) -> None:
         self.method = method
         self.render = render
+        # The widget a renderer of ui.setWidget lays out, and its placement options.
+        self.key = key
+        self.options = options
         # Serializes a render with its push and orders a push against stop(), so
         # a superseded renderer never overwrites the rows that replaced it.
         self._lock = threading.Lock()
@@ -1982,6 +2086,8 @@ class _SurfaceRenderer:
         self._refresh_running = False
 
     def _kind(self) -> str:
+        if self.method == "ui.setWidget":
+            return "widget"
         return "header" if self.method == "ui.setHeader" else "footer"
 
     def push(self, ctx: "Context") -> None:
@@ -1997,7 +2103,12 @@ class _SurfaceRenderer:
             except Exception as error:  # a failing component must not end the extension
                 ctx.notify(f"{self._kind()} render failed: {error}", "error")
                 return
-            ctx._call(self.method, _surface_args(lines, width))
+            args = _surface_args(lines, width)
+            if self.method == "ui.setWidget":
+                args["key"] = self.key
+                if self.options:
+                    args["options"] = self.options
+            ctx._call(self.method, args)
 
     def stop(self) -> None:
         with self._lock:
@@ -2190,6 +2301,55 @@ class _ToolStart:
             slot.run(send)
 
 
+class _RequestStart:
+    """One request's place in the order the handlers start (``_starts_in_arrival_order``). ``begin`` returns when every earlier request began its handler or ended without one."""
+
+    def __init__(self, previous: threading.Event | None) -> None:
+        self._previous = previous
+        self.done = threading.Event()
+
+    def begin(self) -> None:
+        if self._previous is not None:
+            self._previous.wait()
+        self.done.set()
+
+    def end(self) -> None:
+        """Hand the place on when the request's thread ends, also for a request that failed before it reached its handler. Like ``begin`` it waits for the earlier requests first, so a request without a handler cannot let a later handler start before an earlier one. Idempotent."""
+        self.begin()
+
+    def release(self) -> None:
+        """Hand the place on at once, for a request whose thread never started. The reader calls it, so it must not wait for the earlier requests. Idempotent."""
+        self.done.set()
+
+
+def _starts_in_arrival_order(request: dict[str, Any] | None) -> bool:
+    """Whether a request runs a handler whose start Pi orders by call order: a tool_call, an event or a command. Other requests (renders, provider streams, completions) hold no place, so a long one never holds a handler back."""
+    return (request or {}).get("method") in ("tool_call", "event", "command")
+
+
+class _RequestStartOrder:
+    """Starts the handlers of the requests that run extension code in the order the requests arrive (``_starts_in_arrival_order``).
+
+    Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837); concurrent emits, such as the tool_result hooks of that batch, start their handlers in call order too (runner.ts:1096-1125). The host writes the requests in that order, but each request runs on its own thread, and the scheduler is free to run a later thread first.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._tail: threading.Event | None = None
+
+    def reserve(self) -> _RequestStart:
+        """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
+        with self._lock:
+            start = _RequestStart(self._tail)
+            self._tail = start.done
+            return start
+
+
+@dataclass
+class _ReplacementState:
+    """The values a withSession context answers locally, from the replacement Session's ready payload."""
+
+
 class _ToolStartOrder:
     """Orders the calls of one tool batch the way Pi's single thread does.
 
@@ -2215,7 +2375,7 @@ class _ToolStartOrder:
         self._batch = batch
         self._live = 0
 
-    def reserve(self) -> _ToolStart:
+    def reserve(self) -> _RequestStart:
         """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
         with self._lock:
             start = _ToolStart(self._tail, self)
@@ -2255,6 +2415,19 @@ class _ToolBatches:
                     del self._orders[batch]
 
 
+def _model_identity(model: Any) -> tuple[str, str]:
+    """The id (the name when the model has no id) and the provider id of a state snapshot's model, ("", "") for no model: Pi's ``ctx.model.id`` and ``ctx.model.provider``. The Go and Rust SDKs read the same members."""
+    if not isinstance(model, dict):
+        return "", ""
+    identity = model.get("id")
+    if not (isinstance(identity, str) and identity):
+        identity = model.get("name")
+    provider = model.get("provider")
+    if isinstance(provider, dict):
+        provider = provider.get("id")
+    return (identity if isinstance(identity, str) else ""), (provider if isinstance(provider, str) else "")
+
+
 @dataclass
 class _ReplacementState:
     """The values a withSession context answers locally, from the replacement Session's ready payload."""
@@ -2263,6 +2436,8 @@ class _ReplacementState:
     mode: str = ""
     has_ui: bool = False
     model: str = ""
+    model_provider: str = ""
+    session_name: str = ""
 
 
 class _WithSessionEntry:
@@ -2313,12 +2488,15 @@ class _WithSessionRegistry:
             raise RuntimeError(f"unknown withSession callback {handle}")
         ready = args.get("ready") or {}
         state = ready.get("state") or {}
-        model = state.get("model") if isinstance(state.get("model"), dict) else {}
+        model, model_provider = _model_identity(state.get("model"))
+        session = state.get("session") if isinstance(state.get("session"), dict) else {}
         replacement = _ReplacementState(
             cwd=str(ready.get("cwd") or ""),
             mode=str(ready.get("mode") or ""),
             has_ui=state.get("hasUI") is True,
-            model=str(model.get("id") or model.get("name") or ""),
+            model=model,
+            model_provider=model_provider,
+            session_name=str(session.get("sessionName") or ""),
         )
         replaced = ReplacedSessionContext(**{item.name: getattr(ctx, item.name) for item in dataclasses.fields(Context)})
         replaced._replacement = replacement
@@ -2474,14 +2652,21 @@ class Context:
     _tool_context: bool = False
     # A tool_call request: its place in the order the handlers start.
     _tool_start: "_ToolStart | None" = None
+    # A tool_call, event or command request: its place in the order the handlers start.
+    _request_start: "_RequestStart | None" = None
+    # A tool_call request: the call's position in its assistant message's batch, and the JSON text of its arguments as the host sent it.
+    _tool_index: int | None = None
+    _tool_args: Any = None
     # A withSession context: the replacement Session's locally answered values.
     _replacement: "_ReplacementState | None" = None
     # A before_agent_start request: the prompt its shared options render now (runner.ts:1430-1433).
     _system_prompt: _SystemPrompt | None = None
+    # A context made for a listener of this extension that the host dispatched while the factory runs (host_helpers.loading_call): the extension has not registered yet, so its host calls use the connection the factory opened, and only pi.events calls and the parse helpers are answered.
+    _loading: bool = False
 
     @property
-    def session_manager(self) -> "SessionManager":
-        return SessionManager(self)
+    def session_manager(self) -> "ReadonlySessionManager":
+        return ReadonlySessionManager(self)
 
     @property
     def model_registry(self) -> ModelRegistry:
@@ -2536,6 +2721,13 @@ class Context:
         self.extension._request_state(self.request_id, state, reason, self._parent)
 
     def _call(self, method: str, args: Any = None) -> dict[str, Any]:
+        if self._loading and not self.extension._bus._live:
+            # The host answers only the bus before the extension registers, and a call it does not answer would wait for ever.
+            if not method.startswith("events.") and method not in ("frontmatter.parse", "date.parse"):
+                raise RuntimeError(f"{method}: the extension has not registered with the host yet")
+            from . import host_helpers
+
+            return {"result": host_helpers.loading_call(method, args, self.extension)}
         # An RPC UI effect is no suspension of the handler, as the Node runtime sends it (_RPC_SYNCHRONOUS_UI_EFFECTS).
         reports = bool(self.request_id) and not (method in _RPC_SYNCHRONOUS_UI_EFFECTS and self._rpc_mode())
         if reports and method not in _DIALOG_METHODS:
@@ -2567,6 +2759,13 @@ class Context:
 
     def call_host(self, method: str, args: Any = None) -> Any:
         return self._call(method, args).get("result")
+
+    def create_agent_session(self, options: CreateAgentSessionOptions | None = None) -> AgentSession:
+        """Pi's ``createAgentSession``: create a child agent session in the host and return once it is ready.
+
+        The session belongs to this extension's connection and is disposed with it; see :mod:`pig_sdk.child_session` for the async contract.
+        """
+        return _create_agent_session(self.extension, self._call, options)
 
     # Upstream 0.99.1 extension API ------------------------------------------
 
@@ -2639,7 +2838,12 @@ class Context:
         self._call("ui.notify", {"message": message, "level": level})
 
     def set_status(self, key: str, text: str) -> None:
+        """An empty text is a text, as in Pi (RPC mode writes it); :meth:`clear_status` removes the entry, as Pi's ``setStatus(key, undefined)`` does."""
         self._call("ui.setStatus", {"key": key, "text": text})
+
+    def clear_status(self, key: str) -> None:
+        """Remove the status entry for ``key``: Pi's ``setStatus(key, undefined)``."""
+        self._call("ui.setStatus", {"key": key})
 
     def set_working_message(self, message: str | None = None) -> None:
         """Set the working label. ``None`` (or no argument) restores the default label, as Pi's ``setWorkingMessage()`` does; an empty string is a
@@ -2671,28 +2875,46 @@ class Context:
             args["opts"] = {"timeout": timeout}
         return args
 
-    def select(self, title: str, options: list[str], *, timeout: float | None = None) -> tuple[str, bool]:
+    # select, input and editor return Pi's result: the JSON value the user's
+    # client answered with (a str for every client that follows Pi's protocol,
+    # and in RPC mode whatever JSON the client sent: number, bool, None, dict or
+    # list) and whether Pi's result was defined. ok is False for undefined
+    # (cancelled, timed out, an answer without a value), with None as the
+    # value; a JSON null answer is (None, True). confirm returns the client's
+    # ``confirmed`` the same way, False when cancelled or unanswered.
+
+    @staticmethod
+    def _dialog_value(result: dict[str, Any], member: str) -> tuple[Any, bool]:
+        if result.get("ok") is not True:
+            return None, False
+        return result.get(member), True
+
+    def select(self, title: str, options: list[str], *, timeout: float | None = None) -> tuple[Any, bool]:
         self._block_for_user()
         args = self._dialog_args({"title": title, "options": options}, timeout)
-        result = self._call("ui.select", args).get("result") or {}
-        return str(result.get("selected") or ""), bool(result.get("ok"))
+        return self._dialog_value(self._call("ui.select", args).get("result") or {}, "selected")
 
-    def confirm(self, title: str, message: str, *, timeout: float | None = None) -> bool:
+    def confirm(self, title: str, message: str, *, timeout: float | None = None) -> Any:
         self._block_for_user()
         args = self._dialog_args({"title": title, "message": message}, timeout)
         result = self._call("ui.confirm", args).get("result") or {}
-        return bool(result.get("confirmed"))
+        return result.get("confirmed", False)
 
-    def input(self, title: str, placeholder: str = "", *, timeout: float | None = None) -> tuple[str, bool]:
+    def input(self, title: str, placeholder: str | None = None, *, timeout: float | None = None) -> tuple[Any, bool]:
+        """``placeholder=None`` is Pi's omitted placeholder (RPC mode writes no placeholder member); an empty string is a placeholder (``placeholder: ""``)."""
         self._block_for_user()
-        args = self._dialog_args({"title": title, "placeholder": placeholder}, timeout)
-        result = self._call("ui.input", args).get("result") or {}
-        return str(result.get("text") or ""), bool(result.get("ok"))
+        args: dict[str, Any] = {"title": title}
+        if placeholder is not None:
+            args["placeholder"] = placeholder
+        return self._dialog_value(self._call("ui.input", self._dialog_args(args, timeout)).get("result") or {}, "text")
 
-    def editor(self, title: str, prefill: str = "") -> tuple[str, bool]:
+    def editor(self, title: str, prefill: str | None = None) -> tuple[Any, bool]:
+        """``prefill=None`` is Pi's omitted prefill (RPC mode writes no prefill member); an empty string is a prefill (``prefill: ""``)."""
         self._block_for_user()
-        result = self._call("ui.editor", {"title": title, "prefill": prefill}).get("result") or {}
-        return str(result.get("text") or ""), bool(result.get("ok"))
+        args: dict[str, Any] = {"title": title}
+        if prefill is not None:
+            args["prefill"] = prefill
+        return self._dialog_value(self._call("ui.editor", args).get("result") or {}, "text")
 
     # Message injection ------------------------------------------------------
 
@@ -2750,18 +2972,34 @@ class Context:
         if message is not None:
             raise RuntimeError(message)
 
+    def _current_model(self) -> tuple[str, str]:
+        """The model's id and provider id. A replacement context asks the host, since this process replicates only the requesting Session's model."""
+        if self._replacement is not None:
+            try:
+                return _model_identity(self._call("getModelInfo").get("result"))
+            except HostCallError:
+                return self._replacement.model, self._replacement.model_provider
+        with self.extension._state_lock:
+            return self.extension._model, self.extension._model_provider
+
     @property
     def model(self) -> str:
+        """The active model's id: Pi's ``ctx.model.id``, the identity every SDK reports (Go ``Model()`` and Rust ``model()`` return the same id). ``""`` while the Session has no model."""
         self._assert_active()
-        if self._replacement is not None:
-            # This process replicates only the requesting Session's model.
-            try:
-                info = self._call("getModelInfo").get("result") or {}
-            except HostCallError:
-                return self._replacement.model
-            return str(info.get("id") or info.get("name") or "") if isinstance(info, dict) else ""
-        with self.extension._state_lock:
-            return self.extension._model
+        return self._current_model()[0]
+
+    @property
+    def model_provider(self) -> str:
+        """The active model's provider id (Pi's ``ctx.model.provider``), ``""`` while the Session has no model."""
+        self._assert_active()
+        return self._current_model()[1]
+
+    @property
+    def model_qualified(self) -> str:
+        """The ``provider/id`` string ``set_model`` takes; just the id when the provider is unknown."""
+        self._assert_active()
+        identity, provider = self._current_model()
+        return f"{provider}/{identity}" if provider else identity
 
     @property
     def cwd(self) -> str:
@@ -2783,6 +3021,13 @@ class Context:
 
     @property
     def session_name(self) -> str:
+        """The session's name, ``""`` while it has none: the replicated value behind Pi's ``ctx.sessionManager.getSessionName()``. State updates keep it current and ``set_session_name`` is visible to the next read."""
+        self._assert_active()
+        if self._replacement is not None:
+            try:
+                return self.get_session_name() or ""
+            except HostCallError:
+                return self._replacement.session_name
         with self.extension._state_lock:
             return self.extension._session_name
 
@@ -2853,6 +3098,34 @@ class Context:
         from . import host_helpers
 
         return host_helpers._decode_date(self._call("date.parse", {"text": text}).get("result") or {})
+
+    def generate_diff_string(self, old_content: str, new_content: str, context_lines: "int | None" = None) -> "DiffString":
+        """Pi's generateDiffString over this handler's own connection; see :func:`pig_sdk.generate_diff_string`."""
+        from . import host_helpers
+
+        return host_helpers._decode_diff_string(self._call("diff.string", host_helpers._diff_args(old_content, new_content, context_lines)).get("result") or {})
+
+    def generate_unified_patch(self, path: str, old_content: str, new_content: str, context_lines: "int | None" = None) -> str:
+        """Pi's generateUnifiedPatch over this handler's own connection; see :func:`pig_sdk.generate_unified_patch`."""
+        from . import host_helpers
+
+        return (self._call("diff.patch", host_helpers._patch_args(path, old_content, new_content, context_lines)).get("result") or {}).get("patch", "")
+
+    def copy_to_clipboard(self, text: str) -> None:
+        """Pi's copyToClipboard over this handler's own connection; see :func:`pig_sdk.copy_to_clipboard`."""
+        self._call("clipboard.copy", {"text": text})
+
+    def convert_to_png(self, base64_data: str, mime_type: str) -> "ConvertedImage | None":
+        """Pi's convertToPng over this handler's own connection; see :func:`pig_sdk.convert_to_png`."""
+        from . import host_helpers
+
+        return host_helpers._decode_converted(self._call("image.convertToPng", {"data": base64_data, "mimeType": mime_type}).get("result") or {})
+
+    def resize_image(self, input_bytes: bytes, mime_type: str, options: "ImageResizeOptions | None" = None) -> "ResizedImage | None":
+        """Pi's resizeImage over this handler's own connection; see :func:`pig_sdk.resize_image`."""
+        from . import host_helpers
+
+        return host_helpers._decode_resized(self._call("image.resize", host_helpers._resize_args(input_bytes, mime_type, options)).get("result") or {})
 
     def strip_frontmatter(self, content: str) -> str:
         """Pi's stripFrontmatter over this handler's own connection."""
@@ -2995,7 +3268,10 @@ class Context:
         A string list with no options goes out as a ``widget_push`` frame
         without a width, which the host applies in arrival order and never
         answers: Pi's setWidget returns nothing, so it may be called from an
-        :meth:`on_width_change` handler. Every other shape waits for the host.
+        :meth:`on_width_change` handler. In RPC mode, where the width never
+        changes and Pi writes one request per call, in call order and before
+        the handler's response, the list waits for the host like every other
+        shape. Every other shape waits for the host.
 
         A :class:`kit.View` (D107) is rendered by the host at the widget's
         width, the subprocess form of Pi's ``setWidget(key, factory)`` for a
@@ -3008,10 +3284,27 @@ class Context:
             return
         with self.extension._views.widgets_lock:
             self.extension._views.widgets.pop(key, None)
-        if isinstance(content, list) and all(isinstance(x, str) for x in content) and options is None:
+        self.extension._replace_surface_id(f"ui.setWidget:{key}", None)
+        if isinstance(content, list) and all(isinstance(x, str) for x in content) and options is None and not self._rpc_mode():
             self.extension._push_widget(key, content)
             return
         self._call("ui.setWidget", {"key": key, "content": content, "options": options or {}})
+
+    def set_widget_renderer(self, key: str, render: "Callable[[int], list[str]] | None", options: dict[str, Any] | None = None) -> None:
+        """Install the widget ``key`` with a renderer that lays its rows out at the host's terminal width, the subprocess form of the component factory Pi's ``ctx.ui.setWidget(key, factory, options)`` takes.
+
+        It follows the contract of :meth:`set_footer_renderer`: the SDK renders at the width the host reports and again after every width change, sends each set of rows with the width it was rendered for, and the host paints them only at that width, so a widget never shows rows laid out for the old width. ``options`` is the placement (``{"placement": "aboveEditor" | "belowEditor"}``). ``None`` clears the widget. An exception in ``render`` is reported as "widget render failed: ..." and leaves the previous rows. :meth:`set_widget` with the same key replaces the renderer.
+        """
+        if render is None:
+            self.set_widget(key, None, options)
+            return
+        if not callable(render):
+            raise TypeError("a widget renderer must be callable")
+        surface = _SurfaceRenderer("ui.setWidget", render, key, options)
+        with self.extension._views.widgets_lock:
+            self.extension._views.widgets.pop(key, None)
+        self.extension._replace_surface_id(f"ui.setWidget:{key}", surface)
+        surface.push(self)
 
     def set_footer(self, lines: list[str] | None) -> None:
         """Replace the footer with pre-rendered lines, or clear it for None.
@@ -3111,6 +3404,9 @@ class Context:
         if render is None:
             self._set_surface(method, None)
             return
+        # upstream: rpc-mode.ts setFooter/setHeader ignore the factory and runner.ts noOpUIContext does too: Pi calls a footer or header factory only in the TUI.
+        if not self.has_ui() or self.mode == "rpc":
+            return
         if not callable(render):
             raise TypeError("a surface renderer must be callable")
         surface = _SurfaceRenderer(method, render)
@@ -3157,9 +3453,17 @@ class Context:
         order with the input.
 
         Passing the legacy options-only shape retains the host's explicit
-        unsupported response because it has no serializable component.
+        unsupported response because it has no serializable component. With no UI, or in
+        RPC mode, nothing runs and the result is None, as Pi's no-op and RPC UIs resolve undefined.
         """
         if not self.has_ui():
+            return None
+        if self.mode == "rpc":
+            # upstream: rpc-mode.ts custom() resolves undefined and never runs the component. The host call keeps the dialog scope, as the Node runtime's does.
+            with self.extension._overlay_lock:
+                self.extension._overlay_seq += 1
+                key = f"custom-{self.extension._overlay_seq}"
+            self._call("ui.custom", {"key": key})
             return None
         self._block_for_user()
         if component is None or isinstance(component, dict):
@@ -3215,6 +3519,52 @@ class Context:
             raise TypeError("on_width_change requires a callable handler")
         return self.extension._add_width_change_handler(handler)
 
+    def on_theme_change(self, handler: "Callable[[Theme], Any]") -> "Callable[[], None]":
+        """Subscribe to changes of the host's theme: the user switching theme, a custom theme's file reloading, the terminal reporting new colors. ``handler(theme)`` receives :attr:`theme` after it took the new palette.
+
+        Pi calls a widget component's ``invalidate()`` on a theme change, and the component reads ``ctx.ui.theme`` at its next render, so it never paints the colors of an old theme. A subprocess extension pushes rows that were colored when it built them, so it re-renders from this subscription. :meth:`set_widget_renderer` colors through the live theme at every render and needs no handler for it.
+
+        Handlers run on a worker thread, one at a time in the order the changes arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call. A handler that raises is reported on stderr and does not stop the others. Returns an idempotent unsubscribe callable; a delivery already queued still reaches the handlers subscribed when the change arrived. A palette equal to the one before is not a change.
+        """
+        if not callable(handler):
+            raise TypeError("on_theme_change requires a callable handler")
+        return self.extension._theme_feed.subscribe(handler)
+
+    def on_tools_expanded_change(self, handler: "Callable[[bool], Any]") -> "Callable[[], None]":
+        """Subscribe to the host toggling tool-output expansion (Pi's expand key, or ``set_tools_expanded`` from any extension). ``handler(expanded)`` receives the new state after it changed.
+
+        The original of a widget reads ``ui.getToolsExpanded()`` at every frame and Pi redraws on its expand key; a subprocess extension pushes rows built for one state and re-renders from this subscription. It follows the contract of :meth:`on_theme_change`.
+        """
+        if not callable(handler):
+            raise TypeError("on_tools_expanded_change requires a callable handler")
+        return self.extension._tools_expanded_feed.subscribe(handler)
+
+    def bell(self) -> None:
+        """Ring the terminal bell (BEL) of the interactive terminal between frames, the call a Pi extension makes by writing ``"\\x07"`` to ``process.stdout``. It does nothing where there is no terminal UI: print, JSON and RPC modes."""
+        self._call("ui.bell", {})
+
+    def extension_source_info(self) -> dict[str, Any] | None:
+        """The provenance the loader stamped on this extension: upstream's ``extension.sourceInfo`` (``types.ts`` ``SourceInfo``), where ``ExtensionRunner.getExtensionPaths`` reads the extension's path from. ``path`` is the entry file and ``baseDir`` the package root when the extension came from a Package; a Pi extension reads both from ``import.meta.url``, which a subprocess extension has no equivalent of. A dict with ``path``, ``source``, ``scope``, ``origin`` and, for a Package, ``baseDir``, as ``get_commands`` reports a command's ``sourceInfo``. None when the host holds no source for this extension."""
+        with self.extension._state_lock:
+            info = self.extension._source_info
+        return None if info is None else dict(info)
+
+    def tool_call_index(self) -> int | None:
+        """The running tool call's position among the tool calls of the assistant message that issued it, the batch agent-loop.ts executes (the ``toolCall`` content blocks of that message, counted from 0). None outside a tool handler and for a call no assistant message issued, such as a nested :meth:`execute_tool` call. The host sends it with the call, so a batch is ordered without reading the session's leaf entry."""
+        return self._tool_index
+
+    def tool_input(self) -> str | None:
+        """The running tool call's arguments as the JSON text ``JSON.stringify`` gives for the object Pi hands ``execute``: members in the order the model wrote them (array-index keys first, ascending, as JavaScript orders them), numbers as JavaScript prints them. The arguments are the ones the host sent the handler, after the tool's ``prepare_arguments``. None outside a tool handler."""
+        if self._tool_args is None:
+            return None
+        from .serialize_conversation import _json_stringify
+
+        return _json_stringify(self._tool_args)
+
+    def tool_params(self) -> dict[str, Any] | None:
+        """The running tool call's arguments with every object, at any depth, in the member order JavaScript's ``Object.keys`` gives (array-index keys ascending, then the others in insertion order), which Pi's ``execute`` params keep and an extension that writes the arguments back out (``JSON.stringify(params.metadata)``) relies on. None outside a tool handler or when the arguments are not an object."""
+        return _js_ordered(self._tool_args) if isinstance(self._tool_args, dict) else None
+
     def get_tools_expanded(self) -> bool:
         return bool(self._reply_field("ui.getToolsExpanded", "expanded"))
 
@@ -3237,16 +3587,28 @@ class Context:
 
     # Shell ------------------------------------------------------------------
 
-    def exec(self, command: str, args: list[str] | None = None, *, timeout: float | None = None, cwd: str | None = None) -> ExecResult:
+    def exec(self, command: str, args: list[str] | None = None, *, timeout: float | None = None, cwd: str | None = None, signal: ProviderSignal | None = None) -> ExecResult:
         """Run a command through the host's executor.
 
-        ``timeout`` (milliseconds) and ``cwd`` are upstream ExecOptions; a
-        command the timeout kills reports ``killed``. Raises HostCallError, a
-        RuntimeError whose message is the host's, when the host reports a
-        failure, such as "spawn EINVAL" for a batch file on Windows, so a
-        caller sees the reason rather than an exit code of zero it never
-        produced.
+        ``timeout`` (milliseconds), ``cwd`` and ``signal`` are upstream
+        ExecOptions; a command the timeout kills reports ``killed``. Setting
+        the ``signal`` (a :class:`ProviderSignal`) terminates the command, as
+        Pi does: the command alone receives SIGTERM (the process is killed on
+        Windows), no descendant is signalled, and the call returns the output
+        written so far with ``killed`` set and ``exit_code`` 0, which is what a
+        command that a signal ended reports. A signal that is set before the
+        call starts the command and ends it at once. Nothing follows the
+        SIGTERM, as upstream's: a command that ignores it keeps the call
+        waiting. Without a ``signal`` the command ends when the calling request
+        is cancelled; a ``signal`` replaces that cancellation, so cancelling
+        the request then leaves the command running and the call waits for its
+        result. Raises HostCallError, a RuntimeError whose message is the
+        host's, when the host reports a failure, such as "spawn EINVAL" for a
+        batch file on Windows, so a caller sees the reason rather than an exit
+        code of zero it never produced.
         """
+        if signal is not None and not callable(getattr(signal, "subscribe", None)):
+            raise TypeError("signal must be a ProviderSignal")
         call_args: dict[str, Any] = {"command": command, "args": args or []}
         options: dict[str, Any] = {}
         if timeout is not None:
@@ -3255,7 +3617,11 @@ class Context:
             options["cwd"] = cwd
         if options:
             call_args["options"] = options
-        result = self._call("exec", call_args).get("result") or {}
+        if signal is None:
+            reply = self._call("exec", call_args)
+        else:
+            reply = self.extension._exec_with_signal(self, call_args, signal)
+        result = reply.get("result") or {}
         return ExecResult(
             stdout=str(result.get("stdout") or ""),
             stderr=str(result.get("stderr") or ""),
@@ -3640,6 +4006,15 @@ def _user_bash_event_result(value: Any) -> Any:
     return {**value, "result": result, "_pigUserBashExitCodeUndefined": undefined}
 
 
+def _js_ordered(value: Any) -> Any:
+    """``value`` with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order."""
+    if isinstance(value, dict):
+        return {key: _js_ordered(value[key]) for key in _ordered_keys(value)}
+    if isinstance(value, list):
+        return [_js_ordered(item) for item in value]
+    return value
+
+
 class Extension:
     def __init__(self, name: str):
         self._name = name
@@ -3652,6 +4027,19 @@ class Extension:
         self._term_input_seq = 0
         self._width_change: list[tuple[int, Any]] = []
         self._width_change_seq = 0
+        # Changes of the replicated theme and tool-expansion state reach on_theme_change / on_tools_expanded_change handlers on workers of their own (StateFeed). *_known says the host sent a first value, so a later different one is a change.
+        self._theme_feed = StateFeed(self, "theme")
+        self._tools_expanded_feed = StateFeed(self, "tools expanded")
+        self._theme_palette: Any = None
+        self._theme_known = False
+        self._tools_expanded = False
+        self._tools_expanded_known = False
+        # The provenance the host stamped on this extension (Context.extension_source_info), from the ready payload.
+        self._source_info: dict[str, Any] | None = None
+        # on_loaded handlers run on a worker after ready; requests wait for _loaded (see _handle_request_thread).
+        self._loaded_handlers: list[Callable[[Context], Any]] = []
+        self._loaded = threading.Event()
+        self._loaded.set()
         self._footer_data: dict[str, Any] = {"branch": None, "statuses": {}, "count": 0}
         self._branch_subscribers: dict[int, Callable[[], Any]] = {}
         self._branch_subscriber_seq = 0
@@ -3683,7 +4071,9 @@ class Extension:
         self._oauth_providers: dict[str, OAuthProvider] = {}
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
+        self._children = _ChildSessions()
         self._tool_batches = _ToolBatches()
+        self._request_starts = _RequestStartOrder()
         self._command_handlers: dict[str, CommandHandler] = {}
         self._with_sessions = _WithSessionRegistry()
         self._setups = _WithSessionRegistry()
@@ -3706,6 +4096,7 @@ class Extension:
         self._tool_render_lock = threading.Lock()
         self._flag_defaults: dict[str, Any] = {}
         self._session_name: str = ""
+        self._model_provider: str = ""
         self._session_file: str = ""
         self._cwd: str = ""
         self._mode: str = ""
@@ -3768,6 +4159,7 @@ class Extension:
         self._settings: dict[str, Any] | None = None
         self._mcp_servers: list[dict[str, Any]] = []
         self._execute_seq = 0
+        self._exec_seq = 0
         self._nested_calls: dict[str, _NestedCall] = {}
         self._bash_operations = _BashOperationsTable()
         # Ids of the MCP registration calls in flight, guarded by _state_lock. The read loop applies each reply's server list in frame order, so a later state push is never replaced by an older reply.
@@ -3818,6 +4210,31 @@ class Extension:
 
     def register_tool(self, definition: ToolDefinition) -> None:
         """Replace a tool in place and refresh a running Session before returning."""
+        declaration = self._tool_declaration(definition, "tool definition")
+        self._register_tool(declaration, definition.execute, definition.prepare_arguments, definition.render_call, definition.render_result, definition.prepare_loadout, definition.call_view, definition.result_view, definition.reaches_tools)
+
+    def _tool_handler(self, req: dict[str, Any], name: str) -> ToolHandler:
+        """The execute of a tool_call: a registered tool, or a custom tool of the child session the request names."""
+        child = req.get("child_session")
+        if child:
+            session = self._children.lookup(str(child))
+            if session is None or name not in session._tools:
+                raise KeyError(name)
+            return session._tools[name]
+        with self._tool_registration_lock:
+            return self._tool_handlers[name]
+
+    def _tool_prepare_handler(self, req: dict[str, Any], name: str) -> ToolPrepareArguments | None:
+        """The prepare_arguments of a request; see :meth:`_tool_handler`."""
+        child = req.get("child_session")
+        if child:
+            session = self._children.lookup(str(child))
+            return None if session is None else session._prepares.get(name)
+        with self._tool_registration_lock:
+            return self._tool_prepare_handlers.get(name)
+
+    def _tool_declaration(self, definition: ToolDefinition, what: str) -> dict[str, Any]:
+        """The wire declaration of a tool definition, after the checks of Pi's registerTool (loader.ts)."""
         name = definition.name
         if not name:
             raise ValueError("register_tool requires a definition with name")
@@ -3846,8 +4263,8 @@ class Extension:
             "reaches_tools": True if definition.reaches_tools is not None else None,
         }
         declaration = {key: value for key, value in declaration.items() if value is not None}
-        _ensure_jsonable(declaration, f"tool definition for {name}")
-        self._register_tool(declaration, definition.execute, definition.prepare_arguments, definition.render_call, definition.render_result, definition.prepare_loadout, definition.call_view, definition.result_view, definition.reaches_tools)
+        _ensure_jsonable(declaration, f"{what} for {name}")
+        return declaration
 
     def register_mcp_server(self, name: str, config: dict[str, Any]) -> None:
         """Register an MCP server, as ``pi.registerMcpServer`` does (loader.ts:456-465).
@@ -4017,6 +4434,34 @@ class Extension:
             with self._state_lock:
                 self._nested_calls.pop(execute_id, None)
             ctx._report_request_state("progress")
+
+    def _exec_with_signal(self, ctx: Context, call_args: dict[str, Any], signal: ProviderSignal) -> dict[str, Any]:
+        """pi.exec with options.signal: the call is not tied to the calling request (core/exec.ts has no signal but the caller's), and the signal's abort reaches the host as exec.cancel."""
+        with self._state_lock:
+            self._exec_seq += 1
+            exec_id = f"exec-{self._exec_seq}"
+        payload = {**call_args, "execId": exec_id, "ownSignal": True}
+        ctx._report_request_state("blocked", "host_call")
+        unsubscribe: Callable[[], None] | None = None
+        try:
+            call_id, event = self._begin_call("exec", payload)
+            # After the call is sent: the host applies a cancel only after the call it names started the command.
+            unsubscribe = signal.subscribe(lambda: self._cancel_exec(exec_id))
+            return self._wait_call(call_id, event, "exec")
+        finally:
+            if unsubscribe is not None:
+                unsubscribe()
+            ctx._report_request_state("progress")
+
+    def _cancel_exec(self, exec_id: str) -> None:
+        """Send the cancel of one exec call from a thread of its own, so the signal's setter never waits for the host."""
+        def cancel() -> None:
+            try:
+                self._call("exec.cancel", {"execId": exec_id})
+            except Exception:  # noqa: BLE001 - the call ended or the connection closed: nothing is left to cancel  # nosec B110
+                pass
+
+        threading.Thread(target=cancel, name=f"pig-exec-cancel-{exec_id}", daemon=True).start()
 
     def _cancel_nested(self, execute_id: str) -> None:
         """Send the cancel of one nested call from a thread of its own, so the signal's setter never waits for the host."""
@@ -4438,12 +4883,12 @@ class Extension:
                 raise RuntimeError(f"expected ready, got {ready.get('type')}")
             self._tools_live = True
         ready_data = ready.get("ready") or {}
-        self._session_name = ready_data.get("session_name", "")
+        source_info = ready_data.get("sourceInfo")
+        self._source_info = dict(source_info) if isinstance(source_info, dict) else None
         self._cwd = ready_data.get("cwd", "")
         self._mode = ready_data.get("mode", "")
         self._width = ready_data.get("width", 0)
         self._height = ready_data.get("height", 0)
-        self._model = ready_data.get("model", "")
         # Initialize session mirror from the ready payload state.
         initial_state = ready_data.get("state") or {}
         with self._state_lock:
@@ -4452,6 +4897,7 @@ class Extension:
         if initial_session:
             self._session_file = str(initial_session.get("sessionFile") or "")
             self._session_mirror.apply_update(initial_session)
+        self._run_loaded()
         while True:
             try:
                 env = self._read()
@@ -4517,9 +4963,11 @@ class Extension:
         ctx = self._arm_request(env)
         req = env.get("request") or {}
         batch = req.get("batch")
-        # Only the calls of one parallel batch (the host's `batch` member, the same on each of them) take part in the orders; any other tool_call is never gated.
+        # Only the calls of one parallel batch (the host's `batch` member, the same on each of them) take part in the dialog and continuation orders; any other tool_call is never gated.
         if req.get("method") == "tool_call" and isinstance(batch, str) and batch:
             ctx._tool_start = self._tool_batches.reserve(batch)
+        if _starts_in_arrival_order(req):
+            ctx._request_start = self._request_starts.reserve()
         self._request_state(env.get("id", ""), "started")
         worker = threading.Thread(
             target=self._handle_request_thread,
@@ -4534,6 +4982,8 @@ class Extension:
         except Exception as exc:
             with self._request_threads_lock:
                 self._request_threads.discard(worker)
+            if ctx._request_start is not None:
+                ctx._request_start.release()
             if ctx._tool_start is not None:
                 ctx._tool_start.release()
             self._respond(
@@ -4544,6 +4994,8 @@ class Extension:
 
     def _stop_runtime(self) -> None:
         self._shutdown.set()
+        # The sessions end with the connection, as the host disposes them: no listener runs after it.
+        self._children.close_all()
         with self._state_lock:
             pending = list(self._pending.values())
             active = list(self._active.values())
@@ -4597,8 +5049,42 @@ class Extension:
         for evicted in stream.get("evict") or ():
             replicas.pop((name, str(evicted)), None)
 
+    def on_loaded(self, handler: "Callable[[Context], Any]") -> None:
+        """Run ``handler(ctx)`` once the extension is registered with the host and has received its state, before it serves any request (session_start included).
+
+        It is the place for work a factory cannot do: a :class:`Context` exists, so the handler can read session state, call the host and emit on ``ctx.events``. Handlers run in registration order, one at a time on a thread of their own, so a host call the host answers itself is answered. The host's requests wait behind them (a listener dispatch excepted), so a handler must not wait for something that needs this extension to serve a request, such as a call that runs one of its own tools or event handlers: that wait never ends. A handler that raises is reported on stderr and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is ``session_start``. A handler registered after the extension started never runs.
+        """
+        if not callable(handler):
+            raise TypeError("on_loaded requires a callable handler")
+        self._loaded_handlers.append(handler)
+
+    def _run_loaded(self) -> None:
+        handlers, self._loaded_handlers = self._loaded_handlers, []
+        if not handlers:
+            return
+        self._loaded.clear()
+
+        def run() -> None:
+            try:
+                for handler in handlers:
+                    try:
+                        handler(Context(self))
+                    except Exception:  # noqa: BLE001 - one handler's failure must not stop the next
+                        print(f"pig: on_loaded handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
+            finally:
+                self._loaded.set()
+                with self._request_threads_lock:
+                    self._request_threads.discard(threading.current_thread())
+
+        worker = threading.Thread(target=run, name="pig-on-loaded", daemon=True)
+        with self._request_threads_lock:
+            self._request_threads.add(worker)
+        worker.start()
+
     def _handle_request_thread(self, env: dict[str, Any], ctx: Context) -> None:
         try:
+            if (env.get("request") or {}).get("method") != "events.dispatch":
+                self._loaded.wait()
             self._handle_request(env, ctx)
         finally:
             with self._request_threads_lock:
@@ -4627,6 +5113,9 @@ class Extension:
         if method == "tool_render_release":
             with self._tool_render_lock:
                 self._tool_render_cards.pop(str(args.get("card") or ""), None)
+            return
+        if method == "childSession.event":
+            self._children.deliver(args)
             return
         if method == "bash_operations_release":
             self._bash_operations.release(str(args.get("handle") or ""))
@@ -4728,10 +5217,6 @@ class Extension:
                     if session.get("sessionFile"):
                         self._session_file = str(session["sessionFile"])
                     self._session_mirror.apply_update(session)
-                model = state.get("model") or {}
-                name = model.get("name") or model.get("id") or ""
-                if name:
-                    self._model = name
                 self._apply_ui_state(state)
             elif method == "theme_change":
                 palette = notify.get("args")
@@ -4740,7 +5225,8 @@ class Extension:
                         palette = json.loads(palette)
                     except ValueError:
                         palette = {}
-                self._theme._set_palette(palette or {})
+                self._set_theme_palette(palette if isinstance(palette, dict) and palette else {})
+                _tui_state.set_host_theme(palette)
             elif method == "width_change":
                 w = args.get("width", 0)
                 if w > 0:
@@ -4847,15 +5333,39 @@ class Extension:
                     if not self._shutdown.is_set():
                         print(f"pig: width change handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
 
+    def _set_theme_palette(self, palette: dict[str, Any]) -> None:
+        """Install the host's palette and deliver it to the on_theme_change handlers when it differs from the one before. The caller holds the state lock."""
+        changed = self._theme_known and self._theme_palette != palette
+        self._theme._set_palette(palette)
+        self._theme_palette = palette
+        self._theme_known = True
+        if changed:
+            self._theme_feed.publish(self._theme)
+
     def _apply_ui_state(self, state: dict[str, Any]) -> None:
-        """Record the snapshot's hasUI and theme. Caller holds _state_lock."""
+        """Record the snapshot's replicated values: hasUI, theme, settings, MCP servers, the model and the session name. The ready state and every state_update pass through here. Caller holds _state_lock."""
         self._views.apply_state(state)
+        if "model" in state:
+            # An absent key keeps the replica; an explicit null clears it (the Session holds no model).
+            self._model, self._model_provider = _model_identity(state["model"])
+        session = state.get("session")
+        if isinstance(session, dict):
+            # Every session snapshot carries the name; "" is the host's carrier for a session with no name.
+            self._session_name = str(session.get("sessionName") or "")
         has_ui = state.get("hasUI")
         if isinstance(has_ui, bool):
             self._has_ui = has_ui
         theme = state.get("theme")
         if isinstance(theme, dict):
-            self._theme._set_palette(theme)
+            self._set_theme_palette(theme)
+        _tui_state.apply_host_state(state)
+        tools_expanded = state.get("toolsExpanded")
+        if isinstance(tools_expanded, bool):
+            changed = self._tools_expanded_known and self._tools_expanded != tools_expanded
+            self._tools_expanded = tools_expanded
+            self._tools_expanded_known = True
+            if changed:
+                self._tools_expanded_feed.publish(tools_expanded)
         settings = state.get("settings")
         if isinstance(settings, dict):
             self._settings = settings
@@ -4871,7 +5381,7 @@ class Extension:
         with self._state_lock:
             self._active[req_id] = (cancel, None)
             self._request_parents[req_id] = parent
-        ctx = Context(self, req.get("tool_call_id"), req_id, cancel, _parent=parent, _tool_context=req.get("method") == "tool_call")
+        ctx = Context(self, req.get("tool_call_id"), req_id, cancel, _parent=parent, _tool_context=req.get("method") == "tool_call", _tool_index=req.get("tool_call_index"), _tool_args=req.get("args") if req.get("method") == "tool_call" else None)
         ctx._reason_provider = lambda: self._active.get(req_id, (None, None))[1]
         return ctx
 
@@ -4917,9 +5427,10 @@ class Extension:
             elif method == "tool_call":
                 name = req.get("tool", "")
                 params = req.get("args") or {}
-                with self._tool_registration_lock:
-                    handler = self._tool_handlers[name]
+                handler = self._tool_handler(req, name)
                 # agent-loop.ts:619-647: the handlers of a batch start in source order.
+                if ctx._request_start is not None:
+                    ctx._request_start.begin()
                 if ctx._tool_start is not None:
                     ctx._tool_start.begin()
                 result = handler(ctx, params)
@@ -4931,8 +5442,7 @@ class Extension:
                     self._respond(req_id, payload, None)
             elif method == "tool_prepare_arguments":
                 name = req.get("tool", "")
-                with self._tool_registration_lock:
-                    prepare = self._tool_prepare_handlers.get(name)
+                prepare = self._tool_prepare_handler(req, name)
                 if prepare is None:
                     raise RuntimeError(f"tool {name!r} has no prepare_arguments")
                 prepared = prepare(req.get("args") or {})
@@ -4967,6 +5477,15 @@ class Extension:
                 if changes is not None and not isinstance(changes, dict):
                     raise TypeError("prepare_loadout must return a mapping or None")
                 self._respond(req_id, changes, None)
+            elif method == "builtin_tool_callback":
+                self._respond(req_id, _dispatch_builtin_callback(req.get("args") or {}), None)
+            elif method == "builtin_tool_exec_data":
+                try:
+                    _dispatch_builtin_exec_data(req.get("args") or {})
+                except Exception as failure:  # noqa: BLE001 - the callback's throw is the answer to its request
+                    self._respond(req_id, None, {"message": str(failure)})
+                else:
+                    self._respond(req_id, None, None)
             elif method == "execute_tool_update":
                 # The host waits for this answer before it sends the next partial result or the call's outcome; an exception from on_update is the answer.
                 args = req.get("args") or {}
@@ -5016,9 +5535,18 @@ class Extension:
             elif method == "setup":
                 self._setups.dispatch_setup(ctx, req.get("args") or {})
                 self._respond(req_id, None, None)
+            elif method == "sessionGraph.callback":
+                request = req.get("args") or {}
+                callback = getattr(self, "_graph_callbacks", {}).get(request.get("id"))
+                if callback is None:
+                    raise RuntimeError(f"unknown session graph callback {request.get('id')}")
+                self._respond(req_id, callback(*(request.get("args") or [])), None)
             elif method == "command":
                 name = req.get("tool", "")
                 args = req.get("args") or ""
+                # runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
+                if ctx._request_start is not None:
+                    ctx._request_start.begin()
                 self._command_handlers[name](ctx, args if isinstance(args, str) else json.dumps(args))
                 self._respond(req_id, None, None)
             elif method == "command_argument_completions":
@@ -5064,6 +5592,8 @@ class Extension:
                     result = None
                     error = None
                     try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve mutations and report the handler error.
                         error = {"message": str(exc)}
@@ -5076,6 +5606,8 @@ class Extension:
                     result = None
                     error = None
                     try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve input edits before reporting the handler error.
                         error = {"message": str(exc)}
@@ -5099,6 +5631,8 @@ class Extension:
                     result = None
                     error = None
                     try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve section mutations before reporting the handler error.
                         error = {"message": str(exc)}
@@ -5112,6 +5646,8 @@ class Extension:
                 snapshot = list(messages) if isinstance(messages, list) else None
                 # A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
                 encoded_before = _context_messages_encoding(messages) if snapshot is not None and req.get("event") in {"context", "context_with_system"} else None
+                if ctx._request_start is not None:
+                    ctx._request_start.begin()
                 result = handler(ctx, data)
                 if req.get("event") == "user_bash":
                     result = _user_bash_operations_reply(self._bash_operations, result) or _user_bash_event_result(result)
@@ -5170,6 +5706,8 @@ class Extension:
             else:
                 self._respond(req_id, None, error)
         finally:
+            if ctx._request_start is not None:
+                ctx._request_start.end()
             if ctx._tool_start is not None:
                 ctx._tool_start.end()
             with self._state_lock:
@@ -5325,6 +5863,7 @@ class Extension:
 
     def _write_call(self, method: str, args: Any, parent_request_id: str, parent: _RequestParent | None, event: threading.Event | None, slot: _SettleSlot | None) -> tuple[str, threading.Event]:
         event = event if event is not None else threading.Event()
+        timer = False
         with self._write_lock:
             with self._state_lock:
                 if self._shutdown.is_set() or (parent is not None and parent.socket is not self._sock):
@@ -5333,6 +5872,8 @@ class Extension:
                     if parent.state == "cancelled":
                         raise RuntimeError("host call cancelled with its parent request")
                     parent_request_id = "" if parent.state == "completed" else parent.request_id
+                    # pig additive (D189): a call made through a request's context after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
+                    timer = parent.state == "completed"
                 self._call_id += 1
                 call_id = f"c{self._call_id}"
                 self._pending[call_id] = event
@@ -5345,6 +5886,8 @@ class Extension:
             call = {"method": method, "args": args}
             if parent_request_id:
                 call["parent_request_id"] = parent_request_id
+            if timer:
+                call["timer"] = True
             try:
                 self._send_locked({"type": "call", "id": call_id, "call": call})
             except Exception:
@@ -5557,6 +6100,7 @@ class Extension:
     def _set_widget_view(self, ctx: Context, key: str, view: kit.View, options: dict[str, Any] | None) -> None:
         views = self._views
         encoded = views.encode(view)
+        self._replace_surface_id(f"ui.setWidget:{key}", None)
         # Held across the send, so an eviction's resend and this frame keep their order.
         with views.widgets_lock:
             views.widgets[key] = (encoded, options)
@@ -5637,6 +6181,15 @@ class Extension:
             previous = self._surfaces.pop(method, None)
             if surface is not None:
                 self._surfaces[method] = surface
+        if previous is not None:
+            previous.stop()
+
+    def _replace_surface_id(self, surface_id: str, surface: "_SurfaceRenderer | None") -> None:
+        """Retire the renderer installed under surface_id and install surface (None for none)."""
+        with self._surface_lock:
+            previous = self._surfaces.pop(surface_id, None)
+            if surface is not None:
+                self._surfaces[surface_id] = surface
         if previous is not None:
             previous.stop()
 

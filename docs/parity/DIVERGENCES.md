@@ -2504,3 +2504,47 @@ Parity allowance: none: no Pi scenario asserts the moment a later call's dialog 
 Remove when: a native SDK's handlers run where a blocked handler yields to the next one (an async handler model with the SDK's scheduler), or the SDK is told when a handler blocks, so a later call's dialog or response is released at the point Pi's thread would release it; then the gates in the three SDKs and this record go.
 
 SCRUTINIZED:approved
+
+## D188 Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place
+
+What: PiG's Durable writes SQLite schema version 2 (Pi main's `sleeping` task status, `packages/durable/src/storage/sqlite/migrations.ts`), which no Pi release writes yet: pi-durable 1.3.0 writes version 1 and refuses a newer store ("Durable SQLite schema version 2 is newer than supported version 1"). Pi upgrades a version 1 store in place when it opens it. PiG first copies the file to `<path>.schema-1.bak` (`VACUUM INTO`, which includes the WAL), then upgrades it as Pi does. If that name is taken it uses `<path>.schema-1-2.bak`, and so on: an earlier copy is never replaced. If the copy fails, the open fails and the store stays at version 1.
+
+Why: without the copy, trying PiG on a store pi-durable 1.3.0 wrote is a one-way step: the user cannot go back to the released Pi with their data (issue #245). The copy is a store pi-durable 1.3.0 opens as it was.
+
+Scope: the two openers that take a file path, `driver.OpenHarness` (`durable/core/driver/open.go`) and `node.OpenNodeSqliteStorage` (`durable/storage/sqlite/node/node.go`), through `schemabackup.BeforeUpgrade` (`durable/internal/schemabackup`). It copies only a file whose schema table holds a version from 1 up to one below the version PiG writes. A new or empty file, `:memory:`, a `file:` URI, a store at the current version, and storage opened over a database the caller already holds (`sqlite.Open`, the Cloudflare Durable Object storage, the contract gate's hosts) are unchanged.
+
+Workaround: none needed in PiG. In Pi, copy the database file before opening it with a newer release.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-20 ("proceed with your fix" on issue #245; choice: a copy before the upgrade rather than leaving version 1 stores unupgraded, because the harness relies on the `sleeping` status for retries and sleeps; user impact: one extra file the size of the store, written once per older store; parity cost: a file Pi does not write).
+
+Call-site markers: `durable/core/driver/open.go` (`openHarness`), `durable/storage/sqlite/node/node.go` (`OpenNodeSqliteStorage`).
+
+Evidence: `TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading` and `TestOpenNodeSqliteStorageDoesNotCopyANewOrCurrentStore` (`durable/storage/sqlite/node/schema_backup_test.go`), `TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading` (`durable/core/driver/schema_backup_core_test.go`). Checked by hand on 2026-10-20: a store pi-durable 1.3.0 created, opened by PiG, is refused by pi-durable 1.3.0, and its `.schema-1.bak` copy opens in pi-durable 1.3.0.
+
+Parity allowance: none needed. No paired scenario looks at the files next to a store, and the contract gate's hosts open stores without the copy, so every store, commit and order comparison is unchanged.
+
+Remove when: a Pi release writes schema version 2, so a user going back to released Pi can open the upgraded store; or the owner reverses the decision. Then `durable/internal/schemabackup`, the two call sites and the three tests go.
+
+SCRUTINIZED:approved
+
+## D190 The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a case alias Pi's realpath key keeps apart
+
+What: Pi's `withFileMutationQueue` (`packages/coding-agent/src/core/tools/file-mutation-queue.ts`) keys each call by `realpath(resolve(path))`, and a path that does not exist keeps its resolved name. PiG's queue (`FileMutationQueue`, behind the `edit` and `write` tools and `WithFileMutationQueue`) keeps that key and also makes a call wait for every earlier call that is still queued for the same existing file under another key (`os.SameFile`): the hard links of a file, and the case aliases of a file on a case-insensitive filesystem. Pi runs those calls at once. On macOS Pi's native `realpath` returns the on-disk case, so Pi orders case aliases there (reported from the #270 author's run of the pinned Pi on macOS; not rerun here), while Go's `filepath.EvalSymlinks` keeps the name as typed; the identity check restores that order and is parity on macOS. Pi's probe on Linux (pinned `1402973a`, `fs.promises.realpath` through glibc): two calls through a hard link both start while the first is held, and so do two calls through `Target.txt` and `target.txt` on an ext4 casefold directory.
+
+Why: both edits of two parallel `edit` calls through two names of one file read the same original text and each writes the whole file, so the later write silently drops the earlier edit while both calls report success.
+
+Pi bug: the same loss in Pi (an `edit` call is read, replace, write of the whole file). Pi's queue is meant to "serialize file mutation operations targeting the same file" and does not for a hard link.
+
+Scope: `FileMutationQueue.Reserve` in `internal/codingagent/tools/mutation_queue.go`, so the `edit` and `write` tools, the parallel tool dispatcher's reservations and `WithFileMutationQueue` share it. The key is still Pi's; the identity check only adds waits, in call order, on tickets of the same existing file. A path that does not exist when the call is queued keeps path ordering (a file a queued write creates is recognised when a later call is queued). Different files still run in parallel. The queue orders the mutations of this process only; another process, and a rename or link made behind the queue, are outside it, as in Pi. The Go, Python and Rust SDKs' own `withFileMutationQueue` is not this queue and is unchanged.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-21 (hard-link alias serialization beyond Pi's realpath keying, to prevent lost edits).
+
+Call-site markers: `internal/codingagent/tools/mutation_queue.go` (`FileMutationQueue.Reserve`, the predecessor selection).
+
+Evidence: `TestEditPreservesParallelAliasChanges` (`internal/codingagent/tools/mutation_queue_alias_test.go`) holds the first call's read until the second call has reached its queue wait or finished, then requires both edits through both names; its `hardlink` and `case` subtests fail without the identity check (the file ends as `ALPHA\nbeta\n`) and its `symlink` and `same` controls pass either way. `TestMutationAliasReservationsKeepDispatchOrder` checks the dispatcher's reservation order across an alias, for a file that exists and for one created while queued, and that a drained queue keeps no state.
+
+Parity allowance: `TestHardLinkAliasesDifferFromPi` runs the pinned Pi's queue and PiG's over two hard links of one file: Pi starts both callbacks (event counts 2, 3, 4), PiG starts the second after the first ends. The 120-run paired corpus `TestWithFileMutationQueueMatchesPi` has no hard link or case alias and is unchanged.
+
+Remove when: Pi orders hard-link aliases (and, on a case-insensitive filesystem where its `realpath` keeps case, case aliases) by file identity, or an owner decision reverses this one; then the identity check, its marker, the allowance test and this record go.
+
+SCRUTINIZED:approved

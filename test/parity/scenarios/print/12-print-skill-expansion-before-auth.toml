@@ -1,0 +1,43 @@
+# Behavior family: print
+# Scenario: print and JSON mode expand a /skill: command before they check the selected provider's auth, so an unreadable
+# skill reports its skill_expansion error ahead of the missing-auth error.
+#
+# Upstream evidence (Pi 1.3.0+1402973a): AgentSession.prompt runs the input handlers, expands skill commands and prompt
+# templates (agent-session.ts:2095-2100), and only then validates the model and its auth (2118-2136). _expandSkillCommand
+# emits the readFileSync failure as an extension error with event "skill_expansion", which print mode writes to stderr as
+# "Extension error (<skill path>): <error>". PiG validated the model and auth first, so the stderr held only the auth error.
+#
+# The extension discovers a skill in a fresh temporary directory and removes its file in the input handler, which runs
+# between discovery and expansion. The temporary path is per run and is masked.
+# normalize-rationale: the session header's id, timestamp and cwd are fresh per run, the skill's temporary directory differs per run and platform, and the docs root differs by distribution (D2/D22). Masking them keeps every key, the line order, the error texts and the file names.
+
+name = "12-print-skill-expansion-before-auth"
+description = "Print and JSON mode expand /skill: before the auth check, so an unreadable skill reports skill_expansion first"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast", "cli"]
+driver = "cli-mode"
+
+[cli]
+args = ["--offline", "--no-context-files", "--no-skills", "--no-session", "--model", "openai/gpt-4o", "--mode", "json", "-p", "/skill:boom now"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_extensions = ["../testdata/extension-unreadable-skill.mjs"]
+pi_extensions = ["../testdata/extension-unreadable-skill.mjs"]
+
+[assert]
+exit_code = 1
+both_contain = ["Extension error (", "ENOENT: no such file or directory", "No API key found for openai.", "Use /login to log into a provider via OAuth or API key. See:"]
+both_not_contain = ["agent_start"]
+output_normalized_equal = true
+normalize_replace = [
+  { pattern = '"(id|timestamp|cwd)":"[^"]*"', with = '"$1":"<X>"', reason = "The session header's id, timestamp and cwd are per run; keep its key order and the rest of the line." },
+  { pattern = '/[^ \n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md', with = '<DOCS>/$1.md', reason = "D2/D22: the documentation root is distribution-specific; keep the file names and the guidance text." },
+  { pattern = '[^ \n(]*pig-parity-skill-[A-Za-z0-9]+', with = '<SKILL-ROOT>', reason = "The skill's temporary directory is created per run and its prefix differs by platform." },
+]
+runs = 3

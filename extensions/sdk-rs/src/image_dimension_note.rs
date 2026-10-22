@@ -2,9 +2,12 @@
 
 use crate::llm_convert::js_number_to_string;
 
-/// The dimensions of Pi's `ResizedImage` (`utils/image-resize-core.ts`) that [`format_dimension_note`] reads. Dimensions are JavaScript numbers.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// Pi's `ResizedImage` (`utils/image-resize-core.ts`): the image as base64 `data` and its `mime_type`, and the dimensions [`format_dimension_note`] reads. Dimensions are
+/// JavaScript numbers. `format_dimension_note` reads only the dimensions, so a caller that has no image to hand it leaves `data` and `mime_type` empty.
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ResizedImage {
+    pub data: String,
+    pub mime_type: String,
     pub original_width: f64,
     pub original_height: f64,
     pub width: f64,

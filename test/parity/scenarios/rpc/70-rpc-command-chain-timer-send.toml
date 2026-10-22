@@ -1,0 +1,62 @@
+# Behavior family: rpc
+# Surface: set_model whose model_select handler queues setTimeout(0) -> pi.sendMessage. Pi runs the command's microtasks and writes its response before its loop runs any timer (24/24 probes, ClassLFinish), so the custom message follows the response. PiG's Node runtime ran the timer while the host waited for the handler, and the message preceded the response in about one run in ten.
+
+name = "70-rpc-command-chain-timer-send"
+description = "RPC: a pi.sendMessage a setTimeout(0) callback makes while set_model runs reaches the client after the set_model response."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"m1","type":"set_model","provider":"fixture","modelId":"model-two"}'
+wait_contains = ['"id":"m1","type":"response","command":"set_model"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_HOME=testdata/multi-model"]
+pi = ["PI_CODING_AGENT_DIR=testdata/multi-model/agent"]
+pig_extensions = ["testdata/command-chain-timer-send.mjs"]
+pi_extensions = ["testdata/command-chain-timer-send.mjs"]
+pig_args = ["--offline", "--no-session", "--no-extensions", "--model", "fixture/model-one"]
+pi_args = ["--offline", "--no-session", "--no-extensions", "--model", "fixture/model-one"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"m1","type":"response","command":"set_model","success":true',
+  '"customType":"probe"',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 30
+json_output_equal = true
+stderr_equal = true
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain event order, field presence and timestamp type."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd in the system section."

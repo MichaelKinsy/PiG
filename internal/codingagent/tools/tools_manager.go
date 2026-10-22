@@ -42,6 +42,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/managementhttp"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultTransport, which the tool downloads use (pig additive (D191))
 )
 
 const (

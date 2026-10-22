@@ -97,6 +97,25 @@ type viewNode struct {
 	Complete            *viewBashComplete `json:"complete,omitempty"`
 	Diff                string            `json:"diff,omitempty"`
 	FilePath            string            `json:"filePath,omitempty"`
+
+	// extra is a widget node's fields beyond the base set, merged into the
+	// node's object.
+	extra json.RawMessage
+}
+
+// MarshalJSON writes the node's own fields and then a widget node's extra
+// fields, as one object.
+func (n viewNode) MarshalJSON() ([]byte, error) {
+	type plain viewNode
+	data, err := json.Marshal(plain(n))
+	if err != nil || len(n.extra) < 3 || n.extra[0] != '{' {
+		return data, err
+	}
+	data = data[:len(data)-1]
+	if len(data) > 1 {
+		data = append(data, ',')
+	}
+	return append(data, n.extra[1:]...), nil
 }
 
 type viewAssistantMessage struct {

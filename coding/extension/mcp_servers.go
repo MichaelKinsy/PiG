@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
@@ -635,13 +636,14 @@ func (s RegisteredMcpServer) MarshalJSON() ([]byte, error) {
 }
 
 // McpServerRegistry holds the servers registered by the extensions of one
-// runtime. It is safe for concurrent use; the change listener runs after the
-// registry's lock is released.
+// runtime. It is safe for concurrent use; the change listener and the change
+// observers run after the registry's lock is released.
 type McpServerRegistry struct {
 	mu             sync.Mutex
 	order          []string
 	servers        map[string]RegisteredMcpServer
 	changeListener func()
+	observers      changeobservers.Observers
 }
 
 // NewMcpServerRegistry returns an empty registry.
@@ -662,6 +664,7 @@ func (r *McpServerRegistry) Register(server RegisteredMcpServer) {
 	if listener != nil {
 		listener()
 	}
+	r.observers.Notify()
 }
 
 // Unregister removes a server registered by extensionPath. Servers of other
@@ -680,6 +683,7 @@ func (r *McpServerRegistry) Unregister(name, extensionPath string) {
 	if listener != nil {
 		listener()
 	}
+	r.observers.Notify()
 }
 
 // Get returns a registered server.
@@ -716,4 +720,12 @@ func (r *McpServerRegistry) SetChangeListener(listener func()) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.changeListener = listener
+}
+
+// ObserveChange registers observe to run after every change to the registry, after the change listener. Upstream's registry has the one listener
+// the runner owns (runner.ts:465-467), and `pi.getMcpServers()` reads the registry live (loader.ts:495-497); an owner that hands a copy of the list to
+// a runtime that has no `mcp_servers_change` handler reports each change through this. observe runs on the goroutine that changed the registry, after
+// it released its lock, and must return at once. The returned function removes it and can be called repeatedly.
+func (r *McpServerRegistry) ObserveChange(observe func()) func() {
+	return r.observers.Add(observe)
 }

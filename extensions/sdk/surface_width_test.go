@@ -35,6 +35,12 @@ type widthSurfaceHost struct {
 
 func startWidthSurfaceHost(t *testing.T, register func(ext *Extension)) *widthSurfaceHost {
 	t.Helper()
+	return startWidthSurfaceHostIn(t, "tui", true, register)
+}
+
+// startWidthSurfaceHostIn is startWidthSurfaceHost with the mode and hasUI the host reports: Pi runs a footer or header factory only in the TUI.
+func startWidthSurfaceHostIn(t *testing.T, mode string, hasUI bool, register func(ext *Extension)) *widthSurfaceHost {
+	t.Helper()
 	host := newMockHost(t)
 	ext := New("surface-width")
 	register(ext)
@@ -43,7 +49,7 @@ func startWidthSurfaceHost(t *testing.T, register func(ext *Extension)) *widthSu
 	go func() { s.done <- ext.Run() }()
 	host.accept(t)
 	_ = host.readEnvelope(t)
-	host.writeEnvelope(t, envelope{Type: msgReady, Ready: &readyMsg{Cwd: "/tmp", Width: 80}})
+	host.writeEnvelope(t, envelope{Type: msgReady, Ready: &readyMsg{Cwd: "/tmp", Width: 80, Mode: mode, State: json.RawMessage(fmt.Sprintf(`{"hasUI":%t}`, hasUI))}})
 	go func() {
 		for {
 			env, ok := s.read()
@@ -338,6 +344,27 @@ func TestSetWidgetStringListFromAWidthHandlerIsNotAHostCall(t *testing.T) {
 	}
 }
 
+// Pi's RPC mode writes one request per setWidget call, in call order and before the handler's response (rpc-mode.ts), so in RPC mode a string
+// list is a ui.setWidget host call like every other shape: an unanswered widget_push frame has no place in that order.
+func TestSetWidgetStringListInRPCModeIsAHostCall(t *testing.T) {
+	s := startWidthSurfaceHostIn(t, "rpc", true, func(ext *Extension) {
+		ext.Command("go", "set widget", func(ctx Context, _ string) error {
+			return ctx.SetWidget("status", []string{"w-one"})
+		})
+	})
+	s.command()
+	var args struct {
+		Key     string   `json:"key"`
+		Content []string `json:"content"`
+	}
+	if err := json.Unmarshal(s.next("ui.setWidget"), &args); err != nil {
+		t.Fatal(err)
+	}
+	if args.Key != "status" || !slices.Equal(args.Content, []string{"w-one"}) {
+		t.Fatalf("ui.setWidget = %+v", args)
+	}
+}
+
 // A retired renderer never renders or pushes again, so a refresh queued before
 // SetFooter or SetFooterRenderer replaced it cannot overwrite the rows that
 // replaced it.
@@ -350,4 +377,102 @@ func TestRetiredSurfaceRendererNeverPushes(t *testing.T) {
 	if err := s.push(Context{ext: &Extension{}}); err != nil {
 		t.Fatalf("push after stop = %v, want nil", err)
 	}
+}
+
+// Pi calls a footer or header factory only in the TUI: rpc-mode.ts setFooter/setHeader and runner.ts noOpUIContext ignore it. The SDK must not call
+// the renderer, send a frame for it, or re-render it after a resize, in RPC mode or without a UI.
+func TestFooterAndHeaderRenderersAreNotRunOutsideTheTUI(t *testing.T) {
+	for _, mode := range []struct {
+		name  string
+		mode  string
+		hasUI bool
+	}{{"rpc", "rpc", true}, {"print", "print", false}, {"json", "json", false}} {
+		for _, tc := range []struct {
+			name, method string
+			set          func(ctx Context, render func(width int) []string) error
+		}{
+			{"footer", "ui.setFooter", func(ctx Context, render func(int) []string) error { return ctx.SetFooterRenderer(render) }},
+			{"header", "ui.setHeader", func(ctx Context, render func(int) []string) error { return ctx.SetHeaderRenderer(render) }},
+		} {
+			t.Run(mode.name+"/"+tc.name, func(t *testing.T) {
+				var mu sync.Mutex
+				var rendered []int
+				s := startWidthSurfaceHostIn(t, mode.mode, mode.hasUI, func(ext *Extension) {
+					ext.Command("go", "install renderer", func(ctx Context, _ string) error {
+						return tc.set(ctx, func(width int) []string {
+							mu.Lock()
+							rendered = append(rendered, width)
+							mu.Unlock()
+							return []string{"must-not-render"}
+						})
+					})
+				})
+				s.command()
+				s.width(60)
+				s.quiet(tc.method)
+				s.command()
+				s.quiet(tc.method)
+				mu.Lock()
+				defer mu.Unlock()
+				if len(rendered) != 0 {
+					t.Fatalf("the renderer ran at widths %v", rendered)
+				}
+			})
+		}
+	}
+}
+
+// rpc-mode.ts custom() resolves undefined without running the component; the host call keeps the dialog scope, as the Node runtime's does.
+func TestCustomResolvesUndefinedInRPCModeWithoutRunningTheComponent(t *testing.T) {
+	var mu sync.Mutex
+	var ran []string
+	record := func(what string) {
+		mu.Lock()
+		ran = append(ran, what)
+		mu.Unlock()
+	}
+	results := make(chan string, 4)
+	s := startWidthSurfaceHostIn(t, "rpc", true, func(ext *Extension) {
+		ext.Command("go", "custom", func(ctx Context, _ string) error {
+			value, err := ctx.Custom(&rpcProbeComponent{record: record}, nil)
+			results <- fmt.Sprintf("component:%v:%v", value, err)
+			value, err = ctx.Custom(struct{}{}, nil)
+			results <- fmt.Sprintf("opaque:%v:%v", value, err)
+			return nil
+		})
+	})
+	s.command()
+	for _, want := range []string{"component:<nil>:<nil>", "opaque:<nil>:<nil>"} {
+		select {
+		case got := <-results:
+			if got != want {
+				t.Fatalf("Custom = %s, want %s", got, want)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("no Custom result, want %s", want)
+		}
+	}
+	for range 2 {
+		var args map[string]string
+		if err := json.Unmarshal(s.next("ui.custom"), &args); err != nil || len(args) != 1 || args["key"] == "" {
+			t.Fatalf("ui.custom args = %v (%v), want only a key", args, err)
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ran) != 0 {
+		t.Fatalf("component callbacks ran in RPC mode: %v", ran)
+	}
+}
+
+type rpcProbeComponent struct{ record func(string) }
+
+func (c *rpcProbeComponent) Render(int) []string {
+	c.record("render")
+	return nil
+}
+
+func (c *rpcProbeComponent) HandleInput(string) (RemoteComponentResult, error) {
+	c.record("input")
+	return RemoteComponentResult{}, nil
 }

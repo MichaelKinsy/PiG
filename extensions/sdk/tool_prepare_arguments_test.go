@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
@@ -73,12 +74,12 @@ func TestToolPrepareArgumentsRunsInTheExtensionBeforeTheHostValidates(t *testing
 // source order. The host writes the batch's tool_call requests in source order, so the SDK invokes the handlers in the order the requests arrive: a
 // request's handler waits for the earlier requests' handlers to be invoked, whatever order the goroutines that carry the requests run in.
 func TestToolStartOrderHoldsALaterRequestUntilTheEarlierOnesBegan(t *testing.T) {
-	var order toolStartOrder
-	first, second, third, fourth := order.reserve(), order.reserve(), order.reserve(), order.reserve()
-	began := func(start *toolStart) <-chan struct{} {
+	var order jsloop.Lane
+	first, second, third, fourth := order.Reserve(), order.Reserve(), order.Reserve(), order.Reserve()
+	began := func(start *jsloop.Place) <-chan struct{} {
 		ch := make(chan struct{})
 		go func() {
-			start.begin()
+			start.Pass()
 			close(ch)
 		}()
 		return ch
@@ -96,37 +97,37 @@ func TestToolStartOrderHoldsALaterRequestUntilTheEarlierOnesBegan(t *testing.T) 
 	thirdBegan := began(third)
 	held("fourth", fourthBegan)
 	held("third", thirdBegan)
-	first.begin()
+	first.Pass()
 	// The first request began, but the second did not: the third still waits for it.
 	held("third", thirdBegan)
-	second.begin()
+	second.Pass()
 	recvStart(t, thirdBegan, "third")
 	recvStart(t, fourthBegan, "fourth")
-	first.release()
+	first.Pass()
 
 	// A request that ended without reaching its handler hands its place on, once.
-	var ended toolStartOrder
-	lost, next, last := ended.reserve(), ended.reserve(), ended.reserve()
+	var ended jsloop.Lane
+	lost, next, last := ended.Reserve(), ended.Reserve(), ended.Reserve()
 	nextBegan := began(next)
 	lastBegan := began(last)
 	held("next", nextBegan)
-	lost.release()
-	lost.release()
+	lost.Pass()
+	lost.Pass()
 	recvStart(t, nextBegan, "next")
 	recvStart(t, lastBegan, "last")
 
 	// A request that ends without its handler still keeps the order of the requests ahead of it: the next handler waits for them.
-	var behind toolStartOrder
-	ahead, skipped, after := behind.reserve(), behind.reserve(), behind.reserve()
+	var behind jsloop.Lane
+	ahead, skipped, after := behind.Reserve(), behind.Reserve(), behind.Reserve()
 	skippedEnded := make(chan struct{})
 	go func() {
-		skipped.release()
+		skipped.Pass()
 		close(skippedEnded)
 	}()
 	afterBegan := began(after)
 	held("after", afterBegan)
 	held("skipped", skippedEnded)
-	ahead.begin()
+	ahead.Pass()
 	recvStart(t, skippedEnded, "skipped")
 	recvStart(t, afterBegan, "after")
 }

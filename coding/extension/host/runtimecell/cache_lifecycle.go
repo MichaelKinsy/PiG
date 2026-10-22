@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gofrs/flock"
+	"github.com/MichaelKinsy/PiG/internal/filelock"
 )
 
 const (
@@ -46,6 +46,10 @@ type CacheEntry struct {
 	Reason   string     `json:"reason,omitempty"`
 	// Failure marks a recorded build failure, not a built artifact.
 	Failure bool `json:"failure,omitempty"`
+	// use is what the collection read of the entry's ready marker and usage sidecar when it classified the entry. A
+	// removal compares it with a second read under the entry's exclusive lock: a difference means a peer reused or
+	// republished the entry after the classification.
+	use entryUse
 }
 
 type CacheReport struct {
@@ -83,7 +87,7 @@ type CacheLifecycleOptions struct {
 }
 
 type UsageLease struct {
-	lock *flock.Flock
+	lock filelock.Lock
 }
 
 func (l *UsageLease) Release() error {
@@ -101,29 +105,89 @@ func MarkArtifactUsed(artifactPath string, now time.Time) error {
 	return TouchUsage(entryDir, now)
 }
 
+// AcquireArtifactUsageLease takes the shared usage lease on the cache entry that holds artifactPath, so a collection leaves the
+// entry alone until the lease is released. A path outside the governed cache (a prebuilt binary, a source script) has no entry, and
+// the lease is nil. An artifact that a cache entry held and that is gone is an error, not a nil lease: another pig's collection
+// removed the entry after this process resolved it, and a nil lease would let the caller's spawn fail with a bare missing file while
+// the use of the entry went untracked.
 func AcquireArtifactUsageLease(artifactPath string) (*UsageLease, error) {
 	entryDir := filepath.Dir(artifactPath)
 	if _, valid := readReadyMetadata(entryDir); !valid {
+		if cacheEntryRemoved(entryDir, artifactPath) {
+			return nil, errCacheEntryRemoved(artifactPath)
+		}
 		return nil, nil
 	}
-	lease, err := AcquireUsageLease(entryDir)
+	lock, err := lockUsageShared(entryDir)
 	if err != nil {
 		return nil, err
 	}
+	// A collection cannot remove the entry while the lease is held, so what this read finds stays.
 	if current, valid := readReadyMetadata(entryDir); !valid || filepath.Join(entryDir, current.Artifact) != filepath.Clean(artifactPath) {
-		_ = lease.Release()
+		_ = lock.Unlock()
+		if cacheEntryRemoved(entryDir, artifactPath) {
+			return nil, errCacheEntryRemoved(artifactPath)
+		}
 		return nil, fmt.Errorf("cache artifact %s changed while acquiring its usage lease", artifactPath)
 	}
-	return lease, nil
+	//portlint:allow clock a lease records the real time of a use, as AcquireUsageLease does; the Now seam dates collections
+	if err := TouchUsage(entryDir, time.Now()); err != nil {
+		_ = lock.Unlock()
+		return nil, err
+	}
+	return &UsageLease{lock: lock}, nil
 }
 
-func AcquireUsageLease(entryDir string) (*UsageLease, error) {
+func errCacheEntryRemoved(artifactPath string) error {
+	return fmt.Errorf("cache artifact %s no longer exists: another pig's cache collection removed its entry after this process resolved it; start the extension again to rebuild it", artifactPath)
+}
+
+// cacheEntryRemoved reports whether artifactPath was a file of a governed cache entry that is gone: it does not exist and its entry
+// directory sits beside the cache's .locks directory. A path outside the cache has no such directory beside it.
+func cacheEntryRemoved(entryDir, artifactPath string) bool {
+	if _, err := os.Lstat(artifactPath); !os.IsNotExist(err) { //perf:ok cold: runs only for a lease whose entry is not valid
+		return false
+	}
+	info, err := os.Stat(filepath.Dir(cacheLockPath(entryDir, ""))) //perf:ok cold: runs only for a lease whose entry is not valid
+	return err == nil && info.IsDir()
+}
+
+// lockUsageShared takes the shared usage lock of entryDir, waiting for a collection that holds it exclusively while it renames the
+// entry away.
+func lockUsageShared(entryDir string) (filelock.Lock, error) {
+	lock, err := newUsageLock(entryDir)
+	if err != nil {
+		return nil, err
+	}
+	if err := lock.RLock(); err != nil {
+		return nil, filelock.Explain(filepath.Dir(entryDir), err)
+	}
+	return lock, nil
+}
+
+// tryLockUsageShared is lockUsageShared without the wait: it reports false when a collection holds the lock or it cannot be taken.
+func tryLockUsageShared(entryDir string) (filelock.Lock, bool) {
+	lock, err := newUsageLock(entryDir)
+	if err != nil {
+		return nil, false
+	}
+	if locked, err := lock.TryRLock(); err != nil || !locked {
+		return nil, false
+	}
+	return lock, true
+}
+
+func newUsageLock(entryDir string) (filelock.Lock, error) {
 	lockPath := cacheLockPath(entryDir, ".usage.lock")
 	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
 		return nil, err
 	}
-	lock := flock.New(lockPath)
-	if err := lock.RLock(); err != nil {
+	return filelock.New(lockPath), nil
+}
+
+func AcquireUsageLease(entryDir string) (*UsageLease, error) {
+	lock, err := lockUsageShared(entryDir)
+	if err != nil {
 		return nil, err
 	}
 	if err := TouchUsage(entryDir, time.Now()); err != nil {
@@ -203,14 +267,14 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 		return report, errors.New("cache root is required")
 	}
 
-	var gcLock *flock.Flock
+	var gcLock filelock.Lock
 	if prune {
 		if err := os.MkdirAll(options.CacheRoot, 0o755); err != nil {
 			return report, err
 		}
-		gcLock = flock.New(filepath.Join(options.CacheRoot, ".gc.lock"))
+		gcLock = filelock.New(filepath.Join(options.CacheRoot, ".gc.lock"))
 		if _, err := gcLock.TryLockContext(ctx, gcLockRetry); err != nil {
-			return report, fmt.Errorf("lock extension cache GC: %w", err)
+			return report, fmt.Errorf("lock extension cache GC: %w", filelock.Explain(options.CacheRoot, err))
 		}
 		defer func() { _ = gcLock.Unlock() }()
 	}
@@ -304,13 +368,13 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 			report.Errors = append(report.Errors, fmt.Sprintf("prepare lock for %s: %v", entry.Path, err))
 			continue
 		}
-		usageLock := flock.New(lockPath)
+		usageLock := filelock.New(lockPath)
 		locked, lockErr := usageLock.TryLock()
 		if lockErr != nil || !locked {
 			report.Skipped++
 			continue
 		}
-		buildLock := flock.New(cacheBuildLockPath(entry.Path))
+		buildLock := filelock.New(cacheBuildLockPath(entry.Path))
 		buildLocked, buildLockErr := buildLock.TryLock()
 		if buildLockErr != nil || !buildLocked {
 			_ = usageLock.Unlock()
@@ -319,6 +383,15 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 			} else {
 				report.Skipped++
 			}
+			continue
+		}
+		// A peer that reused the entry after the classification read it rewrote the usage record but holds no lease yet, so only
+		// this read, under both locks, shows the entry is wanted. The peer's own reuse is held off by the lock, so it either finds
+		// the entry before the rename or finds it gone and rebuilds.
+		if readEntryUse(entry.Path) != entry.use {
+			_ = buildLock.Unlock()
+			_ = usageLock.Unlock()
+			report.Skipped++
 			continue
 		}
 		tombstone := filepath.Join(filepath.Dir(entry.Path), fmt.Sprintf(".tombstone-%s-%d", filepath.Base(entry.Path), tombstoneSequence.Add(1)))
@@ -499,8 +572,19 @@ func cacheEntryPaths(cacheRoot string) ([]string, error) {
 	return paths, nil
 }
 
+// entryUse is the raw content of an entry's ready marker and usage sidecar. A peer's reuse rewrites the sidecar and a republication
+// replaces the marker, so two reads that differ show the entry was used between them.
+type entryUse struct{ ready, usage string }
+
+func readEntryUse(path string) entryUse {
+	ready, _ := os.ReadFile(filepath.Join(path, cellReadyFile))
+	usage, _ := os.ReadFile(filepath.Join(path, usageFile))
+	return entryUse{ready: string(ready), usage: string(usage)}
+}
+
 func classifyCacheEntry(path string, options CacheLifecycleOptions) CacheEntry {
-	entry := CacheEntry{Path: path}
+	// Read before anything the classification decides from, so a use recorded after any of its reads differs from the stamp.
+	entry := CacheEntry{Path: path, use: readEntryUse(path)}
 	if !options.Unsized || options.MaxSize != nil {
 		entry.Bytes = cacheDirSize(options.Context, path)
 	}
@@ -622,7 +706,7 @@ func lockHeld(path string) bool {
 	if _, err := os.Stat(path); err != nil {
 		return false
 	}
-	lock := flock.New(path)
+	lock := filelock.New(path)
 	locked, err := lock.TryLock()
 	if err != nil || !locked {
 		return true

@@ -1,183 +1,255 @@
 package sdk
 
 import (
+	"encoding/json"
 	"errors"
-	"io/fs"
-	"os"
+	"net"
 	"path/filepath"
-	"runtime"
+	"strings"
 	"sync"
-	"sync/atomic"
-	"syscall"
 	"testing"
 	"time"
 )
 
-// queuedChain returns the chain link the queue holds for key, nil when none.
-func queuedChain(key string) chan struct{} {
-	fileMutationQueues.mu.Lock()
-	defer fileMutationQueues.mu.Unlock()
-	return fileMutationQueues.chains[key]
+// scriptedQueueHost is the host side of the file mutation queue calls, over a pipe: it admits every fileMutation.enter at once with a fresh ticket (a path that
+// contains "unresolvable" fails, as the host fails a path it cannot resolve), answers every fileMutation.exit, and records the calls it was made in order.
+type scriptedQueueHost struct {
+	mu       sync.Mutex
+	calls    []queueCall
+	stopConn func()
 }
 
-// awaitAdmission spins until the chain link for key is no longer previous, that is until a caller started earlier has taken its position, and returns the new link.
-// The first caller holds the file until every caller is admitted, so no link is released while this waits.
-func awaitAdmission(t *testing.T, key string, previous chan struct{}) chan struct{} {
+type queueCall struct {
+	method string
+	args   map[string]string
+}
+
+func (h *scriptedQueueHost) recorded() []queueCall {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return append([]queueCall(nil), h.calls...)
+}
+
+// startScriptedQueueHost adopts a connection to a scripted host as the running extension's, so the SDK's helper calls use it.
+func startScriptedQueueHost(t *testing.T) *scriptedQueueHost {
 	t.Helper()
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		if current := queuedChain(key); current != previous {
-			return current
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("a caller never took its queue position")
-		}
-		runtime.Gosched()
-	}
+	t.Setenv("PIG_EXT_SOCKET", "")
+	return adoptScriptedQueueHost(t, "")
 }
 
-func TestWithFileMutationQueueSerializesOneFileInCallOrder(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "a.txt")
-	key, err := fileMutationQueueKey(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	release := make(chan struct{})
-	var running atomic.Int32
-	var mu sync.Mutex
-	var order []int
-	var wg sync.WaitGroup
-	var link chan struct{}
-	for id := range 4 {
-		wg.Go(func() {
-			_, _ = WithFileMutationQueue(file, func() (struct{}, error) {
-				if running.Add(1) != 1 {
-					t.Error("two mutations of one file overlapped")
-				}
-				if id == 0 {
-					<-release
-				}
-				mu.Lock()
-				order = append(order, id)
-				mu.Unlock()
-				time.Sleep(5 * time.Millisecond)
-				running.Add(-1)
-				return struct{}{}, nil
-			})
+// adoptScriptedQueueHost adopts a connection to a scripted host as a running extension's, serving socket. stopConn ends it as a stopping extension's does: the
+// extension is forgotten and its transport closes.
+func adoptScriptedQueueHost(t *testing.T, socket string) *scriptedQueueHost {
+	t.Helper()
+	clientNet, hostNet := net.Pipe()
+	client := newConn(clientNet)
+	client.start()
+	adoptHelperConn(client, socket, nil)
+	var once sync.Once
+	stop := func() {
+		once.Do(func() {
+			releaseHelperConn(client)
+			_ = clientNet.Close()
+			_ = hostNet.Close()
 		})
-		link = awaitAdmission(t, key, link)
 	}
-	close(release)
-	wg.Wait()
-	for i, id := range order {
-		if id != i {
-			t.Fatalf("callers ran in order %v, want call order", order)
-		}
-	}
-	if len(order) != 4 {
-		t.Fatalf("ran %v, want every caller", order)
-	}
-	fileMutationQueues.mu.Lock()
-	defer fileMutationQueues.mu.Unlock()
-	if len(fileMutationQueues.chains) != 0 {
-		t.Fatalf("drained chains were kept: %v", fileMutationQueues.chains)
-	}
-}
-
-// A failing mutation still hands the file to the caller queued behind it, and a symlink queues behind its target.
-func TestWithFileMutationQueueReleasesAQueuedSymlinkCallerAfterAnError(t *testing.T) {
-	dir := t.TempDir()
-	target, link := filepath.Join(dir, "a.txt"), filepath.Join(dir, "link.txt")
-	if err := os.WriteFile(target, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(target, link); err != nil {
-		t.Skip(err)
-	}
-	key, err := fileMutationQueueKey(target)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if linkKey, err := fileMutationQueueKey(link); err != nil || linkKey != key {
-		t.Fatalf("symlink key %q (%v) differs from its target's %q", linkKey, err, key)
-	}
-	release := make(chan struct{})
-	var aliasRan atomic.Bool
-	want := errors.New("boom")
-	firstErr := make(chan error, 1)
+	t.Cleanup(stop)
+	h := &scriptedQueueHost{stopConn: stop}
 	go func() {
-		_, err := WithFileMutationQueue(target, func() (int, error) {
-			<-release
-			if aliasRan.Load() {
-				t.Error("the symlink caller ran while its target was held")
+		host := newConn(hostNet)
+		var tickets int
+		for {
+			data, err := host.readFrame()
+			if err != nil {
+				return
 			}
-			return 0, want
-		})
-		firstErr <- err
+			var request envelope
+			if json.Unmarshal(data, &request) != nil || request.Type != msgCall || request.Call == nil {
+				return
+			}
+			args := map[string]string{}
+			_ = json.Unmarshal(request.Call.Args, &args)
+			h.mu.Lock()
+			h.calls = append(h.calls, queueCall{request.Call.Method, args})
+			h.mu.Unlock()
+			result := &callResultMsg{Result: json.RawMessage(`{}`)}
+			switch request.Call.Method {
+			case callFileMutationEnter:
+				if strings.Contains(args["path"], "unresolvable") {
+					result = &callResultMsg{Error: &errorInfo{Message: "realpath " + args["path"] + ": too many levels of symbolic links"}}
+				} else {
+					tickets++
+					result.Result = json.RawMessage(`{"ticket":"fm-` + string(rune('0'+tickets)) + `"}`)
+				}
+			case callFileMutationExit:
+			default:
+				result = &callResultMsg{Error: &errorInfo{Message: "unexpected " + request.Call.Method}}
+			}
+			response, err := json.Marshal(envelope{Type: msgCallResult, ID: request.ID, CallResult: result})
+			if err != nil || host.writeFrame(response) != nil {
+				return
+			}
+		}
 	}()
-	held := awaitAdmission(t, key, nil)
-	type result struct {
-		value int
-		err   error
+	return h
+}
+
+// The task runs between the host's admission and the exit, with the path sent absolute and lexically clean; the SDK keeps no queue of its own.
+func TestWithFileMutationQueueRunsTheTaskBetweenEnterAndExit(t *testing.T) {
+	host := startScriptedQueueHost(t)
+	dir := t.TempDir()
+	var during []queueCall
+	value, err := WithFileMutationQueue(filepath.Join(dir, "sub", "..", "a.txt"), func() (int, error) {
+		during = host.recorded()
+		return 7, nil
+	})
+	if err != nil || value != 7 {
+		t.Fatalf("returned %d, %v", value, err)
 	}
-	second := make(chan result, 1)
+	if len(during) != 1 || during[0].method != callFileMutationEnter {
+		t.Fatalf("calls inside the task = %+v, want only the enter", during)
+	}
+	calls := host.recorded()
+	if len(calls) != 2 || calls[1].method != callFileMutationExit || calls[1].args["ticket"] != "fm-1" {
+		t.Fatalf("calls = %+v, want enter then exit of ticket fm-1", calls)
+	}
+	if want := filepath.Join(dir, "a.txt"); calls[0].args["path"] != want {
+		t.Fatalf("enter path = %q, want %q", calls[0].args["path"], want)
+	}
+}
+
+// Two callers on one file are both sent to the host and neither waits for the other inside the SDK: the host alone orders them. A private SDK queue would hold the
+// second caller until the first finished, and the first only finishes when the second has started.
+func TestWithFileMutationQueueKeepsNoQueueOfItsOwn(t *testing.T) {
+	host := startScriptedQueueHost(t)
+	file := filepath.Join(t.TempDir(), "a.txt")
+	firstEntered, secondEntered := make(chan struct{}), make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		_, _ = WithFileMutationQueue(file, func() (struct{}, error) {
+			close(firstEntered)
+			select {
+			case <-secondEntered:
+			case <-time.After(10 * time.Second):
+				t.Error("the second caller never ran: the SDK held it behind the first")
+			}
+			return struct{}{}, nil
+		})
+	})
+	<-firstEntered
+	wg.Go(func() {
+		_, _ = WithFileMutationQueue(file, func() (struct{}, error) {
+			close(secondEntered)
+			return struct{}{}, nil
+		})
+	})
+	wg.Wait()
+	if calls := host.recorded(); len(calls) != 4 {
+		t.Fatalf("calls = %+v, want two enters and two exits", calls)
+	}
+}
+
+// A path the host cannot resolve fails the call without running the task and without an exit; a failing task and a panicking task still exit.
+func TestWithFileMutationQueueHostErrorAndTaskFailures(t *testing.T) {
+	host := startScriptedQueueHost(t)
+	dir := t.TempDir()
+	ran := false
+	_, err := WithFileMutationQueue(filepath.Join(dir, "unresolvable"), func() (struct{}, error) {
+		ran = true
+		return struct{}{}, nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "too many levels of symbolic links") || ran {
+		t.Fatalf("unresolvable path: err = %v, ran = %v", err, ran)
+	}
+	if calls := host.recorded(); len(calls) != 1 {
+		t.Fatalf("calls after a failed enter = %+v, want the enter only", calls)
+	}
+	want := errors.New("boom")
+	if _, err := WithFileMutationQueue(filepath.Join(dir, "a.txt"), func() (int, error) { return 0, want }); !errors.Is(err, want) {
+		t.Fatalf("task error = %v, want the task's", err)
+	}
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Error("a panicking task's panic did not reach the caller")
+			}
+		}()
+		_, _ = WithFileMutationQueue(filepath.Join(dir, "b.txt"), func() (int, error) { panic("boom") })
+	}()
+	exits := 0
+	for _, call := range host.recorded() {
+		if call.method == callFileMutationExit {
+			exits++
+		}
+	}
+	if exits != 2 {
+		t.Fatalf("exits = %d, want one for the failing and one for the panicking task", exits)
+	}
+}
+
+// A fused extension runs in the host's process: the installed hook is the queue, and no call is made.
+func TestWithFileMutationQueueUsesTheFusedHostHook(t *testing.T) {
+	var got string
+	SetHostHelpers(&HostHelpers{WithFileMutationQueue: func(filePath string, fn func() error) error {
+		got = filePath
+		return fn()
+	}})
+	t.Cleanup(func() { SetHostHelpers(nil) })
+	file := filepath.Join(t.TempDir(), "x", "..", "a.txt")
+	value, err := WithFileMutationQueue(file, func() (string, error) { return "done", nil })
+	if err != nil || value != "done" {
+		t.Fatalf("returned %q, %v", value, err)
+	}
+	if want := filepath.Clean(file); got != want {
+		t.Fatalf("hook path = %q, want the absolute clean path %q", got, want)
+	}
+	hookErr := errors.New("resolve failed")
+	SetHostHelpers(&HostHelpers{WithFileMutationQueue: func(string, func() error) error { return hookErr }})
+	ran := false
+	if _, err := WithFileMutationQueue(file, func() (int, error) { ran = true; return 1, nil }); !errors.Is(err, hookErr) || ran {
+		t.Fatalf("hook error: err = %v, ran = %v", err, ran)
+	}
+}
+
+// A packed cell runs several extensions in one process, and the free function has no Context: its turn rides the first running extension's connection. When that
+// extension stops while another member's task still holds the turn, the turn is the process's, not the stopped connection's: the exit goes to a connection that
+// still runs, or the file stays held for as long as the process lives (the host releases a stopped connection's turns only with the process's last one).
+func TestWithFileMutationQueueExitReachesTheHostWhenTheCarryingConnectionStopped(t *testing.T) {
+	t.Setenv("PIG_EXT_SOCKET", "")
+	carrier := adoptScriptedQueueHost(t, "/s/e-0.sock")
+	peer := adoptScriptedQueueHost(t, "/s/e-1.sock")
+	file := filepath.Join(t.TempDir(), "a.txt")
+	inside, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		value, err := WithFileMutationQueue(link, func() (int, error) {
-			aliasRan.Store(true)
-			return 7, nil
+		_, err := WithFileMutationQueue(file, func() (struct{}, error) {
+			close(inside)
+			<-release
+			return struct{}{}, nil
 		})
-		second <- result{value, err}
+		done <- err
 	}()
-	awaitAdmission(t, key, held)
-	close(release)
-	if err := <-firstErr; !errors.Is(err, want) {
-		t.Fatalf("error = %v, want the task's", err)
+	<-inside
+	if calls := carrier.recorded(); len(calls) != 1 || calls[0].method != callFileMutationEnter {
+		t.Fatalf("the enter did not ride the first running connection: %+v", calls)
 	}
+	// The member whose connection carried the enter stops while the other member's task still holds the turn.
+	carrier.stopConn()
+	close(release)
 	select {
-	case got := <-second:
-		if got.err != nil || got.value != 7 {
-			t.Fatalf("queued caller returned %d, %v", got.value, got.err)
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
 		}
 	case <-time.After(10 * time.Second):
-		t.Fatal("the failing mutation never released the caller queued behind it")
+		t.Fatal("the task never returned")
 	}
-}
-
-// A path below a regular file (ENOTDIR) is keyed by its absolute path, as Pi's isMissingPathError treats ENOTDIR like ENOENT.
-func TestWithFileMutationQueueKeysAPathBelowAFileByItsAbsolutePath(t *testing.T) {
-	dir := t.TempDir()
-	file := filepath.Join(dir, "a.txt")
-	if err := os.WriteFile(file, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	below := filepath.Join(file, "child")
-	key, err := fileMutationQueueKey(below)
-	if err != nil {
-		t.Fatalf("a path below a file failed: %v", err)
-	}
-	if want, _ := filepath.Abs(below); key != want {
-		t.Fatalf("key = %q, want %q", key, want)
-	}
-}
-
-// isMissingPathError follows the Node error code: ENOENT and ENOTDIR are missing, and on Windows exactly the system errors libuv names ENOENT.
-func TestIsMissingPathErrorFollowsTheNodeCode(t *testing.T) {
-	windows := runtime.GOOS == "windows"
-	for _, tc := range []struct {
-		name string
-		err  error
-		want bool
-	}{
-		{"ENOENT", &fs.PathError{Op: "lstat", Path: "x", Err: syscall.ENOENT}, true},
-		{"ENOTDIR", &fs.PathError{Op: "lstat", Path: "x", Err: syscall.ENOTDIR}, true},
-		{"fs.ErrNotExist without an errno", fs.ErrNotExist, true},
-		{"too many links", errors.New("EvalSymlinks: too many links"), false},
-		{"ERROR_INVALID_NAME", &fs.PathError{Op: "lstat", Path: "x", Err: syscall.Errno(123)}, windows},
-		{"ERROR_DIRECTORY", &fs.PathError{Op: "lstat", Path: "x", Err: syscall.Errno(267)}, windows},
-		{"ERROR_BAD_NETPATH", &fs.PathError{Op: "lstat", Path: "x", Err: syscall.Errno(53)}, false},
-	} {
-		if got := isMissingPathError(tc.err); got != tc.want {
-			t.Errorf("%s: missing = %v, want %v", tc.name, got, tc.want)
+	var exits []queueCall
+	for _, call := range peer.recorded() {
+		if call.method == callFileMutationExit {
+			exits = append(exits, call)
 		}
+	}
+	if len(exits) != 1 || exits[0].args["ticket"] != "fm-1" {
+		t.Fatalf("exits the still-running extension's connection received = %+v, want one for ticket fm-1", exits)
 	}
 }

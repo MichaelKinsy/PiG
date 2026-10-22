@@ -762,6 +762,91 @@ def test_execute_tool_with_an_aborted_signal_cancels_after_the_call_starts() -> 
         host.close()
 
 
+_EXEC_KILLED = {"stdout": "so far", "stderr": "", "code": 0, "killed": True}
+
+
+def test_exec_signal_cancels_the_command() -> None:
+    """core/exec.ts:46-52 (ExecOptions.signal): the call names itself by an exec id, is sent outside the calling request, and aborting the signal tells the host with exec.cancel after the call."""
+    signal = pig_sdk.ProviderSignal()
+    got: list[Any] = []
+
+    def execute(ctx: pig_sdk.Context, args: dict[str, Any]) -> str:
+        got.append(ctx.exec("sleep", ["30"], timeout=5000, signal=signal))
+        return "done"
+
+    ext, ready = _tool_ext("py-exec-abort", execute)
+    host = _host(ext, ready)
+    try:
+        call = _start_tool(host)
+        assert call["call"]["method"] == "exec"
+        assert "parent_request_id" not in call["call"]
+        exec_id = call["call"]["args"]["execId"]
+        assert call["call"]["args"] == {"command": "sleep", "args": ["30"], "options": {"timeout": 5000}, "execId": exec_id, "ownSignal": True}
+        signal.set()
+        cancel = host.read()
+        assert cancel["call"]["method"] == "exec.cancel"
+        assert cancel["call"]["args"] == {"execId": exec_id}
+        host.answer(cancel, None)
+        host.answer(call, _EXEC_KILLED)
+        assert host.read()["response"]["result"] == {"content": "done"}
+        assert (got[0].stdout, got[0].exit_code, got[0].killed) == ("so far", 0, True)
+    finally:
+        host.close()
+
+
+def test_exec_with_a_set_signal_sends_the_cancel_behind_the_call() -> None:
+    """The host applies a cancel only after the call it names started the command, so a signal that is set already still sends the call first (exec.ts spawns, then kills)."""
+    signal = pig_sdk.ProviderSignal()
+    signal.set()
+    ext, ready = _tool_ext("py-exec-preset-abort", lambda ctx, args: ctx.exec("sleep", ["30"], signal=signal).killed and "killed")
+    host = _host(ext, ready)
+    try:
+        call = _start_tool(host)
+        cancel = host.read()
+        assert call["call"]["method"] == "exec" and cancel["call"]["method"] == "exec.cancel"
+        assert cancel["call"]["args"]["execId"] == call["call"]["args"]["execId"]
+        host.answer(cancel, None)
+        host.answer(call, _EXEC_KILLED)
+        assert host.read()["response"]["result"] == {"content": "killed"}
+    finally:
+        host.close()
+
+
+def test_exec_signal_replaces_the_calling_requests_cancellation() -> None:
+    """exec.ts has no signal but the caller's: cancelling the calling request neither ends the command nor returns from the call."""
+    got: list[Any] = []
+    ext, ready = _tool_ext("py-exec-own-signal-request", lambda ctx, args: got.append(ctx.exec("sleep", [], signal=pig_sdk.ProviderSignal())) or "done")
+    host = _host(ext, ready)
+    try:
+        call = _start_tool(host)
+        assert call["call"]["method"] == "exec"
+        _write_frame(host.conn, {"type": "cancel", "id": "r1", "cancel": {"request_id": "r1", "reason": "user"}})
+        host.answer(call, {"stdout": "finished", "stderr": "", "code": 0, "killed": False})
+        assert host.read()["response"]["result"] == {"content": "done"}
+        assert got[0].stdout == "finished"
+    finally:
+        host.close()
+
+
+def test_exec_without_a_signal_stays_tied_to_the_request() -> None:
+    """Without options.signal the call carries the calling request and no exec id."""
+    ext, ready = _tool_ext("py-exec-no-signal", lambda ctx, args: ctx.exec("sleep", [], cwd="/work") and "done")
+    host = _host(ext, ready)
+    try:
+        call = _start_tool(host)
+        assert call["call"]["parent_request_id"] == "r1"
+        assert call["call"]["args"] == {"command": "sleep", "args": [], "options": {"cwd": "/work"}}
+        host.answer(call, {"stdout": "", "stderr": "", "code": 0, "killed": False})
+        assert host.read()["type"] == "response"
+    finally:
+        host.close()
+
+
+def test_exec_rejects_a_signal_that_is_not_a_provider_signal() -> None:
+    with pytest.raises(TypeError, match="signal must be a ProviderSignal"):
+        pig_sdk.Context.exec(object(), "sleep", [], signal=object())  # type: ignore[arg-type]
+
+
 def test_cancelling_the_calling_request_releases_a_blocked_execute_tool() -> None:
     """runner.ts:983: the nested call's default signal is the calling tool's; here the host cancels the request while the nested call runs."""
     failure: list[str] = []

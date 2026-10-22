@@ -17,6 +17,8 @@
 //! A component with a `render` of its own is a [`Lines`] range.
 
 mod digest;
+mod widgets;
+pub use widgets::*;
 
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
@@ -45,6 +47,7 @@ pub enum Node {
     ToolExecution(ToolExecution),
     BashExecution(BashExecution),
     Diff(Diff),
+    Widget(Widget),
 }
 
 macro_rules! node_from {
@@ -1098,8 +1101,9 @@ impl View {
         Self { root: root.into(), focus: None, theme: Vec::new() }
     }
 
-    /// The id of the select-list or settings-list that receives the keys it
-    /// binds (`ui.custom` only).
+    /// The id of the select-list, settings-list, input, editor,
+    /// cancellable-loader or bordered-loader that receives the keys it binds
+    /// (every key for an input and an editor; `ui.custom` only).
     pub fn focus(mut self, id: impl Into<String>) -> Self {
         self.focus = Some(id.into());
         self
@@ -1219,6 +1223,7 @@ impl Encoder {
             Node::ToolExecution(_) => "tool-execution",
             Node::BashExecution(_) => "bash-execution",
             Node::Diff(_) => "diff",
+            Node::Widget(w) => w.kind(),
         };
         put(&mut map, "kind", kind);
         match node {
@@ -1464,6 +1469,7 @@ impl Encoder {
                 put(&mut map, "diff", n.diff.as_str());
                 put_nonempty(&mut map, "filePath", &n.file_path);
             }
+            Node::Widget(w) => w.encode(self, &mut map, depth)?,
         }
         Ok(Value::Object(map))
     }
@@ -1541,6 +1547,14 @@ pub enum EventKind {
     SelectionChange,
     /// SettingsList `onChange(id, newValue)`.
     Change,
+    /// Input or Editor `onSubmit(value)`.
+    Submit,
+    /// Input `onEscape()`.
+    Escape,
+    /// CancellableLoader `onAbort()`.
+    Abort,
+    /// A mouse event a MouseRegion took.
+    Mouse,
 }
 
 /// A callback of an interactive node of a `ui.custom` view, delivered to
@@ -1560,6 +1574,10 @@ pub struct Event {
     pub id: String,
     /// The changed setting's new value (change).
     pub value: String,
+    /// The cursor of an input or an editor (change, submit, escape).
+    pub cursor: Option<Cursor>,
+    /// The mouse event a mouse region took (mouse).
+    pub mouse: Option<Mouse>,
 }
 
 impl Event {
@@ -1572,6 +1590,10 @@ impl Event {
             "cancel" => EventKind::Cancel,
             "selectionChange" => EventKind::SelectionChange,
             "change" => EventKind::Change,
+            "submit" => EventKind::Submit,
+            "escape" => EventKind::Escape,
+            "abort" => EventKind::Abort,
+            "mouse" => EventKind::Mouse,
             _ => return None,
         };
         let item = args.get("item").filter(|item| item.is_object()).map(|item| {
@@ -1589,6 +1611,8 @@ impl Event {
             item,
             id: text("id"),
             value: text("value"),
+            cursor: args.get("cursor").and_then(Cursor::from_wire),
+            mouse: args.get("mouse").and_then(Mouse::from_wire),
         };
         Some((text("key"), event))
     }

@@ -502,3 +502,55 @@ func TestWebSocketLinkPacksLargePayloadsAsBinaryMessages(t *testing.T) {
 		t.Fatalf("refused binary: reasons = %q", got)
 	}
 }
+
+// link.ts `ended` sets closed and calls the close handlers in one synchronous block. Here the handlers run after the
+// link reads closed and after its transport shut down, outside the link's lock (a handler may use the link), so a caller
+// that polls Closed() can see it true before a handler has returned, or run: it waits for the handler when it needs its
+// effect.
+func TestLinkIsClosedWhileItsCloseHandlersRun(t *testing.T) {
+	a, _ := MemoryLinkPair()
+	inHandler, release := make(chan bool), make(chan struct{})
+	a.OnClose(func(string) {
+		inHandler <- a.Closed()
+		<-release
+	})
+	done := make(chan struct{})
+	go func() {
+		a.Close("done")
+		close(done)
+	}()
+	if !<-inHandler {
+		t.Fatal("the link read open inside its close handler")
+	}
+	// The handler has not returned, and the link already reads closed.
+	if !a.Closed() {
+		t.Fatal("the link read open while its close handler ran")
+	}
+	close(release)
+	<-done
+}
+
+// answeringTransport is a transport whose peer answers a bye at once, from another goroutine in a real one: the answer
+// ends this link ("peer closed") while Close is still sending the bye.
+type answeringTransport struct{ link *baseLink }
+
+func (transport *answeringTransport) transmit(Frame) (int, error) {
+	transport.link.ended("peer closed")
+	return 0, nil
+}
+
+func (transport *answeringTransport) shutdown() {}
+
+// link.ts close(): the bye and the end of the link are one synchronous block, so the peer's answer cannot come first
+// and Close's handlers hear Close's reason. TestLinkOnCloseCallsAReRegisteredHandlerOnce saw "peer closed" instead of
+// "done" about once in 1300 package iterations, when the pump delivering the bye ended the link before Close did.
+func TestLinkCloseReportsItsOwnReasonWhenThePeerAnswersTheByeAtOnce(t *testing.T) {
+	link := &baseLink{}
+	link.transport = &answeringTransport{link: link}
+	var reasons reasonLog
+	link.OnClose(reasons.add)
+	link.Close("done")
+	if got := reasons.list(); !slices.Equal(got, []string{"done"}) {
+		t.Fatalf("close handlers saw %q, want [done]", got)
+	}
+}

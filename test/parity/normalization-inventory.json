@@ -37,7 +37,7 @@
     },
     {
       "source": "test/parity/runner/json_compare.go",
-      "sha256": "5927b605bdbb4825745dc1a3e7e6fd2e6c17ad4eff651a10eeca02a5b65057ba",
+      "sha256": "fde6cb1d87a77f6e1ba4ff432e29e18fdc20482e3a9f434285fe9b93ab30599e",
       "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
     },
     {
@@ -87,7 +87,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "e297df37948e40119982dd2a554ab7b55504d543400ab83c74c6a3b959eb233e",
+      "sha256": "60ee89b311cc0b0b3d5f036e60ce01f0429fcb0ac083e4ac781eb03a1036b9c7",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -2508,6 +2508,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/87-interactive-send-message-routing.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: read parity-read-target.txt",
+            "capture_end_regex": "\\[route-follow-up\\][\\s\\S]*?42"
+          },
+          "reason": "Owned visible surface: A message an extension sends while a run streams is steered, queued as a follow-up, or held until the turn ends, as Pi routes it",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
@@ -4700,6 +4718,40 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/json/13-json-session-start-writer-order.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|parentId)\":\"[0-9a-f-]{8,36}\"",
+          "with": "\"$1\":\"<ID>\"",
+          "reason": "Generated entry keys and the session header id are random per run; keep each member's name and position."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"cwd\":\"[^\"]*\"",
+          "with": "\"cwd\":\"<CWD>\"",
+          "reason": "D2: each binary runs in its own isolated cwd."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: --mode json starts its stream at the prompt: nothing a session_start handler emits is written, a command's appends are",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/model-resolver-selector/03-model-invalid.toml",
       "transforms": [
         {
@@ -5090,6 +5142,23 @@
             "capture_start_last": true
           },
           "reason": "Owned visible surface: Ctrl+P cycles a mixed custom and built-in model scope in configured order.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/model-resolver-selector/28-scoped-models-refresh-prompt-after-cycle.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "first prompt"
+          },
+          "reason": "Owned visible surface: Prompts submitted after a /scoped-models refresh and Ctrl+P reach the model's backend instead of failing with No model selected.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -5838,6 +5907,34 @@
         {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: Print mode fails a Cloudflare prompt whose API key has no account id before the turn, with Pi's guidance",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/print/12-print-skill-expansion-before-auth.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|timestamp|cwd)\":\"[^\"]*\"",
+          "with": "\"$1\":\"<X>\"",
+          "reason": "The session header's id, timestamp and cwd are per run; keep its key order and the rest of the line."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "/[^ \\n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\\.md",
+          "with": "<DOCS>/$1.md",
+          "reason": "D2/D22: the documentation root is distribution-specific; keep the file names and the guidance text."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "[^ \\n(]*pig-parity-skill-[A-Za-z0-9]+",
+          "with": "<SKILL-ROOT>",
+          "reason": "The skill's temporary directory is created per run and its prefix differs by platform."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Print and JSON mode expand /skill: before the auth check, so an unreadable skill reports skill_expansion first",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         }
       ]
@@ -7884,6 +7981,501 @@
           "pig": "Always read pig .md files",
           "pi": "Always read pi .md files",
           "reason": "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/68-rpc-set-widget-per-call-order.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/68-rpc-timer-callback-call-order.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/69-rpc-dialog-signal-abort.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/69-rpc-sibling-tool-timer-call-order.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/70-rpc-command-chain-timer-send.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/70-rpc-session-start-writer-order.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/**/id",
+            "/**/parentId",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{8,36}$",
+          "reason": "Entry, session and UI request IDs vary per run. A bijection preserves distinct identities and every parent reference; the literal command IDs (after, new, state) do not match the pattern and stay unchanged."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent entry wall clocks vary; retain presence, type and valid syntax."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/71-rpc-command-chain-timer-dialog.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/71-rpc-deferred-ui-after-response.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Notify request UUIDs vary per process. The comparator preserves one-to-one identity correspondence."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/72-rpc-command-chain-io-timer-send.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/72-rpc-deferred-ui-packed-extensions.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Notify request UUIDs vary per process. The comparator preserves one-to-one identity correspondence."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/73-rpc-session-start-message-after-response.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Notify request UUIDs vary per process. The comparator preserves one-to-one identity correspondence."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/74-rpc-command-send-wait-idle.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/75-rpc-command-send-wait-idle-go.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/76-rpc-command-send-wait-idle-python.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/77-rpc-command-send-wait-idle-rust.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/78-rpc-ui-closures-not-run.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/79-rpc-ui-wire-empty-members.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/80-rpc-prepare-loadout-every-turn.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "roots": [
+            "cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the cwd section; retain the tags and every other character."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Message wall clocks vary per process; retain field presence and type."
+        },
+        {
+          "kind": "duration_ms",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/81-rpc-ui-response-typed-results.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
         }
       ]
     },

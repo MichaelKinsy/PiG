@@ -37,8 +37,9 @@ type StackChild interface {
 type View struct {
 	// Root is the component tree; a view without one is invalid.
 	Root Node
-	// Focus is the ID of the [SelectList] or [SettingsList] that receives the
-	// keys it binds (ui.custom only).
+	// Focus is the ID of the [SelectList], [SettingsList], [Input], [Editor],
+	// [CancellableLoader] or [BorderedLoader] that receives the keys it binds
+	// (every key for an Input and an Editor; ui.custom only).
 	Focus string
 	// Theme overrides theme tokens for this surface only: Pi's token name to
 	// "#rrggbb". The host validates the tokens and colors.

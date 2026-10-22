@@ -4,20 +4,23 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 type recordingExtensionHost struct{ name string }
 
-func (*recordingExtensionHost) UIBridge() *subprocess.UIBridge     { return nil }
-func (*recordingExtensionHost) FlushCommands()                     {}
-func (*recordingExtensionHost) SetRuntimeDrainHandler(func())      {}
-func (*recordingExtensionHost) SetSettleTailHandler(func(int))     {}
-func (*recordingExtensionHost) SetCommandSuspendHandler(func(int)) {}
-func (*recordingExtensionHost) SetCommandWindowHandler(func(int))  {}
-func (*recordingExtensionHost) EndInput()                          {}
-func (*recordingExtensionHost) HoldRetirements()                   {}
-func (*recordingExtensionHost) TerminateProcesses()                {}
-func (*recordingExtensionHost) Invalidate(string)                  {}
+func (*recordingExtensionHost) UIBridge() *subprocess.UIBridge               { return nil }
+func (*recordingExtensionHost) FlushCommands()                               {}
+func (*recordingExtensionHost) SetRuntimeDrainHandler(func())                {}
+func (*recordingExtensionHost) SetSettleTailHandler(func(int))               {}
+func (*recordingExtensionHost) SetBackgroundCallGate(func() <-chan struct{}) {}
+func (*recordingExtensionHost) SetTimerTurns(*jsloop.Turns)                  {}
+func (*recordingExtensionHost) SetCommandSuspendHandler(func(int))           {}
+func (*recordingExtensionHost) SetCommandWindowHandler(func(int))            {}
+func (*recordingExtensionHost) EndInput()                                    {}
+func (*recordingExtensionHost) HoldRetirements()                             {}
+func (*recordingExtensionHost) TerminateProcesses()                          {}
+func (*recordingExtensionHost) Invalidate(string)                            {}
 
 // A mode reaches the extension host of a Session through the Session itself, as Pi's modes reach the runner through AgentSession: every Session a Runtime creates, and every clone of it, carries RuntimeOptions.ExtensionHost.
 func TestSessionCarriesTheExtensionHostOfItsRuntime(t *testing.T) {

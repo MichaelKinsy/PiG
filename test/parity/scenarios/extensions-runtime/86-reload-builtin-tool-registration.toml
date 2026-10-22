@@ -1,0 +1,53 @@
+# Behavior family: extensions-runtime
+# Scenario: /reload re-runs every extension factory, and a tool a factory registers while it runs does not refresh the live Session.
+#
+# Pi's loader gives a loading extension a runtime whose refreshTools is a no-op ("registerTool() is valid during extension load;
+# refresh is only needed post-bind", loader.ts createExtensionRuntime) and a reload builds a new runtime, so no loadout hook runs
+# mid-load and the transcript shows only the reload status. PiG ran the factories on the runtime its Session was already bound to and
+# every registerTool refreshed that Session, which ran the prepareLoadout hook of the previous load's builtin:codemode tool through
+# the API the reload had just retired: the transcript gained
+# `Extension "builtin:codemode" error: This extension ctx is stale after session replacement or reload.` (issue #267).
+#
+# The settings activate codemode through defaultTools, so its prepareLoadout hook is in the active loadout when a later registration refreshes it.
+# The extension registers a tool so the reload has a registration after the builtins' own, as the issue's reproduction does.
+#
+# Upstream evidence: pinned Pi 1.3.0 prints only `Reloaded keybindings, extensions, skills, prompts, themes, and context files` for the same input.
+
+name = "86-reload-builtin-tool-registration"
+description = "/reload reports no extension error when factories register tools while loading"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+# The base --no-extensions flag would also stop the builtin extensions the reload re-runs.
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/reload-codemode-pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/reload-codemode-pi-agent"]
+pig_extensions = ["testdata/ext/parity-echo.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-echo.mjs",
+]
+
+[tmux]
+width = 120
+height = 400
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded keybindings"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["Reloaded keybindings"]
+both_not_contain = ["ctx is stale", "Extension \"builtin:", "panic:", "goroutine "]
+runs = 3

@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/coding/source"
+	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -163,6 +164,7 @@ func currentColorMode() TerminalColorMode {
 // as upstream loadTheme creates the theme when it is set.
 func storeActiveTheme(t *Theme) {
 	activeTheme.Store(t.WithColorMode(currentColorMode()))
+	activeThemeObservers.Notify()
 }
 
 // RefreshActiveThemeColorMode re-activates the active theme in the color mode
@@ -404,6 +406,13 @@ var (
 // loads use an atomic pointer.
 var activeTheme atomic.Pointer[Theme]
 
+// activeThemeObservers run after the active theme is replaced (a selection, a color-mode refresh, the watcher's reload of the theme's file) or the terminal's reported colors change, which the active theme resolves its colors and appearance from.
+var activeThemeObservers changeobservers.Observers
+
+// ObserveActiveTheme registers observe to run after the active theme is replaced, which is what theme.ts reports through onThemeChange (theme.ts:698-731, 780), or after the terminal's reported colors change. Upstream's `ctx.ui.theme` is the global theme, read at every use, so an owner that hands a copy of the palette to a runtime reports each change through this.
+// observe runs on the goroutine that replaced the theme, with the theme mutation lock held: it must return at once and must not select a theme. The returned function removes it and can be called repeatedly.
+func ObserveActiveTheme(observe func()) func() { return activeThemeObservers.Add(observe) }
+
 // ActiveTheme returns the current theme; before any selection it is the built-in dark theme.
 func ActiveTheme() *Theme {
 	if theme := activeTheme.Load(); theme != nil {
@@ -460,12 +469,13 @@ func setBuiltinTheme(name string, enableWatcher bool) {
 // InMemoryThemeName is the name of a theme set directly from an instance (theme.ts setThemeInstance's currentThemeName).
 const InMemoryThemeName = "<in-memory>"
 
-// SetThemeInstance makes theme the active theme (theme.ts:795 setThemeInstance). An instance has no file to watch, so the owned watcher selects
-// nothing for it.
+// SetThemeInstance makes theme the active theme as it is (theme.ts:795 setThemeInstance stores the instance it is given). Only a theme loaded or selected by name is created
+// for the terminal's color depth (theme.ts createTheme); an instance keeps the mode it was created in, so putting back the theme that was active leaves it as it was.
+// An instance has no file to watch, so the owned watcher selects nothing for it.
 func SetThemeInstance(theme *Theme) {
 	themeMutationMu.Lock()
 	defer themeMutationMu.Unlock()
-	storeActiveTheme(theme)
+	activeTheme.Store(theme)
 	noteSelectedTheme(InMemoryThemeName, false)
 }
 

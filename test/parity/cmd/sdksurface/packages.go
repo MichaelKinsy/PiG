@@ -108,6 +108,10 @@ func packageExports(root string) ([]probePackage, error) {
 			}
 			switch i.Kind {
 			case "class", "function", "variable":
+			case "external":
+				// A re-export from a third-party package: a runtime value
+				// (typebox's Type, marked's Marked) or a type, which the
+				// probe tells apart by whether the runtime serves it.
 			default:
 				continue // type-only declarations have no runtime value
 			}
@@ -189,6 +193,9 @@ func packageRows(packages []probePackage, probe *probeResult) []matrixRow {
 		group := "Package exports: " + pkg.Module
 		for _, exp := range pkg.Exports {
 			got := report[exp.Name]
+			if exp.Kind == "external" && got.Status == "missing" {
+				continue // a re-exported type: no runtime value to realize
+			}
 			rows = append(rows, matrixRow{
 				surfaceRow: surfaceRow{Group: group, Key: pkg.Module + ": " + exp.Name, Decl: exp.Kind + " " + exp.Name, Kind: kindExport},
 				Cells:      map[string]cell{"node": nodeCell(got.probeCell)},

@@ -78,6 +78,7 @@ type AgentSessionServices struct {
 	// sharedRuntime marks a ModelRuntime owned by the caller: Close leaves it running.
 	sharedRuntime       bool
 	resourceLoader      *DefaultResourceLoader
+	sharedLoader        bool
 	extensionFlagValues []ExtensionFlagValue
 	// appliedExtensionFlagValues are the values ApplyExtensionFlagValues accepted, which extensions read with getFlag.
 	appliedExtensionFlagValues map[string]any
@@ -135,6 +136,9 @@ type CreateAgentSessionServicesOptions struct {
 	// (Omit<DefaultResourceLoaderOptions, "cwd" | "agentDir" | "settingsManager">). Nil leaves the resource loader to
 	// the Session, which builds a default one.
 	ResourceLoaderOptions *DefaultResourceLoaderOptions
+
+	// ResourceLoader is a caller-owned, already reloaded resource loader the Services use as their own instead of building one; Close does not close it. Upstream createAgentSession's `resourceLoader` option. It takes precedence over ResourceLoaderOptions.
+	ResourceLoader *DefaultResourceLoader
 
 	// ResourceLoaderReloadOptions are the options of the Services' first resource reload. Upstream
 	// CreateAgentSessionServicesOptions.resourceLoaderReloadOptions. Nil or empty reloads without resolving trust.
@@ -213,6 +217,11 @@ func CreateAgentSessionServices(opts CreateAgentSessionServicesOptions) (*AgentS
 		_ = services.ModelRuntime().queueAvailabilityRefresh(signal)
 	}
 	services.extensionFlagValues = opts.ExtensionFlagValues
+	if opts.ResourceLoader != nil {
+		services.resourceLoader, services.sharedLoader = opts.ResourceLoader, true
+		services.applyLoadedExtensions(signal)
+		return services, nil
+	}
 	if opts.ResourceLoaderOptions != nil || opts.ResourceLoaderReloadOptions != nil {
 		loaderOptions := DefaultResourceLoaderOptions{}
 		if opts.ResourceLoaderOptions != nil {
@@ -260,7 +269,7 @@ func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentia
 
 // Close stops the Extension Host of the resource loader's default extension load (the loaded extensions stop), stops admission of model background work, cancels its lifetime, and drains admitted tasks. It does not close caller-owned credential or catalog storage. Call it after Sessions finish and outside model callbacks.
 func (s *AgentSessionServices) Close() {
-	if s != nil && s.resourceLoader != nil {
+	if s != nil && s.resourceLoader != nil && !s.sharedLoader {
 		s.resourceLoader.Close()
 	}
 	if s != nil && s.registry != nil && !s.sharedRuntime {

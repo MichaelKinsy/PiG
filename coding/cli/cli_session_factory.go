@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // cliSessionInputs is what one Session of a mode needs from its cwd-bound build: the Services and extension set the Session runs on, the options it starts with, and how to retire the build's resources after the Session is replaced.
@@ -192,6 +193,18 @@ func (h *cliExtensionHost[S]) SetRuntimeDrainHandler(fn func()) {
 func (h *cliExtensionHost[S]) SetSettleTailHandler(fn func(suspended int)) {
 	if h.host != nil {
 		h.host.SetSettleTailHandler(fn)
+	}
+}
+
+func (h *cliExtensionHost[S]) SetBackgroundCallGate(gate func() <-chan struct{}) {
+	if h.host != nil {
+		h.host.SetBackgroundCallGate(gate)
+	}
+}
+
+func (h *cliExtensionHost[S]) SetTimerTurns(turns *jsloop.Turns) {
+	if h.host != nil {
+		h.host.SetTimerTurns(turns)
 	}
 }
 

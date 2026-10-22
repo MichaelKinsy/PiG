@@ -14,7 +14,11 @@ import (
 const (
 	footerMethod = "ui.setFooter"
 	headerMethod = "ui.setHeader"
+	widgetMethod = "ui.setWidget"
 )
+
+// widgetRendererID is the key of the renderer installed for the widget key in Extension.surfaces.
+func widgetRendererID(key string) string { return widgetMethod + ":" + key }
 
 // pig additive (D19): Pi installs a footer or header as an in-process component
 // factory that the TUI renders every frame; a subprocess SDK renders at the host
@@ -22,6 +26,9 @@ const (
 type surfaceRenderer struct {
 	method string
 	render func(width int) []string
+	// key and options are the widget a renderer of widgetMethod lays out.
+	key     string
+	options WidgetOptions
 
 	// mu serializes a render with its push and orders a push against stop, so a
 	// superseded renderer never overwrites the rows that replaced it.
@@ -34,10 +41,25 @@ type surfaceRenderer struct {
 }
 
 func surfaceKind(method string) string {
-	if method == headerMethod {
+	switch method {
+	case headerMethod:
 		return "header"
+	case widgetMethod:
+		return "widget"
 	}
 	return "footer"
+}
+
+// args is the host call's argument for rows rendered at width.
+func (s *surfaceRenderer) args(lines []string, width int) map[string]any {
+	args := surfaceArgs(lines, width)
+	if s.method == widgetMethod {
+		args["key"] = s.key
+		if s.options != nil {
+			args["options"] = s.options
+		}
+	}
+	return args
 }
 
 // push renders at the current host width and sends the rows tagged with it. A
@@ -54,7 +76,7 @@ func (s *surfaceRenderer) push(c Context) error {
 	if !ok {
 		return nil
 	}
-	result, err := c.callHost(s.method, surfaceArgs(lines, width))
+	result, err := c.callHost(s.method, s.args(lines, width))
 	return callResultError(result, err)
 }
 
@@ -116,23 +138,30 @@ func surfaceArgs(lines []string, width int) map[string]any {
 // installs next (nil for none).
 func (e *Extension) replaceSurface(method string, next *surfaceRenderer) {
 	e.surfaceMu.Lock()
-	previous := e.surfaces[method]
 	previousView := e.viewSurfaces[method]
 	delete(e.viewSurfaces, method)
+	e.surfaceMu.Unlock()
+	e.replaceSurfaceID(method, next)
+	if previousView != nil {
+		previousView.stop()
+	}
+}
+
+// replaceSurfaceID retires the renderer installed under id and installs next (nil for none).
+func (e *Extension) replaceSurfaceID(id string, next *surfaceRenderer) {
+	e.surfaceMu.Lock()
+	previous := e.surfaces[id]
 	if next == nil {
-		delete(e.surfaces, method)
+		delete(e.surfaces, id)
 	} else {
 		if e.surfaces == nil {
 			e.surfaces = map[string]*surfaceRenderer{}
 		}
-		e.surfaces[method] = next
+		e.surfaces[id] = next
 	}
 	e.surfaceMu.Unlock()
 	if previous != nil {
 		previous.stop()
-	}
-	if previousView != nil {
-		previousView.stop()
 	}
 }
 
@@ -174,6 +203,10 @@ func (c Context) setSurfaceRenderer(method string, render func(width int) []stri
 	if render == nil {
 		return c.setSurface(method, nil)
 	}
+	// upstream: rpc-mode.ts setFooter/setHeader ignore the factory and runner.ts noOpUIContext does too, so Pi calls a footer or header factory only in the TUI.
+	if !c.HasUI() || c.Mode() == "rpc" {
+		return nil
+	}
 	next := &surfaceRenderer{method: method, render: render}
 	c.ext.replaceSurface(method, next)
 	return next.push(c)
@@ -185,7 +218,9 @@ func (c Context) setSurfaceRenderer(method string, render func(width int) []stri
 // again after every width change, and sends each set of rows with the width it
 // was rendered for, so the host never paints rows laid out for another width.
 // A nil render restores the built-in footer. A panic in render is reported to
-// the user as "footer render failed: ..." and leaves the previous rows.
+// the user as "footer render failed: ..." and leaves the previous rows. With no
+// UI, or in RPC mode, render is ignored and never called, as Pi's no-op and RPC
+// UIs ignore the factory (rpc-mode.ts setFooter, runner.ts noOpUIContext).
 func (c Context) SetFooterRenderer(render func(width int) []string) error {
 	return c.setSurfaceRenderer(footerMethod, render)
 }
@@ -194,4 +229,18 @@ func (c Context) SetFooterRenderer(render func(width int) []string) error {
 // terminal width; it follows the same contract as [Context.SetFooterRenderer].
 func (c Context) SetHeaderRenderer(render func(width int) []string) error {
 	return c.setSurfaceRenderer(headerMethod, render)
+}
+
+// SetWidgetRenderer installs the widget key with a renderer that lays its rows out at the host's terminal width, the subprocess form of the component factory Pi's ctx.ui.setWidget(key, factory, options) takes. It follows the contract of [Context.SetFooterRenderer]: the SDK renders at the width the host reports and again after every width change, sends each set of rows with the width it was rendered for, and the host paints them only at that width, so a widget never shows rows laid out for the old width. options is the placement ({"placement": "aboveEditor" | "belowEditor"}). A nil render clears the widget. A panic in render is reported as "widget render failed: ..." and leaves the previous rows. [Context.SetWidget] with the same key replaces the renderer.
+func (c Context) SetWidgetRenderer(key string, render func(width int) []string, options ...WidgetOptions) error {
+	if render == nil {
+		return c.SetWidget(key, nil, options...)
+	}
+	next := &surfaceRenderer{method: widgetMethod, render: render, key: key}
+	if len(options) > 0 {
+		next.options = options[0]
+	}
+	c.ext.replaceViewSurface(widgetViewSurfaceID(key), nil)
+	c.ext.replaceSurfaceID(widgetRendererID(key), next)
+	return next.push(c)
 }

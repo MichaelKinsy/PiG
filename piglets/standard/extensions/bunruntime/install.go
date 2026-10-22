@@ -153,7 +153,12 @@ func (in installer) install(ctx context.Context) (string, error) {
 		return "", err
 	}
 	target := filepath.Join(in.root, runtimeID)
-	if err := replaceDir(staging, target); err != nil {
+	// Another process may be installing, removing or checking the runtime: the replacement is rename-aside then rename-in, and a reader between the two renames finds no <root>/bun.
+	err = withInstallLock(ctx, in.root, true, func() error {
+		removeStaleReplacements(target)
+		return replaceDir(staging, target)
+	})
+	if err != nil {
 		return "", err
 	}
 	return filepath.Join(target, a.exeName), nil
@@ -266,6 +271,9 @@ func extractExecutable(archive, member, path, digest string) error {
 	return fmt.Errorf("%s has no %s", filepath.Base(archive), member)
 }
 
+// afterReplaceAside runs between replaceDir's two renames, while <root>/bun does not exist; a test replaces it to observe that window.
+var afterReplaceAside = func() {}
+
 // replaceDir moves staging to target, removing an earlier target after the move.
 func replaceDir(staging, target string) error {
 	var old string
@@ -274,6 +282,7 @@ func replaceDir(staging, target string) error {
 		if err := os.Rename(target, old); err != nil {
 			return fmt.Errorf("replace %s: %w", target, err)
 		}
+		afterReplaceAside()
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
@@ -287,6 +296,14 @@ func replaceDir(staging, target string) error {
 		return os.RemoveAll(old)
 	}
 	return nil
+}
+
+// removeStaleReplacements deletes the directories an install that was killed between its two renames left beside target. The caller holds the install lock, so none belongs to a replacement in progress.
+func removeStaleReplacements(target string) {
+	stale, _ := filepath.Glob(target + ".old-*")
+	for _, dir := range stale {
+		_ = os.RemoveAll(dir)
+	}
 }
 
 // verifyInstalled checks the installed runtime as PiG does before it runs it: the manifest, the executable's digest against this
@@ -339,10 +356,23 @@ func verifyInstalled(ctx context.Context, root, platform string, pinned []asset)
 }
 
 // remove deletes the installed runtime.
-func remove(root string) (bool, error) {
-	dir := filepath.Join(root, runtimeID)
-	if _, err := os.Lstat(dir); errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	return true, os.RemoveAll(dir)
+func remove(ctx context.Context, root string) (removed bool, err error) {
+	err = withInstallLock(ctx, root, false, func() error {
+		dir := filepath.Join(root, runtimeID)
+		if _, err := os.Lstat(dir); errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		removed = true
+		return os.RemoveAll(dir)
+	})
+	return removed, err
+}
+
+// verifyInstalledLocked is verifyInstalled while no other process replaces the runtime.
+func verifyInstalledLocked(ctx context.Context, root, platform string, pinned []asset) (executable string, err error) {
+	err = withInstallLock(ctx, root, false, func() (err error) {
+		executable, err = verifyInstalled(ctx, root, platform, pinned)
+		return err
+	})
+	return executable, err
 }

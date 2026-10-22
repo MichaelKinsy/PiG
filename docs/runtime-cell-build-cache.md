@@ -70,6 +70,8 @@ The extension wire has no independent version, so no protocol version enters the
 
 A cache hit skips compilation but runtime startup and registration still validate the artifact.
 
+The compiler reads the sources after the identity was computed, past the wait for a peer's build lock and through its own compile. A Go or Rust build therefore reads its inputs again when the compiler returns (the SDK tree, workspace modules, toolchain and generated runner it hashed itself, and the extension sources a caller derived `ContentHash` from) and publishes nothing when they differ: the build fails with `changed while it was being built`, and the next start hashes the edited source and builds it. Without the check, an edit saved during a build was compiled into an artifact stored under the identity of the original source, and putting the original source back served the build of the edit. A Rust crate's `Cargo.lock`, which `cargo` writes into the source directory, does not count as a change. A hash a caller supplies (a Piglet's pinned content hash) is not read again. Python and Node cells bake no extension source: their runner reads it when the process starts.
+
 A Go source compiler or type-check diagnostic is cached under the same packed artifact identity. An unchanged source and staged SDK report the saved diagnostic without running `go build` again. A source or SDK change selects a new identity and rebuilds. Module resolution, network, toolchain, cancellation, filesystem, and other setup failures remain retryable. Normal cache retention may remove an old failure entry.
 
 When a Go build fails only on SDK symbols that changed, the diagnostic says `written for an older SDK`, names each changed API with its old and new shape, and names the `pig extension upgrade` command (D109).
@@ -83,7 +85,7 @@ Representative current paths:
 <cacheRoot>/cells/go/<hash>/runner[.exe]    packed Go
 <cacheRoot>/cells/rust/<hash>/runner[.exe]  packed Rust project/artifact
 <cacheRoot>/cells/python/<hash>/runner.py   packed Python
-<cacheRoot>/toolchains/<probe>.json         compiler/runtime version probe
+<cacheRoot>/toolchains/<probe>-<fingerprint>.json  compiler/runtime version probe
 <cacheRoot>/cells/node/<hash>/runner        packed Node (runtime copy + manifest.json, no compiled artifact)
 ```
 
@@ -91,9 +93,9 @@ Cache paths are rebuildable implementation details. They are not package version
 
 Node extensions use Jiti's persistent transform cache under `<config-root>/cache/jiti`. The cache separates loader content, Jiti and Node versions, and Jiti environment options. Jiti reads and hashes each source before reusing its compiled output. Evaluated extension modules remain uncached between loads, so every load creates a fresh factory. `JITI_FS_CACHE=false` retains Jiti's cache-disable behavior. This disposable transform cache is separate from published cell artifacts and their pruning commands.
 
-Node also requests a source-validated native bytecode cache under `<config-root>/cache/node-compile` when an extension imports a virtual SDK library (D20). Cache activation follows the first Jiti transform, so cold startup does not serialize Babel's unused compiler bytecode. The runtime flushes compiled artifacts when it processes the host's ready message. Node checks source bytes and VM compatibility before reuse; it never caches evaluated factories. Existing Node cache configuration remains authoritative, and `NODE_DISABLE_COMPILE_CACHE=1` disables this cache independently of Jiti. Both compiler caches are disposable and are outside the cell-pruning commands.
+Node also requests a source-validated native bytecode cache under `<config-root>/cache/node-compile` when an extension imports a virtual SDK library (D20). Cache activation follows the first Jiti transform, so cold startup does not serialize Babel's unused compiler bytecode. The runtime flushes compiled artifacts once the factory has loaded, before the member registers: the flush is a synchronous pass over every compiled module, and after registration the host's first request, such as a Markdown transform or a render, would wait for it under the five-second renderer inactivity lease (D56). Node checks source bytes and VM compatibility before reuse; it never caches evaluated factories. Existing Node cache configuration remains authoritative, and `NODE_DISABLE_COMPILE_CACHE=1` disables this cache independently of Jiti. Both compiler caches are disposable and are outside the cell-pruning commands.
 
-Toolchain version records are keyed by the resolved executable's file identity and selector state such as Go, rustup, and Python version files. An unchanged warm lookup does not spawn the tool. Replacing the executable or selector state re-probes it, and a failed compiled build invalidates the relevant record before the next attempt.
+Toolchain version records are keyed by the resolved executable's file identity and selector state such as Go, rustup, and Python version files. An unchanged warm lookup does not spawn the tool. Replacing the executable or selector state re-probes it, and a failed compiled build invalidates the relevant record before the next attempt. Each fingerprint has its own record and lock, so two projects whose selectors differ do not replace each other's record or wait for each other's probe, and a command keeps its eight newest records. A probe is bounded (2 minutes, after which the version is an error), and a start that finds a peer probing the same record waits for it at most 5 minutes before it probes for itself.
 
 ## Piglet component build
 
@@ -143,6 +145,10 @@ Pig classifies each entry in this order:
 6. incomplete or invalid.
 
 The first three classes are hard roots. Age and size pressure cannot delete a hard root. Process use holds a shared advisory lock. Garbage collection must acquire the exclusive lock before it renames an entry to a same-filesystem tombstone and removes it. Lock files remain in place. Process termination releases the operating-system lock.
+
+A cache hit holds no lease until the extension process starts, so it also takes the shared lock while it checks the entry and records its use, and the collector reads the entry's `ready.json` and `usage.json` again under its exclusive lock. An entry whose record changed since the classification is skipped and counted: a peer reused it. A hit that finds the lock held by a collector is not a hit, and the entry is built again. A lease for a cache artifact whose entry is gone fails with `cache_lease_failed` ("no longer exists"); an artifact outside the cache has no lease and no error.
+
+The locks are advisory file locks (`flock`; `LockFileEx` on Windows) on the cache and SDK staging directories under the config root. A file system that refuses them, such as an NFS mount without a lock manager (`ENOLCK`) or a FUSE or SMB share (`ENOSYS`, `EOPNOTSUPP`), cannot hold the cache: Pig does not run an extension from a cache it cannot protect, and does not build without the per-entry build lock. The cell build, the lease at spawn, the collector and the SDK staging then fail with an error that names the directory, says the file system does not support file locks, wraps the errno and names the remedy: point `PIG_HOME` at a directory on a file system that does, such as a local disk. Any other lock failure keeps its own message.
 
 Automatic pruning removes obsolete SDK fingerprints, entries older than 30 days since successful use, and incomplete entries after the crash-safety grace. Automatic pruning applies no size limit. It runs after successful extension resolution at most once per day and outside the TUI input and render loops.
 

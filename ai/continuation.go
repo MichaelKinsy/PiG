@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/stackprime"
 )
 
@@ -16,7 +17,7 @@ func withContinuationExecutor(ctx context.Context) (context.Context, *continuati
 	if executor, ok := ctx.Value(continuationExecutorKey{}).(*continuationExecutor); ok {
 		return ctx, executor
 	}
-	executor := &continuationExecutor{}
+	executor := &continuationExecutor{turns: jsloop.TurnsFrom(ctx)}
 	return context.WithValue(ctx, continuationExecutorKey{}, executor), executor
 }
 
@@ -45,6 +46,8 @@ type continuationExecutor struct {
 	drivers []*continuationTurn
 	// arriving counts the turns whose goroutines will serve without a wake-up (arrive); a coroutine turn granted by a goroutine that cannot resume it waits for one of them instead of waking a sleeping one.
 	arriving int
+	// turns is told of each I/O completion, which is a turn of Pi's event loop: the timer callbacks an extension queued run then (jsloop.Turns). Nil when the run's owner holds none.
+	turns *jsloop.Turns
 	// trace observes scheduling boundaries in tests; production leaves it nil.
 	trace *executorTrace
 	// switchEveryPause makes every coroutine pause switch to its driver instead of settling on its own stack (settle); tests compare the two. Production leaves it false.
@@ -376,6 +379,9 @@ func (executor *continuationExecutor) endDrainLocked() (idle func()) {
 
 // traceReaction reports a reaction of kind to the trace before it runs.
 func (executor *continuationExecutor) traceReaction(trace *executorTrace, kind reactionKind) {
+	if kind == reactionExternal {
+		executor.turns.Turn()
+	}
 	if trace == nil {
 		return
 	}

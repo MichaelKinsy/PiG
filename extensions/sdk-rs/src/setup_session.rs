@@ -2,24 +2,24 @@
 
 use crate::context::Context;
 use crate::protocol::{Connection, ErrorInfo};
-use crate::session_manager::SessionManager;
+use crate::session_manager::ReadonlySessionManager;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
-/// The SessionManager that Pi hands the setup callback of `new_session_setup`: the reads of [`SessionManager`] and the
+/// The SessionManager that Pi hands the setup callback of `new_session_setup`: the reads of [`ReadonlySessionManager`] and the
 /// appends that seed the replacement Session. Each call acts on the replacement Session and returns the new entry's id.
 pub struct SetupSessionManager<'a> {
-    reads: SessionManager<'a>,
+    reads: ReadonlySessionManager<'a>,
     context: &'a Context,
 }
 
 impl<'a> Deref for SetupSessionManager<'a> {
-    type Target = SessionManager<'a>;
+    type Target = ReadonlySessionManager<'a>;
 
-    fn deref(&self) -> &SessionManager<'a> {
+    fn deref(&self) -> &ReadonlySessionManager<'a> {
         &self.reads
     }
 }

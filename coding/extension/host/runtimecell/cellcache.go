@@ -16,9 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofrs/flock"
-
 	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
+	"github.com/MichaelKinsy/PiG/internal/filelock"
 )
 
 // cellReadyFile is the readiness marker written last into a published cache
@@ -206,7 +205,19 @@ func isSHA256Hex(value string) bool {
 
 // ReusePublishedArtifact returns the complete entry at finalDir published for
 // want, if one exists, and records its use. It never builds or waits for a lock.
+// The check and the record happen under the entry's shared usage lock, which a
+// collection holds exclusively while it renames an entry away: the entry is
+// either reused and recorded before a collection can take the lock, or the
+// collector has it and the entry is not reused.
 func ReusePublishedArtifact(finalDir string, want EntryIdentity) (PublishedEntry, bool) {
+	if _, ok := validCellEntry(finalDir, want); !ok {
+		return PublishedEntry{}, false
+	}
+	lock, ok := tryLockUsageShared(finalDir)
+	if !ok {
+		return PublishedEntry{}, false
+	}
+	defer func() { _ = lock.Unlock() }()
 	art, ok := validCellEntry(finalDir, want)
 	if !ok {
 		return PublishedEntry{}, false
@@ -261,7 +272,7 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 		return PublishedEntry{}, fmt.Errorf("create cell lock dir: %w", err)
 	}
 
-	lock := flock.New(filepath.Join(lockDir, inputDigest+".lock"))
+	lock := filelock.New(filepath.Join(lockDir, inputDigest+".lock"))
 	lockCtx := ctx
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc
@@ -282,7 +293,7 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 			}
 		}
 		if err != nil {
-			return PublishedEntry{}, fmt.Errorf("wait for cell build lock: %w", err)
+			return PublishedEntry{}, fmt.Errorf("wait for cell build lock: %w", filelock.Explain(parent, err))
 		}
 		return PublishedEntry{}, fmt.Errorf("timed out waiting for another process to build cell %s", filepath.Base(finalDir))
 	}

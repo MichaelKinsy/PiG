@@ -1,0 +1,42 @@
+# Behavior family: model-resolver-selector
+# Surface: --list-models prints exactly the runtime's available models; an OpenRouter key's saved
+# personalized catalog replaces the bundled OpenRouter list (issue #260).
+#
+# Upstream rule: cli/list-models.ts lists modelRuntime.getAvailable() and nothing else.
+# model-runtime.ts:create wraps the built-in openrouter provider in withPersonalizedCatalog
+# (remote-catalog-provider.ts), whose refreshModels restores the saved list from
+# models-store.json and, when it is not empty, uses it in place of the bundled models.
+# `pi update --models` writes that file, so a model the key's list dropped must also be
+# absent from the next `--list-models`.
+#
+# The fixture agent dir holds a saved list (the key comes from OPENROUTER_API_KEY) of two models
+# that are not in the bundled catalog. Pig used to append every bundled model of an
+# authenticated provider after the registry's list, so it printed the whole bundled OpenRouter
+# catalog besides the two saved models. Table equality proves the two saved rows and nothing
+# else are listed, with identical context, max-out, thinking and images columns.
+name = "27-list-models-personalized-openrouter-catalog"
+description = "--list-models lists only the saved personalized OpenRouter catalog, not the bundled models it replaced."
+covers = [
+  "packages/coding-agent/src/cli/list-models.ts",
+  "packages/coding-agent/src/core/model-runtime.ts",
+  "packages/coding-agent/src/core/remote-catalog-provider.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[cli]
+args = ["--list-models"]
+timeout_seconds = 20
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-personalized", "OPENROUTER_API_KEY=fixture-openrouter-key"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-personalized", "OPENROUTER_API_KEY=fixture-openrouter-key"]
+pig_args = ["--no-extensions", "--offline"]
+pi_args = ["--no-extensions", "--offline"]
+
+[assert]
+output_equal = true
+both_contain = ["vendor/personal-text", "vendor/personal-vision"]
+both_not_contain = ["~anthropic/claude-fable-latest", "panic:", "goroutine ", "Warning:"]
+runtime_ratio_max = 2.0
+runs = 3

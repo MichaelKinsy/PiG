@@ -62,7 +62,9 @@ def save_note(text: str) -> None:
     pig_sdk.with_file_mutation_queue(notes, lambda: pathlib.Path(notes).write_text(text))
 ```
 
-`is_tool_call_event_type(name, event)` is Pi's `isToolCallEventType` (the tool name must match exactly). `ctx.set_working_message("")` shows an empty working label and `ctx.set_working_message(None)` restores the default one, as in Pi; `set_hidden_thinking_label` follows the same rule. `truncate_head`, `truncate_tail`, `truncate_line` and `format_size` are Pi's `truncateHead`, `truncateTail`, `truncateLine` and `formatSize`; byte limits count UTF-8 bytes and `truncate_line` counts UTF-16 units like a JavaScript string. `get_agent_dir`, `get_config_dir_name` and `get_version` are Pi's `getAgentDir()`, `CONFIG_DIR_NAME` and `VERSION`; they raise `HostInfoUnavailable`, never return a made-up path, when the process was not started by a PiG host. `ctx.get_editor_component()` returns the factory this extension installed with `ctx.set_editor_component`, or `None`. Pi's `getEditorComponent` returns the factory installed by any extension, so one extension can wrap another's editor; PiG returns only the calling extension's own factory.
+`is_tool_call_event_type(name, event)` is Pi's `isToolCallEventType` (the tool name must match exactly). `get_package_dir()` and `get_shell_config(custom_shell_path=None)` are Pi's `getPackageDir()` and `getShellConfig()`. Pi's pure pi-ai helpers are in `pig_sdk` too (`string_enum`, `clamp_thinking_level`, `get_supported_thinking_levels`, `calculate_cost`, `content_text`, `normalize_context`, `get_current_system_prompt`, `is_context_overflow`, `is_retryable_assistant_error`, `env_api_key_auth`, `create_assistant_message_event_stream` and the rest of `pi_ai_helpers.py`), over the dicts the wire carries. `ctx.set_working_message("")` shows an empty working label and `ctx.set_working_message(None)` restores the default one, as in Pi; `set_hidden_thinking_label` follows the same rule. `truncate_head`, `truncate_tail`, `truncate_line` and `format_size` are Pi's `truncateHead`, `truncateTail`, `truncateLine` and `formatSize`; byte limits count UTF-8 bytes and `truncate_line` counts UTF-16 units like a JavaScript string. `get_agent_dir`, `get_config_dir_name` and `get_version` are Pi's `getAgentDir()`, `CONFIG_DIR_NAME` and `VERSION`; they raise `HostInfoUnavailable`, never return a made-up path, when the process was not started by a PiG host. `ctx.get_editor_component()` returns the factory this extension installed with `ctx.set_editor_component`, or `None`. Pi's `getEditorComponent` returns the factory installed by any extension, so one extension can wrap another's editor; PiG returns only the calling extension's own factory.
+
+`ctx.set_status(key, "")` sets an empty status text, as Pi's `setStatus(key, "")` does (RPC mode writes it); `ctx.clear_status(key)` is Pi's `setStatus(key, undefined)`. `ctx.input(title, placeholder=None)` and `ctx.editor(title, prefill=None)` leave the placeholder or prefill unset (RPC mode writes no such member); an empty string is written as `""`.
 
 ## Authoring a factory extension
 
@@ -171,3 +173,7 @@ From the repository root, `make test-sdk-py` runs the same suite in a cached ven
 ## License
 
 MIT: see `LICENSE`.
+
+## Child agent sessions
+
+`ctx.create_agent_session(CreateAgentSessionOptions(...))` is Pi's `createAgentSession`: a child agent session over the host's model runtime that the extension prompts (`prompt`, `steer`, `follow_up`), observes (`subscribe`), aborts (`abort`) and disposes (`dispose`), with `custom_tools` served by this extension. Calls block as Pi's Promises resolve; the session ends with the connection. See [Child agent sessions](../../docs/extension-authoring.md#child-agent-sessions-createagentsession).

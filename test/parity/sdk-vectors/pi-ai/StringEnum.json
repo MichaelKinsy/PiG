@@ -1,0 +1,161 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-ai@1.3.0",
+ "module": "pi-ai",
+ "export": "StringEnum",
+ "cases": [
+  {
+   "name": "case 0001",
+   "args": [
+    [
+     "a",
+     "b"
+    ]
+   ],
+   "result": {
+    "type": "string",
+    "enum": [
+     "a",
+     "b"
+    ]
+   }
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    [
+     "a",
+     "b"
+    ],
+    {}
+   ],
+   "result": {
+    "type": "string",
+    "enum": [
+     "a",
+     "b"
+    ]
+   }
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    [
+     "a",
+     "b"
+    ],
+    {
+     "description": "d"
+    }
+   ],
+   "result": {
+    "type": "string",
+    "enum": [
+     "a",
+     "b"
+    ],
+    "description": "d"
+   }
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    [
+     "a",
+     "b"
+    ],
+    {
+     "default": "a"
+    }
+   ],
+   "result": {
+    "type": "string",
+    "enum": [
+     "a",
+     "b"
+    ],
+    "default": "a"
+   }
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    [
+     "a",
+     "b"
+    ],
+    {
+     "description": "d",
+     "default": "b"
+    }
+   ],
+   "result": {
+    "type": "string",
+    "enum": [
+     "a",
+     "b"
+    ],
+    "description": "d",
+    "default": "b"
+   }
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    [
+     "a",
+     "b"
+    ],
+    {
+     "description": "",
+     "default": ""
+    }
+   ],
+   "result": {
+    "type": "string",
+    "enum": [
+     "a",
+     "b"
+    ]
+   }
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    [],
+    {
+     "description": "none"
+    }
+   ],
+   "result": {
+    "type": "string",
+    "enum": [],
+    "description": "none"
+   }
+  },
+  {
+   "name": "case 0008",
+   "args": [
+    [
+     "x y",
+     "é",
+     "😀",
+     "\"q\""
+    ],
+    {
+     "description": "uni code"
+    }
+   ],
+   "result": {
+    "type": "string",
+    "enum": [
+     "x y",
+     "é",
+     "😀",
+     "\"q\""
+    ],
+    "description": "uni code"
+   }
+  }
+ ]
+}
