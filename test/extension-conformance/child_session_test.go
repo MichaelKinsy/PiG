@@ -130,7 +130,7 @@ func newChildSessionHostWith(t *testing.T, sentinel bool, wrap func(subprocess.C
 func TestChildAgentSessionGoPlacements(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {
-			host, _ := newChildSessionHost(t)
+			host, services := newChildSessionHost(t)
 			root := findModuleRoot(t)
 			cfg := subprocess.ExtConfig{
 				Name: childsession.Name, Source: filepath.Join(root, "test/extension-conformance/testdata/child-session-go"), Enabled: true, Isolation: isolation,
@@ -145,7 +145,7 @@ func TestChildAgentSessionGoPlacements(t *testing.T) {
 			if len(failures) != 0 || len(loaded) != len(configs) {
 				t.Fatalf("load: %v", failures)
 			}
-			checkChildSession(t, loaded[0])
+			checkChildSession(t, services.CWD(), loaded[0])
 		})
 	}
 }
@@ -163,8 +163,8 @@ var childSessionWant = sync.OnceValue(func() map[string]any {
 	return want
 })
 
-// checkChildSession runs the fixture's child_run tool for a plain prompt and for a prompt that makes the sentinel model call the extension's tool.
-func checkChildSession(t *testing.T, ext extension.Extension) {
+// checkChildSession runs the fixture's child_run tool for a plain prompt and for a prompt that makes the sentinel model call the extension's tool. scratch is the directory of the host the extension was loaded on (checkChildExtensionEvents).
+func checkChildSession(t *testing.T, scratch string, ext extension.Extension) {
 	t.Helper()
 	run := func(prompt string) map[string]any {
 		result, err := ext.Tools["child_run"].Definition.Execute(t.Context(), "call", json.RawMessage(`{"prompt":`+quoteJSON(prompt)+`}`), nil)
@@ -204,16 +204,16 @@ func checkChildSession(t *testing.T, ext extension.Extension) {
 	if !reflect.DeepEqual(tool["events"], childSessionWant()["tool-events"]) {
 		t.Fatalf("tool events = %v, want %v", tool["events"], childSessionWant()["tool-events"])
 	}
-	checkChildExtensionEvents(t, ext)
+	checkChildExtensionEvents(t, scratch, ext)
 }
 
 func TestChildAgentSessionGoFused(t *testing.T) {
-	host, _ := newChildSessionHost(t)
+	host, services := newChildSessionHost(t)
 	ext, err := host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: childsession.Name, Path: "/ext/child-session.go", Enabled: true}, childsession.Extension().RunWithConn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkChildSession(t, *ext)
+	checkChildSession(t, services.CWD(), *ext)
 }
 
 const childSessionPython = `import json
@@ -371,7 +371,7 @@ def new_extension():
 func TestChildAgentSessionPython(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {
-			host, _ := newChildSessionHost(t)
+			host, services := newChildSessionHost(t)
 			root := findModuleRoot(t)
 			cfg := packedFlagFactory(t, root, "python", "child-session", false)
 			cfg.Isolation = isolation
@@ -389,7 +389,7 @@ func TestChildAgentSessionPython(t *testing.T) {
 			if len(failures) != 0 || len(loaded) != len(configs) {
 				t.Fatalf("load: %v", failures)
 			}
-			checkChildSession(t, loaded[0])
+			checkChildSession(t, services.CWD(), loaded[0])
 		})
 	}
 }
@@ -613,7 +613,7 @@ pub fn new_extension() -> Extension {
 func TestChildAgentSessionRust(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {
-			host, _ := newChildSessionHost(t)
+			host, services := newChildSessionHost(t)
 			root := findModuleRoot(t)
 			cfg := packedFlagFactory(t, root, "rust", "child-session", false)
 			cfg.Isolation = isolation
@@ -635,7 +635,7 @@ func TestChildAgentSessionRust(t *testing.T) {
 			if len(failures) != 0 || len(loaded) != len(configs) {
 				t.Fatalf("load: %v", failures)
 			}
-			checkChildSession(t, loaded[0])
+			checkChildSession(t, services.CWD(), loaded[0])
 		})
 	}
 }

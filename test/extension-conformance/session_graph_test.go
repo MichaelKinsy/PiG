@@ -249,19 +249,70 @@ var (
 	sessionGraphServer = regexp.MustCompile(`http://127\.0\.0\.1:[0-9]+`)
 )
 
-// normalize writes a report the way every SDK must produce it: the directory tree of the run is "<root>" and a generated session id is "<uuid>".
+// normalize writes a report the way every SDK must produce it: the directory tree of the run is "<root>", a generated session id is "<uuid>", and a path separator is "/". The tables are Pi's report on a POSIX host; a run on Windows names its paths with the platform's separator (path.join and path.relative of Pi's own classes do too, and so do the Go, Python and Rust hosts' paths), and no table holds a backslash.
 func normalizeSessionGraph(t *testing.T, report map[string]any, root string) map[string]any {
 	t.Helper()
-	encoded, err := json.Marshal(report)
-	if err != nil {
-		t.Fatal(err)
+	return normalizeSessionGraphFor(report, root, filepath.Separator == '\\')
+}
+
+// normalizeSessionGraphFor is normalizeSessionGraph for a platform whose path separator is a backslash or a slash, in the names of members as well as in values (a report keys its answers by path).
+func normalizeSessionGraphFor(report map[string]any, root string, backslash bool) map[string]any {
+	if backslash {
+		root = strings.ReplaceAll(root, `\`, "/")
 	}
-	text := sessionGraphServer.ReplaceAllString(sessionGraphUUID.ReplaceAllString(strings.ReplaceAll(string(encoded), root, "<root>"), "<uuid>"), "<server>")
-	var out map[string]any
-	if err := json.Unmarshal([]byte(text), &out); err != nil {
-		t.Fatal(err)
+	text := func(s string) string {
+		if backslash {
+			s = strings.ReplaceAll(s, `\`, "/")
+		}
+		return sessionGraphServer.ReplaceAllString(sessionGraphUUID.ReplaceAllString(strings.ReplaceAll(s, root, "<root>"), "<uuid>"), "<server>")
 	}
-	return out
+	var walk func(any) any
+	walk = func(value any) any {
+		switch v := value.(type) {
+		case string:
+			return text(v)
+		case []any:
+			out := make([]any, len(v))
+			for i, item := range v {
+				out[i] = walk(item)
+			}
+			return out
+		case map[string]any:
+			out := make(map[string]any, len(v))
+			for name, item := range v {
+				out[text(name)] = walk(item)
+			}
+			return out
+		}
+		return value
+	}
+	return walk(report).(map[string]any)
+}
+
+// A Windows report names its tree with backslashes, in values and in member names and in paths relative to the tree; a POSIX report keeps a backslash it holds.
+func TestNormalizeSessionGraphWindowsPaths(t *testing.T) {
+	windowsRoot := `D:\a\_temp\pig extension acceptance\run\004`
+	report := map[string]any{
+		"cwd":    windowsRoot + `\project`,
+		"list":   []any{map[string]any{"cwd": windowsRoot + `\project`, "id": "0b1c2d3e-4f50-4162-8394-a5b6c7d8e9f0", "n": float64(1), "ok": true, "none": nil}},
+		"source": `..\..\pkgs\localpkg`,
+		"file":   map[string]any{windowsRoot + `\anc`: true, windowsRoot + `\other`: false},
+		"server": "http://127.0.0.1:41234/v1",
+	}
+	want := map[string]any{
+		"cwd":    "<root>/project",
+		"list":   []any{map[string]any{"cwd": "<root>/project", "id": "<uuid>", "n": float64(1), "ok": true, "none": nil}},
+		"source": "../../pkgs/localpkg",
+		"file":   map[string]any{"<root>/anc": true, "<root>/other": false},
+		"server": "<server>/v1",
+	}
+	if got := normalizeSessionGraphFor(report, windowsRoot, true); !reflect.DeepEqual(got, want) {
+		t.Errorf("windows report = %v, want %v", got, want)
+	}
+	posix := normalizeSessionGraphFor(map[string]any{"cwd": "/tmp/run/004/project", "pattern": `a\b`}, "/tmp/run/004", false)
+	if wantPosix := map[string]any{"cwd": "<root>/project", "pattern": `a\b`}; !reflect.DeepEqual(posix, wantPosix) {
+		t.Errorf("posix report = %v, want %v", posix, wantPosix)
+	}
 }
 
 // diffSessionGraph lists the members at which got differs from want, by path.

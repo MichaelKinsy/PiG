@@ -270,6 +270,12 @@ func TestOnLoadedAndFactoryEmitAcrossSDKs(t *testing.T) {
 	})
 }
 
+// earlierListenerDelay is how long the earlier extension's c3:cross listener takes before it answers and stamps the moment. An emit that does not wait for the listener, or a listener of the factory that runs before it finished, reads a time this much before the stamp.
+const earlierListenerDelay = 250 * time.Millisecond
+
+// crossProcessClockSlack is how far two processes' Unix-millisecond stamps may disagree about one instant, which the order of stamps taken by the test's process and the extension's must allow for. A Windows clock advances in ticks of up to 15.6 ms, and V8's Date.now() is the system time of its last resample plus the ticks the performance counter counted since (v8 src/base/platform/time.cc, Clock::Now), so a Node extension's stamp and the test's can differ by a tick while the events they stamp are a few milliseconds apart. A fifth of the delay leaves every violation, which reads the whole delay early, outside the slack.
+const crossProcessClockSlack = earlierListenerDelay / 5
+
 // earlierListener is an extension loaded before the fixture, the host's listener a factory-time emit reaches first. Its c3:cross listener takes its time, answers with a c3:ack emit, which Pi's shared emitter delivers to the listener the factory subscribed before it emitted, and then stamps the moment, so an emit that returned before the listener finished reads an earlier stamp than the listener's; its "error" listener handles the factory's emit on "error".
 type earlierListener struct {
 	mu         sync.Mutex
@@ -287,7 +293,7 @@ func loadEarlierListener(t *testing.T, r *modelTypesRig) *earlierListener {
 		return sdk.ServeFactory(conn, func() *sdk.Extension {
 			e := sdk.New("c3-earlier")
 			if _, err := e.Events().On("c3:cross", func(ctx sdk.Context, data any) error {
-				time.Sleep(250 * time.Millisecond)
+				time.Sleep(earlierListenerDelay)
 				ackErr := ctx.Events().Emit("c3:ack", map[string]any{"from": "c3-earlier"})
 				earlier.mu.Lock()
 				earlier.ackErr = ackErr
@@ -350,8 +356,8 @@ func TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs(t *testing.T) {
 		if own == 0 || returned == 0 {
 			t.Fatalf("the factory recorded no c3:cross times: %v", report)
 		}
-		if !(float64(earlier.crossAt) <= own && own <= returned) {
-			t.Errorf("order: earlier listener finished at %d, factory's own listener ran at %v, emit returned at %v; want that order", earlier.crossAt, own, returned)
+		if !(float64(earlier.crossAt-crossProcessClockSlack.Milliseconds()) <= own && own <= returned) {
+			t.Errorf("order: earlier listener finished at %d, factory's own listener ran at %v, emit returned at %v; want that order, to within %v of clock difference between the processes", earlier.crossAt, own, returned, crossProcessClockSlack)
 		}
 	})
 }

@@ -15,7 +15,7 @@ func TestShutdownWithLiveChildSessionsLeavesNoDescendants(t *testing.T) {
 		t.Skip("counts descendant processes through /proc")
 	}
 	_, baseline := descendantRSS()
-	host, _ := newChildSessionHost(t)
+	host, services := newChildSessionHost(t)
 	root := findModuleRoot(t)
 	loaded, failures := host.LoadAll(t.Context(), []subprocess.ExtConfig{{
 		Name: childsession.Name, Source: filepath.Join(root, "test/extension-conformance/testdata/child-session-go"), Enabled: true, Isolation: "strict",
@@ -25,7 +25,7 @@ func TestShutdownWithLiveChildSessionsLeavesNoDescendants(t *testing.T) {
 	if len(failures) != 0 || len(loaded) != 1 {
 		t.Fatalf("load: %v", failures)
 	}
-	checkChildExtensionEvents(t, loaded[0])
+	checkChildExtensionEvents(t, services.CWD(), loaded[0])
 	host.Shutdown("test complete")
 	if _, left := descendantRSS(); left > baseline {
 		t.Fatalf("%d descendant process(es) remain after Shutdown, %d before the host started", left, baseline)

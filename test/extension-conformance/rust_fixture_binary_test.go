@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -22,12 +24,12 @@ func TestBuildFixtureCopyKeepsTheProgramOfThisRun(t *testing.T) {
 		}
 	}
 	root := t.TempDir()
-	mine, err := buildFixtureCopy(t.Context(), target, filepath.Join(root, "mine"), builds("this checkout's fixture"))
+	mine, err := buildFixtureCopy(t.Context(), target, filepath.Join(root, testExecutableName("mine")), builds("this checkout's fixture"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Another checkout builds into the shared target while this run goes on.
-	theirs, err := buildFixtureCopy(t.Context(), target, filepath.Join(root, "theirs"), builds("another checkout's fixture"))
+	theirs, err := buildFixtureCopy(t.Context(), target, filepath.Join(root, testExecutableName("theirs")), builds("another checkout's fixture"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,8 +41,17 @@ func TestBuildFixtureCopyKeepsTheProgramOfThisRun(t *testing.T) {
 		if string(got) != want {
 			t.Errorf("%s holds %q, want %q: the program of one checkout's run was replaced by another's", path, got, want)
 		}
-		if info, err := os.Stat(path); err != nil || info.Mode().Perm()&0o100 == 0 {
-			t.Errorf("%s is not executable: %v %v", path, info, err)
+		// A program starts by its mode's execute bit where files have one; on Windows they have none (Go reports 0666) and the name's extension says it.
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if runtime.GOOS == "windows" {
+			if !strings.EqualFold(filepath.Ext(path), ".exe") {
+				t.Errorf("%s does not start as a program: its name has no .exe extension", path)
+			}
+		} else if info.Mode().Perm()&0o100 == 0 {
+			t.Errorf("%s is not executable: %v", path, info.Mode())
 		}
 	}
 	if mine == shared || theirs == shared {
