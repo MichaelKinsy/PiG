@@ -20,6 +20,10 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
+// execDrainHooksKey carries the childwait hooks that a test installs on the
+// context of one ExecCommand call.
+type execDrainHooksKey struct{}
+
 // ExecCommand runs a shell command synchronously and returns the result.
 // This is the default implementation backing API.Exec when the host
 // doesn't provide an override.
@@ -122,6 +126,9 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		defer cancel()
 	}
 
+	// Only a test installs drain hooks (export_test.go); every other call
+	// measures the grace on the wall clock.
+	hooks, _ := ctx.Value(execDrainHooksKey{}).(childwait.Hooks)
 	var stdout, stderr strings.Builder
 	pipes := childwait.Start([]*os.File{stdoutRead, stderrRead}, func(index int, chunk []byte) {
 		if index == 0 {
@@ -129,7 +136,7 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		} else {
 			stderr.Write(chunk)
 		}
-	}, childwait.Hooks{})
+	}, hooks)
 
 	// Like upstream, killed reports that the timeout or cancellation fired,
 	// even after the child exited: upstream's abort listener and timer stay
