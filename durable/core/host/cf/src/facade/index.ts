@@ -19,7 +19,7 @@ import * as storage from "./storage.ts"
 
 export type * from "@earendil-works/pi-durable"
 export { ConversationBusy, ReadAfterWrite, SessionFailed, StorageRequestError } from "../errors.ts"
-export { ROOT_CONVERSATION_ID, useCore } from "./harness.ts"
+export { DEFAULT_HARNESS_IDENTITY, ROOT_CONVERSATION_ID, useCore } from "./harness.ts"
 
 export const AgentDoc = agent.AgentDoc as unknown as typeof P.AgentDoc
 export const configure = agent.configure as unknown as typeof P.configure
