@@ -307,7 +307,7 @@ func TestPipesWaitReleasesOnTheGraceTimerOnlyAfterTheHolderOutputIsConsumed(t *t
 	go func() { waited <- pipes.Wait(yes) }()
 	// Each line is its own write, as a descendant's output is.
 	for line := range strings.SplitSeq(strings.TrimSuffix(want.String(), "\n"), "\n") {
-		if _, err := io.WriteString(w, line+"\n"); err != nil {
+		if _, err := w.WriteString(line + "\n"); err != nil {
 			t.Fatal(err)
 		}
 	}
