@@ -17,9 +17,6 @@ func check(err error) {
 	}
 }
 
-//go:fix inline
-func ptr[T any](value T) *T { return new(value) }
-
 func orNilF(value *float64) any {
 	if value == nil {
 		return nil

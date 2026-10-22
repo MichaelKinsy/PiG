@@ -22052,7 +22052,7 @@
         }
       ],
       "tests": [
-        "coding/cli/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "coding/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONEncodesOncePerSettingsGeneration",
         "internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONKeepsPiMemberOrder",
         "internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock",
@@ -22079,7 +22079,7 @@
         }
       ],
       "tests": [
-        "coding/cli/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "coding/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONEncodesOncePerSettingsGeneration",
         "internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONKeepsPiMemberOrder",
         "internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock",
