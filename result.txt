@@ -1,0 +1,75 @@
+ProductName:		macOS
+ProductVersion:		15.7.9
+BuildVersion:		24G830
+3
+=== FAIL run 1
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=167 child exited=30 after: urgent I/O condition=176 child exited=30
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=279 child exited=213
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.45s)
+=== FAIL run 2
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=161 child exited=31 after: urgent I/O condition=170 child exited=31
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=390 child exited=214
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.33s)
+=== FAIL run 3
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=185 child exited=30 after: urgent I/O condition=192 child exited=30
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=300 child exited=213
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.18s)
+=== FAIL run 4
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=263 child exited=31 after: urgent I/O condition=269 child exited=31
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=404 child exited=214
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.38s)
+=== FAIL run 5
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=174 child exited=31 after: urgent I/O condition=182 child exited=31
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=315 child exited=215
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.22s)
+=== FAIL run 6
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=233 child exited=30 after: urgent I/O condition=240 child exited=30
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=322 child exited=214
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.18s)
+=== FAIL run 7
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=157 child exited=31 after: urgent I/O condition=164 child exited=31
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=250 child exited=215
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.12s)
+=== FAIL run 8
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=113 child exited=31 after: urgent I/O condition=117 child exited=31
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=294 child exited=214
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.17s)
+=== FAIL run 9
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=193 child exited=31 after: urgent I/O condition=203 child exited=31
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=399 child exited=214
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.24s)
+=== FAIL run 10
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=215 child exited=30 after: urgent I/O condition=223 child exited=30
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=395 child exited=213
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.19s)
+=== FAIL run 11
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=137 child exited=30 after: urgent I/O condition=144 child exited=30
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=251 child exited=214
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.33s)
+=== FAIL run 12
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=198 child exited=31 after: urgent I/O condition=204 child exited=31
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=414 child exited=214
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.29s)
+=== FAIL run 13
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=127 child exited=30 after: urgent I/O condition=130 child exited=30
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=256 child exited=213
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.16s)
+=== FAIL run 14
+    fifo_probe_main_test.go:190: rounds=12000 redeliveries=0
+    fifo_probe_main_test.go:144: WINDOW signals before: urgent I/O condition=129 child exited=31 after: urgent I/O condition=136 child exited=31
+    zz_probe_report_test.go:9: REPORT redeliveries_total=0 signals: urgent I/O condition=228 child exited=214
+--- FAIL: TestHostKeyErrorCauseMatchesThePiOracle (0.23s)
+SUMMARY burners=0 signals= runs=14 fails=14
