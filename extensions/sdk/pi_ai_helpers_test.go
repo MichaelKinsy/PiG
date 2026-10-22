@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -180,13 +181,13 @@ func runGoldenCase(t *testing.T, c goldenCase) string {
 		}
 		return map[bool]string{true: "true", false: "false"}[got]
 	case "resolveTranscriptTools":
-		var supports bool
-		_ = json.Unmarshal(c.Args[1], &supports)
-		resolved, err := ResolveTranscriptTools(messagesArg(), supports)
+		var support string
+		_ = json.Unmarshal(c.Args[1], &support)
+		resolved, err := ResolveTranscriptTools(messagesArg(), TranscriptToolSupport(support))
 		if err != nil {
 			t.Fatal(err)
 		}
-		return `{"requestTools":` + rawsText(resolved.RequestTools) + `,"anchorsAdditions":` + map[bool]string{true: "true", false: "false"}[resolved.AnchorsAdditions] + `}`
+		return `{"requestTools":` + rawsText(resolved.RequestTools) + `,"foldedSystemMessages":` + strconv.Itoa(resolved.FoldedSystemMessages) + `}`
 	case "collapseSystemMessages":
 		return optional(CollapseSystemMessages(contextArg()))
 	case "resolveTranscript":

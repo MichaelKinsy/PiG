@@ -318,3 +318,34 @@ export const cases = [
   { name: "case 0316", args: [{"role": "assistant", "content": [], "api": "x", "provider": "p", "model": "m", "usage": {"input": 199000, "output": 0, "cacheRead": 1000, "cacheWrite": 0, "totalTokens": 200000, "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}, "stopReason": "error", "timestamp": 1}, 200000] },
   { name: "case 0317", args: [{"role": "assistant", "content": [], "api": "x", "provider": "p", "model": "m", "usage": {"input": 199000, "output": 0, "cacheRead": 1000, "cacheWrite": 0, "totalTokens": 200000, "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}, "stopReason": "error", "timestamp": 1}, 1] },
 ];
+
+// Pi 1.4.0 (packages/ai/src/utils/overflow.ts): HTTP 413 is a request-size overflow whatever the provider or the body says (Pi: "HTTP 413 means request-size overflow regardless of provider or body
+// text"). The messages are Pi's own test strings (packages/ai/test/overflow.test.ts) and the edges of the pattern: the status leads the message, or follows a provider prefix and API error.
+const failed = (errorMessage, { provider = "p", stopReason = "error" } = {}) => ({ role: "assistant", content: [], api: "x", provider, model: "m", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason, errorMessage, timestamp: 1 });
+const next = () => `case ${String(cases.length + 1).padStart(4, "0")}`;
+for (const errorMessage of [
+  'github-copilot API error (413): {"message":"failed to parse request","code":""}',
+  "custom-provider API error (413): Payload Too Large",
+  '413 {"error":{"message":"failed to parse request","code":""}}',
+  "413",
+  "413 Request Entity Too Large",
+  "413: payload too large",
+  "413\nbody",
+  "Github Copilot API error (413): x",
+  "Amazon Bedrock  API error (413): double space",
+  'github-copilot API error (400): {"message":"failed to parse request","code":""}',
+  "custom-provider API error (429): Too many requests",
+  'github-copilot API error (400): {"message":"failed to parse request: invalid value 413"}',
+  "custom-provider API error (400): upstream mentioned OpenAI API error (413): invalid input",
+  "custom-provider API error (4130): invalid input",
+  "4130 failed to parse request",
+  '413{"error":"x"}',
+  "a.b API error (413): the provider prefix has a dot",
+  "API error (413): no provider",
+  "custom-provider API error (413) no colon",
+  "Error: 413 payload",
+  "413 rate limit exceeded",
+  "Throttling error: 413",
+]) for (const window of [undefined, 1000000]) cases.push({ name: next(), args: window === undefined ? [failed(errorMessage)] : [failed(errorMessage), window] });
+for (const stopReason of ["aborted", "stop", "length", "toolUse"]) cases.push({ name: next(), args: [failed('OpenAI API error (413): {"message":"failed to parse request"}', { stopReason })] });
+cases.push({ name: next(), args: [failed("413 Request Entity Too Large", { provider: "cerebras" })] });
