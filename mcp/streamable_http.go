@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultClient, the default fetch (pig additive (D191))
 )
 
 // Ports packages/mcp/src/transports/streamable-http.ts.

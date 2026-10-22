@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	_ "github.com/MichaelKinsy/PiG/piglets/aot/internal/tlsdistrust" // hardens http.DefaultClient, the installer's download client (pig additive (D191))
 )
 
 // pollInterval is how often the worker looks for build requests.

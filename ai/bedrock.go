@@ -25,6 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
+	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
@@ -354,6 +355,8 @@ func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options Str
 // newBedrockHTTPClient builds the SDK's client with the given proxy function; a nil function means no proxy, as Node's handlers without an agent.
 func newBedrockHTTPClient(proxy func(*http.Request) (*url.URL, error)) *awshttp.BuildableClient {
 	return awshttp.NewBuildableClient().WithTransportOptions(func(transport *http.Transport) {
+		// pig additive (D191): Bedrock, STS, SSO and the other credential clients share this builder.
+		tlsdistrust.HardenTransport(transport)
 		transport.Proxy = proxy
 		if transport.DialContext != nil {
 			transport.DialContext = bedrockObservedDial(transport.DialContext)

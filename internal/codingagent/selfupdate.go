@@ -35,6 +35,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/managementhttp"
 	"github.com/MichaelKinsy/PiG/internal/ownerfile"
+	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
 )
 
 // DefaultUpdateURL is the built-in update-manifest URL. It is empty in stock
@@ -373,6 +374,8 @@ func clientWithUpdateTransportCA(client *http.Client) (*http.Client, error) {
 			transportClone.TLSClientConfig.MinVersion = tls.VersionTLS12
 		}
 	}
+	// pig additive (D191): a sidecar CA adds a trust anchor; it does not lift the eMudhra distrust.
+	transportClone.TLSClientConfig = tlsdistrust.Harden(transportClone.TLSClientConfig)
 	clone := *client
 	clone.Transport = transportClone
 	return &clone, nil

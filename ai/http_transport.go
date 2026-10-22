@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/bodyreadhook"
+	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
 )
 
 type fetchTransport struct{ client *http.Client }
@@ -245,7 +246,7 @@ func dialStreamingTLS(ctx context.Context, network, address string, dial func(co
 	tracked := newIdleTimeoutConn(conn, network)
 	options := config.Clone()
 	if options == nil {
-		options = &tls.Config{}
+		options = tlsdistrust.Harden(nil)
 	}
 	if options.ServerName == "" {
 		host, _, err := net.SplitHostPort(address)
@@ -323,11 +324,12 @@ func newStreamingTransport(insecure bool) http.RoundTripper {
 			}
 			return newIdleTimeoutConn(conn, network), nil
 		},
-		TLSClientConfig: &tls.Config{
+		// pig additive (D191): every verified chain is checked against the compromised and removed eMudhra CAs.
+		TLSClientConfig: tlsdistrust.Harden(&tls.Config{
 			//nolint:gosec // G402: opt-in per-provider insecure TLS for self-signed/internal-CA endpoints; never the default.
 			// pig additive (D36): opt-in TLS-skip for self-signed/internal-CA endpoints.
 			InsecureSkipVerify: insecure,
-		},
+		}),
 		// A TLS upgrade after proxy CONNECT has its own connector budget, as in Undici. Direct TLS uses DialTLSContext's shared TCP/TLS budget.
 		TLSHandshakeTimeout:   defaultHTTPConnectTimeout,
 		ForceAttemptHTTP2:     false,

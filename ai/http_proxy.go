@@ -19,6 +19,7 @@ import (
 	"unicode"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
 )
 
 // ApplyHTTPProxySettings sets absent HTTP_PROXY and HTTPS_PROXY variables. An explicitly empty environment value remains authoritative.
@@ -208,7 +209,8 @@ func proxyOriginTransport(direct *http.Transport, raw string) (*http.Transport, 
 		stop := context.AfterFunc(ctx, func() { _ = rawConn.Close() })
 		defer stop()
 		if proxy.Scheme == "https" && direct.DialTLSContext == nil {
-			tlsConn := tls.Client(conn, &tls.Config{ServerName: proxy.Hostname()})
+			// pig additive (D191): the proxy's own chain is checked like every other TLS peer's.
+			tlsConn := tls.Client(conn, tlsdistrust.Harden(&tls.Config{ServerName: proxy.Hostname(), MinVersion: tls.VersionTLS12}))
 			if err := tlsConn.HandshakeContext(ctx); err != nil {
 				return nil, err
 			}

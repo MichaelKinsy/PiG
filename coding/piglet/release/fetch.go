@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+
+	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultTransport, which the release clients use (pig additive (D191))
 )
 
 // FetchIndex downloads the signed release index that ref names and verifies its signature and that it describes the requested release. It downloads no Binary and applies no trust or continuity policy, so a publisher can read the identity of a release it made and a catalog entry can name its signer without installing anything.

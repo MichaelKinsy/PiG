@@ -222,7 +222,7 @@ Requirements:
 - Go 1.27.3
 - Git
 - macOS 13 or later for native macOS builds
-- Node.js 24.19.0 and npm 12.1.0 for parity tooling
+- Node.js 24.22.1 and npm 12.1.0 for parity tooling
 - Python 3.12 for Python SDK tests
 - Rust 1.97.1 for Rust SDK tests
 - tmux for terminal parity tests on Unix
