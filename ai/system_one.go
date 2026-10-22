@@ -1,7 +1,7 @@
 package ai
 
 // Ports packages/ai/src/api/system-one-shared.ts, typesafe-system-one.ts and cloudflare-workers-ai-system-one.ts,
-// and the classifier counterpart in providers/cloudflare-stream.ts.
+// the classifier counterpart in providers/cloudflare-stream.ts, and packages/ai/src/providers/compat-schema.ts (SystemOneCompatSchema: SystemOneCompat).
 
 import (
 	"bytes"
