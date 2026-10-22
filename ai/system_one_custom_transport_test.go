@@ -30,6 +30,12 @@ func TestSystemOneTransportAndWireRequestDriveClassifySystemOne(t *testing.T) {
 	transport := SystemOneTransport{
 		API:   api,
 		Label: "Custom service",
+		DetectCompat: func(ClassifierModel) ResolvedSystemOneCompat {
+			return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputAssets}
+		},
+		DetectCompat: func(ClassifierModel) ResolvedSystemOneCompat {
+			return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputAssets}
+		},
 		URL:   func(ClassifierModel) string { return "https://example.test/v1/classify" },
 		Payload: func(_ ClassifierModel, wire SystemOneWireRequest) map[string]any {
 			seen = append(seen, wire)
@@ -88,7 +94,9 @@ func TestSystemOneTransportAndWireRequestDriveClassifySystemOne(t *testing.T) {
 	}
 	withImage := request
 	withImage.Images = []ImageContent{{Data: "x", MimeType: "image/png"}}
-	if r := ClassifySystemOne(t.Context(), transport, model, withImage, ClassifierOptions{APIKey: "k", Fetch: client(`{}`)}); r.StopReason != ClassifierStopReasonError || !strings.Contains(r.ErrorMessage, "Custom service does not support image input") {
+	textOnly := model
+	textOnly.Input = []string{"text"}
+	if r := ClassifySystemOne(t.Context(), transport, textOnly, withImage, ClassifierOptions{APIKey: "k", Fetch: client(`{}`)}); r.StopReason != ClassifierStopReasonError || !strings.Contains(r.ErrorMessage, "Custom service does not support image input for m") {
 		t.Fatalf("image result = %+v", r)
 	}
 	if len(requests) != 0 {

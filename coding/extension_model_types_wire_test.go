@@ -92,7 +92,7 @@ func TestExtensionRegistryStateListsTypedModels(t *testing.T) {
 	if jev == nil || jev["type"] != "classifier" || jev["api"] != "typesafe-system-one" || jev["contextWindow"] != float64(64000) || jev["baseUrl"] != "https://api.typesafe.ai/v1/" {
 		t.Fatalf("typesafe classifier = %v", jev)
 	}
-	if want := []any{"text"}; !reflect.DeepEqual(jev["input"], want) {
+	if want := []any{"text", "image"}; !reflect.DeepEqual(jev["input"], want) {
 		t.Fatalf("classifier input = %v", jev["input"])
 	}
 	flux := typedWireFind(typed, "openrouter", "google/gemini-3-pro-image")

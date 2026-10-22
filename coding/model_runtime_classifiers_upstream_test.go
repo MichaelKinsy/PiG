@@ -77,14 +77,15 @@ func TestModelRuntimeClassifiersUpstream(t *testing.T) {
 		runtime := services.ModelRuntime()
 		withImages := classifiersTestContext
 		withImages.Images = []ai.ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}
-		jev, _ := runtime.GetModelOfType(ai.ModelTypeClassifier, "typesafe", "jev-latest").(*ai.ClassifierModel)
+		// typesafe/jev-latest takes images since Pi v1.4.0; opencode/jev-1.13 is the text-only classifier.
+		jev, _ := runtime.GetModelOfType(ai.ModelTypeClassifier, "opencode", "jev-1.13").(*ai.ClassifierModel)
 		luna, _ := runtime.GetModelOfType(ai.ModelTypeClassifier, "openai", "gpt-6-luna").(*ai.ClassifierModel)
 		if jev == nil || luna == nil {
 			t.Fatalf("jev=%v luna=%v", jev, luna)
 		}
 
 		rejected := runtime.Classify(t.Context(), jev, withImages)
-		if rejected.StopReason != ai.ClassifierStopReasonError || rejected.ErrorMessage != "Model typesafe/jev-latest does not accept image input" {
+		if rejected.StopReason != ai.ClassifierStopReasonError || rejected.ErrorMessage != "Model opencode/jev-1.13 does not accept image input" {
 			t.Fatalf("rejected = %+v", rejected)
 		}
 
