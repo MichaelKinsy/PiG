@@ -10,12 +10,15 @@ import (
 	"testing"
 )
 
-// TestConformance_FusedLocalExecIsNotCarriedByAnotherExtension: Pi's createLocalBashOperations().exec runs the command in the extension's own process, so a
-// command's outcome cannot depend on any other extension. A fused extension shares its process with the host and with every other fused extension, so the
-// SDK answers the call from the host directly; a call carried over the connection of whichever fused extension is running first would end with that
-// extension, as it did when a neighbour shut down while a command with a timeout ran ("extension stopped while waiting for builtinTool.localExec
-// response" instead of Pi's "timeout:1").
-func TestConformance_FusedLocalExecIsNotCarriedByAnotherExtension(t *testing.T) {
+// Pi's createLocalBashOperations().exec and a built-in tool's execute without an extension context (createBashTool(cwd).execute(id, params)) run in the
+// extension's own process, so their outcome cannot depend on any other extension. A fused extension shares its process with the host and with every other
+// fused extension, so the SDK has the host answer such a call directly; a call carried over the connection of whichever fused extension is running first would
+// end with that extension, as it did when a neighbour shut down while a command with a timeout ran ("extension stopped while waiting for ... response").
+
+// probeWhileANeighbourStops runs the builtin_probe case in a fused extension, whose command creates started before it sleeps, and stops a fused extension that
+// started before it once the command is running. It returns the probe's report.
+func probeWhileANeighbourStops(t *testing.T, probe func(dir, started string) map[string]any) map[string]any {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
@@ -44,10 +47,7 @@ func TestConformance_FusedLocalExecIsNotCarriedByAnotherExtension(t *testing.T) 
 
 	dir := t.TempDir()
 	started := filepath.Join(dir, "started")
-	args, err := json.Marshal(map[string]any{
-		"kind": "local", "shell": "bash", "factoryCwd": dir, "timeout": 1,
-		"command": "touch '" + started + "'; exec sleep 30",
-	})
+	args, err := json.Marshal(probe(dir, started))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,29 @@ func TestConformance_FusedLocalExecIsNotCarriedByAnotherExtension(t *testing.T) 
 	if err := json.Unmarshal([]byte(reported), &got); err != nil {
 		t.Fatalf("%s is not JSON: %v", reported, err)
 	}
+	return got
+}
+
+func TestConformance_FusedLocalExecIsNotCarriedByAnotherExtension(t *testing.T) {
+	got := probeWhileANeighbourStops(t, func(dir, started string) map[string]any {
+		return map[string]any{
+			"kind": "local", "shell": "bash", "factoryCwd": dir, "timeout": 1,
+			"command": "touch '" + started + "'; exec sleep 30",
+		}
+	})
 	if got["error"] != "timeout:1" {
-		t.Fatalf("a command with a 1 second timeout, while another fused extension stopped, reported %s; want {\"error\":\"timeout:1\"}, as Pi's exec rejects", reported)
+		t.Fatalf("a command with a 1 second timeout, while another fused extension stopped, reported %v; want {\"error\":\"timeout:1\"}, as Pi's exec rejects", got)
+	}
+}
+
+func TestConformance_FusedBuiltinToolWithoutContextIsNotCarriedByAnotherExtension(t *testing.T) {
+	got := probeWhileANeighbourStops(t, func(dir, started string) map[string]any {
+		return map[string]any{
+			"kind": "delegate", "tool": "bash", "factoryCwd": dir, "noContext": true,
+			"params": map[string]any{"command": "touch '" + started + "'; exec sleep 30", "timeout": 1},
+		}
+	})
+	if msg, _ := got["error"].(string); !strings.Contains(msg, "Command timed out after 1 seconds") {
+		t.Fatalf("a bash tool without a context and a 1 second timeout, while another fused extension stopped, reported %v; want Pi's \"Command timed out after 1 seconds\"", got)
 	}
 }

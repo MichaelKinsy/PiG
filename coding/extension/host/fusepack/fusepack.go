@@ -119,6 +119,9 @@ func HostHelpers() *sdk.HostHelpers {
 			}
 			return json.Marshal(subprocess.BuiltinToolLocalExecResult{ExitCode: exitCode})
 		},
+		BuiltinToolExecute: func(ctx context.Context, args []byte, peer sdk.BuiltinToolPeer) ([]byte, error) {
+			return subprocess.BuiltinToolExecute(ctx, args, managedToolsDir(), subprocess.BuiltinToolPeer{Callback: peer.Callback, Update: peer.Update, Exec: peer.Exec})
+		},
 		HighlightCode: subprocess.HighlightCodeLines,
 		LoadTheme:     subprocess.LoadThemeJSON,
 		WithFileMutationQueue: func(filePath string, fn func() error) error {

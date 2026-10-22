@@ -571,6 +571,11 @@ func (s builtinSpec) execute(ctx *Context, toolCallID string, params any, signal
 	}
 	if ext == nil {
 		ctx = nil
+		// A fused extension shares the host's process, so the host runs the tool for it directly: a call without a Context has no connection of its own, and one
+		// that rode the first running extension's would end with that extension, whichever made the call.
+		if hook := installedHelpers(); hook != nil && hook.BuiltinToolExecute != nil {
+			return s.executeDirect(hook, toolCallID, rawParams, signal, onUpdate)
+		}
 		if ext, err = runningExtension(); err != nil {
 			return AgentToolResult{}, err
 		}
@@ -606,18 +611,7 @@ func (s builtinSpec) execute(ctx *Context, toolCallID string, params any, signal
 			}()
 		}
 	}
-	call := struct {
-		Name         string              `json:"name"`
-		Cwd          string              `json:"cwd"`
-		Options      *builtinWireOptions `json:"options,omitempty"`
-		ToolCallID   string              `json:"toolCallId"`
-		Params       json.RawMessage     `json:"params"`
-		ExecuteID    string              `json:"executeId"`
-		WantsUpdates bool                `json:"wantsUpdates,omitempty"`
-		Context      bool                `json:"context,omitempty"`
-		Callbacks    string              `json:"callbacks,omitempty"`
-		Aborted      bool                `json:"aborted,omitempty"`
-	}{s.name, s.cwd, &s.options, toolCallID, rawParams, executeID, onUpdate != nil, ctx != nil, handle, signal != nil && signal.Err() != nil}
+	call := builtinExecuteCall{s.name, s.cwd, &s.options, toolCallID, rawParams, executeID, onUpdate != nil, ctx != nil, handle, signal != nil && signal.Err() != nil}
 
 	// A signal other than the request's detaches the call from the request, and aborts it through a second call ordered after the call's frame.
 	detached := !forwardSignal
@@ -666,6 +660,84 @@ func (s builtinSpec) execute(ctx *Context, toolCallID string, params any, signal
 	return out, nil
 }
 
+// builtinExecuteCall is the arguments of builtinTool.execute, and the JSON [HostHelpers.BuiltinToolExecute] takes.
+type builtinExecuteCall struct {
+	Name         string              `json:"name"`
+	Cwd          string              `json:"cwd"`
+	Options      *builtinWireOptions `json:"options,omitempty"`
+	ToolCallID   string              `json:"toolCallId"`
+	Params       json.RawMessage     `json:"params"`
+	ExecuteID    string              `json:"executeId"`
+	WantsUpdates bool                `json:"wantsUpdates,omitempty"`
+	Context      bool                `json:"context,omitempty"`
+	Callbacks    string              `json:"callbacks,omitempty"`
+	Aborted      bool                `json:"aborted,omitempty"`
+}
+
+// executeDirect is execute of a call without a Context for a fused extension: the host runs the tool in this process through hook, and reaches the functions of
+// the options and onUpdate through peer, which are in this process too. The tool ends with signal.
+func (s builtinSpec) executeDirect(hook *HostHelpers, toolCallID string, rawParams []byte, signal context.Context, onUpdate func(AgentToolResult)) (AgentToolResult, error) {
+	var handle string
+	if s.callbacks != nil {
+		var release func()
+		handle, release = registerBuiltinCallbacks(s.callbacks)
+		defer release()
+	}
+	call := builtinExecuteCall{Name: s.name, Cwd: s.cwd, Options: &s.options, ToolCallID: toolCallID, Params: rawParams, WantsUpdates: onUpdate != nil, Callbacks: handle, Aborted: signal != nil && signal.Err() != nil}
+	raw, err := json.MarshalJS(call)
+	if err != nil {
+		return AgentToolResult{}, fmt.Errorf("encode arguments of %s: %w", s.name, err)
+	}
+	if signal == nil {
+		signal = context.Background()
+	}
+	peer := BuiltinToolPeer{
+		Callback: func(_ context.Context, _, member string, args []byte) ([]byte, error) {
+			result, err := invokeBuiltinCallback(s.callbacks, member, args)
+			if err != nil || result == nil {
+				return nil, err
+			}
+			return json.MarshalJS(result)
+		},
+		Update: func(_ context.Context, _ string, result []byte) (failure error) {
+			if onUpdate == nil {
+				return nil
+			}
+			var partial AgentToolResult
+			if err := json.Unmarshal(result, &partial); err != nil {
+				return fmt.Errorf("decode %s: %w", requestExecuteToolUpdate, err)
+			}
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					if err, ok := recovered.(error); ok {
+						failure = err
+					} else {
+						failure = fmt.Errorf("%v", recovered)
+					}
+				}
+			}()
+			onUpdate(partial)
+			return nil
+		},
+		Exec: func(ctx context.Context, _, command, cwd string, timeout *float64, env map[string]string, onData func([]byte)) (*int, error) {
+			if s.callbacks == nil || s.callbacks.bash == nil {
+				return nil, errors.New("unknown bash operations")
+			}
+			result, err := s.callbacks.bash.Exec(command, cwd, BashExecOptions{OnData: onData, Signal: ctx, Timeout: timeout, Env: env})
+			return result.ExitCode, err
+		},
+	}
+	encoded, err := hook.BuiltinToolExecute(signal, raw, peer)
+	if err != nil {
+		return AgentToolResult{}, err
+	}
+	var out AgentToolResult
+	if err := json.Unmarshal(encoded, &out); err != nil {
+		return AgentToolResult{}, fmt.Errorf("host reply to builtinTool.execute: %w", err)
+	}
+	return out, nil
+}
+
 // dispatchBuiltinToolCallback runs one function of a call's options for the host's requestBuiltinToolCallback.
 func (e *Extension) dispatchBuiltinToolCallback(args json.RawMessage) (result any, failure error) {
 	var request struct {
@@ -682,7 +754,14 @@ func (e *Extension) dispatchBuiltinToolCallback(args json.RawMessage) (result an
 	if callbacks == nil {
 		return nil, fmt.Errorf("unknown built-in tool callbacks: %s", request.Handle)
 	}
-	// A throw in the callback is its error.
+	return invokeBuiltinCallback(callbacks, request.Member, request.Args)
+}
+
+// invokeBuiltinCallback runs one function of a call's options. A throw in the callback is its error.
+func invokeBuiltinCallback(callbacks *builtinCallbacks, member string, args json.RawMessage) (result any, failure error) {
+	if callbacks == nil {
+		return nil, errors.New("unknown built-in tool callbacks")
+	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = nil
@@ -693,7 +772,7 @@ func (e *Extension) dispatchBuiltinToolCallback(args json.RawMessage) (result an
 			}
 		}
 	}()
-	return callbacks.call(request.Member, request.Args)
+	return callbacks.call(member, args)
 }
 
 type pathArg struct {
