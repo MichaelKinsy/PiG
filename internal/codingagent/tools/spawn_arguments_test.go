@@ -78,7 +78,7 @@ func TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes(t *testing.T) {
 	pattern := "it's a\x00b"
 	limit := findDefaultLimit
 	// grep.ts:163-167 and find.ts:181-213 argument lists for a plain pattern.
-	grepArgs := []string{"--json", "--line-number", "--color=never", "--hidden", "--", pattern, cwd}
+	grepArgs := []string{"--no-config", "--json", "--line-number", "--color=never", "--hidden", "--", pattern, cwd}
 	findArgs := []string{"--glob", "--color=never", "--hidden"}
 	if !insideGitRepo(cwd) {
 		findArgs = append(findArgs, "--no-require-git")

@@ -1,10 +1,10 @@
 import {
   classifySystemOne
-} from "./chunk-I7FMPVJ6.js";
+} from "./chunk-BXWIDDEK.js";
 import {
   isRecord
-} from "./chunk-JHVQGPIW.js";
-import "./chunk-4QEFVS4X.js";
+} from "./chunk-THKX7O6U.js";
+import "./chunk-KSWS3LLN.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -23,6 +23,10 @@ __name(cloudflareErrorMessage, "cloudflareErrorMessage");
 var transport = {
   api: "cloudflare-workers-ai-system-one",
   label: LABEL,
+  detectCompat: /* @__PURE__ */ __name((model) => ({
+    imageInput: model.id.startsWith("@cf/cloudflare/clef") ? "images" : "assets",
+    sendImageOptInHeader: false
+  }), "detectCompat"),
   url: /* @__PURE__ */ __name((model) => new URL("run", `${model.baseUrl.replace(/\/+$/u, "")}/`), "url"),
   payload: /* @__PURE__ */ __name((model, request) => ({ model: model.id, input: request }), "payload"),
   output: /* @__PURE__ */ __name((body) => {

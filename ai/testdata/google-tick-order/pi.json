@@ -1,5 +1,5 @@
 {
- "pi": "1.3.0+bd3c9b82",
+ "pi": "1.4.0",
  "genai": "2.21.0",
  "node": "v24.19.0",
  "cap": 160,
@@ -1841,7 +1841,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -1884,7 +1884,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -1927,7 +1927,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -3464,7 +3464,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 3
      }
     },
     {
@@ -3503,7 +3503,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 3
      }
     },
     {
@@ -4012,7 +4012,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 5
+      "durationMs": 4
      }
     },
     {
@@ -4051,7 +4051,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 5
+      "durationMs": 4
      }
     },
     {
@@ -5178,7 +5178,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 1
      }
     },
     {
@@ -5222,7 +5222,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 1
      }
     },
     {
@@ -5266,7 +5266,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 1
      }
     },
     {
@@ -5310,7 +5310,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 1
      }
     },
     {

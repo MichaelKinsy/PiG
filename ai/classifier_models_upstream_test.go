@@ -227,6 +227,10 @@ func TestClassifierModelsUpstream(t *testing.T) {
 			if model.API != "typesafe-system-one" || model.BaseURL != "https://openrouter.ai/api/v1" {
 				t.Errorf("model=%+v", model)
 			}
+			// Explicit, so images keep OpenRouter's form when the baseUrl is overridden.
+			if model.Compat == nil || model.Compat.ImageInput != SystemOneImageInputStateImageURLs || model.Compat.SendImageOptInHeader == nil || *model.Compat.SendImageOptInHeader {
+				t.Errorf("compat of %s = %+v", model.ID, model.Compat)
+			}
 			if models.GetModel("openrouter", model.ID) != nil {
 				t.Errorf("chat lookup returned %s", model.ID)
 			}

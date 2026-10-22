@@ -56,7 +56,7 @@ func persistQueueMessage(t *testing.T, s *Session, message agent.AgentMessage) s
 }
 func checkQueueDecision(t *testing.T, s *Session, message *agent.AssistantMessage, skipAborted bool, calls *[]compactionDecisionCall) {
 	t.Helper()
-	_, err := s.checkCompactionDecision(t.Context(), message, skipAborted, nil, func(_ context.Context, reason string, retry bool) (bool, error) {
+	_, err := s.checkCompactionDecision(t.Context(), message, skipAborted, func(_ context.Context, reason string, retry bool) (bool, error) {
 		*calls = append(*calls, compactionDecisionCall{reason, retry})
 		return true, nil
 	})
@@ -236,7 +236,7 @@ func BenchmarkCheckCompactionDecision(b *testing.B) {
 	message := queueAssistant(s, "complete", 100, 10, ai.StopReasonStop, time.Now().UnixMilli())
 	b.ReportAllocs()
 	for b.Loop() {
-		if _, err := s.checkCompaction(b.Context(), message, true, nil); err != nil {
+		if _, err := s.checkCompaction(b.Context(), message, true); err != nil {
 			b.Fatal(err)
 		}
 	}

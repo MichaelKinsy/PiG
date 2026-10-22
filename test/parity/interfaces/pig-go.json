@@ -73808,9 +73808,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, assistantMsg *github.com/MichaelKinsy/PiG/agent.AssistantMessage, skipAbortedCheck bool, toolResults []github.com/MichaelKinsy/PiG/agent.AgentMessage) (bool, error)"
+        "type": "func(ctx context.Context, assistantMsg *github.com/MichaelKinsy/PiG/agent.AssistantMessage, skipAbortedCheck bool) (bool, error)"
       },
-      "shapeHash": "sha256:b1af45a7c024d66f956f3c38e3da661f97bccb4b0ac9b2034e721132e4f205d5"
+      "shapeHash": "sha256:b4e5e4cbcb3074de79310d200b743c325cede47e1ca6a7b4d775d69edcc4a50c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.checkCompactionDecision",
@@ -73819,9 +73819,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, assistantMsg *github.com/MichaelKinsy/PiG/agent.AssistantMessage, skipAbortedCheck bool, toolResults []github.com/MichaelKinsy/PiG/agent.AgentMessage, compact func(context.Context, string, bool) (bool, error)) (bool, error)"
+        "type": "func(ctx context.Context, assistantMsg *github.com/MichaelKinsy/PiG/agent.AssistantMessage, skipAbortedCheck bool, compact func(context.Context, string, bool) (bool, error)) (bool, error)"
       },
-      "shapeHash": "sha256:3cdb3dfd3819c2f90574a4ac4380178f02758456e0d8d0203d45fc56570812a3"
+      "shapeHash": "sha256:c075169a4dee51d2e924f161ca5f64f06b90d6bdda0d5fc39dbfa76935659aa0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.checkModelAuth",
@@ -75029,9 +75029,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(message *github.com/MichaelKinsy/PiG/agent.AssistantMessage, toolResults []github.com/MichaelKinsy/PiG/agent.AgentMessage) error"
+        "type": "func(message *github.com/MichaelKinsy/PiG/agent.AssistantMessage) error"
       },
-      "shapeHash": "sha256:fe7ffa6a0f21f34fad36faafe13012f08df682626a863645560fdd90b170695a"
+      "shapeHash": "sha256:86970110ccf3c6a32b02f2f11f30851342e1f0ba81c1ca8a04399fc85c790f72"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.ownAgentRun",

@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.3.0+bd3c9b82",
+  "piVersion": "1.4.0",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -190,7 +190,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 39
+        "durationMs": 30
       }
     },
     {
@@ -2062,7 +2062,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2253,7 +2253,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2444,7 +2444,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2767,7 +2767,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -4405,7 +4405,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Cannot read properties of undefined (reading 'name')",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -4482,7 +4482,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Cannot read properties of null (reading 'type')",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -4591,7 +4591,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "body failed",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {

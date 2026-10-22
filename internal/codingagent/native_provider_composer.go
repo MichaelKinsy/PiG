@@ -5,6 +5,7 @@ package codingagent
 import (
 	"container/heap"
 	"context"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"slices"
@@ -206,6 +207,42 @@ func withBaseURL(model ai.AnyModel, baseURL string) ai.AnyModel {
 		return &copy
 	}
 	return model
+}
+
+// withModelsJSONCompat applies the models.json provider compat to a classifier model: classifier APIs read their own compat fields, such as how a
+// System One service takes images, so the provider-level fields overlay the model's (provider-composer.ts applyModelsJson).
+// Models of other types are returned unchanged.
+func withModelsJSONCompat(model ai.AnyModel, compat *providerCompat) ai.AnyModel {
+	classifier, ok := model.(*ai.ClassifierModel)
+	if !ok || compat == nil {
+		return model
+	}
+	merged := overlaySystemOneCompat(classifier.Compat, compat)
+	copy := *classifier
+	copy.Compat = &merged
+	return &copy
+}
+
+// overlaySystemOneCompat overlays the System One fields of a provider compat object (imageInput, sendImageOptInHeader, which
+// PiG keeps among a compat object's additional properties) on base.
+func overlaySystemOneCompat(base *ai.SystemOneCompat, compat *providerCompat) ai.SystemOneCompat {
+	merged := ai.SystemOneCompat{}
+	if base != nil {
+		merged = *base
+	}
+	if raw, ok := compat.Extra["imageInput"]; ok {
+		var imageInput string
+		if json.Unmarshal(raw, &imageInput) == nil {
+			merged.ImageInput = ai.SystemOneImageInput(imageInput)
+		}
+	}
+	if raw, ok := compat.Extra["sendImageOptInHeader"]; ok {
+		var send bool
+		if json.Unmarshal(raw, &send) == nil {
+			merged.SendImageOptInHeader = &send
+		}
+	}
+	return merged
 }
 
 // allProviderModels lists every model of a provider: its GetAllModels list, or its chat list (provider-composer.ts getAllProviderModels).
@@ -411,7 +448,7 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 		models = slices.Clone(models)
 		for i, model := range models {
 			if !ai.IsModelType(model, ai.ModelTypeChat) {
-				models[i] = withBaseURL(model, firstModelValue(config.BaseURL, anyModelBaseURL(model)))
+				models[i] = withModelsJSONCompat(withBaseURL(model, firstModelValue(config.BaseURL, anyModelBaseURL(model))), config.Compat)
 			}
 		}
 		return models, nil

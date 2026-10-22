@@ -2287,7 +2287,7 @@ function createGrepToolDefinition(cwd, options) {
               }
               return lines;
             }, "getFileLines");
-            const args = ["--json", "--line-number", "--color=never", "--hidden"];
+            const args = ["--no-config", "--json", "--line-number", "--color=never", "--hidden"];
             if (ignoreCase)
               args.push("--ignore-case");
             if (literal)

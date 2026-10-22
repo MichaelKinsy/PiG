@@ -1,0 +1,23 @@
+pkg:ai/.#ClassifierModel	ai	child-gap	ai/model_types.go#ClassifierModel
+pkg:ai/.#ClassifierModel::property:compat	ai	member-missing	ai/model_types.go#ClassifierModel
+pkg:ai/.#SystemOneCompat	ai	no-go-symbol	
+pkg:ai/.#SystemOneCompat::property:imageInput	ai	child-gap	
+pkg:ai/.#SystemOneCompat::property:sendImageOptInHeader	ai	child-gap	
+pkg:ai/api/system-one-shared#ResolvedSystemOneCompat	ai	no-go-symbol	
+pkg:ai/api/system-one-shared#SystemOneImageInput	ai	no-go-symbol	
+pkg:ai/api/system-one-shared#SystemOneTransport	ai	child-gap	ai/system_one.go#SystemOneTransport
+pkg:ai/api/system-one-shared#SystemOneTransport::property:detectCompat	ai	member-missing	ai/system_one.go#SystemOneTransport
+pkg:ai/api/system-one-shared#SystemOneTransport::property:detectCompat::call:0	ai	member-missing	ai/system_one.go#SystemOneTransport
+pkg:ai/api/system-one-shared#SystemOneWireRequest	ai	child-gap	ai/system_one.go#SystemOneWireRequest
+pkg:ai/api/system-one-shared#SystemOneWireRequest::property:assets	ai	member-missing	ai/system_one.go#SystemOneWireRequest
+pkg:ai/api/system-one-shared#SystemOneWireRequest::property:images	ai	member-missing	ai/system_one.go#SystemOneWireRequest
+pkg:ai/api/system-one-shared#SystemOneWireRequest::property:state	ai	undecidable	ai/system_one.go#SystemOneWireRequest.State
+pkg:ai/compat#ClassifierModel	ai	child-gap	ai/model_types.go#ClassifierModel
+pkg:ai/compat#ClassifierModel::property:compat	ai	member-missing	ai/model_types.go#ClassifierModel
+pkg:ai/compat#SystemOneCompat	ai	no-go-symbol	
+pkg:ai/compat#SystemOneCompat::property:imageInput	ai	child-gap	
+pkg:ai/compat#SystemOneCompat::property:sendImageOptInHeader	ai	child-gap	
+pkg:ai/providers/compat-schema#SystemOneCompat	ai	no-go-symbol	
+pkg:ai/providers/compat-schema#SystemOneCompat::property:imageInput	ai	child-gap	
+pkg:ai/providers/compat-schema#SystemOneCompat::property:sendImageOptInHeader	ai	child-gap	
+pkg:ai/providers/compat-schema#SystemOneCompatSchema	ai	no-go-symbol	

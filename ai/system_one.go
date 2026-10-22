@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -23,11 +24,77 @@ const (
 	ClassifierAPIOpenAIDecisions              ClassifierAPI = "openai-decisions"
 )
 
+// SystemOneImageAsset is a System One image asset: base64 file bytes, referenced by its name from the state.
+type SystemOneImageAsset struct {
+	Format     string
+	DataBase64 string
+}
+
+func (a SystemOneImageAsset) MarshalJSON() ([]byte, error) {
+	return fmt.Appendf(nil, `{"type":"image","format":%s,"data_base64":%s}`, marshalJSONString(a.Format), marshalJSONString(a.DataBase64)), nil
+}
+
+// SystemOneImageAssets are the assets in insertion order, keyed by the names the state references.
+type SystemOneImageAssets struct {
+	Names  []string
+	Assets []SystemOneImageAsset
+}
+
+func (a SystemOneImageAssets) MarshalJSON() ([]byte, error) {
+	return writeJSONObject(len(a.Names), func(i int) string { return a.Names[i] }, func(i int) ([]byte, error) { return a.Assets[i].MarshalJSON() })
+}
+
 // SystemOneWireRequest is the System One request body without the transport-specific envelope.
 type SystemOneWireRequest struct {
-	State     JsonObject
+	// State is the context state, or with images a list of the images or their asset names followed by the state.
+	State     any
 	Questions SystemOneWireQuestions
+	// Assets are the images as System One assets, keyed by the names the state references.
+	Assets *SystemOneImageAssets
+	// Images are the images as data URLs, Clef's extension to System One.
+	Images []string
 }
+
+// Body is the request's members in Pi's insertion order: state, questions, then assets or images.
+func (r SystemOneWireRequest) Body() map[string]any {
+	body := map[string]any{"state": r.State, "questions": r.Questions}
+	if r.Assets != nil {
+		body["assets"] = r.Assets
+	}
+	if r.Images != nil {
+		body["images"] = r.Images
+	}
+	return body
+}
+
+// SystemOneImageInput is how a service takes classifier images (SystemOneCompat.ImageInput).
+type SystemOneImageInput string
+
+const (
+	// SystemOneImageInputAssets is TypeSafe's assets map, with the names placed before the state. PNG and JPEG only.
+	SystemOneImageInputAssets SystemOneImageInput = "assets"
+	// SystemOneImageInputImages is Clef's images list of data URLs: PNG, JPEG and WebP, at most four.
+	SystemOneImageInputImages SystemOneImageInput = "images"
+	// SystemOneImageInputStateImageURLs is OpenRouter's form: data URL parts placed before the state.
+	SystemOneImageInputStateImageURLs SystemOneImageInput = "state-image-urls"
+)
+
+// SystemOneCompat holds the compatibility settings of System One classifier APIs (compat-schema.ts SystemOneCompatSchema).
+// An unset field is detected from the provider, baseUrl and model ID.
+type SystemOneCompat struct {
+	ImageInput SystemOneImageInput `json:"imageInput,omitempty"`
+	// SendImageOptInHeader sends TypeSafe-Danger-Zone-Images: true with requests that carry images.
+	SendImageOptInHeader *bool `json:"sendImageOptInHeader,omitempty"`
+}
+
+// ResolvedSystemOneCompat is SystemOneCompat with every field resolved.
+type ResolvedSystemOneCompat struct {
+	ImageInput           SystemOneImageInput
+	SendImageOptInHeader bool
+}
+
+// systemOneImageOptInHeaders is TypeSafe's opt-in header for its experimental image input.
+var systemOneImageOptInHeaders = ProviderHeadersFromStrings(map[string]string{"TypeSafe-Danger-Zone-Images": "true"})
 
 // SystemOneWireQuestions are the questions as System One names them: a public bool question is a wire-level noul.
 type SystemOneWireQuestions ClassifierQuestions
@@ -45,6 +112,8 @@ func (q SystemOneWireQuestions) MarshalJSON() ([]byte, error) {
 type SystemOneTransport struct {
 	// API is the classifier API this transport implements.
 	API ClassifierAPI
+	// DetectCompat gives the settings of models that do not set them in Compat.
+	DetectCompat func(model ClassifierModel) ResolvedSystemOneCompat
 	// Label names the service in error messages.
 	Label string
 	URL   func(model ClassifierModel) string
@@ -184,10 +253,31 @@ func ClassifySystemOne(ctx context.Context, transport SystemOneTransport, model 
 	if model.API != transport.API {
 		return fail(fmt.Errorf("Unsupported classifier API: %s", model.API))
 	}
+	wire := SystemOneWireRequest{State: request.State, Questions: SystemOneWireQuestions(request.Questions)}
+	requestOptions := options
 	if len(request.Images) > 0 {
-		return fail(fmt.Errorf("%s does not support image input", transport.Label))
+		if !slices.Contains(model.Input, "image") {
+			return fail(fmt.Errorf("%s does not support image input for %s", transport.Label, model.ID))
+		}
+		detected := transport.DetectCompat(model)
+		imageInput := detected.ImageInput
+		sendHeader := detected.SendImageOptInHeader
+		if model.Compat != nil {
+			if model.Compat.ImageInput != "" {
+				imageInput = model.Compat.ImageInput
+			}
+			if model.Compat.SendImageOptInHeader != nil {
+				sendHeader = *model.Compat.SendImageOptInHeader
+			}
+		}
+		if err := addSystemOneImages(transport.Label, model, imageInput, request.Images, &wire); err != nil {
+			return fail(err)
+		}
+		if sendHeader {
+			requestOptions.Headers = MergeProviderHeaders(systemOneImageOptInHeaders, options.Headers)
+		}
 	}
-	envelope, err := PostClassifierRequest(ctx, transport.Label, transport.URL(model), model, transport.Payload(model, SystemOneWireRequest{State: request.State, Questions: SystemOneWireQuestions(request.Questions)}), options, nil)
+	envelope, err := PostClassifierRequest(ctx, transport.Label, transport.URL(model), model, transport.Payload(model, wire), requestOptions, nil)
 	if err != nil {
 		return fail(err)
 	}
@@ -203,6 +293,55 @@ func ClassifySystemOne(ctx context.Context, transport SystemOneTransport, model 
 	}
 	output.Answers = answers
 	return output
+}
+
+var systemOneAssetFormats = map[string]string{"image/png": "png", "image/jpeg": "jpeg"}
+
+// maxSystemOneDataURLImages is how many images Clef accepts per request.
+const maxSystemOneDataURLImages = 4
+
+// addSystemOneImages adds the context images to request in the service's form (system-one-shared.ts addImages).
+func addSystemOneImages(label string, model ClassifierModel, input SystemOneImageInput, images []ImageContent, request *SystemOneWireRequest) error {
+	switch input {
+	case SystemOneImageInputImages:
+		if len(images) > maxSystemOneDataURLImages {
+			return fmt.Errorf("%s accepts at most %d images for %s, got %d", label, maxSystemOneDataURLImages, model.ID, len(images))
+		}
+		urls := make([]string, len(images))
+		for i, image := range images {
+			if image.MimeType != "image/png" && image.MimeType != "image/jpeg" && image.MimeType != "image/webp" {
+				return fmt.Errorf("%s accepts PNG, JPEG, and WebP images for %s, got %s", label, model.ID, image.MimeType)
+			}
+			urls[i] = "data:" + image.MimeType + ";base64," + image.Data
+		}
+		request.Images = urls
+		return nil
+	case SystemOneImageInputStateImageURLs:
+		// OpenRouter validates the images against the model that serves the request.
+		state := make([]any, 0, len(images)+1)
+		for _, image := range images {
+			state = append(state, map[string]any{"type": "image_url", "image_url": map[string]any{"url": "data:" + image.MimeType + ";base64," + image.Data}})
+		}
+		request.State = append(state, request.State)
+		return nil
+	}
+	assets := &SystemOneImageAssets{}
+	for i, image := range images {
+		format, ok := systemOneAssetFormats[image.MimeType]
+		if !ok {
+			return fmt.Errorf("%s accepts PNG and JPEG images for %s, got %s", label, model.ID, image.MimeType)
+		}
+		assets.Names = append(assets.Names, fmt.Sprintf("<image-%d>", i+1))
+		assets.Assets = append(assets.Assets, SystemOneImageAsset{Format: format, DataBase64: image.Data})
+	}
+	request.Assets = assets
+	// Every asset must be referenced from the request. The names go before the state, where Clef also places its images.
+	state := make([]any, 0, len(assets.Names)+1)
+	for _, name := range assets.Names {
+		state = append(state, name)
+	}
+	request.State = append(state, request.State)
+	return nil
 }
 
 // serviceURL is `new URL(path, \`${baseUrl.replace(/\/+$/u, "")}/\`)` as the System One and decisions transports build it. Pi's constructor throws inside the request's try block; the URL field returns a
@@ -232,9 +371,18 @@ func resolveServiceURL(baseURL, path string) (string, error) {
 var typesafeSystemOneTransport = SystemOneTransport{
 	API:   ClassifierAPITypesafeSystemOne,
 	Label: "System One API",
-	URL:   func(model ClassifierModel) string { return serviceURL(model.BaseURL, "systemone") },
+	// OpenRouter by provider ID, which survives baseUrl overrides, or by host, which covers regional endpoints.
+	DetectCompat: func(model ClassifierModel) ResolvedSystemOneCompat {
+		if model.Provider == "openrouter" || strings.Contains(model.BaseURL, "openrouter.ai") {
+			return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputStateImageURLs}
+		}
+		return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputAssets, SendImageOptInHeader: true}
+	},
+	URL: func(model ClassifierModel) string { return serviceURL(model.BaseURL, "systemone") },
 	Payload: func(model ClassifierModel, request SystemOneWireRequest) map[string]any {
-		return map[string]any{"model": model.ID, "state": request.State, "questions": request.Questions}
+		body := request.Body()
+		body["model"] = model.ID
+		return body
 	},
 	Output: func(body json.RawMessage) (map[string]json.RawMessage, error) {
 		object, ok := jsonObjectOf(body)
@@ -277,9 +425,16 @@ func cloudflareErrorMessage(errors json.RawMessage) string {
 var cloudflareSystemOneTransport = SystemOneTransport{
 	API:   ClassifierAPICloudflareWorkersAISystemOne,
 	Label: cloudflareSystemOneLabel,
-	URL:   func(model ClassifierModel) string { return serviceURL(model.BaseURL, "run") },
+	// Clef models take images as an images list of data URLs; TypeSafe's models take System One assets without the opt-in header.
+	DetectCompat: func(model ClassifierModel) ResolvedSystemOneCompat {
+		if strings.HasPrefix(model.ID, "@cf/cloudflare/clef") {
+			return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputImages}
+		}
+		return ResolvedSystemOneCompat{ImageInput: SystemOneImageInputAssets}
+	},
+	URL: func(model ClassifierModel) string { return serviceURL(model.BaseURL, "run") },
 	Payload: func(model ClassifierModel, request SystemOneWireRequest) map[string]any {
-		return map[string]any{"model": model.ID, "input": map[string]any{"state": request.State, "questions": request.Questions}}
+		return map[string]any{"model": model.ID, "input": request.Body()}
 	},
 	Output: func(body json.RawMessage) (map[string]json.RawMessage, error) {
 		object, ok := jsonObjectOf(body)

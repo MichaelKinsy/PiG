@@ -27,6 +27,20 @@ func TestToolsGrepPort(t *testing.T) {
 		}
 		requireTextParts(t, runGrep(t, dir, map[string]any{"pattern": "match", "path": path, "limit": 1, "context": 1}), []string{"context.txt-1- before", "context.txt:2: match one", "context.txt-3- after", "[1 matches limit reached. Use limit=2 for more, or refine pattern]"}, []string{"match two"})
 	})
+	// .upstream/v1.3.0+02726086/packages/coding-agent/test/tools.test.ts:912 (earendil-works/pi#11203)
+	t.Run("should ignore RIPGREP_CONFIG_PATH", func(t *testing.T) {
+		dir := t.TempDir()
+		configFile := filepath.Join(dir, "rg-config")
+		testFile := filepath.Join(dir, "fixture.txt")
+		if err := os.WriteFile(configFile, []byte("--fixed-strings\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(testFile, []byte("aXb\na.b\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("RIPGREP_CONFIG_PATH", configFile)
+		requireTextParts(t, runGrep(t, dir, map[string]any{"pattern": "a.b", "path": testFile, "literal": false}), []string{"fixture.txt:1: aXb", "fixture.txt:2: a.b"}, nil)
+	})
 	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:863
 	t.Run("should treat flag-like patterns as search text", func(t *testing.T) {
 		dir := t.TempDir()

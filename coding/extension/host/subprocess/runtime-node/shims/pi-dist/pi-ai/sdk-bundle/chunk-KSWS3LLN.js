@@ -517,7 +517,7 @@ function observeModelRequest(requestedModel, options, poll) {
 __name(observeModelRequest, "observeModelRequest");
 
 // pi-dist/pi-ai/utils/version.js
-var PI_AI_VERSION = "1.3.0";
+var PI_AI_VERSION = "1.4.0";
 
 // pi-dist/pi-ai/utils/identity.js
 import { pigUserAgent } from "../../../pig-identity.mjs";

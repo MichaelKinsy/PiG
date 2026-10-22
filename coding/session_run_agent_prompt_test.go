@@ -103,7 +103,7 @@ func TestCheckCompactionSilentOverflowCompactsWithoutRetry(t *testing.T) {
 	}
 	sess.refreshContext()
 
-	continueRun, err := sess.checkCompaction(context.Background(), lastAssistantMessage(sess.agent.Messages()), true, nil)
+	continueRun, err := sess.checkCompaction(context.Background(), lastAssistantMessage(sess.agent.Messages()), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestCheckCompactionErrorWithoutUsageEstimatesFromLastUsage(t *testing.T) {
 	}
 	sess.refreshContext()
 
-	if _, err := sess.checkCompaction(context.Background(), lastAssistantMessage(sess.agent.Messages()), true, nil); err != nil {
+	if _, err := sess.checkCompaction(context.Background(), lastAssistantMessage(sess.agent.Messages()), true); err != nil {
 		t.Fatal(err)
 	}
 	var end *agent.CompactionEndEvent

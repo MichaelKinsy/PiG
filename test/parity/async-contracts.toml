@@ -1,4 +1,4 @@
-version = "1.3.0+bd3c9b82"
+version = "1.4.0"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -191,10 +191,10 @@ rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: requires the PiG
 
 [[files]]
 path = "packages/ai/src/api/system-one-shared.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source new in 0.99.1; PORT_MAP status ⬜ ((not started: shared by the system-one classifier APIs)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated."
+rationale = ""
 
 [[files]]
 path = "packages/ai/src/api/typesafe-system-one.lazy.ts"
@@ -464,10 +464,10 @@ rationale = "observeModelRequest starts its span with `void start(...)`: nobody 
 
 [[files]]
 path = "packages/ai/src/types.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f adds the StreamOptions.identity member; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/ai/src/utils/abort.ts"
@@ -989,10 +989,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/
 
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
-disposition = "deferred"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:coding/model_runtime_native_upstream_test.go", "test:coding/model_runtime_native_lifecycle_test.go", "test:coding/model_runtime_native_async_test.go", "scenario:test/parity/scenarios/model-runtime-store-catalog/25-native-provider-compat.toml"]
-rationale = "Base refresh precedes extension refresh. Refreshed definitions validate before publication; publication updates the synchronous catalog without persistence unless explicitly requested. OAuth credential projection publishes after credential reads and disappears after logout. Native deferred callbacks and inherited login are preserved through overlays. Full legacy configuration/auth composition remains under the model-registry test obligation, so this file is not claimed async-closed."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/remote-catalog-provider.ts"

@@ -70,10 +70,8 @@ func (s *Session) refreshProjectedContext(preserveInstructionBaseline bool) {
 	}
 	s.entryIDsMu.Lock()
 	// Projection creates new message objects. Preserve the observed turn's IDs only until post-run recovery consumes it.
-	observed := append([]agent.AgentMessage{{Assistant: s.lastAssistantMessage}}, s.lastAssistantToolResults...)
-	for _, message := range observed {
-		key := messageIdentity(message)
-		if id, found := s.entryIDsByMessage[key]; key != nil && found {
+	if key := messageIdentity(agent.AgentMessage{Assistant: s.lastAssistantMessage}); key != nil {
+		if id, found := s.entryIDsByMessage[key]; found {
 			ids[key] = id
 		}
 	}
@@ -167,9 +165,49 @@ var errUnresolvedRecoveryTarget = errors.New("Cannot persist recovery omission b
 
 // omitRecoveryAttempt durably omits a failed final attempt and its tool
 // results from model context with context_edit entries, keeping them in raw
-// history (agent-session.ts _omitRecoveryAttempt).
-func (s *Session) omitRecoveryAttempt(message *agent.AssistantMessage, toolResults []agent.AgentMessage) error {
-	targets := append([]agent.AgentMessage{{Assistant: message}}, toolResults...)
+// history (agent-session.ts _omitRecoveryAttempt). The tool results are found
+// in the agent transcript itself, so the pair stays together whether the
+// attempt comes from the current run or a resumed session (Pi #11227): an
+// unpaired result fails the next request.
+func (s *Session) omitRecoveryAttempt(message *agent.AssistantMessage) error {
+	toolCallIDs := make(map[string]struct{})
+	for _, block := range message.Content {
+		if call, ok := block.(ai.ToolCall); ok {
+			toolCallIDs[call.ID] = struct{}{}
+		}
+	}
+	// A context edit replaces the projected copy, so match it by source entry as well.
+	entryID, entryFound := s.findPersistedMessageEntryID(agent.AgentMessage{Assistant: message})
+	messages := s.agent.Messages()
+	index := slices.IndexFunc(messages, func(m agent.AgentMessage) bool {
+		if m.Assistant == message {
+			return true
+		}
+		if !entryFound {
+			return false
+		}
+		key := messageIdentity(m)
+		if key == nil {
+			return false
+		}
+		s.entryIDsMu.Lock()
+		id, found := s.entryIDsByMessage[key]
+		s.entryIDsMu.Unlock()
+		return found && id == entryID
+	})
+	targets := []agent.AgentMessage{{Assistant: message}}
+	if index >= 0 {
+		for _, m := range messages[index+1:] {
+			if m.Assistant != nil {
+				break
+			}
+			if m.ToolResult != nil {
+				if _, paired := toolCallIDs[m.ToolResult.ToolCallID]; paired {
+					targets = append(targets, m)
+				}
+			}
+		}
+	}
 	targetIDs := make([]string, len(targets))
 	for i, target := range targets {
 		id, found := s.findPersistedMessageEntryID(target)
@@ -232,8 +270,8 @@ func (s *Session) runPostAgentRunsWith(ctx context.Context, messages []agent.Age
 // low-level run and reports whether the agent should continue
 // (agent-session.ts _handlePostAgentRun).
 func (s *Session) handlePostAgentRun(ctx context.Context) (bool, error) {
-	message, toolResults := s.lastAssistantMessage, s.lastAssistantToolResults
-	s.lastAssistantMessage, s.lastAssistantToolResults = nil, nil
+	message := s.lastAssistantMessage
+	s.lastAssistantMessage = nil
 	if s.agentRunAborted(ctx) {
 		s.finishCancelledRetry()
 		return false, nil
@@ -263,7 +301,7 @@ func (s *Session) handlePostAgentRun(ctx context.Context) (bool, error) {
 			s.emitEvent(agent.AutoRetryEndEvent{Success: false, Attempt: int(attempt), FinalError: message.ErrorMessage})
 		}
 	}
-	compacted, err := s.checkCompaction(ctx, message, true, toolResults)
+	compacted, err := s.checkCompaction(ctx, message, true)
 	if err != nil {
 		return false, err
 	}
@@ -303,7 +341,7 @@ func (s *Session) prepareRetry(ctx context.Context, message *agent.AssistantMess
 		s.retryCancel = wait
 		s.retryMu.Unlock()
 		s.emitEvent(agent.AutoRetryStartEvent{Attempt: attempt, MaxAttempts: cfg.MaxRetries, DelayMs: delayMs, ErrorMessage: errorMessage})
-		if err := s.omitRecoveryAttempt(message, nil); err != nil {
+		if err := s.omitRecoveryAttempt(message); err != nil {
 			cancel()
 			s.retryMu.Lock()
 			if s.retryCancel == wait {

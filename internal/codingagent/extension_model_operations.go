@@ -47,6 +47,7 @@ type classifierWireModel struct {
 	InputLimits   *ai.ModelInputLimits `json:"inputLimits"`
 	Cost          ai.ModelCost         `json:"cost"`
 	ContextWindow int                  `json:"contextWindow"`
+	Compat        *ai.SystemOneCompat  `json:"compat"`
 }
 
 // classifierWireOptions is the serializable part of ai.ModelsClassifierOptions; the request's context carries the signal.
@@ -82,7 +83,7 @@ func extensionClassify(ctx context.Context, classify func(context.Context, *ai.C
 func extensionClassifyJSON(ctx context.Context, classify func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult, model, request, options json.RawMessage) json.RawMessage {
 	var wire classifierWireModel
 	_ = json.Unmarshal(model, &wire)
-	target := &ai.ClassifierModel{ID: wire.ID, Name: wire.Name, API: wire.API, Provider: wire.Provider, BaseURL: wire.BaseURL, Headers: wire.Headers, Input: wire.Input, InputLimits: wire.InputLimits, Cost: wire.Cost, ContextWindow: wire.ContextWindow}
+	target := &ai.ClassifierModel{ID: wire.ID, Name: wire.Name, API: wire.API, Provider: wire.Provider, BaseURL: wire.BaseURL, Headers: wire.Headers, Input: wire.Input, InputLimits: wire.InputLimits, Cost: wire.Cost, ContextWindow: wire.ContextWindow, Compat: wire.Compat}
 	result := func() ai.ClassifierResult {
 		if wire.Type != ai.ModelTypeClassifier {
 			// upstream: model-operations.ts:assertClassifierModel names the model that is not a classifier.

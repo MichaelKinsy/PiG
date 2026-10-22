@@ -92,11 +92,7 @@ func (s *Session) handleAgentEvent(ctx context.Context, event agent.AgentEvent) 
 	if persistErr != nil {
 		return persistErr
 	}
-	if end, ok := event.(agent.TurnEndEvent); ok {
-		s.lastAssistantToolResults = make([]agent.AgentMessage, len(end.ToolResults))
-		for i := range end.ToolResults {
-			s.lastAssistantToolResults[i] = agent.AgentMessage{ToolResult: &end.ToolResults[i]}
-		}
+	if _, ok := event.(agent.TurnEndEvent); ok {
 		return s.flushPendingCustomMessages()
 	}
 	return nil
@@ -117,10 +113,8 @@ func (s *Session) dispatchTurnEndBoundary(ctx context.Context, event agent.TurnE
 		return false, nil
 	}
 	event = s.turnEndWithEntryIDs(event)
-	s.lastAssistantToolResults = make([]agent.AgentMessage, len(event.ToolResults))
 	for i := range event.ToolResults {
-		s.lastAssistantToolResults[i] = agent.AgentMessage{ToolResult: &event.ToolResults[i]}
-		s.rememberMessageEntry(s.lastAssistantToolResults[i], event.ToolResultEntryIDs[i])
+		s.rememberMessageEntry(agent.AgentMessage{ToolResult: &event.ToolResults[i]}, event.ToolResultEntryIDs[i])
 	}
 	if event.MessageEntryID == "" {
 		runner.EmitError(&extension.ExtensionError{ExtensionPath: "<boundary>", Event: icodingagent.EventTurnEnd, Error: "turn_end could not resolve the persisted assistant entry ID"})

@@ -1,7 +1,7 @@
 {
- "piVersion": "1.3.0+bd3c9b82",
+ "piVersion": "1.4.0",
  "awsSdkClientBedrockRuntime": "3.1127.0",
- "smithyCore": "3.36.1",
+ "smithyCore": "3.36.2",
  "node": "v24.19.0",
  "cases": {
   "h1/buffered/hooks": [

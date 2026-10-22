@@ -32,6 +32,28 @@ func TestParseDataJSONRejectsUnknownModelFields(t *testing.T) {
 	}
 }
 
+func TestParseDataJSONKeepsFreeOfPiRadiusData(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "models.json")
+	writeFile(t, path, `{
+	  "pi-messages": {
+	    "chat:recursive/flint": {
+	      "type": "chat", "id": "recursive/flint", "name": "Flint", "api": "pi-messages",
+	      "provider": "radius", "baseUrl": "https://radius.example.test",
+	      "reasoning": true, "input": ["text"], "contextWindow": 1000, "maxTokens": 100,
+	      "enabled": true, "providers": [{"id": "recursive", "name": "Recursive", "credential": "radius", "source": "radius"}],
+	      "free": true
+	    }
+	  }
+	}`)
+	rows, err := parseDataJSON(path)
+	if err != nil {
+		t.Fatalf("parseDataJSON() rejected Pi's radius free field: %v", err)
+	}
+	if len(rows) != 1 || !strings.Contains(rows[0].Record, `"free":true`) {
+		t.Fatalf("rows = %#v, want the record to carry free", rows)
+	}
+}
+
 func TestParseDataJSONAcceptsInputLimits(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models.json")
 	writeFile(t, path, `{

@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.3.0+bd3c9b82",
+  "piVersion": "1.4.0",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -115,7 +115,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 23
+        "durationMs": 26
       }
     },
     {
@@ -1209,7 +1209,7 @@
         },
         "stopReason": "error",
         "errorMessage": "p stream ended without a terminal event",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -1622,7 +1622,7 @@
         },
         "stopReason": "error",
         "errorMessage": "p stream ended without a terminal event",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
