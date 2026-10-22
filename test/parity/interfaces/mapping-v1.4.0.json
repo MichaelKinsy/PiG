@@ -47282,7 +47282,8 @@
         "call:ai/system_one.go#ClassifySystemOne"
       ],
       "evidence": [
-        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne"
+        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne",
+        "test:ai/system_one_wire_test.go#TestTypesafeSystemOneDetectCompatShapes"
       ]
     },
     {
@@ -47324,9 +47325,9 @@
         "call:ai/system_one.go#ClassifySystemOne"
       ],
       "evidence": [
+        "test:ai/system_one_wire_test.go#TestTypesafeSystemOneDetectCompatShapes",
         "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRejectsAnotherAPIAndImagesWithoutSending",
-        "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRunsTheTransportEnvelope",
-        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne"
+        "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRunsTheTransportEnvelope"
       ]
     },
     {
@@ -47368,6 +47369,7 @@
         "call:ai/system_one.go#ClassifySystemOne"
       ],
       "evidence": [
+        "test:ai/system_one_wire_test.go#TestTypesafeSystemOneDetectCompatShapes",
         "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne"
       ]
     },
@@ -47388,6 +47390,7 @@
         "call:ai/system_one.go#ClassifySystemOne"
       ],
       "evidence": [
+        "test:ai/system_one_wire_test.go#TestTypesafeSystemOneDetectCompatShapes",
         "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne"
       ]
     },
@@ -47562,9 +47565,9 @@
         "call:ai/system_one.go#ClassifySystemOne"
       ],
       "evidence": [
+        "test:ai/system_one_wire_test.go#TestSystemOneWireRequestImagesKeepAnExplicitEmptyList",
         "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRunsTheTransportEnvelope",
-        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne",
-        "test:ai/system_one_timestamp_test.go#TestClassifySystemOneStampsEveryResultWithItsStartTime"
+        "test:ai/system_one_custom_transport_test.go#TestSystemOneTransportAndWireRequestDriveClassifySystemOne"
       ]
     },
     {
@@ -47591,7 +47594,7 @@
       "id": "pkg:ai/api/system-one-shared#SystemOneWireRequest::property:images",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0ef6a44d3d166a059d8c7dfac7080c133614aa9ab2ad7b2bd931acae9ca47bf8",
-      "rationale": "Derived by the interface gap detector: SystemOneWireRequest::property:images is Go ai/system_one.go#SystemOneWireRequest.Images (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SystemOneWireRequest::property:images is Go ai/system_one.go#SystemOneWireRequest.Images (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/system_one.go#SystemOneWireRequest.Images"
       ],
@@ -47604,7 +47607,7 @@
         "call:ai/system_one.go#SystemOneWireRequest.Body"
       ],
       "evidence": [
-        "reach:ai/system_one.go#SystemOneWireRequest.Body"
+        "test:ai/system_one_wire_test.go#TestSystemOneWireRequestImagesKeepAnExplicitEmptyList"
       ]
     },
     {
@@ -47644,7 +47647,8 @@
         "call:ai/system_one.go#ClassifySystemOne"
       ],
       "evidence": [
-        "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRunsTheTransportEnvelope"
+        "test:ai/classifier_shared_exports_test.go#TestClassifySystemOneRunsTheTransportEnvelope",
+        "test:ai/system_one_wire_test.go#TestSystemOneWireRequestImagesKeepAnExplicitEmptyList"
       ]
     },
     {
@@ -264596,7 +264600,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
@@ -264618,7 +264622,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
@@ -264640,7 +264644,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
@@ -264662,7 +264666,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
@@ -264684,7 +264688,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
@@ -264706,7 +264710,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:tui/keybindings_test.go#TestTUIDefaultKeybindingsIgnoreThePlatform",
@@ -264727,7 +264731,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
@@ -264747,7 +264751,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
@@ -264767,7 +264771,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:tui/keybindings_test.go#TestTUIDefaultKeybindingsIgnoreThePlatform",
@@ -264788,7 +264792,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.matchViewportAction"
       ],
       "evidence": [
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenSearchTakesKeysFromEditor",
@@ -264810,7 +264814,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenSearchTakesKeysFromEditor",
@@ -264874,7 +264878,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/keybindings.go#TUIKeybindingDefinitionsFor"
+        "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
         "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"

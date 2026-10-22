@@ -23147,6 +23147,17 @@
       "shapeHash": "sha256:8fd6b172652468ab086fb7eaa418a41ccd86c4de48801816cacc27cd53cbf80c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#SystemOneWireRequest.MarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "SystemOneWireRequest.MarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#SystemText",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "SystemText",
@@ -289917,6 +289928,17 @@
         "type": "func(ctx context.Context) error"
       },
       "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#MutationTicket.handOff",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "MutationTicket.handOff",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(rest []\u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:f805c0a0defc703a64e217a299cddd6f941d4910def303e26c3cbee6bb1e4d8f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#NewFileMutationQueue",
