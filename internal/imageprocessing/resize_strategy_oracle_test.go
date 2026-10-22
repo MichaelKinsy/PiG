@@ -64,17 +64,7 @@ func TestResizeImageDimensionStrategyMatchesPi(t *testing.T) {
 	var cases []resizeStrategyCase
 	for range 200 {
 		width, height := dim(), dim()
-		img := image.NewNRGBA(image.Rect(0, 0, width, height))
-		for y := 0; y < height; y += 1 + height/40 {
-			for x := 0; x < width; x += 1 + width/40 {
-				img.SetNRGBA(x, y, color.NRGBA{R: uint8(x), G: uint8(y), B: uint8(x ^ y), A: 255})
-			}
-		}
-		var encoded bytes.Buffer
-		if err := png.Encode(&encoded, img); err != nil {
-			t.Fatal(err)
-		}
-		c := resizeStrategyCase{Data: base64.StdEncoding.EncodeToString(encoded.Bytes()), MimeType: []string{"image/png", "", "image/webp"}[rng.IntN(3)]}
+		c := resizeStrategyCase{MimeType: []string{"image/png", "", "image/webp"}[rng.IntN(3)]}
 		if rng.IntN(2) == 0 {
 			c.MaxWidth = pickInt(1, 2, 7, 50, 99, 100, 640, 1000, 2000, 3000)
 		}
@@ -90,6 +80,22 @@ func TestResizeImageDimensionStrategyMatchesPi(t *testing.T) {
 		if rng.IntN(3) == 0 {
 			c.Quality = pickInt(1, 40, 85, 100)
 		}
+		if c.MaxBytes == 1 {
+			// Nothing encodes to under one byte, so Pi and PiG both walk the whole shrink ladder and return null whatever the
+			// image: only the size of the image changes how long that takes (Photon and x/image scale the full image on every rung).
+			width, height = min(width, 100), min(height, 100)
+		}
+		img := image.NewNRGBA(image.Rect(0, 0, width, height))
+		for y := 0; y < height; y += 1 + height/40 {
+			for x := 0; x < width; x += 1 + width/40 {
+				img.SetNRGBA(x, y, color.NRGBA{R: uint8(x), G: uint8(y), B: uint8(x ^ y), A: 255})
+			}
+		}
+		var encoded bytes.Buffer
+		if err := png.Encode(&encoded, img); err != nil {
+			t.Fatal(err)
+		}
+		c.Data = base64.StdEncoding.EncodeToString(encoded.Bytes())
 		cases = append(cases, c)
 	}
 
