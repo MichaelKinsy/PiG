@@ -162,66 +162,102 @@ func (k PlatformKeys) For(platform KeybindingPlatform) []string {
 	}
 }
 
+// tuiKeybindingRow is one row of the tui.* definition table. A row with platform set takes its keys from it; the rest take keys.
+type tuiKeybindingRow struct {
+	id          TUIKeybinding
+	description string
+	keys        []string
+	platform    *PlatformKeys
+}
+
+// tuiKeybindingRows is upstream TUI_KEYBINDINGS (packages/tui/src/keybindings.ts) in declaration order, with the per-platform tui.*
+// defaults that coding-agent's KEYBINDINGS applies on top (core/keybindings.ts). It is a package-level composite of constants, so the
+// linker emits it as data: building the table at package init (a map literal of slice literals) cost one allocation per row in every
+// binary that links the package, `pig --version` included.
+var tuiKeybindingRows = [...]tuiKeybindingRow{
+	{id: KBEditorCursorUp, description: "Move cursor up", keys: []string{"up"}},
+	{id: KBEditorCursorDown, description: "Move cursor down", keys: []string{"down"}},
+	{id: KBEditorHistoryPrevious, description: "Select previous prompt history entry", keys: []string{}},
+	{id: KBEditorHistoryNext, description: "Select next prompt history entry", keys: []string{}},
+	{id: KBEditorCursorLeft, description: "Move cursor left", keys: []string{"left", "ctrl+b"}},
+	{id: KBEditorCursorRight, description: "Move cursor right", keys: []string{"right", "ctrl+f"}},
+	{id: KBEditorCursorWordLeft, description: "Move cursor word left", keys: []string{"alt+left", "ctrl+left", "alt+b"}},
+	{id: KBEditorCursorWordRight, description: "Move cursor word right", keys: []string{"alt+right", "ctrl+right", "alt+f"}},
+	{id: KBEditorCursorLineStart, description: "Move to line start", keys: []string{"home", "ctrl+a"}},
+	{id: KBEditorCursorLineEnd, description: "Move to line end", keys: []string{"end", "ctrl+e"}},
+	{id: KBEditorJumpForward, description: "Jump forward to character", keys: []string{"ctrl+]"}},
+	{id: KBEditorJumpBackward, description: "Jump backward to character", keys: []string{"ctrl+alt+]"}},
+	{id: KBEditorPageUp, description: "Page up", keys: []string{"pageUp", "ctrl+pageUp"}},
+	{id: KBEditorPageDown, description: "Page down", keys: []string{"pageDown", "ctrl+pageDown"}},
+	{id: KBEditorDeleteCharBack, description: "Delete character backward", keys: []string{"backspace"}},
+	{id: KBEditorDeleteCharForward, description: "Delete character forward", keys: []string{"delete", "ctrl+d"}},
+	{id: KBEditorDeleteWordBack, description: "Delete word backward", keys: []string{"ctrl+w", "alt+backspace"}},
+	{id: KBEditorDeleteWordForward, description: "Delete word forward", keys: []string{"alt+d", "alt+delete"}},
+	{id: KBEditorDeleteToLineStart, description: "Delete to line start", keys: []string{"ctrl+u"}},
+	{id: KBEditorDeleteToLineEnd, description: "Delete to line end", keys: []string{"ctrl+k"}},
+	{id: KBEditorYank, description: "Yank", keys: []string{"ctrl+y"}},
+	{id: KBEditorYankPop, description: "Yank pop", keys: []string{"alt+y"}},
+	// Native Windows undoes on ctrl+z; WSL leaves ctrl+z to job control
+	// and takes alt+z. Mirrors coding-agent KEYBINDINGS["tui.editor.undo"].
+	{id: KBEditorUndo, description: "Undo", platform: &PlatformKeys{
+		Other:    []string{"ctrl+-"},
+		Win32:    []string{"ctrl+z"},
+		LinuxWSL: []string{"alt+z"},
+	}},
+	{id: KBInputNewLine, description: "Insert newline", keys: []string{"shift+enter", "ctrl+j"}},
+	{id: KBInputSubmit, description: "Submit input", keys: []string{"enter"}},
+	{id: KBInputTab, description: "Tab / autocomplete", keys: []string{"tab"}},
+	{id: KBInputCopy, description: "Copy selection", keys: []string{"ctrl+c"}},
+	{id: KBSelectUp, description: "Move selection up", keys: []string{"up"}},
+	{id: KBSelectDown, description: "Move selection down", keys: []string{"down"}},
+	{id: KBSelectPageUp, description: "Selection page up", keys: []string{"pageUp"}},
+	{id: KBSelectPageDown, description: "Selection page down", keys: []string{"pageDown"}},
+	{id: KBSelectConfirm, description: "Confirm selection", keys: []string{"enter"}},
+	{id: KBSelectCancel, description: "Cancel selection", keys: []string{"escape", "ctrl+c"}},
+	{id: KBAltScreenPageUp, description: "Scroll viewport up one page", keys: []string{"pageUp"}},
+	{id: KBAltScreenPageDown, description: "Scroll viewport down one page", keys: []string{"pageDown"}},
+	{id: KBAltScreenHalfPageUp, description: "Scroll viewport up half a page", keys: []string{}},
+	{id: KBAltScreenHalfPageDown, description: "Scroll viewport down half a page", keys: []string{}},
+	{id: KBAltScreenLineUp, description: "Scroll viewport up one line", keys: []string{}},
+	{id: KBAltScreenLineDown, description: "Scroll viewport down one line", keys: []string{}},
+	{id: KBAltScreenPreviousPrompt, description: "Jump to previous semantic prompt", platform: &PlatformKeys{Other: []string{"ctrl+shift+up", "ctrl+up"}, Windows: []string{"ctrl+up"}}},
+	{id: KBAltScreenNextPrompt, description: "Jump to next semantic prompt", platform: &PlatformKeys{Other: []string{"ctrl+shift+down", "ctrl+down"}, Windows: []string{"ctrl+down"}}},
+	{id: KBAltScreenSearch, description: "Search the primary scroll view", platform: &PlatformKeys{Other: []string{"ctrl+shift+f"}, Windows: []string{"ctrl+f"}}},
+	{id: KBAltScreenSearchNext, description: "Select the next search match", keys: []string{"enter", "ctrl+g"}},
+	{id: KBAltScreenSearchPrevious, description: "Select the previous search match", keys: []string{"shift+enter", "ctrl+shift+g"}},
+	{id: KBAltScreenSearchClose, description: "Close transcript search", keys: []string{"escape"}},
+	{id: KBAltScreenTop, description: "Scroll viewport to top", keys: []string{"ctrl+home"}},
+	{id: KBAltScreenBottom, description: "Scroll viewport to bottom", keys: []string{"ctrl+end"}},
+}
+
+// keysFor returns the row's default keys on platform.
+func (r *tuiKeybindingRow) keysFor(platform KeybindingPlatform) []string {
+	if r.platform != nil {
+		return r.platform.For(platform)
+	}
+	return r.keys
+}
+
 // TUIKeybindingDefinitionsFor returns the tui.* definition table for a
 // platform: upstream TUI_KEYBINDINGS (packages/tui/src/keybindings.ts) with
 // the per-platform tui.* defaults that coding-agent's KEYBINDINGS applies on
-// top (core/keybindings.ts). Every call returns a fresh map.
+// top (core/keybindings.ts). Every call returns a fresh map. The default keys
+// of all rows are copied into one array, each row owning a capacity-limited
+// slice of it, so a call allocates that array besides the map.
 func TUIKeybindingDefinitionsFor(platform KeybindingPlatform) KeybindingDefinitions {
-	return KeybindingDefinitions{
-		KBEditorCursorUp:          {DefaultKeys: []string{"up"}, Description: "Move cursor up"},
-		KBEditorCursorDown:        {DefaultKeys: []string{"down"}, Description: "Move cursor down"},
-		KBEditorHistoryPrevious:   {DefaultKeys: []string{}, Description: "Select previous prompt history entry"},
-		KBEditorHistoryNext:       {DefaultKeys: []string{}, Description: "Select next prompt history entry"},
-		KBEditorCursorLeft:        {DefaultKeys: []string{"left", "ctrl+b"}, Description: "Move cursor left"},
-		KBEditorCursorRight:       {DefaultKeys: []string{"right", "ctrl+f"}, Description: "Move cursor right"},
-		KBEditorCursorWordLeft:    {DefaultKeys: []string{"alt+left", "ctrl+left", "alt+b"}, Description: "Move cursor word left"},
-		KBEditorCursorWordRight:   {DefaultKeys: []string{"alt+right", "ctrl+right", "alt+f"}, Description: "Move cursor word right"},
-		KBEditorCursorLineStart:   {DefaultKeys: []string{"home", "ctrl+a"}, Description: "Move to line start"},
-		KBEditorCursorLineEnd:     {DefaultKeys: []string{"end", "ctrl+e"}, Description: "Move to line end"},
-		KBEditorJumpForward:       {DefaultKeys: []string{"ctrl+]"}, Description: "Jump forward to character"},
-		KBEditorJumpBackward:      {DefaultKeys: []string{"ctrl+alt+]"}, Description: "Jump backward to character"},
-		KBEditorPageUp:            {DefaultKeys: []string{"pageUp", "ctrl+pageUp"}, Description: "Page up"},
-		KBEditorPageDown:          {DefaultKeys: []string{"pageDown", "ctrl+pageDown"}, Description: "Page down"},
-		KBEditorDeleteCharBack:    {DefaultKeys: []string{"backspace"}, Description: "Delete character backward"},
-		KBEditorDeleteCharForward: {DefaultKeys: []string{"delete", "ctrl+d"}, Description: "Delete character forward"},
-		KBEditorDeleteWordBack:    {DefaultKeys: []string{"ctrl+w", "alt+backspace"}, Description: "Delete word backward"},
-		KBEditorDeleteWordForward: {DefaultKeys: []string{"alt+d", "alt+delete"}, Description: "Delete word forward"},
-		KBEditorDeleteToLineStart: {DefaultKeys: []string{"ctrl+u"}, Description: "Delete to line start"},
-		KBEditorDeleteToLineEnd:   {DefaultKeys: []string{"ctrl+k"}, Description: "Delete to line end"},
-		KBEditorYank:              {DefaultKeys: []string{"ctrl+y"}, Description: "Yank"},
-		KBEditorYankPop:           {DefaultKeys: []string{"alt+y"}, Description: "Yank pop"},
-		// Native Windows undoes on ctrl+z; WSL leaves ctrl+z to job control
-		// and takes alt+z. Mirrors coding-agent KEYBINDINGS["tui.editor.undo"].
-		KBEditorUndo: {DefaultKeys: PlatformKeys{
-			Other:    []string{"ctrl+-"},
-			Win32:    []string{"ctrl+z"},
-			LinuxWSL: []string{"alt+z"},
-		}.For(platform), Description: "Undo"},
-		KBInputNewLine:            {DefaultKeys: []string{"shift+enter", "ctrl+j"}, Description: "Insert newline"},
-		KBInputSubmit:             {DefaultKeys: []string{"enter"}, Description: "Submit input"},
-		KBInputTab:                {DefaultKeys: []string{"tab"}, Description: "Tab / autocomplete"},
-		KBInputCopy:               {DefaultKeys: []string{"ctrl+c"}, Description: "Copy selection"},
-		KBSelectUp:                {DefaultKeys: []string{"up"}, Description: "Move selection up"},
-		KBSelectDown:              {DefaultKeys: []string{"down"}, Description: "Move selection down"},
-		KBSelectPageUp:            {DefaultKeys: []string{"pageUp"}, Description: "Selection page up"},
-		KBSelectPageDown:          {DefaultKeys: []string{"pageDown"}, Description: "Selection page down"},
-		KBSelectConfirm:           {DefaultKeys: []string{"enter"}, Description: "Confirm selection"},
-		KBSelectCancel:            {DefaultKeys: []string{"escape", "ctrl+c"}, Description: "Cancel selection"},
-		KBAltScreenPageUp:         {DefaultKeys: []string{"pageUp"}, Description: "Scroll viewport up one page"},
-		KBAltScreenPageDown:       {DefaultKeys: []string{"pageDown"}, Description: "Scroll viewport down one page"},
-		KBAltScreenHalfPageUp:     {DefaultKeys: []string{}, Description: "Scroll viewport up half a page"},
-		KBAltScreenHalfPageDown:   {DefaultKeys: []string{}, Description: "Scroll viewport down half a page"},
-		KBAltScreenLineUp:         {DefaultKeys: []string{}, Description: "Scroll viewport up one line"},
-		KBAltScreenLineDown:       {DefaultKeys: []string{}, Description: "Scroll viewport down one line"},
-		KBAltScreenPreviousPrompt: {DefaultKeys: PlatformKeys{Other: []string{"ctrl+shift+up", "ctrl+up"}, Windows: []string{"ctrl+up"}}.For(platform), Description: "Jump to previous semantic prompt"},
-		KBAltScreenNextPrompt:     {DefaultKeys: PlatformKeys{Other: []string{"ctrl+shift+down", "ctrl+down"}, Windows: []string{"ctrl+down"}}.For(platform), Description: "Jump to next semantic prompt"},
-		KBAltScreenSearch:         {DefaultKeys: PlatformKeys{Other: []string{"ctrl+shift+f"}, Windows: []string{"ctrl+f"}}.For(platform), Description: "Search the primary scroll view"},
-		KBAltScreenSearchNext:     {DefaultKeys: []string{"enter", "ctrl+g"}, Description: "Select the next search match"},
-		KBAltScreenSearchPrevious: {DefaultKeys: []string{"shift+enter", "ctrl+shift+g"}, Description: "Select the previous search match"},
-		KBAltScreenSearchClose:    {DefaultKeys: []string{"escape"}, Description: "Close transcript search"},
-		KBAltScreenTop:            {DefaultKeys: []string{"ctrl+home"}, Description: "Scroll viewport to top"},
-		KBAltScreenBottom:         {DefaultKeys: []string{"ctrl+end"}, Description: "Scroll viewport to bottom"},
+	total := 0
+	for i := range tuiKeybindingRows {
+		total += len(tuiKeybindingRows[i].keysFor(platform))
 	}
+	keys := make([]string, 0, total)
+	definitions := make(KeybindingDefinitions, len(tuiKeybindingRows))
+	for i := range tuiKeybindingRows {
+		row := &tuiKeybindingRows[i]
+		start := len(keys)
+		keys = append(keys, row.keysFor(platform)...)
+		definitions[row.id] = TUIKeybindingDef{DefaultKeys: keys[start:len(keys):len(keys)], Description: row.description}
+	}
+	return definitions
 }
 
 // TUIKeybindingOrder lists the TUI_KEYBINDINGS ids in declaration order (keybindings.ts), the order the generated keybindings schema uses.

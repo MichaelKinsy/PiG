@@ -39,6 +39,13 @@ import (
 // TMPDIR is), and a deeper working directory costs about 13 objects per level instead of 205 (TestStartupAllocationPerDirectoryLevel).
 // On the Linux lab host at the int-120 line, max of 3 runs: --version 727,328 bytes / 3,841 objects, warm first prompt 2,541,264 / 16,508.
 // The linux budgets are those plus under 2%. darwin keeps its values until they are measured there.
+//
+// 0.5.2 batch head 28732512d6 measured --version 727,552 bytes / 3,894 objects on the Linux host (0.5.1: 714,872 / 3,768), 122 more package-init
+// allocations (GODEBUG=inittrace=1), and the Windows runner read 5,803 objects against its 5,800. The batch added no init work of its own
+// beyond the SDK's pi-tui engine copy and an init that built a TLS config; the rest was the tui keybinding table, a map literal of slice
+// literals that the engine copy doubled. The table is now package-level data and the TLS config is static: init allocations 4,031 against
+// 4,001 at 0.5.1 (4,123 before), --version 726,896-732,472 bytes / 3,801-3,808 objects in three runs, so the linux object budget is 3,808
+// plus under 2%. The Windows budgets keep their values until the runner measures them.
 type startupAllocBudget struct{ versionBytes, versionObjects, promptBytes, promptObjects uint64 }
 
 func startupAllocBudgetFor(goos string) startupAllocBudget {
@@ -48,7 +55,7 @@ func startupAllocBudgetFor(goos string) startupAllocBudget {
 	if goos == "darwin" {
 		return startupAllocBudget{versionBytes: 760_000, versionObjects: 4_240, promptBytes: 2_970_000, promptObjects: 20_200}
 	}
-	return startupAllocBudget{versionBytes: 741_000, versionObjects: 3_910, promptBytes: 2_589_000, promptObjects: 16_820}
+	return startupAllocBudget{versionBytes: 741_000, versionObjects: 3_880, promptBytes: 2_589_000, promptObjects: 16_820}
 }
 
 func TestStartupAllocationBudget(t *testing.T) {
