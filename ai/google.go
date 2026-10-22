@@ -1112,7 +1112,7 @@ func runGoogleTurn(ctx context.Context, builder *assistantStreamBuilder, respons
 	sdk := googleGenerateContentStream(executor, fetched, googleUndiciJSONRounds, session)
 	afterReactions(executor, fetchRounds, func() { fetched.resolve(response) })
 	// `const googleStream = await retryGoogleRequest(() => client.models.generateContentStream(params), options);` (google-generative-ai.ts:100)
-	settled := awaitContinuation(turn, googleRetryGoogleRequest(sdk).settled)
+	settled := awaitContinuation(turn, &googleRetryGoogleRequest(sdk).settled)
 	if settled.err != nil {
 		fail(settled.err)
 		return
