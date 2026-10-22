@@ -19,5 +19,5 @@ func TestOpenRouterImagesUsageCostMatchesUpstream(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertUsageJSON(t, *parseOpenRouterImagesUsage(raw, model),
-		`{"input":6,"output":3,"cacheRead":3,"cacheWrite":1,"totalTokens":13,"cost":{"input":1.8e-06,"output":7.500000000000001e-06,"cacheRead":8.999999999999999e-08,"cacheWrite":8.333300000000001e-08,"total":9.473333e-06}}`)
+		`{"input":6,"output":3,"cacheRead":3,"cacheWrite":1,"totalTokens":13,"cost":{"input":1.8e-06,"output":7.500000000000001e-06,"cacheRead":8.999999999999999e-08,"cacheWrite":8.333300000000001e-08,"total":9.473333e-06,"totalFromProvider":false}}`)
 }

@@ -1061,8 +1061,21 @@
     },
     {
       "path": "packages/ai/test/models-runtime.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8c6a89b2e05919cd0e355e1a6f35b4fa3a0d4953e2c4bf22e5c79c274aa6fe06"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8c6a89b2e05919cd0e355e1a6f35b4fa3a0d4953e2c4bf22e5c79c274aa6fe06",
+      "evidence": [
+        "ai/models_runtime_credentials_upstream_test.go#TestModelsRuntimeCredentialsUpstream",
+        "ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+        "ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
+        "ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
+        "test/parity/scenarios/model-runtime-store-catalog/19-models-runtime.toml",
+        "ai/models_typed_upstream_test.go#keeps chat reads independent from the all-model catalog",
+        "ai/models_runtime_auth_upstream_test.go#persists an OAuth refresh that started before the request was cancelled",
+        "ai/models_runtime_refresh_upstream_test.go#persists an OAuth refresh that started before the model refresh was cancelled",
+        "ai/models_runtime_refresh_upstream_test.go#passes the registered provider's base URL, including wrapper overrides, to refreshModels",
+        "ai/models_runtime_basic_upstream_test.go#marks catalog-derived totals as not provider-reported"
+      ],
+      "rationale": "40 cases. The 39 cases of 1.1.0 stay ported as the prior reviewed row records (same inputs and assertions across credentials, refresh, publication, cancellation, OAuth and stream events). 1.2.0 adds one case, \"passes the registered provider's base URL, including wrapper overrides, to refreshModels\": RefreshModelsContext.BaseURL (ai/models_runtime.go) is set from the registered provider's BaseURL in Models.runProviderRefreshPhase (ai/models_runtime_refresh.go), so a wrapper that copies the provider and overrides BaseURL hands its URL to the inner refresh. TestModelsRuntimeRefreshUpstream ports it with the same provider, override and expected two-call list; dropping BaseURL from the context fails it. Pi 7c22a93d0 (1.4.0+3bc6eeba) adds \"marks catalog-derived totals as not provider-reported\": CalculateCost resets UsageCost.TotalFromProvider to false (ai/model_utils.go); ported as the same-named subtest of TestModelsRuntimeBasicUpstream with the same usage (1,000,000 input tokens, total 9, totalFromProvider true) and expectation (false)."
     },
     {
       "path": "packages/ai/test/node-http-proxy.test.ts",
@@ -3306,8 +3319,16 @@
     },
     {
       "path": "packages/coding-agent/test/compaction-summary-reasoning.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:505e91c6b438e34c19c8fe7061cfcc631b5f96cf419c73c5ecdc151823b3733d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:505e91c6b438e34c19c8fe7061cfcc631b5f96cf419c73c5ecdc151823b3733d",
+      "evidence": [
+        "internal/codingagent/compaction/compaction_summary_reasoning_test.go",
+        "coding/session_summarization_test.go",
+        "internal/codingagent/compaction/context_edit_test.go#TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn",
+        "test/parity/scenarios/compaction/16-split-turn-custom-instructions.toml",
+        "internal/codingagent/compaction/compaction_summary_reasoning_test.go#TestCompactSummariesSetNoMaxTokens"
+      ],
+      "rationale": "The reasoning suite names the upstream file and covers all ten successful request-shape/result cases; TestSummarizationRejectsIncompleteResponses covers the four history/split-turn tool-call and length-stop rejection cases. Pi 6fcb4867 passes undefined for reserveTokens; summaries set no maxTokens (internal/codingagent/compaction/compaction_summary_reasoning_test.go#TestCompactSummariesSetNoMaxTokens). Pi adfc1446 (#11058): the split-turn prefix summary request carries the custom instructions; ported as TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn and compared with Pi's compact() by scenario 16-split-turn-custom-instructions. Pi 7c22a93d0 (1.4.0+3bc6eeba) changes the expected combined usage of \"combines usage from split-turn summaries\" to cost {total 0, totalFromProvider false}; TestCompactSummariesSetNoMaxTokens expects the same."
     },
     {
       "path": "packages/coding-agent/test/compaction.test.ts",
@@ -6579,8 +6600,12 @@
     },
     {
       "path": "packages/coding-agent/test/usage-totals.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:20341fdd3788144e78cbc9f0e9c65762f57049c0451c44e9aea1895783c1e542"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:20341fdd3788144e78cbc9f0e9c65762f57049c0451c44e9aea1895783c1e542",
+      "evidence": [
+        "internal/usagetotals/usagetotals_test.go#TestCombineUsageMarksTheTotalProviderReportedOnlyWhenBothTotalsAre"
+      ],
+      "rationale": "New in Pi 1.4.0+3bc6eeba (7c22a93d0): the one case \"marks the combined total as provider-reported only when both totals are\" is ported with the same four usages (true/true, true/absent, absent/true, absent/absent) and expectations (total 3 with totalFromProvider true, then false), plus the explicit-false rows."
     },
     {
       "path": "packages/coding-agent/test/user-message.test.ts",

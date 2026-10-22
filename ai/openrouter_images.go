@@ -273,5 +273,6 @@ func parseOpenRouterImagesUsage(raw openRouterImagesUsage, model ImageModel) *Us
 		},
 	}
 	usage.Cost.Total = usage.Cost.Input + usage.Cost.Output + usage.Cost.CacheRead + usage.Cost.CacheWrite
+	usage.Cost.TotalFromProvider = new(false)
 	return usage
 }

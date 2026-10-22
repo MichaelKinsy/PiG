@@ -118,6 +118,14 @@ func TestModelsRuntimeBasicUpstream(t *testing.T) {
 			t.Fatalf("long=%+v", long)
 		}
 	})
+	// .upstream/v1.4.0+74f46864/packages/ai/test/models-runtime.test.ts:162
+	t.Run("marks catalog-derived totals as not provider-reported", func(t *testing.T) {
+		usage := Usage{Input: 1000000, TotalTokens: 1000000, Cost: UsageCost{Total: 9, TotalFromProvider: new(true)}}
+		CalculateCost(modelsRuntimeModel("openai", "gpt-5.6-sol"), &usage)
+		if usage.Cost.TotalFromProvider == nil || *usage.Cost.TotalFromProvider {
+			t.Fatalf("totalFromProvider = %v, want false", usage.Cost.TotalFromProvider)
+		}
+	})
 	// .upstream/v0.87.1/packages/ai/test/models-runtime.test.ts:162
 	t.Run("registers, replaces, and deletes providers", func(t *testing.T) {
 		models := CreateModels()

@@ -867,6 +867,8 @@ func (scanner *fastScanner) cost() (ai.UsageCost, bool) {
 			bit, target = 8, &cost.CacheWrite
 		case "total":
 			bit, target = 16, &cost.Total
+		case "totalFromProvider":
+			bit = 32
 		default:
 			return cost, false
 		}
@@ -874,7 +876,16 @@ func (scanner *fastScanner) cost() (ai.UsageCost, bool) {
 			return cost, false
 		}
 		seen |= bit
-		if *target, ok = scanner.float(); !ok {
+		if target == nil {
+			switch {
+			case scanner.literal("true"):
+				cost.TotalFromProvider = new(true)
+			case scanner.literal("false"):
+				cost.TotalFromProvider = new(false)
+			default:
+				return cost, false
+			}
+		} else if *target, ok = scanner.float(); !ok {
 			return cost, false
 		}
 		scanner.skipSpace()

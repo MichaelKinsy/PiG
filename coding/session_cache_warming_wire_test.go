@@ -143,7 +143,7 @@ func TestCacheWarmingReplaysTheExactProviderPayload(t *testing.T) {
 		}
 		wantUsage := entry.Usage
 		wantCost := ai.CalculateCost(model, &wantUsage)
-		if entry.Usage.Cost != wantCost || wantCost.Total == 0 {
+		if !reflect.DeepEqual(entry.Usage.Cost, wantCost) || wantCost.Total == 0 {
 			t.Fatalf("entry_appended usage cost = %+v, want provider-calculated %+v", entry.Usage.Cost, wantCost)
 		}
 	case <-time.After(5 * time.Second):

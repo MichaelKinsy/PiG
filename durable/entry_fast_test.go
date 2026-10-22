@@ -221,6 +221,9 @@ func TestFastEntryDecodeHandWrittenVariants(t *testing.T) {
 		"array arguments":    `{"id":7,"kind":"k","model":[{"role":"assistant","content":[{"type":"toolCall","id":"c","name":"t","arguments":[1]}],"api":"a","provider":"p","model":"m","usage":{},"stopReason":"toolUse","timestamp":1}]}`,
 		"string arguments":   `{"id":7,"kind":"k","model":[{"role":"assistant","content":[{"type":"toolCall","id":"c","name":"t","arguments":"s"}],"api":"a","provider":"p","model":"m","usage":{},"stopReason":"toolUse","timestamp":1}]}`,
 		"thinking delegated": `{"id":7,"kind":"k","model":[{"role":"assistant","content":[{"type":"thinking","thinking":"hm","thinkingSignature":""},{"type":"text","text":"x"}],"api":"a","provider":"p","model":"m","usage":{"input":1,"output":2,"cacheRead":3,"cacheWrite":4,"totalTokens":10,"cost":{"input":0.1,"output":0.2,"cacheRead":0,"cacheWrite":0,"total":0.3}},"stopReason":"stop","timestamp":5}]}`,
+		// Pi 74f46864 (7c22a93d0): calculateCost writes totalFromProvider after total; a provider-reported total sets it true.
+		"total not from provider": `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"input":1,"output":2,"cacheRead":3,"cacheWrite":4,"totalTokens":10,"cost":{"input":0.1,"output":0.2,"cacheRead":0,"cacheWrite":0,"total":0.3,"totalFromProvider":false}},"stopReason":"stop","timestamp":5}]}`,
+		"total from provider":     `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"input":1,"output":2,"cacheRead":3,"cacheWrite":4,"totalTokens":10,"cost":{"input":0.1,"output":0.2,"cacheRead":0,"cacheWrite":0,"totalFromProvider":true,"total":0.3}},"stopReason":"stop","timestamp":5}]}`,
 	}
 	for name, text := range accepted {
 		if !checkAgainstGeneral(t, text) {
@@ -230,6 +233,8 @@ func TestFastEntryDecodeHandWrittenVariants(t *testing.T) {
 	for name, text := range map[string]string{
 		"usage extra key":     `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"input":1,"cacheWrite1h":2},"stopReason":"stop","timestamp":1}]}`,
 		"cost extra key":      `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"cost":{"input":1,"other":2}},"stopReason":"stop","timestamp":1}]}`,
+		"total from provider number":   `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"cost":{"totalFromProvider":1}},"stopReason":"stop","timestamp":1}]}`,
+		"total from provider repeated": `{"id":7,"kind":"k","model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"cost":{"totalFromProvider":true,"totalFromProvider":false}},"stopReason":"stop","timestamp":1}]}`,
 		"escaped key":         `{"i\u0064":7}`,
 		"float timestamp":     `{"id":7,"kind":"k","model":[{"role":"user","content":"x","timestamp":1.5}]}`,
 		"null content":        `{"id":7,"kind":"k","model":[{"role":"assistant","content":null,"api":"a","provider":"p","model":"m","stopReason":"stop","timestamp":1}]}`,

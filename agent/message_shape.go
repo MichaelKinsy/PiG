@@ -64,7 +64,7 @@ var (
 	}
 	costShape = []shapeMember{
 		{"input", shapeNumber, false}, {"output", shapeNumber, false}, {"cacheRead", shapeNumber, false},
-		{"cacheWrite", shapeNumber, false}, {"total", shapeNumber, false},
+		{"cacheWrite", shapeNumber, false}, {"total", shapeNumber, false}, {"totalFromProvider", shapeBool, true},
 	}
 	// The block shapes follow ai.TextContent, ai.ThinkingContent, ai.ToolCall and the image struct of marshalAgentContentBlock. A decoded block has no streaming index.
 	textBlockShape     = []shapeMember{{"type", shapeString, false}, {"text", shapeString, false}, {"textSignature", shapeNonEmptyString, true}}

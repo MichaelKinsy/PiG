@@ -2337,18 +2337,23 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 					CacheWrite:  cacheWrite,
 					TotalTokens: u.TotalTokens,
 				}
-				builder.calculateCost(usage)
-				if options.ApplyServiceTierPricing != nil {
-					var serviceTier string
-					if options.ResolveServiceTier != nil {
-						serviceTier = options.ResolveServiceTier(event.Response.ServiceTier, options.ServiceTier)
-					} else {
-						serviceTier = cmp.Or(event.Response.ServiceTier, options.ServiceTier)
-					}
-					options.ApplyServiceTierPricing(usage, serviceTier)
-				}
-				builder.setUsage(usage)
 			}
+			// finalizeResponse prices output.usage whether or not the response carried one.
+			priced := usage
+			if priced == nil {
+				priced = &builder.partial.Usage
+			}
+			builder.calculateCost(priced)
+			if options.ApplyServiceTierPricing != nil {
+				var serviceTier string
+				if options.ResolveServiceTier != nil {
+					serviceTier = options.ResolveServiceTier(event.Response.ServiceTier, options.ServiceTier)
+				} else {
+					serviceTier = cmp.Or(event.Response.ServiceTier, options.ServiceTier)
+				}
+				options.ApplyServiceTierPricing(priced, serviceTier)
+			}
+			builder.setUsage(usage)
 			if read.status != nil {
 				// finalizeResponse records the id and usage, then mapStopReason throws for a status no case matches.
 				if event.Response.ID != "" {

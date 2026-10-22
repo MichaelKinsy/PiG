@@ -74,7 +74,7 @@ Go type: `ai.ToolCall`.
 Assistant messages always carry `usage`. A tool result carries `usage` only when the tool made its own model calls.
 
 ```json
-{"input":1200,"output":340,"cacheRead":800,"cacheWrite":0,"totalTokens":2340,"cost":{"input":0.0012,"output":0.0034,"cacheRead":0.0002,"cacheWrite":0,"total":0.0048}}
+{"input":1200,"output":340,"cacheRead":800,"cacheWrite":0,"totalTokens":2340,"cost":{"input":0.0012,"output":0.0034,"cacheRead":0.0002,"cacheWrite":0,"total":0.0048,"totalFromProvider":false}}
 ```
 
 | Field | Type | Meaning |
@@ -86,7 +86,7 @@ Assistant messages always carry `usage`. A tool result carries `usage` only when
 | `cacheWrite1h` | number, optional | The part of `cacheWrite` stored with one-hour retention. |
 | `reasoning` | number, optional | Reasoning tokens. They are already part of `output`, so do not add them again. |
 | `totalTokens` | number | Total tokens. |
-| `cost` | object | Cost of `input`, `output`, `cacheRead` and `cacheWrite`, and the `total`. |
+| `cost` | object | Cost of `input`, `output`, `cacheRead` and `cacheWrite`, and the `total`. `totalFromProvider` is `true` when `total` is the billed cost the provider reported and `false` when it is an estimate from the model's catalog rates. A usage recorded before the field existed has no `totalFromProvider`, which also means `false`. |
 
 Tool-result usage counts toward session statistics. It is not part of the usage of the main model call.
 

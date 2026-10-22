@@ -582,13 +582,16 @@ type Usage struct {
 	splitsAfterCost bool
 }
 
-// UsageCost is the provider-reported cost breakdown carried by upstream Usage.
+// UsageCost is the cost breakdown carried by upstream Usage. The component costs are catalog estimates; Total is the best available total.
 type UsageCost struct {
 	Input      float64 `json:"input"`
 	Output     float64 `json:"output"`
 	CacheRead  float64 `json:"cacheRead"`
 	CacheWrite float64 `json:"cacheWrite"`
 	Total      float64 `json:"total"`
+	// TotalFromProvider is true when Total is the billed cost the provider reported and false when it is a catalog estimate. Nil is the
+	// absent member of a usage recorded before the field existed, which also means false (types.ts Usage.cost.totalFromProvider).
+	TotalFromProvider *bool `json:"totalFromProvider,omitempty"`
 }
 
 // DeferredHandle identifies a provider-side deferred response and the data

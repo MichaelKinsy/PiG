@@ -291,9 +291,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/api/openrouter-images.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/images_models_wire_test.go#TestOpenRouterImagesHeaderUndefinedOverride", "test:ai/openrouter_images_cost_test.go#TestOpenRouterImagesUsageCostMatchesUpstream"]
+rationale = "the image request sends the identity headers below model and request headers (ai/openrouter_images.go). Pi 7c22a93d0: the image usage cost carries totalFromProvider false (ai/openrouter_images.go)."
 
 [[files]]
 path = "packages/ai/src/api/pi-messages.lazy.ts"
@@ -571,9 +571,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/identity_test.go#TestModelsMergeRequestIdentityOverTheModelsIdentity", "test:ai/identity_test.go#TestModelsSendTheOpenCodeSessionHeaderToCustomProvidersPointingAtOpenCode", "test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi", "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"]
+rationale = "Pi adc5fa9f and 04a93bad add CreateModelsOptions.identity: every request merges the request identity over it field by field, and its attribution name is the default LoginOptions.agentName. Ported in ai/models_runtime*.go; the tests assert the request-over-Models merge, the OpenCode session header and the default login agent name against the pinned Pi. Pi 7c22a93d0: calculateCost sets totalFromProvider false (ai/model_utils.go); the models-runtime case asserts it."
 
 [[files]]
 path = "packages/ai/src/oauth.ts"
@@ -1264,9 +1264,9 @@ rationale = "Pi 2ec55d80 adds the pi.ai.request and pi.ai.poll span schema and o
 [[files]]
 path = "packages/ai/src/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream", "test:ai/identity_test.go#TestClientIdentityJSON", "test:ai/identity_test.go#TestMergeClientIdentityFieldByField", "test:ai/usage_json_test.go#TestUsageCostTotalFromProviderWire"]
+rationale = "Pi adc5fa9f adds StreamOptions.identity (ClientIdentity); ai.StreamOptions.Identity carries it, with ClientIdentity JSON and the field-by-field merge locked by the two identity tests. Pi 7f225f25 adds ClassifierModel.compat (SystemOneCompat); ai.ClassifierModel.Compat (ai/model_types.go) carries it through the catalog codec, and the OpenRouter classifier catalog case of TestClassifierModelsUpstream asserts the explicit compat. Pi 7c22a93d0 adds Usage.cost.totalFromProvider; ai.UsageCost.TotalFromProvider (*bool, absent stays absent on the wire) is locked by TestUsageCostTotalFromProviderWire."
 
 [[files]]
 path = "packages/ai/src/utils/abort-signals.ts"
@@ -2657,9 +2657,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/usage-totals.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/usagetotals/usagetotals_test.go#TestCombineUsageMarksTheTotalProviderReportedOnlyWhenBothTotalsAre"]
+rationale = "Pi 7c22a93d0: combineUsage marks a sum provider-reported only when both parts are; internal/usagetotals.CombineUsage does the same."
 
 [[files]]
 path = "packages/coding-agent/src/core/virtual-models.ts"

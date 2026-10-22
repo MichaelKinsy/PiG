@@ -251,7 +251,8 @@ func TestCompactSummariesSetNoMaxTokens(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := (ai.Usage{Input: 20, Output: 20, TotalTokens: 40}); result.Usage == nil || !reflect.DeepEqual(*result.Usage, want) {
+	// compaction-summary-reasoning.test.ts "combines usage from split-turn summaries": the combined cost reads totalFromProvider false.
+	if want := (ai.Usage{Input: 20, Output: 20, TotalTokens: 40, Cost: ai.UsageCost{TotalFromProvider: new(false)}}); result.Usage == nil || !reflect.DeepEqual(*result.Usage, want) {
 		t.Fatalf("usage = %+v, want %+v", result.Usage, want)
 	}
 	var maxTokens []int

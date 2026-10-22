@@ -15,6 +15,8 @@ func CombineUsage(first, second ai.Usage) ai.Usage {
 			Input: first.Cost.Input + second.Cost.Input, Output: first.Cost.Output + second.Cost.Output,
 			CacheRead: first.Cost.CacheRead + second.Cost.CacheRead, CacheWrite: first.Cost.CacheWrite + second.Cost.CacheWrite,
 			Total: first.Cost.Total + second.Cost.Total,
+			// A sum is provider-reported only when every part is (usage-totals.ts combineUsage).
+			TotalFromProvider: new(derefBool(first.Cost.TotalFromProvider) && derefBool(second.Cost.TotalFromProvider)),
 		},
 	}
 	if first.CacheWrite1h != nil || second.CacheWrite1h != nil {
@@ -24,6 +26,10 @@ func CombineUsage(first, second ai.Usage) ai.Usage {
 		sum.Reasoning = new(deref(first.Reasoning) + deref(second.Reasoning))
 	}
 	return sum
+}
+
+func derefBool(value *bool) bool {
+	return value != nil && *value
 }
 
 func deref(value *int) int {

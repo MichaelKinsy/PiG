@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -59,8 +60,8 @@ func TestCalculateCostNilModelsAndUsage(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			usage := Usage{Input: 1_000_000, Output: 1_000_000}
-			if got := CalculateCost(model, &usage); got != (UsageCost{}) {
-				t.Fatalf("CalculateCost = %+v, want zero", got)
+			if got := CalculateCost(model, &usage); !reflect.DeepEqual(got, UsageCost{TotalFromProvider: new(false)}) {
+				t.Fatalf("CalculateCost = %+v, want a zero estimate", got)
 			}
 		})
 	}
