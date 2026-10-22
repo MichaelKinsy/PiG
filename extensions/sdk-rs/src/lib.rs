@@ -124,7 +124,7 @@ pub use session_entry_messages::session_entry_to_context_messages;
 mod stored_credential;
 pub use stored_credential::read_stored_credential;
 pub use pi_ai_helpers::{
-    DEFAULT_MAX_AGENT_RETRY_DELAY_MS, RetryPolicy, StringEnumOptions, TranscriptTools, calculate_cost, clamp_thinking_level, collapse_system_messages, content_text, create_initial_system_message,
+    DEFAULT_MAX_AGENT_RETRY_DELAY_MS, RetryPolicy, StringEnumOptions, TranscriptToolSupport, TranscriptTools, calculate_cost, clamp_thinking_level, collapse_system_messages, content_text, create_initial_system_message,
     env_api_key_auth, get_model_type, has_api, is_model_type, models_are_equal, get_current_system_message, get_current_system_prompt, get_current_tools, get_declared_tools, get_initial_system_message, get_supported_thinking_levels,
     get_system_message_text, has_non_additive_tool_changes, is_context_overflow, is_recoverable_length, is_retryable_assistant_error, normalize_context, render_system_message_update,
     resolve_transcript, resolve_transcript_tools, retry_delay_ms, string_enum, without_initial_system_message,

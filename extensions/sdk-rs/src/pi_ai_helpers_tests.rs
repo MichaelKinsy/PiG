@@ -109,8 +109,14 @@ fn run(fn_name: &str, args: &[Value]) -> Option<Value> {
         "getDeclaredTools" => json!(get_declared_tools(&messages(0))),
         "hasNonAdditiveToolChanges" => json!(has_non_additive_tool_changes(&messages(0))),
         "resolveTranscriptTools" => {
-            let resolved = resolve_transcript_tools(&messages(0), flag(1));
-            json!({ "requestTools": resolved.request_tools, "anchorsAdditions": resolved.anchors_additions })
+            let support = match a(1).as_str().unwrap() {
+                "none" => TranscriptToolSupport::None,
+                "additions" => TranscriptToolSupport::Additions,
+                "changes" => TranscriptToolSupport::Changes,
+                other => panic!("unknown transcript tool support {other:?}"),
+            };
+            let resolved = resolve_transcript_tools(&messages(0), support);
+            json!({ "requestTools": resolved.request_tools, "foldedSystemMessages": resolved.folded_system_messages })
         }
         "collapseSystemMessages" => collapse_system_messages(a(0)).unwrap(),
         "resolveTranscript" => resolve_transcript(a(0), flag(1)).unwrap(),

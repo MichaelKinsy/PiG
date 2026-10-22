@@ -1,6 +1,6 @@
 {
- "pin": "1.3.0+1402973a",
- "package": "pi-ai@1.3.0",
+ "pin": "1.4.0",
+ "package": "pi-ai@1.4.0",
  "module": "pi-ai",
  "export": "resolveTranscriptTools",
  "cases": [
@@ -8,22 +8,22 @@
    "name": "case 0001",
    "args": [
     [],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": true
+    "foldedSystemMessages": 0
    }
   },
   {
    "name": "case 0002",
    "args": [
     [],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 0
    }
   },
   {
@@ -36,11 +36,11 @@
       "timestamp": 5
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": true
+    "foldedSystemMessages": 0
    }
   },
   {
@@ -53,11 +53,11 @@
       "timestamp": 5
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 0
    }
   },
   {
@@ -100,7 +100,7 @@
       ]
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [
@@ -129,7 +129,7 @@
       }
      }
     ],
-    "anchorsAdditions": true
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -172,7 +172,7 @@
       ]
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [
@@ -201,7 +201,7 @@
       }
      }
     ],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -278,7 +278,7 @@
       ]
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [
@@ -307,7 +307,7 @@
       }
      }
     ],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 2
    }
   },
   {
@@ -384,7 +384,7 @@
       ]
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [
@@ -413,7 +413,7 @@
       }
      }
     ],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 2
    }
   },
   {
@@ -486,7 +486,7 @@
       ]
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [
@@ -515,7 +515,7 @@
       }
      }
     ],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 3
    }
   },
   {
@@ -588,7 +588,7 @@
       ]
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [
@@ -617,7 +617,7 @@
       }
      }
     ],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 3
    }
   },
   {
@@ -668,7 +668,7 @@
       ]
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [
@@ -685,7 +685,7 @@
       }
      }
     ],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 2
    }
   },
   {
@@ -736,7 +736,7 @@
       ]
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [
@@ -753,7 +753,7 @@
       }
      }
     ],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 2
    }
   },
   {
@@ -777,11 +777,11 @@
       "timestamp": 2
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": true
+    "foldedSystemMessages": 0
    }
   },
   {
@@ -805,11 +805,11 @@
       "timestamp": 2
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -822,11 +822,11 @@
       "timestamp": 0
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": true
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -839,11 +839,11 @@
       "timestamp": 0
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -857,11 +857,11 @@
       "toolsAdded": []
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": true
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -875,11 +875,11 @@
       "toolsAdded": []
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -903,11 +903,11 @@
       }
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": true
+    "foldedSystemMessages": 0
    }
   },
   {
@@ -931,11 +931,11 @@
       }
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -970,11 +970,11 @@
       }
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": true
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -1009,11 +1009,11 @@
       }
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 3
    }
   },
   {
@@ -1031,11 +1031,11 @@
       ]
      }
     ],
-    true
+    "additions"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 1
    }
   },
   {
@@ -1053,11 +1053,2033 @@
       ]
      }
     ],
-    false
+    "none"
    ],
    "result": {
     "requestTools": [],
-    "anchorsAdditions": false
+    "foldedSystemMessages": 1
+   }
+  },
+  {
+   "name": "case 0025",
+   "args": [
+    [],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0026",
+   "args": [
+    [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 5
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0027",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "base",
+      "timestamp": 10,
+      "sections": {
+       "a": "A",
+       "b": "B"
+      },
+      "toolsAdded": [
+       {
+        "name": "read",
+        "description": "read tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       {
+        "name": "write",
+        "description": "write tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0028",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "base",
+      "timestamp": 10,
+      "sections": {
+       "a": "A",
+       "b": "B"
+      },
+      "toolsAdded": [
+       {
+        "name": "read",
+        "description": "read tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       {
+        "name": "write",
+        "description": "write tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "u",
+      "timestamp": 11
+     },
+     {
+      "role": "system",
+      "content": "more",
+      "timestamp": 12,
+      "sections": {
+       "b": null,
+       "c": "C",
+       "a": "A2"
+      },
+      "toolsRemoved": [
+       {
+        "name": "read"
+       }
+      ],
+      "toolsAdded": [
+       {
+        "name": "grep",
+        "description": "grep tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0029",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "base",
+      "timestamp": 10,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": [
+       {
+        "type": "text",
+        "text": "x"
+       }
+      ],
+      "timestamp": 11,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "y",
+      "timestamp": 12,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "again",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0030",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "base",
+      "timestamp": 10,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 11,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "again",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ],
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0031",
+   "args": [
+    [
+     {
+      "role": "custom",
+      "customType": "x",
+      "content": "c",
+      "timestamp": 1
+     },
+     {
+      "role": "system",
+      "content": "late",
+      "timestamp": 9
+     },
+     {
+      "role": "bashExecution",
+      "command": "ls",
+      "timestamp": 2
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0032",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 0
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0033",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 7,
+      "toolsAdded": []
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0034",
+   "args": [
+    [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 5
+     },
+     {
+      "role": "system",
+      "content": "late",
+      "timestamp": 3,
+      "sections": {
+       "1": "one",
+       "9": "nine",
+       "10": "ten",
+       "z": "Z"
+      }
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0035",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "p",
+      "timestamp": 4,
+      "sections": {
+       "x": "1",
+       "y": "2",
+       "z": "3"
+      }
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 5,
+      "sections": {
+       "x": null,
+       "w": "W"
+      }
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 6,
+      "sections": {
+       "x": "again"
+      }
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0036",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "only tools",
+      "timestamp": 8,
+      "toolsRemoved": [
+       {
+        "name": "none"
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0037",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "base",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       },
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "c",
+        "description": "c tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "d",
+        "description": "d tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "additions"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "b",
+      "description": "b tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 2
+   }
+  },
+  {
+   "name": "case 0038",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "base",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       },
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "c",
+        "description": "c tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "d",
+        "description": "d tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "none"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "b",
+      "description": "b tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     },
+     {
+      "name": "c",
+      "description": "c tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     },
+     {
+      "name": "d",
+      "description": "d tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 4
+   }
+  },
+  {
+   "name": "case 0039",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "base",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       },
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "c",
+        "description": "c tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "d",
+        "description": "d tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0040",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "additions"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "a",
+      "description": "a tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 3
+   }
+  },
+  {
+   "name": "case 0041",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "none"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "a",
+      "description": "a tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     },
+     {
+      "name": "b",
+      "description": "b tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 4
+   }
+  },
+  {
+   "name": "case 0042",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0043",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "changed",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "additions"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "a",
+      "description": "changed",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 2
+   }
+  },
+  {
+   "name": "case 0044",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "changed",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "none"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "a",
+      "description": "changed",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     },
+     {
+      "name": "b",
+      "description": "b tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 3
+   }
+  },
+  {
+   "name": "case 0045",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "changed",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0046",
+   "args": [
+    [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "additions"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 2
+   }
+  },
+  {
+   "name": "case 0047",
+   "args": [
+    [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "none"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "b",
+      "description": "b tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 3
+   }
+  },
+  {
+   "name": "case 0048",
+   "args": [
+    [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0049",
+   "args": [
+    [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "additions"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0050",
+   "args": [
+    [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "none"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "a",
+      "description": "a tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     },
+     {
+      "name": "b",
+      "description": "b tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 2
+   }
+  },
+  {
+   "name": "case 0051",
+   "args": [
+    [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0052",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "c",
+        "description": "c tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "additions"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "a",
+      "description": "a tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 1
+   }
+  },
+  {
+   "name": "case 0053",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "c",
+        "description": "c tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "none"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "a",
+      "description": "a tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     },
+     {
+      "name": "b",
+      "description": "b tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     },
+     {
+      "name": "c",
+      "description": "c tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 3
+   }
+  },
+  {
+   "name": "case 0054",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "c",
+        "description": "c tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0055",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ],
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "c",
+        "description": "c tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "additions"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "b",
+      "description": "b tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 1
+   }
+  },
+  {
+   "name": "case 0056",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ],
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "c",
+        "description": "c tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "none"
+   ],
+   "result": {
+    "requestTools": [
+     {
+      "name": "b",
+      "description": "b tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     },
+     {
+      "name": "c",
+      "description": "c tool",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    ],
+    "foldedSystemMessages": 2
+   }
+  },
+  {
+   "name": "case 0057",
+   "args": [
+    [
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ],
+      "toolsAdded": [
+       {
+        "name": "b",
+        "description": "b tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "c",
+        "description": "c tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
+   }
+  },
+  {
+   "name": "case 0058",
+   "args": [
+    [
+     {
+      "role": "custom",
+      "customType": "x",
+      "content": "c",
+      "timestamp": 1
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "bashExecution",
+      "command": "ls",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     }
+    ],
+    "additions"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 2
+   }
+  },
+  {
+   "name": "case 0059",
+   "args": [
+    [
+     {
+      "role": "custom",
+      "customType": "x",
+      "content": "c",
+      "timestamp": 1
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "bashExecution",
+      "command": "ls",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     }
+    ],
+    "none"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 2
+   }
+  },
+  {
+   "name": "case 0060",
+   "args": [
+    [
+     {
+      "role": "custom",
+      "customType": "x",
+      "content": "c",
+      "timestamp": 1
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsAdded": [
+       {
+        "name": "a",
+        "description": "a tool",
+        "parameters": {
+         "type": "object",
+         "properties": {}
+        }
+       }
+      ]
+     },
+     {
+      "role": "bashExecution",
+      "command": "ls",
+      "timestamp": 2
+     },
+     {
+      "role": "system",
+      "content": "",
+      "timestamp": 1,
+      "toolsRemoved": [
+       {
+        "name": "a"
+       }
+      ]
+     }
+    ],
+    "changes"
+   ],
+   "result": {
+    "requestTools": [],
+    "foldedSystemMessages": 0
    }
   }
  ]

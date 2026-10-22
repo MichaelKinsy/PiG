@@ -146,12 +146,12 @@ func RetryDelayMs(policy RetryPolicy, attempt int) float64 {
 }
 
 // jsRegexp compiles a pattern written as the source of a JavaScript regular expression with the i flag (and no u flag) into one that matches the way V8 does on the strings
-// toJSUnits produces: a letter matches its own two ASCII cases only, `.` is any one UTF-16 unit but a line terminator, `\s` and `\S` are JavaScript's white space, and `\d` is an
-// ASCII digit. Only the syntax pi-ai's patterns use is supported.
+// toJSUnits produces: a letter matches its own two ASCII cases only, in a class too (so `[a-z0-9]` holds A-Z), `.` is any one UTF-16 unit but a line terminator, `\s` and `\S`
+// are JavaScript's white space, `\d` an ASCII digit and `\w` an ASCII word character. Only the syntax pi-ai's patterns use is supported; lookaround is not, so a pattern that
+// would use it is written with the neighbours it names matched instead.
 func jsRegexp(source string) *regexp.Regexp {
 	const space = `\t\n\x{0B}\x{0C}\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}`
 	var out strings.Builder
-	inClass := false
 	for i := 0; i < len(source); i++ {
 		c := source[i]
 		switch {
@@ -159,11 +159,9 @@ func jsRegexp(source string) *regexp.Regexp {
 			i++
 			switch source[i] {
 			case 'd':
-				if inClass {
-					out.WriteString(`0-9`)
-				} else {
-					out.WriteString(`[0-9]`)
-				}
+				out.WriteString(`[0-9]`)
+			case 'w':
+				out.WriteString(`[0-9A-Za-z_]`)
 			case 's':
 				out.WriteString(`[` + space + `]`)
 			case 'S':
@@ -172,14 +170,10 @@ func jsRegexp(source string) *regexp.Regexp {
 				out.WriteByte('\\')
 				out.WriteByte(source[i])
 			}
-		case c == '[' && !inClass:
-			inClass = true
-			out.WriteByte(c)
-		case c == ']' && inClass:
-			inClass = false
-			out.WriteByte(c)
-		case inClass:
-			out.WriteByte(c)
+		case c == '[':
+			var class string
+			class, i = jsClass(source, i)
+			out.WriteString(class)
 		case c == '.':
 			out.WriteString(`[^\n\r\x{2028}\x{2029}]`)
 		case c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z':
@@ -189,6 +183,49 @@ func jsRegexp(source string) *regexp.Regexp {
 		}
 	}
 	return regexp.MustCompile(out.String())
+}
+
+// jsClass translates the class that opens at source[open] and returns it with the index of its closing bracket. The i flag makes a class hold both cases of every ASCII letter it
+// names, a range of letters included.
+func jsClass(source string, open int) (string, int) {
+	swap := func(c byte) byte { return c ^ 0x20 }
+	isLetter := func(c byte) bool { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' }
+	var out strings.Builder
+	out.WriteByte('[')
+	i := open + 1
+	if source[i] == '^' {
+		out.WriteByte('^')
+		i++
+	}
+	for ; source[i] != ']'; i++ {
+		c := source[i]
+		switch {
+		case c == '\\':
+			i++
+			switch source[i] {
+			case 'd':
+				out.WriteString(`0-9`)
+			case 'w':
+				out.WriteString(`0-9A-Za-z_`)
+			default:
+				out.WriteByte('\\')
+				out.WriteByte(source[i])
+			}
+		case source[i+1] == '-' && source[i+2] != ']':
+			high := source[i+2]
+			out.WriteString(string(c) + "-" + string(high))
+			if isLetter(c) && isLetter(high) {
+				out.WriteString(string(swap(c)) + "-" + string(swap(high)))
+			}
+			i += 2
+		case isLetter(c):
+			out.WriteString(string(c) + string(swap(c)))
+		default:
+			out.WriteByte(c)
+		}
+	}
+	out.WriteByte(']')
+	return out.String(), i
 }
 
 // toJSUnits is the text as one rune per UTF-16 code unit, which is what a JavaScript regular expression without the u flag steps over: a character above U+FFFF becomes its two
@@ -237,6 +274,8 @@ var (
 		`context[_ ]length[_ ]exceeded`,
 		`too many tokens`,
 		`token limit exceeded`,
+		// HTTP 413 means request-size overflow regardless of provider or body text. Match raw SDK errors and formatProviderError's prefix, not a status mentioned in the body.
+		`^(?:[\w -]+ API error \(413\):|413(?:\s|:|$))`,
 	)
 	nonOverflowPatterns = lazyEach(
 		`^(Throttling error|Service unavailable):`,
@@ -255,6 +294,8 @@ var (
 		`quota exceeded`,
 		`billing`,
 		`subscription_sharing_usage_limit_exceeded`,
+		// Sign in with ChatGPT on a ChatGPT Business plan: a usage limit set by the workspace admin. Only the admin can raise it.
+		`subscription_sharing_workplace_individual_usage_limit_exceeded`,
 	)
 	retryableProviderErrorPattern = lazyAlternation(
 		`overloaded`,
@@ -264,13 +305,9 @@ var (
 		`model is at capacity`,
 		`rate.?limit`,
 		`too many requests`,
-		`429`,
-		`500`,
-		`502`,
-		`503`,
-		`504`,
-		`520`,
-		`524`,
+		// Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057). Pi spells it (?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9]);
+		// RE2 has no lookaround, so the neighbours are matched, which a boolean test cannot tell apart.
+		`(?:^|[^a-z0-9])(?:429|500|502|503|504|520|524)(?:[^a-z0-9]|$)`,
 		`service.?(?:is.?)?(?:temporarily.?)?unavailable`,
 		`server.?error`,
 		`internal.?error`,
@@ -304,6 +341,8 @@ var (
 		`stream ended before message_stop`,
 		`stream ended before a terminal response event`,
 		`http2 request did not get a response`,
+		// Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
+		`stream disconnected before completion`,
 		`pending stream has been canceled`,
 		`retry delay`,
 		`you can retry your request`,

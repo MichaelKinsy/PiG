@@ -231,12 +231,12 @@ func piAiHelperCall(fn string, args []json.RawMessage) (value any, defined bool,
 		return result, true, changeErr
 	case "resolveTranscriptTools":
 		decode(0, &messages)
-		decode(1, &flag)
+		decode(1, &text)
 		if err != nil {
 			return nil, false, err
 		}
-		result, resolveErr := sdk.ResolveTranscriptTools(messages, flag)
-		return map[string]any{"requestTools": result.RequestTools, "anchorsAdditions": result.AnchorsAdditions}, true, resolveErr
+		result, resolveErr := sdk.ResolveTranscriptTools(messages, sdk.TranscriptToolSupport(text))
+		return map[string]any{"requestTools": result.RequestTools, "foldedSystemMessages": result.FoldedSystemMessages}, true, resolveErr
 	case "collapseSystemMessages":
 		return optionalRaw(sdk.CollapseSystemMessages(args[0]))
 	case "resolveTranscript":

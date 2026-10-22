@@ -4017,8 +4017,14 @@ fn pi_ai_helpers_call(name: &str, args: &[Value]) -> Result<Option<Value>, Strin
         "getDeclaredTools" => json!(pig_sdk::get_declared_tools(&messages(0))),
         "hasNonAdditiveToolChanges" => json!(pig_sdk::has_non_additive_tool_changes(&messages(0))),
         "resolveTranscriptTools" => {
-            let resolved = pig_sdk::resolve_transcript_tools(&messages(0), flag(1));
-            json!({ "requestTools": resolved.request_tools, "anchorsAdditions": resolved.anchors_additions })
+            let support = match a(1).as_str().unwrap_or_default() {
+                "none" => pig_sdk::TranscriptToolSupport::None,
+                "additions" => pig_sdk::TranscriptToolSupport::Additions,
+                "changes" => pig_sdk::TranscriptToolSupport::Changes,
+                other => return Err(format!("unknown transcript tool support {other:?}")),
+            };
+            let resolved = pig_sdk::resolve_transcript_tools(&messages(0), support);
+            json!({ "requestTools": resolved.request_tools, "foldedSystemMessages": resolved.folded_system_messages })
         }
         "collapseSystemMessages" => pig_sdk::collapse_system_messages(a(0))?,
         "resolveTranscript" => pig_sdk::resolve_transcript(a(0), flag(1))?,

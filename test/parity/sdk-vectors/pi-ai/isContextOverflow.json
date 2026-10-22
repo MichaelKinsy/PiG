@@ -1,6 +1,6 @@
 {
- "pin": "1.3.0+1402973a",
- "package": "pi-ai@1.3.0",
+ "pin": "1.4.0",
+ "package": "pi-ai@1.4.0",
  "module": "pi-ai",
  "export": "isContextOverflow",
  "cases": [
@@ -1240,7 +1240,7 @@
      "timestamp": 1
     }
    ],
-   "result": false
+   "result": true
   },
   {
    "name": "case 0042",
@@ -1300,7 +1300,7 @@
      "timestamp": 1
     }
    ],
-   "result": false
+   "result": true
   },
   {
    "name": "case 0044",
@@ -9499,6 +9499,1498 @@
     1
    ],
    "result": false
+  },
+  {
+   "name": "case 0318",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "github-copilot API error (413): {\"message\":\"failed to parse request\",\"code\":\"\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0319",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "github-copilot API error (413): {\"message\":\"failed to parse request\",\"code\":\"\"}",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0320",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (413): Payload Too Large",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0321",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (413): Payload Too Large",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0322",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413 {\"error\":{\"message\":\"failed to parse request\",\"code\":\"\"}}",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0323",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413 {\"error\":{\"message\":\"failed to parse request\",\"code\":\"\"}}",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0324",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0325",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0326",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413 Request Entity Too Large",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0327",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413 Request Entity Too Large",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0328",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413: payload too large",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0329",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413: payload too large",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0330",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413\nbody",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0331",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413\nbody",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0332",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Github Copilot API error (413): x",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0333",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Github Copilot API error (413): x",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0334",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Amazon Bedrock  API error (413): double space",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0335",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Amazon Bedrock  API error (413): double space",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0336",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "github-copilot API error (400): {\"message\":\"failed to parse request\",\"code\":\"\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0337",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "github-copilot API error (400): {\"message\":\"failed to parse request\",\"code\":\"\"}",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0338",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (429): Too many requests",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0339",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (429): Too many requests",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0340",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "github-copilot API error (400): {\"message\":\"failed to parse request: invalid value 413\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0341",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "github-copilot API error (400): {\"message\":\"failed to parse request: invalid value 413\"}",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0342",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (400): upstream mentioned OpenAI API error (413): invalid input",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0343",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (400): upstream mentioned OpenAI API error (413): invalid input",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0344",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (4130): invalid input",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0345",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (4130): invalid input",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0346",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "4130 failed to parse request",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0347",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "4130 failed to parse request",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0348",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413{\"error\":\"x\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0349",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413{\"error\":\"x\"}",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0350",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "a.b API error (413): the provider prefix has a dot",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0351",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "a.b API error (413): the provider prefix has a dot",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0352",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "API error (413): no provider",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0353",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "API error (413): no provider",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0354",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (413) no colon",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0355",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "custom-provider API error (413) no colon",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0356",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Error: 413 payload",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0357",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Error: 413 payload",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0358",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413 rate limit exceeded",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0359",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413 rate limit exceeded",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0360",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Throttling error: 413",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0361",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Throttling error: 413",
+     "timestamp": 1
+    },
+    1000000
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0362",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "aborted",
+     "errorMessage": "OpenAI API error (413): {\"message\":\"failed to parse request\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0363",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "errorMessage": "OpenAI API error (413): {\"message\":\"failed to parse request\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0364",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "length",
+     "errorMessage": "OpenAI API error (413): {\"message\":\"failed to parse request\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0365",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "errorMessage": "OpenAI API error (413): {\"message\":\"failed to parse request\"}",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0366",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "cerebras",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "413 Request Entity Too Large",
+     "timestamp": 1
+    }
+   ],
+   "result": true
   }
  ]
 }

@@ -197,9 +197,9 @@ impl OrderedMap {
     }
 }
 
-fn current_tools(messages: &[Value]) -> Vec<Value> {
+fn current_tools<'a>(messages: impl IntoIterator<Item = &'a Value>) -> Vec<Value> {
     let mut tools = OrderedMap::default();
-    for message in messages.iter().filter(|message| is_system(message)) {
+    for message in messages.into_iter().filter(|message| is_system(message)) {
         for tool in list(message.get("toolsRemoved")) {
             tools.delete(tool_name(tool));
         }
@@ -384,20 +384,40 @@ pub fn get_declared_tools(messages: &[Value]) -> Vec<Value> {
     declared.into_values()
 }
 
-/// pi-ai's `hasNonAdditiveToolChanges`: whether the tool history holds a removal or a same-name redeclaration that an addition-only transport cannot replay.
-pub fn has_non_additive_tool_changes(messages: &[Value]) -> bool {
+/// The index, among `system_messages`, of the last one with a removal or a same-name redeclaration. A name declared before counts as a redeclaration even after its removal: Kimi K3
+/// ignores a removed tool that a later tool message declares again.
+fn find_last_non_additive_tool_change(system_messages: &[&Value]) -> Option<usize> {
     let mut declared = std::collections::HashSet::new();
-    for message in messages.iter().filter(|message| is_system(message)) {
+    let mut last = None;
+    for (index, message) in system_messages.iter().enumerate() {
         if !list(message.get("toolsRemoved")).is_empty() {
-            return true;
+            last = Some(index);
         }
         for tool in list(message.get("toolsAdded")) {
             if !declared.insert(tool_name(tool).to_string()) {
-                return true;
+                last = Some(index);
             }
         }
     }
-    false
+    last
+}
+
+/// pi-ai's `hasNonAdditiveToolChanges`: whether the tool history holds a removal or a same-name redeclaration that an addition-only transport cannot replay.
+pub fn has_non_additive_tool_changes(messages: &[Value]) -> bool {
+    let system: Vec<&Value> = messages.iter().filter(|message| is_system(message)).collect();
+    find_last_non_additive_tool_change(&system).is_some()
+}
+
+/// pi-ai's `TranscriptToolSupport`: how a transport can express tool changes after the first request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TranscriptToolSupport {
+    /// `"none"`: only the top-level tool list exists; it always holds the current tools.
+    None,
+    /// `"additions"`: tools can be added at a later message, but not removed or redefined.
+    Additions,
+    /// `"changes"`: every tool, including the initial ones, is declared in place, and a later declaration under the same name replaces the earlier one. Removals are not expressible
+    /// on the wire, so the transport announces them as text and the removed tools stay declared.
+    Changes,
 }
 
 /// pi-ai's `TranscriptTools`.
@@ -405,16 +425,26 @@ pub fn has_non_additive_tool_changes(messages: &[Value]) -> bool {
 pub struct TranscriptTools {
     /// The tools sent in the top-level request field.
     pub request_tools: Vec<Value>,
-    /// Whether later system messages carry their own `toolsAdded` as in-place additions. When false, `request_tools` already holds the complete current tool set.
-    pub anchors_additions: bool,
+    /// The number of leading system messages whose tool changes `request_tools` already holds. Every later system message carries its own tool changes in place.
+    pub folded_system_messages: usize,
 }
 
-/// pi-ai's `resolveTranscriptTools`: the tool declarations split between the top-level request field and in-place additions. A transport that can anchor additions keeps the
-/// initial tools at the top and loads later ones where they appear, which only works when no tool was removed or redeclared; everything else sends the current tool list.
-pub fn resolve_transcript_tools(messages: &[Value], supports_tool_additions: bool) -> TranscriptTools {
-    let anchors_additions = supports_tool_additions && !has_non_additive_tool_changes(messages);
-    let request_tools = if anchors_additions { get_initial_system_message(messages).map_or_else(Vec::new, |message| list(message.get("toolsAdded")).to_vec()) } else { current_tools(messages) };
-    TranscriptTools { request_tools, anchors_additions }
+/// pi-ai's `resolveTranscriptTools`: the tool declarations split between the top-level request field and in-place changes.
+///
+/// With [`TranscriptToolSupport::Changes`], the top-level list stays empty and every system message, including the leading one, declares its tools in place: an in-place declaration
+/// can replace an earlier in-place one, but not a top-level one. With [`TranscriptToolSupport::Additions`], a removal or redefinition cannot be expressed in place, so the top-level
+/// list becomes the tool state after the last such change; later additions stay anchored, and the cached prefix is invalidated once per removal instead of on every later addition.
+/// With [`TranscriptToolSupport::None`], the top-level list is the current tool set.
+pub fn resolve_transcript_tools(messages: &[Value], support: TranscriptToolSupport) -> TranscriptTools {
+    let system: Vec<&Value> = messages.iter().filter(|message| is_system(message)).collect();
+    match support {
+        TranscriptToolSupport::None => TranscriptTools { request_tools: current_tools(system.iter().copied()), folded_system_messages: system.len() },
+        TranscriptToolSupport::Changes => TranscriptTools { request_tools: Vec::new(), folded_system_messages: 0 },
+        TranscriptToolSupport::Additions => {
+            let folded = usize::from(get_initial_system_message(messages).is_some()).max(find_last_non_additive_tool_change(&system).map_or(0, |last| last + 1));
+            TranscriptTools { request_tools: current_tools(system[..folded].iter().copied()), folded_system_messages: folded }
+        }
+    }
 }
 
 /// The part of pi-ai's `RetryPolicy` that [`retry_delay_ms`] reads.
@@ -437,7 +467,8 @@ pub fn retry_delay_ms(policy: &RetryPolicy, attempt: i64) -> f64 {
 }
 
 /// The subset of JavaScript regular-expression syntax pi-ai's patterns use, matched the way V8 does for the `i` flag without `u`: over UTF-16 code units, a letter matching its
-/// own two ASCII cases only, `.` any unit but a line terminator, `\s` and `\S` JavaScript's white space, and `\d` an ASCII digit.
+/// own two ASCII cases only (in a class too, so `[a-z0-9]` holds A-Z), `.` any unit but a line terminator, `\s` and `\S` JavaScript's white space, `\d` an ASCII digit, `\w` an
+/// ASCII word character, `$` the end of the text, and `(?<!...)` and `(?!...)` negative lookaround.
 mod js_regex {
     #[derive(Debug)]
     enum Node {
@@ -445,6 +476,11 @@ mod js_regex {
         Any,
         Class { ranges: Vec<(u16, u16)>, negated: bool },
         Start,
+        End,
+        /// `(?<!inner)` with the fixed width of `inner`.
+        NotBehind(Box<Node>, usize),
+        /// `(?!inner)`.
+        NotAhead(Box<Node>),
         Seq(Vec<Node>),
         Alt(Vec<Node>),
         Repeat(Box<Node>, usize, usize),
@@ -495,6 +531,7 @@ mod js_regex {
         fn escape_ranges(letter: u8) -> Option<(Vec<(u16, u16)>, bool)> {
             match letter {
                 b'd' => Some((vec![(0x30, 0x39)], false)),
+                b'w' => Some((vec![(0x30, 0x39), (0x41, 0x5A), (0x5F, 0x5F), (0x61, 0x7A)], false)),
                 b's' => Some((SPACE.to_vec(), false)),
                 b'S' => Some((SPACE.to_vec(), true)),
                 _ => None,
@@ -505,17 +542,35 @@ mod js_regex {
             self.at += 1;
             match c {
                 b'(' => {
-                    if self.source[self.at..].starts_with(b"?:") {
+                    let rest = &self.source[self.at..];
+                    let (not_behind, not_ahead) = (rest.starts_with(b"?<!"), rest.starts_with(b"?!"));
+                    if not_behind {
+                        self.at += 3;
+                    } else if not_ahead {
+                        self.at += 2;
+                    } else if rest.starts_with(b"?:") {
                         self.at += 2;
                     }
                     let inner = self.alternation();
                     assert_eq!(self.peek(), Some(b')'), "unbalanced group");
                     self.at += 1;
-                    inner
+                    if not_behind {
+                        let width = width(&inner);
+                        Node::NotBehind(Box::new(inner), width)
+                    } else if not_ahead {
+                        Node::NotAhead(Box::new(inner))
+                    } else {
+                        inner
+                    }
                 }
                 b'.' => Node::Any,
                 b'^' => Node::Start,
+                b'$' => Node::End,
                 b'[' => {
+                    let negated = self.peek() == Some(b'^');
+                    if negated {
+                        self.at += 1;
+                    }
                     let mut ranges = Vec::new();
                     while self.peek() != Some(b']') {
                         let mut low = u16::from(self.source[self.at]);
@@ -529,10 +584,16 @@ mod js_regex {
                             }
                             low = u16::from(letter);
                         }
-                        ranges.push((low, low));
+                        match (self.peek(), self.source.get(self.at + 1)) {
+                            (Some(b'-'), Some(&high)) if high != b']' => {
+                                self.at += 2;
+                                ranges.push((low, u16::from(high)));
+                            }
+                            _ => ranges.push((low, low)),
+                        }
                     }
                     self.at += 1;
-                    Node::Class { ranges, negated: false }
+                    Node::Class { ranges, negated }
                 }
                 b'\\' => {
                     let letter = self.source[self.at];
@@ -574,8 +635,11 @@ mod js_regex {
         match node {
             Node::Unit(unit) => at < text.len() && unit_matches(*unit, text[at]) && next(at + 1),
             Node::Any => at < text.len() && !matches!(text[at], 0x0A | 0x0D | 0x2028 | 0x2029) && next(at + 1),
-            Node::Class { ranges, negated } => at < text.len() && (ranges.iter().any(|(low, high)| (*low..=*high).contains(&text[at])) != *negated) && next(at + 1),
+            Node::Class { ranges, negated } => at < text.len() && (class_has(ranges, text[at]) != *negated) && next(at + 1),
             Node::Start => at == 0 && next(at),
+            Node::End => at == text.len() && next(at),
+            Node::NotBehind(inner, width) => (at < *width || !matches(inner, text, at - *width, &mut |end| end == at)) && next(at),
+            Node::NotAhead(inner) => !matches(inner, text, at, &mut |_| true) && next(at),
             Node::Alt(branches) => branches.iter().any(|branch| matches(branch, text, at, next)),
             Node::Seq(items) => sequence(items, text, at, next),
             Node::Repeat(inner, min, max) => repeat(inner, *min, *max, 0, text, at, next),
@@ -594,6 +658,28 @@ mod js_regex {
             return true;
         }
         count >= min && next(at)
+    }
+
+    /// Whether a class holds `unit`, an ASCII letter counting as itself and as its other case.
+    fn class_has(ranges: &[(u16, u16)], unit: u16) -> bool {
+        let holds = |unit: u16| ranges.iter().any(|(low, high)| (*low..=*high).contains(&unit));
+        holds(unit) || (unit < 128 && (unit as u8).is_ascii_alphabetic() && holds(u16::from(unit as u8 ^ 0x20)))
+    }
+
+    /// The number of units `node` always matches, which a lookbehind needs to know where to start; it panics on a node of varying width.
+    fn width(node: &Node) -> usize {
+        match node {
+            Node::Unit(_) | Node::Any | Node::Class { .. } => 1,
+            Node::Start | Node::End | Node::NotBehind(..) | Node::NotAhead(_) => 0,
+            Node::Seq(items) => items.iter().map(width).sum(),
+            Node::Alt(branches) => {
+                let first = width(&branches[0]);
+                assert!(branches.iter().all(|branch| width(branch) == first), "lookbehind of varying width");
+                first
+            }
+            Node::Repeat(inner, min, max) if min == max => width(inner) * min,
+            Node::Repeat(..) => panic!("lookbehind of varying width"),
+        }
     }
 }
 
@@ -635,6 +721,8 @@ static OVERFLOW_PATTERNS: LazyLock<Vec<Pattern>> = LazyLock::new(|| {
         r"context[_ ]length[_ ]exceeded",
         r"too many tokens",
         r"token limit exceeded",
+        // HTTP 413 means request-size overflow regardless of provider or body text. Match raw SDK errors and formatProviderError's prefix, not a status mentioned in the body.
+        r"^(?:[\w -]+ API error \(413\):|413(?:\s|:|$))",
     ])
 });
 static NON_OVERFLOW_PATTERNS: LazyLock<Vec<Pattern>> = LazyLock::new(|| compile_each(&[r"^(Throttling error|Service unavailable):", r"rate limit", r"too many requests"]));
@@ -643,17 +731,24 @@ static NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN: LazyLock<Pattern> = LazyLock:
     compile_alternation(&[
         "GoUsageLimitError", "FreeUsageLimitError", "Monthly usage limit reached", "available balance", "insufficient_quota", "out of budget", "quota exceeded", "billing",
         "subscription_sharing_usage_limit_exceeded",
+        // Sign in with ChatGPT on a ChatGPT Business plan: a usage limit set by the workspace admin. Only the admin can raise it.
+        "subscription_sharing_workplace_individual_usage_limit_exceeded",
     ])
 });
 static RETRYABLE_PROVIDER_ERROR_PATTERN: LazyLock<Pattern> = LazyLock::new(|| {
     compile_alternation(&[
-        "overloaded", "server_busy", "servers are currently busy", "currently experiencing high demand", "model is at capacity", "rate.?limit", "too many requests", "429", "500",
-        "502", "503", "504", "520", "524", "service.?(?:is.?)?(?:temporarily.?)?unavailable", "server.?error", "internal.?error", "provider.?returned.?(?:an.?)?error",
+        "overloaded", "server_busy", "servers are currently busy", "currently experiencing high demand", "model is at capacity", "rate.?limit", "too many requests",
+        // Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057).
+        "(?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9])",
+        "service.?(?:is.?)?(?:temporarily.?)?unavailable", "server.?error", "internal.?error", "provider.?returned.?(?:an.?)?error",
         "exceeded request buffer limit while retrying upstream", "unable to forward upstream", "upstream.?request.?failed", "upstream_stream_read_error", "stream was interrupted",
         "http/?2 stream failed", "network.?error", "connection.?error", "connection.?refused", "connection.?lost", "other side closed", "fetch failed",
         r"request to \S+ failed, reason:", "getaddrinfo", "ENOTFOUND", "EAI_AGAIN", "upstream.?connect", "reset before headers", "socket hang up", "socket connection was closed",
         "timed? out", "timeout", "terminated", "websocket.?closed", "websocket.?error", "ended without", "stream ended before message_stop",
-        "stream ended before a terminal response event", "http2 request did not get a response", "pending stream has been canceled", "retry delay", "you can retry your request",
+        "stream ended before a terminal response event", "http2 request did not get a response",
+        // Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
+        "stream disconnected before completion",
+        "pending stream has been canceled", "retry delay", "you can retry your request",
         "try your request again", "please retry your request", "ResourceExhausted", "subscription_sharing_usage_unavailable", "subscription_sharing_user_unavailable",
     ])
 });

@@ -170,3 +170,18 @@ export const cases = [
   { name: "case 0168", args: [{"role": "assistant", "content": [], "api": "x", "provider": "p", "model": "m", "usage": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0, "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}, "stopReason": "error", "timestamp": 1}] },
   { name: "case 0169", args: [{"role": "assistant", "content": [], "api": "x", "provider": "p", "model": "m", "usage": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0, "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}, "stopReason": "error", "errorMessage": "", "timestamp": 1}] },
 ];
+
+// Pi 1.4.0 (packages/ai/src/utils/retry.ts): a status code counts only as a standalone number (#11057, Pi 6e491cfa), a Codex CLI disconnect relayed by a proxy is retried (Pi 29057ece), and a
+// ChatGPT Business workspace usage limit is not (Pi cedefc53). The messages are Pi's own test strings (packages/ai/test/retry.test.ts) and the boundaries of the status-code rule.
+const failed = (errorMessage) => ({ role: "assistant", content: [], api: "x", provider: "p", model: "m", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "error", errorMessage, timestamp: 1 });
+for (const errorMessage of [
+  "stream disconnected before completion: stream closed before response.completed",
+  "Stream Disconnected Before Completion",
+  'OpenAI API error (429): {"code":"subscription_sharing_workplace_individual_usage_limit_exceeded","message":"Usage limit reached."}',
+  "subscription_sharing_workplace_individual_usage_limit_exceeded",
+  "SUBSCRIPTION_SHARING_WORKPLACE_INDIVIDUAL_USAGE_LIMIT_EXCEEDED overloaded",
+  '401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CU503xyz"}',
+  "400 image exceeds 5 MB maximum: 5316784 bytes > 5242880 bytes",
+  "429", "a429", "429a", "4290", "1429", "_429_", "x-500-y", "status=502,", "HTTP 503.", "status\n504\n", "(520)", "429.5 seconds", "req_503 5031", "4290 5003", "5001 and 502",
+  "ſ429ſ", "\u212a500\u212a", "A429", "429Z", "0429", "4290",
+]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });

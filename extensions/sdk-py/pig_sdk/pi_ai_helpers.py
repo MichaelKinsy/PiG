@@ -290,33 +290,43 @@ def get_declared_tools(messages: Sequence[Any]) -> list[Any]:
     return list(declared.values())
 
 
-def has_non_additive_tool_changes(messages: Sequence[Any]) -> bool:
-    """pi-ai's hasNonAdditiveToolChanges: whether the tool history holds a removal or a same-name redeclaration that an addition-only transport cannot replay."""
+def _find_last_non_additive_tool_change(system_messages: Sequence[Any]) -> int:
+    """The index of the last system message with a removal or a same-name redeclaration, or -1. A name declared before counts as a redeclaration even after its removal: Kimi K3
+    ignores a removed tool that a later tool message declares again."""
     declared: set = set()
-    for message in messages:
-        if not _is_system(message):
-            continue
+    last = -1
+    for index, message in enumerate(system_messages):
         if _list(message.get("toolsRemoved")):
-            return True
+            last = index
         for tool in _list(message.get("toolsAdded")):
             name = _tool_name(tool)
             if name in declared:
-                return True
+                last = index
             declared.add(name)
-    return False
+    return last
 
 
-def resolve_transcript_tools(messages: Sequence[Any], supports_tool_additions: bool) -> dict[str, Any]:
-    """pi-ai's resolveTranscriptTools: ``{"requestTools": [...], "anchorsAdditions": bool}``, the tool declarations split between the top-level request field and in-place
-    additions. A transport that can anchor additions keeps the initial tools at the top and loads later ones where they appear, which only works when no tool was removed
-    or redeclared; everything else sends the current tool list."""
-    anchors = bool(supports_tool_additions) and not has_non_additive_tool_changes(messages)
-    if anchors:
-        initial = get_initial_system_message(messages)
-        request = _list(initial.get("toolsAdded")) if initial is not None else []
-    else:
-        request = get_current_tools(messages)
-    return {"requestTools": request, "anchorsAdditions": anchors}
+def has_non_additive_tool_changes(messages: Sequence[Any]) -> bool:
+    """pi-ai's hasNonAdditiveToolChanges: whether the tool history holds a removal or a same-name redeclaration that an addition-only transport cannot replay."""
+    return _find_last_non_additive_tool_change([message for message in messages if _is_system(message)]) >= 0
+
+
+def resolve_transcript_tools(messages: Sequence[Any], support: str) -> dict[str, Any]:
+    """pi-ai's resolveTranscriptTools: ``{"requestTools": [...], "foldedSystemMessages": int}``, the tool declarations split between the top-level request field and in-place
+    changes. ``support`` is pi-ai's TranscriptToolSupport, how a transport can express tool changes after the first request: ``"none"`` (only the top-level tool list exists; it
+    always holds the current tools), ``"additions"`` (tools can be added at a later message, but not removed or redefined) or ``"changes"`` (every tool, including the initial
+    ones, is declared in place, and a later declaration under the same name replaces the earlier one; removals are not expressible on the wire, so the transport announces them
+    as text and the removed tools stay declared). With ``"changes"``, the top-level list stays empty and every system message, including the leading one, declares its tools in
+    place. With ``"additions"``, a removal or redefinition cannot be expressed in place, so the top-level list becomes the tool state after the last such change; later additions
+    stay anchored, and the cached prefix is invalidated once per removal instead of on every later addition. With ``"none"``, the top-level list is the current tool set. Any
+    other value is ``"additions"``, as Pi's comparisons treat it."""
+    system_messages = [message for message in messages if _is_system(message)]
+    if support == "none":
+        return {"requestTools": get_current_tools(system_messages), "foldedSystemMessages": len(system_messages)}
+    if support == "changes":
+        return {"requestTools": [], "foldedSystemMessages": 0}
+    folded = max(1 if get_initial_system_message(messages) is not None else 0, _find_last_non_additive_tool_change(system_messages) + 1)
+    return {"requestTools": get_current_tools(system_messages[:folded]), "foldedSystemMessages": folded}
 
 
 def retry_delay_ms(policy: Mapping[str, Any], attempt: float) -> float:
@@ -341,10 +351,9 @@ _JS_SPACE = "\\t\\n\\x0b\\x0c\\r \\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202
 
 def _js_regexp(source: str) -> re.Pattern:
     """Compile the source of a JavaScript regular expression with the i flag (and no u flag) into a pattern that matches the way V8 does on the strings :func:`_to_js_units`
-    produces: a letter matches its own two ASCII cases only, ``.`` is any one UTF-16 unit but a line terminator, ``\\s`` and ``\\S`` are JavaScript's white space, and ``\\d`` is an
-    ASCII digit. Only the syntax pi-ai's patterns use is supported."""
+    produces: a letter matches its own two ASCII cases only, in a class too (so ``[a-z0-9]`` holds A-Z), ``.`` is any one UTF-16 unit but a line terminator, ``\\s`` and ``\\S`` are
+    JavaScript's white space, ``\\d`` is an ASCII digit, ``\\w`` an ASCII word character and ``$`` only the end of the text. Only the syntax pi-ai's patterns use is supported."""
     out: list[str] = []
-    in_class = False
     i = 0
     while i < len(source):
         c = source[i]
@@ -352,29 +361,61 @@ def _js_regexp(source: str) -> re.Pattern:
             i += 1
             n = source[i]
             if n == "d":
-                out.append("0-9" if in_class else "[0-9]")
+                out.append("[0-9]")
+            elif n == "w":
+                out.append("[0-9A-Za-z_]")
             elif n == "s":
                 out.append("[" + _JS_SPACE + "]")
             elif n == "S":
                 out.append("[^" + _JS_SPACE + "]")
             else:
                 out.append("\\" + n)
-        elif c == "[" and not in_class:
-            in_class = True
-            out.append(c)
-        elif c == "]" and in_class:
-            in_class = False
-            out.append(c)
-        elif in_class:
-            out.append(c)
+        elif c == "[":
+            text, i = _js_class(source, i)
+            out.append(text)
         elif c == ".":
             out.append("[^\\n\\r\\u2028\\u2029]")
+        elif c == "$":
+            out.append("\\Z")
         elif c.isascii() and c.isalpha():
             out.append("[" + c.lower() + c.upper() + "]")
         else:
             out.append(c)
         i += 1
     return re.compile("".join(out))
+
+
+def _js_class(source: str, open_at: int) -> tuple[str, int]:
+    """Translate the class that opens at source[open_at] and return it with the index of its closing bracket. The i flag makes a class hold both cases of every ASCII letter it
+    names, a range of letters included."""
+
+    def is_letter(c: str) -> bool:
+        return c.isascii() and c.isalpha()
+
+    out = ["["]
+    i = open_at + 1
+    if source[i] == "^":
+        out.append("^")
+        i += 1
+    while source[i] != "]":
+        c = source[i]
+        if c == "\\":
+            i += 1
+            n = source[i]
+            out.append("0-9" if n == "d" else "0-9A-Za-z_" if n == "w" else "\\" + n)
+        elif source[i + 1] == "-" and source[i + 2] != "]":
+            high = source[i + 2]
+            out.append(c + "-" + high)
+            if is_letter(c) and is_letter(high):
+                out.append(c.swapcase() + "-" + high.swapcase())
+            i += 2
+        elif is_letter(c):
+            out.append(c.lower() + c.upper())
+        else:
+            out.append(c)
+        i += 1
+    out.append("]")
+    return "".join(out), i
 
 
 def _to_js_units(text: str) -> str:
@@ -416,21 +457,30 @@ _OVERFLOW_PATTERNS = _compile_each(
     r"context[_ ]length[_ ]exceeded",
     r"too many tokens",
     r"token limit exceeded",
+    # HTTP 413 means request-size overflow regardless of provider or body text. Match raw SDK errors and formatProviderError's prefix, not a status mentioned in the body.
+    r"^(?:[\w -]+ API error \(413\):|413(?:\s|:|$))",
 )
 _NON_OVERFLOW_PATTERNS = _compile_each(r"^(Throttling error|Service unavailable):", r"rate limit", r"too many requests")
 _CEREBRAS_BODYLESS_OVERFLOW_PATTERN = _js_regexp(r"^4(?:00|13)\s*(?:status code)?\s*\(no body\)")
 _NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = _js_regexp("|".join([
     "GoUsageLimitError", "FreeUsageLimitError", "Monthly usage limit reached", "available balance", "insufficient_quota", "out of budget", "quota exceeded", "billing",
     "subscription_sharing_usage_limit_exceeded",
+    # Sign in with ChatGPT on a ChatGPT Business plan: a usage limit set by the workspace admin. Only the admin can raise it.
+    "subscription_sharing_workplace_individual_usage_limit_exceeded",
 ]))
 _RETRYABLE_PROVIDER_ERROR_PATTERN = _js_regexp("|".join([
-    "overloaded", "server_busy", "servers are currently busy", "currently experiencing high demand", "model is at capacity", "rate.?limit", "too many requests", "429", "500",
-    "502", "503", "504", "520", "524", "service.?(?:is.?)?(?:temporarily.?)?unavailable", "server.?error", "internal.?error", "provider.?returned.?(?:an.?)?error",
+    "overloaded", "server_busy", "servers are currently busy", "currently experiencing high demand", "model is at capacity", "rate.?limit", "too many requests",
+    # Status codes must not be part of a longer word or number, e.g. a request id or byte count (#11057).
+    "(?<![a-z0-9])(?:429|500|502|503|504|520|524)(?![a-z0-9])",
+    "service.?(?:is.?)?(?:temporarily.?)?unavailable", "server.?error", "internal.?error", "provider.?returned.?(?:an.?)?error",
     "exceeded request buffer limit while retrying upstream", "unable to forward upstream", "upstream.?request.?failed", "upstream_stream_read_error", "stream was interrupted",
     "http/?2 stream failed", "network.?error", "connection.?error", "connection.?refused", "connection.?lost", "other side closed", "fetch failed",
     r"request to \S+ failed, reason:", "getaddrinfo", "ENOTFOUND", "EAI_AGAIN", "upstream.?connect", "reset before headers", "socket hang up", "socket connection was closed",
     "timed? out", "timeout", "terminated", "websocket.?closed", "websocket.?error", "ended without", "stream ended before message_stop",
-    "stream ended before a terminal response event", "http2 request did not get a response", "pending stream has been canceled", "retry delay", "you can retry your request",
+    "stream ended before a terminal response event", "http2 request did not get a response",
+    # Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
+    "stream disconnected before completion",
+    "pending stream has been canceled", "retry delay", "you can retry your request",
     "try your request again", "please retry your request", "ResourceExhausted", "subscription_sharing_usage_unavailable", "subscription_sharing_user_unavailable",
 ]))
 

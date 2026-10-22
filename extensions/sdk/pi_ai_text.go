@@ -529,25 +529,36 @@ func GetDeclaredTools(messages []json.RawMessage) ([]json.RawMessage, error) {
 	return stringifyAll(out), nil
 }
 
-func hasNonAdditiveToolChanges(messages []any) bool {
-	declared := map[string]bool{}
+// systemMessages is `messages.filter(isSystemMessage)`.
+func systemMessages(messages []any) []any {
+	var out []any
 	for _, value := range messages {
-		message, ok := systemMessageOf(value)
-		if !ok {
-			continue
+		if _, ok := systemMessageOf(value); ok {
+			out = append(out, value)
 		}
+	}
+	return out
+}
+
+// findLastNonAdditiveToolChange is the index of the last system message with a removal or a same-name redeclaration, or -1. A name declared before counts as a redeclaration even
+// after its removal: Kimi K3 ignores a removed tool that a later tool message declares again.
+func findLastNonAdditiveToolChange(systemMessages []any) int {
+	declared := map[string]bool{}
+	last := -1
+	for index, value := range systemMessages {
+		message, _ := systemMessageOf(value)
 		if len(nullishArray(message.values["toolsRemoved"])) > 0 {
-			return true
+			last = index
 		}
 		for _, tool := range nullishArray(message.values["toolsAdded"]) {
 			name := toolName(tool)
 			if declared[name] {
-				return true
+				last = index
 			}
 			declared[name] = true
 		}
 	}
-	return false
+	return last
 }
 
 // HasNonAdditiveToolChanges is pi-ai's hasNonAdditiveToolChanges: whether the tool history holds a removal or a same-name redeclaration that an addition-only transport cannot replay.
@@ -556,35 +567,56 @@ func HasNonAdditiveToolChanges(messages []json.RawMessage) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return hasNonAdditiveToolChanges(parsed), nil
+	return findLastNonAdditiveToolChange(systemMessages(parsed)) >= 0, nil
 }
+
+// TranscriptToolSupport is pi-ai's TranscriptToolSupport: how a transport can express tool changes after the first request.
+//
+//   - TranscriptToolSupportNone: only the top-level tool list exists; it always holds the current tools.
+//   - TranscriptToolSupportAdditions: tools can be added at a later message, but not removed or redefined.
+//   - TranscriptToolSupportChanges: every tool, including the initial ones, is declared in place, and a later declaration under the same name replaces the earlier one. Removals
+//     are not expressible on the wire, so the transport announces them as text and the removed tools stay declared.
+//
+// Any other value is treated as TranscriptToolSupportAdditions, as Pi's `support` comparisons do.
+type TranscriptToolSupport string
+
+const (
+	TranscriptToolSupportNone      TranscriptToolSupport = "none"
+	TranscriptToolSupportAdditions TranscriptToolSupport = "additions"
+	TranscriptToolSupportChanges   TranscriptToolSupport = "changes"
+)
 
 // TranscriptTools is pi-ai's TranscriptTools.
 type TranscriptTools struct {
 	// RequestTools are the tools sent in the top-level request field.
 	RequestTools []json.RawMessage
-	// AnchorsAdditions is whether later system messages carry their own toolsAdded as in-place additions. When false, RequestTools already holds the complete current tool set.
-	AnchorsAdditions bool
+	// FoldedSystemMessages is the number of leading system messages whose tool changes RequestTools already holds. Every later system message carries its own tool changes in place.
+	FoldedSystemMessages int
 }
 
-// ResolveTranscriptTools is pi-ai's resolveTranscriptTools: the tool declarations split between the top-level request field and in-place additions. A transport that can anchor
-// additions keeps the initial tools at the top and loads later ones where they appear, which only works when no tool was removed or redeclared; everything else sends the current
-// tool list.
-func ResolveTranscriptTools(messages []json.RawMessage, supportsToolAdditions bool) (TranscriptTools, error) {
+// ResolveTranscriptTools is pi-ai's resolveTranscriptTools: the tool declarations split between the top-level request field and in-place changes.
+//
+// With [TranscriptToolSupportChanges], the top-level list stays empty and every system message, including the leading one, declares its tools in place: an in-place declaration can
+// replace an earlier in-place one, but not a top-level one. With [TranscriptToolSupportAdditions], a removal or redefinition cannot be expressed in place, so the top-level list
+// becomes the tool state after the last such change; later additions stay anchored, and the cached prefix is invalidated once per removal instead of on every later addition. With
+// [TranscriptToolSupportNone], the top-level list is the current tool set.
+func ResolveTranscriptTools(messages []json.RawMessage, support TranscriptToolSupport) (TranscriptTools, error) {
 	parsed, err := parseTranscriptMessages(messages)
 	if err != nil {
 		return TranscriptTools{}, err
 	}
-	anchors := supportsToolAdditions && !hasNonAdditiveToolChanges(parsed)
-	var request []any
-	if anchors {
-		if len(parsed) > 0 {
-			if message, ok := systemMessageOf(parsed[0]); ok {
-				request = nullishArray(message.values["toolsAdded"])
-			}
-		}
-	} else {
-		request = currentTools(parsed)
+	system := systemMessages(parsed)
+	switch support {
+	case TranscriptToolSupportNone:
+		return TranscriptTools{RequestTools: stringifyAll(currentTools(system)), FoldedSystemMessages: len(system)}, nil
+	case TranscriptToolSupportChanges:
+		return TranscriptTools{RequestTools: []json.RawMessage{}}, nil
 	}
-	return TranscriptTools{RequestTools: stringifyAll(request), AnchorsAdditions: anchors}, nil
+	folded := findLastNonAdditiveToolChange(system) + 1
+	if len(parsed) > 0 {
+		if _, ok := systemMessageOf(parsed[0]); ok {
+			folded = max(folded, 1)
+		}
+	}
+	return TranscriptTools{RequestTools: stringifyAll(currentTools(system[:folded])), FoldedSystemMessages: folded}, nil
 }
