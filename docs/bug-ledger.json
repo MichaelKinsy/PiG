@@ -30644,25 +30644,6 @@
       ]
     },
     {
-      "id": "BF-df96b6a",
-      "title": "Fix in shipped code",
-      "symptom": "Fix in shipped code",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "df96b6a5ac",
-          "date": "2026-10-21"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-dfa57b3",
       "title": "An OpenAI Responses request for a conversation with no messages sends `\"input\": []` instead of `\"input\": null`",
       "symptom": "An OpenAI Responses request for a conversation with no messages sends `\"input\": []` instead of `\"input\": null`.",
