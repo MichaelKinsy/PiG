@@ -268,8 +268,8 @@ async function scene(m) {
       getAppendSystemPromptSources: () => [], extendResources() {}, async reload() {},
     };
     const out = {};
-    // The docs paths are the installation's: the message keeps its first line and the names of the documents it points at.
-    const norm = message => message == null ? null : { first: message.split("\n")[0], docs: message.split("\n").filter(line => line.trim().endsWith(".md")).map(line => line.trim().split("/").at(-1)) };
+    // The docs paths are the installation's: the message keeps its first line and the names of the documents it points at (Pi joins them with the platform's separator).
+    const norm = message => message == null ? null : { first: message.split("\n")[0], docs: message.split("\n").filter(line => line.trim().endsWith(".md")).map(line => line.trim().split(/[\\/]/).at(-1)) };
     const attempt = async (name, options) => {
       const { session, modelFallbackMessage } = await m.createAgentSession({ cwd: dir, modelRuntime: runtime, sessionManager: m.SessionManager.inMemory(dir), settingsManager: m.SettingsManager.inMemory({ compaction: { enabled: false } }), resourceLoader, ...options });
       try {

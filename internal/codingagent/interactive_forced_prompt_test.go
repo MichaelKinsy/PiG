@@ -3,6 +3,7 @@ package codingagent_test
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -152,8 +153,11 @@ func (b *forcedPromptBuild) runTwoPrompts(t *testing.T, prompt func(text string)
 	if len(requests) != 2 {
 		t.Fatalf("requests = %d, want 2", len(requests))
 	}
+	// system-prompt.ts:170 renders the cwd with forward slashes (cwd.replace(/\\/g, "/")), so a Windows temp path appears in the prompt in that form.
+	cwd, home := b.services.CWD(), b.home
+	replacer := strings.NewReplacer(cwd, "<cwd>", filepath.ToSlash(cwd), "<cwd>", home, "<home>", filepath.ToSlash(home), "<home>")
 	for i := range requests {
-		requests[i].Prompt = strings.NewReplacer(b.services.CWD(), "<cwd>", b.home, "<home>").Replace(requests[i].Prompt)
+		requests[i].Prompt = replacer.Replace(requests[i].Prompt)
 	}
 	return requests
 }
