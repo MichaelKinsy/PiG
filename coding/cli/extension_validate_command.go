@@ -207,6 +207,24 @@ func validateResolvedInstallSources(cwd string, sm *codingagent.SettingsManager,
 	if err != nil {
 		return nil, err
 	}
+	if packagemanager.DetectSourceKind(source) != "local" {
+		if _, statErr := os.Stat(root); errors.Is(statErr, os.ErrNotExist) {
+			// pig additive: an uninstalled source is fetched into a scratch
+			// install root that never touches installed packages or settings.
+			scratch, err := os.MkdirTemp("", "pig-validate-*")
+			if err != nil {
+				return nil, err
+			}
+			defer os.RemoveAll(scratch)
+			if err := packagemanager.InstallPackageArtifacts(scratch, scratch, sm, codingagent.PackageSource{Source: source}, false, nil); err != nil {
+				return nil, err
+			}
+			root, err = packagemanager.SourceRootForResources(scratch, scratch, sm, source, false)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 	return validateExtensionRuntimes(root)
 }
 
