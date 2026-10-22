@@ -1,6 +1,6 @@
 {
- "pin": "1.3.0+1402973a",
- "package": "pi-tui@1.3.0",
+ "pin": "1.4.0",
+ "package": "pi-tui@1.4.0",
  "module": "pi-tui",
  "export": "CancellableLoader",
  "cases": [
@@ -96,7 +96,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -107,7 +108,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -118,7 +120,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -214,7 +217,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -225,7 +229,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -236,7 +241,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -335,7 +341,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -346,7 +353,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -357,7 +365,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -455,7 +464,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -466,7 +476,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -477,7 +488,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -583,7 +595,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -594,7 +607,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -605,7 +619,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -705,7 +720,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -716,7 +732,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -727,7 +744,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -827,7 +845,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -838,7 +857,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -849,7 +869,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -958,7 +979,8 @@
       "events": [
        "abort:"
       ],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -975,7 +997,8 @@
       "events": [
        "abort:"
       ],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -992,7 +1015,8 @@
       "events": [
        "abort:"
       ],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -1109,7 +1133,8 @@
        "abort:",
        "abort:"
       ],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -1131,7 +1156,8 @@
        "abort:",
        "abort:"
       ],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -1153,7 +1179,8 @@
        "abort:",
        "abort:"
       ],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -1267,7 +1294,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -1286,7 +1314,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -1305,7 +1334,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }

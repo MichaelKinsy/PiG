@@ -1,6 +1,6 @@
 {
- "pin": "1.3.0+1402973a",
- "package": "pi-tui@1.3.0",
+ "pin": "1.4.0",
+ "package": "pi-tui@1.4.0",
  "module": "pi-tui",
  "export": "Input",
  "cases": [
@@ -94,7 +94,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -104,7 +105,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -114,7 +116,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -210,7 +213,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -220,7 +224,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -230,7 +235,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -326,7 +332,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -336,7 +343,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -346,7 +354,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -444,7 +453,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -454,7 +464,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -464,7 +475,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -562,7 +574,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -572,7 +585,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -582,7 +596,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -678,7 +693,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -688,7 +704,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -698,7 +715,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -795,7 +813,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 72,
@@ -805,7 +824,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      },
      {
       "width": 120,
@@ -815,7 +835,8 @@
        ]
       ],
       "events": [],
-      "changes": []
+      "changes": [],
+      "results": []
      }
     ]
    }
@@ -929,7 +950,8 @@
       "changes": [
        "漢字 and 😀 text@1",
        "漢字 and 😀 text@2"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -948,7 +970,8 @@
       "changes": [
        "漢字 and 😀 text@1",
        "漢字 and 😀 text@2"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -967,7 +990,8 @@
       "changes": [
        "漢字 and 😀 text@1",
        "漢字 and 😀 text@2"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -1087,7 +1111,8 @@
        "a@1",
        "ab@2",
        "abc@3"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -1110,7 +1135,8 @@
        "a@1",
        "ab@2",
        "abc@3"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -1133,7 +1159,8 @@
        "a@1",
        "ab@2",
        "abc@3"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -1267,7 +1294,8 @@
        "abc@3",
        "abc@2",
        "abXc@3"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -1298,7 +1326,8 @@
        "abc@3",
        "abc@2",
        "abXc@3"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -1329,7 +1358,8 @@
        "abc@3",
        "abc@2",
        "abXc@3"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -1484,7 +1514,8 @@
        "abcd@2",
        "acd@1",
        "ad@1"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -1527,7 +1558,8 @@
        "abcd@2",
        "acd@1",
        "ad@1"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -1570,7 +1602,8 @@
        "abcd@2",
        "acd@1",
        "ad@1"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -1718,7 +1751,8 @@
        "Zabc@1",
        "Zabc@4",
        "ZabcY@5"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -1757,7 +1791,8 @@
        "Zabc@1",
        "Zabc@4",
        "ZabcY@5"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -1796,7 +1831,8 @@
        "Zabc@1",
        "Zabc@4",
        "ZabcY@5"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -1965,7 +2001,8 @@
        "one @4",
        "one two@7",
        "one twotwo@10"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -2016,7 +2053,8 @@
        "one @4",
        "one two@7",
        "one twotwo@10"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -2067,7 +2105,8 @@
        "one @4",
        "one two@7",
        "one twotwo@10"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -2229,7 +2268,8 @@
        "abcdef@0",
        "abcdef@1",
        "a@1"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -2276,7 +2316,8 @@
        "abcdef@0",
        "abcdef@1",
        "a@1"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -2323,7 +2364,8 @@
        "abcdef@0",
        "abcdef@1",
        "a@1"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -2429,7 +2471,8 @@
       "events": [],
       "changes": [
        "0123456789 abcdefghijklmnopqrstuvwxyz 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ@75"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -2444,7 +2487,8 @@
       "events": [],
       "changes": [
        "0123456789 abcdefghijklmnopqrstuvwxyz 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ@75"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -2459,7 +2503,8 @@
       "events": [],
       "changes": [
        "0123456789 abcdefghijklmnopqrstuvwxyz 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ@75"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -2581,7 +2626,8 @@
        "a@1",
        "ab@2",
        "ab@2"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -2606,7 +2652,8 @@
        "a@1",
        "ab@2",
        "ab@2"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -2631,7 +2678,8 @@
        "a@1",
        "ab@2",
        "ab@2"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -2740,7 +2788,8 @@
       ],
       "changes": [
        "preset@0"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -2757,7 +2806,8 @@
       ],
       "changes": [
        "preset@0"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -2774,7 +2824,8 @@
       ],
       "changes": [
        "preset@0"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -2883,7 +2934,8 @@
       ],
       "changes": [
        "keep@0"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 72,
@@ -2900,7 +2952,8 @@
       ],
       "changes": [
        "keep@0"
-      ]
+      ],
+      "results": []
      },
      {
       "width": 120,
@@ -2917,7 +2970,8 @@
       ],
       "changes": [
        "keep@0"
-      ]
+      ],
+      "results": []
      }
     ]
    }
@@ -3036,6 +3090,9 @@
       "changes": [
        "hello world@5",
        "helloX world@6"
+      ],
+      "results": [
+       "hf"
       ]
      },
      {
@@ -3055,6 +3112,9 @@
       "changes": [
        "hello world@5",
        "helloX world@6"
+      ],
+      "results": [
+       "hf"
       ]
      },
      {
@@ -3074,6 +3134,9 @@
       "changes": [
        "hello world@5",
        "helloX world@6"
+      ],
+      "results": [
+       "hf"
       ]
      }
     ]
@@ -3193,6 +3256,9 @@
       "changes": [
        "hello world@0",
        "Xhello world@1"
+      ],
+      "results": [
+       "-"
       ]
      },
      {
@@ -3212,6 +3278,9 @@
       "changes": [
        "hello world@0",
        "Xhello world@1"
+      ],
+      "results": [
+       "-"
       ]
      },
      {
@@ -3231,6 +3300,9 @@
       "changes": [
        "hello world@0",
        "Xhello world@1"
+      ],
+      "results": [
+       "-"
       ]
      }
     ]

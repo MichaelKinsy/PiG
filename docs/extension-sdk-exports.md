@@ -11,17 +11,17 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
 | `pi-coding-agent` | 920 | 305 | 910 | 392 | 392 | 392 |
-| `pi-tui` | 364 | 85 | 363 | 146 | 146 | 146 |
-| `pi-ai` | 87 | 190 | 87 | 57 | 57 | 57 |
-| `pi-ai/compat` | 146 | 197 | 146 | 113 | 113 | 113 |
-| `pi-agent-core` | 43 | 34 | 43 | 43 | 43 | 43 |
+| `pi-tui` | 365 | 85 | 364 | 147 | 147 | 147 |
+| `pi-ai` | 97 | 197 | 97 | 67 | 67 | 67 |
+| `pi-ai/compat` | 156 | 204 | 156 | 123 | 123 | 123 |
+| `pi-agent-core` | 45 | 34 | 45 | 45 | 45 | 45 |
 
 ## Lanes that own gaps
 
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
 | C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 405 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
-| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1089 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
+| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1158 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 150 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 360 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 249 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
@@ -1103,6 +1103,7 @@ None.
 | `ProcessTerminal.kittyProtocolActive` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ProcessTerminal.modifyOtherKeysActive` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ProcessTerminal.moveBy` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.restoreOnExit` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ProcessTerminal.rows` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ProcessTerminal.setProgramStatus` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ProcessTerminal.setProgress` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1350,6 +1351,7 @@ None.
 
 | Export | uses | Node | Go | Rust | Python |
 |---|---|---|---|---|---|
+| `AI_TELEMETRY_SCHEMA` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `AssistantMessageEventStream` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
@@ -1376,6 +1378,8 @@ None.
 | `ModelsError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelsError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelsError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `PI_AI_VERSION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `PI_ATTRIBUTION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `StringEnum` | 28 | served | native:StringEnum | native:string_enum | native:string_enum |
 | `Type` | 14 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `appendAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1400,12 +1404,17 @@ None.
 | `fauxThinking` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxToolCall` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `formatThrownValue` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `formatUserAgent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message |
 | `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt |
 | `getCurrentTools` | 8 | served | native:GetCurrentTools | native:get_current_tools | native:get_current_tools |
 | `getDeclaredTools` | 1 | served | native:GetDeclaredTools | native:get_declared_tools | native:get_declared_tools |
+| `getIdentityHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getInitialSystemMessage` | 1 | served | native:GetInitialSystemMessage | native:get_initial_system_message | native:get_initial_system_message |
 | `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type |
+| `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getSupportedThinkingLevels` | 10 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels |
 | `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text |
@@ -1420,6 +1429,7 @@ None.
 | `lazyApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `lazyOAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `lazyStream` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `mergeClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `modelsAreEqual` | 2 | served | native:ModelsAreEqual | native:models_are_equal | native:models_are_equal |
 | `normalizeContext` | 6 | served | native:NormalizeContext | native:normalize_context | native:normalize_context |
 | `parseJsonWithRepair` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
@@ -1436,12 +1446,14 @@ None.
 | `uuidv7` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `validateToolArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `validateToolCall` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `withClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `withoutInitialSystemMessage` | 1 | served | native:WithoutInitialSystemMessage | native:without_initial_system_message | native:without_initial_system_message |
 
 ## pi-ai/compat
 
 | Export | uses | Node | Go | Rust | Python |
 |---|---|---|---|---|---|
+| `AI_TELEMETRY_SCHEMA` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ANTHROPIC_API_KEY_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ANTHROPIC_AUTH_TOKEN_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ANTHROPIC_FEDERATION_RULE_ID_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1476,6 +1488,8 @@ None.
 | `ModelsError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelsError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelsError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `PI_AI_VERSION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `PI_ATTRIBUTION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `StringEnum` | 28 | served | native:StringEnum | native:string_enum | native:string_enum |
 | `Type` | 14 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `anthropicMessagesApi` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1506,15 +1520,19 @@ None.
 | `fauxToolCall` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `findEnvKeys` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `formatThrownValue` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `formatUserAgent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `generateImages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `generateImagesOpenRouter` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getApiProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message |
 | `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt |
 | `getCurrentTools` | 8 | served | native:GetCurrentTools | native:get_current_tools | native:get_current_tools |
 | `getDeclaredTools` | 1 | served | native:GetDeclaredTools | native:get_declared_tools | native:get_declared_tools |
 | `getEnvApiKey` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getIdentityHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getImageModel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getImageModels` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getImageProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1523,6 +1541,7 @@ None.
 | `getModel` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type |
 | `getModels` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getProviders` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getSupportedThinkingLevels` | 12 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels |
@@ -1540,6 +1559,7 @@ None.
 | `lazyApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `lazyOAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `lazyStream` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `mergeClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `mistralConversationsApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `modelsAreEqual` | 3 | served | native:ModelsAreEqual | native:models_are_equal | native:models_are_equal |
 | `normalizeContext` | 6 | served | native:NormalizeContext | native:normalize_context | native:normalize_context |
@@ -1587,6 +1607,7 @@ None.
 | `uuidv7` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `validateToolArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `validateToolCall` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `withClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `withoutInitialSystemMessage` | 1 | served | native:WithoutInitialSystemMessage | native:without_initial_system_message | native:without_initial_system_message |
 
 ## pi-agent-core
@@ -1607,6 +1628,7 @@ None.
 | `Agent.followUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `Agent.getApiKey` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `Agent.hasQueuedMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.identity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `Agent.maxRetryDelayMs` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `Agent.onPayload` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `Agent.onProviderStreamEvent` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -1629,6 +1651,7 @@ None.
 | `Agent.transformContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `Agent.transport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `Agent.waitForIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `DEFAULT_AGENT_IDENTITY` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `agentLoop` | 2 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `agentLoopContinue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `runAgentLoop` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |

@@ -1,6 +1,6 @@
 {
- "pin": "1.3.0+1402973a",
- "package": "pi-ai@1.3.0",
+ "pin": "1.4.0",
+ "package": "pi-ai@1.4.0",
  "module": "pi-ai",
  "export": "isContextOverflow",
  "cases": [
@@ -1240,7 +1240,7 @@
      "timestamp": 1
     }
    ],
-   "result": false
+   "result": true
   },
   {
    "name": "case 0042",
@@ -1300,7 +1300,7 @@
      "timestamp": 1
     }
    ],
-   "result": false
+   "result": true
   },
   {
    "name": "case 0044",

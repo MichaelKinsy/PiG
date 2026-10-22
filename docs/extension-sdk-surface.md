@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.3.0+bd3c9b82's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.3.0+bd3c9b82`.
+Every extension-facing surface of Pi 1.4.0's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.4.0`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items and the Python SDK's classes, members and parameters, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.3.0+bd3c9b82.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.4.0.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -25,10 +25,10 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 478 | 29 | 11 |
-| Go | 481 | 27 | 10 |
-| Rust | 481 | 27 | 10 |
-| Python | 481 | 27 | 10 |
+| Node runtime | 480 | 27 | 11 |
+| Go | 482 | 26 | 10 |
+| Rust | 482 | 26 | 10 |
+| Python | 482 | 26 | 10 |
 
 31 PiG-only surfaces:
 
@@ -39,14 +39,14 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Rust | 31 | 0 | 0 |
 | Python | 31 | 0 | 0 |
 
-1608 package exports and class members, Node runtime:
+1611 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 901 | 9 | 0 | 10 |
-| `pi-tui` | 362 | 1 | 0 | 1 |
-| `pi-ai` | 94 | 2 | 0 | 0 |
-| `pi-ai/compat` | 145 | 10 | 0 | 0 |
+| `pi-coding-agent` | 900 | 10 | 0 | 10 |
+| `pi-tui` | 363 | 1 | 0 | 1 |
+| `pi-ai` | 95 | 2 | 0 | 0 |
+| `pi-ai/compat` | 146 | 10 | 0 | 0 |
 | `pi-ai/models` | 16 | 0 | 0 | 0 |
 | `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
 | `pi-agent-core` | 45 | 0 | 0 | 0 |
@@ -129,7 +129,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `pi.exec(options.signal)` | `ExtensionAPI.exec(options.signal)` | stand-in/partial `api.exec`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary |
+| `pi.exec(options.signal)` | `ExtensionAPI.exec(options.signal)` | implemented `api.exec` | implemented `ExecOptions.Signal` | implemented `ExecOptions.signal` | implemented `Context.exec(signal)` |
 | `pi.exec(options.timeout)` | `ExtensionAPI.exec(options.timeout)` | implemented `api.exec` | implemented `ExecOptions.Timeout` | implemented `ExecOptions.timeout` | implemented `Context.exec(timeout)` |
 | `pi.exec(options.cwd)` | `ExtensionAPI.exec(options.cwd)` | implemented `api.exec` | implemented `ExecOptions.Cwd` | implemented `ExecOptions.cwd` | implemented `Context.exec(cwd)` |
 | `pi.exec → stdout` | `ExtensionAPI.exec → stdout` | implemented `api.exec` | implemented `ExecResult.Stdout` | implemented `ExecResult.stdout` | implemented `ExecResult.stdout` |
@@ -901,21 +901,21 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.sessionManager.getCwd` | `ReadonlySessionManager.getCwd` | implemented `RuntimeSessionManager.getCwd` | implemented `SessionManager.GetCwd` | implemented `SessionManager::get_cwd` | implemented `SessionManager.get_cwd` |
-| `ctx.sessionManager.getSessionDir` | `ReadonlySessionManager.getSessionDir` | implemented `RuntimeSessionManager.getSessionDir` | implemented `SessionManager.GetSessionDir` | implemented `SessionManager::get_session_dir` | implemented `SessionManager.get_session_dir` |
-| `ctx.sessionManager.getSessionId` | `ReadonlySessionManager.getSessionId` | implemented `RuntimeSessionManager.getSessionId` | implemented `SessionManager.GetSessionID` | implemented `SessionManager::get_session_id` | implemented `SessionManager.get_session_id` |
-| `ctx.sessionManager.getSessionFile` | `ReadonlySessionManager.getSessionFile` | implemented `RuntimeSessionManager.getSessionFile` | implemented `SessionManager.GetSessionFile` | implemented `SessionManager::get_session_file` | implemented `SessionManager.get_session_file` |
-| `ctx.sessionManager.getSessionName` | `ReadonlySessionManager.getSessionName` | implemented `RuntimeSessionManager.getSessionName` | implemented `SessionManager.GetSessionName` | implemented `SessionManager::get_session_name` | implemented `SessionManager.get_session_name` |
-| `ctx.sessionManager.getLeafId` | `ReadonlySessionManager.getLeafId` | implemented `RuntimeSessionManager.getLeafId` | implemented `SessionManager.GetLeafID` | implemented `SessionManager::get_leaf_id` | implemented `SessionManager.get_leaf_id` |
-| `ctx.sessionManager.getLeafEntry` | `ReadonlySessionManager.getLeafEntry` | implemented `RuntimeSessionManager.getLeafEntry` | implemented `SessionManager.GetLeafEntry` | implemented `SessionManager::get_leaf_entry` | implemented `SessionManager.get_leaf_entry` |
-| `ctx.sessionManager.getEntry` | `ReadonlySessionManager.getEntry` | implemented `RuntimeSessionManager.getEntry` | implemented `SessionManager.GetEntry` | implemented `SessionManager::get_entry` | implemented `SessionManager.get_entry` |
-| `ctx.sessionManager.getLabel` | `ReadonlySessionManager.getLabel` | implemented `RuntimeSessionManager.getLabel` | implemented `SessionManager.GetLabel` | implemented `SessionManager::get_label` | implemented `SessionManager.get_label` |
-| `ctx.sessionManager.getBranch` | `ReadonlySessionManager.getBranch` | implemented `RuntimeSessionManager.getBranch` | implemented `SessionManager.GetBranch` | implemented `SessionManager::get_branch` | implemented `SessionManager.get_branch` |
-| `ctx.sessionManager.buildContextEntries` | `ReadonlySessionManager.buildContextEntries` | implemented `RuntimeSessionManager.buildContextEntries` | implemented `SessionManager.BuildContextEntries` | implemented `SessionManager::build_context_entries` | implemented `SessionManager.build_context_entries` |
-| `ctx.sessionManager.buildSessionProjection` | `ReadonlySessionManager.buildSessionProjection` | implemented `RuntimeSessionManager.buildSessionProjection` | implemented `SessionManager.BuildSessionProjection` | implemented `SessionManager::build_session_projection` | implemented `SessionManager.build_session_projection` |
-| `ctx.sessionManager.getHeader` | `ReadonlySessionManager.getHeader` | implemented `RuntimeSessionManager.getHeader` | implemented `SessionManager.GetHeader` | implemented `SessionManager::get_header` | implemented `SessionManager.get_header` |
-| `ctx.sessionManager.getEntries` | `ReadonlySessionManager.getEntries` | implemented `RuntimeSessionManager.getEntries` | implemented `SessionManager.GetEntries` | implemented `SessionManager::get_entries` | implemented `SessionManager.get_entries` |
-| `ctx.sessionManager.getTree` | `ReadonlySessionManager.getTree` | implemented `RuntimeSessionManager.getTree` | implemented `SessionManager.GetTree` | implemented `SessionManager::get_tree` | implemented `SessionManager.get_tree` |
+| `ctx.sessionManager.getCwd` | `ReadonlySessionManager.getCwd` | implemented `RuntimeSessionManager.getCwd` | implemented `ReadonlySessionManager.GetCwd` | implemented `ReadonlySessionManager::get_cwd` | implemented `ReadonlySessionManager.get_cwd` |
+| `ctx.sessionManager.getSessionDir` | `ReadonlySessionManager.getSessionDir` | implemented `RuntimeSessionManager.getSessionDir` | implemented `ReadonlySessionManager.GetSessionDir` | implemented `ReadonlySessionManager::get_session_dir` | implemented `ReadonlySessionManager.get_session_dir` |
+| `ctx.sessionManager.getSessionId` | `ReadonlySessionManager.getSessionId` | implemented `RuntimeSessionManager.getSessionId` | implemented `ReadonlySessionManager.GetSessionID` | implemented `ReadonlySessionManager::get_session_id` | implemented `ReadonlySessionManager.get_session_id` |
+| `ctx.sessionManager.getSessionFile` | `ReadonlySessionManager.getSessionFile` | implemented `RuntimeSessionManager.getSessionFile` | implemented `ReadonlySessionManager.GetSessionFile` | implemented `ReadonlySessionManager::get_session_file` | implemented `ReadonlySessionManager.get_session_file` |
+| `ctx.sessionManager.getSessionName` | `ReadonlySessionManager.getSessionName` | implemented `RuntimeSessionManager.getSessionName` | implemented `ReadonlySessionManager.GetSessionName` | implemented `ReadonlySessionManager::get_session_name` | implemented `ReadonlySessionManager.get_session_name` |
+| `ctx.sessionManager.getLeafId` | `ReadonlySessionManager.getLeafId` | implemented `RuntimeSessionManager.getLeafId` | implemented `ReadonlySessionManager.GetLeafID` | implemented `ReadonlySessionManager::get_leaf_id` | implemented `ReadonlySessionManager.get_leaf_id` |
+| `ctx.sessionManager.getLeafEntry` | `ReadonlySessionManager.getLeafEntry` | implemented `RuntimeSessionManager.getLeafEntry` | implemented `ReadonlySessionManager.GetLeafEntry` | implemented `ReadonlySessionManager::get_leaf_entry` | implemented `ReadonlySessionManager.get_leaf_entry` |
+| `ctx.sessionManager.getEntry` | `ReadonlySessionManager.getEntry` | implemented `RuntimeSessionManager.getEntry` | implemented `ReadonlySessionManager.GetEntry` | implemented `ReadonlySessionManager::get_entry` | implemented `ReadonlySessionManager.get_entry` |
+| `ctx.sessionManager.getLabel` | `ReadonlySessionManager.getLabel` | implemented `RuntimeSessionManager.getLabel` | implemented `ReadonlySessionManager.GetLabel` | implemented `ReadonlySessionManager::get_label` | implemented `ReadonlySessionManager.get_label` |
+| `ctx.sessionManager.getBranch` | `ReadonlySessionManager.getBranch` | implemented `RuntimeSessionManager.getBranch` | implemented `ReadonlySessionManager.GetBranch` | implemented `ReadonlySessionManager::get_branch` | implemented `ReadonlySessionManager.get_branch` |
+| `ctx.sessionManager.buildContextEntries` | `ReadonlySessionManager.buildContextEntries` | implemented `RuntimeSessionManager.buildContextEntries` | implemented `ReadonlySessionManager.BuildContextEntries` | implemented `ReadonlySessionManager::build_context_entries` | implemented `ReadonlySessionManager.build_context_entries` |
+| `ctx.sessionManager.buildSessionProjection` | `ReadonlySessionManager.buildSessionProjection` | implemented `RuntimeSessionManager.buildSessionProjection` | implemented `ReadonlySessionManager.BuildSessionProjection` | implemented `ReadonlySessionManager::build_session_projection` | implemented `ReadonlySessionManager.build_session_projection` |
+| `ctx.sessionManager.getHeader` | `ReadonlySessionManager.getHeader` | implemented `RuntimeSessionManager.getHeader` | implemented `ReadonlySessionManager.GetHeader` | implemented `ReadonlySessionManager::get_header` | implemented `ReadonlySessionManager.get_header` |
+| `ctx.sessionManager.getEntries` | `ReadonlySessionManager.getEntries` | implemented `RuntimeSessionManager.getEntries` | implemented `ReadonlySessionManager.GetEntries` | implemented `ReadonlySessionManager::get_entries` | implemented `ReadonlySessionManager.get_entries` |
+| `ctx.sessionManager.getTree` | `ReadonlySessionManager.getTree` | implemented `RuntimeSessionManager.getTree` | implemented `ReadonlySessionManager.GetTree` | implemented `ReadonlySessionManager::get_tree` | implemented `ReadonlySessionManager.get_tree` |
 
 ## ctx (ExtensionContext)
 
@@ -961,7 +961,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.model` | `ExtensionContext.model` | stand-in/partial `RuntimeContext.model`: the current model's metadata from the host's model registry | stand-in/partial `Context.GetModelInfo`: the current model's metadata from the host's model registry | stand-in/partial `Context::get_model_info`: the current model's metadata from the host's model registry | stand-in/partial `Context.get_model_info`: the current model's metadata from the host's model registry |
+| `ctx.model` | `ExtensionContext.model` | implemented `RuntimeContext.model` | stand-in/partial `Context.Model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through ModelProvider, the rest of the Model object through GetModelInfo | stand-in/partial `Context::model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info | stand-in/partial `Context.model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info |
 | `ctx.scopedModels` | `ExtensionContext.scopedModels` | implemented `RuntimeContext.scopedModels` | implemented `Context.ScopedModels` | implemented `Context::scoped_models` | implemented `Context.scoped_models` |
 | `ctx.thinkingLevel` | `ExtensionContext.thinkingLevel` | implemented `RuntimeContext.thinkingLevel` | implemented `Context.GetThinkingLevel` | implemented `Context::get_thinking_level` | implemented `Context.get_thinking_level` |
 | `ctx.isIdle` | `ExtensionContext.isIdle` | implemented `RuntimeContext.isIdle` | implemented `Context.IsIdle` | implemented `Context::is_idle` | implemented `Context.is_idle` |
@@ -2446,6 +2446,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: Markdown.invalidate` | `Markdown.invalidate` | Pi's own code |
 | `pi-tui: Markdown.render` | `Markdown.render` | Pi's own code |
 | `pi-tui: Markdown.setText` | `Markdown.setText` | Pi's own code |
+| `pi-tui: Marked` | `external Marked` | Pi's own code |
 | `pi-tui: MouseRegion` | `class MouseRegion` | Pi's own code |
 | `pi-tui: MouseRegion.handleMouse` | `MouseRegion.handleMouse` | Pi's own code |
 | `pi-tui: MouseRegion.invalidate` | `MouseRegion.invalidate` | Pi's own code |
@@ -2738,6 +2739,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: PI_AI_VERSION` | `variable PI_AI_VERSION` | bridged |
 | `pi-ai: PI_ATTRIBUTION` | `variable PI_ATTRIBUTION` | Pi's own code |
 | `pi-ai: StringEnum` | `function StringEnum` | Pi's own code |
+| `pi-ai: Type` | `external Type` | Pi's own code |
 | `pi-ai: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai: calculateCost` | `function calculateCost` | Pi's own code |
 | `pi-ai: clampThinkingLevel` | `function clampThinkingLevel` | Pi's own code |
@@ -2847,6 +2849,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: PI_AI_VERSION` | `variable PI_AI_VERSION` | bridged |
 | `pi-ai/compat: PI_ATTRIBUTION` | `variable PI_ATTRIBUTION` | Pi's own code |
 | `pi-ai/compat: StringEnum` | `function StringEnum` | Pi's own code |
+| `pi-ai/compat: Type` | `external Type` | Pi's own code |
 | `pi-ai/compat: anthropicMessagesApi` | `variable anthropicMessagesApi` | Pi's own code |
 | `pi-ai/compat: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai/compat: azureOpenAIResponsesApi` | `variable azureOpenAIResponsesApi` | Pi's own code |

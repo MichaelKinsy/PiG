@@ -1,6 +1,6 @@
 {
- "pin": "1.3.0+1402973a",
- "package": "pi-ai@1.3.0",
+ "pin": "1.4.0",
+ "package": "pi-ai@1.4.0",
  "module": "pi-ai",
  "export": "isRetryableAssistantError",
  "cases": [
@@ -632,7 +632,7 @@
      "timestamp": 1
     }
    ],
-   "result": true
+   "result": false
   },
   {
    "name": "case 0022",
@@ -3002,7 +3002,7 @@
      "timestamp": 1
     }
    ],
-   "result": true
+   "result": false
   },
   {
    "name": "case 0101",
@@ -3032,7 +3032,7 @@
      "timestamp": 1
     }
    ],
-   "result": true
+   "result": false
   },
   {
    "name": "case 0102",

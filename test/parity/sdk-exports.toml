@@ -1101,6 +1101,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: ProcessTerminal.kittyProtocolActive" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-tui: ProcessTerminal.modifyOtherKeysActive" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-tui: ProcessTerminal.moveBy" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-tui: ProcessTerminal.restoreOnExit" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-tui: ProcessTerminal.rows" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-tui: ProcessTerminal.setProgramStatus" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-tui: ProcessTerminal.setProgress" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -1343,6 +1344,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: truncateToWidth" = { go = "native:tui.TruncateToWidth", rust = "native:tui::truncate_to_width", python = "native:tui.truncate_to_width" }
 "pi-tui: visibleWidth" = { go = "native:tui.VisibleWidth", rust = "native:tui::visible_width", python = "native:tui.visible_width" }
 "pi-tui: wrapTextWithAnsi" = { go = "native:tui.WrapTextWithAnsi", rust = "native:tui::wrap_text_with_ansi", python = "native:tui.wrap_text_with_ansi" }
+"pi-ai: AI_TELEMETRY_SCHEMA" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: AssistantMessageEventStream" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai: AssistantMessageEventStream.[Symbol.asyncIterator]" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai: AssistantMessageEventStream.end" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
@@ -1369,6 +1371,8 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai: ModelsError.message" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-ai: ModelsError.name" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-ai: ModelsError.stack" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-ai: PI_AI_VERSION" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai: PI_ATTRIBUTION" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: StringEnum" = { go = "native:StringEnum", rust = "native:string_enum", python = "native:string_enum" }
 "pi-ai: Type" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai: appendAssistantMessageDiagnostic" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -1393,12 +1397,17 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai: fauxThinking" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: fauxToolCall" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: formatThrownValue" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai: formatUserAgent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai: getAttributionHeaders" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai: getClientVersion" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: getCurrentSystemMessage" = { go = "native:GetCurrentSystemMessage", rust = "native:get_current_system_message", python = "native:get_current_system_message" }
 "pi-ai: getCurrentSystemPrompt" = { go = "native:GetCurrentSystemPrompt", rust = "native:get_current_system_prompt", python = "native:get_current_system_prompt" }
 "pi-ai: getCurrentTools" = { go = "native:GetCurrentTools", rust = "native:get_current_tools", python = "native:get_current_tools" }
 "pi-ai: getDeclaredTools" = { go = "native:GetDeclaredTools", rust = "native:get_declared_tools", python = "native:get_declared_tools" }
+"pi-ai: getIdentityHeaders" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: getInitialSystemMessage" = { go = "native:GetInitialSystemMessage", rust = "native:get_initial_system_message", python = "native:get_initial_system_message" }
 "pi-ai: getModelType" = { go = "native:GetModelType", rust = "native:get_model_type", python = "native:get_model_type" }
+"pi-ai: getOpenCodeSessionHeaders" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: getOverflowPatterns" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai: getSupportedThinkingLevels" = { go = "native:GetSupportedThinkingLevels", rust = "native:get_supported_thinking_levels", python = "native:get_supported_thinking_levels" }
 "pi-ai: getSystemMessageText" = { go = "native:GetSystemMessageText", rust = "native:get_system_message_text", python = "native:get_system_message_text" }
@@ -1413,6 +1422,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai: lazyApi" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: lazyOAuth" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: lazyStream" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai: mergeClientIdentity" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: modelsAreEqual" = { go = "native:ModelsAreEqual", rust = "native:models_are_equal", python = "native:models_are_equal" }
 "pi-ai: normalizeContext" = { go = "native:NormalizeContext", rust = "native:normalize_context", python = "native:normalize_context" }
 "pi-ai: parseJsonWithRepair" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
@@ -1429,7 +1439,9 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai: uuidv7" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai: validateToolArguments" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai: validateToolCall" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
+"pi-ai: withClientIdentity" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai: withoutInitialSystemMessage" = { go = "native:WithoutInitialSystemMessage", rust = "native:without_initial_system_message", python = "native:without_initial_system_message" }
+"pi-ai/compat: AI_TELEMETRY_SCHEMA" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: ANTHROPIC_API_KEY_ENV" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: ANTHROPIC_AUTH_TOKEN_ENV" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: ANTHROPIC_FEDERATION_RULE_ID_ENV" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -1464,6 +1476,8 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai/compat: ModelsError.message" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-ai/compat: ModelsError.name" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-ai/compat: ModelsError.stack" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-ai/compat: PI_AI_VERSION" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai/compat: PI_ATTRIBUTION" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: StringEnum" = { go = "native:StringEnum", rust = "native:string_enum", python = "native:string_enum" }
 "pi-ai/compat: Type" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai/compat: anthropicMessagesApi" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -1494,15 +1508,19 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai/compat: fauxToolCall" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: findEnvKeys" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai/compat: formatThrownValue" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai/compat: formatUserAgent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: generateImages" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: generateImagesOpenRouter" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: getApiProvider" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: getApiProviders" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai/compat: getAttributionHeaders" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai/compat: getClientVersion" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: getCurrentSystemMessage" = { go = "native:GetCurrentSystemMessage", rust = "native:get_current_system_message", python = "native:get_current_system_message" }
 "pi-ai/compat: getCurrentSystemPrompt" = { go = "native:GetCurrentSystemPrompt", rust = "native:get_current_system_prompt", python = "native:get_current_system_prompt" }
 "pi-ai/compat: getCurrentTools" = { go = "native:GetCurrentTools", rust = "native:get_current_tools", python = "native:get_current_tools" }
 "pi-ai/compat: getDeclaredTools" = { go = "native:GetDeclaredTools", rust = "native:get_declared_tools", python = "native:get_declared_tools" }
 "pi-ai/compat: getEnvApiKey" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
+"pi-ai/compat: getIdentityHeaders" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: getImageModel" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: getImageModels" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: getImageProviders" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -1511,6 +1529,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai/compat: getModel" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai/compat: getModelType" = { go = "native:GetModelType", rust = "native:get_model_type", python = "native:get_model_type" }
 "pi-ai/compat: getModels" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
+"pi-ai/compat: getOpenCodeSessionHeaders" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: getOverflowPatterns" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai/compat: getProviders" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai/compat: getSupportedThinkingLevels" = { go = "native:GetSupportedThinkingLevels", rust = "native:get_supported_thinking_levels", python = "native:get_supported_thinking_levels" }
@@ -1528,6 +1547,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai/compat: lazyApi" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: lazyOAuth" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: lazyStream" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
+"pi-ai/compat: mergeClientIdentity" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: mistralConversationsApi" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: modelsAreEqual" = { go = "native:ModelsAreEqual", rust = "native:models_are_equal", python = "native:models_are_equal" }
 "pi-ai/compat: normalizeContext" = { go = "native:NormalizeContext", rust = "native:normalize_context", python = "native:normalize_context" }
@@ -1575,6 +1595,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai/compat: uuidv7" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai/compat: validateToolArguments" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-ai/compat: validateToolCall" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
+"pi-ai/compat: withClientIdentity" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-ai/compat: withoutInitialSystemMessage" = { go = "native:WithoutInitialSystemMessage", rust = "native:without_initial_system_message", python = "native:without_initial_system_message" }
 "pi-agent-core: Agent" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: Agent.abort" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
@@ -1590,6 +1611,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-agent-core: Agent.followUpMode" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: Agent.getApiKey" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: Agent.hasQueuedMessages" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+"pi-agent-core: Agent.identity" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-agent-core: Agent.maxRetryDelayMs" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: Agent.onPayload" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: Agent.onProviderStreamEvent" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
@@ -1612,6 +1634,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-agent-core: Agent.transformContext" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: Agent.transport" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: Agent.waitForIdle" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+"pi-agent-core: DEFAULT_AGENT_IDENTITY" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-agent-core: agentLoop" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: agentLoopContinue" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: runAgentLoop" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
