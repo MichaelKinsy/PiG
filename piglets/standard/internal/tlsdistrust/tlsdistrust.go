@@ -149,11 +149,20 @@ func HardenTransport(transport *http.Transport) {
 	transport.TLSClientConfig = Harden(transport.TLSClientConfig)
 }
 
+// defaultTransportConfig is what [Harden] returns for a nil config, as a statically initialized value: the default transport has no
+// TLS config of its own, and building one in init cost four allocations in every binary that links this package.
+var defaultTransportConfig = tls.Config{MinVersion: tls.VersionTLS12, VerifyConnection: Verify}
+
 // init hardens http.DefaultTransport before any client of a program that links this package can use it.
 // Clients that leave Transport nil, http.DefaultClient and every Clone of the default transport made later
 // inherit the hook.
 func init() {
-	if transport, ok := http.DefaultTransport.(*http.Transport); ok {
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	switch {
+	case !ok:
+	case transport.TLSClientConfig == nil:
+		transport.TLSClientConfig = &defaultTransportConfig
+	default:
 		HardenTransport(transport)
 	}
 }
