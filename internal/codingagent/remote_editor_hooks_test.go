@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -44,11 +45,16 @@ func TestDelegatedEditorHandleInputAnswersTheComponentsHooks(t *testing.T) {
 		t.Fatalf("hooked app.clear: answer %v, text %q; want the hook and the text kept", got, m.editor.Text())
 	}
 
+	// keybindings.ts:143 binds app.clipboard.pasteImage to alt+v with Windows keybindings and to ctrl+v elsewhere.
+	pasteKey := "\x16" // Ctrl+V
+	if runtime.GOOS == "windows" {
+		pasteKey = "\x1bv" // Alt+V
+	}
 	m.editor.AsBase(func() { m.editor.SetText("") })
 	for _, tc := range []struct{ name, key, action string }{
 		{"escape", "\x1b", "app.interrupt"},
 		{"ctrl+d on an empty editor", "\x04", "app.exit"},
-		{"paste image", "\x16", "app.clipboard.pasteImage"},
+		{"paste image", pasteKey, "app.clipboard.pasteImage"},
 	} {
 		if got := handleInputHook(t, h, tc.key, tc.action); got != tc.action {
 			t.Errorf("%s hooked: handleInput answered %v, want the hook %q", tc.name, got, tc.action)
