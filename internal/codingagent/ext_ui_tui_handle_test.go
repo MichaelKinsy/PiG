@@ -1,11 +1,18 @@
 package codingagent
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"io"
 	"slices"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // D193: a click on an OSC 8 link of a claimed scheme goes to the extension and opens nothing; any other address
@@ -72,5 +79,42 @@ func TestLinkSchemesRefuseAReservedScheme(t *testing.T) {
 		if _, err := s.register("a", scheme, func(string) {}); err == nil {
 			t.Fatalf("%q was claimed", scheme)
 		}
+	}
+}
+
+// Pi's TUI.invalidate() reaches the transcript: the extension's Markdown transformer runs again on the next frame, in the main-screen and the alternate-screen renderer alike.
+func TestInvalidateTUIRerunsTheTranscriptMarkdownTransformer(t *testing.T) {
+	for _, mode := range []string{"main", "alt"} {
+		t.Run(mode, func(t *testing.T) {
+			var workers sync.WaitGroup
+			var calls atomic.Int32
+			block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+			block.SetAsyncMarkdownTransforms(&tui.AsyncMarkdownTransform{Context: t.Context(), Start: workers.Go, Invalidate: block.Invalidate, Prepare: func(text string, _ int) func(context.Context) string {
+				return func(context.Context) string { return fmt.Sprintf("%s version%d", text, calls.Add(1)) }
+			}}, nil)
+			block.SetContent([]tui.AssistantSegment{{Text: "stretch"}})
+			chat := tui.NewContainer()
+			chat.Add(block)
+			var inst tui.TUI
+			if mode == "main" {
+				inst = tui.NewWithOutput(io.Discard, 80, 24)
+			} else {
+				inst = tui.NewTuiAltScreenWithOutput(io.Discard, 80, 24, tui.TuiAltScreenOptions{})
+			}
+			inst.Add(chat)
+			m := &InteractiveMode{tuiInst: inst, chatContainer: chat}
+			frame := func() string {
+				inst.RenderSnapshot(80)
+				workers.Wait()
+				return strings.Join(inst.RenderSnapshot(80), "\n")
+			}
+			if got := frame(); !strings.Contains(got, "stretch version1") {
+				t.Fatalf("first frame = %q", got)
+			}
+			(&ExtUIContext{m: m}).InvalidateTUI()
+			if got := frame(); !strings.Contains(got, "stretch version2") {
+				t.Fatalf("frame after InvalidateTUI = %q (transformer calls %d)", got, calls.Load())
+			}
+		})
 	}
 }

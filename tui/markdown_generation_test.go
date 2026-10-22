@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -72,4 +73,47 @@ func TestDroppedAssistantMarkdownCancelsGeneration(t *testing.T) {
 			t.Fatalf("removed body painted: %q", got)
 		}
 	})
+}
+
+// Pi's TUI.invalidate() (tui.ts:366) drops every component's render cache, so a stateful Markdown transformer runs again on the next frame. An extension's click handler relies on it to repaint; the transform here is asynchronous, as a subprocess extension's is.
+func TestInvalidateMountedRerunsAsyncMarkdownTransformer(t *testing.T) {
+	for _, mode := range []string{"main", "alt"} {
+		t.Run(mode, func(t *testing.T) {
+			var workers sync.WaitGroup
+			var calls atomic.Int32
+			block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+			block.SetAsyncMarkdownTransforms(&AsyncMarkdownTransform{Context: t.Context(), Start: workers.Go, Invalidate: block.Invalidate, Prepare: func(text string, _ int) func(context.Context) string {
+				return func(context.Context) string { return fmt.Sprintf("%s version%d", text, calls.Add(1)) }
+			}}, nil)
+			block.SetContent([]AssistantSegment{{Text: "stretch"}})
+			chat := NewContainer()
+			chat.Add(block)
+			var ui interface {
+				Add(Component)
+				RenderSnapshot(int) []string
+				InvalidateMounted()
+			}
+			if mode == "main" {
+				ui = NewWithOutput(io.Discard, 80, 24)
+			} else {
+				ui = NewTuiAltScreenWithOutput(io.Discard, 80, 24, TuiAltScreenOptions{})
+			}
+			ui.Add(chat)
+			render := func() string {
+				ui.RenderSnapshot(80)
+				workers.Wait()
+				return strings.Join(ui.RenderSnapshot(80), "\n")
+			}
+			if got := render(); !strings.Contains(got, "stretch version1") {
+				t.Fatalf("first frame = %q", got)
+			}
+			if got := render(); !strings.Contains(got, "stretch version1") || calls.Load() != 1 {
+				t.Fatalf("an unchanged frame ran the transformer again: calls %d, %q", calls.Load(), got)
+			}
+			ui.InvalidateMounted()
+			if got := render(); !strings.Contains(got, "stretch version2") {
+				t.Fatalf("frame after invalidate = %q (transformer calls %d)", got, calls.Load())
+			}
+		})
+	}
 }

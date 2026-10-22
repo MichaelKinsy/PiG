@@ -46,6 +46,10 @@ func (t *tuiBase) ConsumeCellSizeResponse(data string) bool {
 	return true
 }
 
+// InvalidateMounted is TuiBase.invalidate (tui.ts:366): every mounted component and overlay drops its render cache, an
+// asynchronous Markdown transform's result included, so the next frame renders it again. It requests no frame.
+func (t *tuiBase) InvalidateMounted() { t.invalidateMounted() }
+
 // invalidateMounted invalidates every mounted root and overlay component with
 // their descendants. Mirrors upstream TuiBase.invalidate over getMountedRoots
 // and the overlay stack.

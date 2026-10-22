@@ -18,8 +18,13 @@ func (u *ExtUIContext) InvalidateTUI() {
 	apply := func() {
 		u.m.rendererMu.RLock()
 		defer u.m.rendererMu.RUnlock()
-		if u.m.tuiInst != nil {
-			u.m.tuiInst.Invalidate()
+		switch inst := u.m.tuiInst.(type) {
+		case nil:
+		case interface{ InvalidateMounted() }:
+			// Pi's TUI.invalidate walks every mounted component, as a theme change does; the renderer's own Invalidate marks only its root.
+			inst.InvalidateMounted()
+		default:
+			inst.Invalidate()
 		}
 	}
 	if u.m.runCtx == nil {
