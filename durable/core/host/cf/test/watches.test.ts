@@ -65,7 +65,6 @@ test("an absent document gives undefined and leaves nothing to close", async () 
   const core = watching(null)
   const h = await open(core)
   assert.equal(await h.watchDoc(Notes, context), undefined)
-  assert.equal(await h.documentState(Notes, context), undefined)
   await h.close(context)
   assert.equal(closes(core).length, 0)
 })
@@ -107,15 +106,16 @@ test("a null frame retires the watch: the listener sees it, the watch ends retir
   assert.equal(closes(core).length, 1)
 })
 
-test("documentState follows the published frames and dispose releases the core's watch", async () => {
+test("a started document watch follows the published frames and stop releases the core's watch", async () => {
   const core = watching({ n: 1 }, { frames: id => [published({ watchId: id, frame: { value: { n: 2 }, ops: [["r", { n: 2 }]] } })] })
   const h = await open(core)
-  const state = (await h.documentState(Notes, context))!
+  const state = (await h.watchDoc(Notes, context))!
+  state.start(async () => {})
   assert.deepEqual(state.value, { n: 1 })
   pump(h)
   await tick()
   assert.deepEqual(state.value, { n: 2 })
-  state.dispose()
+  await state.stop()
   await tick()
   assert.equal(closes(core).length, 1)
 })
@@ -130,10 +130,9 @@ test("closing the Harness ends every watch as session_closed without asking the 
   assert.equal(closes(core).length, 0)
 })
 
-test("taskGraph and a conversation's view watch name their targets", async () => {
+test("the task graph watch and a conversation's view watch name their targets", async () => {
   const core = watching({ tasks: {} })
   const h = await open(core)
-  await h.taskGraph(context)
   await h.watchTaskGraph(context)
   const viewCore = watching({ messages: [] })
   const h2 = await open(viewCore)
@@ -283,12 +282,12 @@ test("an acquisition whose context is already cancelled rejects without asking t
 test("observers of the task graph share one mount and one value object, closed with the last observer", async () => {
   const core = watching({ tasks: {} })
   const h = await open(core)
-  const [first, second] = await Promise.all([h.taskGraph(context), h.taskGraph(context)]) as any[]
+  const [first, second] = await Promise.all([h.watchTaskGraph(context), h.watchTaskGraph(context)]) as any[]
   assert.equal(apis(core).filter(e => e.body.op === "watch.open").length, 1)
   assert.ok(first.value === second.value)
-  first.dispose(); await tick()
+  await first.stop(); await tick()
   assert.equal(closes(core).length, 0)
-  second.dispose(); await tick()
+  await second.stop(); await tick()
   assert.equal(closes(core).length, 1)
 })
 
