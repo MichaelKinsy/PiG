@@ -21847,6 +21847,25 @@
       "tests": []
     },
     {
+      "id": "BF-9e1cf18",
+      "title": "fix: restore the train's sdk-bundle chunks after the main merge, gzip the changelog, gofmt the newline test",
+      "symptom": "fix: restore the train's sdk-bundle chunks after the main merge, gzip the changelog, gofmt the newline test",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9e1cf188c5",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9f4702c",
       "title": "A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error…",
       "symptom": "Previously it was shown as a warning.",

@@ -748,6 +748,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9c98038](#bf-9c98038) | An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-9d4fe9c](#bf-9d4fe9c) | Selecting a model or cycling models with Ctrl+P no longer freezes the interactive mode when an extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9d64980](#bf-9d64980) | fix(coding): provider order and availability of virtual models follow Pi | PiG's own defect | All platforms | Unreleased |
+| [BF-9e1cf18](#bf-9e1cf18) | fix: restore the train's sdk-bundle chunks after the main merge, gzip the changelog, gofmt the newline test | PiG's own defect | All platforms | Unreleased |
 | [BF-9f4702c](#bf-9f4702c) | A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-D110](#bf-d110) | Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D150](#bf-d150) | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -11278,6 +11279,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `9d64980afc` (2026-10-10)
+- **Tests:** None recorded.
+
+### BF-9e1cf18
+
+**fix: restore the train's sdk-bundle chunks after the main merge, gzip the changelog, gofmt the newline test**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: restore the train's sdk-bundle chunks after the main merge, gzip the changelog, gofmt the newline test
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9e1cf188c5` (2026-10-23)
 - **Tests:** None recorded.
 
 ### BF-9f4702c
