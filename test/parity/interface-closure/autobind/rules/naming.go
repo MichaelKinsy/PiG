@@ -36,7 +36,7 @@ var initialisms = map[string]string{
 	"sdk": "SDK", "llm": "LLM", "mcp": "MCP", "rgb": "RGB", "sha": "SHA", "md": "MD",
 	"www": "WWW", "pid": "PID", "cwd": "CWD", "ms": "MS", "jsonrpc": "JSONRPC", "utc": "UTC", "js": "JS",
 	// Words Go spells with an inner capital (compound words and brand names).
-	"websocket": "WebSocket", "etag": "ETag", "webp": "WebP", "openai": "OpenAI", "uuidv7": "UUIDv7", "byok": "BYOK",
+	"websocket": "WebSocket", "etag": "ETag", "webp": "WebP", "openai": "OpenAI", "uuidv7": "UUIDv7",
 	// Provider brand names the catalog constants carry (DEEPSEEK_MODELS is DeepSeekModels).
 	"deepseek": "DeepSeek", "vllm": "VLLM", "github": "GitHub", "huggingface": "HuggingFace", "minimax": "MiniMax", "moonshotai": "MoonshotAI",
 	"opencode": "OpenCode", "openrouter": "OpenRouter", "cn": "CN", "byok": "BYOK",
