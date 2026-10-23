@@ -57,20 +57,35 @@ func (c *collector) bytes() []byte {
 
 func (c *collector) waitFor(t *testing.T, text string) {
 	t.Helper()
+	c.waitUntil(t, fmt.Sprintf("%q", text), func(data []byte) bool { return bytes.Contains(data, []byte(text)) })
+}
+
+// waitForAfter waits for text to appear in the output after the first occurrence of marker.
+func (c *collector) waitForAfter(t *testing.T, marker, text string) {
+	t.Helper()
+	c.waitUntil(t, fmt.Sprintf("%q after %q", text, marker), func(data []byte) bool {
+		at := bytes.Index(data, []byte(marker))
+		return at >= 0 && bytes.Contains(data[at+len(marker):], []byte(text))
+	})
+}
+
+// waitUntil waits for found to hold of the output so far; what names the awaited output in the failure.
+func (c *collector) waitUntil(t *testing.T, what string, found func(data []byte) bool) {
+	t.Helper()
 	deadline := time.NewTimer(terminalTestTimeout)
 	defer deadline.Stop()
 	for {
 		c.mu.Lock()
-		found := strings.Contains(string(c.data), text)
+		done := found(c.data)
 		changed := c.changed
 		c.mu.Unlock()
-		if found {
+		if done {
 			return
 		}
 		select {
 		case <-changed:
 		case <-deadline.C:
-			t.Fatalf("output never contained %q: %q", text, c.bytes())
+			t.Fatalf("output never contained %s: %q", what, c.bytes())
 		}
 	}
 }
@@ -150,6 +165,13 @@ func TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode(t *t
 		output.waitFor(t, "IS-A-TTY")
 		output.waitFor(t, "24 80")
 		output.waitFor(t, "xterm-256color")
+		// The shell's next prompt, so the resize lands while the shell waits for input. macOS's /bin/sh is bash 3.2, and its readline
+		// prepares the terminal before every prompt by reading the window size and writing the value it read back
+		// (lib/readline/rltty.c set_winsize). A resize that arrives between that read and that write is overwritten with the old size
+		// by the shell, not dropped by the daemon: the daemon's TIOCSWINSZ succeeds and the size reads old again. The prompt is
+		// printed after the preparation (readline.c readline: rl_prep_terminal, then the prompt), so waiting for it ends the window.
+		// Pi's test resizes as soon as the output arrives and has the same window.
+		output.waitForAfter(t, "xterm-256color", "$ ")
 		terminal.Resize(100, 30)
 		terminal.Write("stty size\n")
 		output.waitFor(t, "30 100")
