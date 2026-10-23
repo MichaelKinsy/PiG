@@ -81,7 +81,7 @@ func hashGoModuleDir(fsys fs.FS, dir string, add func(string) error) error {
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		// A directory deleted after its parent listed it held no source of this build.
-		if dir != "." && errors.Is(err, fs.ErrNotExist) {
+		if dir != "." && directoryVanished(err, func() error { _, lerr := fs.Stat(fsys, dir); return lerr }, windowsDeletion) {
 			return nil
 		}
 		return err
@@ -100,6 +100,9 @@ func hashGoModuleDir(fsys fs.FS, dir string, add func(string) error) error {
 	}
 	if dir != "." && slices.Contains(files, cacheDirTag) {
 		tagged, err := hasCacheDirSignature(fsys, path.Join(dir, cacheDirTag))
+		if err != nil && directoryVanished(err, func() error { _, lerr := fs.Stat(fsys, dir); return lerr }, windowsDeletion) {
+			return nil
+		}
 		if err != nil || tagged {
 			return err
 		}

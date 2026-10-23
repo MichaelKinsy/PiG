@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -443,9 +442,10 @@ func walkDirSources(root string, exts []string, visit func(path, rel string) err
 	root = physicalRoot
 	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			// A directory deleted after its parent listed it held no source of this build, as in runtimecell's hashGoModuleDir. A source
-			// file that cannot be read is not a vanished directory: the hash fails closed.
-			if path != root && d.IsDir() && errors.Is(err, fs.ErrNotExist) {
+			// A directory deleted after its parent listed it held no source of this build, as in runtimecell's hashGoModuleDir
+			// (on Windows one still being deleted fails to open instead of reporting not-exist). A directory or source file that is
+			// there and cannot be read is not that: the hash fails closed.
+			if path != root && d.IsDir() && runtimecell.DirectoryVanished(path, err) {
 				return filepath.SkipDir
 			}
 			return err
@@ -458,9 +458,14 @@ func walkDirSources(root string, exts []string, visit func(path, rel string) err
 			// A tree marked CACHEDIR.TAG (a Cargo target directory, whatever its name) is build output. Not opening
 			// any directory below it keeps the hash from failing on the temp directories the build removes mid-walk.
 			if path != root {
-				if tagged, err := runtimecell.IsCacheDirectory(path); err != nil {
+				tagged, err := runtimecell.IsCacheDirectory(path)
+				if err != nil {
+					if runtimecell.DirectoryVanished(path, err) {
+						return filepath.SkipDir
+					}
 					return err
-				} else if tagged {
+				}
+				if tagged {
 					return filepath.SkipDir
 				}
 			}

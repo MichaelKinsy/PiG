@@ -114788,6 +114788,17 @@
       "shapeHash": "sha256:4d5d1b30a8221dc3ae509995e8d6c96c85296a12437e10bc7d003806d448194b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#DirectoryVanished",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "DirectoryVanished",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(dir string, err error) bool"
+      },
+      "shapeHash": "sha256:0797e92137b2304be91dcc06a7945952b48143b4ef2178be6fc461afcbcd927c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#EntryIdentity",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "EntryIdentity",
@@ -115996,6 +116007,17 @@
         "type": "func(line []byte) (message string, located string, ok bool)"
       },
       "shapeHash": "sha256:e0e5897408c20495fdf32d80f7b7b13a10b390a50756d38a1a826ed4681eb9e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#directoryVanished",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "directoryVanished",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error, lstat func() error, deletion func(error) (pending bool, denied bool)) bool"
+      },
+      "shapeHash": "sha256:3f247bcc6a282d8ff7bdaf3ad9d56391e62a84a50785c6deb7c2721a3f03dafa"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#embedPatterns",
@@ -118559,6 +118581,17 @@
         "type": "func(ctx context.Context, delay time.Duration) error"
       },
       "shapeHash": "sha256:8e7ad5aa6a2f4ae9d6933a8a7372f6edff9187a335dd6b17a7d22f0ae6e0ece7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#windowsDeletion",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "windowsDeletion",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(error) (pending bool, denied bool)"
+      },
+      "shapeHash": "sha256:9ce3ee94ecbc302bbbb515c4662ec09be6465b4f4f0203baded97322f68aeb5a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#writeBuildLog",
