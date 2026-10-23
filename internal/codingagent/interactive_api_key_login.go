@@ -48,6 +48,7 @@ func (m *InteractiveMode) runAPIKeyLogin(provider tui.OAuthProvider) error {
 	if method.Login == nil {
 		dialog = m.newLoginDialog(provider.Name, func() { cancel(errLoginAborted) }, provider.Name+" setup")
 		dialog.ShowInfo(method.Name+" is configured outside pig.", nil, true)
+		//portlint:allow asyncorder runAuthDialog receives the goroutine's one value on done before the setup note returns
 		go func() { <-ctx.Done(); done <- nil }()
 		if err := m.runAuthDialog(ctx, cancel, dialog, nil, nil, done); err != nil {
 			return err
@@ -68,6 +69,7 @@ func (m *InteractiveMode) runAPIKeyLogin(provider tui.OAuthProvider) error {
 		}
 		dialog.ShowDetails(details)
 	}
+	//portlint:allow asyncorder runAuthDialog receives the login's one result on done and answers its prompts and notifications in order; the login never outlives the dialog
 	go func() {
 		interaction := ai.AuthInteraction{
 			Prompt: func(promptCtx context.Context, prompt ai.AuthPrompt) (string, error) {
