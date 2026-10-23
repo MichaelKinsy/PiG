@@ -105,25 +105,28 @@ func TestGitCloneRepoPerPlatform(t *testing.T) {
 }
 
 // A local file:// source's checkout path embeds the whole source path and can
-// pass Windows' MAX_PATH, so the Windows clone enables core.longpaths (for the
-// clone's own directory creation and persisted in the repository); elsewhere
-// the command is the plain clone.
-func TestGitCloneArgsPerPlatform(t *testing.T) {
-	long := `C:\agent\git\localhost\C\` + strings.Repeat(`Users\x\`, 40)
+// pass Windows' MAX_PATH, so a Windows git child gets core.longpaths through the
+// environment, which leaves Pi's git argv untouched. It joins any config entries
+// the environment already has, and elsewhere the environment is unchanged.
+func TestGitLongPathsEnvPerPlatform(t *testing.T) {
 	for _, tc := range []struct {
-		goos string
-		want []string
+		name, goos string
+		env, want  []string
 	}{
-		{"windows", []string{"-c", "core.longpaths=true", "clone", "-c", "core.longpaths=true", "file:///C:/src/piglet", long}},
-		{"linux", []string{"clone", "file://localhost/src/piglet", long}},
-		{"darwin", []string{"clone", "file://localhost/src/piglet", long}},
+		{"windows empty", "windows", []string{"PATH=C:\\bin"}, []string{"PATH=C:\\bin", "GIT_CONFIG_KEY_0=core.longpaths", "GIT_CONFIG_VALUE_0=true", "GIT_CONFIG_COUNT=1"}},
+		{"windows existing entries", "windows", []string{"GIT_CONFIG_COUNT=2", "GIT_CONFIG_KEY_0=a.b", "GIT_CONFIG_VALUE_0=c", "GIT_CONFIG_KEY_1=d.e", "GIT_CONFIG_VALUE_1=f"},
+			[]string{"GIT_CONFIG_KEY_0=a.b", "GIT_CONFIG_VALUE_0=c", "GIT_CONFIG_KEY_1=d.e", "GIT_CONFIG_VALUE_1=f", "GIT_CONFIG_KEY_2=core.longpaths", "GIT_CONFIG_VALUE_2=true", "GIT_CONFIG_COUNT=3"}},
+		{"windows mixed-case count", "windows", []string{"Git_Config_Count=1", "GIT_CONFIG_KEY_0=a.b", "GIT_CONFIG_VALUE_0=c"},
+			[]string{"GIT_CONFIG_KEY_0=a.b", "GIT_CONFIG_VALUE_0=c", "GIT_CONFIG_KEY_1=core.longpaths", "GIT_CONFIG_VALUE_1=true", "GIT_CONFIG_COUNT=2"}},
+		{"linux", "linux", []string{"GIT_CONFIG_COUNT=1"}, []string{"GIT_CONFIG_COUNT=1"}},
+		{"darwin", "darwin", []string{"PATH=/bin"}, []string{"PATH=/bin"}},
 	} {
-		repo := "file://localhost/src/piglet"
-		if tc.goos == "windows" {
-			repo = "file://localhost/C:/src/piglet"
+		in := append([]string(nil), tc.env...)
+		if got := packagemanager.GitLongPathsEnv(tc.goos, in); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: GitLongPathsEnv = %q, want %q", tc.name, got, tc.want)
 		}
-		if got := packagemanager.GitCloneArgs(tc.goos, repo, long); !reflect.DeepEqual(got, tc.want) {
-			t.Errorf("GitCloneArgs(%s) = %q, want %q", tc.goos, got, tc.want)
+		if !reflect.DeepEqual(in, tc.env) {
+			t.Errorf("%s: input environment modified: %q", tc.name, in)
 		}
 	}
 }
