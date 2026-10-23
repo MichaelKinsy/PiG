@@ -465,6 +465,11 @@ type Connection struct {
 	peerAcks peerAcks
 	// onProtocolMismatch is LinkOptions.OnProtocolMismatch.
 	onProtocolMismatch func(versions ProtocolVersions)
+	// linkClosed: closed ran. Nothing the link handed to the host before it ended is processed after it: a Link
+	// delivers nothing once closed (link.ts:82), but a frame handed to the loop (handOff) can still be queued when a
+	// close that ran on the loop overtakes it, and a hold that creates an object after the connection released everything
+	// it held is an object nothing ever releases.
+	linkClosed bool
 	// mismatched: the peer speaks another protocol version; nothing it sends is processed any more.
 	mismatched bool
 	sent       int
@@ -976,7 +981,7 @@ func (connection *Connection) call(hold int, member string, args any, hasArgs bo
 // ─── receiving (on the loop) ───
 
 func (connection *Connection) receive(frame Frame) {
-	if connection.mismatched {
+	if connection.mismatched || connection.linkClosed {
 		return
 	}
 	connection.lastSeen = time.Now()
@@ -1607,6 +1612,7 @@ func (connection *Connection) onState(frame StateFrame) {
 // ─── lifetime ───
 
 func (connection *Connection) closed(reason string) {
+	connection.linkClosed = true
 	if told := protocolVersionReason.FindStringSubmatch(reason); told != nil {
 		//portlint:allow numbers the digits are a protocol version this package wrote into a close reason
 		if version, err := strconv.Atoi(told[1]); err == nil && version != ProtocolVersion {
