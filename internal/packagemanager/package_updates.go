@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/crossspawn"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -102,13 +100,13 @@ func getGitUpstreamRef(installedPath string) string {
 // runGitRemoteCommand disables interactive credential prompts only for this remote query.
 func runGitRemoteCommand(installedPath string, args ...string) (string, error) {
 	cmd := gitCaptureCommand(installedPath, args...)
-	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	cmd.Env = append(cmd.Environ(), "GIT_TERMINAL_PROMPT=0")
 	return RunWithTimeout(cmd, UpdateCheckNetworkTimeout)
 }
 
 // gitCaptureCommand starts git in installedPath as Pi's spawnCaptureCommand does, through spawnProcess, so a Windows git.cmd shim receives its arguments escaped for cmd.exe.
 func gitCaptureCommand(installedPath string, args ...string) *exec.Cmd {
-	return crossspawn.Command(context.Background(), installedPath, "git", args...)
+	return packageCommand(context.Background(), installedPath, "git", args...)
 }
 
 // RunWithTimeout captures a command and waits for child/output cleanup before returning, including after a timeout.

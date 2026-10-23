@@ -18,7 +18,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/installresolver"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/crossspawn"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
@@ -497,7 +496,7 @@ func InstallGitCheckout(sm *codingagent.SettingsManager, ref sourceref.Ref, chec
 	if !strings.Contains(repo, "://") && !strings.HasPrefix(repo, "git@") {
 		repo = "https://" + repo
 	}
-	if err := RunPackageProcess("", "git", GitCloneArgs(runtime.GOOS, repo, checkout)...); err != nil {
+	if err := RunPackageProcess("", "git", "clone", GitCloneRepo(runtime.GOOS, repo), checkout); err != nil {
 		return err
 	}
 	if ref.GitRef != "" {
@@ -558,20 +557,6 @@ func GitCheckoutRelative(goos, root string, ref sourceref.Ref) (string, error) {
 		return "", err
 	}
 	return filepath.Rel(absoluteRoot, resolved)
-}
-
-// GitCloneArgs is the git command line that clones repo into checkout. Windows
-// limits a path to MAX_PATH (260) unless git is told otherwise, and a local
-// file:// source's checkout directory embeds the whole source path, so there the
-// clone enables core.longpaths, both for the clone itself (leading directories)
-// and in the new repository's config for the later checkout, fetch and reset.
-// pig additive (D18): upstream rejects file:// sources.
-func GitCloneArgs(goos, repo, checkout string) []string {
-	args := []string{"clone", GitCloneRepo(goos, repo), checkout}
-	if goos == "windows" {
-		return append([]string{"-c", "core.longpaths=true", "clone", "-c", "core.longpaths=true"}, args[1:]...)
-	}
-	return args
 }
 
 // GitCloneRepo is the URL git clones for repo. Git for Windows reads
@@ -665,7 +650,7 @@ func RunCmd(name string, args ...string) (string, error) {
 
 // RunCmdInDir is Pi's runCommandSync. It starts the command as upstream's spawnProcess does, so a Windows .cmd shim such as npm.cmd receives its arguments exactly, and returns the trimmed stdout, or stderr when stdout is empty, so a warning on stderr cannot corrupt a reported path.
 func RunCmdInDir(dir, name string, args ...string) (string, error) {
-	cmd := crossspawn.Command(context.Background(), dir, name, args...)
+	cmd := packageCommand(context.Background(), dir, name, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
