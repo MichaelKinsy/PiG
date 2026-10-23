@@ -114326,6 +114326,17 @@
       "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/invocation#Bound",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/invocation",
+      "name": "Bound",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) bool"
+      },
+      "shapeHash": "sha256:fc0dd2d848a6581066bfa5c671132f84e440ea0bb1dc9d4dd705548b9f82b6e3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/invocation#Complete",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/invocation",
       "name": "Complete",
@@ -120332,6 +120343,17 @@
       "shapeHash": "sha256:52608c4b8187c9d2222083966374a08197caea0c0931377faaf0864d81b455a5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.hostCallApplied",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.hostCallApplied",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(requestID string)"
+      },
+      "shapeHash": "sha256:2821d88ee06040aa50a25de57351e7094b704ff05ab52720ce90d64ff6e27731"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.hostCallContext",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.hostCallContext",
@@ -120462,6 +120484,17 @@
         "type": "func(ctx context.Context, env *Envelope, inactivity time.Duration, operation string) (*Envelope, error)"
       },
       "shapeHash": "sha256:cb6583a164ce075a67d08660b52f49e513f8f28ea39c17500f622cf41f1d5503"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.requestAckHold",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.requestAckHold",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(requestID string) *ackHold"
+      },
+      "shapeHash": "sha256:2c6d325a7e54d75628d5caffc258424f290584ac9b715f58a76bbda548169aab"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.requestOrdered",
@@ -131077,6 +131110,83 @@
         "type": "func(s *viewSurface, surface string, raw encoding/json.RawMessage, lines []string) bool"
       },
       "shapeHash": "sha256:35d2e3504394fdc64e9b1619ebabd395e34c1110482f64260da9b0dd14a72aa9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHold",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ackHold",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "ackHold"
+      },
+      "shapeHash": "sha256:85a2fd4d6d049156dec9b4c1197e07f0202a473016de65dd6953e992edb0a6bb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHold.announce",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ackHold.announce",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHold.applied",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ackHold.applied",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHold.release",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ackHold.release",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHoldKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ackHoldKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "ackHoldKey"
+      },
+      "shapeHash": "sha256:f245412fc055ef680b38623c262ff89dc35b192a69334f35c3e9753770729724"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ackHoldOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ackHoldOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) *ackHold"
+      },
+      "shapeHash": "sha256:bcc944e33a636eeda48c187f41a25e9801eeb371e1a549a61342da93e03989a7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acknowledgeBlocked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "acknowledgeBlocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context)"
+      },
+      "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acquireFrameBuffer",
@@ -148314,6 +148424,17 @@
         "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model) any"
       },
       "shapeHash": "sha256:e7d00776ce129b1af0b58c2f89c969218c9d08afdebc089259adf012f8dc3b48"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withAckHold",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "withAckHold",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) context.Context"
+      },
+      "shapeHash": "sha256:366d096859c2719867db797767571a760dd33d980fb8931079e27bb882464837"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withGraphResolver",
