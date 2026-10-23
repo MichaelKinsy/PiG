@@ -112,6 +112,7 @@ func CalculateCost(model, usage map[string]any) (map[string]any, error) {
 	cacheWriteCost := (float64(rateCacheWrite*shortWrite) + float64(float64(rateInput*2)*longWrite)) / 1000000
 	cost["input"], cost["output"], cost["cacheRead"], cost["cacheWrite"] = input, output, cacheReadCost, cacheWriteCost
 	cost["total"] = input + output + cacheReadCost + cacheWriteCost
+	cost["totalFromProvider"] = false
 	return cost, nil
 }
 

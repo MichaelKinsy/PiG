@@ -75,7 +75,11 @@ func costText(cost map[string]any) string {
 		}
 		return "null"
 	}
-	return `{"input":` + number("input") + `,"output":` + number("output") + `,"cacheRead":` + number("cacheRead") + `,"cacheWrite":` + number("cacheWrite") + `,"total":` + number("total") + `}`
+	fromProvider := "null"
+	if flag, ok := cost["totalFromProvider"].(bool); ok {
+		fromProvider = strconv.FormatBool(flag)
+	}
+	return `{"input":` + number("input") + `,"output":` + number("output") + `,"cacheRead":` + number("cacheRead") + `,"cacheWrite":` + number("cacheWrite") + `,"total":` + number("total") + `,"totalFromProvider":` + fromProvider + `}`
 }
 
 // Every pure pi-ai helper returns what Pi's own code returned at the pin for each recorded call.
