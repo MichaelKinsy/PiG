@@ -1639,9 +1639,9 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 	if !res.Details.AuthOK || res.Details.ExecStdout != "exec-ts" || res.Details.ExecCode != 0 || res.Details.CompletionStopReason != "stop" || res.Details.CompletionText != "OK" {
 		t.Errorf("auth/exec/complete details = %+v", res.Details)
 	}
-	// Upstream pi.exec resolves a program that cannot start as code 1.
-	if m := res.Details.MissingExec; m == nil || m.Code != 1 || m.Stdout != "" || m.Stderr != "" || m.Killed {
-		t.Errorf("missing-program exec = %+v, want {code:1}", m)
+	// Pi c60de42e9: pi.exec resolves a program that cannot start as code 1 with the spawn error as stderr.
+	if m := res.Details.MissingExec; m == nil || m.Code != 1 || m.Stdout != "" || m.Stderr != "spawn pig-test-missing-program ENOENT" || m.Killed {
+		t.Errorf("missing-program exec = %+v, want {code:1 stderr:spawn pig-test-missing-program ENOENT}", m)
 	}
 	if res.Details.ContextUsage.Tokens != 42 || res.Details.ContextUsage.ContextWindow != 1000 {
 		t.Errorf("contextUsage = %+v, want {Tokens:42 ContextWindow:1000}", res.Details.ContextUsage)

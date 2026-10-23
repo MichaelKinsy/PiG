@@ -26589,6 +26589,25 @@
       ]
     },
     {
+      "id": "BF-cf7916b",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "Rounds the session tier product before the add (arm64 FMA), documents the device-code copy goroutine's lifetime for golifetime, and drops the version-records entry for docs/parity/session-selector-search.md, which now names the pin and no longer mentions 0.87.1.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "cf7916b0d8",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-cf7f368",
       "title": "A local file listed as a Package with `autoload: false` still loads as one enabled extension, and when a…",
       "symptom": "A local file listed as a Package with `autoload: false` still loads as one enabled extension, and when a project lists a Package with `autoload: false`, every user-settings entry for that Package is kept, as in Pi's `resolveLocalExtensionSource` and `dedupePackages`.",

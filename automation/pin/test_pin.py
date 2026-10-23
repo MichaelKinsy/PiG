@@ -688,7 +688,8 @@ class ClosureTests(unittest.TestCase):
         for tree, kind in ((locked, "published"), (pinned, "pinned")):
             for name in ("@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"):
                 (tree / name).mkdir(parents=True)
-                (tree / name / "package.json").write_text(json.dumps({"name": name, "version": "1.3.0", "kind": kind}))
+                version = "1.3.0" if kind == "published" else pinlib.committed().package_version
+                (tree / name / "package.json").write_text(json.dumps({"name": name, "version": version, "kind": kind}))
         (locked / "@earendil-works" / "pi-codemode").mkdir()  # a published package the pinned oracle holds only nested
         (locked / "miniflare").mkdir()
         (locked / ".pig-deps-ready").write_text("stamp")

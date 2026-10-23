@@ -1453,6 +1453,22 @@ python = "Extension.markdown_transformer"
 wire = "literal:availableWidth"
 
 [[row]]
+key = "markdown transform context.messageId"
+node = "api.registerMarkdownTransformer"
+go = "MarkdownTransformContext.MessageID"
+rust = "MarkdownTransformContext.message_id"
+python = "Extension.markdown_transformer"
+wire = "literal:messageId"
+
+[[row]]
+key = "markdown transform context.timestamp"
+node = "api.registerMarkdownTransformer"
+go = "MarkdownTransformContext.Timestamp"
+rust = "MarkdownTransformContext.timestamp"
+python = "Extension.markdown_transformer"
+wire = "literal:timestamp"
+
+[[row]]
 key = "message renderer options.expanded"
 node = "read:payload.options"
 python = "Extension.message_renderer"

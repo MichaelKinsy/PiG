@@ -324,10 +324,10 @@ rationale = "refreshStoredOAuthCredential awaits the credential store's lock-hel
 
 [[files]]
 path = "packages/ai/src/auth/types.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go + ai/oauth_*.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/ai/src/cli.ts"
@@ -345,10 +345,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/type
 
 [[files]]
 path = "packages/ai/src/compat/extension-oauth-types.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_types.go + coding/extension/provider.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/ai/src/env-api-keys.ts"
@@ -891,10 +891,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/
 
 [[files]]
 path = "packages/coding-agent/src/core/exec.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/extension/exec.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/core/export-html/index.ts"
@@ -919,10 +919,10 @@ rationale = "Partial review: each awaited emission captures all extensions' curr
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/types.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Extension declarations remain partial for other surfaces. addAutocompleteProvider now has retained factories and complete current-provider forwarding in all SDKs, with ordering/cancellation/error contracts in docs/extension-api-parity.md and TestAutocompleteFactoriesAcrossSDKs; native SDK custom-editor factories remain separate obligations."
 
 [[files]]
 path = "packages/coding-agent/src/core/footer-data-provider.ts"
@@ -1304,10 +1304,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/tex
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/auth_commands.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
@@ -1339,10 +1339,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ported+
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
-evidence = []
-rationale = ""
+evidence = ["test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered", "test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts", "test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsStackConcurrentInlineCustomComponents", "test:test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs"]
+rationale = "Only the extension-dialog ordering is reviewed (Pi 38847563): showExtensionSelector, showExtensionInput, showExtensionEditor and inline showExtensionCustom resolve their own promise when their dialog is answered, aborted or timed out, in any order, because the dialogs form a stack on the UI loop (pushExtensionDialog, removeExtensionDialog of the one answered, showTopExtensionDialog); no promise is left pending by a later dialog, and a hidden dialog's abort removes only itself. internal/codingagent/ext_ui_dialog_stack.go owns the stack and the cross-SDK conformance row covers every realization. The rest of interactive-mode.ts is not reviewed for async contracts in this pin."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"

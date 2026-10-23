@@ -806,30 +806,6 @@
           "pattern": "(?m)^(Exported to: )/[^\\r\\n]*/parity-cli-01-export-cli-plain-(pig|pi)-[0-9]+",
           "with": "${1}<TEMP>",
           "reason": "D2: replace only this scenario's allocated temporary root, preserving the entire destination suffix and status line."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "cacheWrite: 0, total: 0 \\}",
-          "with": "cacheWrite: 0 }",
-          "reason": "D124: the cost totals object has no total field in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *const componentTotal =.*?\\(msg\\.usage\\.cost\\.cacheWrite \\|\\| 0\\);",
-          "with": "",
-          "reason": "D124: the component-sum fallback is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *// Provider-reported totals.*?: componentTotal;",
-          "with": "",
-          "reason": "D124: the recorded cost.total accumulation is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "const totalCost = globalStats\\.cost\\.total;",
-          "with": "const totalCost = globalStats.cost.input + globalStats.cost.output + globalStats.cost.cacheRead + globalStats.cost.cacheWrite;",
-          "reason": "D124: the header cost is the component sum in Pi 1.1.0's template.js."
         }
       ]
     },
@@ -841,30 +817,6 @@
           "pattern": "(?m)^(Exported to: )/[^\\r\\n]*/parity-cli-02-export-cli-ansi-(pig|pi)-[0-9]+",
           "with": "${1}<TEMP>",
           "reason": "D2: replace only this scenario's allocated temporary root, preserving the entire destination suffix and status line."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "cacheWrite: 0, total: 0 \\}",
-          "with": "cacheWrite: 0 }",
-          "reason": "D124: the cost totals object has no total field in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *const componentTotal =.*?\\(msg\\.usage\\.cost\\.cacheWrite \\|\\| 0\\);",
-          "with": "",
-          "reason": "D124: the component-sum fallback is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *// Provider-reported totals.*?: componentTotal;",
-          "with": "",
-          "reason": "D124: the recorded cost.total accumulation is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "const totalCost = globalStats\\.cost\\.total;",
-          "with": "const totalCost = globalStats.cost.input + globalStats.cost.output + globalStats.cost.cacheRead + globalStats.cost.cacheWrite;",
-          "reason": "D124: the header cost is the component sum in Pi 1.1.0's template.js."
         }
       ]
     },
@@ -876,30 +828,6 @@
           "pattern": "(?m)^(Exported to: )/[^\\r\\n]*/parity-cli-03-export-cli-tools-(pig|pi)-[0-9]+",
           "with": "${1}<TEMP>",
           "reason": "D2: replace only this scenario's allocated temporary root, preserving the destination suffix and the full HTML artifact."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "cacheWrite: 0, total: 0 \\}",
-          "with": "cacheWrite: 0 }",
-          "reason": "D124: the cost totals object has no total field in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *const componentTotal =.*?\\(msg\\.usage\\.cost\\.cacheWrite \\|\\| 0\\);",
-          "with": "",
-          "reason": "D124: the component-sum fallback is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *// Provider-reported totals.*?: componentTotal;",
-          "with": "",
-          "reason": "D124: the recorded cost.total accumulation is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "const totalCost = globalStats\\.cost\\.total;",
-          "with": "const totalCost = globalStats.cost.input + globalStats.cost.output + globalStats.cost.cacheRead + globalStats.cost.cacheWrite;",
-          "reason": "D124: the header cost is the component sum in Pi 1.1.0's template.js."
         }
       ]
     },
@@ -911,30 +839,6 @@
           "pattern": "(?m)^(Exported to: )/[^\\r\\n]*/parity-cli-04-export-cli-full-mix-(pig|pi)-[0-9]+",
           "with": "${1}<TEMP>",
           "reason": "D2: replace only this scenario's allocated temporary root, preserving the destination suffix and the full HTML artifact."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "cacheWrite: 0, total: 0 \\}",
-          "with": "cacheWrite: 0 }",
-          "reason": "D124: the cost totals object has no total field in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *const componentTotal =.*?\\(msg\\.usage\\.cost\\.cacheWrite \\|\\| 0\\);",
-          "with": "",
-          "reason": "D124: the component-sum fallback is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *// Provider-reported totals.*?: componentTotal;",
-          "with": "",
-          "reason": "D124: the recorded cost.total accumulation is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "const totalCost = globalStats\\.cost\\.total;",
-          "with": "const totalCost = globalStats.cost.input + globalStats.cost.output + globalStats.cost.cacheRead + globalStats.cost.cacheWrite;",
-          "reason": "D124: the header cost is the component sum in Pi 1.1.0's template.js."
         }
       ]
     },
@@ -975,30 +879,6 @@
           "pattern": "(?m)^(Exported to: )/[^\\r\\n]*/parity-cli-06-export-cli-skills-(pig|pi)-[0-9]+",
           "with": "${1}<TEMP>",
           "reason": "D2: replace only this scenario's allocated temporary root, preserving the destination suffix and the full HTML artifact."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "cacheWrite: 0, total: 0 \\}",
-          "with": "cacheWrite: 0 }",
-          "reason": "D124: the cost totals object has no total field in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *const componentTotal =.*?\\(msg\\.usage\\.cost\\.cacheWrite \\|\\| 0\\);",
-          "with": "",
-          "reason": "D124: the component-sum fallback is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?s)\\n *// Provider-reported totals.*?: componentTotal;",
-          "with": "",
-          "reason": "D124: the recorded cost.total accumulation is absent in Pi 1.1.0's template.js."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "const totalCost = globalStats\\.cost\\.total;",
-          "with": "const totalCost = globalStats.cost.input + globalStats.cost.output + globalStats.cost.cacheRead + globalStats.cost.cacheWrite;",
-          "reason": "D124: the header cost is the component sum in Pi 1.1.0's template.js."
         }
       ]
     },

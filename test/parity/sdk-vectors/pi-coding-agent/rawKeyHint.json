@@ -1,5 +1,5 @@
 {
- "pin": "1.4.0",
+ "pin": "1.4.0+936e5f40",
  "package": "pi-coding-agent@1.4.0",
  "module": "pi-coding-agent",
  "export": "rawKeyHint",

@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.4.0's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.4.0`.
+Every extension-facing surface of Pi 1.4.0+936e5f40's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.4.0+936e5f40`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items and the Python SDK's classes, members and parameters, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.4.0.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.4.0+936e5f40.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -21,14 +21,14 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 ## Summary
 
-518 extension API surfaces:
+520 extension API surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 480 | 27 | 11 |
-| Go | 482 | 26 | 10 |
-| Rust | 482 | 26 | 10 |
-| Python | 482 | 26 | 10 |
+| Node runtime | 482 | 27 | 11 |
+| Go | 484 | 26 | 10 |
+| Rust | 484 | 26 | 10 |
+| Python | 484 | 26 | 10 |
 
 31 PiG-only surfaces:
 
@@ -1373,6 +1373,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `markdown transform context.messageType` | `MarkdownTransformContext.messageType` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageType` | implemented `MarkdownTransformContext.message_type` | implemented `Extension.markdown_transformer` |
 | `markdown transform context.isStreaming` | `MarkdownTransformContext.isStreaming` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.IsStreaming` | implemented `MarkdownTransformContext.is_streaming` | implemented `Extension.markdown_transformer` |
 | `markdown transform context.availableWidth` | `MarkdownTransformContext.availableWidth` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.AvailableWidth` | implemented `MarkdownTransformContext.available_width` | implemented `Extension.markdown_transformer` |
+| `markdown transform context.messageId` | `MarkdownTransformContext.messageId` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageID` | implemented `MarkdownTransformContext.message_id` | implemented `Extension.markdown_transformer` |
+| `markdown transform context.timestamp` | `MarkdownTransformContext.timestamp` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.Timestamp` | implemented `MarkdownTransformContext.timestamp` | implemented `Extension.markdown_transformer` |
 
 ## PiG additive: component kit (D107)
 
