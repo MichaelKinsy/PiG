@@ -130,6 +130,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/estimate.ts` | `ai/estimate.go (EstimateContextTokens, EstimateMessageTokens, CalculateContextTokens; estimate_test.go) + ai/simple_options.go (ClampMaxTokensToContext)`, `agent/context_tokens.go` | ✅ |
 | `packages/ai/src/utils/retry.ts` | `ai/assistant_retry.go (RetryAssistantCall, RetryDelayMs, IsRetryableAssistantError; assistant_retry_test.go)` | ✅ |
 | `packages/ai/src/utils/provider-retry.ts` | `ai/provider_retry.go` | ✅ |
+| `packages/ai/src/utils/openrouter-cost.ts` | `ai/openrouter_cost.go (openrouter_cost_test.go)` | ✅ |
 | `packages/ai/src/providers/amazon-bedrock.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
 | `packages/ai/src/providers/ant-ling.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
 | `packages/ai/src/providers/anthropic.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
