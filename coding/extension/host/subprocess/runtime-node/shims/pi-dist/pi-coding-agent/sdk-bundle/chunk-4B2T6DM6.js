@@ -194,13 +194,7 @@ import { CODEMODE_SOURCE_GRAMMAR } from "../../pi-codemode/source.js";
 import { Type as Type2 } from "../../../typebox.mjs";
 
 // pi-dist/pi-coding-agent/extensions/codemode/execute.lazy.js
-<<<<<<<< HEAD:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-4B2T6DM6.js
 var loadCodemodeExecutor = /* @__PURE__ */ __name(() => import("./chunk-FUOCRXE5.js"), "loadCodemodeExecutor");
-|||||||| bba08f8a7d:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-XIVHZPV4.js
-var loadCodemodeExecutor = /* @__PURE__ */ __name(() => import("./chunk-CE6PSN37.js"), "loadCodemodeExecutor");
-========
-var loadCodemodeExecutor = /* @__PURE__ */ __name(() => import("./chunk-IJQXPPGQ.js"), "loadCodemodeExecutor");
->>>>>>>> origin/main:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-ILH7WEUZ.js
 
 // pi-dist/pi-coding-agent/extensions/codemode/renderer.js
 import { Container, Spacer, Text } from "../../../pi-tui.mjs";

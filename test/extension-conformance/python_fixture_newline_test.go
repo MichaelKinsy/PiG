@@ -13,7 +13,7 @@ import (
 // second positional argument or the mode= keyword, in single or double quotes.
 var pythonTextWrite = regexp.MustCompile(`\bopen\(.*(?:,\s*|\bmode\s*=\s*)["'][wax]\+?["']`)
 
-// pythonNoTranslation matches the newline="" (or newline='') argument that turns the translation off.
+// pythonNoTranslation matches the newline="" (or newline=”) argument that turns the translation off.
 var pythonNoTranslation = regexp.MustCompile(`newline\s*=\s*(?:""|'')`)
 
 func TestPythonTextWriteRuleRecognizesEveryModeForm(t *testing.T) {
