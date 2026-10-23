@@ -1,21 +1,21 @@
 # PORT_MAP coverage report
 
-Generated from `711` PORT_MAP entries and `821` parity scenarios.
+Generated from `710` PORT_MAP entries and `821` parity scenarios.
 
 ## Status
 
-- **Porting:** 634 / 636 intended-portable entries ✅ (99.7%).
-- **Behavior verification:** 569 / 634 ported entries (89.7%); 0 weak-only, 65 untested.
+- **Porting:** 633 / 635 intended-portable entries ✅ (99.7%).
+- **Behavior verification:** 569 / 633 ported entries (89.9%); 0 weak-only, 64 untested.
 - **Upstream test porting:** 691 ported / 0 partial / 0 pending (5 other dispositions; [file mapping](interfaces/test-mapping-v1.4.0+936e5f40.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.4.0+936e5f40.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 711. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 710. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
 | package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
-| `ai` | 209 | 22 | 187 | 186 | 1 | 0 | 99.5% | 96.8% |
+| `ai` | 208 | 22 | 186 | 185 | 1 | 0 | 99.5% | 97.3% |
 | `chord` | 40 | 5 | 35 | 35 | 0 | 0 | 100.0% | 34.3% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 53.8% |
 | `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 97.4% |
@@ -26,9 +26,9 @@ Raw PORT_MAP rows: 711. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See 
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
 | `tui` | 46 | 0 | 46 | 46 | 0 | 0 | 100.0% | 100.0% |
 
-- **Four core packages (agent, ai, coding-agent, tui):** 464 / 465 intended-portable files ✅ (99.8%) from 515 rows; 452 behavioral (97.4%), 0 weak-only, 12 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 499 / 500 intended-portable files ✅ (99.8%) from 558 rows; 481 behavioral (96.4%), 0 weak-only, 18 untested.
-- **Whole monorepo (11 packages):** 634 / 636 intended-portable files ✅ (99.7%) from 711 rows; 569 behavioral (89.7%), 0 weak-only, 65 untested.
+- **Four core packages (agent, ai, coding-agent, tui):** 463 / 464 intended-portable files ✅ (99.8%) from 514 rows; 452 behavioral (97.6%), 0 weak-only, 11 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 498 / 499 intended-portable files ✅ (99.8%) from 557 rows; 481 behavioral (96.6%), 0 weak-only, 17 untested.
+- **Whole monorepo (11 packages):** 633 / 635 intended-portable files ✅ (99.7%) from 710 rows; 569 behavioral (89.9%), 0 weak-only, 64 untested.
 - **Interface closure:** 13309 of 13309 semantic interface IDs closed (217 designed-out, 13092 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
@@ -255,7 +255,6 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/ai/src/utils/models-error.ts` | ✅ | 0 | 2 (unit:./ai:TestErrorDetailsUseECMAScriptTrim, unit:./ai:TestNewModelsErrorCauseDetail) | not run | ./ai:TestErrorDetailsUseECMAScriptTrim, ./ai:TestNewModelsErrorCauseDetail |
 | `packages/ai/src/utils/oauth-page.ts` | ✅ | 2 (06-oauth-callback-page, 32-oauth-callback-page-bytes) | 3 (06-oauth-callback-page, 32-oauth-callback-page-bytes, unit:./ai:TestOAuthPageMatchesThePinnedPackage) | not run | ./ai:TestOAuthPageMatchesThePinnedPackage |
 | `packages/ai/src/providers/openrouter-api.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/ai/src/utils/openrouter-cost.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/ai/src/telemetry.ts` | ✅ | 0 | 7 (unit:./ai:TestAIInstrumentCacheIsCreatedOncePerLiveAdapterAndReleasedWithIt, unit:./ai:TestAITelemetryBoundsPollErrorMessagesUpstream, unit:./ai:TestAITelemetryCountsInterleavedToolDeltasIndependentlyUpstream, unit:./ai:TestAITelemetryCreatesInstrumentsOncePerMetricsObjectUpstream, unit:./ai:TestAITelemetryIncludesSetupFailuresAndOmitsNonScalarReasoningUpstream, unit:./ai:TestAITelemetryObservesWithoutChangingDeliveredEventsOrResultsUpstream, unit:./ai:TestAITelemetryRecordsUsageForPollOnlyWhenFinalUpstream) | not run | ./ai:TestAIInstrumentCacheIsCreatedOncePerLiveAdapterAndReleasedWithIt, ./ai:TestAITelemetryBoundsPollErrorMessagesUpstream, ./ai:TestAITelemetryCountsInterleavedToolDeltasIndependentlyUpstream, ./ai:TestAITelemetryCreatesInstrumentsOncePerMetricsObjectUpstream, ./ai:TestAITelemetryIncludesSetupFailuresAndOmitsNonScalarReasoningUpstream, ./ai:TestAITelemetryObservesWithoutChangingDeliveredEventsOrResultsUpstream, ./ai:TestAITelemetryRecordsUsageForPollOnlyWhenFinalUpstream |
 | `packages/coding-agent/src/cli.ts` | ✅ | 3 (01-version-flag, 15-version-flag-pi-format, 34-extension-process-identity) | 3 (01-version-flag, 15-version-flag-pi-format, 34-extension-process-identity) | not run |  |
 | `packages/coding-agent/src/main.ts` | ✅ | 45 (00-startup-banner, 01-noninteractive-undecided-denies-project-extension, 01-session-selector, 02-no-approve-denies-project-extension, 03-approve-loads-project-extension, 03-model-invalid, 03-session-continue-resume, 04-missing-session-cwd-startup-selector, 04-project-cannot-set-its-own-trust-default, 05-global-always-default-loads-project-extension, 05-list-models-extension-provider, 05-missing-session-cwd-headless-error, 06-missing-session-cwd-continue, 06-session-cwd-precedes-project-resource-loading, 07-cli-image-deferred-resize-and-omission, 07-global-session-prefix-confirm-fork, 07-resume-picker-selects-cwd-before-resources, 08-global-extension-decides-project-trust, 10-startup-resume-picker-cancel, 10-startup-session-metadata, 12-cli-empty-session-name, 13-cli-version-before-session-validation, 17-invalid-session-file, 19-cli-name-selection-order, 19-missing-session-id, 20-json-list-models-stdout, 21-rpc-list-models-stdout, 22-cli-provider-requires-model, 23-startup-benchmark-requires-interactive, 26-export-cli-missing-file, 27-export-cli-directory, 28-export-cli-not-a-session, 29-export-cli-empty-file, 30-export-cli-unwritable-output, 31-session-id-conflict-before-format, 32-headless-extension-cli-flags, 32-session-id-invalid-format, 35-name-precedes-start-model, 40-rpc-exclude-tools, 41-rpc-tools-allowlist-overrides-no-tools, 44-rpc-tools-caller-order, 45-headless-scoped-models, 45-rpc-tools-flag-order, 51-rpc-continue-without-prior-session, 70-interactive-extension-load-failure-exits) | 48 (01-noninteractive-undecided-denies-project-extension, 01-session-selector, 02-no-approve-denies-project-extension, 03-approve-loads-project-extension, 03-model-invalid, 03-session-continue-resume, 04-missing-session-cwd-startup-selector, 04-project-cannot-set-its-own-trust-default, 05-global-always-default-loads-project-extension, 05-list-models-extension-provider, 05-missing-session-cwd-headless-error, 06-missing-session-cwd-continue, 06-session-cwd-precedes-project-resource-loading, 07-cli-image-deferred-resize-and-omission, 07-global-session-prefix-confirm-fork, 07-resume-picker-selects-cwd-before-resources, 08-global-extension-decides-project-trust, 10-startup-resume-picker-cancel, 10-startup-session-metadata, 12-cli-empty-session-name, 13-cli-version-before-session-validation, 17-invalid-session-file, 19-cli-name-selection-order, 19-missing-session-id, 20-json-list-models-stdout, 21-rpc-list-models-stdout, 22-cli-provider-requires-model, 23-startup-benchmark-requires-interactive, 26-export-cli-missing-file, 27-export-cli-directory, 28-export-cli-not-a-session, 29-export-cli-empty-file, 30-export-cli-unwritable-output, 31-session-id-conflict-before-format, 32-headless-extension-cli-flags, 32-session-id-invalid-format, 35-name-precedes-start-model, 40-rpc-exclude-tools, 41-rpc-tools-allowlist-overrides-no-tools, 44-rpc-tools-caller-order, 45-headless-scoped-models, 45-rpc-tools-flag-order, 51-rpc-continue-without-prior-session, 70-interactive-extension-load-failure-exits, unit:./coding/cli:TestMainLoadsTheProgramsExtensionFactories, unit:./coding/cli:TestMainPassesTheProgramsExtensionFactoriesToPackageCommands, unit:./coding/cli:TestMainRunsAFailingProgramFactoryOnceWithAProjectTrustPass, unit:./coding/cli:TestMainRunsTheProgramsExtensionFactoriesInTheProjectTrustPass) | not run | ./coding/cli:TestMainLoadsTheProgramsExtensionFactories, ./coding/cli:TestMainPassesTheProgramsExtensionFactoriesToPackageCommands, ./coding/cli:TestMainRunsAFailingProgramFactoryOnceWithAProjectTrustPass, ./coding/cli:TestMainRunsTheProgramsExtensionFactoriesInTheProjectTrustPass |
