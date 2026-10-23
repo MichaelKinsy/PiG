@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Summarize `go test -json` output as it streams.
 
-Usage: go test -json ... | test-json-report.py [--out FILE] [--slowest N]
+Usage: go test -json ... | test-json-report.py [--out FILE] [--slowest N] [--verbatim]
 
 Prints one line per finished package (ok, FAIL, cached, no test files), the
 complete output of every failed test, of every test still running when its
@@ -11,6 +11,9 @@ end the N slowest tests and packages with their elapsed seconds. The raw
 event stream is copied to FILE when --out is given, so the run can be
 inspected later with any test2json tool. The exit status is 0; the caller
 takes the status from go test itself.
+
+--verbatim prints every output event as it arrives instead, which is the text of
+the same run under go test -v (use it for a command that asked for -v).
 """
 
 import argparse
@@ -23,6 +26,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out")
     parser.add_argument("--slowest", type=int, default=10)
+    parser.add_argument("--verbatim", action="store_true")
     args = parser.parse_args()
     # Text mode on Windows writes "\r\n" for every "\n". The report and the raw copy keep go test's "\n" line endings there too.
     sys.stdout.reconfigure(newline="\n")
@@ -41,6 +45,11 @@ def main() -> int:
             sys.stdout.write(line)
             continue
         action = event.get("Action")
+        if args.verbatim:
+            if action in ("output", "build-output"):
+                sys.stdout.write(event.get("Output", ""))
+                sys.stdout.flush()
+            continue
         if action == "build-output":
             build_output[event.get("ImportPath", "")].append(event.get("Output", ""))
             continue

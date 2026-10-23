@@ -12,4 +12,4 @@ trap 'rm -rf "$home"' EXIT
 export HOME="$home" PIG_HOME="$home/.pig"
 export PIG_CODING_AGENT_DIR="$home/pig-agent" PI_CODING_AGENT_DIR="$home/pi-agent"
 node --version
-go test ./coding/extension/host/subprocess -count=1 -run '^(TestNodeLoaderUsesSynchronousHooksWhenAvailable|TestNodeIssuePackageForms|TestNodeRuntimePreflight.*)$'
+"$(dirname "$0")/go-test.sh" ./coding/extension/host/subprocess -count=1 -run '^(TestNodeLoaderUsesSynchronousHooksWhenAvailable|TestNodeIssuePackageForms|TestNodeRuntimePreflight.*)$'

@@ -64,6 +64,6 @@ esac
 echo "== integration tests: category=$CATEGORY pattern=$PATTERN timeout=$TIMEOUT"
 echo
 
-exec go test -tags integration -timeout "$TIMEOUT" -v \
+exec "$(dirname "$0")/go-test.sh" -tags integration -timeout "$TIMEOUT" -v \
     -run "$PATTERN" \
     ./test/integration/... "$@"

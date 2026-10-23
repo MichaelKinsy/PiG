@@ -37,8 +37,8 @@ if [[ -n "${CI:-}" ]]; then
 fi
 RUN_FLAG=()
 RACE_FLAG=()
-# changed mode streams go test -json into test-json-report.py and keeps each group's raw events under JSON_DIR.
-JSON_DIR=
+# Every group streams go test -json into test-json-report.py and keeps its raw events under JSON_DIR when one is set: PIG_TEST_JSON_DIR (CI uploads it as the shard's test-json artifact), and in changed mode tmp/test-changed.
+JSON_DIR=${PIG_TEST_JSON_DIR:-}
 JSON_LABEL=
 TAG_FLAG=()
 
@@ -80,16 +80,25 @@ for pkg in "${ALL_PKGS[@]}"; do
 done
 
 # changed mode: test only the packages the change can affect (automation/ci/changed-packages.py), under the race detector for the packages the change edits directly.
+# TEST_CHANGED_FOR=fast-parallel is the light pull-request run's test-fast shard (make ci-test-changed): it tests only what the full run's fast-parallel mode tests,
+# from the committed diff (the build steps before it leave untracked files), and runs that mode whole when the change touches go.mod, go.sum, go.work or
+# go.work.sum or a file no package test reads. The sharded and heavy packages are other rows of ci-tiers.txt, so this mode leaves them to those rows.
 DIRECT_PKGS=()
 if [[ "$MODE" == changed ]]; then
-  selection=$(python3 "$ROOT/automation/ci/changed-packages.py" ${TEST_BASE:+--base "$TEST_BASE"})
+  case "${TEST_CHANGED_FOR:-}" in
+    "" | fast-parallel) ;;
+    *) echo "TEST_CHANGED_FOR must be empty or fast-parallel" >&2; exit 2 ;;
+  esac
+  selection=$(python3 "$ROOT/automation/ci/changed-packages.py" ${TEST_BASE:+--base "$TEST_BASE"} ${TEST_CHANGED_FOR:+--committed} ${GITHUB_STEP_SUMMARY:+--summary "$GITHUB_STEP_SUMMARY"})
   AFFECTED=()
+  FULL_REASON=()
   while read -r kind entry; do
     case "$kind" in
       direct) DIRECT_PKGS+=("$entry") ;;
       affected) AFFECTED+=("$entry") ;;
       tagged) echo "[test-grouped] changed: $entry builds only under a tag; run its own target (make parity-family, make test-integration)" ;;
-      unmapped) echo "[test-grouped] changed: no package test reads $entry; CI's full suite covers it" ;;
+      unmapped) echo "[test-grouped] changed: no package test reads $entry; CI's full suite covers it"; FULL_REASON+=("$entry is read by no package test") ;;
+      module-wide) echo "[test-grouped] changed: $entry changes every package"; FULL_REASON+=("$entry changes every package") ;;
     esac
   done <<<"$selection"
   in_list() {
@@ -98,26 +107,35 @@ if [[ "$MODE" == changed ]]; then
     for item in "$@"; do [[ "$item" == "$needle" ]] && return 0; done
     return 1
   }
-  case "${TEST_CHANGED_RACE:-direct}" in
-    direct) ;;
-    affected) DIRECT_PKGS=("${AFFECTED[@]}") ;;
-    none) DIRECT_PKGS=() ;;
-    *) echo "TEST_CHANGED_RACE must be direct, affected or none" >&2; exit 2 ;;
-  esac
-  kept=()
-  for pkg in "${FAST_PKGS[@]}"; do in_list "$pkg" "${AFFECTED[@]}" && kept+=("$pkg"); done
-  FAST_PKGS=("${kept[@]}")
-  kept=()
-  for pkg in "${HEAVY_PKGS[@]}"; do in_list "$pkg" "${AFFECTED[@]}" && kept+=("$pkg"); done
-  HEAVY_PKGS=("${kept[@]}")
-  SERIAL_PKGS=()
-  JSON_DIR="$ROOT/tmp/test-changed/$(date -u +%Y%m%dT%H%M%SZ)"
-  mkdir -p "$JSON_DIR"
+  if [[ -n "${TEST_CHANGED_FOR:-}" && ${#FULL_REASON[@]} -gt 0 ]]; then
+    echo "[test-grouped] changed: running the full $TEST_CHANGED_FOR: ${FULL_REASON[*]}"
+    [[ -z "${GITHUB_STEP_SUMMARY:-}" ]] || printf '\n**Full %s run**: %s.\n' "$TEST_CHANGED_FOR" "${FULL_REASON[*]}" >>"$GITHUB_STEP_SUMMARY"
+    MODE=$TEST_CHANGED_FOR
+  else
+    if [[ -n "${TEST_CHANGED_FOR:-}" && -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+      printf '\n**Light %s run**: %s affected packages, no unmapped file and no change to go.mod, go.sum, go.work or go.work.sum. This shard runs the fast ones; the sharded, cmd/pig and extension host packages run in their own rows.\n' "$TEST_CHANGED_FOR" "${#AFFECTED[@]}" >>"$GITHUB_STEP_SUMMARY"
+    fi
+    case "${TEST_CHANGED_RACE:-direct}" in
+      direct) ;;
+      affected) DIRECT_PKGS=("${AFFECTED[@]}") ;;
+      none) DIRECT_PKGS=() ;;
+      *) echo "TEST_CHANGED_RACE must be direct, affected or none" >&2; exit 2 ;;
+    esac
+    kept=()
+    for pkg in "${FAST_PKGS[@]}"; do in_list "$pkg" "${AFFECTED[@]}" && kept+=("$pkg"); done
+    FAST_PKGS=("${kept[@]}")
+    kept=()
+    for pkg in "${HEAVY_PKGS[@]}"; do [[ -z "${TEST_CHANGED_FOR:-}" ]] && in_list "$pkg" "${AFFECTED[@]}" && kept+=("$pkg"); done
+    HEAVY_PKGS=("${kept[@]}")
+    SERIAL_PKGS=()
+    [[ -n "$JSON_DIR" ]] || JSON_DIR="$ROOT/tmp/test-changed/$(date -u +%Y%m%dT%H%M%SZ)"
+    mkdir -p "$JSON_DIR"
+  fi
 fi
 
 # Resolve the sharded packages that exist in this module and take them out of the whole-package groups.
 declare -A SHARD_COUNT=()
-if [[ "$MODE" != changed && "$MODE" != report ]]; then
+if [[ ( "$MODE" != changed || -n "${TEST_CHANGED_FOR:-}" ) && "$MODE" != report ]]; then
   for spec in "${SHARDED_SPEC[@]}"; do
     spec_pkg=$(go list "${spec%:*}")
     in_all=
@@ -210,8 +228,9 @@ run_group() {
   fi
   if [[ -n "$JSON_DIR" ]]; then
     JSON_LABEL=$((JSON_LABEL + 1))
+    mkdir -p "$JSON_DIR"
     # The tests get no copy of the checkout lock: a process they leak would otherwise hold it and block every later run here.
-    TMPDIR="$SCRATCH" go test -json -p "$parallel" "${TAG_FLAG[@]}" "${COUNT_FLAG[@]}" "${RACE_FLAG[@]}" "${RUN_FLAG[@]}" "${pkgs[@]}" {RUN_LOCK}>&- | python3 "$ROOT/automation/ci/test-json-report.py" --out "$JSON_DIR/$JSON_LABEL-${label//[^A-Za-z0-9]/-}.json" || status=$?
+    TMPDIR="$SCRATCH" go test -json -p "$parallel" "${TAG_FLAG[@]}" "${COUNT_FLAG[@]}" "${RACE_FLAG[@]}" "${RUN_FLAG[@]}" "${pkgs[@]}" {RUN_LOCK}>&- | python3 "$ROOT/automation/ci/test-json-report.py" --out "$JSON_DIR/$$-$JSON_LABEL-${label//[^A-Za-z0-9]/-}.json" || status=$?
   else
     TMPDIR="$SCRATCH" go test -p "$parallel" "${TAG_FLAG[@]}" "${COUNT_FLAG[@]}" "${RACE_FLAG[@]}" "${RUN_FLAG[@]}" "${pkgs[@]}" {RUN_LOCK}>&- || status=$?
   fi
@@ -369,7 +388,13 @@ case "$MODE" in
       run_cli_shards "$SUBPROCESS_PARALLEL" || status=$?
       RACE_FLAG=()
     fi
-    if [[ ${#FAST_PKGS[@]} -eq 0 && ${#HEAVY_PKGS[@]} -eq 0 ]]; then echo "[test-grouped] changed: no Go package is affected"; fi
+    # The full run's fast-parallel mode also runs the pigfault-tagged tests of the durable driver; the untagged run above skips them.
+    fault=
+    if [[ -n "${TEST_CHANGED_FOR:-}" ]] && in_list "$(go list ./durable/core/driver)" "${AFFECTED[@]}"; then
+      fault=1
+      run_fault_group "$SERIAL_PARALLEL" || status=$?
+    fi
+    if [[ ${#FAST_PKGS[@]} -eq 0 && ${#HEAVY_PKGS[@]} -eq 0 && -z "$fault" ]]; then echo "[test-grouped] changed: no Go package is affected"; fi
     exit "$status"
     ;;
   report)

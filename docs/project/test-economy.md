@@ -20,6 +20,8 @@ PiG's suites are large: `make test` takes about 7,800 CPU-seconds and 31 minutes
 
 It then adds every package whose tests import one of those packages, directly or transitively (the reverse closure of `go list -test -deps`). The edited packages run under `-race`; the other affected packages run without it (`TEST_CHANGED_RACE=affected` or `none` changes this). A change to `go.mod`, `go.sum` or `go.work` affects every package. The script names packages that build only under a tag (the parity runner, the integration tier) and files that no package test reads; their own make targets and CI cover them.
 
+The light pull-request run (`PIG_PR_CI_LIGHT`, `.github/AGENTS.md`) uses the same selection for its test-fast shard: `make ci-test-changed` runs the fast packages the pull request affects against its base branch, without `-race`, and runs the whole `ci-test-fast` when the change touches `go.mod`, `go.sum`, `go.work` or `go.work.sum`, or a file no package test reads. The full run stays the merge gate.
+
 `make test-changed` prints each package result, the output of failed tests, and the slowest tests and packages. The raw `go test -json` events stay in `tmp/test-changed/<time>/`.
 
 ## Rules for running tests

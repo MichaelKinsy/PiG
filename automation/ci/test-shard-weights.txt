@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: MIT
 #
 # Placement of the slowest tests of sharded packages, read by test-shard-pattern.sh.
+# automation/ci/aggregate-test-timings.py regenerates this file from the go test events of recent full CI runs.
+#
 # Each "package" line starts a section; "shards" names the shard count the
 # placement balances; with any other count every test is placed by name hash. Each line "<shard> <test>" pins that
-# test to the shard, packed by measured duration (tests over 10 s for cmd/pig and 5 s for the extension packages, measured
+# test to the shard, packed by measured duration (tests over 10 s for cmd/pig and 5 s for the other packages, measured
 # with go test -json) on top of the hash-placed rest. A name that is no longer
 # listed is ignored; a test not named here is placed by hash, so every test
 # still lands in exactly one shard.

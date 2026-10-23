@@ -58,7 +58,7 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 			steps["python"] = true
 		case step.If == "matrix.shard != 'native'" && strings.Contains(step.Run, `rustup default "$RUST_VERSION"`):
 			steps["rust"] = true
-		case step.If == "matrix.shard == 'native'" && strings.Contains(step.Run, "go test -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui\n"):
+		case step.If == "matrix.shard == 'native'" && strings.Contains(step.Run, "automation/ci/go-test.sh -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui\n"):
 			steps["native"] = true
 		case strings.Contains(step.If, "contains(matrix.shard, 'cli-')") && strings.TrimSpace(step.Run) == "automation/ci/macos-units.sh cli" && step.Env["UNITS"] == "${{ matrix.shard }}":
 			steps["cli"] = true
@@ -79,16 +79,16 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := string(data)
-	cliRun := regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit#cli-\}" ([0-9]+) ` + regexp.QuoteMeta(cliPkg) + `\); then\n\s*go test -timeout 30m -run "\$run" ` + regexp.QuoteMeta(cliPkg) + ` \|\| failed=1\n`)
+	cliRun := regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit#cli-\}" ([0-9]+) ` + regexp.QuoteMeta(cliPkg) + `\); then\n\s*automation/ci/go-test\.sh -timeout 30m -run "\$run" ` + regexp.QuoteMeta(cliPkg) + ` \|\| failed=1\n`)
 	if match := cliRun.FindStringSubmatch(script); match == nil {
 		t.Error("macos-units.sh does not run a cmd/pig unit as its own go test of one test-shard-pattern.sh shard")
 	} else if match[1] != strconv.Itoa(shards) {
 		t.Errorf("macos-units.sh splits cmd/pig into %s shards, want %d as make test-cli runs", match[1], shards)
 	}
-	if !regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit##\*-\}" 3 \./coding/extension/host/subprocess\); then\n\s*go test -timeout 30m -run "\$run" \./coding/extension/host/subprocess \|\| failed=1\n`).MatchString(script) {
+	if !regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit##\*-\}" 3 \./coding/extension/host/subprocess\); then\n\s*automation/ci/go-test\.sh -timeout 30m -run "\$run" \./coding/extension/host/subprocess \|\| failed=1\n`).MatchString(script) {
 		t.Error("macos-units.sh does not run an extension host unit as its own go test of one third")
 	}
-	if !strings.Contains(script, "go test -timeout 30m ./env ./coding/piglet || failed=1\n") {
+	if !strings.Contains(script, "automation/ci/go-test.sh -timeout 30m ./env ./coding/piglet || failed=1\n") {
 		t.Error("macos-units.sh does not run the packages unit")
 	}
 }
@@ -110,7 +110,7 @@ func TestMacOSShardsTestUnderThePinnedToolchain(t *testing.T) {
 		if step.If == "" && strings.Contains(step.Run, `test "$(node --version)" = "v$(cat .node-version)"`) && strings.Contains(step.Run, `test "$(npm --version)" = "$NPM_VERSION"`) {
 			check = i
 		}
-		if firstTest < 0 && strings.Contains(step.Run, "go test ") {
+		if firstTest < 0 && strings.Contains(step.Run, "automation/ci/go-test.sh ") {
 			firstTest = i
 		}
 	}

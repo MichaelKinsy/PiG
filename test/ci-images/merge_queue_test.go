@@ -337,8 +337,8 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 		}
 	}
 
-	// A light target runs a subset of its full-run shard: every gate is a gate of the shard, or lint-changed for lint.
-	substitute := map[string]string{"lint-changed": "lint"}
+	// A light target runs a subset of its full-run shard: every gate is a gate of the shard, or lint-changed for lint, or test-changed for test-fast-parallel (the changed packages of it, or all of it).
+	substitute := map[string]string{"lint-changed": "lint", "test-changed": "test-fast-parallel"}
 	leaves := gateLeaves(t)
 	fullTargets := map[string]string{}
 	for _, entry := range full.Matrix["linux"] {
@@ -366,7 +366,7 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 	for _, entry := range light.Matrix["linux"] {
 		lightGates = append(lightGates, leaves(entry.Target)...)
 	}
-	for _, gate := range []string{"build", "vet", "lint-changed", "lint-scenarios", "port-map-drift", "correspondence-check", "interface-gaps", "test-fast-parallel", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "parity-fast-1"} {
+	for _, gate := range []string{"build", "vet", "lint-changed", "lint-scenarios", "port-map-drift", "correspondence-check", "interface-gaps", "test-changed", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "parity-fast-1"} {
 		if !slices.Contains(lightGates, gate) {
 			t.Errorf("the light run does not run %s", gate)
 		}

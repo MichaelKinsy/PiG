@@ -39,6 +39,9 @@ ifneq ($(filter -mod=mod,$(GOFLAGS)),)
 export GOFLAGS := $(strip $(filter-out -mod=mod,$(GOFLAGS)))
 endif
 
+# go test, or go test -json with its events kept in PIG_TEST_JSON_DIR when CI sets that (automation/ci/go-test.sh).
+GO_TEST := $(CURDIR)/automation/ci/go-test.sh
+
 PIG_BIN ?= $(HOME)/.local/bin/pig
 # Gate-only pig binary. It is built through go.work to exercise the developing SDK, then runs with GOWORK=off so the extensions it validates build as standalone modules. module-publication separately verifies the published dependency pins.
 CHECK_PIG_BIN := $(CURDIR)/tmp/check-bin/pig
@@ -269,7 +272,7 @@ lint: ## Run golangci-lint over the repository (part of make check)
 	@echo "Running golangci-lint..."
 	go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity ./...
 	@echo "Checking the Durable core import boundary (no encoding/json, reflect or template in the Wasm closure)..."
-	go test -count=1 ./durable/core/contracttest/boundary/
+	$(GO_TEST) -count=1 ./durable/core/contracttest/boundary/
 
 # Like go list ./..., exclude testdata directories, including nested fixture modules, and packages whose Go files all carry a
 # build constraint for another platform (for example the wasm-only durable core), which golangci-lint cannot type-check natively.
@@ -315,7 +318,7 @@ journeys-changed: parity-deps ## Run only the PTY journeys whose Touches prefixe
 # Fixture modules are included because they exercise the same clean-clone
 # dependency boundaries as independently distributed modules.
 test-sdk-go: ## Test the Go extension SDK module on its own
-	@cd extensions/sdk && GOWORK=off go test $(GO_TEST_CI_COUNT) ./...
+	@cd extensions/sdk && GOWORK=off $(GO_TEST) $(GO_TEST_CI_COUNT) ./...
 
 test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWORK=off
 	@set -eu; \
@@ -327,7 +330,7 @@ test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWO
 		piglets/porter/extensions/pig-porter \
 		piglets/standard; do \
 		echo "testing Go module: $$module"; \
-		(cd "$$module" && GOWORK=off go test $(GO_TEST_CI_COUNT) ./...); \
+		(cd "$$module" && GOWORK=off $(GO_TEST) $(GO_TEST_CI_COUNT) ./...); \
 	done
 
 test-aot-conformance: ## Run the extension conformance suite on the compiled aot host (needs PIG_AOT_TEST_COMPILER, the Pi-Bolt 0.7.4 runtime executable)
@@ -349,8 +352,8 @@ test-sdk-py: ## Run the Python extension SDK's pytest suite with its hash-locked
 
 # The SDK scenario table (test/extension-conformance/sdkscenarios) runs once per SDK through the real host, with the Go, Node, Python and Rust scenario drivers, and each SDK must produce the observation the table gives. A row in a scenario's Red map must still produce exactly its recorded Got, so the lane that fixes it deletes the entry and a regression inside a red row still fails. CI runs it in the test-conformance shard and in the Windows and macOS extension-conformance shards, because it is a test of ./test/extension-conformance; this target runs it alone, with the wiring checks that tie the table to the wire methods the code derives.
 test-sdk-conformance: ## Run the SDK conformance scenario table against every extension SDK through the real host
-	@go test ./test/extension-conformance -run '^TestSDKScenarios$$' $(GO_TEST_CI_COUNT)
-	@go test ./test/wiring -run 'TestScenarioCoversNameRealWireMethods|TestEveryAuthObjectMethodIsExercisedByAScenario' $(GO_TEST_CI_COUNT)
+	@$(GO_TEST) ./test/extension-conformance -run '^TestSDKScenarios$$' $(GO_TEST_CI_COUNT)
+	@$(GO_TEST) ./test/wiring -run 'TestScenarioCoversNameRealWireMethods|TestEveryAuthObjectMethodIsExercisedByAScenario' $(GO_TEST_CI_COUNT)
 
 test-mcp-conformance: ## Run the official MCP client conformance suite against PiG's MCP client (needs network the first time; see test/mcp-conformance/README.md)
 	@go run ./test/mcp-conformance/run $(MCP_CONFORMANCE_ARGS)
@@ -514,7 +517,7 @@ alloc-baseline: ## Fail when a hot-path benchmark's allocs/op rises or falls fro
 docs-drift: ## Fail when generated documentation no longer matches its source
 	@python3 automation/gen/gen-knowledge-graph.py --check
 	@# -count=1: public_claims_test.go runs check-public-claims.py, whose file reads the go test cache cannot see.
-	@go test ./test/docs-drift/ -count=1
+	@$(GO_TEST) ./test/docs-drift/ -count=1
 
 # bug-ledger needs the full git history (fetch-depth: 0 in CI); it reads the commits since the previous release, CHANGELOG.md, changelog.d and the divergence records.
 bug-ledger: ## Regenerate the public bug fix ledger (docs/bug-ledger.json and docs/site/docs/bug-ledger.md) from the history, changelog and divergence records
@@ -542,9 +545,9 @@ npm-dist-e2e: ## Cross-build, npm pack, install and run pig through the npm laun
 
 standard-check: ## Verify PiG Standard requires and resolves only fused extensions
 	@# -count=1: these tests build extensions in child go processes, whose source reads the go test cache cannot see.
-	@go test ./coding/cli -run '^TestPiGStandardRequiresAndResolvesOnlyFusedExtensions$$' -count=1
-	@go test ./coding/pigletbuild -run '^TestRunBuildRejectsRequiredFusedFallback$$' -count=1
-	@go test ./coding/extension/host/subprocess -run '^TestHost_MixedFusedPackedAndIsolatedExtensions$$' -count=1
+	@$(GO_TEST) ./coding/cli -run '^TestPiGStandardRequiresAndResolvesOnlyFusedExtensions$$' -count=1
+	@$(GO_TEST) ./coding/pigletbuild -run '^TestRunBuildRejectsRequiredFusedFallback$$' -count=1
+	@$(GO_TEST) ./coding/extension/host/subprocess -run '^TestHost_MixedFusedPackedAndIsolatedExtensions$$' -count=1
 	@go build -buildvcs=false -o $(CHECK_PIG_BIN) ./cmd/pig
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/piglogin >/dev/null
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/pigrunner >/dev/null
@@ -780,7 +783,7 @@ durable-contract-setup: ## Check out the Pi reference the Durable core conforman
 	@durable/contract/tools/setup.sh
 
 durable-contract-test: durable-contract-setup ## Unit, pipeline and matrix tests of the Durable conformance tooling (negative controls included)
-	@go test ./durable/core/contracttest/...
+	@$(GO_TEST) ./durable/core/contracttest/...
 	@cd durable/contract && node cli/contract.mjs fixtures 50 >/dev/null && node --test --test-timeout=600000 test/*.test.mjs
 
 durable-contract-trace: durable-contract-setup ## Compare a candidate's call/commit interleaving with Pi's golden traces (IMPL=native|wasm-go|wasm-tinygo); red until the core schedules like Pi

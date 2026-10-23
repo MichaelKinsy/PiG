@@ -31,7 +31,15 @@ for unit in "${units[@]}"; do
   echo "$(date -u +%T) listing ./$package shard $shard"
   if run=$(TEST_SHARD_BINARY="$bin" timeout 5m automation/ci/test-shard-pattern.sh "$shard" 8 ./$package); then
     echo "$(date -u +%T) running shard $shard"
-    (cd "$package" && "$bin" -test.paniconexit0 -test.v -test.timeout 25m -test.run "$run") || failed=1
+    if [[ -n ${PIG_TEST_JSON_DIR:-} ]]; then
+      # Keep the run's events for the shard-weight timings: the binary's -test.v=test2json output through test2json, run straight from the toolchain because go test is what hangs. The report prints the same text as -test.v.
+      mkdir -p "$PIG_TEST_JSON_DIR"
+      py=$(command -v python3 || command -v python)
+      import_path=$(go list "./$package")
+      (cd "$package" && "$bin" -test.paniconexit0 -test.v=test2json -test.timeout 25m -test.run "$run") | "$(go env GOTOOLDIR)/test2json" -p "$import_path" | "$py" automation/ci/test-json-report.py --verbatim --out "$PIG_TEST_JSON_DIR/$(date -u +%Y%m%dT%H%M%S)-$unit.json" || failed=1
+    else
+      (cd "$package" && "$bin" -test.paniconexit0 -test.v -test.timeout 25m -test.run "$run") || failed=1
+    fi
   else
     failed=1
   fi

@@ -195,7 +195,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 			if !strings.Contains(selectLine, `windows-native-shard.sh "${NATIVE_SHARD#native-}"`) || step.Env["NATIVE_SHARD"] != "${{ matrix.shard }}" {
 				t.Errorf("native step does not derive its shard from the matrix value: %s", selectLine)
 			}
-			if !strings.Contains(step.Run, "go test -timeout 30m $packages") {
+			if !strings.Contains(step.Run, "automation/ci/go-test.sh -timeout 30m $packages") {
 				t.Errorf("native shard does not test the selected packages:\n%s", step.Run)
 			}
 		}
@@ -228,7 +228,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 			droppedCLI = true
 			continue
 		}
-		if !regexp.MustCompile(`go test [^\n]*\./` + regexp.QuoteMeta(match[1]) + `(\s|$)`).MatchString(extensionRuns + conformanceRuns) {
+		if !regexp.MustCompile(`go-test\.sh [^\n]*\./` + regexp.QuoteMeta(match[1]) + `(\s|$)`).MatchString(extensionRuns + conformanceRuns) {
 			t.Errorf("native shard drops %s but neither the extension-host nor the extension-conformance shard tests it", match[1])
 		}
 	}
@@ -248,7 +248,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 		}
 	}
 	const conformancePkg = "test/extension-conformance"
-	conformanceRun := regexp.MustCompile(`go test [^\n]*\./` + regexp.QuoteMeta(conformancePkg) + `(\s|$)`)
+	conformanceRun := regexp.MustCompile(`go-test\.sh [^\n]*\./` + regexp.QuoteMeta(conformancePkg) + `(\s|$)`)
 	if !conformanceRun.MatchString(conformanceRuns) {
 		t.Errorf("extension-conformance shard does not test %s", conformancePkg)
 	}

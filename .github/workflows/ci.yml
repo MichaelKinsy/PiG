@@ -338,6 +338,9 @@ jobs:
           key: golangci-lint-${{ runner.os }}-${{ hashFiles('.go-version', '.golangci.yml', 'go.mod') }}-${{ steps.lintweek.outputs.week }}
           restore-keys: |
             golangci-lint-${{ runner.os }}-${{ hashFiles('.go-version', '.golangci.yml', 'go.mod') }}-
+      - name: Keep the go test events
+        shell: bash
+        run: echo "PIG_TEST_JSON_DIR=$RUNNER_TEMP/test-json" >> "$GITHUB_ENV"
       - name: Run PiG verification shard
         env:
           CI: '1'
@@ -345,9 +348,19 @@ jobs:
           TARGET: ${{ matrix.target }}
           # ci-build-pr lints the changed files against the base branch (a pull request run has the base as a remote ref only).
           LINT_BASE: origin/main
+          # ci-test-changed (the light run's test-fast) selects the packages the pull request changed against its base branch.
+          TEST_BASE: origin/${{ github.base_ref || 'main' }}
           # A shard that groups several gates runs every one of them and fails if any failed.
           MAKEFLAGS: -k
         run: make "$TARGET"
+      - name: Upload the go test events
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-json-linux-${{ matrix.shard }}
+          path: ${{ runner.temp }}/test-json
+          retention-days: 30
+          if-no-files-found: ignore
       - name: Save the golangci-lint cache
         if: ${{ !cancelled() && matrix.shard == 'build' && steps.lintcache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -413,6 +426,9 @@ jobs:
         if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
         with:
           node-version-file: automation/ci/node-minimum.version
+      - name: Keep the go test events
+        shell: bash
+        run: echo "PIG_TEST_JSON_DIR=$RUNNER_TEMP/test-json" >> "$GITHUB_ENV"
       - name: Test Node extension runtime and TypeScript parity on Pi's engine floor
         if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
         env:
@@ -445,6 +461,15 @@ jobs:
           set -euo pipefail
           node --version
           automation/ci/with-isolated-pig-home.sh make ci-node-runtime
+      - name: Upload the go test events
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-json-node-runtime
+          path: ${{ runner.temp }}/test-json
+          retention-days: 30
+          if-no-files-found: ignore
+
   node-loader:
     name: Node loader / ${{ matrix.os }}
     needs: [changes, preflight]
@@ -469,6 +494,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: automation/ci/node-loader-minimum.version
+      - name: Keep the go test events
+        shell: bash
+        run: echo "PIG_TEST_JSON_DIR=$RUNNER_TEMP/test-json" >> "$GITHUB_ENV"
       - name: Load TypeScript packages and check runtime preflight on PiG's minimum Node
         shell: bash
         run: automation/ci/node-loader-check.sh
@@ -480,6 +508,14 @@ jobs:
         if: ${{ !cancelled() && steps.go.outcome == 'success' }}
         shell: bash
         run: automation/ci/node-loader-check.sh
+      - name: Upload the go test events
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-json-node-loader-${{ matrix.os }}
+          path: ${{ runner.temp }}/test-json
+          retention-days: 30
+          if-no-files-found: ignore
 
   durable-cf-host:
     name: Durable Cloudflare host
@@ -699,6 +735,15 @@ jobs:
           '{"id":"state","type":"get_state"}' | & .\bin\pig.exe --mode rpc --model test-faux/faux-1 --no-session --no-extensions | Out-File -Encoding utf8 (Join-Path $acceptanceRoot 'rpc.jsonl')
           if ($LASTEXITCODE -ne 0) { throw "Windows RPC smoke failed" }
           if ((Get-Content -Raw (Join-Path $acceptanceRoot 'rpc.jsonl')) -notmatch '"type":"response"') { throw "Windows RPC response missing" }
+      - name: Keep the go test events
+        id: events
+        shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          echo "PIG_TEST_JSON_DIR=$RUNNER_TEMP/test-json" >> "$GITHUB_ENV"
+          # An artifact name takes no space, and the shard names of the grouped jobs hold several.
+          echo "artifact=test-json-windows-${SHARD// /+}" >> "$GITHUB_OUTPUT"
       - name: Test every package with Windows tests
         # The extension-host shard runs the extension host packages, and the
         # cli-N shards run cmd/pig in shards. The package
@@ -719,7 +764,7 @@ jobs:
           export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
           packages=$(automation/ci/windows-native-shard.sh "${NATIVE_SHARD#native-}")
           echo "$packages"
-          go test -timeout 30m $packages
+          automation/ci/go-test.sh -timeout 30m $packages
       - name: Test cmd/pig shards ${{ matrix.shard }} of 8
         # Each cli-N unit runs shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own test process and timeout.
         if: startsWith(matrix.shard, 'cli-')
@@ -761,10 +806,10 @@ jobs:
           $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
           # runtimecell runs whole, in extension-host-1; the subprocess tests are split in three.
           if ($env:MATRIX_SHARD -eq 'extension-host-1') {
-            go test -v -timeout 30m ./coding/extension/host/runtimecell
+            bash automation/ci/go-test.sh -v -timeout 30m ./coding/extension/host/runtimecell
             if ($LASTEXITCODE -ne 0) { throw "Windows runtimecell tests failed" }
           }
-          go test -v -timeout 30m -run $env:SHARD_RUN ./coding/extension/host/subprocess
+          bash automation/ci/go-test.sh -v -timeout 30m -run $env:SHARD_RUN ./coding/extension/host/subprocess
           if ($LASTEXITCODE -ne 0) { throw "Windows extension host tests failed" }
       - name: Test Windows extension conformance for every SDK
         if: startsWith(matrix.shard, 'extension-conformance-')
@@ -779,8 +824,16 @@ jobs:
           $env:TMP = $acceptanceRoot
           $env:TMPDIR = $acceptanceRoot
           $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
-          go test -v -timeout 30m -run $env:SHARD_RUN ./test/extension-conformance
+          bash automation/ci/go-test.sh -v -timeout 30m -run $env:SHARD_RUN ./test/extension-conformance
           if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
+      - name: Upload the go test events
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.events.outputs.artifact }}
+          path: ${{ runner.temp }}\test-json
+          retention-days: 30
+          if-no-files-found: ignore
       - name: Keep only the Go build cache entries this job used
         if: ${{ !cancelled() && steps.age.outcome == 'success' }}
         shell: bash
@@ -887,6 +940,15 @@ jobs:
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           python3 automation/pin/pin.py check-oracle
+      - name: Keep the go test events
+        id: events
+        shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          echo "PIG_TEST_JSON_DIR=$RUNNER_TEMP/test-json" >> "$GITHUB_ENV"
+          # An artifact name takes no space, and the shard names of the grouped jobs hold several.
+          echo "artifact=test-json-macos-${SHARD// /+}" >> "$GITHUB_OUTPUT"
       - name: Build and test native macOS paths
         if: matrix.shard == 'native'
         run: |
@@ -894,7 +956,7 @@ jobs:
           go build -trimpath -o bin/pig ./cmd/pig
           ./bin/pig --version
           # The ai package has about 2700 top-level tests and needs more than go test's default 10 minutes here: Linux splits it in two processes (automation/ci/test-grouped.sh) and Windows runs it alone under this timeout.
-          go test -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
+          automation/ci/go-test.sh -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
       # A unit that fails does not stop the job: every unit of the job runs, and the step fails if any unit failed.
       - name: Test cmd/pig shards ${{ matrix.shard }}
         # Each cli-N unit runs shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own go test process and timeout.
@@ -913,6 +975,14 @@ jobs:
         env:
           UNITS: ${{ matrix.shard }}
         run: automation/ci/macos-units.sh packages
+      - name: Upload the go test events
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.events.outputs.artifact }}
+          path: ${{ runner.temp }}/test-json
+          retention-days: 30
+          if-no-files-found: ignore
 
   android:
     name: Android build
