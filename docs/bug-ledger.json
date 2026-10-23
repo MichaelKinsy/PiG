@@ -285,6 +285,29 @@
       ]
     },
     {
+      "id": "BF-04ef0ac",
+      "title": "Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time",
+      "symptom": "Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time.",
+      "rootCause": "Close's last snapshot of the objects goes through loop.run, which runs ahead of the tasks posted before it and drains them after. A hold the link had handed to the loop before it closed could therefore run after that snapshot and after the connection had released everything it held (Connection.closed). It created an object nothing disposed and nothing released, and the open of its resource, which waits for the abort a disposal raises, kept waitTasks blocked for good: windows native-4, TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold, Close in waitTasks for 29 minutes with the gate's open in its select for as long.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time. A frame the link had handed to the host loop before it closed could run after Close took its last look at the host's objects and after the connection had released what it held, so it created an object nothing disposed or released, and Close waited for that object's resource open for good (seen as a 30 minute `chord/host` test timeout on Windows after a `ready_timeout` get). A connection now ignores frames once its link closed, as Pi's link delivers none.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "04ef0acc60",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": [
+        "chord/host/awaiting_upstream_test.go::TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold",
+        "chord/host/close_queued_hold_test.go::TestCloseDropsAHoldQueuedBeforeItsLinkClosed"
+      ]
+    },
+    {
       "id": "BF-051a79d",
       "title": "A Provider object registered by an extension (`pi.registerProvider(provider)`) now receives the session's…",
       "symptom": "A Provider object registered by an extension (`pi.registerProvider(provider)`) now receives the session's `onResponse` and `onProviderStreamEvent` callbacks in its stream options, as in Pi, so `after_provider_response` and `provider_stream_event` fire for its requests.",
