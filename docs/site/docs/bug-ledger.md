@@ -1049,6 +1049,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-efded13](#bf-efded13) | Installing a Package or Piglet from a local `git:file://` source on Windows no longer fails with `fatal… | PiG's own defect | Windows | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f06ab7e](#bf-f06ab7e) | A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -15463,6 +15464,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ef0f95ab0e` (2026-10-14)
 - **Tests:** `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`, `cmd/gen-models/carried_fixes_test.go::TestCarriedOpenCodeInferenceEndpoints`
 - **Release note:** OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models failing with a 404; OpenCode Go MiniMax M2.7 uses the Anthropic Messages API, and OpenCode Go DeepSeek V4 Flash is no longer listed (carried Pi fix, Pi 195120a9).
+
+### BF-efded13
+
+**Installing a Package or Piglet from a local `git:file://` source on Windows no longer fails with `fatal…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Installing a Package or Piglet from a local `git:file://` source on Windows no longer fails with `fatal: '$GIT_DIR' too big`.
+- **Root cause:** A file:// source checked out to <root>/localhost/<whole absolute path>, doubling its length; Git for Windows then failed with "$GIT_DIR too big" whatever core.longpaths says. A file:// source now checks out to <host>/<12 hex of sha256(absolute path)>/<basename>. Sources Pi accepts keep Pi's layout. Older nested file:// checkouts are not reused.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `efded13767` (2026-10-22)
+- **Tests:** `coding/cli/git_checkout_path_test.go::TestGitCheckoutPathOnThisPlatform`, `coding/cli/git_checkout_path_test.go::TestGitCheckoutRelativePerPlatform`, `internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeFileSourceIsShort`, `internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeFileSourceLengthBound`, `internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeNonFileKeepsPiLayout`, `internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeSameBasenameDiffers`, `internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeWindowsFileSourceUnderScratchRootIsShort`
+- **Release note:** Installing a Package or Piglet from a local `git:file://` source on Windows no longer fails with `fatal: '$GIT_DIR' too big`. A file URL now checks out to `<install root>/localhost/<12 hex of the path's sha256>/<basename>` instead of re-nesting the whole absolute path, which pushed `$GIT_DIR` past Git for Windows' own path limit that `core.longpaths` does not lift. Sources Pi accepts keep Pi's exact layout. A file URL checkout made by an earlier version is not reused and is cloned again.
 
 ### BF-f02269c
 

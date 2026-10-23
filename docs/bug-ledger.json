@@ -32288,6 +32288,34 @@
       ]
     },
     {
+      "id": "BF-efded13",
+      "title": "Installing a Package or Piglet from a local `git:file://` source on Windows no longer fails with `fatal…",
+      "symptom": "Installing a Package or Piglet from a local `git:file://` source on Windows no longer fails with `fatal: '$GIT_DIR' too big`.",
+      "rootCause": "A file:// source checked out to \u003croot\u003e/localhost/\u003cwhole absolute path\u003e, doubling its length; Git for Windows then failed with \"$GIT_DIR too big\" whatever core.longpaths says. A file:// source now checks out to \u003chost\u003e/\u003c12 hex of sha256(absolute path)\u003e/\u003cbasename\u003e. Sources Pi accepts keep Pi's layout. Older nested file:// checkouts are not reused.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Installing a Package or Piglet from a local `git:file://` source on Windows no longer fails with `fatal: '$GIT_DIR' too big`. A file URL now checks out to `\u003cinstall root\u003e/localhost/\u003c12 hex of the path's sha256\u003e/\u003cbasename\u003e` instead of re-nesting the whole absolute path, which pushed `$GIT_DIR` past Git for Windows' own path limit that `core.longpaths` does not lift. Sources Pi accepts keep Pi's exact layout. A file URL checkout made by an earlier version is not reused and is cloned again.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "efded13767",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": [
+        "coding/cli/git_checkout_path_test.go::TestGitCheckoutPathOnThisPlatform",
+        "coding/cli/git_checkout_path_test.go::TestGitCheckoutRelativePerPlatform",
+        "internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeFileSourceIsShort",
+        "internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeFileSourceLengthBound",
+        "internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeNonFileKeepsPiLayout",
+        "internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeSameBasenameDiffers",
+        "internal/packagemanager/git_checkout_relative_test.go::TestGitCheckoutRelativeWindowsFileSourceUnderScratchRootIsShort"
+      ]
+    },
+    {
       "id": "BF-f02269c",
       "title": "When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket…",
       "symptom": "When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket request carries raw JSON, nested values are written as Pi's `JSON.stringify` writes them after `JSON.parse`: `\\u00e9` becomes `é`, and a nested object's repeated key keeps its first place with its last value.",
