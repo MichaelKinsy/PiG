@@ -120,9 +120,7 @@ emit(out);`, cases, &want)
 	var next atomic.Int64
 	var wg sync.WaitGroup
 	for range runtime.GOMAXPROCS(0) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				i := int(next.Add(1)) - 1
 				if i >= len(cases) {
@@ -131,7 +129,7 @@ emit(out);`, cases, &want)
 				c := cases[i]
 				outcomes[i].got, outcomes[i].err = ResizeImage(decodeBase64(t, c.Data), c.MimeType, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight, MaxBytes: c.MaxBytes, JPEGQuality: c.Quality})
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	failures := 0
