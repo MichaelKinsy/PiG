@@ -247,6 +247,7 @@ func (d *LoginDialogComponent) activateDeviceCodeLocked(info OAuthDeviceCodeInfo
 	if copyCode {
 		d.setDeviceCodeStatusLocked(hint, "Copying code...")
 		copyText := d.copyText
+		//portlint:allow golifetime the goroutine ends when the clipboard writer returns; it only takes the dialog lock and requests a repaint
 		go func() {
 			message := "Code copied to clipboard"
 			if copyText == nil || copyText(info.UserCode) != nil {

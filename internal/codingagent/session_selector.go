@@ -813,7 +813,10 @@ const (
 	sessionTierScale = 1_000_000
 )
 
-func sessionTierScore(tier int, score float64) float64 { return float64(tier)*sessionTierScale + score }
+// float64() forces the product to round before the add: arm64 fuses x*y+z into one FMA rounding, which JS never does.
+func sessionTierScore(tier int, score float64) float64 {
+	return float64(float64(tier)*sessionTierScale) + score
+}
 
 // matchLiteralToken is an exact, case-insensitive text match. Messages and ids are only matched exactly: scattered matches in them are noise.
 func matchLiteralToken(search *sessionSearch, value string) (float64, bool) {
