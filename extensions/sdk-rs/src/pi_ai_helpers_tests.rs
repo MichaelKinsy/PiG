@@ -99,7 +99,7 @@ fn run(fn_name: &str, args: &[Value]) -> Option<Value> {
             let mut usage = a(1).clone();
             let cost = calculate_cost(a(0), &mut usage).unwrap();
             assert_eq!(usage["cost"], cost, "the cost is stored in usage");
-            Value::Object(cost.as_object().unwrap().iter().map(|(key, value)| (key.clone(), finite(value.as_f64().unwrap()))).collect())
+            Value::Object(cost.as_object().unwrap().iter().map(|(key, value)| (key.clone(), if value.is_boolean() { value.clone() } else { finite(value.as_f64().unwrap()) })).collect())
         }
         "contentText" => json!(content_text(Some(a(0)), args.get(1).map_or("\n", |s| s.as_str().unwrap())).unwrap()),
         "getCurrentTools" => json!(get_current_tools(&messages(0))),

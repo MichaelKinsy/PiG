@@ -135,6 +135,7 @@ pub fn calculate_cost(model: &Value, usage: &mut Value) -> Result<Value, String>
     for (key, value) in [("input", cost_input), ("output", cost_output), ("cacheRead", cost_cache_read), ("cacheWrite", cost_cache_write), ("total", total)] {
         cost.insert(key.into(), serde_json::Number::from_f64(value).map_or(Value::Null, Value::Number));
     }
+    cost.insert("totalFromProvider".into(), Value::Bool(false));
     Ok(Value::Object(cost.clone()))
 }
 

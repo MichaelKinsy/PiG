@@ -849,6 +849,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c1055c4](#bf-c1055c4) | Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as… | PiG's own defect | Windows, macOS | 0.5.0 |
 | [BF-c10ae73](#bf-c10ae73) | In RPC mode, runs that an extension command's handler sends with `sendMessage` or `sendUserMessage` start in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c122088](#bf-c122088) | A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c15309d](#bf-c15309d) | fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1ed918](#bf-c1ed918) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1fedc2](#bf-c1fedc2) | The durable `read` tool reads a file that grows while it is read, such as an active log, instead of failing… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c1fedc2-2](#bf-c1fedc2-2) | Bounded durable tool output drops a byte-order mark only at the start of byte output, and keeps a U+FEFF at… | PiG's own defect | All platforms | 0.5.0 |
@@ -12686,6 +12687,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c122088b8c` (2026-10-13)
 - **Tests:** `ai/validate_arguments_order_test.go::TestValidateToolArgumentsReportsTheArgumentsInTheCallsOrder`, `durable/codemode/codemode_test.go::TestDurableCodeMode`, `durable/codemode/models_test.go::TestCodeModeModels`, `durable/core/driver/harness_nested_slots_core_test.go::TestCoreANestedSlotShowsTheArgumentsTheCallRunsWith`, `durable/harness/harness_tasks_scheduling_test.go::TestTaskClose`, `durable/harness/tool_nested_test.go::TestANestedCallKeepsTheCallersArgumentOrder`, `durable/harness/tool_nested_test.go::TestANestedCallSlotShowsTheArgumentsItRunsWith`
 - **Release note:** A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored call and execute intent, the `pi.live` nested slot, tool events, validation messages, and code mode's "took a different path" message (`tools.name({...})`) no longer sort them. Code mode's `models.*` calls no longer store an extra `order` argument.
+
+### BF-c15309d
+
+**fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable package
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c15309d0f4` (2026-10-23)
+- **Tests:** None recorded.
 
 ### BF-c1ed918
 

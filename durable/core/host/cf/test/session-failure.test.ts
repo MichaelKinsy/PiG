@@ -19,9 +19,9 @@ const models = (faux = fauxProvider()) => { const m = createModels(); m.setProvi
 
 class FailingStorage extends MemoryStorage {
   failing = false
-  override async commit(writes: never, ctx: never) {
+  override async commit(writes: never, adopt: never, ctx: never) {
     if (this.failing) throw new Error("disk gone")
-    return super.commit(writes, ctx)
+    return super.commit(writes, adopt, ctx)
   }
 }
 

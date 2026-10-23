@@ -25110,6 +25110,25 @@
       ]
     },
     {
+      "id": "BF-c15309d",
+      "title": "fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable…",
+      "symptom": "fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable package",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c15309d0f4",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c1ed918",
       "title": "fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and…",
       "symptom": "fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and args_raw fields",
