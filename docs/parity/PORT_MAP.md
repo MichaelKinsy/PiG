@@ -287,6 +287,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/models-error.ts` | `ai/auth_resolve.go (ModelsErrorCode, ModelsError, NewModelsError)` | ✅ |
 | `packages/ai/src/utils/oauth-page.ts` | `ai/oauth_page.go (upstream 0.99.1 moved the file unchanged from auth/oauth/oauth-page.ts)` | ✅ |
 | `packages/ai/src/providers/openrouter-api.ts` | `ai/openrouter_api.go (OpenRouterModel, OpenRouterCost and the rest of the row's exported members), cmd/gen-models/` | ✅ |
+| `packages/ai/src/utils/openrouter-cost.ts` | `ai/openrouter_cost.go (isOpenRouterModel, applyOpenRouterReportedCost, the OpenRouter usage accounting; ai/openrouter_cost_test.go)` | ✅ |
 | `packages/ai/src/telemetry.ts` | `ai/telemetry.go` | ✅ |
 
 ## `packages/coding-agent/src/`

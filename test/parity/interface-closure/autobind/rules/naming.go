@@ -39,7 +39,7 @@ var initialisms = map[string]string{
 	"websocket": "WebSocket", "etag": "ETag", "webp": "WebP", "openai": "OpenAI", "uuidv7": "UUIDv7", "byok": "BYOK",
 	// Provider brand names the catalog constants carry (DEEPSEEK_MODELS is DeepSeekModels).
 	"deepseek": "DeepSeek", "vllm": "VLLM", "github": "GitHub", "huggingface": "HuggingFace", "minimax": "MiniMax", "moonshotai": "MoonshotAI",
-	"opencode": "OpenCode", "openrouter": "OpenRouter", "cn": "CN",
+	"opencode": "OpenCode", "openrouter": "OpenRouter", "cn": "CN", "byok": "BYOK",
 }
 
 // Words splits an upstream identifier into words. It splits snake_case, kebab-case and camelCase, and keeps a run of capitals together
