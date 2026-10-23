@@ -790,42 +790,39 @@ jobs:
           esac
           run=$(automation/ci/test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package")
           echo "SHARD_RUN=$run" >> "$GITHUB_ENV"
+          printf 'SHARD_RUN: %s bytes, sha256 %s\n' "${#run}" "$(printf '%s' "$run" | sha256sum | cut -d' ' -f1)"
       - name: Test Windows extension host packages
         if: startsWith(matrix.shard, 'extension-host-')
-        shell: pwsh
+        # bash, not pwsh: the -run pattern of the shard is one long ^(A|B|...)$ word, and a pwsh step hands it to bash.exe on a command line that is split again on the way to go-test.sh.
+        shell: bash
         env:
           CARGO_BUILD_JOBS: '2'
           PIG_REQUIRE_EXTENSION_TOOLCHAINS: '1'
           MATRIX_SHARD: ${{ matrix.shard }}
         run: |
-          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig extension acceptance'
-          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
-          $env:TEMP = $acceptanceRoot
-          $env:TMP = $acceptanceRoot
-          $env:TMPDIR = $acceptanceRoot
-          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
+          set -euo pipefail
+          # Native Windows programs get drive-qualified Windows paths, as pwsh's Join-Path gave them.
+          acceptance="$(cygpath -w "$RUNNER_TEMP")\\pig extension acceptance"
+          mkdir -p "$acceptance"
+          export TEMP="$acceptance" TMP="$acceptance" TMPDIR="$acceptance" PIG_HOME="$acceptance\\config with spaces"
           # runtimecell runs whole, in extension-host-1; the subprocess tests are split in three.
-          if ($env:MATRIX_SHARD -eq 'extension-host-1') {
-            bash automation/ci/go-test.sh -v -timeout 30m ./coding/extension/host/runtimecell
-            if ($LASTEXITCODE -ne 0) { throw "Windows runtimecell tests failed" }
-          }
-          bash automation/ci/go-test.sh -v -timeout 30m -run $env:SHARD_RUN ./coding/extension/host/subprocess
-          if ($LASTEXITCODE -ne 0) { throw "Windows extension host tests failed" }
+          if [ "$MATRIX_SHARD" = extension-host-1 ]; then
+            automation/ci/go-test.sh -v -timeout 30m ./coding/extension/host/runtimecell || { echo "::error::Windows runtimecell tests failed"; exit 1; }
+          fi
+          automation/ci/go-test.sh -v -timeout 30m -run "$SHARD_RUN" ./coding/extension/host/subprocess || { echo "::error::Windows extension host tests failed"; exit 1; }
       - name: Test Windows extension conformance for every SDK
         if: startsWith(matrix.shard, 'extension-conformance-')
-        shell: pwsh
+        # bash, not pwsh: see the extension host step.
+        shell: bash
         env:
           CARGO_BUILD_JOBS: '2'
           PIG_REQUIRE_EXTENSION_TOOLCHAINS: '1'
         run: |
-          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig extension acceptance'
-          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
-          $env:TEMP = $acceptanceRoot
-          $env:TMP = $acceptanceRoot
-          $env:TMPDIR = $acceptanceRoot
-          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
-          bash automation/ci/go-test.sh -v -timeout 30m -run $env:SHARD_RUN ./test/extension-conformance
-          if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
+          set -euo pipefail
+          acceptance="$(cygpath -w "$RUNNER_TEMP")\\pig extension acceptance"
+          mkdir -p "$acceptance"
+          export TEMP="$acceptance" TMP="$acceptance" TMPDIR="$acceptance" PIG_HOME="$acceptance\\config with spaces"
+          automation/ci/go-test.sh -v -timeout 30m -run "$SHARD_RUN" ./test/extension-conformance || { echo "::error::Windows Go, Node, Rust, Python, or fused-Go extension conformance failed"; exit 1; }
       - name: Upload the go test events
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
