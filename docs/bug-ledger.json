@@ -31531,6 +31531,25 @@
       ]
     },
     {
+      "id": "BF-e889b8d",
+      "title": "fix(cli): mark the validate-only scratch install as D28 and cold",
+      "symptom": "fix(cli): mark the validate-only scratch install as D28 and cold",
+      "rootCause": "divergence-consistency requires a typed additive marker and perf-lint requires the cold single-use stat to be annotated.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e889b8d149",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-e90ac19",
       "title": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last…",
       "symptom": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last blocks of the message that can still change instead of lexing, wrapping and laying out all of it, so a 60,000-character answer costs about 5% of the CPU it did, with the same output.",
