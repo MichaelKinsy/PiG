@@ -35617,6 +35617,25 @@
       ]
     },
     {
+      "id": "BF-fee313a",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "fee313a4b2",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-ffcd800",
       "title": "Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces…",
       "symptom": "Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces after a final empty heading add the empty row Pi shows.",
