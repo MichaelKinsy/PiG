@@ -114909,6 +114909,17 @@
       "shapeHash": "sha256:e4c1158616483342ca8f284c1a2457a685f6ecdeefa07bc47e7461e442d20a4a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#IsCacheDirectory",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "IsCacheDirectory",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(dir string) (bool, error)"
+      },
+      "shapeHash": "sha256:63983dfe596fd9b0574cf7da2e252060da496c4155c86a12d4702eca80ab5a5f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#KnownGoToolchainFailure",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "KnownGoToolchainFailure",
