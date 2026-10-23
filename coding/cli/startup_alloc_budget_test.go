@@ -177,7 +177,7 @@ const (
 	windowsLevelBytesCeiling   = 6_690
 )
 
-// startupVersionRuns is how many `pig --version` runs the budget may measure to find one within budget. The Go runtime starts one more OS
+// startupVersionRunsFor is how many `pig --version` runs the budget may measure to find one within budget on goos: startupWindowsVersionRuns on Windows, one elsewhere. The Go runtime starts one more OS
 // thread in some Windows process starts than in others: runtime.main locks the main goroutine to the main thread and blocks it in gcenable
 // waiting for the GC workers, and when no idle M is parked yet schedule -> stoplockedm -> handoffp -> startm -> newm hands its P to a new M.
 // That M costs 6 objects and 5,096 bytes (m, g0, gsignal and the profiling stack), whatever pig does. Under Wine on a Linux host, a Go program
@@ -187,7 +187,27 @@ const (
 // 5,312 apart, with no pig change that allocates at startup between them. The budget gates pig's own allocations, so a run over budget is
 // measured again, up to this many times, and the test judges one whole run (never the minimum bytes of one run with the minimum objects of
 // another). Noise passes in a later run; a regression is over budget in every run and fails with the smallest run's numbers.
-const startupVersionRuns = 10
+// Only Windows measures again: the extra M is a Windows start-up race, so Linux and macOS judge their single run, as they did before it.
+const startupWindowsVersionRuns = 10
+
+func startupVersionRunsFor(goos string) int {
+	if goos == "windows" {
+		return startupWindowsVersionRuns
+	}
+	return 1
+}
+
+// Only Windows re-measures `pig --version`; every other GOOS judges one run, so a regression there cannot hide behind a lucky later run.
+func TestStartupVersionRunsAreWindowsOnly(t *testing.T) {
+	for goos, want := range map[string]int{"windows": startupWindowsVersionRuns, "linux": 1, "darwin": 1, "freebsd": 1} {
+		if got := startupVersionRunsFor(goos); got != want {
+			t.Errorf("startupVersionRunsFor(%q) = %d, want %d", goos, got, want)
+		}
+	}
+	if startupWindowsVersionRuns < 2 {
+		t.Errorf("startupWindowsVersionRuns = %d: Windows must be able to measure again", startupWindowsVersionRuns)
+	}
+}
 
 // startupLevelCeilingFor is the per-level budget of goos.
 func startupLevelCeilingFor(goos string) (objects, bytes uint64) {
@@ -309,12 +329,12 @@ func (f *startupFixture) warmPrompt(ctx context.Context, t *testing.T, cwd strin
 }
 
 // version measures pig --version from cwd and returns one whole run: the first whose bytes and objects are both within budget, else the run
-// with the fewest bytes (its own objects with it), after startupVersionRuns runs. A run over budget is measured again because the Go runtime's
-// start moves the count (see startupVersionRuns). Every run is logged, so the two modes stay visible in CI logs.
+// with the fewest bytes (its own objects with it), after startupVersionRunsFor(runtime.GOOS) runs. On Windows a run over budget is measured again because the Go runtime's
+// start moves the count (see startupVersionRunsFor); elsewhere the one run is the verdict. Every run is logged, so the two modes stay visible in CI logs.
 func (f *startupFixture) version(ctx context.Context, t *testing.T, cwd string, budget startupAllocBudget) profiling.ProcessMetrics {
 	t.Helper()
 	var best profiling.ProcessMetrics
-	for run := 1; run <= startupVersionRuns; run++ {
+	for run := 1; run <= startupVersionRunsFor(runtime.GOOS); run++ {
 		current := f.measure(ctx, t, cwd, "--version")
 		t.Logf("pig --version run %d: %d bytes, %d objects", run, current.AllocBytes, current.AllocObjects)
 		if run == 1 || current.AllocBytes < best.AllocBytes {
