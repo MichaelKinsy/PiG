@@ -17690,6 +17690,25 @@
       ]
     },
     {
+      "id": "BF-88177e8",
+      "title": "fix(cli): type the validate-only scratch-fetch marker as D28 and extend the record",
+      "symptom": "fix(cli): type the validate-only scratch-fetch marker as D28 and extend the record",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "88177e8e3e",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8894a13",
       "title": "A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a…",
       "symptom": "Each half became U+FFFD.",

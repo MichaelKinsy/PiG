@@ -579,6 +579,13 @@ arrays exist so a downstream validator can scan the text a connected extension
 injects into the model context for prompt injection; the flat name lists stay
 authoritative for counts.
 
+A git or npm source that is not installed yet is validated from a scratch
+checkout: Pig installs it into a temporary directory used as both cwd and agent
+dir, validates that, and removes the directory afterwards. Installed packages,
+package roots and settings are never touched. Git and npm progress goes to
+stderr, so it cannot corrupt the `--json` report. A source that is already
+installed, and a local path, validate in place.
+
 Constraints:
 - `--validate-only` is install-only (`packageInstall`); it never mutates
   settings or installs a package.
@@ -590,14 +597,18 @@ Constraints:
 
 Call-site markers:
 - `coding/cli/extension_validate_command.go` (`extensionValidationReport`,
-  `toolDetailsFromExtension`, `commandDetailsFromExtension`)
+  `toolDetailsFromExtension`, `commandDetailsFromExtension`,
+  `validateResolvedInstallSources`)
 - `coding/cli/package_commands.go` (`--validate-only`/`--check` dispatch,
   `validateInstallSources`)
 
 Tests:
 - `coding/cli/extension_validate_command_test.go`
   (`TestInstallValidateOnlyLoadsAndRegistersExtension`,
-  `TestInstallValidateOnlyEmitsToolAndCommandDetails`)
+  `TestInstallValidateOnlyEmitsToolAndCommandDetails`,
+  `TestInstallValidateOnlyValidatesUninstalledGitSourceInScratchDir`,
+  `TestInstallValidateOnlyValidatesInstalledGitSource`,
+  `TestInstallValidateOnlyValidatesUninstalledNPMSourceInScratchDir`)
 
 Remove when: upstream pi adds an equivalent machine-readable extension
 validation report, or Pig drops `pig install --validate-only --json`.
