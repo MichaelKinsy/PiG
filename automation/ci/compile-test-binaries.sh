@@ -32,5 +32,6 @@ compile() {
 }
 export -f compile
 
+# shellcheck disable=SC2016 # the child bash expands $1 and $2: the package and output dir xargs passes after _.
 printf '%s\n' "${packages[@]}" | xargs -P "$jobs" -I{} bash -c 'compile "$1" "$2"' _ {} "$out"
 echo "compile-test-binaries: compiled ${#packages[@]} test binaries into $out"
