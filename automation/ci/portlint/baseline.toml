@@ -6743,7 +6743,7 @@ snippet = "ctx, cancel := context.WithTimeout(context.Background(), commandTimeo
 check = "ctxbackground"
 file = "internal/packagemanager/manager.go"
 func = "RunCmdInDir"
-snippet = "cmd := crossspawn.Command(context.Background(), dir, name, args...)"
+snippet = "cmd := packageCommand(context.Background(), dir, name, args...)"
 
 [[hit]]
 check = "ctxbackground"
@@ -6755,13 +6755,13 @@ snippet = "ctx, cancel := context.WithTimeout(context.Background(), UpdateCheckN
 check = "ctxbackground"
 file = "internal/packagemanager/package_updates.go"
 func = "gitCaptureCommand"
-snippet = "return crossspawn.Command(context.Background(), installedPath, \"git\", args...)"
+snippet = "return packageCommand(context.Background(), installedPath, \"git\", args...)"
 
 [[hit]]
 check = "ctxbackground"
 file = "internal/packagemanager/process.go"
 func = "RunPackageProcess"
-snippet = "cmd := crossspawn.Command(context.Background(), dir, name, args...)"
+snippet = "cmd := packageCommand(context.Background(), dir, name, args...)"
 
 [[hit]]
 check = "ctxbackground"

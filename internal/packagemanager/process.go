@@ -86,7 +86,7 @@ func GitLongPathsEnv(goos string, env []string) []string {
 	count, at := 0, -1
 	for i, entry := range env {
 		if name, value, ok := strings.Cut(entry, "="); ok && strings.EqualFold(name, "GIT_CONFIG_COUNT") {
-			if n, err := strconv.Atoi(value); err == nil && n >= 0 {
+			if n, err := strconv.Atoi(value); err == nil && n >= 0 { //portlint:allow numbers git itself, not Node or Pi, defines GIT_CONFIG_COUNT as an unsigned decimal; this appends to the count the child will read
 				count, at = n, i
 			}
 		}
