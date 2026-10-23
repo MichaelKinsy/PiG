@@ -48,6 +48,24 @@ func TestToJsonValueIsStrictCopyJson(t *testing.T) {
 	}
 }
 
+// CopyJson is Chord's copyJson for a JSON value: the copy is detached from its source, and a non-finite number is
+// rejected with the strict JSON error.
+// Pi source: packages/chord/src/json.ts
+func TestCopyJsonDetachesAndRejectsNonFiniteNumbers(t *testing.T) {
+	source := delta.JsonObjectOf("list", []any{1.0})
+	copied, err := CopyJson(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	copied.(*delta.JsonObject).Value("list").([]any)[0] = 2.0
+	if source.Value("list").([]any)[0] != 1.0 {
+		t.Fatalf("CopyJson shares the source")
+	}
+	if _, err := CopyJson([]any{math.NaN()}); !errors.Is(err, delta.ErrNotStrictJSON) {
+		t.Fatalf("CopyJson(NaN) err = %v, want a strict JSON error", err)
+	}
+}
+
 // A JSON-object document's checkpoint predicate receives the exact prepared revision, and family seeds and JSON-kind
 // decodes are strict copyJson.
 // Pi source: packages/durable/src/documents.ts

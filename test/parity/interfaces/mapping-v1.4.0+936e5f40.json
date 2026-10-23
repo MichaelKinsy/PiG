@@ -102055,7 +102055,7 @@
       "id": "pkg:chord/.#copyJson",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6ec5e68b40c73a182466a4c674b178c20b4dcf28caf9ed93975e69bd65fe1bd4",
-      "rationale": "Derived by the interface gap detector: copyJson is Go durable/json.go#CopyJson (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Pi chord copyJson (packages/chord/src/json.ts) is Go durable/json.go#CopyJson, Durable's strict JSON copy of a JsonValue, which copies through ToJsonValue and so through chord/json.go CopyJSON (the JSON-kind copy chord itself exposes). TestCopyJsonDetachesAndRejectsNonFiniteNumbers asserts the detached copy and the strict JSON error for a non-finite number, as copyJson throws.",
       "pigTargets": [
         "durable/json.go#CopyJson"
       ],
@@ -102068,7 +102068,7 @@
         "call:durable/json.go#CopyJson"
       ],
       "evidence": [
-        "reach:durable/json.go#CopyJson"
+        "test:durable/json_test.go#TestCopyJsonDetachesAndRejectsNonFiniteNumbers"
       ]
     },
     {

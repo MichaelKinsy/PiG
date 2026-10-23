@@ -69,6 +69,29 @@ func TestCredentialPrintRefreshesExpiredOAuthTokenBeforePrinting(t *testing.T) {
 	}
 }
 
+// resolveCredentialForPrint passes its AbortSignal to listCredentials and getAuth (credential-print.ts:26,67-70), so an
+// aborted signal ends the call with an error before any OAuth refresh runs or a credential is printed.
+func TestCredentialPrintCancellationEndsTheCallBeforeRefreshing(t *testing.T) {
+	isolateAuthEnv(t)
+	storage := ai.NewInMemoryAuthStorage(map[string]ai.Credential{"openai-codex": {Type: ai.CredentialOAuth, Access: "old-test-token", Refresh: "test-refresh-token", Expires: 0}})
+	runtime := createAuthTestRuntime(t, storage, true)
+	var refreshes atomic.Int32
+	replaceOAuthRefresh(t, runtime, "openai-codex", func(context.Context, ai.Credential) (ai.Credential, error) {
+		refreshes.Add(1)
+		return ai.Credential{Type: ai.CredentialOAuth, Access: "fresh-test-token", Refresh: "test-refresh-token", Expires: time.Now().Add(time.Hour).UnixMilli()}, nil
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	args := []string{"--provider", "openai-codex"}
+	value, err := ResolveCredentialForPrint(ctx, parseArgs(args), args, runtime, AuthCommandBearerToken, nil)
+	if !errors.Is(err, context.Canceled) || value != "" {
+		t.Fatalf("got %q, %v, want the cancellation error and no value", value, err)
+	}
+	if refreshes.Load() != 0 {
+		t.Fatalf("refresh called %d times after cancellation, want none", refreshes.Load())
+	}
+}
+
 // misspelledCredentialsFlag is the upstream test's deliberately misspelled option.
 const misspelledCredentialsFlag = "credentails" //nolint:misspell // the typo is the input under test
 
