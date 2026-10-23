@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -421,18 +420,6 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 				t.Fatalf("read the pinned %s (run npm ci in extensions/sdk-ts): %v", dir, err)
 			}
 			got, err := os.ReadFile(filepath.Join(shims, dir, filepath.FromSlash(rel)))
-			if dir == "marked" && rel == "package.json" {
-				// vendor-pi-dist.sh drops marked's devDependencies (its own build tooling) from the vendored manifest.
-				var wantManifest, gotManifest map[string]any
-				if err := json.Unmarshal(want, &wantManifest); err != nil {
-					t.Fatal(err)
-				}
-				delete(wantManifest, "devDependencies")
-				if err != nil || json.Unmarshal(got, &gotManifest) != nil || !reflect.DeepEqual(gotManifest, wantManifest) {
-					t.Errorf("shims/%s/%s differs from the pinned dependency without devDependencies: run automation/gen/vendor-pi-dist.sh", dir, rel)
-				}
-				continue
-			}
 			if err != nil || !bytes.Equal(got, want) {
 				t.Errorf("shims/%s/%s differs from the pinned dependency: run automation/gen/vendor-pi-dist.sh", dir, rel)
 			}
