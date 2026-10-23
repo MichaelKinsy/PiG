@@ -190,3 +190,70 @@ func writeResourceFixture(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+// writeStatusExtensionPackage writes a Package whose only extension is
+// src/index.ts, the layout pi-fff, pi-subagents and pi-subdir-context share.
+func writeStatusExtensionPackage(t *testing.T, root, name string) {
+	t.Helper()
+	writeResourceFixture(t, filepath.Join(root, "package.json"), `{"name":"`+name+`","pi":{"extensions":["./src/index.ts"]}}`)
+	writeResourceFixture(t, filepath.Join(root, "src", "index.ts"), "export default function (pi) {}\n")
+}
+
+// TestStatusWarnsOnDuplicatePackageExtensionIdentity is the regression for
+// MichaelKinsy/PiG#299. Two Packages that both expose src/index.ts resolve to
+// the same "src" public name. The loader keys an extension by path and
+// DisambiguateIdentities renames the later copies ("src:2"), so both load and
+// status must stay healthy; the shared name is reported as a warning.
+func TestStatusWarnsOnDuplicatePackageExtensionIdentity(t *testing.T) {
+	cwd, agentDir, first, second := t.TempDir(), t.TempDir(), t.TempDir(), t.TempDir()
+	t.Setenv("PIG_HOME", t.TempDir())
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	t.Chdir(cwd)
+	writeStatusExtensionPackage(t, first, "first")
+	writeStatusExtensionPackage(t, second, "second")
+	settings := codingagent.NewSettingsManager(cwd, agentDir)
+	if err := settings.SetPackages([]codingagent.PackageSource{{Source: first}, {Source: second}}); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code := captureStdoutStderr(t, func() int {
+		return runStatusCommand([]string{"status", "--json", "--no-input"})
+	})
+	if code != 0 || stderr != "" {
+		t.Fatalf("code=%d stderr=%s", code, stderr)
+	}
+	var status statusOutput
+	if err := json.Unmarshal([]byte(stdout), &status); err != nil {
+		t.Fatal(err)
+	}
+	if !status.Healthy || len(status.Errors) != 0 {
+		t.Fatalf("duplicate extension name reported as fatal: %#v", status.Errors)
+	}
+	joined := strings.Join(status.Warnings, "\n")
+	if !strings.Contains(joined, `duplicate extensions resource "src"`) {
+		t.Fatalf("warnings = %#v, want the duplicate extension name reported", status.Warnings)
+	}
+}
+
+// TestStatusStillFailsOnDuplicateExtensionPublicNameGuard keeps the fatal path
+// honest: a kind that keys its runtime set by name stays an error. Skills do,
+// so two Packages exposing the same skill name remain a failure.
+func TestStatusStillFailsOnDuplicateNonExtensionResourceIdentity(t *testing.T) {
+	cwd, agentDir, first, second := t.TempDir(), t.TempDir(), t.TempDir(), t.TempDir()
+	t.Setenv("PIG_HOME", t.TempDir())
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	t.Chdir(cwd)
+	for _, root := range []string{first, second} {
+		writeResourceFixture(t, filepath.Join(root, "package.json"), `{"name":"pkg","pi":{"skills":["skills"]}}`)
+		writeResourceFixture(t, filepath.Join(root, "skills", "dup", "SKILL.md"), "---\nname: dup\ndescription: d\n---\n")
+	}
+	settings := codingagent.NewSettingsManager(cwd, agentDir)
+	if err := settings.SetPackages([]codingagent.PackageSource{{Source: first}, {Source: second}}); err != nil {
+		t.Fatal(err)
+	}
+	stdout, _, code := captureStdoutStderr(t, func() int {
+		return runStatusCommand([]string{"status", "--json", "--no-input"})
+	})
+	if code != 1 || !strings.Contains(stdout, "duplicate skills resource") {
+		t.Fatalf("code=%d stdout=%s", code, stdout)
+	}
+}

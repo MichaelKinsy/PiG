@@ -23,6 +23,7 @@ type statusOutput struct {
 	Resources statusResources `json:"resources"`
 	Piglets   statusPiglets   `json:"piglets"`
 	Errors    []string        `json:"errors"`
+	Warnings  []string        `json:"warnings,omitempty"`
 }
 
 type statusPaths struct {
@@ -144,6 +145,14 @@ func collectStatus() statusOutput {
 		status.Errors = append(status.Errors, "resource inventory: "+err.Error())
 	} else {
 		status.Resources.Total = len(resources)
+		// The loader identifies an extension by its path, not its name:
+		// DisambiguateIdentities renames same-named copies ("ask:2", "ask:3")
+		// and loads them all, as upstream Pi loads every extension path. So a
+		// shared extension name is a supported condition and a warning, never
+		// the fatal error status treats a duplicate as here. Skills, prompts
+		// and themes, by contrast, key their runtime set by name (dedupeSkills/
+		// dedupePrompts/dedupeThemes), so a same-scope duplicate is unusable
+		// and stays an error. (pig additive D41)
 		seenIdentities := make(map[string]string, len(resources))
 		for _, resource := range resources {
 			kind := packagecontent.Kind(resource.ResourceType)
@@ -163,7 +172,11 @@ func collectStatus() statusOutput {
 			// A disabled copy is never loaded, so it cannot collide at runtime; it stays in the inventory as disabled.
 			if !resource.Enabled {
 			} else if previous, exists := seenIdentities[identity]; exists {
-				status.Errors = append(status.Errors, fmt.Sprintf("duplicate %s resource %q in %s scope: %s and %s", kind, name, resource.Scope, previous, resource.Path))
+				if kind == packagecontent.Extensions {
+					status.Warnings = append(status.Warnings, fmt.Sprintf("duplicate extensions resource %q in %s scope: %s and %s", name, resource.Scope, previous, resource.Path))
+				} else {
+					status.Errors = append(status.Errors, fmt.Sprintf("duplicate %s resource %q in %s scope: %s and %s", kind, name, resource.Scope, previous, resource.Path))
+				}
 			} else {
 				seenIdentities[identity] = resource.Path
 			}
@@ -202,6 +215,7 @@ func collectStatus() statusOutput {
 		}
 	}
 	status.Errors = deduplicateStatusErrors(status.Errors)
+	status.Warnings = deduplicateStatusErrors(status.Warnings)
 	status.Healthy = len(status.Errors) == 0
 	return status
 }
@@ -218,6 +232,9 @@ func renderStatus(status statusOutput) {
 	fmt.Printf("  piglets: %d (source=%d binary=%d)\n", status.Piglets.Total, status.Piglets.WithSource, status.Piglets.WithBinary)
 	for _, message := range status.Errors {
 		printCLIError("%s", message)
+	}
+	for _, message := range status.Warnings {
+		fmt.Printf("Warning: %s\n", message)
 	}
 }
 
