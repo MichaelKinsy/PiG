@@ -36,10 +36,8 @@ func (capture *ShallowCapture) ShallowCopy() *AssistantMessage {
 		return capture.plain.ShallowCopy()
 	}
 	capture.settle()
-	copy := clonePublishedAssistantMessage(capture.current)
 	references := capture.references
-	copy.observation = &assistantMessageObservation{cell: capture.cell, shallow: &references, seq: capture.seq}
-	return &copy
+	return newDeliveredHandle(capture.current, assistantMessageObservation{cell: capture.cell, shallow: &references, seq: capture.seq})
 }
 
 // Observe returns what message.ShallowCopy().Observe() returned at the capture: owned message data at that publication.

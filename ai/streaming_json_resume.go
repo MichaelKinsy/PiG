@@ -232,24 +232,76 @@ func (str *resumableString) poison(parser *partialJSONParser, start int) (any, b
 
 // finish appends the decoded bytes of raw, a run of whole string units, to the prefix. closed reports that raw ends at the closing quote and returns the whole value.
 func (str *resumableString) finish(raw string, closed bool) (any, bool) {
-	var piece string
-	if strings.IndexByte(raw, '\\') < 0 && utf8.ValidString(raw) {
-		piece = raw
-	} else {
+	var stack [128]byte
+	piece, ok := appendJSONStringUnits(stack[:0], raw)
+	if !ok {
 		value, ok := jsonParseValue(`"` + raw + `"`)
 		if !ok {
 			return nil, false
 		}
-		piece, _ = value.(string)
+		decoded, _ := value.(string)
+		piece = append(stack[:0], decoded...)
 	}
 	if !closed {
-		str.decoded.WriteString(piece)
+		str.decoded.Write(piece)
 		return nil, true
 	}
+	// A closed string leaves the prefix as it was: the next call may read the same string again from its safe end.
 	if str.decoded.Len() == 0 {
-		return piece, true
+		return string(piece), true
 	}
-	return str.decoded.String() + piece, true
+	return str.decoded.String() + string(piece), true
+}
+
+// appendJSONStringUnits appends to dst the value of raw, whole units of a JSON string's body, as JSON.parse reads it, and reports whether it decoded them. A control character, an unescaped quote, invalid UTF-8, an escape that is not whole or a \u escape of a surrogate is left to jsonParseValue.
+func appendJSONStringUnits(dst []byte, raw string) ([]byte, bool) {
+	for index := 0; index < len(raw); {
+		char := raw[index]
+		switch {
+		case char == '\\':
+			if index+1 >= len(raw) {
+				return dst, false
+			}
+			switch raw[index+1] {
+			case '"', '\\', '/':
+				dst = append(dst, raw[index+1])
+			case 'b':
+				dst = append(dst, '\b')
+			case 'f':
+				dst = append(dst, '\f')
+			case 'n':
+				dst = append(dst, '\n')
+			case 'r':
+				dst = append(dst, '\r')
+			case 't':
+				dst = append(dst, '\t')
+			case 'u':
+				code, status := unicodeEscape(raw[index:])
+				if status != escapeComplete || code >= 0xD800 && code <= 0xDFFF {
+					return dst, false
+				}
+				dst = utf8.AppendRune(dst, code)
+				index += 6
+				continue
+			default:
+				return dst, false
+			}
+			index += 2
+		case char < 0x20, char == '"':
+			return dst, false
+		case char < utf8.RuneSelf:
+			dst = append(dst, char)
+			index++
+		default:
+			r, size := utf8.DecodeRuneInString(raw[index:])
+			if r == utf8.RuneError && size == 1 {
+				return dst, false
+			}
+			dst = append(dst, raw[index:index+size]...)
+			index += size
+		}
+	}
+	return dst, true
 }
 
 type escapeStatus uint8

@@ -2055,7 +2055,7 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 		// processResponsesStream awaits the observer with any parsed value and then reads `event.type` (openai-responses-shared.ts:599-601): a null
 		// throws there, and a number, string, boolean or array matches no branch.
 		if top := strings.TrimLeft(data, " \t\r\n"); !codex && top != "" && top[0] != '{' && json.Valid([]byte(top)) {
-			if err := builder.observeProviderEvent([]byte(data)); err != nil {
+			if err := builder.observeValidProviderEvent(data); err != nil {
 				builder.failUnfinished(StopReasonError, err)
 				return
 			}
@@ -2071,28 +2071,17 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 			// A delta of the common shape decodes without reflection; json.Unmarshal agrees wherever it answers true.
 			event = fast
 		} else {
-			text := jsjson.NormalizeIntegers([]byte(data))
-			if err := json.Unmarshal(text, &event); err != nil {
-				normalized, normalizable := []byte(nil), false
-				// mapCodexEvents yields every event but its terminal and error ones unchanged into processResponsesStream (openai-codex-responses.ts:743-788),
-				// so a Codex event reads its members as openai-responses does.
-				if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
-					normalized, read, normalizable = normalizeResponsesEventJS(text)
-				}
-				event = respSSEEvent{}
-				if !normalizable || json.Unmarshal(normalized, &event) != nil {
-					builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: invalid SSE JSON: %w", err))
-					return
-				}
-			} else if event.Delta == "" && responsesDeltaEvents[event.Type] || event.Arguments == "" && event.Type == "response.function_call_arguments.done" {
-				// The typed decode reads a null or absent member as "", where Pi's handler reads null or undefined.
-				readResponsesEmptyMember(data, &event, &read)
+			var err error
+			if event, read, err = decodeResponsesEventSlow(data); err != nil {
+				builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: invalid SSE JSON: %w", err))
+				return
 			}
 		}
+
 		// Codex observes the raw event before mapping it (mapCodexEvents). processResponsesStream still awaits its own, empty, observer for it.
 		if codex {
 			builder.awaitProviderEvent()
-		} else if err := builder.observeProviderEvent([]byte(data)); err != nil {
+		} else if err := builder.observeValidProviderEvent(data); err != nil {
 			builder.failUnfinished(StopReasonError, err)
 			return
 		}
@@ -2578,4 +2567,25 @@ func mapRespStatus(status, incompleteReason string) (StopReason, string) {
 // sampling parameter that overrode the request field (openai-responses.ts:196, openai-codex-responses.ts:674).
 func requestServiceTierOf(opts StreamOptions) string {
 	return opts.ServiceTier
+}
+
+// decodeResponsesEventSlow decodes a record that parseResponsesDeltaFast leaves, with reflection and, for a member of the wrong type, the JavaScript reading of it. Only this path's event and read are on the heap.
+func decodeResponsesEventSlow(data string) (event respSSEEvent, read responsesEventRead, err error) {
+	text := jsjson.NormalizeIntegers([]byte(data))
+	if err := json.Unmarshal(text, &event); err != nil {
+		normalized, normalizable := []byte(nil), false
+		// mapCodexEvents yields every event but its terminal and error ones unchanged into processResponsesStream (openai-codex-responses.ts:743-788),
+		// so a Codex event reads its members as openai-responses does.
+		if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
+			normalized, read, normalizable = normalizeResponsesEventJS(text)
+		}
+		event = respSSEEvent{}
+		if !normalizable || json.Unmarshal(normalized, &event) != nil {
+			return respSSEEvent{}, responsesEventRead{}, err
+		}
+	} else if event.Delta == "" && responsesDeltaEvents[event.Type] || event.Arguments == "" && event.Type == "response.function_call_arguments.done" {
+		// The typed decode reads a null or absent member as "", where Pi's handler reads null or undefined.
+		readResponsesEmptyMember(data, &event, &read)
+	}
+	return event, read, nil
 }

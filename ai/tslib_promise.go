@@ -8,12 +8,12 @@ type tslibSettled struct {
 
 // tslibPromise is a JavaScript Promise whose reactions run on a continuationExecutor. Every reaction costs one executor reaction after the promise settles, and resolving with another tslibPromise costs the two extra reactions of NewPromiseResolveThenableJob (ECMA-262 27.2.1.3.2 and 27.2.2.2).
 type tslibPromise struct {
-	settled *continuationPromise[tslibSettled]
+	settled continuationPromise[tslibSettled]
 	locked  bool
 }
 
 func newTslibPromise(executor *continuationExecutor) *tslibPromise {
-	return &tslibPromise{settled: newContinuationPromise[tslibSettled](executor)}
+	return &tslibPromise{settled: continuationPromise[tslibSettled]{executor: executor}}
 }
 
 func (promise *tslibPromise) executor() *continuationExecutor { return promise.settled.executor }

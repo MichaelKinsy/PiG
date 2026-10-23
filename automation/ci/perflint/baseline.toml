@@ -453,7 +453,7 @@ class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder com
 
 [[hit]]
 file = "ai/messages.go"
-func = "cloneAssistantContentWith"
+func = "cloneAssistantContentInto"
 pattern = "loop-format"
 detail = "fmt.Sprintf"
 count = 1

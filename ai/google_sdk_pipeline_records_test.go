@@ -55,7 +55,7 @@ func googleGeneratorRecords(chunks [][]byte) (records []string, err error) {
 		generator := googleProcessStreamResponse(executor, &googleFetchResponse{body: stream}, 0)
 		defer generator.close()
 		for {
-			next := awaitContinuation(turn, generator.next(nil).settled)
+			next := awaitContinuation(turn, &generator.next(nil).settled)
 			if next.err != nil {
 				err = next.err
 				return

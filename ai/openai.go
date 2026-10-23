@@ -1952,23 +1952,11 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		// The decoder decoded the common chunk while it checked the record; the chunk is valid until the next record.
 		chunk, decodedFast := decoder.Chunk()
 		if !decodedFast {
-			chunk = oaiChunk{}
-			text := jsjson.NormalizeIntegers([]byte(data))
-			if err := json.Unmarshal(text, &chunk); err != nil {
-				normalized, read, normalizable := []byte(nil), openAIChunkRead{}, false
-				if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
-					normalized, read, normalizable = normalizeOpenAIChunkJS(text)
-				}
-				chunk = oaiChunk{}
-				if !normalizable || json.Unmarshal(normalized, &chunk) != nil {
-					builder.settleDeferred()
-					fail(StopReasonError, fmt.Errorf("openai-completions: invalid SSE JSON: %w", err))
-					return
-				}
-				thrown = read.thrown
-				if read.finishReason != nil && len(chunk.Choices) > 0 {
-					chunk.Choices[0].FinishReason, chunk.Choices[0].finishReasonNotString = *read.finishReason, true
-				}
+			var err error
+			if chunk, thrown, err = decodeOpenAIChunkSlow(data); err != nil {
+				builder.settleDeferred()
+				fail(StopReasonError, fmt.Errorf("openai-completions: invalid SSE JSON: %w", err))
+				return
 			}
 		}
 		// The stream decoder accepted the record as valid JSON before yielding it: with json.Valid, or by the chunk decode, which reads only valid JSON
@@ -2210,4 +2198,24 @@ func completionsRole(message Message) string {
 		return "assistant"
 	}
 	return "toolResult"
+}
+
+// decodeOpenAIChunkSlow decodes a record that the stream decoder's chunk decode left, with reflection and, for a member of the wrong type, the JavaScript reading of it (thrown is the TypeError message a read of a null member throws). Only this path's chunk is on the heap.
+func decodeOpenAIChunkSlow(data string) (chunk oaiChunk, thrown string, err error) {
+	text := jsjson.NormalizeIntegers([]byte(data))
+	if err := json.Unmarshal(text, &chunk); err != nil {
+		normalized, read, normalizable := []byte(nil), openAIChunkRead{}, false
+		if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
+			normalized, read, normalizable = normalizeOpenAIChunkJS(text)
+		}
+		chunk = oaiChunk{}
+		if !normalizable || json.Unmarshal(normalized, &chunk) != nil {
+			return oaiChunk{}, "", err
+		}
+		thrown = read.thrown
+		if read.finishReason != nil && len(chunk.Choices) > 0 {
+			chunk.Choices[0].FinishReason, chunk.Choices[0].finishReasonNotString = *read.finishReason, true
+		}
+	}
+	return chunk, thrown, nil
 }
