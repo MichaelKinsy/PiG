@@ -673,13 +673,6 @@ evidence = []
 rationale = "Type declarations only (no exported function, const or class in the pinned source): Host.get returns Promise<Ref<C>> and Host.ready is a Promise<void> as interface members. The code that settles them is in host.ts and object.ts; Go declares the surface in chord/host/types.go with context.Context in place of the abort signal."
 
 [[files]]
-path = "packages/chord/src/watch.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable", "detached-owned"]
-evidence = ["test:durable/session/observation_internal_test.go#TestCommittedWatchRetireDeliversTheLastFrameThenEndsRetired", "test:durable/session/committed_watch_retired_pi_test.go#TestCommittedWatchRejectsASecondCancellationObserver", "test:durable/session/session_watches_test.go#TestSessionDocumentWatches"]
-rationale = "Types only, with three Promise members. WatchHandle.start installs the sole listener, whose Promise<void> result is awaited by the watch's serial drain: Go's Start takes a func returning an error and runs it on a delivery goroutine, never inline, one frame at a time, and a returned error ends the watch with listener_error. WatchHandle.stop returns Promise<WatchEnd>: Go's Stop is a blocking call that ends the watch once and returns the terminal WatchEnd (a callback already running keeps running and is not joined). WatchHandle.closed is Promise<WatchEnd>: Go's Closed is a channel closed once by the single terminate, and End reads the result after it. The cancellation signal passed to observeCancellation is the context.Context given to ObserveCancellation, which ends the watch with cancelled. The end reasons are stopped, cancelled, retired, ended, listener_error and failed (session_closed and session_failed are ended and failed since Pi 92ab5360)."
-
-[[files]]
 path = "packages/chord/src/websocket.ts"
 disposition = "translated"
 contracts = ["detached-owned", "ui-handoff"]
