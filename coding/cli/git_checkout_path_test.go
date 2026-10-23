@@ -2,6 +2,7 @@ package cli
 
 import (
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -11,10 +12,10 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
-// A Git source checks out to <install root>/<host>/<repository path>.
-// Windows cannot name a directory with ':', so there a git:file:// source's
-// leading drive becomes a plain segment (C: to C), and any other segment
-// containing ':' is refused with upstream resolveManagedPath's error, since
+// A Git source checks out to <install root>/<host>/<repository path>; a
+// git:file:// source checks out to <host>/<basename>-<12 hex of the path's
+// sha256> so the path stays short (Git for Windows' $GIT_DIR limit). On Windows
+// a segment containing ':' is refused with upstream resolveManagedPath's error, since
 // NTFS reads name:stream as an alternate data stream (lead answer to Q10).
 func TestGitCheckoutPathOnThisPlatform(t *testing.T) {
 	agentDir := t.TempDir()
@@ -22,12 +23,8 @@ func TestGitCheckoutPathOnThisPlatform(t *testing.T) {
 	root := codingagent.GitInstallRoot("", agentDir, false)
 	windows := runtime.GOOS == "windows"
 
-	drive := "C:"
-	if windows {
-		drive = "C"
-	}
 	got, err := packagemanager.GitCheckoutPath(t.TempDir(), agentDir, "git:file://localhost/C:/Users/me/owner/piglet.git", false)
-	if want := filepath.Join(root, "localhost", drive, "Users", "me", "owner", "piglet"); err != nil || got != want {
+	if want := filepath.Join(root, "localhost", "a91ac64502db", "piglet"); err != nil || got != want {
 		t.Fatalf("file URL checkout = %q, %v; want %q", got, err, want)
 	}
 
@@ -55,20 +52,17 @@ func TestGitCheckoutRelativePerPlatform(t *testing.T) {
 		goos, source string
 		want         []string
 		refused      bool
-		driveSegment bool
 	}{
-		{"windows", "git:file://localhost/C:/Users/me/owner/piglet.git", []string{"localhost", "C", "Users", "me", "owner", "piglet"}, false, false},
-		{"windows", "git:file://localhost/d:/src/owner/piglet", []string{"localhost", "d", "src", "owner", "piglet"}, false, false},
-		{"windows", "git:https://example.com/owner/repo", []string{"example.com", "owner", "repo"}, false, false},
-		{"windows", "git:https://example.com/owner/repo:stream", nil, true, false},
-		{"windows", "git:https://example.com/C:/owner/repo", nil, true, false},
-		{"windows", "git:file://localhost/src/C:/owner/piglet", nil, true, false},
-		{"linux", "git:file://localhost/C:/Users/me/owner/piglet.git", []string{"localhost", "C:", "Users", "me", "owner", "piglet"}, false, true},
-		{"darwin", "git:https://example.com/owner/repo:stream", []string{"example.com", "owner", "repo:stream"}, false, false},
+		{"windows", "git:file://localhost/C:/Users/me/owner/piglet.git", []string{"localhost", "a91ac64502db", "piglet"}, false},
+		{"windows", "git:file://localhost/d:/src/owner/piglet", []string{"localhost", "31ec0c491be0", "piglet"}, false},
+		{"windows", "git:https://example.com/owner/repo", []string{"example.com", "owner", "repo"}, false},
+		{"windows", "git:https://example.com/owner/repo:stream", nil, true},
+		{"windows", "git:https://example.com/C:/owner/repo", nil, true},
+		{"windows", "git:file://localhost/src/owner/piglet:stream", nil, true},
+		{"linux", "git:file://localhost/C:/Users/me/owner/piglet.git", []string{"localhost", "a91ac64502db", "piglet"}, false},
+		{"linux", "git:file://localhost/tmp/x/piglet", []string{"localhost", "fdb4f8773215", "piglet"}, false},
+		{"darwin", "git:https://example.com/owner/repo:stream", []string{"example.com", "owner", "repo:stream"}, false},
 	} {
-		if tc.driveSegment && runtime.GOOS == "windows" {
-			continue
-		}
 		ref, err := sourceref.Parse(tc.source, sourceref.Options{Bare: sourceref.BareReject})
 		if err != nil {
 			t.Fatalf("parse %s: %v", tc.source, err)
@@ -99,6 +93,33 @@ func TestGitCloneRepoPerPlatform(t *testing.T) {
 	} {
 		if got := packagemanager.GitCloneRepo(tc.goos, tc.repo); got != tc.want {
 			t.Errorf("gitCloneRepo(%s, %q) = %q, want %q", tc.goos, tc.repo, got, tc.want)
+		}
+	}
+}
+
+// A local file:// source's checkout path embeds the whole source path and can
+// pass Windows' MAX_PATH, so a Windows git child gets core.longpaths through the
+// environment, which leaves Pi's git argv untouched. It joins any config entries
+// the environment already has, and elsewhere the environment is unchanged.
+func TestGitLongPathsEnvPerPlatform(t *testing.T) {
+	for _, tc := range []struct {
+		name, goos string
+		env, want  []string
+	}{
+		{"windows empty", "windows", []string{"PATH=C:\\bin"}, []string{"PATH=C:\\bin", "GIT_CONFIG_KEY_0=core.longpaths", "GIT_CONFIG_VALUE_0=true", "GIT_CONFIG_COUNT=1"}},
+		{"windows existing entries", "windows", []string{"GIT_CONFIG_COUNT=2", "GIT_CONFIG_KEY_0=a.b", "GIT_CONFIG_VALUE_0=c", "GIT_CONFIG_KEY_1=d.e", "GIT_CONFIG_VALUE_1=f"},
+			[]string{"GIT_CONFIG_KEY_0=a.b", "GIT_CONFIG_VALUE_0=c", "GIT_CONFIG_KEY_1=d.e", "GIT_CONFIG_VALUE_1=f", "GIT_CONFIG_KEY_2=core.longpaths", "GIT_CONFIG_VALUE_2=true", "GIT_CONFIG_COUNT=3"}},
+		{"windows mixed-case count", "windows", []string{"Git_Config_Count=1", "GIT_CONFIG_KEY_0=a.b", "GIT_CONFIG_VALUE_0=c"},
+			[]string{"GIT_CONFIG_KEY_0=a.b", "GIT_CONFIG_VALUE_0=c", "GIT_CONFIG_KEY_1=core.longpaths", "GIT_CONFIG_VALUE_1=true", "GIT_CONFIG_COUNT=2"}},
+		{"linux", "linux", []string{"GIT_CONFIG_COUNT=1"}, []string{"GIT_CONFIG_COUNT=1"}},
+		{"darwin", "darwin", []string{"PATH=/bin"}, []string{"PATH=/bin"}},
+	} {
+		in := append([]string(nil), tc.env...)
+		if got := packagemanager.GitLongPathsEnv(tc.goos, in); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: GitLongPathsEnv = %q, want %q", tc.name, got, tc.want)
+		}
+		if !reflect.DeepEqual(in, tc.env) {
+			t.Errorf("%s: input environment modified: %q", tc.name, in)
 		}
 	}
 }

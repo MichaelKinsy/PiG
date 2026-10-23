@@ -7,6 +7,9 @@ import (
 	"image/color"
 	"image/png"
 	"math/rand/v2"
+	"runtime"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -33,6 +36,15 @@ type resizeStrategyResult struct {
 	WasResized     bool   `json:"wasResized"`
 }
 
+func decodeBase64(t *testing.T, s string) []byte {
+	t.Helper()
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		t.Error(err)
+	}
+	return raw
+}
+
 // TestResizeImageDimensionStrategyMatchesPi runs image-resize-core.ts resizeImageInProcess (Photon) and PiG's ResizeImage over 200 seeded PNGs and option sets. Dimensions from 1 to
 // 2,600 (narrow strips, squares, images just over or under each limit), maxWidth and maxHeight from 1 to 3,000, the default and a very large maxBytes, a one-byte maxBytes that nothing
 // satisfies, and an unset or explicit mime type. The original and resulting size, whether the image was resized, whether Pi returns null, and the mime type must match, and the
@@ -52,17 +64,7 @@ func TestResizeImageDimensionStrategyMatchesPi(t *testing.T) {
 	var cases []resizeStrategyCase
 	for range 200 {
 		width, height := dim(), dim()
-		img := image.NewNRGBA(image.Rect(0, 0, width, height))
-		for y := 0; y < height; y += 1 + height/40 {
-			for x := 0; x < width; x += 1 + width/40 {
-				img.SetNRGBA(x, y, color.NRGBA{R: uint8(x), G: uint8(y), B: uint8(x ^ y), A: 255})
-			}
-		}
-		var encoded bytes.Buffer
-		if err := png.Encode(&encoded, img); err != nil {
-			t.Fatal(err)
-		}
-		c := resizeStrategyCase{Data: base64.StdEncoding.EncodeToString(encoded.Bytes()), MimeType: []string{"image/png", "", "image/webp"}[rng.IntN(3)]}
+		c := resizeStrategyCase{MimeType: []string{"image/png", "", "image/webp"}[rng.IntN(3)]}
 		if rng.IntN(2) == 0 {
 			c.MaxWidth = pickInt(1, 2, 7, 50, 99, 100, 640, 1000, 2000, 3000)
 		}
@@ -78,6 +80,22 @@ func TestResizeImageDimensionStrategyMatchesPi(t *testing.T) {
 		if rng.IntN(3) == 0 {
 			c.Quality = pickInt(1, 40, 85, 100)
 		}
+		if c.MaxBytes == 1 {
+			// Nothing encodes to under one byte, so Pi and PiG both walk the whole shrink ladder and return null whatever the
+			// image: only the size of the image changes how long that takes (Photon and x/image scale the full image on every rung).
+			width, height = min(width, 100), min(height, 100)
+		}
+		img := image.NewNRGBA(image.Rect(0, 0, width, height))
+		for y := 0; y < height; y += 1 + height/40 {
+			for x := 0; x < width; x += 1 + width/40 {
+				img.SetNRGBA(x, y, color.NRGBA{R: uint8(x), G: uint8(y), B: uint8(x ^ y), A: 255})
+			}
+		}
+		var encoded bytes.Buffer
+		if err := png.Encode(&encoded, img); err != nil {
+			t.Fatal(err)
+		}
+		c.Data = base64.StdEncoding.EncodeToString(encoded.Bytes())
 		cases = append(cases, c)
 	}
 
@@ -93,10 +111,30 @@ for (const c of input) {
 }
 emit(out);`, cases, &want)
 
+	// The cases are independent and a ResizeImage call is single-threaded, so run them on every CPU and compare in case order.
+	type resizeOutcome struct {
+		got ResizedImage
+		err error
+	}
+	outcomes := make([]resizeOutcome, len(cases))
+	var next atomic.Int64
+	var wg sync.WaitGroup
+	for range runtime.GOMAXPROCS(0) {
+		wg.Go(func() {
+			for {
+				i := int(next.Add(1)) - 1
+				if i >= len(cases) {
+					return
+				}
+				c := cases[i]
+				outcomes[i].got, outcomes[i].err = ResizeImage(decodeBase64(t, c.Data), c.MimeType, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight, MaxBytes: c.MaxBytes, JPEGQuality: c.Quality})
+			}
+		})
+	}
+	wg.Wait()
 	failures := 0
 	for i, c := range cases {
-		raw, _ := base64.StdEncoding.DecodeString(c.Data)
-		got, err := ResizeImage(raw, c.MimeType, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight, MaxBytes: c.MaxBytes, JPEGQuality: c.Quality})
+		got, err := outcomes[i].got, outcomes[i].err
 		gotResult := resizeStrategyResult{Null: err != nil}
 		if err == nil {
 			gotResult = resizeStrategyResult{MimeType: got.MimeType, OriginalWidth: got.OriginalWidth, OriginalHeight: got.OriginalHeight, Width: got.Width, Height: got.Height, WasResized: got.WasResized}
@@ -114,7 +152,7 @@ emit(out);`, cases, &want)
 		if gotResult != expected {
 			failures++
 			if failures <= 8 {
-				t.Errorf("case %d (%+v, %d bytes)\n Go %+v\n Pi %+v", i, resizeStrategyCase{MimeType: c.MimeType, MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight, MaxBytes: c.MaxBytes, Quality: c.Quality}, len(raw), gotResult, expected)
+				t.Errorf("case %d (%+v, %d bytes)\n Go %+v\n Pi %+v", i, resizeStrategyCase{MimeType: c.MimeType, MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight, MaxBytes: c.MaxBytes, Quality: c.Quality}, len(decodeBase64(t, c.Data)), gotResult, expected)
 			}
 		}
 	}

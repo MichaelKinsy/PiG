@@ -18,7 +18,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/installresolver"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/crossspawn"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
@@ -532,17 +531,22 @@ func GitCheckoutPath(cwd, agentDir, source string, local bool) (string, error) {
 }
 
 // GitCheckoutRelative is a Git source's checkout directory below the install
-// root: its host, then its repository path. Windows cannot name a directory
-// with ':', so there a file:// source's leading drive (C:) becomes the segment
-// C, and any other segment containing ':' is refused, since NTFS reads
-// name:stream as an alternate data stream.
+// root: its host, then its repository path, as Pi lays it out.
+//
+// pig additive (D18): a file:// source is not a Pi source, and nesting its
+// whole absolute path under the install root can push $GIT_DIR past Git for
+// Windows' own PATH_MAX, which core.longpaths does not lift. Its checkout is
+// <host>/<12 hex of sha256(absolute repo path)>/<basename> instead; the leaf stays the repository name because a direct extension takes its identity from its directory name. An older
+// nested file:// checkout is not read or migrated; it is cloned again.
+//
+// Windows cannot name a directory with ':', and NTFS reads name:stream as an
+// alternate data stream, so there any segment containing ':' is refused.
 func GitCheckoutRelative(goos, root string, ref sourceref.Ref) (string, error) {
 	segments := append([]string{ref.GitHost}, strings.Split(ref.GitPath, "/")...)
+	if strings.HasPrefix(strings.ToLower(ref.GitRepo), "file://") {
+		segments = append([]string{ref.GitHost}, fileCheckoutSegments(ref.GitPath)...)
+	}
 	if goos == "windows" {
-		// pig additive (D18): a Windows file URL's drive is a checkout segment.
-		if strings.HasPrefix(strings.ToLower(ref.GitRepo), "file://") && IsDriveSegment(segments[1]) {
-			segments[1] = segments[1][:1]
-		}
 		for _, segment := range segments {
 			if strings.Contains(segment, ":") {
 				return "", fmt.Errorf("Refusing to use path outside package install root: %s", filepath.Join(append([]string{root}, segments...)...))
@@ -558,6 +562,19 @@ func GitCheckoutRelative(goos, root string, ref sourceref.Ref) (string, error) {
 		return "", err
 	}
 	return filepath.Rel(absoluteRoot, resolved)
+}
+
+// fileCheckoutSegments names a file:// repository's checkout below its host:
+// a digest of its normalized absolute path (drive letter upper case), so equal
+// basenames in different directories stay apart, then the basename.
+func fileCheckoutSegments(repoPath string) []string {
+	segments := strings.Split(repoPath, "/")
+	if IsDriveSegment(segments[0]) {
+		segments[0] = strings.ToUpper(segments[0])
+	}
+	normalized := "/" + strings.Join(segments, "/")
+	digest := sha256.Sum256([]byte(normalized))
+	return []string{fmt.Sprintf("%x", digest[:6]), segments[len(segments)-1]}
 }
 
 // GitCloneRepo is the URL git clones for repo. Git for Windows reads
@@ -651,7 +668,7 @@ func RunCmd(name string, args ...string) (string, error) {
 
 // RunCmdInDir is Pi's runCommandSync. It starts the command as upstream's spawnProcess does, so a Windows .cmd shim such as npm.cmd receives its arguments exactly, and returns the trimmed stdout, or stderr when stdout is empty, so a warning on stderr cannot corrupt a reported path.
 func RunCmdInDir(dir, name string, args ...string) (string, error) {
-	cmd := crossspawn.Command(context.Background(), dir, name, args...)
+	cmd := packageCommand(context.Background(), dir, name, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {

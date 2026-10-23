@@ -4,11 +4,14 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 func yes() bool { return true }
@@ -20,7 +23,7 @@ func TestWaitIdleRearmsOnEveryChunk(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		activity := make(chan struct{})
 		result := make(chan bool, 1)
-		go func() { result <- waitIdle(make(chan struct{}), activity, yes, nil) }()
+		go func() { result <- waitIdle(make(chan struct{}), activity, yes, Hooks{}) }()
 		for range 6 {
 			time.Sleep(50 * time.Millisecond)
 			select {
@@ -54,7 +57,7 @@ func TestWaitIdleRearmsOnEveryChunk(t *testing.T) {
 func TestWaitIdleReleasesAQuietHeldPipe(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		result := make(chan bool, 1)
-		go func() { result <- waitIdle(make(chan struct{}), make(chan struct{}), yes, nil) }()
+		go func() { result <- waitIdle(make(chan struct{}), make(chan struct{}), yes, Hooks{}) }()
 		time.Sleep(Grace - time.Millisecond)
 		synctest.Wait()
 		select {
@@ -80,7 +83,7 @@ func TestWaitIdleReadsToEOFWhenNothingHoldsThePipe(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		done := make(chan struct{})
 		result := make(chan bool, 1)
-		go func() { result <- waitIdle(done, make(chan struct{}), func() bool { return false }, nil) }()
+		go func() { result <- waitIdle(done, make(chan struct{}), func() bool { return false }, Hooks{}) }()
 		time.Sleep(10 * Grace)
 		synctest.Wait()
 		select {
@@ -226,5 +229,110 @@ func TestPipesReuseOneReadBuffer(t *testing.T) {
 	pipes.Wait(func() bool { return false })
 	if perRead := (after.TotalAlloc - before.TotalAlloc) / reads; perRead > 1024 {
 		t.Fatalf("%d bytes allocated per 100-byte read, want at most 1024", perRead)
+	}
+}
+
+// A grace timer in Hooks replaces the wall clock: every chunk re-arms it, only
+// its expiry releases the wait (virtual time passes without effect), and the
+// wait stops it on return. Nothing here sleeps on a real clock, so host load
+// cannot reorder a writer against the grace.
+func TestWaitIdleFollowsTheGraceTimerHook(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		expired := make(chan time.Time, 1)
+		rearmed := make(chan struct{}, 8)
+		stopped := make(chan struct{})
+		hooks := Hooks{GraceTimer: func() IdleTimer {
+			return IdleTimer{Expired: expired, Rearm: func() { rearmed <- struct{}{} }, Stop: func() { close(stopped) }}
+		}}
+		activity := make(chan struct{})
+		result := make(chan bool, 1)
+		go func() { result <- waitIdle(make(chan struct{}), activity, yes, hooks) }()
+		for range 3 {
+			activity <- struct{}{}
+			<-rearmed
+		}
+		time.Sleep(10 * Grace)
+		synctest.Wait()
+		select {
+		case <-result:
+			t.Fatal("the wait ended on the wall-clock grace although a grace timer was given")
+		default:
+		}
+		expired <- time.Now()
+		if closed := <-result; closed {
+			t.Fatal("the wait reported closed pipes; want release by the grace timer")
+		}
+		<-stopped
+	})
+}
+
+// Over real pipes, a holder that writes after the child exited and keeps the
+// write end open loses nothing: the wait ends only when the grace timer
+// expires, and the test fires it once its AfterData hook has seen every byte,
+// so neither the writer's pace nor the reader's latency decides the output.
+func TestPipesWaitReleasesOnTheGraceTimerOnlyAfterTheHolderOutputIsConsumed(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = w.Close() })
+	var want strings.Builder
+	for i := range 40 {
+		want.WriteString("tick " + strconv.Itoa(i) + "\n")
+	}
+	expired := make(chan time.Time, 1)
+	consumed := make(chan struct{})
+	var (
+		once sync.Once
+		mu   sync.Mutex
+		got  strings.Builder
+	)
+	pipes := Start([]*os.File{r}, func(_ int, chunk []byte) {
+		mu.Lock()
+		got.Write(chunk)
+		mu.Unlock()
+	}, Hooks{
+		AfterData: func(int, []byte) {
+			mu.Lock()
+			defer mu.Unlock()
+			if got.Len() == want.Len() {
+				once.Do(func() { close(consumed) })
+			}
+		},
+		GraceTimer: func() IdleTimer {
+			return IdleTimer{Expired: expired, Rearm: func() {}, Stop: func() {}}
+		},
+	})
+	waited := make(chan bool, 1)
+	go func() { waited <- pipes.Wait(yes) }()
+	// Each line is its own write, as a descendant's output is.
+	for line := range strings.SplitSeq(strings.TrimSuffix(want.String(), "\n"), "\n") {
+		if _, err := w.WriteString(line + "\n"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	budget := time.After(testbudget.Wait(t))
+	select {
+	case <-consumed:
+	case closed := <-waited:
+		t.Fatalf("Wait returned (closed=%v) before the grace timer expired and while the holder kept the pipe", closed)
+	case <-budget:
+		mu.Lock()
+		defer mu.Unlock()
+		t.Fatalf("the readers consumed %q, want %q", got.String(), want.String())
+	}
+	expired <- time.Now()
+	select {
+	case closed := <-waited:
+		if closed {
+			t.Fatal("Wait reported ended pipes while the holder keeps the write end open")
+		}
+	case <-budget:
+		t.Fatal("Wait did not return after the grace timer expired")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if got.String() != want.String() {
+		t.Fatalf("output = %q, want %q", got.String(), want.String())
 	}
 }

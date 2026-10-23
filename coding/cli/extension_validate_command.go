@@ -208,7 +208,8 @@ func validateResolvedInstallSources(cwd string, sm *codingagent.SettingsManager,
 		return nil, err
 	}
 	if packagemanager.DetectSourceKind(source) != "local" {
-		if _, statErr := os.Stat(root); errors.Is(statErr, os.ErrNotExist) { //perf:ok cold: one stat per `pig install --validate-only`
+		//perf:ok once per validate command, which fetches and loads a Package
+		if _, statErr := os.Stat(root); errors.Is(statErr, os.ErrNotExist) {
 			// pig additive (D28): an uninstalled source is fetched into a scratch
 			// install root that never touches installed packages or settings.
 			scratch, err := os.MkdirTemp("", "pig-validate-*")

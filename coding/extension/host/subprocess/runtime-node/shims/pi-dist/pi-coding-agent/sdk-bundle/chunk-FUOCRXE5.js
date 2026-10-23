@@ -6,7 +6,13 @@ import {
   createToolSearchDocument,
   getCodemodeCallableTools,
   toCodemodeDeclaration
+<<<<<<<< HEAD:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-FUOCRXE5.js
 } from "./chunk-4B2T6DM6.js";
+|||||||| bba08f8a7d:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-CE6PSN37.js
+} from "./chunk-XIVHZPV4.js";
+========
+} from "./chunk-ILH7WEUZ.js";
+>>>>>>>> origin/main:coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-IJQXPPGQ.js
 import {
   combineUsage
 } from "./chunk-LKHC5YTL.js";

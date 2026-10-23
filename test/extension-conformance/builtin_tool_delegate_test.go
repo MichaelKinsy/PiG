@@ -85,6 +85,11 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			{"kind": "local", "shell": "bash", "factoryCwd": hostCwd, "command": "echo begun; exec sleep 30", "abortOnOutput": true},
 			{"kind": "local", "shell": "bash", "factoryCwd": hostCwd, "command": "exec sleep 30", "timeout": 1},
 			{"kind": "local", "shell": "bash", "factoryCwd": filepath.Join(hostCwd, "no-such-dir"), "command": "echo x"},
+			// the functions of the options and the streamed updates, for a tool without an extension context (the host reaches back into the extension for them)
+			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "anything.txt"}, "ops": "custom", "noContext": true},
+			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "echo hi"}, "ops": "custom", "noContext": true},
+			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "echo one; sleep 0.4; echo two"}, "updates": true, "noContext": true},
+			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "echo original"}, "hook": true, "noContext": true},
 			// A truncated read's details, whose members Pi writes in an order a sorted map would lose
 			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "big.txt"}},
 			// createCodingTools and createReadOnlyTools
@@ -120,13 +125,13 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		before := len(*h.notify)
+		before := len(h.ui.Recorded())
 		if !h.runner.ExecuteCommand(context.Background(), "builtin_probe", string(args)) {
 			t.Fatal("fixture has no builtin_probe command")
 		}
 		var reported string
 		pollUntilConformance(t, "builtin_probe: no report for "+string(args), func() bool {
-			for _, n := range (*h.notify)[before:] {
+			for _, n := range h.ui.Recorded()[before:] {
 				if rest, ok := strings.CutPrefix(n, "builtin:"); ok {
 					reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 					return true
@@ -247,6 +252,9 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		{25, text, "pfx-1\n"},
 		{26, text, "hook-env|conformance-session-id"},
 		{27, text, "custom:echo hi"},
+		{43, text, "OPS:<factory>/anything.txt"}, // the functions of the options, for a tool without a context
+		{44, text, "custom:echo hi"},
+		{46, text, "hook-env|"},
 		{28, definitionField("description"), `"Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first).`},
 		{28, definitionField("promptSnippet"), `"Read file contents"`},
 		{30, definitionField("renderShell"), `"self"`},
@@ -326,13 +334,13 @@ func TestConformance_BuiltinToolOverrideDelegatesAcrossSDKs(t *testing.T) {
 			})
 			probe := func(c map[string]any) map[string]any {
 				args, _ := json.Marshal(c)
-				before := len(*h.notify)
+				before := len(h.ui.Recorded())
 				if !h.runner.ExecuteCommand(context.Background(), "builtin_probe", string(args)) {
 					t.Fatal("fixture has no builtin_probe command")
 				}
 				var reported string
 				pollUntilConformance(t, "builtin_probe: no report", func() bool {
-					for _, n := range (*h.notify)[before:] {
+					for _, n := range h.ui.Recorded()[before:] {
 						if rest, ok := strings.CutPrefix(n, "builtin:"); ok {
 							reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 							return true

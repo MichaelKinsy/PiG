@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // scriptsFixture is a real-npm registry that serves a Package, and a dependency of that Package, whose postinstall
@@ -27,10 +28,16 @@ func (f scriptsFixture) ran(name string) bool {
 
 func newScriptsFixture(t *testing.T) scriptsFixture {
 	t.Helper()
+	return newScriptsFixtureAt(t, t.TempDir())
+}
+
+// newScriptsFixtureAt keeps PiG's home, and so npm's install root, below home. A home behind a symbolic link is how
+// macOS names every temporary directory (/var is /private/var).
+func newScriptsFixtureAt(t *testing.T, home string) scriptsFixture {
+	t.Helper()
 	if _, err := exec.LookPath("npm"); err != nil {
 		t.Fatalf("npm is required: %v", err)
 	}
-	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
 	t.Setenv("PIG_CODING_AGENT_DIR", filepath.Join(home, "agent"))
 	t.Setenv("PI_CODING_AGENT_DIR", filepath.Join(home, "agent"))
@@ -41,6 +48,17 @@ func newScriptsFixture(t *testing.T) scriptsFixture {
 	t.Setenv("npm_config_cache", t.TempDir())
 	t.Setenv("npm_config_userconfig", filepath.Join(t.TempDir(), "npmrc"))
 	t.Setenv("npm_config_update_notifier", "false")
+	// The test proves what PiG asks npm to do, not what the machine's npm decides. Clear every npm switch that changes
+	// lifecycle scripts, then state both policies: npm 12 blocks the scripts of a Package that allowScripts does not
+	// cover, and any npm can ignore scripts by configuration.
+	for _, name := range []string{"NPM_CONFIG_IGNORE_SCRIPTS", "NPM_CONFIG_ALLOW_SCRIPTS", "NPM_CONFIG_DANGEROUSLY_ALLOW_ALL_SCRIPTS", "NPM_CONFIG_STRICT_ALLOW_SCRIPTS"} {
+		t.Setenv(name, "")
+		if err := os.Unsetenv(name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("npm_config_ignore_scripts", "false")
+	t.Setenv("npm_config_dangerously_allow_all_scripts", "true")
 	t.Chdir(t.TempDir())
 
 	sentinels := t.TempDir()
@@ -188,9 +206,23 @@ func TestPackageInstallKeepsPisLifecycleScripts(t *testing.T) {
 }
 
 // What an opted-in install built stays in place: resolving the Piglet again with scripts disabled does not reinstall
-// the Package without the files its postinstall wrote.
+// the Package without the files its postinstall wrote. npm reinstalls a Package whose --prefix runs through a symbolic
+// link, so the install root must be the real path: macOS reaches its temporary directories through one.
 func TestPigletResolutionKeepsFilesBuiltByAnOptedInInstall(t *testing.T) {
-	f := newScriptsFixture(t)
+	t.Run("direct home", func(t *testing.T) { keepsFilesBuiltByAnOptedInInstall(t, t.TempDir()) })
+	t.Run("home behind a symbolic link", func(t *testing.T) {
+		base := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(base, "real", "home"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		testenv.RequireDirectoryLink(t, filepath.Join(base, "real"), filepath.Join(base, "link"))
+		keepsFilesBuiltByAnOptedInInstall(t, filepath.Join(base, "link", "home"))
+	})
+}
+
+func keepsFilesBuiltByAnOptedInInstall(t *testing.T, home string) {
+	t.Helper()
+	f := newScriptsFixtureAt(t, home)
 	if code, out := runPigletForTest(t, "add", f.piglet, "--no-input", "--allow-install-scripts"); code != 0 {
 		t.Fatalf("add: code=%d\n%s", code, out)
 	}

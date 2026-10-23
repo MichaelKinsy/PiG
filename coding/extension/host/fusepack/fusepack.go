@@ -7,13 +7,17 @@
 package fusepack
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net"
+	"path/filepath"
 	"sort"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
@@ -104,13 +108,37 @@ func HostHelpers() *sdk.HostHelpers {
 			return sdk.ResizedImage{Data: image.Data, MimeType: image.MimeType, OriginalWidth: float64(*image.OriginalWidth), OriginalHeight: float64(*image.OriginalHeight), Width: float64(*image.Width), Height: float64(*image.Height), WasResized: *image.WasResized}, true, nil
 		},
 		BuiltinToolDefinition: subprocess.BuiltinToolDefinitionJSON,
-		HighlightCode:         subprocess.HighlightCodeLines,
-		LoadTheme:             subprocess.LoadThemeJSON,
+		LocalExec: func(ctx context.Context, argsJSON []byte, onData func([]byte) error) ([]byte, error) {
+			var args subprocess.BuiltinToolLocalExecArgs
+			if err := json.Unmarshal(argsJSON, &args); err != nil {
+				return nil, fmt.Errorf("decode %s: %w", subprocess.CallBuiltinToolLocalExec, err)
+			}
+			exitCode, err := subprocess.LocalExec(ctx, args, managedToolsDir(), onData)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(subprocess.BuiltinToolLocalExecResult{ExitCode: exitCode})
+		},
+		BuiltinToolExecute: func(ctx context.Context, args []byte, peer sdk.BuiltinToolPeer) ([]byte, error) {
+			return subprocess.BuiltinToolExecute(ctx, args, managedToolsDir(), subprocess.BuiltinToolPeer{Callback: peer.Callback, Update: peer.Update, Exec: peer.Exec})
+		},
+		HighlightCode: subprocess.HighlightCodeLines,
+		LoadTheme:     subprocess.LoadThemeJSON,
 		WithFileMutationQueue: func(filePath string, fn func() error) error {
 			_, err := tools.WithFileMutationQueue(filePath, func() (struct{}, error) { return struct{}{}, fn() })
 			return err
 		},
 	}
+}
+
+// managedToolsDir is the directory a command's PATH starts with and the built-in tools resolve rg and fd in (Pi's process-wide getBinDir()): <agentDir>/bin of the
+// agent directory this process runs with, as the host that serves a subprocess extension (Host.builtinToolBinDir) is told it; empty when none is known.
+func managedToolsDir() string {
+	agentDir, err := codingagent.ResolveAgentDir()
+	if err != nil || agentDir == "" {
+		return ""
+	}
+	return filepath.Join(agentDir, "bin")
 }
 
 // FusedConfigs returns a name-only ExtConfig for each fused extension so the

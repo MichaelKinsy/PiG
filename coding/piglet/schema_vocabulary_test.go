@@ -33,7 +33,7 @@ func schemaDocument(t *testing.T) map[string]any {
 func schemaNode(t *testing.T, document map[string]any, pointer string) map[string]any {
 	t.Helper()
 	var node any = document
-	for _, part := range strings.Split(pointer, "/") {
+	for part := range strings.SplitSeq(pointer, "/") {
 		object, ok := node.(map[string]any)
 		if !ok {
 			t.Fatalf("schema %q: %q is not an object", pointer, part)

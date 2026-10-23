@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -39,6 +40,18 @@ type ParsedFrontmatter struct {
 	Body        string
 }
 
+// BuiltinToolPeer is the part of a fused extension a built-in tool the host runs for it reaches back into: the functions of the call's options (Pi's
+// `operations` and `spawnHook`) and its onUpdate, which stay in the extension. See [HostHelpers.BuiltinToolExecute].
+type BuiltinToolPeer struct {
+	// Callback runs one function of the call's options under handle and returns the JSON of its result, nil when it has none. An error is the callback's throw.
+	Callback func(ctx context.Context, handle, member string, args []byte) ([]byte, error)
+	// Update delivers the JSON of one partial result to the call's onUpdate; an error is onUpdate's throw.
+	Update func(ctx context.Context, executeID string, result []byte) error
+	// Exec is operations.exec of the options' shell operations under handle: it streams output to onData in order and returns Pi's `{ exitCode }`, or the error
+	// exec rejects with. The command ends with ctx.
+	Exec func(ctx context.Context, handle, command, cwd string, timeout *float64, env map[string]string, onData func([]byte)) (*int, error)
+}
+
 // HostHelpers are the host's parsers and file mutation queue for a fused extension, which runs in the host's own process and has no connection before Run. The code
 // that builds the fused binary installs them with SetHostHelpers before it runs any factory.
 type HostHelpers struct {
@@ -56,6 +69,15 @@ type HostHelpers struct {
 	ResizeImage func(input []byte, mimeType string, options *ImageResizeOptions) (ResizedImage, bool, error)
 	// BuiltinToolDefinition answers builtinTool.definition: the JSON of its arguments in, the JSON of its reply out.
 	BuiltinToolDefinition func(args []byte) ([]byte, error)
+	// LocalExec answers builtinTool.localExec in the host's own process: the JSON of its arguments in (the executeId is unused), the JSON of Pi's `{ exitCode }` out.
+	// The command ends with ctx. Each output chunk goes to onData in order before LocalExec returns, and an error from onData ends the command and is LocalExec's.
+	// The call has no Context, so a connection of its own would be any running extension's, which ends when that extension does, whichever made the call.
+	LocalExec func(ctx context.Context, args []byte, onData func(data []byte) error) ([]byte, error)
+	// BuiltinToolExecute answers builtinTool.execute of a call without a Context in the host's own process: the JSON of its arguments in (the executeId and
+	// context are unused), the JSON of the tool's result out, or the error the tool throws. The tool ends with ctx. The functions of the call's options and its
+	// onUpdate are in this process, which peer reaches. The call has no Context, so a connection of its own would be any running extension's, which ends when that
+	// extension does, whichever made the call.
+	BuiltinToolExecute func(ctx context.Context, args []byte, peer BuiltinToolPeer) ([]byte, error)
 	// HighlightCode is highlightCode (markdown false) or getMarkdownTheme().highlightCode (markdown true), drawn with the palette of the theme initTheme installed, or with the
 	// host's active theme when palette is empty.
 	HighlightCode func(code, lang string, markdown bool, palette []byte) ([]string, error)

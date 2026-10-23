@@ -17,8 +17,28 @@ const Grace = 100 * time.Millisecond
 type Hooks struct {
 	// BeforeRead runs in each reader before its first read.
 	BeforeRead func()
+	// AfterData runs in a reader once onData has taken a chunk, with the chunk
+	// onData was lent. A test learns from it that the reader has consumed what
+	// a writer wrote.
+	AfterData func(index int, chunk []byte)
+	// GraceTimer replaces the wall-clock timer that measures the grace, so a
+	// test decides when the grace elapses instead of racing a writer against
+	// host load.
+	GraceTimer func() IdleTimer
 	// GraceExpired runs when the idle grace elapses, before MayHoldOutput.
 	GraceExpired func()
+}
+
+// IdleTimer is the clock of the grace that Wait measures. Every field is
+// required.
+type IdleTimer struct {
+	// Expired delivers once Grace has elapsed with no chunk.
+	Expired <-chan time.Time
+	// Rearm restarts the grace in full. Wait calls it for each chunk that
+	// arrives after the child exited.
+	Rearm func()
+	// Stop releases the timer when Wait no longer uses it.
+	Stop func()
 }
 
 // Pipes reads a child's output pipes. Create it with Start before the child
@@ -78,6 +98,9 @@ func (p *Pipes) read(index int, file *os.File) {
 			if p.onData != nil {
 				p.onData(index, buf[:n])
 			}
+			if p.hooks.AfterData != nil {
+				p.hooks.AfterData(index, buf[:n])
+			}
 			p.mu.Unlock()
 			select {
 			case p.activity <- struct{}{}:
@@ -111,7 +134,7 @@ func (p *Pipes) Wait(mayHoldOutput func() bool) bool {
 	case <-p.activity:
 	default:
 	}
-	closed := waitIdle(p.done, p.activity, mayHoldOutput, p.hooks.GraceExpired)
+	closed := waitIdle(p.done, p.activity, mayHoldOutput, p.hooks)
 	if !closed {
 		p.mu.Lock()
 		p.accepting = false
@@ -124,18 +147,34 @@ func (p *Pipes) Wait(mayHoldOutput func() bool) bool {
 	return closed
 }
 
-func waitIdle(done, activity <-chan struct{}, mayHoldOutput func() bool, graceExpired func()) bool {
-	timer := time.NewTimer(Grace)
-	defer timer.Stop()
+func waitIdle(done, activity <-chan struct{}, mayHoldOutput func() bool, hooks Hooks) bool {
+	var (
+		wall    *time.Timer
+		fake    IdleTimer
+		expired <-chan time.Time
+	)
+	if hooks.GraceTimer != nil {
+		fake = hooks.GraceTimer()
+		expired = fake.Expired
+		defer fake.Stop()
+	} else {
+		wall = time.NewTimer(Grace)
+		expired = wall.C
+		defer wall.Stop()
+	}
 	for {
 		select {
 		case <-done:
 			return true
 		case <-activity:
-			timer.Reset(Grace)
-		case <-timer.C:
-			if graceExpired != nil {
-				graceExpired()
+			if wall != nil {
+				wall.Reset(Grace)
+			} else {
+				fake.Rearm()
+			}
+		case <-expired:
+			if hooks.GraceExpired != nil {
+				hooks.GraceExpired()
 			}
 			if mayHoldOutput() {
 				return false

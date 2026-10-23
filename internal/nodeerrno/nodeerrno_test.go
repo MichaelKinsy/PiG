@@ -212,7 +212,7 @@ func TestCodeNamesPlatformErrnos(t *testing.T) {
 		}
 	}
 	for errno, code := range posixCodes() {
-		if _, ok := codes[code]; !ok {
+		if _, ok := codes()[code]; !ok {
 			t.Errorf("posix errno %d is named %s, which libuv does not name", int(errno), code)
 		}
 	}
@@ -285,10 +285,10 @@ func TestCodesMatchNode(t *testing.T) {
 			t.Errorf("Node names %s (%d) %q; Description(%s) = %q, %v", code, errno, description, code, got, ok)
 		}
 	}
-	if len(codes) != len(node) {
-		t.Errorf("codes has %d entries, Node's map has %d", len(codes), len(node))
+	if len(codes()) != len(node) {
+		t.Errorf("codes has %d entries, Node's map has %d", len(codes()), len(node))
 	}
-	for code, entry := range codes {
+	for code, entry := range codes() {
 		errno, ok := Errno(code)
 		if !ok {
 			t.Errorf("Errno(%s) has no value", code)
