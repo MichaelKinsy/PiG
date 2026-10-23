@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -676,5 +679,138 @@ func Extension() *sdk.Extension {
 	}
 	if !report.Valid || report.Name != "hello" || report.Definition.Language != "go" || !containsString(report.Commands, "hello") {
 		t.Fatalf("report = %+v, want the Go member hello valid with command hello", report)
+	}
+}
+
+func validateOnlySDKFixture(t *testing.T) string {
+	t.Helper()
+	fixture, err := filepath.Abs(filepath.Join("..", "extension", "host", "subprocess", "testdata", "sdk-fixture"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fixture
+}
+
+func validateOnlyFixtureEnv(t *testing.T) (home, agentDir string) {
+	t.Helper()
+	home = shortTempDir(t)
+	agentDir = filepath.Join(home, "agent")
+	t.Setenv("PIG_HOME", home)
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	t.Setenv("PIG_OFFLINE", "")
+	t.Setenv("PI_OFFLINE", "")
+	t.Chdir(t.TempDir())
+	return home, agentDir
+}
+
+func validateOnlyGitFixture(t *testing.T, fixture string) string {
+	t.Helper()
+	work := filepath.Join(t.TempDir(), "work")
+	if err := os.CopyFS(work, os.DirFS(fixture)); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"init", "-q", "-b", "main"}, {"add", "."}, {"-c", "user.name=Pig Test", "-c", "user.email=pig@example.test", "commit", "-q", "-m", "fixture"}} {
+		if _, err := packagemanager.RunCmdInDir(work, "git", args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bare := filepath.Join(t.TempDir(), "owner", "sdk-fixture.git")
+	if err := os.MkdirAll(filepath.Dir(bare), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := packagemanager.RunCmd("git", "clone", "-q", "--bare", work, bare); err != nil {
+		t.Fatal(err)
+	}
+	return "git:file://localhost/" + strings.TrimPrefix(filepath.ToSlash(bare), "/") + "@main"
+}
+
+func runValidateOnlyJSON(t *testing.T, source string) (valid bool, stdout string) {
+	t.Helper()
+	stdout, stderr, _ := captureStdoutStderr(t, func() int {
+		return runPackageCommand([]string{"install", source, "--validate-only", "--json"})
+	})
+	var report struct {
+		Valid bool   `json:"valid"`
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+		t.Fatalf("parse json report: %v\nstdout=%s\nstderr=%s", err, stdout, stderr)
+	}
+	return report.Valid, stdout
+}
+
+func TestInstallValidateOnlyValidatesUninstalledGitSourceInScratchDir(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping extension build in short mode")
+	}
+	fixture := validateOnlySDKFixture(t)
+	_, agentDir := validateOnlyFixtureEnv(t)
+	source := validateOnlyGitFixture(t, fixture)
+	if valid, out := runValidateOnlyJSON(t, source); !valid {
+		t.Fatalf("uninstalled git source reported invalid: %s", out)
+	}
+	for _, name := range []string{"git", "settings.json"} {
+		if _, err := os.Stat(filepath.Join(agentDir, name)); !os.IsNotExist(err) {
+			t.Fatalf("validate-only left %s in the agent dir (stat err %v)", name, err)
+		}
+	}
+}
+
+func TestInstallValidateOnlyValidatesInstalledGitSource(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping extension build in short mode")
+	}
+	fixture := validateOnlySDKFixture(t)
+	_, agentDir := validateOnlyFixtureEnv(t)
+	source := validateOnlyGitFixture(t, fixture)
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sm := codingagent.NewSettingsManager(cwd, agentDir)
+	if err := packagemanager.InstallManagedGit(cwd, agentDir, sm, source, false); err != nil {
+		t.Fatal(err)
+	}
+	if valid, out := runValidateOnlyJSON(t, source); !valid {
+		t.Fatalf("installed git source reported invalid: %s", out)
+	}
+}
+
+func TestInstallValidateOnlyValidatesUninstalledNPMSourceInScratchDir(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping extension build in short mode")
+	}
+	fixture := validateOnlySDKFixture(t)
+	_, agentDir := validateOnlyFixtureEnv(t)
+	t.Setenv("VALIDATE_FIXTURE", fixture)
+	npm := writeStubScript(t, filepath.Join(t.TempDir(), "npm"), `#!/bin/sh
+root=""
+previous=""
+for argument in "$@"; do
+  if [ "$previous" = "--prefix" ]; then root="$argument"; fi
+  previous="$argument"
+done
+mkdir -p "$root/node_modules/sdk-fixture"
+cp -R "$VALIDATE_FIXTURE"/. "$root/node_modules/sdk-fixture/"
+`)
+	settings, err := json.Marshal(map[string]any{"npmCommand": []string{npm}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(agentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(agentDir, "settings.json")
+	if err := os.WriteFile(settingsPath, settings, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if valid, out := runValidateOnlyJSON(t, "npm:sdk-fixture@1.0.0"); !valid {
+		t.Fatalf("uninstalled npm source reported invalid: %s", out)
+	}
+	if after, err := os.ReadFile(settingsPath); err != nil || !bytes.Equal(after, settings) {
+		t.Fatalf("settings changed: %q, %v", after, err)
+	}
+	if _, err := os.Stat(filepath.Join(agentDir, "npm")); !os.IsNotExist(err) {
+		t.Fatalf("validate-only left an npm root in the agent dir (stat err %v)", err)
 	}
 }
