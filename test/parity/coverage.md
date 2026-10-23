@@ -1,21 +1,21 @@
 # PORT_MAP coverage report
 
-Generated from `709` PORT_MAP entries and `821` parity scenarios.
+Generated from `710` PORT_MAP entries and `821` parity scenarios.
 
 ## Status
 
-- **Porting:** 632 / 634 intended-portable entries ✅ (99.7%).
-- **Behavior verification:** 569 / 632 ported entries (90.0%); 0 weak-only, 63 untested.
+- **Porting:** 633 / 635 intended-portable entries ✅ (99.7%).
+- **Behavior verification:** 569 / 633 ported entries (89.9%); 0 weak-only, 64 untested.
 - **Upstream test porting:** 685 ported / 0 partial / 0 pending (5 other dispositions; [file mapping](interfaces/test-mapping-v1.4.0+74f46864.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.4.0+74f46864.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 709. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 710. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
 | package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
-| `ai` | 207 | 22 | 185 | 184 | 1 | 0 | 99.5% | 97.8% |
+| `ai` | 208 | 22 | 186 | 185 | 1 | 0 | 99.5% | 97.3% |
 | `chord` | 40 | 5 | 35 | 35 | 0 | 0 | 100.0% | 34.3% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 53.8% |
 | `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 97.4% |
@@ -26,9 +26,9 @@ Raw PORT_MAP rows: 709. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See 
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
 | `tui` | 46 | 0 | 46 | 46 | 0 | 0 | 100.0% | 100.0% |
 
-- **Four core packages (agent, ai, coding-agent, tui):** 462 / 463 intended-portable files ✅ (99.8%) from 513 rows; 452 behavioral (97.8%), 0 weak-only, 10 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 497 / 498 intended-portable files ✅ (99.8%) from 556 rows; 481 behavioral (96.8%), 0 weak-only, 16 untested.
-- **Whole monorepo (11 packages):** 632 / 634 intended-portable files ✅ (99.7%) from 709 rows; 569 behavioral (90.0%), 0 weak-only, 63 untested.
+- **Four core packages (agent, ai, coding-agent, tui):** 463 / 464 intended-portable files ✅ (99.8%) from 514 rows; 452 behavioral (97.6%), 0 weak-only, 11 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 498 / 499 intended-portable files ✅ (99.8%) from 557 rows; 481 behavioral (96.6%), 0 weak-only, 17 untested.
+- **Whole monorepo (11 packages):** 633 / 635 intended-portable files ✅ (99.7%) from 710 rows; 569 behavioral (89.9%), 0 weak-only, 64 untested.
 - **Interface closure:** 13301 of 13301 semantic interface IDs closed (217 designed-out, 13084 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
@@ -98,6 +98,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/ai/src/utils/estimate.ts` | ✅ | 1 (04-overflow-retry) | 13 (04-overflow-retry, unit:./agent:TestCalculateContextTokens, unit:./agent:TestCalculateContextTokens, unit:./agent:TestEstimateContextTokens, unit:./ai:TestEstimateContextTokensIgnoresStaleUsageBeforeInsertedMessage, unit:./ai:TestEstimateContextTokensReserves35CharactersPerTokenForNewText, unit:./ai:TestEstimateContextTokensReserves35CharactersPerTokenForNewText, unit:./ai:TestEstimateCountsJSONStringifyLength, unit:./ai:TestEstimateMessageTokensCountsAssistantTextThinkingAndToolCalls, unit:./ai:TestEstimateMessageTokensCountsSystemToolsImagesAndUTF16, unit:./ai:TestEstimateMessageTokensCountsSystemToolsImagesAndUTF16, unit:./ai:TestEstimateTextAndImageContentTokensLikeUpstream, unit:./ai:TestEstimateTextTokensIsCeilOfUTF16LengthOverThreePointFive) | not run | ./agent:TestCalculateContextTokens, ./agent:TestCalculateContextTokens, ./agent:TestEstimateContextTokens, ./ai:TestEstimateContextTokensIgnoresStaleUsageBeforeInsertedMessage, ./ai:TestEstimateContextTokensReserves35CharactersPerTokenForNewText, ./ai:TestEstimateContextTokensReserves35CharactersPerTokenForNewText, ./ai:TestEstimateCountsJSONStringifyLength, ./ai:TestEstimateMessageTokensCountsAssistantTextThinkingAndToolCalls, ./ai:TestEstimateMessageTokensCountsSystemToolsImagesAndUTF16, ./ai:TestEstimateMessageTokensCountsSystemToolsImagesAndUTF16, ./ai:TestEstimateTextAndImageContentTokensLikeUpstream, ./ai:TestEstimateTextTokensIsCeilOfUTF16LengthOverThreePointFive |
 | `packages/ai/src/utils/retry.ts` | ✅ | 1 (08-print-faux-auto-retry) | 17 (08-print-faux-auto-retry, unit:./ai:TestBedrockMidStreamTransportFailureMatchesTerminated, unit:./ai:TestBedrockRequestTransportFailureMatchesFetchFailure, unit:./ai:TestIsRetryableAssistantErrorClassification, unit:./ai:TestMistralFinishReasonErrorIsRetryable, unit:./ai:TestMistralRawStopReasonsUpstream, unit:./ai:TestOpenAIResponsesDoneBeforeTerminalEventFails, unit:./ai:TestProviderRetryDelayErrorIsNotTransportFailure, unit:./ai:TestProviderRetryPatternsMatchLikeJavaScript, unit:./ai:TestProviderTLSFailureMatchesConnectionError, unit:./ai:TestProviderTransportFailureBeforeHeadersMatchesConnectionError, unit:./ai:TestProviderTransportFailureMidStreamMatchesTerminated, unit:./ai:TestProvidersHandleInStreamErrorsLikePinnedSDKs, unit:./ai:TestRetryDelayMsCapsAgentRetryDelay, unit:./ai:TestRetryDelayMsUsesSafeIntegerMagnitude, unit:./ai:TestServerBusyProviderErrorsAreRetryable, unit:./ai:TestServerBusyProviderErrorsAreRetryable) | not run | ./ai:TestBedrockMidStreamTransportFailureMatchesTerminated, ./ai:TestBedrockRequestTransportFailureMatchesFetchFailure, ./ai:TestIsRetryableAssistantErrorClassification, ./ai:TestMistralFinishReasonErrorIsRetryable, ./ai:TestMistralRawStopReasonsUpstream, ./ai:TestOpenAIResponsesDoneBeforeTerminalEventFails, ./ai:TestProviderRetryDelayErrorIsNotTransportFailure, ./ai:TestProviderRetryPatternsMatchLikeJavaScript, ./ai:TestProviderTLSFailureMatchesConnectionError, ./ai:TestProviderTransportFailureBeforeHeadersMatchesConnectionError, ./ai:TestProviderTransportFailureMidStreamMatchesTerminated, ./ai:TestProvidersHandleInStreamErrorsLikePinnedSDKs, ./ai:TestRetryDelayMsCapsAgentRetryDelay, ./ai:TestRetryDelayMsUsesSafeIntegerMagnitude, ./ai:TestServerBusyProviderErrorsAreRetryable, ./ai:TestServerBusyProviderErrorsAreRetryable |
 | `packages/ai/src/utils/provider-retry.ts` | ✅ | 1 (18-provider-retry-error-body) | 3 (18-provider-retry-error-body, unit:./ai:TestIsRetryableProviderResponse, unit:./ai:TestRetryProviderRequestNoRetryStatuses) | not run | ./ai:TestIsRetryableProviderResponse, ./ai:TestRetryProviderRequestNoRetryStatuses |
+| `packages/ai/src/utils/openrouter-cost.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/ai/src/providers/amazon-bedrock.models.ts` | ✅ | 1 (01-ai-sdk-helpers) | 1 (01-ai-sdk-helpers) | not run |  |
 | `packages/ai/src/providers/ant-ling.models.ts` | ✅ | 1 (01-ai-sdk-helpers) | 1 (01-ai-sdk-helpers) | not run |  |
 | `packages/ai/src/providers/anthropic.models.ts` | ✅ | 2 (01-ai-sdk-helpers, 02-catalog-metadata) | 2 (01-ai-sdk-helpers, 02-catalog-metadata) | not run |  |
