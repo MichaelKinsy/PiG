@@ -168,7 +168,9 @@ cp "$eaw"/index.js "$eaw"/lookup.js "$eaw"/lookup-data.js "$eaw"/utilities.js "$
 cp "$pjson/dist/index.js" "$pjson/dist/options.js" "$shims/partial-json/dist/"
 cp "$pjson/package.json" "$pjson/LICENSE" "$shims/partial-json/"
 cp "$marked/lib/marked.esm.js" "$shims/marked/lib/"
-cp "$marked/package.json" "$marked/LICENSE" "$shims/marked/"
+cp "$marked/LICENSE" "$shims/marked/"
+# marked's manifest minus devDependencies: they are marked's own build tooling (markdown-it, eslint, ...), never installed here, and a shipped manifest naming them only draws advisories for packages PiG does not run.
+node -e 'const fs=require("fs");const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));delete m.devDependencies;fs.writeFileSync(process.argv[2],JSON.stringify(m,null,2)+"\n")' "$marked/package.json" "$shims/marked/package.json"
 cp "$markedCjk/dist/index.js" "$shims/marked-cjk-friendly/dist/"
 cp "$markedCjk/package.json" "$markedCjk/LICENSE" "$shims/marked-cjk-friendly/"
 cp -R "$hljs/lib" "$shims/highlight.js/lib"

@@ -5312,7 +5312,7 @@
       },
       "source": "package.json",
       "sourceSha256": "5a43adf708c24038a44ecd5f642bc55e3226f9e8e7997fca20272f32037970e3",
-      "sha256": "5a43adf708c24038a44ecd5f642bc55e3226f9e8e7997fca20272f32037970e3"
+      "sha256": "a7086c407355ff884884d2a40e3c9b194c8739f5faed905cbe4c71e3b7813c84"
     },
     {
       "path": "minimatch/dist/commonjs/assert-valid-pattern.d.ts",
