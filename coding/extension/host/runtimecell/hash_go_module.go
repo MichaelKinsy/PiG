@@ -181,6 +181,11 @@ func hasCacheDirSignature(fsys fs.FS, name string) (bool, error) {
 	return string(head[:n]) == cacheDirSignature, nil
 }
 
+// IsCacheDirectory reports whether the directory dir is the root of a tree marked with the CACHEDIR.TAG signature: build output that a build running beside a source hash fills and empties, never source. Cargo marks every target directory it creates, atomically with the directory itself.
+func IsCacheDirectory(dir string) (bool, error) {
+	return hasCacheDirSignature(os.DirFS(dir), cacheDirTag)
+}
+
 func ignoredByGo(name string) bool {
 	return strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")
 }

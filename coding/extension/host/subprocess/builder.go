@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -400,8 +401,10 @@ func hashSourceDirStamped(src, buildType string) (digest, stamp string, err erro
 
 // hashDirSources walks root and mixes every source file whose name ends in one
 // of exts into h, keyed by its path relative to root, in deterministic
-// filepath.WalkDir order. Hidden, vendor, build-output, and dependency
-// directories are skipped to match what the compiler actually reads.
+// filepath.WalkDir order. Hidden, vendor, build-output (named target or dist,
+// or marked with CACHEDIR.TAG), and dependency directories are skipped to
+// match what the compiler actually reads, and a directory that vanishes while
+// the walk runs held no source.
 func hashDirSources(h hash.Hash, root string, exts []string) error {
 	return hashDirSourcesStamped(h, nil, root, exts)
 }
@@ -440,12 +443,26 @@ func walkDirSources(root string, exts []string, visit func(path, rel string) err
 	root = physicalRoot
 	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			// A directory deleted after its parent listed it held no source of this build, as in runtimecell's hashGoModuleDir. A source
+			// file that cannot be read is not a vanished directory: the hash fails closed.
+			if path != root && d.IsDir() && errors.Is(err, fs.ErrNotExist) {
+				return filepath.SkipDir
+			}
 			return err
 		}
 		if d.IsDir() {
 			base := d.Name()
 			if path != root && (strings.HasPrefix(base, ".") || base == "target" || base == "vendor" || base == "node_modules" || base == "dist") {
 				return filepath.SkipDir
+			}
+			// A tree marked CACHEDIR.TAG (a Cargo target directory, whatever its name) is build output. Not opening
+			// any directory below it keeps the hash from failing on the temp directories the build removes mid-walk.
+			if path != root {
+				if tagged, err := runtimecell.IsCacheDirectory(path); err != nil {
+					return err
+				} else if tagged {
+					return filepath.SkipDir
+				}
 			}
 			return nil
 		}
