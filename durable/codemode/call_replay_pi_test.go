@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -79,13 +80,26 @@ func TestResumeAtTheDeadlineEndsTheCallAndOneMillisecondBeforeDoesNot(t *testing
 	}
 }
 
-// A script's text is cut to a preview in UTF-16 units. A cut inside a surrogate pair leaves a lone surrogate. This pins what
-// each side does with it today, so the difference stays visible until it is decided: Pi's JSON holds the escape `\ud83d`,
-// PiG's string holds the unit as three bytes that encoding/json writes as three U+FFFD characters.
-func TestACutInsideASurrogatePairIsAJSONEscapeInPiAndThreeReplacementCharactersInPiG(t *testing.T) {
-	text := strings.Repeat("😀", 6)
-	const max = 4
-	input, err := json.Marshal([]helperOp{{Op: "cut", Text: text, Max: max}})
+// codemode.ts cut(): a preview of the arguments is cut to 200 UTF-16 units, and a cut inside a surrogate pair leaves a lone
+// surrogate that JSON.stringify writes as an escape. The details of the result keep it: the stored text is Pi's, byte for byte,
+// from the call to the stored result, so a reader (the UI, the session file, JSON output) sees what Pi's would.
+func TestAPreviewCutInsideASurrogatePairKeepsItsEscapeLikePi(t *testing.T) {
+	chat := codemodeChat(t)
+	// `{"text":"a` is 10 units, so 197 units end inside the 94th emoji.
+	text := "a" + strings.Repeat("😀", 100)
+	run := runScript(t, `await tools.echo({ text: "`+text+`" });`, chat)
+	if len(run.details.Calls) != 1 {
+		t.Fatalf("calls %+v", run.details.Calls)
+	}
+	args, err := jsstring.MarshalJSON(run.details.Calls[0].Args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compact, err := jsstring.MarshalJSON(map[string]string{"text": text})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := json.Marshal([]helperOp{{Op: "cut", Text: string(compact), Max: 200}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,15 +113,16 @@ func TestACutInsideASurrogatePairIsAJSONEscapeInPiAndThreeReplacementCharactersI
 	if err != nil {
 		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
 	}
-	if want := `[{"ok":"\ud83d..."}]`; string(output) != want {
-		t.Errorf("Pi's JSON = %s, want %s", output, want)
+	want := strings.TrimSuffix(strings.TrimPrefix(string(output), `[{"ok":`), `}]`)
+	if !strings.Contains(want, `\ud83d`) {
+		t.Fatalf("the case does not cut inside a pair: Pi's preview is %s", want)
 	}
-	marshaled, err := json.Marshal(cut(text, max))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := "\"\uFFFD\uFFFD\uFFFD...\""; string(marshaled) != want {
-		t.Errorf("PiG's JSON = %s, want %s", marshaled, want)
+	if string(args) != want {
+		at := 0
+		for at < len(args) && at < len(want) && args[at] == want[at] {
+			at++
+		}
+		t.Errorf("the preview in the details differs from Pi's (%d and %d bytes) from byte %d: %q and %q", len(args), len(want), at, string(args[max(0, at-6):min(len(args), at+24)]), want[max(0, at-6):min(len(want), at+24)])
 	}
 }
 
