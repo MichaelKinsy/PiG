@@ -273,14 +273,14 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 632 / 634 intended-portable entries ✅ (99.7%); **Verification:** 569 behavioral (90.0%), 63 untested.
+**Porting:** 632 / 634 intended-portable entries ✅ (99.7%); **Verification:** 591 behavioral (93.5%), 41 untested.
 Raw PORT_MAP rows: 709. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 | package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 208 | 22 | 186 | 185 | 1 | 0 | 99.5% | 97.3% |
-| `chord` | 40 | 5 | 35 | 35 | 0 | 0 | 100.0% | 37.1% |
+| `chord` | 40 | 5 | 35 | 35 | 0 | 0 | 100.0% | 100.0% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 53.8% |
 | `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 97.4% |
 | `durable` | 84 | 9 | 75 | 75 | 0 | 0 | 100.0% | 86.7% |
@@ -292,7 +292,7 @@ Raw PORT_MAP rows: 709. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See 
 
 - **Four core packages (agent, ai, coding-agent, tui):** 463 / 464 intended-portable files ✅ (99.8%) from 514 rows; 452 behavioral (97.6%), 0 weak-only, 11 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 498 / 499 intended-portable files ✅ (99.8%) from 557 rows; 481 behavioral (96.6%), 0 weak-only, 17 untested.
-- **Whole monorepo (11 packages):** 632 / 634 intended-portable files ✅ (99.7%) from 709 rows; 569 behavioral (90.0%), 0 weak-only, 63 untested.
+- **Whole monorepo (11 packages):** 632 / 634 intended-portable files ✅ (99.7%) from 709 rows; 591 behavioral (93.5%), 0 weak-only, 41 untested.
 - **Interface closure:** 13363 of 13363 semantic interface IDs closed (217 designed-out, 13146 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
