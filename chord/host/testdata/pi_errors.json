@@ -1,0 +1,1694 @@
+{
+	"codes": [
+		"aborted",
+		"contract_mismatch",
+		"forbidden",
+		"gone",
+		"invalid",
+		"not_in_variant",
+		"not_ready",
+		"released",
+		"superseded",
+		"unavailable",
+		"upgrade_conflict",
+		"upgrade_required"
+	],
+	"construct": [
+		{
+			"code": "aborted",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "aborted: m: with colon",
+				"code": "aborted",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "aborted",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "aborted: m: with colon",
+				"code": "aborted",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "aborted",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "aborted/args: m: with colon",
+				"code": "aborted",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "aborted",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "aborted/not_host_lifetime: m: with colon",
+				"code": "aborted",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "contract_mismatch",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "contract_mismatch: m: with colon",
+				"code": "contract_mismatch",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "contract_mismatch",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "contract_mismatch: m: with colon",
+				"code": "contract_mismatch",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "contract_mismatch",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "contract_mismatch/args: m: with colon",
+				"code": "contract_mismatch",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "contract_mismatch",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "contract_mismatch/not_host_lifetime: m: with colon",
+				"code": "contract_mismatch",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "forbidden",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "forbidden: m: with colon",
+				"code": "forbidden",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "forbidden",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "forbidden: m: with colon",
+				"code": "forbidden",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "forbidden",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "forbidden/args: m: with colon",
+				"code": "forbidden",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "forbidden",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "forbidden/not_host_lifetime: m: with colon",
+				"code": "forbidden",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "gone",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "gone: m: with colon",
+				"code": "gone",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "gone",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "gone: m: with colon",
+				"code": "gone",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "gone",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "gone/args: m: with colon",
+				"code": "gone",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "gone",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "gone/not_host_lifetime: m: with colon",
+				"code": "gone",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "invalid",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "invalid: m: with colon",
+				"code": "invalid",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "invalid",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "invalid: m: with colon",
+				"code": "invalid",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "invalid",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "invalid/args: m: with colon",
+				"code": "invalid",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "invalid",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "invalid/not_host_lifetime: m: with colon",
+				"code": "invalid",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "not_in_variant",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "not_in_variant: m: with colon",
+				"code": "not_in_variant",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "not_in_variant",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "not_in_variant: m: with colon",
+				"code": "not_in_variant",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "not_in_variant",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "not_in_variant/args: m: with colon",
+				"code": "not_in_variant",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "not_in_variant",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "not_in_variant/not_host_lifetime: m: with colon",
+				"code": "not_in_variant",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "not_ready",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "not_ready: m: with colon",
+				"code": "not_ready",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "not_ready",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "not_ready: m: with colon",
+				"code": "not_ready",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "not_ready",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "not_ready/args: m: with colon",
+				"code": "not_ready",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "not_ready",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "not_ready/not_host_lifetime: m: with colon",
+				"code": "not_ready",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "released",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "released: m: with colon",
+				"code": "released",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "released",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "released: m: with colon",
+				"code": "released",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "released",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "released/args: m: with colon",
+				"code": "released",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "released",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "released/not_host_lifetime: m: with colon",
+				"code": "released",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "superseded",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "superseded: m: with colon",
+				"code": "superseded",
+				"reason": null,
+				"retryable": true,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "superseded",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "superseded: m: with colon",
+				"code": "superseded",
+				"reason": "",
+				"retryable": true,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "superseded",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "superseded/args: m: with colon",
+				"code": "superseded",
+				"reason": "args",
+				"retryable": true,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "superseded",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "superseded/not_host_lifetime: m: with colon",
+				"code": "superseded",
+				"reason": "not_host_lifetime",
+				"retryable": true,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "unavailable",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "unavailable: m: with colon",
+				"code": "unavailable",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "unavailable",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "unavailable: m: with colon",
+				"code": "unavailable",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "unavailable",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "unavailable/args: m: with colon",
+				"code": "unavailable",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "unavailable",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "unavailable/not_host_lifetime: m: with colon",
+				"code": "unavailable",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "upgrade_conflict",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "upgrade_conflict: m: with colon",
+				"code": "upgrade_conflict",
+				"reason": null,
+				"retryable": true,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "upgrade_conflict",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "upgrade_conflict: m: with colon",
+				"code": "upgrade_conflict",
+				"reason": "",
+				"retryable": true,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "upgrade_conflict",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "upgrade_conflict/args: m: with colon",
+				"code": "upgrade_conflict",
+				"reason": "args",
+				"retryable": true,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "upgrade_conflict",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "upgrade_conflict/not_host_lifetime: m: with colon",
+				"code": "upgrade_conflict",
+				"reason": "not_host_lifetime",
+				"retryable": true,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "upgrade_required",
+			"message": "m: with colon",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "upgrade_required: m: with colon",
+				"code": "upgrade_required",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "upgrade_required",
+			"message": "m: with colon",
+			"reason": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "upgrade_required: m: with colon",
+				"code": "upgrade_required",
+				"reason": "",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "upgrade_required",
+			"message": "m: with colon",
+			"reason": "args",
+			"expect": {
+				"name": "ChordError",
+				"message": "upgrade_required/args: m: with colon",
+				"code": "upgrade_required",
+				"reason": "args",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "upgrade_required",
+			"message": "m: with colon",
+			"reason": "not_host_lifetime",
+			"expect": {
+				"name": "ChordError",
+				"message": "upgrade_required/not_host_lifetime: m: with colon",
+				"code": "upgrade_required",
+				"reason": "not_host_lifetime",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"code": "invalid",
+			"message": "bad",
+			"reason": "state",
+			"details": [
+				{
+					"instancePath": "/a",
+					"message": "x"
+				}
+			],
+			"cause": "disk",
+			"expect": {
+				"name": "ChordError",
+				"message": "invalid/state: bad",
+				"code": "invalid",
+				"reason": "state",
+				"retryable": false,
+				"details": [
+					{
+						"instancePath": "/a",
+						"message": "x"
+					}
+				],
+				"cause": "disk"
+			}
+		},
+		{
+			"code": "gone",
+			"message": "",
+			"reason": null,
+			"expect": {
+				"name": "ChordError",
+				"message": "gone: ",
+				"code": "gone",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		}
+	],
+	"is": [
+		{
+			"kind": "chord",
+			"code": "aborted",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": true
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "contract_mismatch",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": true
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "forbidden",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": true
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "gone",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": true
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "invalid",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": true
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "not_in_variant",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": true
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "not_ready",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": true
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "released",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": true
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "superseded",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": true
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "unavailable",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": true
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "upgrade_conflict",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": true
+				},
+				{
+					"check": "upgrade_required",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "chord",
+			"code": "upgrade_required",
+			"checks": [
+				{
+					"check": null,
+					"result": true
+				},
+				{
+					"check": "aborted",
+					"result": false
+				},
+				{
+					"check": "contract_mismatch",
+					"result": false
+				},
+				{
+					"check": "forbidden",
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				},
+				{
+					"check": "invalid",
+					"result": false
+				},
+				{
+					"check": "not_in_variant",
+					"result": false
+				},
+				{
+					"check": "not_ready",
+					"result": false
+				},
+				{
+					"check": "released",
+					"result": false
+				},
+				{
+					"check": "superseded",
+					"result": false
+				},
+				{
+					"check": "unavailable",
+					"result": false
+				},
+				{
+					"check": "upgrade_conflict",
+					"result": false
+				},
+				{
+					"check": "upgrade_required",
+					"result": true
+				}
+			]
+		},
+		{
+			"kind": "plain",
+			"checks": [
+				{
+					"check": null,
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				}
+			]
+		},
+		{
+			"kind": "aggregate",
+			"checks": [
+				{
+					"check": null,
+					"result": false
+				},
+				{
+					"check": "gone",
+					"result": false
+				}
+			]
+		}
+	],
+	"helpers": [
+		{
+			"fn": "forbidden",
+			"args": [],
+			"expect": {
+				"name": "ChordError",
+				"message": "forbidden: forbidden",
+				"code": "forbidden",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"fn": "forbidden",
+			"args": [
+				""
+			],
+			"expect": {
+				"name": "ChordError",
+				"message": "forbidden: ",
+				"code": "forbidden",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"fn": "forbidden",
+			"args": [
+				"not for you"
+			],
+			"expect": {
+				"name": "ChordError",
+				"message": "forbidden: not for you",
+				"code": "forbidden",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"fn": "invalid",
+			"args": [
+				"cycle",
+				"loop",
+				null
+			],
+			"expect": {
+				"name": "ChordError",
+				"message": "invalid/cycle: loop",
+				"code": "invalid",
+				"reason": "cycle",
+				"retryable": false,
+				"details": null,
+				"cause": null
+			}
+		},
+		{
+			"fn": "invalid",
+			"args": [
+				"args",
+				"bad: args",
+				3
+			],
+			"expect": {
+				"name": "ChordError",
+				"message": "invalid/args: bad: args",
+				"code": "invalid",
+				"reason": "args",
+				"retryable": false,
+				"details": 3,
+				"cause": null
+			}
+		}
+	],
+	"as": [
+		{
+			"kind": "chord",
+			"context": "ctx",
+			"message": "g",
+			"same": true
+		},
+		{
+			"kind": "plain",
+			"context": "loading x",
+			"message": "boom",
+			"expect": {
+				"name": "ChordError",
+				"message": "unavailable: loading x: boom",
+				"code": "unavailable",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": "boom"
+			}
+		},
+		{
+			"kind": "plain",
+			"context": "",
+			"message": "",
+			"expect": {
+				"name": "ChordError",
+				"message": "unavailable: : ",
+				"code": "unavailable",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": ""
+			}
+		},
+		{
+			"kind": "wrapped",
+			"context": "c",
+			"message": "outer",
+			"expect": {
+				"name": "ChordError",
+				"message": "unavailable: c: outer",
+				"code": "unavailable",
+				"reason": null,
+				"retryable": false,
+				"details": null,
+				"cause": "outer"
+			}
+		}
+	],
+	"runs": [
+		{
+			"steps": [],
+			"ran": [],
+			"outcome": {
+				"result": "ok"
+			}
+		},
+		{
+			"steps": [
+				{
+					"ok": true
+				}
+			],
+			"ran": [
+				0
+			],
+			"outcome": {
+				"result": "ok"
+			}
+		},
+		{
+			"steps": [
+				{
+					"throw": "a"
+				}
+			],
+			"ran": [
+				0
+			],
+			"outcome": {
+				"result": "error",
+				"message": "a"
+			}
+		},
+		{
+			"steps": [
+				{
+					"ok": true
+				},
+				{
+					"throw": "a"
+				},
+				{
+					"ok": true
+				}
+			],
+			"ran": [
+				0,
+				1,
+				2
+			],
+			"outcome": {
+				"result": "error",
+				"message": "a"
+			}
+		},
+		{
+			"steps": [
+				{
+					"throw": "a"
+				},
+				{
+					"throw": "b"
+				}
+			],
+			"ran": [
+				0,
+				1
+			],
+			"outcome": {
+				"result": "aggregate",
+				"message": "several failed",
+				"errors": [
+					"a",
+					"b"
+				]
+			}
+		},
+		{
+			"steps": [
+				{
+					"throw": "a"
+				},
+				{
+					"ok": true
+				},
+				{
+					"throw": "b"
+				},
+				{
+					"throw": "c"
+				}
+			],
+			"ran": [
+				0,
+				1,
+				2,
+				3
+			],
+			"outcome": {
+				"result": "aggregate",
+				"message": "several failed",
+				"errors": [
+					"a",
+					"b",
+					"c"
+				]
+			}
+		}
+	]
+}

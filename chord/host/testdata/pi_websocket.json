@@ -1,0 +1,90 @@
+{
+	"records": [
+		{
+			"request": "/?token=ok",
+			"sentDuringConnect": 0,
+			"sent": [],
+			"closes": [],
+			"accepted": [
+				{
+					"principal": {
+						"guest": "web"
+					},
+					"kind": "client",
+					"maxCalls": 7,
+					"keys": [
+						"kind",
+						"maxCalls",
+						"principal"
+					]
+				}
+			]
+		},
+		{
+			"request": "/?token=bad",
+			"sentDuringConnect": 0,
+			"sent": [
+				"{\"t\":\"bye\",\"reason\":\"unauthorized\"}"
+			],
+			"closes": [
+				[
+					1000,
+					null
+				]
+			],
+			"accepted": []
+		},
+		{
+			"request": "/?token=error",
+			"sentDuringConnect": 0,
+			"sent": [
+				"{\"t\":\"bye\",\"reason\":\"authentication failed\"}"
+			],
+			"closes": [
+				[
+					1000,
+					null
+				]
+			],
+			"accepted": []
+		},
+		{
+			"request": "/?token=sync",
+			"sentDuringConnect": 0,
+			"sent": [],
+			"closes": [],
+			"accepted": [
+				{
+					"principal": {
+						"guest": "sync"
+					},
+					"kind": "client",
+					"maxCalls": 7,
+					"keys": [
+						"kind",
+						"maxCalls",
+						"principal"
+					]
+				}
+			]
+		},
+		{
+			"request": "/?token=falsy",
+			"sentDuringConnect": 0,
+			"sent": [],
+			"closes": [],
+			"accepted": [
+				{
+					"principal": 0,
+					"kind": "client",
+					"maxCalls": 7,
+					"keys": [
+						"kind",
+						"maxCalls",
+						"principal"
+					]
+				}
+			]
+		}
+	]
+}
