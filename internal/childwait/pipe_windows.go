@@ -5,12 +5,9 @@ package childwait
 import (
 	"errors"
 	"os"
-	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
-
-var procPeekNamedPipe = windows.NewLazySystemDLL("kernel32.dll").NewProc("PeekNamedPipe")
 
 // pollPipe asks Windows about the read end of an anonymous pipe without taking a byte from it (PeekNamedPipe). A pipe whose write ends are all closed
 // and whose bytes are all read fails with ERROR_BROKEN_PIPE: hungUp. While bytes wait in the pipe, whether or not a write end is open, they are unread:
@@ -25,9 +22,7 @@ func pollPipe(file *os.File) (hungUp, unread, known bool) {
 		peekErr   error
 	)
 	if err := conn.Control(func(fd uintptr) {
-		if r, _, e := procPeekNamedPipe.Call(fd, 0, 0, 0, uintptr(unsafe.Pointer(&available)), 0); r == 0 {
-			peekErr = e
-		}
+		peekErr = windows.PeekNamedPipe(windows.Handle(fd), nil, 0, nil, &available, nil)
 	}); err != nil {
 		return false, false, false
 	}
