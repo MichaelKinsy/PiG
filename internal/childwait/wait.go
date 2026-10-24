@@ -52,12 +52,13 @@ type Pipes struct {
 	hooks    Hooks
 	activity chan struct{}
 	done     chan struct{}
-	// stopped[i] is set once the reader of files[i] has returned: nothing more
-	// is taken from that pipe, so it holds no output a reader will deliver.
-	stopped []atomic.Bool
 
 	mu        sync.Mutex
 	accepting bool
+
+	// stopped[i] is set once the reader of files[i] has returned: nothing more
+	// is taken from that pipe, so it holds no output a reader will deliver.
+	stopped []atomic.Bool
 }
 
 // Start reads each file until it fails or ends, calling onData with the index
@@ -76,7 +77,10 @@ func Start(files []*os.File, onData func(index int, chunk []byte), hooks Hooks) 
 	}
 	var readers sync.WaitGroup
 	for index, file := range files {
-		readers.Go(func() { p.read(index, file) })
+		readers.Go(func() {
+			p.read(index, file)
+			p.stopped[index].Store(true)
+		})
 	}
 	go func() {
 		readers.Wait()
@@ -87,7 +91,6 @@ func Start(files []*os.File, onData func(index int, chunk []byte), hooks Hooks) 
 
 //perf:hot
 func (p *Pipes) read(index int, file *os.File) {
-	defer p.stopped[index].Store(true)
 	if p.hooks.BeforeRead != nil {
 		p.hooks.BeforeRead()
 	}
