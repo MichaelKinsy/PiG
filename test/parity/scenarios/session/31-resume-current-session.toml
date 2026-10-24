@@ -2,8 +2,8 @@
 # interactive-mode.ts:5551-5586 passes the active file to the picker; :5563-5566,5592-5608 resumes it normally on Enter.
 # session-selector.ts:404-413 rejects deletion of the active path, including while searching.
 # Probe: open delta four from the five search JSONL fixtures, /resume, search delta, Enter, then reopen and search delta.
-# The full picker block includes two ranked rows and the active accent after a same-session resume.
-# Pi 8c03fef4d scores contiguous fuzzy matches, so the search "delta" no longer lists golf seven: both programs list the two rows delta four and alpha one.
+# The full picker block includes three ranked rows and the active accent after a same-session resume.
+# Pi 8c03fef4d (session-selector-search.ts) scores ID, name, messages and cwd each on its own, so delta no longer reaches golf seven through letters spread across a field boundary: the picker lists delta four and alpha one, re-probed against Pi 1.4.0+acf83acf with both sides equal.
 # Future message timestamps make ages deterministically "now". The crop excludes unrelated transcript/startup chrome, not picker content. No normalization.
 name = "31-resume-current-session"
 description = "The interactive resume picker includes and accents the current session, resumes it on Enter, and retains fuzzy scoring"
@@ -33,7 +33,7 @@ wait_timeout_seconds = 5
 [[tmux.steps]]
 keys = ["delta"]
 wait_visible_contains = ["> delta", "› delta four", "alpha one"]
-wait_not_contains = ["bravo", "charlie"]
+wait_not_contains = ["bravo", "charlie", "golf seven"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
@@ -55,7 +55,7 @@ wait_timeout_seconds = 5
 [[tmux.steps]]
 keys = ["delta"]
 wait_visible_contains = ["> delta", "› delta four", "alpha one"]
-wait_not_contains = ["bravo", "charlie"]
+wait_not_contains = ["bravo", "charlie", "golf seven"]
 wait_timeout_seconds = 5
 
 [env]
@@ -68,5 +68,5 @@ pi_args = ["--no-extensions", "--no-skills", "--session", "sessions/00000000-000
 both_reach_ready = true
 escaped_output_equal = true
 both_contain = ["› delta four", "alpha one"]
-both_not_contain = ["bravo", "charlie"]
+both_not_contain = ["bravo", "charlie", "golf seven"]
 runs = 3

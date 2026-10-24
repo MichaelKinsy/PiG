@@ -504,8 +504,7 @@ func TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded(t *testing.T) {
 	for name, end := range ends {
 		t.Run(name, func(t *testing.T) {
 			watch, scheduler, _ := recordedWatch(0.0, func() any { return 1.0 })
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			watch.ObserveCancellation(ctx)
 			watch.Start(func(context.Context, any, []delta.Op) error { return nil })
 			watch.Advance(context.Background(), 1.0, rootOps(1.0))
