@@ -23,13 +23,13 @@ jobs:
         shell: bash
         continue-on-error: true
         run: |
-          go test ./tui -run '^TestStopAfterNegotiationOnlyInput$' -v -count=200 -timeout 20m 2>&1 | tee negstop.log
+          go test ./tui -run '^TestStopAfterNegotiationOnlyInput$' -v -count=600 -timeout 30m 2>&1 | tee negstop.log
       - name: summary
         shell: bash
         run: |
           echo "=== fail count"; grep -c -e '--- FAIL' negstop.log || true
           echo "=== pass count"; grep -c -e '--- PASS: TestStopAfterNegotiationOnlyInput/' negstop.log || true
-          echo "=== first failures"; grep -n -B2 -A6 -e '--- FAIL: TestStopAfterNegotiationOnlyInput/' negstop.log | head -150
+          echo "=== first failures"; grep -n -A22 -e 'DIAG child trace' negstop.log | head -500
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

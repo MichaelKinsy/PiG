@@ -62,12 +62,16 @@ func withTerminalInput(t *testing.T, test string, index int, body func(*testing.
 	keys := filepath.Join(t.TempDir(), "keys")
 	t.Setenv(terminalInputKeysEnv, keys)
 	t.Setenv(terminalInputCaseEnv, strconv.Itoa(index))
+	diagFile := keys + ".diag"
+	t.Setenv("PIG_DIAG_NEGSTOP_FILE", diagFile)
+	defer func() {
+		if b, err := os.ReadFile(diagFile); err == nil && t.Failed() {
+			t.Logf("DIAG child trace:\n%s", b)
+		}
+	}()
 	console := startInPseudoConsole(t, os.Args[0], "-test.run=^"+test+"$", "-test.count=1")
 	console.typeRequestedKeys(t, keys)
 	console.wait(t)
-	if os.Getenv("PIG_DIAG_NEGSTOP") != "" {
-		t.Logf("DIAG child console output: %q", console.output())
-	}
 }
 
 // typeRequestedKeys types each numbered keys file the child writes, in order,

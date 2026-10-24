@@ -29,7 +29,15 @@ func diagTrace(format string, args ...any) {
 	if os.Getenv("PIG_DIAG_NEGSTOP") == "" {
 		return
 	}
-	fmt.Fprintf(os.Stderr, "DIAG %s pid=%d "+format+"\r\n", append([]any{time.Now().Format("15:04:05.000000"), os.Getpid()}, args...)...)
+	line := fmt.Sprintf("DIAG %s pid=%d "+format+"\n", append([]any{time.Now().Format("15:04:05.000000"), os.Getpid()}, args...)...)
+	if path := os.Getenv("PIG_DIAG_NEGSTOP_FILE"); path != "" {
+		if f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
+			_, _ = f.WriteString(line)
+			_ = f.Close()
+			return
+		}
+	}
+	fmt.Fprint(os.Stderr, line)
 }
 
 const (
