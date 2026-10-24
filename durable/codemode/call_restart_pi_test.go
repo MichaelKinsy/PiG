@@ -75,9 +75,9 @@ type queuedStorage struct {
 	marked   bool
 	entered  int
 	// pushes is, for each commit since the mark that appended journal entries, how many.
-	pushes []int
-	waiting  []chan error
-	failure  error
+	pushes  []int
+	waiting []chan error
+	failure error
 }
 
 func (s *queuedStorage) queue() {
@@ -287,18 +287,18 @@ type restartRun struct {
 	counter atomic.Int64
 	// finishedGlobals is the gslow calls that returned.
 	finishedGlobals atomic.Int64
-	opened  harness.Harness
-	root    harness.Conversation
-	id      durable.SubmissionId
-	sub     durable.Submission
-	status  any
-	mu      sync.Mutex
-	reports []string
-	seen    []map[string]any
-	closing chan error
-	editing []chan struct{}
-	known   durable.TaskId
-	closed  bool
+	opened          harness.Harness
+	root            harness.Conversation
+	id              durable.SubmissionId
+	sub             durable.Submission
+	status          any
+	mu              sync.Mutex
+	reports         []string
+	seen            []map[string]any
+	closing         chan error
+	editing         []chan struct{}
+	known           durable.TaskId
+	closed          bool
 	// scenarioCode is the script the scenario's first step submits.
 	scenarioCode string
 }
@@ -326,7 +326,9 @@ func newRestartRun(t *testing.T, scenario restartScenario) *restartRun {
 		"boom": func(context.Context, json.RawMessage, durable.ToolExecutionApi) (json.RawMessage, error) {
 			return nil, fmt.Errorf("boom")
 		},
-		"undef": func(context.Context, json.RawMessage, durable.ToolExecutionApi) (json.RawMessage, error) { return nil, nil },
+		"undef": func(context.Context, json.RawMessage, durable.ToolExecutionApi) (json.RawMessage, error) {
+			return nil, nil
+		},
 	}
 	var globals []Global
 	for _, name := range scenario.Globals {
@@ -864,15 +866,6 @@ func deleteDoc(doc string, path ...any) restartStep {
 // truncateDoc sets the length of the array at path.
 func truncateDoc(doc string, length int, path ...any) restartStep {
 	return restartStep{Op: "edit", Doc: doc, Path: docPath(path), Length: &length}
-}
-
-// restartAndFinish is the sequence of Pi's restart(): run until hold is reached, close, change the stored state, reopen with
-// hold released, and wait for the answer.
-func restartAndFinish(name, code string, between ...restartStep) restartScenario {
-	steps := []restartStep{restartOp("start"), awaitStep("hold"), observeAt("before the restart"), restartOp("close"), reopen()}
-	steps = append(steps, between...)
-	steps = append(steps, restartOp("resume"), awaitStep("done"), observeAt("answer"))
-	return restartScenario{Name: name, Code: code, Steps: steps}
 }
 
 // firstDifference names the first place two decoded JSON values differ, with both sides' values there.

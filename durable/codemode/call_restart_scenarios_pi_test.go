@@ -26,8 +26,7 @@ func releaseSlow(id int) restartStep { return restartStep{Op: "release", ID: id}
 func restartSteps(name, code string, before, between []restartStep) restartScenario {
 	steps := []restartStep{restartOp("start")}
 	steps = append(steps, before...)
-	steps = append(steps, awaitStep("hold"))
-	steps = append(steps, observeAt("before the restart"), restartOp("close"), reopen())
+	steps = append(steps, awaitStep("hold"), observeAt("before the restart"), restartOp("close"), reopen())
 	steps = append(steps, between...)
 	steps = append(steps, observeAt("reopened"), restartOp("resume"), awaitStep("done"), observeAt("answer"))
 	return restartScenario{Name: name, Code: code, Steps: steps}
@@ -121,9 +120,13 @@ func TestAReplayedCallThatDiffersFromAGlobalsEntryDiverges(t *testing.T) {
 	})
 }
 
-func awaitCommits(count int) restartStep { return restartStep{Op: "await", What: "commits", Count: count} }
+func awaitCommits(count int) restartStep {
+	return restartStep{Op: "await", What: "commits", Count: count}
+}
 
-func releaseCommit(message string) restartStep { return restartStep{Op: "release-commit", Message: message} }
+func releaseCommit(message string) restartStep {
+	return restartStep{Op: "release-commit", Message: message}
+}
 
 func awaitHeldEvents(count int) restartStep {
 	return restartStep{Op: "await", What: "held-events", Count: count}
