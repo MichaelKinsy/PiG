@@ -10,10 +10,11 @@ func catalogSelectedID(t *testing.T, selector *ModelSelectorComponent) string {
 	for _, line := range selector.Render(120) {
 		plain := stripANSI(line)
 		if after, ok := strings.CutPrefix(plain, "→ "); ok {
+			// Pi 606af8662: a row can now carry the model name after the id, so the id ends at the first space.
 			rest := strings.TrimSpace(after)
-			rest = strings.TrimSpace(strings.TrimPrefix(rest, "✓ "))
-			id, _, _ := strings.Cut(rest, " [")
-			return strings.TrimSpace(id)
+			rest = strings.TrimPrefix(rest, "✓ ")
+			id, _, _ := strings.Cut(rest, " ")
+			return id
 		}
 	}
 	t.Fatal("selected row missing")

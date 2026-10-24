@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -431,5 +432,88 @@ func TestDefaultResourceLoaderExtensionsOutliveTheContextOfTheReload(t *testing.
 	}
 	if loaded.UIBridge() == nil {
 		t.Fatal("the extensions' host has no bridge for a session to bind its state to")
+	}
+}
+
+// failingNpmCommand writes an npm command that exits non-zero, which stands in for an install that cannot reach the registry, and returns its settings.json form.
+func failingNpmCommand(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a shell script as the npm command")
+	}
+	command := filepath.Join(t.TempDir(), "npm")
+	if err := os.WriteFile(command, []byte("#!/bin/sh\necho \"npm install failed\" >&2\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return `"npmCommand": [` + strconv.Quote(command) + `]`
+}
+
+func installFailureLoader(t *testing.T, settings map[string]string, options DefaultResourceLoaderOptions) *DefaultResourceLoader {
+	t.Helper()
+	t.Setenv("PI_OFFLINE", "")
+	t.Setenv("PIG_OFFLINE", "")
+	root := t.TempDir()
+	options.CWD, options.AgentDir = filepath.Join(root, "project"), filepath.Join(root, "agent")
+	files := map[string]string{filepath.Join(options.CWD, "keep"): ""}
+	for rel, content := range settings {
+		files[filepath.Join(root, rel)] = content
+	}
+	writeExtensionFiles(t, files)
+	loader := NewDefaultResourceLoader(options)
+	t.Cleanup(loader.Close)
+	return loader
+}
+
+// Pi 6dfb54678 resource-loader.test.ts "should warn and keep loading when a configured package cannot be installed" (#11088).
+func TestDefaultResourceLoaderWarnsAndKeepsLoadingWhenAConfiguredPackageCannotBeInstalled(t *testing.T) {
+	loader := installFailureLoader(t, map[string]string{"agent/settings.json": `{"packages": ["npm:broken-package"], ` + failingNpmCommand(t) + `}`}, DefaultResourceLoaderOptions{})
+	if err := loader.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	warnings := loader.GetExtensions().Warnings
+	if len(warnings) != 1 || warnings[0].Path != "npm:broken-package" || !strings.HasPrefix(warnings[0].Warning, "failed to install (") ||
+		!strings.Contains(warnings[0].Warning, `Run "pig remove npm:broken-package" to remove it from settings.json.`) {
+		t.Fatalf("warnings = %+v, want one failed-to-install warning naming pig remove", warnings)
+	}
+}
+
+// Pi 6dfb54678 resource-loader.test.ts "should point temporary extension sources at the source instead of pi remove".
+func TestDefaultResourceLoaderPointsTemporaryExtensionSourcesAtTheSource(t *testing.T) {
+	loader := installFailureLoader(t, map[string]string{"agent/settings.json": `{` + failingNpmCommand(t) + `}`}, DefaultResourceLoaderOptions{AdditionalExtensionPaths: []string{"npm:broken-package"}})
+	if err := loader.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	warnings := loader.GetExtensions().Warnings
+	if len(warnings) != 1 || warnings[0].Path != "npm:broken-package" || !strings.Contains(warnings[0].Warning, "Check the source and try again.") || strings.Contains(warnings[0].Warning, "remove") {
+		t.Fatalf("warnings = %+v, want one warning that points at the source", warnings)
+	}
+}
+
+// Pi 6dfb54678 resource-loader.test.ts "should point project extension packages at pi remove --local".
+func TestDefaultResourceLoaderPointsProjectPackagesAtRemoveLocal(t *testing.T) {
+	loader := installFailureLoader(t, map[string]string{
+		"agent/settings.json":        `{` + failingNpmCommand(t) + `}`,
+		"project/.pig/settings.json": `{"packages": ["npm:broken-package"]}`,
+	}, DefaultResourceLoaderOptions{})
+	trusted := func(context.Context, ResolveProjectTrustInput) (bool, error) { return true, nil }
+	if err := loader.Reload(ResourceLoaderReloadOptions{ResolveProjectTrust: trusted}); err != nil {
+		t.Fatal(err)
+	}
+	warnings := loader.GetExtensions().Warnings
+	if len(warnings) != 1 || !strings.Contains(warnings[0].Warning, `Run "pig remove npm:broken-package --local"`) {
+		t.Fatalf("warnings = %+v, want one warning naming pig remove --local", warnings)
+	}
+}
+
+// Pi 6dfb54678 resource-loader.test.ts "should warn once about a failing install when project trust is resolved".
+func TestDefaultResourceLoaderWarnsOnceAboutAFailingInstallWhenProjectTrustIsResolved(t *testing.T) {
+	loader := installFailureLoader(t, map[string]string{"agent/settings.json": `{"packages": ["npm:broken-package"], ` + failingNpmCommand(t) + `}`}, DefaultResourceLoaderOptions{})
+	untrusted := func(context.Context, ResolveProjectTrustInput) (bool, error) { return false, nil }
+	if err := loader.Reload(ResourceLoaderReloadOptions{ResolveProjectTrust: untrusted}); err != nil {
+		t.Fatal(err)
+	}
+	warnings := loader.GetExtensions().Warnings
+	if len(warnings) != 1 || warnings[0].Path != "npm:broken-package" {
+		t.Fatalf("warnings = %+v, want exactly one for npm:broken-package", warnings)
 	}
 }

@@ -526,7 +526,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 	})
 
 	t.Run("reports a listener's failure through the Session while it ends only that watch", func(t *testing.T) {
-		// Pi observation.ts CommittedWatch #drain: `this.#report(error)` runs before `#terminate({ reason: "listener_error" })`.
+		// Pi chord watch.ts Watch #drain: `this.#report(error)` runs before `#terminate({ reason: "listener_error" })`.
 		var mu sync.Mutex
 		var reported []error
 		harness := sessiontest.OpenReportingTestSession(func(err error) {
@@ -633,8 +633,8 @@ func TestSessionDocumentWatches(t *testing.T) {
 	})
 }
 
-// Upstream session.ts #runCommit publishes synchronously before its promise resolves, and observation.ts
-// CommittedWatch.advance queues the drain microtask there, so a started watch with no callback in flight enters the
+// Upstream session.ts #runCommit publishes synchronously before its promise resolves, and chord watch.ts
+// Watch.advance queues the drain microtask there, so a started watch with no callback in flight enters the
 // listener with the committed frame, and watch.value is that frame, before the commit's caller resumes. A stop after
 // the commit returns therefore cannot discard the frame (chord-guide.test.ts "runs the job output watch until the
 // producer retires its document" stops right after the producer's last commit).

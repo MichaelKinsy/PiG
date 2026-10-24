@@ -761,12 +761,6 @@ count = 2
 
 [[hit]]
 check = "doubleclose"
-file = "durable/session/observation.go"
-func = "CommittedWatch.finishIfReadyLocked"
-snippet = "close(watch.closed)"
-
-[[hit]]
-check = "doubleclose"
 file = "durable/session/transaction.go"
 func = "future.resolve"
 snippet = "close(result.done)"

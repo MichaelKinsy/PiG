@@ -353,7 +353,7 @@ func (event ToolExecutionUpdateEvent) MarshalJSON() ([]byte, error) {
 type AgentEventStream struct {
 	// Snapshot is the snapshot event at attachment.
 	Snapshot SnapshotEvent
-	watch    *session.CommittedWatch[[]AgentEvent]
+	watch    *chord.Watch[[]AgentEvent]
 }
 
 // Start installs the sole listener; it never runs inline.
@@ -478,7 +478,7 @@ type eventWatcher interface {
 }
 
 // NewAgentEventStream is the stream of a snapshot and the committed watch of the event batches that follow it.
-func NewAgentEventStream(snapshot SnapshotEvent, watch *session.CommittedWatch[[]AgentEvent]) *AgentEventStream {
+func NewAgentEventStream(snapshot SnapshotEvent, watch *chord.Watch[[]AgentEvent]) *AgentEventStream {
 	return &AgentEventStream{Snapshot: snapshot, watch: watch}
 }
 
@@ -503,7 +503,7 @@ func WatchEvents(ctx context.Context, harness Harness, conversationId durable.Co
 		return nil, errNotHarness
 	}
 	views := impl.host.views
-	var watch *session.CommittedWatch[[]AgentEvent]
+	var watch *chord.Watch[[]AgentEvent]
 	var snapshot SnapshotEvent
 	_, _, err := views.Attach(ctx, conversationId, func(initial ConversationView, release func(), storage durable.Storage) (*ViewObserver, error) {
 		// Generations whose held outcome already ended their turn, read on the line with the snapshot.
@@ -522,7 +522,7 @@ func WatchEvents(ctx context.Context, harness Harness, conversationId durable.Co
 		current := initial
 		snapshot = snapshotOf(initial)
 		// Batches are the watch's values; an overflow delivers a snapshot of the newest view instead.
-		watch = session.NewCommittedWatch(impl.SessionImpl, []AgentEvent{}, release, func() []AgentEvent { return []AgentEvent{snapshotOf(current)} })
+		watch = session.NewSessionWatch(impl.SessionImpl, []AgentEvent{}, release, func() []AgentEvent { return []AgentEvent{snapshotOf(current)} })
 		return &ViewObserver{
 			Publication: func(commitCtx context.Context, before, after ConversationView, ops []durable.Op, publication durable.CommitPublication) {
 				current = after

@@ -1641,7 +1641,8 @@ func (p *anthropicProvider) applySampling(req *anthRequest, model *Model, transc
 			if slices.Contains(req.Betas, thinkingBindingControlsBeta) {
 				req.Thinking.BlockBinding = &anthBlockBinding{PrefixMismatchBehavior: "drop_block"}
 			}
-			req.OutputConfig = &anthOutputConfig{Effort: "high"}
+			// upstream: anthropic-messages.ts buildParams (Pi e3bc05e87). Effort markers set the level for every reply, and the top-level effort is part of the cached prompt, so it stays fixed. It is "low" because organizations can cap effort and reject requests containing any level above the cap.
+			req.OutputConfig = &anthOutputConfig{Effort: "low"}
 			if !effortMarkers {
 				req.OutputConfig.Effort = managedEffort
 			}

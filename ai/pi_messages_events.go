@@ -58,6 +58,7 @@ type PiMessagesEvent struct {
 	Usage                 Usage               `json:"usage"`
 	ErrorMessage          string              `json:"errorMessage"`
 	ResponseID            string              `json:"responseId"`
+	ResponseModel         *string             `json:"responseModel"`
 	ProviderThinkingLevel *string             `json:"providerThinkingLevel"`
 	Rewrite               map[string]any      `json:"rewrite"`
 	// rewriteOrder is the rewrite object's wire text, whose member order the diagnostic keeps (`{ ...rewrite }`).
@@ -166,6 +167,10 @@ func (c *piMessagesEventConverter) finish(event PiMessagesEvent) {
 	c.partial.Usage = event.Usage
 	c.replaced.Usage = true
 	c.partial.ResponseID = event.ResponseID
+	// upstream: pi-messages.ts createEventConverter assigns responseModel on done and error only when the event carries it (Pi 14c811841).
+	if event.ResponseModel != nil {
+		c.partial.ResponseModel = *event.ResponseModel
+	}
 	if event.ProviderThinkingLevel != nil {
 		c.partial.ProviderThinkingLevel = *event.ProviderThinkingLevel
 	}

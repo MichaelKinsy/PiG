@@ -187,3 +187,30 @@ func TestModelSelectorSearchRanksContiguousMatchesAboveScatteredOnes(t *testing.
 		}
 	})
 }
+
+// #5916 (Pi 606af8662): packages/coding-agent/test/model-search.test.ts getDistinctModelName.
+func TestGetDistinctModelName(t *testing.T) {
+	hidden := []ModelSearchItem{
+		{ID: "claude-sonnet-4-5", Name: "Claude Sonnet 4.5"},
+		{ID: "openai/gpt-oss-120b", Name: "OpenAI: gpt-oss-120b"},
+		{ID: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0", Name: "Claude Sonnet 4.5 (EU)"},
+		{ID: "gpt-5", Name: ""},
+		{ID: "gpt-5"},
+	}
+	for _, item := range hidden {
+		if got := GetDistinctModelName(item); got != "" {
+			t.Errorf("GetDistinctModelName(%+v) = %q, want it hidden", item, got)
+		}
+	}
+	shown := []ModelSearchItem{
+		{ID: "minimax/minimax-m3", Name: "MiniMax M3 [rasmus@openrouter, parasail]"},
+		{ID: "gemini-3.1-flash-lite-image", Name: "Nano Banana 2 Lite"},
+		// Single-character words must match a whole ID token: "4" is not covered by "mistral-small-2603".
+		{ID: "mistral-small-2603", Name: "Mistral Small 4"},
+	}
+	for _, item := range shown {
+		if got := GetDistinctModelName(item); got != item.Name {
+			t.Errorf("GetDistinctModelName(%+v) = %q, want %q", item, got, item.Name)
+		}
+	}
+}

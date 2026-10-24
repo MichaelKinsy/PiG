@@ -267,8 +267,9 @@ func newCLIGlobTestBuilder(t *testing.T, f packageProcessFixture, args ...string
 	}
 }
 
-// Pi's resolveExtensionSources installs a missing npm or git -e source outside any catch (package-manager.ts:1293-1342), so a failed install rejects the load before any extension factory runs, and no later source is installed. Probed with Pi 1.1.0 (r26, r27): `-e npm:<missing>` with an unreachable registry exits 1 with npm's error, the user extension's factory does not run, and a second -e npm source makes no npm call.
-func TestCLIPackageSourceInstallFailureStopsStartup(t *testing.T) {
+// Pi 6dfb54678: resolveExtensionSources catches the failed install of a missing npm or git -e source, so the source contributes nothing and is reported as an extension warning, every
+// later -e source is resolved too, and the extension factories still run.
+func TestCLIPackageSourceInstallFailureWarnsAndStartupContinues(t *testing.T) {
 	for _, tc := range []struct{ source, second, command string }{
 		{"npm:eprobe-missing", "npm:eprobe-second", "npm"},
 		{cliGitSource, "git:https://example.com/owner/second", "git"},
@@ -281,16 +282,27 @@ func TestCLIPackageSourceInstallFailureStopsStartup(t *testing.T) {
 				t.Fatal(err)
 			}
 			writeResourceLoaderFixture(t, filepath.Join(f.agent, "extensions", "probe.js"), `import {writeFileSync} from "node:fs"; export default function() { writeFileSync(`+string(quoted)+`, "ran"); }`)
-			_, err = newCLIGlobTestBuilder(t, f, "--print", "-e", tc.source, "-e", tc.second).buildResources(t.Context(), cliBuildInput{CWD: f.cwd})
-			if err == nil || !strings.HasPrefix(err.Error(), tc.command+" ") || !strings.HasSuffix(err.Error(), "failed with code 1") {
-				t.Fatalf("startup error = %v, want the failed %s command", err, tc.command)
+			build, err := newCLIGlobTestBuilder(t, f, "--print", "-e", tc.source, "-e", tc.second).buildResources(t.Context(), cliBuildInput{CWD: f.cwd})
+			if err != nil {
+				t.Fatalf("startup error = %v, want startup to go on after the failed %s command", err, tc.command)
 			}
-			if _, statErr := os.Stat(marker); !os.IsNotExist(statErr) {
-				t.Fatalf("an extension factory ran before the install failure: %v", statErr)
+			if _, statErr := os.Stat(marker); statErr != nil {
+				t.Fatalf("the extension factory did not run: %v", statErr)
 			}
+			secondResolved := false
 			for _, call := range f.calls(t) {
-				if strings.Contains(strings.Join(call.Args, " "), "second") {
-					t.Fatalf("the source after the failure was resolved too: %+v", call)
+				secondResolved = secondResolved || strings.Contains(strings.Join(call.Args, " "), "second")
+			}
+			if !secondResolved {
+				t.Fatal("the source after the failure was not resolved")
+			}
+			for _, source := range []string{tc.source, tc.second} {
+				warned := false
+				for _, diagnostic := range build.ExtensionDiagnostics {
+					warned = warned || strings.Contains(diagnostic.Message, "Extension package \""+source+"\": failed to install (") && strings.Contains(diagnostic.Message, "Check the source and try again.")
+				}
+				if !warned {
+					t.Fatalf("no install warning for %s in %+v", source, build.ExtensionDiagnostics)
 				}
 			}
 		})

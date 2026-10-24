@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -80,7 +81,7 @@ type SessionImpl struct {
 	// each commit evicts what expired. Guarded by mu.
 	documentTimersUnavailable bool
 	host                      *transactionHost
-	scheduler                 *pending
+	scheduler                 *chord.DeliveryScheduler
 
 	lineMu   sync.Mutex
 	tail     chan struct{}
@@ -145,7 +146,7 @@ func NewSessionImpl(storage durable.Storage, hooks Hooks, now func() float64, do
 	if now == nil {
 		now = func() float64 { return float64(time.Now().UnixMilli()) }
 	}
-	session := &SessionImpl{hooks: hooks, scheduler: newPending(), documents: map[string]*LoadedDocument{}, cache: newDocumentCache(), now: now, retentionSource: documentRetentionMs, failed: make(chan struct{}), closed: make(chan struct{})}
+	session := &SessionImpl{hooks: hooks, scheduler: chord.NewDeliveryScheduler(), documents: map[string]*LoadedDocument{}, cache: newDocumentCache(), now: now, retentionSource: documentRetentionMs, failed: make(chan struct{}), closed: make(chan struct{})}
 	session.timers = durable.HostTimers(hooks.SetTimer, func(err error) {
 		session.report(unscoped, err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
 	})
@@ -544,7 +545,7 @@ func (session *SessionImpl) WatchDocErased(ctx context.Context, token durable.An
 	return watch, nil
 }
 
-func (session *SessionImpl) watchDoc(ctx context.Context, token durable.AnyDocToken, args []any) (*CommittedWatch[durable.JsonObject], error) {
+func (session *SessionImpl) watchDoc(ctx context.Context, token durable.AnyDocToken, args []any) (*chord.Watch[durable.JsonObject], error) {
 	if err := session.assertUsable(); err != nil {
 		return nil, err
 	}
@@ -553,7 +554,7 @@ func (session *SessionImpl) watchDoc(ctx context.Context, token durable.AnyDocTo
 	if err != nil {
 		return nil, err
 	}
-	watch, err := enqueue(session, true, nil, func() (*CommittedWatch[durable.JsonObject], error) {
+	watch, err := enqueue(session, true, nil, func() (*chord.Watch[durable.JsonObject], error) {
 		if err := session.assertHealthy(); err != nil {
 			return nil, err
 		}
@@ -847,7 +848,7 @@ func (session *SessionImpl) UnloadDocuments() error {
 }
 
 // WaitDeliveries blocks until every scheduled watch delivery has drained.
-func (session *SessionImpl) WaitDeliveries() { session.scheduler.wait() }
+func (session *SessionImpl) WaitDeliveries() { session.scheduler.Wait() }
 
 // AwaitDeliveriesEntered blocks until every watch delivery scheduled before the call has entered: its listener returned,
 // is parked in a wait, or is blocked behind a lock, which a Go listener does where an upstream one awaits and which the
@@ -855,7 +856,7 @@ func (session *SessionImpl) WaitDeliveries() { session.scheduler.wait() }
 // before the code awaiting the wait's promise resumes; the listener a caller's own goroutine runs is not waited for, so
 // a listener may itself wait for the Harness. It returns the cause of ctx when ctx ends the wait.
 func (session *SessionImpl) AwaitDeliveriesEntered(ctx context.Context) error {
-	return session.scheduler.awaitEntered(ctx)
+	return session.scheduler.AwaitEntered(ctx)
 }
 
 func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Transaction) (any, error), scope TransactionScope) (result any, err error) {
@@ -1040,7 +1041,7 @@ func (session *SessionImpl) DeferUntilPublished(run func()) {
 
 // attachDocument attaches a watch to one committed incarnation: check the definition, then forward this incarnation's
 // committed changes, its retirement, and close. The watch's detach removes both subscriptions.
-func (session *SessionImpl) attachDocument(definition *durable.AnyDocDefinition, loaded *LoadedDocument) (*CommittedWatch[durable.JsonObject], error) {
+func (session *SessionImpl) attachDocument(definition *durable.AnyDocDefinition, loaded *LoadedDocument) (*chord.Watch[durable.JsonObject], error) {
 	if err := checkLoaded(definition, loaded); err != nil {
 		return nil, err
 	}
@@ -1059,7 +1060,7 @@ func (session *SessionImpl) attachDocument(definition *durable.AnyDocDefinition,
 		closer()
 		unpin()
 	}
-	watch := NewCommittedWatch(session, loaded.Tracker.Value(), detach, nil)
+	watch := NewSessionWatch(session, loaded.Tracker.Value(), detach, nil)
 	observed := loaded.ValueVersion
 	recordId := loaded.Record.Id
 	commit, err := session.subscribeCommits(func(ctx context.Context, publication durable.CommitPublication) {

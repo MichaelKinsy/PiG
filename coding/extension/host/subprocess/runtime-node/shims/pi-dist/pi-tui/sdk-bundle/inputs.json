@@ -47,7 +47,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/markdown.js",
-      "sha256": "5f92e4210616833897dd33a837c64ef4b84ed7daf193f4fed781382fd5727765"
+      "sha256": "947386f2f8721ca1694b17ee2a816ce3a5836b36f6bc012aaac005ed2302c289"
     },
     {
       "path": "pi-dist/pi-tui/components/mouse-region.js",
@@ -107,7 +107,7 @@
     },
     {
       "path": "pi-dist/pi-tui/layout.js",
-      "sha256": "b20cb0b156e506b4639b789be8688fe9dd38d42d15746ae82e69fcd250e42147"
+      "sha256": "a7ec821fbf0c7ce20c1e4ae65d59e5babfa94790f8c58c90f65660eb722aefbb"
     },
     {
       "path": "pi-dist/pi-tui/native-modifiers.js",
@@ -135,7 +135,7 @@
     },
     {
       "path": "pi-dist/pi-tui/tui-alt-screen.js",
-      "sha256": "cf8473e092e8f9909e7772f83814022becf8c6dfd0c7e2d042c945053d679906"
+      "sha256": "d1e07b1ff0bb22d19bb4b4ebb7ece018616feaf8d25753240419a0aa96e53182"
     },
     {
       "path": "pi-dist/pi-tui/tui-main-screen.js",

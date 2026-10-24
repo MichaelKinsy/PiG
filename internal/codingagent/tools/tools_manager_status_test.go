@@ -146,7 +146,7 @@ func TestEnsureToolSuccessfulStatusAndSilentReuse(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	t.Setenv("PIG_OFFLINE", "")
 	t.Setenv("PI_OFFLINE", "")
-	assetName := toolsTable["fd"].GetAssetName("test", "linux", "arm64")
+	assetName := toolsTable["fd"].GetAssetName("test", releaseTarget("linux", "arm64"))
 	asset := buildTarGz(t, "fd", []byte("fake binary"))
 	srv := newFakeReleaseServer(t, "sharkdp/fd", "vtest", assetName, asset)
 	tm := makeTestManager(t, srv, "linux", "arm64")
@@ -230,7 +230,7 @@ func TestManagedToolCallbacksProbe(t *testing.T) {
 	}
 	t.Setenv("PI_OFFLINE", "")
 	for _, tool := range []string{"fd", "rg"} {
-		assetName := toolsTable[tool].GetAssetName("test", "linux", "arm64")
+		assetName := toolsTable[tool].GetAssetName("test", releaseTarget("linux", "arm64"))
 		srv := newFakeReleaseServer(t, toolsTable[tool].Repo, "vtest", assetName, buildTarGz(t, tool, []byte("complete binary")))
 		tm := makeTestManager(t, srv, "linux", "arm64")
 		result := trace{Name: "installed reuse " + tool}

@@ -46,6 +46,15 @@ func TestExecHelperProcess(t *testing.T) {
 	case "pwd":
 		wd, _ := os.Getwd()
 		fmt.Println(wd)
+	case "split":
+		// The euro sign is e2 82 ac: the writes end between its bytes.
+		for _, out := range []*os.File{os.Stdout, os.Stderr} {
+			_, _ = out.Write([]byte{0xe2, 0x82})
+		}
+		time.Sleep(100 * time.Millisecond)
+		for _, out := range []*os.File{os.Stdout, os.Stderr} {
+			_, _ = out.Write([]byte{0xac})
+		}
 	default:
 		if run, ok := treeHelpers[args[0]]; ok {
 			run(args[1:])
@@ -76,6 +85,20 @@ func TestExecCommand_Basic(t *testing.T) {
 	}
 	if result.Killed {
 		t.Error("should not be killed")
+	}
+}
+
+// Pi 36be9c612 packages/coding-agent/src/core/exec.ts decodes stdout and stderr across chunk boundaries (#11312): a multi-byte
+// character that two writes split is one character, not two replacement characters. Go collects the bytes before it makes the
+// string, so the split costs nothing; the test pins that.
+func TestExecCommand_DecodesAMultiByteCharacterSplitAcrossWrites(t *testing.T) {
+	command, args := helper(t, "split")
+	result, err := extension.ExecCommand(context.Background(), t.TempDir(), command, args, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Stdout != "€" || result.Stderr != "€" {
+		t.Errorf("stdout = %q, stderr = %q, want a euro sign on each", result.Stdout, result.Stderr)
 	}
 }
 

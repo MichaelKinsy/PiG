@@ -309,7 +309,11 @@ func (m *ModelSelectorComponent) updateList() {
 		if m.isDefaultModel(item) {
 			defaultBadge = fg(th.Muted, " · default")
 		}
-		text(cursor + currentMarker + modelText + " " + fg(th.Muted, "["+item.Provider+"]") + defaultBadge)
+		nameText := ""
+		if name := GetDistinctModelName(ModelSearchItem{ID: item.ID, Name: item.Name}); name != "" {
+			nameText = fg(th.Muted, " ("+name+")")
+		}
+		text(cursor + currentMarker + modelText + nameText + " " + fg(th.Muted, "["+item.Provider+"]") + defaultBadge)
 	}
 	if startIdx > 0 || endIdx < count {
 		text(fg(th.Muted, fmt.Sprintf("  (%d/%d)", m.cursor+1, count)))

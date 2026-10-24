@@ -180,6 +180,7 @@ commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
 class = "CITE"
 cite = "packages/chord/src/watch.ts:10"
 reason = "Pi 92ab53602 renames the watch end reason session_closed to ended (watch.ts:10, 'the source closed'); the one changed expectation is a watch the Session close ends, which now reports ended, as Pi's close cases expect (harness-lifecycle.test.ts:321-323)."
+
 [[entry]]
 path = "durable/core/driver/watch_test.go"
 commit = "830ecbc364e8fd29c17be6fed8970589576adf45"

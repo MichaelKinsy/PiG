@@ -106,7 +106,8 @@ func (m *Markdown) childMarkdown(content string) *Markdown {
 }
 func (m *Markdown) latexEnabled() bool { return m.options.RenderLatex == nil || *m.options.RenderLatex }
 
-func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIndented, lazyBreaks []int, width int, notLast bool) []string {
+// renderQuote returns the quote's rows and whether it has a border: a quote narrower than three columns has none, and its own spacing row is not added (Pi 8a2ebd385).
+func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIndented, lazyBreaks []int, width int, notLast bool) ([]string, bool) {
 	theme := m.markdownTheme()
 	quoteStyle := func(text string) string { return theme.Quote(theme.Italic(text)) }
 	prefix := markdownStylePrefix(quoteStyle)
@@ -117,7 +118,17 @@ func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIn
 	child.lazyIndented = lazyIndented
 	child.lazyBreaks = lazyBreaks
 	child.keepPartialFence = m.keepPartialFence || notLast
-	contentWidth := max(1, width-2)
+	// upstream: markdown.ts renderToken blockquote (Pi 8a2ebd385): with no room for another border ("│ " plus one content column) the nested content renders
+	// without one and without wrapping it again. Otherwise each extra level re-wraps every child line at width 1 and the output grows exponentially with the nesting depth.
+	if width < 3 {
+		// A quote of only whitespace has one space token, which renders as an empty row (markdown.ts case "space").
+		if content != "" && strings.Trim(content, " \t\n") == "" {
+			return []string{""}, false
+		}
+		child.styleContext = m.styleContext
+		return child.renderContent(content, width), false
+	}
+	contentWidth := width - 2
 	logical := child.renderContent(content, contentWidth)
 	// markdown.ts drops trailing empty quote lines, which renderContent keeps only before a link definition.
 	for len(logical) > 0 && logical[len(logical)-1] == "" {
@@ -132,5 +143,5 @@ func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIn
 			out = append(out, theme.QuoteBorder("│ ")+wrapped)
 		}
 	}
-	return out
+	return out, true
 }

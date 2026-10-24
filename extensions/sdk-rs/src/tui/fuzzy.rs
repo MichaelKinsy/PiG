@@ -50,6 +50,49 @@ fn is_boundary(unit: u16) -> bool {
     char::from_u32(unit as u32).is_some_and(is_js_space)
 }
 
+/// Pi's `scorePositions` accumulated one matched text index at a time, so the greedy alignment and each contiguous run share the
+/// arithmetic.
+struct Alignment {
+    score: f64,
+    last: i64,
+    consecutive: i64,
+}
+
+impl Alignment {
+    fn new() -> Self {
+        Alignment { score: 0.0, last: -1, consecutive: 0 }
+    }
+
+    fn add(&mut self, text: &[u16], i: usize) {
+        let i = i as i64;
+        // Reward consecutive matches; penalize gaps.
+        if self.last == i - 1 {
+            self.consecutive += 1;
+            self.score -= (self.consecutive * 5) as f64;
+        } else {
+            self.consecutive = 0;
+            if self.last >= 0 {
+                self.score += ((i - self.last - 1) * 2) as f64;
+            }
+        }
+        // Reward word boundary matches.
+        if i == 0 || is_boundary(text[(i - 1) as usize]) {
+            self.score -= 10.0;
+        }
+        // Slight penalty for later matches.
+        self.score += i as f64 * 0.1;
+        self.last = i;
+    }
+}
+
+/// `String.prototype.indexOf` of a UTF-16 query from unit index `from`.
+fn index_units(text: &[u16], query: &[u16], from: usize) -> Option<usize> {
+    if from + query.len() > text.len() {
+        return None;
+    }
+    text[from..].windows(query.len()).position(|w| w == query).map(|p| from + p)
+}
+
 fn match_query(query: &[u16], text: &[u16]) -> FuzzyMatch {
     if query.is_empty() {
         return FuzzyMatch { matches: true, score: 0.0 };
@@ -57,33 +100,29 @@ fn match_query(query: &[u16], text: &[u16]) -> FuzzyMatch {
     if query.len() > text.len() {
         return FuzzyMatch { matches: false, score: 0.0 };
     }
-    let mut query_index = 0;
-    let mut score = 0.0f64;
-    let mut last: i64 = -1;
-    let mut consecutive: i64 = 0;
-    while query_index < query.len() {
-        let from = (last + 1) as usize;
-        let Some(found) = text.get(from..).and_then(|t| t.iter().position(|&u| u == query[query_index])) else { break };
-        let i = (from + found) as i64;
-        let boundary = i == 0 || is_boundary(text[(i - 1) as usize]);
-        if last == i - 1 {
-            consecutive += 1;
-            score -= (consecutive * 5) as f64;
-        } else {
-            consecutive = 0;
-            if last >= 0 {
-                score += ((i - last - 1) * 2) as f64;
-            }
-        }
-        if boundary {
-            score -= 10.0;
-        }
-        score += i as f64 * 0.1;
-        last = i;
-        query_index += 1;
+    // Greedy alignment: each query character at its first occurrence after the previous one.
+    let mut greedy = Alignment::new();
+    let mut from = 0;
+    for &unit in query {
+        let Some(found) = text[from..].iter().position(|&u| u == unit) else {
+            return FuzzyMatch { matches: false, score: 0.0 };
+        };
+        let i = from + found;
+        greedy.add(text, i);
+        from = i + 1;
     }
-    if query_index < query.len() {
-        return FuzzyMatch { matches: false, score: 0.0 };
+    let mut score = greedy.score;
+    // The greedy alignment can scatter the query over an earlier, unrelated part of the text, e.g. "opus" in
+    // "openrouter openrouter/anthropic/claude-opus" takes o, p, u from "openrouter". Also score every contiguous occurrence and
+    // keep the best alignment.
+    let mut start = index_units(text, query, 0);
+    while let Some(s) = start {
+        let mut run = Alignment::new();
+        for k in 0..query.len() {
+            run.add(text, s + k);
+        }
+        score = score.min(run.score);
+        start = index_units(text, query, s + 1);
     }
     if query == text {
         score -= 100.0;

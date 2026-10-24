@@ -1,5 +1,13 @@
 package tui
 
+import (
+	"strings"
+	"unicode"
+	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+)
+
 // Model search text builders shared by the /model selector, /scoped-models,
 // and /model argument autocomplete.
 //
@@ -38,4 +46,37 @@ func GetModelSelectorSearchText(item ModelSearchItem) string {
 		name = " " + item.Name
 	}
 	return provider + " " + provider + "/" + id + " " + provider + " " + id + name
+}
+
+// splitModelLabel is upstream splitModelLabel: the lower-cased value split at every run of characters that are neither letters nor
+// numbers (/[^\p{L}\p{N}]+/u), without empty words.
+func splitModelLabel(value string) []string {
+	return strings.FieldsFunc(jsstring.ToLower(value), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsNumber(r) })
+}
+
+// GetDistinctModelName mirrors upstream getDistinctModelName: the model name when it has words the ID does not, such as a renamed override
+// ("MiniMax M3 [rasmus@openrouter, parasail]" for "minimax/minimax-m3"), and "" (upstream's undefined) for a name that only restates the ID with
+// different casing, separators, or a dropped namespace or version suffix. Only ID and Name of the item are read.
+func GetDistinctModelName(item ModelSearchItem) string {
+	name := jsstring.Trim(item.Name)
+	if name == "" {
+		return ""
+	}
+	idWords := splitModelLabel(item.ID)
+	idTokens := make(map[string]struct{}, len(idWords))
+	for _, word := range idWords {
+		idTokens[word] = struct{}{}
+	}
+	compactID := strings.Join(idWords, "")
+	for _, word := range splitModelLabel(name) {
+		if _, ok := idTokens[word]; ok {
+			continue
+		}
+		// Single-character words must match a whole ID token: "4" is not covered by "mistral-small-2603".
+		if len(utf16.Encode([]rune(word))) > 1 && strings.Contains(compactID, word) {
+			continue
+		}
+		return name
+	}
+	return ""
 }

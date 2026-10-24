@@ -27,6 +27,29 @@ func TestEnsureToolUpstream(t *testing.T) {
 			t.Fatalf("statuses=%+v, want %+v; console=%q", statuses, want, output)
 		}
 	})
+	// .upstream/v1.4.0+936e5f40/packages/coding-agent/test/tools-manager.test.ts: #11209, ARM32 previously fell back to x86-64 archives.
+	for _, architecture := range []string{"arm", "ia32"} {
+		t.Run("does not download x86-64 binaries on "+architecture, func(t *testing.T) {
+			t.Setenv("PIG_OFFLINE", "")
+			t.Setenv("PI_OFFLINE", "")
+			t.Setenv("PATH", t.TempDir())
+			manager := NewToolsManager(t.TempDir())
+			manager.platformOverride, manager.archOverride = "linux", architecture
+			requests := 0
+			manager.httpClient.Transport = toolsRoundTrip(func(req *http.Request) (*http.Response, error) {
+				requests++
+				return nil, errors.New("unexpected request " + req.URL.String())
+			})
+			var statuses []ToolStatus
+			if result := manager.EnsureTool(t.Context(), "rg", func(status ToolStatus) { statuses = append(statuses, status) }); result != "" {
+				t.Fatalf("result=%q, want unavailable", result)
+			}
+			want := []ToolStatus{{Type: "warning", Message: "ripgrep not found. Automatic download is not supported on linux/" + architecture + ". Install ripgrep with your system package manager."}}
+			if requests != 0 || !reflect.DeepEqual(statuses, want) {
+				t.Fatalf("requests=%d statuses=%+v, want 0 requests and %+v", requests, statuses, want)
+			}
+		})
+	}
 	// .upstream/v0.87.1/packages/coding-agent/test/tools-manager.test.ts:120
 	t.Run("surfaces the error cause chain when a download fails", func(t *testing.T) {
 		t.Setenv("PIG_OFFLINE", "")

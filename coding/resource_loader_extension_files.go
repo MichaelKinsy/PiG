@@ -32,11 +32,13 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 	}
 	enabled := enabledExtensionPaths(cli.Extensions)
 	packageRoots := map[string]string{}
+	installFailures := [][]packagemanager.PackageInstallFailure{cli.InstallFailures}
 	if !l.options.NoExtensions {
 		resolved, err := manager.Resolve(nil)
 		if err != nil {
 			return LoadExtensionsResult{}, fmt.Errorf("coding: %w", err)
 		}
+		installFailures = append([][]packagemanager.PackageInstallFailure{resolved.InstallFailures}, installFailures...)
 		enabled = append(append([]string{}, enabled...), enabledExtensionPaths(resolved.Extensions)...)
 		for _, resource := range resolved.Extensions {
 			packageRoots[resource.Path] = resource.Metadata.PackageRoot
@@ -188,7 +190,9 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 		existing = append(existing, icodingagent.ExtensionWarning{Path: warning.Path, Warning: warning.Warning})
 	}
 	result.Warnings = nil
-	for _, warning := range icodingagent.MergeExtensionWarnings(icodingagent.MergeExtensionWarnings(existing, replacementWarnings), packageWarnings) {
+	// A Package that could not be installed warns before the package warnings (resource-loader.ts: [...installWarnings, ...packageWarnings], Pi 6dfb54678).
+	installWarnings := packagemanager.PackageInstallWarnings(installFailures...)
+	for _, warning := range icodingagent.MergeExtensionWarnings(icodingagent.MergeExtensionWarnings(existing, replacementWarnings), slices.Concat(installWarnings, packageWarnings)) {
 		result.Warnings = append(result.Warnings, ExtensionLoadWarning{Path: warning.Path, Warning: warning.Warning})
 	}
 	l.files, l.filesConfigs = result, configs

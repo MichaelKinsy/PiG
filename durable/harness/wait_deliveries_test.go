@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
-// Pi packages/durable/src/session/observation.ts #schedule/#drain, harness/submissions.ts wait, harness/scheduler.ts waitForIdle and
+// Pi packages/chord/src/watch.ts #schedule/#drain, harness/submissions.ts wait, harness/scheduler.ts waitForIdle and
 // waitForTask: a commit publishes a batch to a started watch whose callback is not running, and queueMicrotask(#drain) enters the
 // listener, up to its first await, before the code that awaits a wait's promise resumes. A Go caller resumes on another goroutine, so
 // each wait awaits the deliveries scheduled before it (Session.AwaitDeliveriesEntered), until their listeners returned, are parked in a

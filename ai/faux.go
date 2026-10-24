@@ -840,12 +840,12 @@ func (p *FauxProviderHandle) estimateUsage(request TranscriptContext, options St
 			common += commonUTF16Prefix(a.Bytes(), b.Bytes())
 		}
 		usage.CacheRead = (common + 3) / 4
-		//portlint:allow numbers (n+3)/4 is Math.ceil(n / 4) for n >= 0 (faux.ts estimateTokens of promptText.slice(cachedChars))
-		usage.CacheWrite = (units - common + 3) / 4
-		usage.Input = max(0, tokens-usage.CacheRead)
+		usage.CacheWrite = max(0, tokens-usage.CacheRead)
 	} else {
 		usage.CacheWrite = tokens
 	}
+	// Every prompt token is either read from or written to the simulated cache (Pi f3fa8bd92).
+	usage.Input = 0
 	// The previous prompt's storage holds the next one; its messages are dropped so it does not keep them alive.
 	clear(previous)
 	entry.messages, entry.spare = current, previous[:0]

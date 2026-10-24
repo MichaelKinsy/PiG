@@ -40,6 +40,9 @@ var (
 	kittyImageMetadata          = map[int]registeredKittyImageMetadata{}
 	kittyImageMetadataOrder     []int // insertion order for LRU eviction
 	kittyTransmissionGeneration int
+	// maxKittyImageRows is the tallest registered image. It bounds backward searches for image lines above a viewport: no image line
+	// further up than this can reach into it. Eviction does not lower it, as in upstream.
+	maxKittyImageRows int
 )
 
 // kittyGraphicPattern matches the APC \x1b_G...; control prefix; group 1 is the
@@ -59,6 +62,7 @@ func RegisterKittyImageMetadata(metadata KittyImageMetadata) {
 	kittyMetadataMu.Lock()
 	defer kittyMetadataMu.Unlock()
 	kittyTransmissionGeneration++
+	maxKittyImageRows = max(maxKittyImageRows, metadata.Rows)
 	if _, exists := kittyImageMetadata[metadata.ImageID]; exists {
 		removeKittyOrder(metadata.ImageID)
 	}
@@ -72,6 +76,13 @@ func RegisterKittyImageMetadata(metadata KittyImageMetadata) {
 		kittyImageMetadataOrder = kittyImageMetadataOrder[1:]
 		delete(kittyImageMetadata, oldest)
 	}
+}
+
+// GetMaxKittyImageRows returns the row height of the tallest Kitty image registered so far. Mirrors upstream getMaxKittyImageRows.
+func GetMaxKittyImageRows() int {
+	kittyMetadataMu.Lock()
+	defer kittyMetadataMu.Unlock()
+	return maxKittyImageRows
 }
 
 func removeKittyOrder(imageID int) {

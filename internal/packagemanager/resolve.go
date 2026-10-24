@@ -17,7 +17,24 @@ type ResolvedPaths struct {
 	Skills     []codingagent.ResolvedResource
 	Prompts    []codingagent.ResolvedResource
 	Themes     []codingagent.ResolvedResource
+	// InstallFailures lists the configured Packages that were skipped because installing them failed (package-manager.ts ResolvedPaths.installFailures, Pi 6dfb54678).
+	InstallFailures []PackageInstallFailure
 }
+
+// PackageInstallFailure is a configured Package that could not be installed while resolving resources (package-manager.ts PackageInstallFailure).
+type PackageInstallFailure struct {
+	Source string
+	// Scope is "user", "project" or "temporary".
+	Scope   string
+	Message string
+}
+
+// InstallFailureError is the error of an install step of a source that resolving skips instead of failing on (Pi 6dfb54678: installMissing catches installParsedSource).
+type InstallFailureError struct{ Err error }
+
+func (e *InstallFailureError) Error() string { return e.Err.Error() }
+
+func (e *InstallFailureError) Unwrap() error { return e.Err }
 
 // MissingSourceAction is what [MissingSourceCallback] decides for a Package that is not installed (package-manager.ts MissingSourceAction).
 type MissingSourceAction string
@@ -40,7 +57,8 @@ func (m *PackageManager) Resolve(onMissing MissingSourceCallback) (ResolvedPaths
 	if err := ValidateConfiguredPackageSources(cwd, agentDir, settings); err != nil {
 		return ResolvedPaths{}, fmt.Errorf("resolve Packages: %w", err)
 	}
-	if err := m.installMissing(onMissing); err != nil {
+	installFailures, err := m.installMissing(onMissing)
+	if err != nil {
 		return ResolvedPaths{}, err
 	}
 	if err := ValidateConfiguredPackagePatterns(cwd, agentDir, settings); err != nil {
@@ -69,17 +87,19 @@ func (m *PackageManager) Resolve(onMissing MissingSourceCallback) (ResolvedPaths
 	}
 	project := settings.IsProjectTrusted()
 	return ResolvedPaths{
-		Extensions: codingagent.OrderResolvedResources(fromPackages.Extensions, slices.Concat(codingagent.AmbientExtensionResources(cwd, agentDir, settings, project), m.builtinExtensionResources())),
-		Skills:     codingagent.OrderResolvedResources(codingagent.SkillEntryResources(fromPackages.Skills), codingagent.SkillEntryResources(codingagent.AmbientSkillResources(cwd, agentDir, settings, project, true))),
-		Prompts:    codingagent.OrderResolvedResources(fromPackages.Prompts, codingagent.AmbientPromptResources(cwd, agentDir, settings, project)),
-		Themes:     codingagent.OrderResolvedResources(fromPackages.Themes, codingagent.AmbientThemeResources(cwd, agentDir, settings, project)),
+		InstallFailures: installFailures,
+		Extensions:      codingagent.OrderResolvedResources(fromPackages.Extensions, slices.Concat(codingagent.AmbientExtensionResources(cwd, agentDir, settings, project), m.builtinExtensionResources())),
+		Skills:          codingagent.OrderResolvedResources(codingagent.SkillEntryResources(fromPackages.Skills), codingagent.SkillEntryResources(codingagent.AmbientSkillResources(cwd, agentDir, settings, project, true))),
+		Prompts:         codingagent.OrderResolvedResources(fromPackages.Prompts, codingagent.AmbientPromptResources(cwd, agentDir, settings, project)),
+		Themes:          codingagent.OrderResolvedResources(fromPackages.Themes, codingagent.AmbientThemeResources(cwd, agentDir, settings, project)),
 	}, nil
 }
 
-// installMissing installs each configured npm or git Package that needs it, asking onMissing first when it is set (package-manager.ts:1282-1340 resolvePackageSources, installMissing).
-func (m *PackageManager) installMissing(onMissing MissingSourceCallback) error {
+// installMissing installs each configured npm or git Package that needs it, asking onMissing first when it is set (package-manager.ts:1282-1340 resolvePackageSources, installMissing). A Package whose install fails is skipped, as offline mode skips it, and reported in the result (Pi 6dfb54678); an onMissing error or "error" decision still fails.
+func (m *PackageManager) installMissing(onMissing MissingSourceCallback) ([]PackageInstallFailure, error) {
+	failures := []PackageInstallFailure{}
 	if IsOfflineModeEnabled() {
-		return nil
+		return failures, nil
 	}
 	for _, pkg := range ConfiguredPackagesForResolution(m.CWD, m.agentDir(), m.SettingsManager) {
 		if DetectSourceKind(pkg.Source.Source) == "local" || !ConfiguredPackageNeedsInstall(pkg) {
@@ -88,20 +108,20 @@ func (m *PackageManager) installMissing(onMissing MissingSourceCallback) error {
 		if onMissing != nil {
 			action, err := onMissing(pkg.Source.Source)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			switch action {
 			case MissingSourceSkip:
 				continue
 			case MissingSourceError:
-				return errors.New("Missing source: " + pkg.Source.Source)
+				return nil, errors.New("Missing source: " + pkg.Source.Source)
 			}
 		}
 		if err := InstallPackageArtifacts(m.CWD, m.agentDir(), m.SettingsManager, pkg.Source, pkg.Scope == "project", nil); err != nil {
-			return fmt.Errorf("install %s Package %q: %w", pkg.Scope, pkg.Source.Source, err)
+			failures = append(failures, PackageInstallFailure{Source: pkg.Source.Source, Scope: pkg.Scope, Message: err.Error()})
 		}
 	}
-	return nil
+	return failures, nil
 }
 
 // ResolveExtensionSources is upstream's resolveExtensionSources: it resolves each source, an `-e` argument, into the extensions and other resources it exposes, in the scope "temporary", "project" or "user" that temporary and local select (package-manager.ts:991-1010). A `builtin:<name>` source is an enabled built-in extension. A local source that does not exist contributes nothing; an npm or git source that is not installed installs unless offline mode is on. A temporary source installs below the agent's temporary extension folder, and an unpinned cached git checkout refreshes first.
@@ -112,7 +132,7 @@ func (m *PackageManager) ResolveExtensionSources(sources []string, local, tempor
 	} else if local {
 		scope = "project"
 	}
-	var resolved ResolvedPaths
+	resolved := ResolvedPaths{InstallFailures: []PackageInstallFailure{}}
 	for _, source := range sources {
 		if strings.HasPrefix(source, codingagent.BuiltinPathPrefix) {
 			resolved.Extensions = append(resolved.Extensions, codingagent.ResolvedResource{Path: source, Enabled: true, Metadata: codingagent.PathMetadata{Source: "builtin", Scope: scope, Origin: "top-level"}})
@@ -123,6 +143,11 @@ func (m *PackageManager) ResolveExtensionSources(sources []string, local, tempor
 			continue
 		}
 		root, err := m.extensionSourceRoot(source, scope, local)
+		if failed, ok := errors.AsType[*InstallFailureError](err); ok {
+			// A source that cannot be installed contributes nothing and is reported (Pi 6dfb54678).
+			resolved.InstallFailures = append(resolved.InstallFailures, PackageInstallFailure{Source: source, Scope: scope, Message: failed.Err.Error()})
+			continue
+		}
 		if err != nil {
 			return ResolvedPaths{}, err
 		}
@@ -183,7 +208,7 @@ func (m *PackageManager) extensionSourceRoot(source, scope string, local bool) (
 			return "", nil
 		}
 		if err := InstallPackageArtifacts(cwd, agentDir, m.SettingsManager, pkg.Source, local, m.progress); err != nil {
-			return "", err
+			return "", &InstallFailureError{Err: err}
 		}
 	}
 	return root, nil

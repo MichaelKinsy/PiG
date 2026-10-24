@@ -2,8 +2,10 @@ package packagemanager
 
 import (
 	"errors"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -252,5 +254,68 @@ func TestResolveInstallsAMissingGitPackageIntoItsConfiguredScope(t *testing.T) {
 		if r == nil || !strings.HasPrefix(r.Path, want+string(filepath.Separator)) || r.Metadata.Scope != scope {
 			t.Errorf("project=%v: extension = %+v, want one below %s with scope %s", project, r, want, scope)
 		}
+	}
+}
+
+// failingNpm is an npm command that exits non-zero, which stands in for an install that cannot reach the registry.
+func failingNpm(t *testing.T, sm *codingagent.SettingsManager) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a shell script as the npm command")
+	}
+	command := filepath.Join(t.TempDir(), "npm")
+	if err := os.WriteFile(command, []byte("#!/bin/sh\necho \"npm install failed\" >&2\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := sm.SetNpmCommand([]string{command}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Pi 6dfb54678 packages/coding-agent/test/package-manager.test.ts "package install failures" "should skip a package source that fails to install and report it" (#11088).
+func TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt(t *testing.T) {
+	_, _, sm, pm := resolveFixtureWithHome(t)
+	failingNpm(t, sm)
+	if err := sm.SetProjectPackages([]codingagent.PackageSource{{Source: "npm:broken-package"}}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := pm.Resolve(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.InstallFailures) != 1 || result.InstallFailures[0].Source != "npm:broken-package" || result.InstallFailures[0].Scope != "project" || result.InstallFailures[0].Message == "" {
+		t.Fatalf("install failures = %+v, want the one broken project package", result.InstallFailures)
+	}
+	if len(result.Extensions) != 0 {
+		t.Fatalf("extensions = %+v, want none", result.Extensions)
+	}
+}
+
+// Pi 6dfb54678 package-manager.test.ts "should not report install failures for sources that are skipped" and "should keep a missing source an error when the caller asks for one".
+func TestResolveReportsNoInstallFailureForASkippedSourceAndKeepsTheErrorDecision(t *testing.T) {
+	_, _, sm, pm := resolveFixtureWithHome(t)
+	failingNpm(t, sm)
+	if err := sm.SetProjectPackages([]codingagent.PackageSource{{Source: "npm:missing-package"}}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := pm.Resolve(func(string) (MissingSourceAction, error) { return MissingSourceSkip, nil })
+	if err != nil || result.InstallFailures == nil || len(result.InstallFailures) != 0 {
+		t.Fatalf("skip: failures %#v, err %v, want an empty list and no error", result.InstallFailures, err)
+	}
+	if _, err := pm.Resolve(func(string) (MissingSourceAction, error) { return MissingSourceError, nil }); err == nil || err.Error() != "Missing source: npm:missing-package" {
+		t.Fatalf("error decision = %v, want Missing source: npm:missing-package", err)
+	}
+}
+
+// Pi 6dfb54678 resolveExtensionSources: a temporary -e source that fails to install contributes nothing and is reported in the scope temporary.
+func TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall(t *testing.T) {
+	_, _, sm, pm := resolveFixtureWithHome(t)
+	failingNpm(t, sm)
+	result, err := pm.ResolveExtensionSources([]string{"npm:broken-package"}, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.InstallFailures) != 1 || result.InstallFailures[0].Source != "npm:broken-package" || result.InstallFailures[0].Scope != "temporary" || len(result.Extensions) != 0 {
+		t.Fatalf("result = %+v, want one temporary install failure and no extensions", result)
 	}
 }

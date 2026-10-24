@@ -397,8 +397,10 @@ func TestExample24Compaction(t *testing.T) {
 	mu.Lock()
 	n := summaries
 	mu.Unlock()
-	// Pi Durable 1.0.4 running the script prints: threshold summary first, 5 messages in context, 14 entries stored.
-	if n != 2 || reason != "threshold" || messages != 5 || stored != 14 {
+	// Pi 1.4.0+acf83acf running the script prints: threshold summary first, 7 messages in context, 12 entries stored. The faux provider
+	// counts every prompt token as a cache read or write and none as input (Pi f3fa8bd92), so the context estimate stays under the
+	// threshold one turn longer and one compaction fewer runs than in Pi Durable 1.0.4 (2 summaries, 5 messages, 14 entries).
+	if n != 1 || reason != "threshold" || messages != 7 || stored != 12 {
 		t.Fatalf("after the long chat: %d summaries, head %q, %d messages in context, %d entries stored", n, reason, messages, stored)
 	}
 
@@ -438,28 +440,29 @@ func TestExample24Compaction(t *testing.T) {
 	if final := must(summary.Wait(background)); final.Status != durable.SubmissionDone {
 		t.Fatalf("the manual summary after the answer: %+v", final)
 	}
-	// Pi prints: manual summary first, 4 messages in context, 17 entries stored.
-	if reason, messages, stored := head(); reason != "manual" || messages != 4 || stored != 17 {
+	// Pi 1.4.0+acf83acf prints: manual summary first, 4 messages in context, 15 entries stored (1.0.4: 17).
+	if reason, messages, stored := head(); reason != "manual" || messages != 4 || stored != 15 {
 		t.Fatalf("after compact(): head %q, %d messages in context, %d entries stored", reason, messages, stored)
 	}
 
 	// 3. The provider rejects a request as too long. Background compaction is turned off so the summary below is
-	// the one the request itself forces. The context already estimates over the blocking threshold, so generation
-	// compacts for the threshold first, and an overflow after that has no second compaction to make (a run compacts
-	// at most once): the request ends model_error, as Pi's own run of this script prints.
+	// the one the request itself forces. The context no longer estimates over the blocking threshold (the faux provider
+	// reports no input tokens while it simulates caching, Pi f3fa8bd92), so the request goes out, the provider rejects
+	// it, and the overflow compaction that follows lets the retry through: the request is answered, as Pi 1.4.0+acf83acf's
+	// own run of this script prints ("overflow compaction summary first", 5 messages in context, 23 entries stored).
 	backgroundTokens.Store(0)
 	ask("What should we pack?")
-	if reason, messages, stored := head(); reason != "manual" || messages != 7 || stored != 20 {
+	if reason, messages, stored := head(); reason != "manual" || messages != 7 || stored != 18 {
 		t.Fatalf("after the pack question: head %q, %d messages in context, %d entries stored", reason, messages, stored)
 	}
 	mu.Lock()
 	overflowOnce = true
 	mu.Unlock()
 	record := ask("Summarize the plan for my partner")
-	if record.Status != durable.SubmissionUnanswered || record.Reason == nil || *record.Reason != "model_error" {
+	if record.Status != durable.SubmissionDone {
 		t.Fatalf("the overflowing request: %+v", record)
 	}
-	if reason, messages, stored := head(); reason != "threshold" || messages != 4 || stored != 24 {
+	if reason, messages, stored := head(); reason != "overflow" || messages != 5 || stored != 23 {
 		t.Fatalf("after the overflow: head %q, %d messages in context, %d entries stored", reason, messages, stored)
 	}
 	closeSession(t, opened)

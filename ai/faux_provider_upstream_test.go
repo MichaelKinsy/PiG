@@ -247,16 +247,19 @@ func TestFauxProviderUpstream(t *testing.T) {
 		p.SetResponses([]FauxResponseStep{fauxUpstreamText("a"), fauxUpstreamText("b"), fauxUpstreamText("c")})
 		options := StreamOptions{SessionID: "session-1", CacheRetention: CacheRetentionShort}
 		user := func(content string) Message { return UserMessage{Content: UserText(content), Timestamp: 1} }
-		fauxUpstreamComplete(t, p, NormalizeContext(Context{Messages: []Message{user("hello world")}}), options)
 		// Prompt texts: "user:hello world" (16 characters), then 16 + 2 + "user:next" (9) = 27.
+		first := fauxUpstreamComplete(t, p, NormalizeContext(Context{Messages: []Message{user("hello world")}}), options)
+		if u := first.Usage; u.Input != 0 || u.CacheRead != 0 || u.CacheWrite != 4 {
+			t.Fatalf("first usage = %+v, want input 0, cacheRead 0, cacheWrite 4", u)
+		}
 		extended := fauxUpstreamComplete(t, p, NormalizeContext(Context{Messages: []Message{user("hello world"), user("next")}}), options)
-		if u := extended.Usage; u.Input != 3 || u.CacheRead != 4 || u.CacheWrite != 3 {
-			t.Fatalf("extended usage = %+v, want input 3, cacheRead 4, cacheWrite 3", u)
+		if u := extended.Usage; u.Input != 0 || u.CacheRead != 4 || u.CacheWrite != 3 {
+			t.Fatalf("extended usage = %+v, want input 0, cacheRead 4, cacheWrite 3", u)
 		}
 		// The first message now differs after "user:hello w" (12 characters): "user:hello wide" + 2 + 9 = 26.
 		edited := fauxUpstreamComplete(t, p, NormalizeContext(Context{Messages: []Message{user("hello wide"), user("next")}}), options)
-		if u := edited.Usage; u.Input != 4 || u.CacheRead != 3 || u.CacheWrite != 4 {
-			t.Fatalf("edited usage = %+v, want input 4, cacheRead 3, cacheWrite 4", u)
+		if u := edited.Usage; u.Input != 0 || u.CacheRead != 3 || u.CacheWrite != 4 {
+			t.Fatalf("edited usage = %+v, want input 0, cacheRead 3, cacheWrite 4", u)
 		}
 	})
 	// .upstream/v0.87.1/packages/ai/test/faux-provider.test.ts:347
@@ -400,18 +403,19 @@ func TestFauxProviderCountsCachedCharactersUpToTheFirstDifference(t *testing.T) 
 	// Prompt texts: "user:hello world" (16 characters), then 16 + 2 + "user:next" (9) = 27.
 	complete(user("hello world"))
 	extended := complete(user("hello world"), user("next"))
-	if extended.Usage.Input != 3 || extended.Usage.CacheRead != 4 || extended.Usage.CacheWrite != 3 {
-		t.Fatalf("extended usage = %+v, want input 3, cacheRead 4, cacheWrite 3", extended.Usage)
+	if extended.Usage.Input != 0 || extended.Usage.CacheRead != 4 || extended.Usage.CacheWrite != 3 {
+		t.Fatalf("extended usage = %+v, want input 0, cacheRead 4, cacheWrite 3", extended.Usage)
 	}
 	// The first message now differs after "user:hello w" (12 characters): "user:hello wide" + 2 + 9 = 26.
 	edited := complete(user("hello wide"), user("next"))
-	if edited.Usage.Input != 4 || edited.Usage.CacheRead != 3 || edited.Usage.CacheWrite != 4 {
-		t.Fatalf("edited usage = %+v, want input 4, cacheRead 3, cacheWrite 4", edited.Usage)
+	if edited.Usage.Input != 0 || edited.Usage.CacheRead != 3 || edited.Usage.CacheWrite != 4 {
+		t.Fatalf("edited usage = %+v, want input 0, cacheRead 3, cacheWrite 4", edited.Usage)
 	}
 }
 
-// faux.ts commonPromptPrefixLength counts characters, and the cache read and write round up like Math.ceil(chars / 4): a
-// 13-character shared prefix of "user:hello world" and "user:hello wolf" (15 characters) reads 4 tokens and writes 1.
+// faux.ts commonPromptPrefixLength counts characters, and the cache read rounds up like Math.ceil(chars / 4) while the write is the rest
+// of the prompt's tokens (Pi f3fa8bd92): a 13-character shared prefix of "user:hello world" and "user:hello wolf" (15 characters, 4 tokens)
+// reads 4 tokens and writes none.
 func TestFauxProviderRoundsCachedCharactersUp(t *testing.T) {
 	p := NewFauxProvider(FauxConfig{})
 	p.SetResponses([]FauxResponseStep{fauxUpstreamText("a"), fauxUpstreamText("b")})
@@ -422,7 +426,7 @@ func TestFauxProviderRoundsCachedCharactersUp(t *testing.T) {
 	}
 	complete(user("hello world"))
 	next := complete(user("hello wolf"))
-	if next.Usage.CacheRead != 4 || next.Usage.CacheWrite != 1 || next.Usage.Input != 0 {
-		t.Fatalf("usage = %+v, want cacheRead 4, cacheWrite 1, input 0", next.Usage)
+	if next.Usage.CacheRead != 4 || next.Usage.CacheWrite != 0 || next.Usage.Input != 0 {
+		t.Fatalf("usage = %+v, want cacheRead 4, cacheWrite 0, input 0", next.Usage)
 	}
 }

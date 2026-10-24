@@ -310,7 +310,7 @@ func (sm *SessionManager) ForkFromFile(sourcePath string, idOption ...string) (*
 		return nil, sessionPersistenceError(err, "open", newPath)
 	}
 	defer func() { _ = f.Close() }()
-	// pig additive (D112): Pi writes the header, then appends each entry with its own write (session-manager.ts forkFrom); the buffer is flushed before the file is read back, so the file holds the same bytes.
+	// pig additive (D112): Pi writes the header and every entry with writeFileSync on one fd (session-manager.ts forkFrom, Pi 8ddc44ec8); the buffer batches those writes and is flushed before the file is read back, so the file holds the same bytes.
 	w := bufio.NewWriterSize(f, 64<<10)
 	headerJSON, _ := json.Marshal(header)
 	// A bufio.Writer keeps its first error, which Flush returns.

@@ -226,8 +226,8 @@ func TestK8sSummaryWorkloadMatchesBenchMjs(t *testing.T) {
 }
 
 // BENCH_WORKLOAD=summary-blocking is summary with blocking compaction only. Its transcript does not depend on scheduling, so
-// the native sample reaches bench.mjs's on Pi v1.1.0 exactly: 50-turn seed 4c8f712e3b0cd3ce, sample f6e992ec7a30f3e1 with 289
-// tasks. Three samples of one fixture are compared, since the background workload's sample differs on some runs.
+// the native sample reaches bench.mjs's on Pi 1.4.0+acf83acf exactly: 50-turn seed 4c8f712e3b0cd3ce, sample 5d362a020a2022b0 with 289
+// tasks (f6e992ec7a30f3e1 before Pi f3fa8bd92 stopped the faux provider counting cache writes as input, which moves when compaction runs). Three samples of one fixture are compared, since the background workload's sample differs on some runs.
 func TestK8sSummaryBlockingWorkloadIsBenchMjsTranscript(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -252,8 +252,8 @@ func TestK8sSummaryBlockingWorkloadIsBenchMjsTranscript(t *testing.T) {
 		if err := json.Unmarshal(out.Bytes(), &line); err != nil {
 			t.Fatalf("%v: %s", err, out.String())
 		}
-		if line.Fingerprint != "f6e992ec7a30f3e1" || line.Workload != workloadSummaryBlocking || line.Tables["tasks"] != 289 {
-			t.Fatalf("sample %d: fingerprint %s workload %q tasks %d; want bench.mjs's f6e992ec7a30f3e1, 289", i, line.Fingerprint, line.Workload, line.Tables["tasks"])
+		if line.Fingerprint != "5d362a020a2022b0" || line.Workload != workloadSummaryBlocking || line.Tables["tasks"] != 289 {
+			t.Fatalf("sample %d: fingerprint %s workload %q tasks %d; want bench.mjs's 5d362a020a2022b0, 289", i, line.Fingerprint, line.Workload, line.Tables["tasks"])
 		}
 	}
 }

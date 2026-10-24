@@ -127,8 +127,8 @@ func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
 		}
 		assertShapeJSON(t, encoded, string(payload["messages"]))
 		assertShapeJSON(t, all[len(all)-1], `{"role":"system","content":[],"output_config":{"effort":"high"}}`)
-		assertShapeJSON(t, payload["output_config"], `{"effort":"high"}`)
-		assertShapeJSON(t, second["output_config"], `{"effort":"high"}`)
+		assertShapeJSON(t, payload["output_config"], `{"effort":"low"}`)
+		assertShapeJSON(t, second["output_config"], `{"effort":"low"}`)
 		assertShapeJSON(t, second["thinking"], `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"}}`)
 		if first.ProviderThinkingLevel != "low" {
 			t.Fatalf("level=%q", first.ProviderThinkingLevel)

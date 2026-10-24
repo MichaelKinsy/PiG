@@ -144,7 +144,7 @@ func TestHelpMentionsMcpCommandAndBuiltinExtensions(t *testing.T) {
 	var out bytes.Buffer
 	printHelp(&out, false)
 	for _, want := range []string{
-		"  pig mcp <command>             Check MCP servers, sign in to or out of OAuth servers\n",
+		"  pig mcp <command>             Manage MCP servers\n",
 		"  pig <command> --help          Show help for install/remove/uninstall/update/list/config/auth/mcp\n",
 		"  --extension, -e <path>         Load an extension file or builtin:<name> (can be used multiple times)\n",
 		"  --no-extensions, -ne           Disable extension discovery and built-in extensions (explicit -e paths still work)\n",

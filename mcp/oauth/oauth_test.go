@@ -1093,3 +1093,31 @@ func TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect(t *tes
 		}
 	})
 }
+
+// Pi 9ffd27cfa packages/mcp/test/oauth.test.ts "MCP OAuth" "rejects non-HTTP authorization endpoints, which the platform URL handler would launch".
+func TestMCPOAuthRejectsNonHTTPAuthorizationEndpointsWhichThePlatformURLHandlerWouldLaunch(t *testing.T) {
+	endpoint := ""
+	origin := listen(t, func(w http.ResponseWriter, _ *http.Request, serverOrigin string) {
+		jsonResponse(w, 200, map[string]any{
+			"issuer": serverOrigin, "authorization_endpoint": endpoint, "token_endpoint": serverOrigin + "/token",
+			"response_types_supported": []string{"code"},
+		})
+	})
+	for _, value := range []string{"file://attacker.example/share/x.exe", "search-ms:query=x", "ms-msdt:/id"} {
+		endpoint = value
+		_, err := oauth.DiscoverAuthorizationServerMetadata(t.Context(), origin, oauth.DiscoveryOptions{})
+		if err == nil || err.Error() != "Invalid authorization endpoint" {
+			t.Fatalf("discovery of %q: err = %v", value, err)
+		}
+		_, _, err = oauth.StartAuthorization(origin, oauth.StartAuthorizationOptions{
+			Metadata: &oauth.AuthorizationServerMetadata{
+				Issuer: origin, AuthorizationEndpoint: value, TokenEndpoint: origin + "/token", ResponseTypesSupported: []string{"code"},
+			},
+			ClientInformation: oauth.OAuthClientInformationMixed{ClientID: "client"},
+			RedirectURL:       "http://127.0.0.1/callback",
+		})
+		if err == nil || !strings.HasPrefix(err.Error(), "Invalid authorization endpoint ") {
+			t.Fatalf("StartAuthorization of %q: err = %v", value, err)
+		}
+	}
+}

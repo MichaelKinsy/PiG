@@ -71,6 +71,7 @@ import {
   formatHttpIdleTimeoutMs,
   formatMissingSessionCwdPrompt,
   formatNoModelsAvailableMessage,
+  formatPackageInstallWarning,
   formatSkillsForPrompt,
   generateBranchSummary,
   generateSummary,
@@ -122,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-I5R52BTB.js";
+} from "./chunk-7S6AHRTW.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -157,7 +158,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-UWJCOORC.js";
+} from "./chunk-6HJCSATA.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
@@ -9076,6 +9077,18 @@ function getModelSearchText(item) {
   return `${id} ${provider} ${provider}/${id} ${provider} ${id}${name}`;
 }
 __name(getModelSearchText, "getModelSearchText");
+var splitModelLabel = /* @__PURE__ */ __name((value) => value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean), "splitModelLabel");
+function getDistinctModelName(item) {
+  const name = item.name?.trim();
+  if (!name)
+    return void 0;
+  const idWords = splitModelLabel(item.id);
+  const idTokens = new Set(idWords);
+  const compactId = idWords.join("");
+  const isCovered = /* @__PURE__ */ __name((word) => idTokens.has(word) || word.length > 1 && compactId.includes(word), "isCovered");
+  return splitModelLabel(name).every(isCovered) ? void 0 : name;
+}
+__name(getDistinctModelName, "getDistinctModelName");
 function getModelSelectorSearchText(item) {
   const { id, provider } = item;
   const name = item.name ? ` ${item.name}` : "";
@@ -9323,8 +9336,10 @@ var ModelSelectorComponent = class extends Container19 {
       const cursor = isSelected ? theme.fg("accent", "\u2192 ") : "  ";
       const currentMarker = isCurrent ? theme.fg("accent", "\u2713 ") : "  ";
       const modelText = isSelected ? theme.fg("accent", item.id) : item.id;
+      const name = getDistinctModelName({ id: item.id, name: item.model.name });
+      const nameText = name ? theme.fg("muted", ` (${name})`) : "";
       const providerBadge = theme.fg("muted", `[${item.provider}]`);
-      const line = `${cursor}${currentMarker}${modelText} ${providerBadge}${defaultBadge}`;
+      const line = `${cursor}${currentMarker}${modelText}${nameText} ${providerBadge}${defaultBadge}`;
       this.listContainer.addChild(new Text19(line, 0, 0));
     }
     if (startIndex > 0 || endIndex < this.filteredModels.length) {
@@ -9822,9 +9837,11 @@ var ScopedModelsSelectorComponent = class extends Container21 {
       const id = item.model?.id ?? item.fullId;
       const styledId = item.model ? id : theme.strikethrough(id);
       const modelText = isSelected ? theme.fg("accent", styledId) : styledId;
+      const name = item.model ? getDistinctModelName(item.model) : void 0;
+      const nameText = name ? theme.fg("muted", ` (${name})`) : "";
       const providerBadge = theme.fg("muted", item.model ? ` [${item.model.provider}]` : " [unavailable]");
       const status = item.model && item.enabled ? theme.fg("accent", "\u2713 ") : "  ";
-      this.listContainer.addChild(new Text21(`${prefix}${status}${modelText}${providerBadge}`, 0, 0));
+      this.listContainer.addChild(new Text21(`${prefix}${status}${modelText}${nameText}${providerBadge}`, 0, 0));
     }
     if (startIndex > 0 || endIndex < this.filteredItems.length) {
       this.listContainer.addChild(new Text21(theme.fg("muted", `  (${this.selectedIndex + 1}/${this.filteredItems.length})`), 0, 0));
@@ -21227,6 +21244,10 @@ async function handleConfigCommand(args, runtimeOptions = {}) {
     builtinExtensions
   }).resolve();
   const projectResolvedPaths = settingsManager.isProjectTrusted() ? await new DefaultPackageManager({ cwd, agentDir, settingsManager, builtinExtensions }).resolve() : globalResolvedPaths;
+  const installWarnings = new Set([...globalResolvedPaths.installFailures ?? [], ...projectResolvedPaths.installFailures ?? []].map(formatPackageInstallWarning));
+  for (const warning of installWarnings) {
+    console.error(chalk6.yellow(`Warning: ${warning}`));
+  }
   await selectConfig({
     resolvedPaths: { global: globalResolvedPaths, project: projectResolvedPaths },
     settingsManager,
@@ -22074,14 +22095,16 @@ async function main(args, options) {
   setCapabilityOverrides3(settingsManager.getTerminalCapabilityOverrides());
   applyHttpProxySettings(settingsManager.getGlobalSettings().httpProxy);
   configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
+  const startupDiagnostics = deduplicateDiagnostics([...startupSettingsDiagnostics, ...runtime.diagnostics]);
+  const hasRuntimeErrors = runtime.diagnostics.some((diagnostic) => diagnostic.type === "error");
   if (parsed.help) {
-    reportDiagnostics(startupSettingsDiagnostics);
+    reportDiagnostics(startupDiagnostics);
     const extensionFlags = resourceLoader.getExtensions().extensions.flatMap((extension) => Array.from(extension.flags.values()));
     printHelp(extensionFlags);
     process.exit(0);
   }
   if (parsed.listModels !== void 0) {
-    reportDiagnostics(startupSettingsDiagnostics);
+    reportDiagnostics(startupDiagnostics);
     const searchPattern = typeof parsed.listModels === "string" ? parsed.listModels : void 0;
     await listModels(modelRuntime, searchPattern, AbortSignal.timeout(15e3));
     process.exit(0);
@@ -22102,8 +22125,6 @@ async function main(args, options) {
     await showDeprecationWarnings(deprecationWarnings);
   }
   time("resolveModelScope");
-  const startupDiagnostics = deduplicateDiagnostics([...startupSettingsDiagnostics, ...runtime.diagnostics]);
-  const hasRuntimeErrors = runtime.diagnostics.some((diagnostic) => diagnostic.type === "error");
   if (appMode !== "interactive" || hasRuntimeErrors) {
     reportDiagnostics(startupDiagnostics);
   }

@@ -153,7 +153,7 @@ Status `ported`: every exported behavior has a Go counterpart; the upstream test
 | `harness/tool.ts` | `durable/harness/tool.go` | ported |
 | `harness/types.ts` | `durable/harness/types.go`, `durable/harness_types.go`, `durable/tasks.go` | ported |
 | `harness/usage.ts`, `harness/view.ts` | `durable/harness/usage.go`, `view.go` | ported |
-| `session/forks.ts`, `observation.ts`, `session.ts`, `transaction.ts` | `durable/session/forks.go`, `observation.go`, `session.go`, `transaction.go` | ported |
+| `session/forks.ts`, `session.ts`, `transaction.ts` | `durable/session/forks.go`, `session.go`, `transaction.go` | ported (Pi 42cb822f1 moved `observation.ts` to Chord's `watch.ts`: `chord/watch_impl.go`) |
 | `storage/memory.ts` | `durable/storage/memory.go` | ported |
 | `storage/jsonl/{index,storage}.ts`, `node.ts` | `durable/storage/jsonl/storage.go`, `node/node.go` | ported |
 | `storage/sqlite/{database,migrations,storage,node}.ts` | `durable/storage/sqlite/{database,migrations,storage}.go`, `node/node.go` | ported |

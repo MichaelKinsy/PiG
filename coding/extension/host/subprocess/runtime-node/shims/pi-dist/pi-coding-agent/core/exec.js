@@ -2,6 +2,7 @@
  * Shared command execution utilities for extensions and custom tools.
  */
 import { spawn } from "node:child_process";
+import { StringDecoder } from "node:string_decoder";
 import { waitForChildProcess } from "../utils/child-process.js";
 /**
  * Execute a shell command and return stdout/stderr/code.
@@ -16,6 +17,10 @@ export async function execCommand(command, args, cwd, options) {
         });
         let stdout = "";
         let stderr = "";
+        // Decode across chunks: a multi-byte UTF-8 character can be split between two chunks,
+        // and decoding each chunk separately would corrupt it (earendil-works/pi#11312).
+        const stdoutDecoder = new StringDecoder("utf8");
+        const stderrDecoder = new StringDecoder("utf8");
         let killed = false;
         let timeoutId;
         const killProcess = () => {
@@ -46,10 +51,10 @@ export async function execCommand(command, args, cwd, options) {
             }, options.timeout);
         }
         proc.stdout?.on("data", (data) => {
-            stdout += data.toString();
+            stdout += stdoutDecoder.write(data);
         });
         proc.stderr?.on("data", (data) => {
-            stderr += data.toString();
+            stderr += stderrDecoder.write(data);
         });
         // Wait for process termination without hanging on inherited stdio handles
         // held open by detached descendants.
@@ -57,6 +62,8 @@ export async function execCommand(command, args, cwd, options) {
             .then((code) => {
             if (timeoutId)
                 clearTimeout(timeoutId);
+            stdout += stdoutDecoder.end();
+            stderr += stderrDecoder.end();
             if (options?.signal) {
                 options.signal.removeEventListener("abort", killProcess);
             }
@@ -65,6 +72,8 @@ export async function execCommand(command, args, cwd, options) {
             .catch((error) => {
             if (timeoutId)
                 clearTimeout(timeoutId);
+            stdout += stdoutDecoder.end();
+            stderr += stderrDecoder.end();
             if (options?.signal) {
                 options.signal.removeEventListener("abort", killProcess);
             }

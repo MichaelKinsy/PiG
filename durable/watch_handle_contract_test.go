@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 )
 
-// Pi types.ts:868-881 WatchHandle and session/observation.ts:155 CommittedWatch: value is the acquisition revision before start and the
+// Pi types.ts:868-881 WatchHandle and chord/src/watch.ts Watch: value is the acquisition revision before start and the
 // latest delivered revision afterward; start installs the sole asynchronous listener and never invokes it inline; stop idempotently stops
 // future callbacks and returns the watch's terminal result; closed settles with that result; a listener that fails ends only its own watch
 // with reason listener_error carrying the error. The watch is held as a durable.WatchHandle, the interface a caller sees.
@@ -129,7 +129,7 @@ func TestWatchHandleContract(t *testing.T) {
 		}
 	})
 
-	// observation.ts:174-212: a frame committed before start stays pending (advance does not touch value), and start only schedules its drain
+	// chord watch.ts Watch: a frame committed before start stays pending (advance does not touch value), and start only schedules its drain
 	// (`if (this.#pending.length > 0) this.#schedule()`, a microtask), so the listener never runs inside start even when a frame is waiting.
 	t.Run("keeps a frame committed before start pending and delivers it after start returns", func(t *testing.T) {
 		harness := open()

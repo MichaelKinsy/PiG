@@ -119,11 +119,14 @@ func collectExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManag
 // cliExtensionSet is the extension configs of the -e sources: those that load first, and the missing or unresolved ones, reported after the rest.
 type cliExtensionSet struct {
 	configs, missing []subprocess.ExtConfig
+	// installFailures are the npm and git -e sources that could not be installed: they contribute nothing and warn (resource-loader.ts collectPackageInstallWarnings, Pi 6dfb54678).
+	installFailures []packagemanager.PackageInstallFailure
 }
 
 // collectCLIExtensionConfigs resolves the -e sources once, as Pi's resolveExtensionSources does for one load (resource-loader.ts:525-528).
 func collectCLIExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManager, sources []string, resolvers ...extsource.ResolveFunc) cliExtensionSet {
 	var configs, missing []subprocess.ExtConfig
+	var installFailures []packagemanager.PackageInstallFailure
 	for _, p := range sources {
 		if strings.HasPrefix(p, codingagent.BuiltinPathPrefix) {
 			// `-e builtin:<name>` loads a built-in extension; the extension set loads it and reports an unknown name (package-manager.ts:996-1006).
@@ -135,8 +138,9 @@ func collectCLIExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsMa
 			if err != nil {
 				// Pi resolves the sources in turn and stops at the first rejection, so no later source installs (package-manager.ts:1293-1342).
 				missing = append(missing, subprocess.UnresolvedExtConfig(p, &cliSourceResolveError{err: err}))
-				return cliExtensionSet{configs: configs, missing: missing}
+				return cliExtensionSet{configs: configs, missing: missing, installFailures: installFailures}
 			}
+			installFailures = append(installFailures, resolved.InstallFailures...)
 			for _, resource := range resolved.Extensions {
 				if resource.Enabled {
 					configs = append(configs, withCLISourceInfo(packageExtensionConfigAt(resource.Path, resolvers...))...)
@@ -160,7 +164,7 @@ func collectCLIExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsMa
 			configs = append(configs, config)
 		}
 	}
-	return cliExtensionSet{configs: configs, missing: missing}
+	return cliExtensionSet{configs: configs, missing: missing, installFailures: installFailures}
 }
 
 // collectExtensionConfigsWith is collectExtensionConfigs with the -e sources already resolved.

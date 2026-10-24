@@ -1,6 +1,6 @@
 import { allocateStackSizes, visibleStackEntries } from "./components/stack.js";
 import { getLayoutNode } from "./layout-node.js";
-import { cropKittyImageLine, getKittyImageMetadata, isImageLine } from "./terminal-image.js";
+import { cropKittyImageLine, getKittyImageMetadata, getMaxKittyImageRows, isImageLine } from "./terminal-image.js";
 import { CURSOR_MARKER, compositeTuiLine } from "./tui.js";
 import { extractAnsiCode, getActiveBackgroundAnsi, getGraphemeCellRange, sliceByColumn, visibleWidth, } from "./utils.js";
 const OSC133_ZONE_PREFIX = /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/;
@@ -253,21 +253,26 @@ function paintBox(box, screen, totalWidth) {
     for (const child of box.children)
         paintBox(child, screen, totalWidth);
     if (box.scrollView && box.scrollContentLines && box.scrollView.scrollTop > 0 && box.rect.height > 0) {
-        for (let imageRow = box.scrollView.scrollTop - 1; imageRow >= 0; imageRow--) {
+        // Find the nearest image line above the viewport. Placeholder rows below an
+        // image line may contain padding, borders, or side-by-side text, so the search
+        // is bounded by the tallest registered image instead of by row content.
+        const scrollTop = box.scrollView.scrollTop;
+        const minRow = Math.max(0, scrollTop - getMaxKittyImageRows());
+        for (let imageRow = scrollTop - 1; imageRow >= minRow; imageRow--) {
             const imageLine = box.scrollContentLines[imageRow] ?? "";
+            if (!isImageLine(imageLine))
+                continue;
             const metadata = getKittyImageMetadata(imageLine);
-            if (metadata) {
-                const hiddenRows = box.scrollView.scrollTop - imageRow;
-                if (hiddenRows < metadata.rows) {
-                    const visibleRows = Math.min(box.rect.height, metadata.rows - hiddenRows);
-                    const cropped = cropKittyImageLine(imageLine, hiddenRows, visibleRows);
-                    if (box.rect.x === 0 && box.rect.width >= totalWidth)
-                        screen[box.rect.y] = cropped;
-                }
-                break;
+            if (!metadata)
+                continue;
+            const hiddenRows = scrollTop - imageRow;
+            if (hiddenRows < metadata.rows) {
+                const visibleRows = Math.min(box.rect.height, metadata.rows - hiddenRows);
+                const cropped = cropKittyImageLine(imageLine, hiddenRows, visibleRows);
+                if (box.rect.x === 0 && box.rect.width >= totalWidth)
+                    screen[box.rect.y] = cropped;
             }
-            if (imageLine !== "")
-                break;
+            break;
         }
     }
     paintScrollbar(box, screen, totalWidth);

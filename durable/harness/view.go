@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -187,9 +188,9 @@ func NewConversationViews(sessionImpl *session.SessionImpl, storage durable.Stor
 
 // Watch returns a serialized exact-frame watch of the view; cancelling ctx stops it.
 func (views *ConversationViews) Watch(ctx context.Context, id durable.ConversationId) (ConversationWatch, error) {
-	var watch *session.CommittedWatch[ConversationView]
+	var watch *chord.Watch[ConversationView]
 	_, _, err := views.Attach(ctx, id, func(value ConversationView, release func(), _ durable.Storage) (*ViewObserver, error) {
-		watch = session.NewCommittedWatch(views.session, value, release, nil)
+		watch = session.NewSessionWatch(views.session, value, release, nil)
 		return &ViewObserver{
 			Advance: func(ctx context.Context, value ConversationView, ops []durable.Op) { watch.Advance(ctx, value, ops) },
 			End:     watch.SourceEnded,

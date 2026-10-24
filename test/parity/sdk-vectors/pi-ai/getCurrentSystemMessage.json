@@ -1,5 +1,5 @@
 {
- "pin": "1.4.0+936e5f40",
+ "pin": "1.4.0+acf83acf",
  "package": "pi-ai@1.4.0",
  "module": "pi-ai",
  "export": "getCurrentSystemMessage",

@@ -5974,7 +5974,16 @@ var Markdown = class {
           const lineWithReappliedStyle = line.replace(/\x1b\[0m/g, `\x1B[0m${quoteStylePrefix}`);
           return quoteStyle(lineWithReappliedStyle);
         }, "applyQuoteStyle");
-        const quoteContentWidth = Math.max(1, width - 2);
+        if (width < 3) {
+          const quoteTokens2 = token.tokens || [];
+          for (let i = 0; i < quoteTokens2.length; i++) {
+            for (const line of this.renderToken(quoteTokens2[i], width, quoteTokens2[i + 1]?.type, styleContext)) {
+              lines.push(line);
+            }
+          }
+          break;
+        }
+        const quoteContentWidth = width - 2;
         const quoteInlineStyleContext = {
           applyText: /* @__PURE__ */ __name((text) => text, "applyText"),
           stylePrefix: quoteStylePrefix
@@ -5984,7 +5993,9 @@ var Markdown = class {
         for (let i = 0; i < quoteTokens.length; i++) {
           const quoteToken = quoteTokens[i];
           const nextQuoteToken = quoteTokens[i + 1];
-          renderedQuoteLines.push(...this.renderToken(quoteToken, quoteContentWidth, nextQuoteToken?.type, quoteInlineStyleContext));
+          for (const line of this.renderToken(quoteToken, quoteContentWidth, nextQuoteToken?.type, quoteInlineStyleContext)) {
+            renderedQuoteLines.push(line);
+          }
         }
         while (renderedQuoteLines.length > 0 && renderedQuoteLines[renderedQuoteLines.length - 1] === "") {
           renderedQuoteLines.pop();
@@ -8011,7 +8022,7 @@ import { getKeybindings as getKeybindings7 } from "../keybindings.js";
 import { isKeyRelease } from "../keys.js";
 
 // pi-dist/pi-tui/layout.js
-import { cropKittyImageLine, getKittyImageMetadata, isImageLine as isImageLine2 } from "../terminal-image.js";
+import { cropKittyImageLine, getKittyImageMetadata, getMaxKittyImageRows, isImageLine as isImageLine2 } from "../terminal-image.js";
 import { CURSOR_MARKER as CURSOR_MARKER3, compositeTuiLine as compositeTuiLine2 } from "../tui.js";
 import { extractAnsiCode, getActiveBackgroundAnsi, getGraphemeCellRange, sliceByColumn as sliceByColumn3, visibleWidth as visibleWidth12 } from "../utils.js";
 var OSC133_ZONE_PREFIX = /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/;
@@ -8264,21 +8275,23 @@ function paintBox(box, screen, totalWidth) {
   for (const child of box.children)
     paintBox(child, screen, totalWidth);
   if (box.scrollView && box.scrollContentLines && box.scrollView.scrollTop > 0 && box.rect.height > 0) {
-    for (let imageRow = box.scrollView.scrollTop - 1; imageRow >= 0; imageRow--) {
+    const scrollTop = box.scrollView.scrollTop;
+    const minRow = Math.max(0, scrollTop - getMaxKittyImageRows());
+    for (let imageRow = scrollTop - 1; imageRow >= minRow; imageRow--) {
       const imageLine = box.scrollContentLines[imageRow] ?? "";
+      if (!isImageLine2(imageLine))
+        continue;
       const metadata = getKittyImageMetadata(imageLine);
-      if (metadata) {
-        const hiddenRows = box.scrollView.scrollTop - imageRow;
-        if (hiddenRows < metadata.rows) {
-          const visibleRows = Math.min(box.rect.height, metadata.rows - hiddenRows);
-          const cropped = cropKittyImageLine(imageLine, hiddenRows, visibleRows);
-          if (box.rect.x === 0 && box.rect.width >= totalWidth)
-            screen[box.rect.y] = cropped;
-        }
-        break;
+      if (!metadata)
+        continue;
+      const hiddenRows = scrollTop - imageRow;
+      if (hiddenRows < metadata.rows) {
+        const visibleRows = Math.min(box.rect.height, metadata.rows - hiddenRows);
+        const cropped = cropKittyImageLine(imageLine, hiddenRows, visibleRows);
+        if (box.rect.x === 0 && box.rect.width >= totalWidth)
+          screen[box.rect.y] = cropped;
       }
-      if (imageLine !== "")
-        break;
+      break;
     }
   }
   paintScrollbar(box, screen, totalWidth);
@@ -8444,7 +8457,7 @@ var MAX_CACHED_OFFSCREEN_KITTY_TRANSMISSION_BYTES = 32 * 1024 * 1024;
 var MAX_CACHED_OFFSCREEN_KITTY_DECODED_BYTES = 64 * 1024 * 1024;
 var DOUBLE_CLICK_INTERVAL_MS = 500;
 var COPY_ERROR_FLASH_DURATION_MS = 5e3;
-var TERMINAL_WORD_SELECTION_JOINERS = /* @__PURE__ */ new Set(["/", "-"]);
+var TERMINAL_WORD_SELECTION_JOINERS = /* @__PURE__ */ new Set(["/", "-", "+", "\\", "~", "_", "."]);
 var TuiAltScreen = class extends TuiBase {
   static {
     __name(this, "TuiAltScreen");
