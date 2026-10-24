@@ -280,6 +280,7 @@
         }
       ],
       "tests": [
+        "coding/extension/exec_drain_unix_test.go::TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan",
         "internal/childwait/pipe_unix_test.go::TestPipesWaitDeliversEveryPipeWhenOneEndedAndAHolderKeepsTheOther",
         "internal/childwait/pipe_unix_test.go::TestPipesWaitDeliversWhatWaitsUnreadInAPipeAHolderKeepsOpen",
         "internal/childwait/pipe_unix_test.go::TestPipesWaitReadsToEOFAfterTheGraceWhenEveryWriteEndIsClosed",
