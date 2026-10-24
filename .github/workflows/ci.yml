@@ -156,12 +156,15 @@ jobs:
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
-      - name: Restore the Go build cache
+      # cache-warm.yml saves the cache of this exact command from main, one entry per week; no entry has the exact key below, so the
+      # newest one is restored through the prefix. The Linux shards' cache is the fallback before the first entry exists.
+      - name: Restore the preflight build cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/go-build
-          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          key: gocache-preflight-${{ runner.os }}-${{ hashFiles('go.sum', '.go-version') }}-
           restore-keys: |
+            gocache-preflight-${{ runner.os }}-${{ hashFiles('go.sum', '.go-version') }}-
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:

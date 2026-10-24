@@ -70,6 +70,73 @@ jobs:
           path: ~/.cache/go-build
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
 
+  preflight:
+    name: Warm / Preflight
+    # Runs make ci-preflight, the exact command of the ci.yml preflight job, so the cache holds every object that job reads. 70% of
+    # its cold time is the three cross-platform vets (Windows amd64 and arm64, Android arm64), which no other cache holds. One
+    # entry per go.sum, Go version and ISO week, not per commit: the week refreshes it, restoring the previous week's entry as the
+    # starting point so Go's own five-day trim bounds its size, and the delete step below keeps one entry in the repository.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Name this week's cache
+        id: week
+        env:
+          PREFIX: gocache-preflight-${{ runner.os }}-${{ hashFiles('go.sum', '.go-version') }}-
+        run: |
+          echo "prefix=$PREFIX" >> "$GITHUB_OUTPUT"
+          echo "key=$PREFIX$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+      - name: Restore the preflight build cache
+        id: restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: ${{ steps.week.outputs.key }}
+          restore-keys: |
+            ${{ steps.week.outputs.prefix }}
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Build, vet and go fix every package
+        env:
+          CI: '1'
+          MAKEFLAGS: -k
+        run: make ci-preflight
+      - name: Save the preflight build cache
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: ${{ steps.week.outputs.key }}
+      # Keys differ by week, so the previous week's entry would otherwise stay until the 7-day eviction and double the space.
+      - name: Delete the superseded preflight caches
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_KEY: ${{ steps.week.outputs.key }}
+          PREFIX: ${{ steps.week.outputs.prefix }}
+        run: |
+          set -euo pipefail
+          gh cache list --ref refs/heads/main --key "$PREFIX" --limit 100 --json id,key \
+            --jq '.[] | select(.key != env.NEW_KEY) | .id' |
+            while read -r id; do gh cache delete "$id"; done
+
   windows:
     name: Warm / Windows
     runs-on: windows-latest
