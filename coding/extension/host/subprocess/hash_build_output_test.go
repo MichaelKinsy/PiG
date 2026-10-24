@@ -113,6 +113,7 @@ func TestHashSourceDirIgnoresConcurrentChurnInReplacedModule(t *testing.T) {
 			stop, done := make(chan struct{}), make(chan error, 1)
 			go func() {
 				deps := filepath.Join(churn, "release", "deps")
+				var busy []string
 				for i := 0; ; i++ {
 					select {
 					case <-stop:
@@ -129,7 +130,7 @@ func TestHashSourceDirIgnoresConcurrentChurnInReplacedModule(t *testing.T) {
 						done <- err
 						return
 					}
-					if err := os.RemoveAll(temp); err != nil && !errors.Is(err, fs.ErrNotExist) {
+					if err := removeChurnDir(temp, &busy); err != nil {
 						done <- err
 						return
 					}
@@ -166,4 +167,23 @@ func TestHashSourceDirFailsClosedOnUnreadableSourceFile(t *testing.T) {
 	if got, err := hashSourceDir(extension, "go"); err == nil {
 		t.Fatalf("an unreadable source file produced reusable hash %s", got)
 	}
+}
+
+// removeChurnDir removes the churn directory temp, and any that an earlier call could not remove. Windows refuses to delete an
+// entry the hash walk has open (a sharing violation, or an access denial on one pending deletion): that is the operating system's
+// delete semantics, not what the test checks, so such a directory is kept for the next call and the t.TempDir cleanup.
+func removeChurnDir(temp string, retry *[]string) error {
+	pending := append([]string(nil), *retry...)
+	pending = append(pending, temp)
+	var busy []string
+	for _, path := range pending {
+		if err := os.RemoveAll(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			if !churnRemovalBusy(err) {
+				return err
+			}
+			busy = append(busy, path)
+		}
+	}
+	*retry = busy
+	return nil
 }

@@ -440,12 +440,13 @@ func walkDirSources(root string, exts []string, visit func(path, rel string) err
 	// WalkDir does not traverse a symlink used as its root. Resolve only the
 	// admitted root; nested symlink entries remain excluded by WalkDir.
 	root = physicalRoot
-	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	vanish := runtimecell.NewVanishTracker()
+	if err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// A directory deleted after its parent listed it held no source of this build, as in runtimecell's hashGoModuleDir
-			// (on Windows one still being deleted fails to open instead of reporting not-exist). A directory or source file that is
-			// there and cannot be read is not that: the hash fails closed.
-			if path != root && d.IsDir() && runtimecell.DirectoryVanished(path, err) {
+			// (on Windows one still being deleted fails to open instead of reporting not-exist; see VanishTracker). A directory
+			// or source file that is there and cannot be read is not that: the hash fails closed.
+			if path != root && d.IsDir() && vanish.Vanished(path, err) {
 				return filepath.SkipDir
 			}
 			return err
@@ -460,7 +461,7 @@ func walkDirSources(root string, exts []string, visit func(path, rel string) err
 			if path != root {
 				tagged, err := runtimecell.IsCacheDirectory(path)
 				if err != nil {
-					if runtimecell.DirectoryVanished(path, err) {
+					if vanish.Vanished(path, err) {
 						return filepath.SkipDir
 					}
 					return err
@@ -489,7 +490,10 @@ func walkDirSources(root string, exts []string, visit func(path, rel string) err
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	return vanish.Verify()
 }
 
 // goLocalReplaceDirs returns physical existing directories that srcDir's go.mod
