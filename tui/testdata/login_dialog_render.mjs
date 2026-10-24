@@ -5,7 +5,7 @@ const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendi
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
 process.env.FORCE_COLOR = "3";
 const load = (path) => import(pathToFileURL(root + path));
-const { setKeybindings, setCapabilities } = await load("node_modules/@earendil-works/pi-tui/dist/index.js");
+const { setKeybindings, setCapabilities, getNativeClipboard } = await load("node_modules/@earendil-works/pi-tui/dist/index.js");
 const { KeybindingsManager } = await load("dist/core/keybindings.js");
 const { initTheme } = await load("dist/modes/interactive/theme/theme.js");
 const { LoginDialogComponent } = await load("dist/modes/interactive/components/login-dialog.js");
@@ -17,6 +17,11 @@ for await (const chunk of process.stdin) input += chunk;
 process.env.DISPLAY = "oracle:0";
 for (const name of ["WAYLAND_DISPLAY", "TERMUX_VERSION", "SSH_CONNECTION", "SSH_CLIENT", "MOSH_CONNECTION", "PI_CLIPBOARD_OSC52"]) delete process.env[name];
 process.env.PATH = "";
+// macOS and Windows copy through the platform's native clipboard helper before any command, and on a desktop runner that write
+// succeeds ("Code copied to clipboard") where the pinned Linux route fails ("Copy code manually"). Make the helper's write fail
+// on every OS so the copy fails identically; the helper object is the one copyToClipboard reads, cached by pi-tui.
+const nativeClipboard = getNativeClipboard();
+if (nativeClipboard) nativeClipboard.setText = async () => { throw new Error("native clipboard disabled by the oracle"); };
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const results = [];
 for (const probe of JSON.parse(input)) {
