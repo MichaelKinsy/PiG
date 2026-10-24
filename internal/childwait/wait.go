@@ -75,12 +75,12 @@ type Pipes struct {
 // each pipe reads into one buffer of its own, so onData copies what it keeps.
 func Start(files []*os.File, onData func(index int, chunk []byte), hooks Hooks) *Pipes {
 	p := &Pipes{
-		files:     files,
-		onData:    onData,
-		hooks:     hooks,
-		activity:  make(chan struct{}, 1),
-		done:      make(chan struct{}),
-		stopped:   make([]atomic.Bool, len(files)),
+		files:    files,
+		onData:   onData,
+		hooks:    hooks,
+		activity: make(chan struct{}, 1),
+		done:     make(chan struct{}),
+		stopped:  make([]atomic.Bool, len(files)),
 	}
 	var readers sync.WaitGroup
 	for index, file := range files {
