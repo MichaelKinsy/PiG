@@ -20,6 +20,9 @@ import (
 // unsentPoll is how often a delivery waiting for the link to drain looks again.
 const unsentPoll = 20 * time.Millisecond
 
+// maxTimeoutMs is the longest timer Node arms (2^31-1 ms), which Durable accepts as a timeout.
+const maxTimeoutMs = 2_147_483_647
+
 type spillRequest struct {
 	afterBytes int64
 	afterLines int64
@@ -77,7 +80,11 @@ func parseExecRequest(request Object) (*execRequest, *Failure) {
 			// A deadline of now: the command is killed as soon as it runs. Durable's own check refuses a timeout of zero.
 			seconds = 1e-9
 		}
-		result.timeout = &seconds
+		// Durable refuses a timer Node cannot arm (above 2^31-1 ms); the daemon's deadline is a Duration of any length, so
+		// such a command runs until it ends or is cancelled, as it does under Pi's daemon.
+		if milliseconds <= maxTimeoutMs {
+			result.timeout = &seconds
+		}
 	}
 	if spill, ok := request["spill"].(Object); ok {
 		afterBytes, okBytes := unsignedNumber(spill["afterBytes"])

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,12 +21,12 @@ func TestRenameFileReportsTheErrorOfRename2ForADirectoryDestination(t *testing.T
 	mustDo(t, os.MkdirAll(filepath.Join(root, "dir"), 0o755))
 
 	err := env.RenameFile(background, "file", "dir")
-	fileError, ok := err.(*durableenv.FileError)
+	fileError, ok := errors.AsType[*durableenv.FileError](err)
 	if !ok || fileError.Code != durableenv.FileErrorIsDirectory {
 		t.Fatalf("a file renamed over a directory: %v, want is_directory", err)
 	}
 	err = env.RenameFile(background, "dir", "full")
-	fileError, ok = err.(*durableenv.FileError)
+	fileError, ok = errors.AsType[*durableenv.FileError](err)
 	if !ok || fileError.Code != durableenv.FileErrorUnknown || fileError.Cause == nil || errnoCode(fileError.Cause) != "ENOTEMPTY" {
 		t.Fatalf("a directory renamed over a directory with files: %v, want ENOTEMPTY", err)
 	}

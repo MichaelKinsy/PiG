@@ -133,6 +133,7 @@ func execCases() []execCase {
 		{name: "timeout with spill", request: sh("echo before; sleep 30", "timeoutMs", 300, "spill", object("afterBytes", 1, "afterLines", 100))},
 		{name: "timeout of zero", request: sh("sleep 30", "timeoutMs", 0)},
 		{name: "fractional timeout", request: sh("sleep 30", "timeoutMs", 150.5)},
+		{name: "timeout above what Node can arm", request: sh("echo quick", "timeoutMs", 3e9)},
 		{name: "timeout not reached", request: sh("echo quick", "timeoutMs", 20000)},
 		{name: "spill by bytes", request: sh("printf 0123456789abcdef", "spill", object("afterBytes", 10, "afterLines", 100))},
 		{name: "spill by lines", request: sh("printf 'a\\nb\\nc\\n'", "spill", object("afterBytes", 1000, "afterLines", 2))},
@@ -325,19 +326,6 @@ func TestDaemonRepliesBeforeBulkOutputLikePisDaemon(t *testing.T) {
 	}
 }
 
-func waitFor(t *testing.T, path string) {
-	t.Helper()
-	for deadline := time.Now().Add(30 * time.Second); ; {
-		if _, err := os.Stat(path); err == nil {
-			return
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("%s never appeared", path)
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-}
-
 // watchCase is a watch request and the changes made under it; each change is one file system operation.
 type watchCase struct {
 	name    string
@@ -425,11 +413,6 @@ func watchCases() []watchCase {
 	return cases
 }
 
-type watchEvents struct {
-	ready   string
-	changes []string
-}
-
 // TestDaemonWatchMatchesPisDaemon makes the same changes under a watch of each daemon: the ready event, and the paths each change
 // reports, in the order the daemon sorts them. A sentinel file made after each change marks the end of its events.
 func TestDaemonWatchMatchesPisDaemon(t *testing.T) {
@@ -443,7 +426,9 @@ func TestDaemonWatchMatchesPisDaemon(t *testing.T) {
 				if first.Kind != daemon.FrameEvent {
 					return text.String()
 				}
-				changes := append(test.changes, nil)
+				changes := make([]func(*testing.T, string), 0, len(test.changes)+1)
+				changes = append(changes, test.changes...)
+				changes = append(changes, nil)
 				if test.single {
 					changes = test.changes
 				}
