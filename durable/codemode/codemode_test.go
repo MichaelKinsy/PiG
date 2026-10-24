@@ -792,9 +792,17 @@ func TestDurableCodeMode(t *testing.T) {
 	// Pi 1.2.0 packages/durable/test/codemode.test.ts:812 "times a script out across a restart, without admitting new calls"
 	t.Run("times a script out across a restart, without admitting new calls", func(t *testing.T) {
 		f := codemodeChat(t)
+		// The deadline is the stored one (Pi durable/src/codemode/codemode.ts:419, checked on resume at :456-458), and the Harness clock stands
+		// still until the restart, where Pi's test sleeps 400 ms: no real time, however starved the machine, can pass it
+		// before tools.hold ran (restart waits for that and would never return) or before the Harness closed. The VM's own
+		// timer (codemode/src/runtime/execution.ts:214-217, started with the VM, given the time left at codemode.ts:472) runs in real time, so
+		// the first run starts without it (execution.ts:549 starts one without timeoutMs).
+		clock := newManualClock()
+		f.setup.now = clock.now
+		f.vm.noTimer.Store(true)
 		opened, root := f.restart(t, `// @options: {"timeout_ms": 300}
 			await tools.hold({}); await tools.echo({ text: "late" });`, func(harness.Harness, durable.TaskId) {
-			time.Sleep(400 * time.Millisecond)
+			clock.advance(400 * time.Millisecond)
 		})
 		text, isError := resultText(t, root)
 		if !isError || !strings.Contains(text, "deadline passed") {
