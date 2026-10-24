@@ -4691,24 +4691,6 @@ snippet = "if home, err := os.UserHomeDir(); err != nil || home != \"/tmp/eval-h
 
 [[hit]]
 check = "testisolation"
-file = "test/ci-images/image_publication_test.go"
-func = "TestCIImagePublicationTransfersValidatedBytes"
-snippet = "t.Setenv(\"HOME\", dir)"
-
-[[hit]]
-check = "testisolation"
-file = "test/ci-images/verification_shards_test.go"
-func = "testGroupedAgentDirectoryIsolation"
-snippet = "t.Setenv(\"PIG_CODING_AGENT_DIR\", realAgent)"
-
-[[hit]]
-check = "testisolation"
-file = "test/ci-images/verification_shards_test.go"
-func = "TestGroupedTestsDoNotRunWhenTheAgentDirectoriesCannotBeSeeded"
-snippet = "t.Setenv(\"PIG_CODING_AGENT_DIR\", t.TempDir())"
-
-[[hit]]
-check = "testisolation"
 file = "test/integration/ext_test.go"
 func = "extIsolatedHome"
 snippet = "home, _ := os.UserHomeDir()"
@@ -4754,19 +4736,6 @@ check = "testisolation"
 file = "test/parity/runner/pig_agent_isolation_test.go"
 func = "TestResolvePigBinPreservesHomeOnlyScenarioOverride"
 snippet = "t.Setenv(\"PIG_CODING_AGENT_DIR\", t.TempDir())"
-
-[[hit]]
-check = "testisolation"
-file = "tui/terminal_image_upstream_test.go"
-func = "TestUpstreamTerminalImageEncoding"
-snippet = "home, err := os.UserHomeDir()"
-
-[[hit]]
-check = "testisolation"
-file = "tui/terminal_image_upstream_test.go"
-func = "TestUpstreamImageFallback"
-snippet = "home, err := os.UserHomeDir()"
-count = 2
 
 [[hit]]
 check = "transportperrequest"
