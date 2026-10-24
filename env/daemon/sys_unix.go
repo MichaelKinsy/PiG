@@ -5,11 +5,16 @@ package daemon
 // Ports packages/env/daemon/src/sys/unix.rs
 
 import (
+	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
+	"unicode"
+	"unicode/utf8"
 )
 
 const pathSeparator = "/"
@@ -25,6 +30,51 @@ func openReadOnly(path string, noFollow bool) (*os.File, error) {
 		flags |= syscall.O_NOFOLLOW
 	}
 	return os.OpenFile(path, flags, 0)
+}
+
+// rustIOError is the text Rust's io::Error shows for a failure of the system: the system's message, capitalized as the C
+// library writes it, and " (os error N)". It reports false for an error that names no system error.
+func rustIOError(err error) (string, bool) {
+	errno, ok := errors.AsType[syscall.Errno](err)
+	if !ok {
+		if !errors.Is(err, exec.ErrNotFound) {
+			return "", false
+		}
+		errno = syscall.ENOENT
+	}
+	text := errno.Error()
+	first, size := utf8.DecodeRuneInString(text)
+	return fmt.Sprintf("%c%s (os error %d)", unicode.ToUpper(first), text[size:], int(errno)), true
+}
+
+// libuvNames are the codes the daemon names (sys/unix.rs:os_error_name); any other error is UNKNOWN.
+var libuvNames = map[string]bool{
+	"EPERM": true, "ENOENT": true, "EIO": true, "EBADF": true, "EAGAIN": true, "ENOMEM": true, "EACCES": true, "EBUSY": true,
+	"EEXIST": true, "EXDEV": true, "ENOTDIR": true, "EISDIR": true, "EINVAL": true, "ENFILE": true, "EMFILE": true,
+	"ETXTBSY": true, "EFBIG": true, "ENOSPC": true, "EROFS": true, "EMLINK": true, "ENAMETOOLONG": true, "ENOTEMPTY": true,
+	"ELOOP": true, "ENOSYS": true, "ENOTSUP": true,
+}
+
+func libuvName(code string) string {
+	if libuvNames[code] {
+		return code
+	}
+	return "UNKNOWN"
+}
+
+// openDirectory is opendir(3): the directory is opened as one, so a file, however unreadable, is ENOTDIR before any
+// permission check.
+func openDirectory(path string) (*os.File, error) {
+	for {
+		descriptor, err := syscall.Open(path, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
+		if err == syscall.EINTR {
+			continue
+		}
+		if err != nil {
+			return nil, &os.PathError{Op: "open", Path: path, Err: err}
+		}
+		return os.NewFile(uintptr(descriptor), path), nil
+	}
 }
 
 // isLinkRefusal reports whether an O_NOFOLLOW open failed because the final component is a symbolic link.
