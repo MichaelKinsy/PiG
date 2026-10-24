@@ -3,6 +3,7 @@ package jsstring
 import (
 	"math"
 	"math/big"
+	"math/bits"
 	"strconv"
 	"strings"
 
@@ -44,7 +45,65 @@ func ToFixed(x float64, digits int) string {
 	if text, ok := toFixedUnambiguous(x, digits); ok {
 		return text
 	}
+	if text, ok := toFixedTie(x, digits); ok {
+		return text
+	}
 	return toFixedExact(x, digits)
+}
+
+// toFixedTie formats x when its exact value x*10^digits is a half-integer that fits 64 bits, in machine words: with x = m*2^e, m odd, x*10^digits is
+// m*5^digits*2^(e+digits), an odd multiple of one half exactly when e+digits+1 is zero, and the larger n is (m*5^digits+1)/2. ok is false for any other value,
+// which the caller takes through the big.Rat path.
+func toFixedTie(x float64, digits int) (string, bool) {
+	bits64 := math.Float64bits(math.Abs(x))
+	m, e := bits64&(1<<52-1), int(bits64>>52&0x7ff)
+	if e == 0 {
+		e = -1074
+	} else {
+		m |= 1 << 52
+		e -= 1075
+	}
+	if m == 0 {
+		return "", false
+	}
+	shift := bits.TrailingZeros64(m)
+	m >>= shift
+	if e+shift+digits+1 != 0 {
+		return "", false
+	}
+	power := uint64(1)
+	for range digits {
+		hi, lo := bits.Mul64(power, 5)
+		if hi != 0 {
+			return "", false
+		}
+		power = lo
+	}
+	hi, lo := bits.Mul64(m, power)
+	if hi != 0 || lo == math.MaxUint64 {
+		return "", false
+	}
+	var digitsBuf [24]byte
+	n := strconv.AppendUint(digitsBuf[:0], (lo+1)/2, 10)
+	var buf [48]byte
+	text := buf[:0]
+	if x < 0 {
+		// Step 4 of the specification takes the sign before rounding, so -0.04 is "-0.0".
+		text = append(text, '-')
+	}
+	if digits == 0 {
+		return string(append(text, n...)), true
+	}
+	if len(n) <= digits {
+		text = append(text, '0', '.')
+		for range digits - len(n) {
+			text = append(text, '0')
+		}
+		return string(append(text, n...)), true
+	}
+	text = append(text, n[:len(n)-digits]...)
+	text = append(text, '.')
+	return string(append(text, n[len(n)-digits:]...)), true
 }
 
 // toFixedUnambiguous formats x with strconv, which rounds the exact decimal value to nearest and ties to even. That is toFixed's result unless the exact value is a tie, and a tie has exactly

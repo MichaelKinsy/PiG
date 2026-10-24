@@ -1011,17 +1011,17 @@ allocs = 396913
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkProviderRegistration"
-allocs = 481
+allocs = 296
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkRegistryNamespaceSwitch/1"
-allocs = 684
+allocs = 377
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkRegistryNamespaceSwitch/128"
-allocs = 58174
+allocs = 18851
 
 [[benchmark]]
 package = "./coding"
@@ -1216,12 +1216,12 @@ allocs = 580
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkJSONModeObservation/0"
-allocs = 2002
+allocs = 1880
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkJSONModeObservation/1024"
-allocs = 2041
+allocs = 1918
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1436,7 +1436,7 @@ allocs = 26
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkResolveCustomModelThinking"
-allocs = 4056
+allocs = 56
 
 [[benchmark]]
 package = "./coding/cli"
@@ -2066,7 +2066,7 @@ allocs = 28206
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCompactionBillingRows"
-allocs = 126
+allocs = 46
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2131,7 +2131,7 @@ allocs = 30054
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/uncached"
-allocs = 52393
+allocs = 46323
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2271,12 +2271,12 @@ allocs = 6717
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelCommandCachedMatch/1"
-allocs = 845
+allocs = 723
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelCommandCachedMatch/1000"
-allocs = 125786
+allocs = 3785
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2361,7 +2361,7 @@ allocs = 97
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeInteractiveRebind/0"
-allocs = 5350
+allocs = 4920
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2376,7 +2376,7 @@ allocs = 764
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkScopedModelsSelection"
-allocs = 4096
+allocs = 96
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2671,12 +2671,12 @@ allocs = 110
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/encoded"
-allocs = 80188
+allocs = 74123
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/legacy"
-allocs = 92937
+allocs = 86895
 
 [[benchmark]]
 package = "./internal/codingagent"

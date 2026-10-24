@@ -289,7 +289,7 @@ func ExtensionModelRecord(definition json.RawMessage, api API, providerID, baseU
 		return ""
 	}
 	for _, member := range [...]struct{ key, value string }{{"api", string(api)}, {"provider", providerID}, {"baseUrl", baseURL}} {
-		encoded, err := marshalStoreJSON(member.value)
+		encoded, err := appendStoreString(nil, member.value)
 		if err != nil {
 			return ""
 		}
@@ -405,22 +405,23 @@ func sameJSONValue(a, b json.RawMessage) bool {
 }
 
 func encodeCatalogPairs(pairs []catalogPair) (json.RawMessage, error) {
-	var buffer bytes.Buffer
-	buffer.WriteByte('{')
+	size := 2
+	for _, pair := range pairs {
+		size += len(pair.key) + len(pair.value) + 4
+	}
+	encoded := append(make([]byte, 0, size), '{')
 	for index, pair := range pairs {
 		if index > 0 {
-			buffer.WriteByte(',')
+			encoded = append(encoded, ',')
 		}
-		key, err := marshalStoreJSON(pair.key)
-		if err != nil {
+		var err error
+		if encoded, err = appendStoreString(encoded, pair.key); err != nil {
 			return nil, err
 		}
-		buffer.Write(key)
-		buffer.WriteByte(':')
-		buffer.Write(pair.value)
+		encoded = append(encoded, ':')
+		encoded = append(encoded, pair.value...)
 	}
-	buffer.WriteByte('}')
-	return buffer.Bytes(), nil
+	return append(encoded, '}'), nil
 }
 
 // decodeCatalogTyped is the typed model of one persisted record, without its shape. known is false for a model type this version does not know; such a record has no typed form.

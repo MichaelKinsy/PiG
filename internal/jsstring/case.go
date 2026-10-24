@@ -31,6 +31,42 @@ func ToLower(s string) string {
 	return b.String()
 }
 
+// LowerContains is strings.Contains(ToLower(s), lowerNeedle) for a lowerNeedle that is already lowercase. An ASCII-only s, the common case of a model
+// id or name, lowercases only A to Z, so it is searched without building its lowercase copy.
+func LowerContains(s, lowerNeedle string) bool {
+	if !isASCIIOnly(s) {
+		return strings.Contains(ToLower(s), lowerNeedle)
+	}
+	for i := 0; i+len(lowerNeedle) <= len(s); i++ {
+		if asciiLowerPrefix(s[i:], lowerNeedle) {
+			return true
+		}
+	}
+	return false
+}
+
+// LowerEquals is ToLower(s) == lowerText for a lowerText that is already lowercase, without the lowercase copy of an ASCII-only s.
+func LowerEquals(s, lowerText string) bool {
+	if !isASCIIOnly(s) {
+		return ToLower(s) == lowerText
+	}
+	return len(s) == len(lowerText) && asciiLowerPrefix(s, lowerText)
+}
+
+// asciiLowerPrefix reports whether the ASCII-lowercased start of s is lowerPrefix; s holds at least len(lowerPrefix) bytes.
+func asciiLowerPrefix(s, lowerPrefix string) bool {
+	for i := 0; i < len(lowerPrefix); i++ {
+		c := s[i]
+		if 'A' <= c && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		if c != lowerPrefix[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func isASCIIOnly(s string) bool {
 	for i := 0; i < len(s); i++ {
 		if s[i] >= 0x80 {

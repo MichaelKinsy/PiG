@@ -11,6 +11,22 @@ func TestToFixedAllocatesOnceForAnOrdinaryCost(t *testing.T) {
 	}
 }
 
+// An exact tie that fits machine words (a cost of 0.125 at two digits) costs the one string too: no big.Rat.
+func TestToFixedAllocatesOnceForATie(t *testing.T) {
+	for _, c := range []struct {
+		x      float64
+		digits int
+		want   string
+	}{{0.125, 2, "0.13"}, {-0.125, 2, "-0.13"}, {2.5, 0, "3"}, {0.0078125, 6, "0.007813"}} {
+		if got := ToFixed(c.x, c.digits); got != c.want {
+			t.Fatalf("ToFixed(%v, %d) = %q, want %q", c.x, c.digits, got, c.want)
+		}
+		if got := testing.AllocsPerRun(100, func() { _ = ToFixed(c.x, c.digits) }); got > 1 {
+			t.Fatalf("ToFixed(%v, %d) allocates %v times, want at most 1", c.x, c.digits, got)
+		}
+	}
+}
+
 func BenchmarkToFixed(b *testing.B) {
 	for _, c := range []struct {
 		name   string
