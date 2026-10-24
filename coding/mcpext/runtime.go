@@ -538,6 +538,7 @@ func (c *Connection) sleep(ctx context.Context, d time.Duration) bool {
 }
 
 // Reconnect connects again with fresh credentials, for example after signing in.
+// It finishes closing the previous client before honoring cancellation; a canceled caller does not start a replacement connection.
 func (c *Connection) Reconnect(ctx context.Context) error {
 	c.waitOpening()
 	c.mu.Lock()
@@ -545,6 +546,9 @@ func (c *Connection) Reconnect(ctx context.Context) error {
 	c.mu.Unlock()
 	if client != nil {
 		c.dropClient(client)
+	}
+	if err := context.Cause(ctx); err != nil {
+		return err
 	}
 	_, err := c.GetClient(ctx)
 	return err

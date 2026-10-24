@@ -25241,6 +25241,28 @@
       ]
     },
     {
+      "id": "BF-c350117",
+      "title": "Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup",
+      "symptom": "Previously, reconnect still started a replacement connection after the caller had canceled.",
+      "rootCause": "Reconnect did not check caller cancellation after closing the previous client, so it could still start a replacement connection.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup. Previously, reconnect still started a replacement connection after the caller had canceled. Reconnect did not check caller cancellation after closing the previous client, so it could still start a replacement connection. Reconnect now completes cleanup and returns the original cancellation cause before starting a replacement.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c3501172ab",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/reconnect_cancel_test.go::TestMCPReconnectDoesNotOpenAfterCancellationDuringCleanup"
+      ]
+    },
+    {
       "id": "BF-c3a6eca",
       "title": "Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others…",
       "symptom": "Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others JavaScript's trim removes) in and after lists, a list item whose first line is one such space, a heading line holding U+2028 or U+2029, a table whose last line is such a space at a narrow width, and a `$$` or `\\[` block whose text is only whitespace.",
