@@ -64,9 +64,8 @@ func TestForwardTerminalConsumesAnOwedReplySplitAcrossSlowReads(t *testing.T) {
 			}
 			defer func() { _ = r.Close() }()
 			defer func() { _ = w.Close() }()
-			in := interactiveTestInput{file: r, queryReplyOwed: true}
-			terminal := NewProcessTerminalWithOutput(in.file, nil, ioDiscard{})
-			in.ownQueryReply(terminal)
+			terminal := NewProcessTerminalWithOutput(r, nil, ioDiscard{})
+			expectKeyboardProtocolReply(terminal)
 			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan struct{})
 			inputs := make(chan string, 64)
