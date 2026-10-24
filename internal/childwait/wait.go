@@ -6,6 +6,7 @@ package childwait
 import (
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,7 +26,8 @@ type Hooks struct {
 	// test decides when the grace elapses instead of racing a writer against
 	// host load.
 	GraceTimer func() IdleTimer
-	// GraceExpired runs when the idle grace elapses, before MayHoldOutput.
+	// GraceExpired runs each time the idle grace elapses, before Wait asks
+	// whether the pipes can still produce output.
 	GraceExpired func()
 }
 
@@ -35,7 +37,8 @@ type IdleTimer struct {
 	// Expired delivers once Grace has elapsed with no chunk.
 	Expired <-chan time.Time
 	// Rearm restarts the grace in full. Wait calls it for each chunk that
-	// arrives after the child exited.
+	// arrives after the child exited, and when the grace elapsed while a pipe
+	// held output that no reader had taken.
 	Rearm func()
 	// Stop releases the timer when Wait no longer uses it.
 	Stop func()
@@ -49,6 +52,9 @@ type Pipes struct {
 	hooks    Hooks
 	activity chan struct{}
 	done     chan struct{}
+	// stopped[i] is set once the reader of files[i] has returned: nothing more
+	// is taken from that pipe, so it holds no output a reader will deliver.
+	stopped []atomic.Bool
 
 	mu        sync.Mutex
 	accepting bool
@@ -65,6 +71,7 @@ func Start(files []*os.File, onData func(index int, chunk []byte), hooks Hooks) 
 		hooks:     hooks,
 		activity:  make(chan struct{}, 1),
 		done:      make(chan struct{}),
+		stopped:   make([]atomic.Bool, len(files)),
 		accepting: true,
 	}
 	var readers sync.WaitGroup
@@ -80,6 +87,7 @@ func Start(files []*os.File, onData func(index int, chunk []byte), hooks Hooks) 
 
 //perf:hot
 func (p *Pipes) read(index int, file *os.File) {
+	defer p.stopped[index].Store(true)
 	if p.hooks.BeforeRead != nil {
 		p.hooks.BeforeRead()
 	}
@@ -113,6 +121,19 @@ func (p *Pipes) read(index int, file *os.File) {
 	}
 }
 
+// graceVerdict is what Wait learns when the grace elapses.
+type graceVerdict int
+
+const (
+	// pipesQuiet: a process may still hold a write end, and the readers have taken everything the pipes hold. The grace measured the writers' silence,
+	// which is what upstream's idle timer measures: release the pipes.
+	pipesQuiet graceVerdict = iota
+	// pipesBehind: a pipe holds output that no reader has taken yet. The grace measured the readers' latency, not the writers' silence: keep waiting.
+	pipesBehind
+	// pipesEnded: no process holds a write end, so EOF follows the output the pipes hold: read to EOF.
+	pipesEnded
+)
+
 // Wait mirrors the post-exit half of upstream waitForChildProcess: once the
 // child has exited, keep reading until every pipe ends, or until no data has
 // arrived on any pipe for Grace (re-armed on every chunk). A descendant that
@@ -121,20 +142,33 @@ func (p *Pipes) read(index int, file *os.File) {
 // yet delivered when the grace released the wait, and returns after every
 // reader has stopped. It reports whether every pipe ended.
 //
-// The grace exists only for a descendant that still holds a pipe. When it
-// expires, mayHoldOutput reports whether any such process can still be alive.
-// If none can, every write end is closed, so EOF follows once the readers have
-// drained what the child's tree already wrote, and Wait reads to EOF.
-// Otherwise a reader that fell behind (a loaded Windows runner) would drop
-// output the exited command had already written: the grace measures the
-// reader's own latency, not the writer's silence.
+// The grace exists only for a descendant that still holds a pipe, and it
+// measures that holder's silence, not a reader's latency. A reader that a busy
+// machine has not scheduled for a grace has taken nothing yet from a command
+// that exited long before, and the grace must not release the pipe on it: what
+// the exited command wrote is output, as it is for upstream, which keeps
+// reading while a pipe delivers (Pi's regression test for
+// earendil-works/pi#5303 drives the grace with virtual time because host load
+// reorders a real subprocess's writes and the grace timer). So when the grace
+// expires:
+//
+//   - mayHoldOutput reports whether a process can still hold a pipe that the
+//     kernel cannot tell Wait about (a Windows job that is empty holds none).
+//     If none can, every write end is closed, EOF follows once the readers have
+//     drained what the child's tree already wrote, and Wait reads to EOF.
+//   - On Unix the kernel answers for each pipe (pollPipe). A pipe with no write
+//     end left ends the same way. A pipe that holds bytes no reader has taken
+//     is a reader that fell behind: the grace is armed again, and the readers
+//     deliver what the exited command had already written.
+//   - Only a pipe that a process still holds and that holds no unread byte is
+//     the quiet holder the grace is for: Wait releases it.
 func (p *Pipes) Wait(mayHoldOutput func() bool) bool {
 	// Upstream re-arms the timer only for data that arrives after exit.
 	select {
 	case <-p.activity:
 	default:
 	}
-	closed := waitIdle(p.done, p.activity, mayHoldOutput, p.hooks)
+	closed := waitIdle(p.done, p.activity, func() graceVerdict { return p.verdict(mayHoldOutput) }, p.hooks)
 	if !closed {
 		p.mu.Lock()
 		p.accepting = false
@@ -147,7 +181,39 @@ func (p *Pipes) Wait(mayHoldOutput func() bool) bool {
 	return closed
 }
 
-func waitIdle(done, activity <-chan struct{}, mayHoldOutput func() bool, hooks Hooks) bool {
+// verdict is what the grace that just elapsed measured: see Wait.
+func (p *Pipes) verdict(mayHoldOutput func() bool) graceVerdict {
+	if !mayHoldOutput() {
+		return pipesEnded
+	}
+	ended, behind := true, false
+	for index, file := range p.files {
+		if p.stopped[index].Load() {
+			continue
+		}
+		hungUp, unread, known := pollPipe(file)
+		switch {
+		case !known:
+			// The kernel cannot say: upstream's idle timer decides.
+			return pipesQuiet
+		case hungUp:
+			// Every write end is closed; EOF follows what the pipe still holds.
+		case unread:
+			ended, behind = false, true
+		default:
+			ended = false
+		}
+	}
+	switch {
+	case ended:
+		return pipesEnded
+	case behind:
+		return pipesBehind
+	}
+	return pipesQuiet
+}
+
+func waitIdle(done, activity <-chan struct{}, verdict func() graceVerdict, hooks Hooks) bool {
 	var (
 		wall    *time.Timer
 		fake    IdleTimer
@@ -162,25 +228,32 @@ func waitIdle(done, activity <-chan struct{}, mayHoldOutput func() bool, hooks H
 		expired = wall.C
 		defer wall.Stop()
 	}
+	rearm := func() {
+		if wall != nil {
+			wall.Reset(Grace)
+		} else {
+			fake.Rearm()
+		}
+	}
 	for {
 		select {
 		case <-done:
 			return true
 		case <-activity:
-			if wall != nil {
-				wall.Reset(Grace)
-			} else {
-				fake.Rearm()
-			}
+			rearm()
 		case <-expired:
 			if hooks.GraceExpired != nil {
 				hooks.GraceExpired()
 			}
-			if mayHoldOutput() {
+			switch verdict() {
+			case pipesEnded:
+				<-done
+				return true
+			case pipesBehind:
+				rearm()
+			default:
 				return false
 			}
-			<-done
-			return true
 		}
 	}
 }

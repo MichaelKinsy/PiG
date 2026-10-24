@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -16,6 +17,9 @@ import (
 
 func yes() bool { return true }
 
+// always is the grace verdict of a wait whose every expiry measures the same thing.
+func always(v graceVerdict) func() graceVerdict { return func() graceVerdict { return v } }
+
 // .upstream/v1.0.0/packages/coding-agent/test/suite/regressions/5303-bash-output-truncation.test.ts:39
 // "captures output emitted after exit while a descendant holds stdout open":
 // every chunk re-arms the grace, and the wait ends one grace after the last.
@@ -23,7 +27,7 @@ func TestWaitIdleRearmsOnEveryChunk(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		activity := make(chan struct{})
 		result := make(chan bool, 1)
-		go func() { result <- waitIdle(make(chan struct{}), activity, yes, Hooks{}) }()
+		go func() { result <- waitIdle(make(chan struct{}), activity, always(pipesQuiet), Hooks{}) }()
 		for range 6 {
 			time.Sleep(50 * time.Millisecond)
 			select {
@@ -57,7 +61,7 @@ func TestWaitIdleRearmsOnEveryChunk(t *testing.T) {
 func TestWaitIdleReleasesAQuietHeldPipe(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		result := make(chan bool, 1)
-		go func() { result <- waitIdle(make(chan struct{}), make(chan struct{}), yes, Hooks{}) }()
+		go func() { result <- waitIdle(make(chan struct{}), make(chan struct{}), always(pipesQuiet), Hooks{}) }()
 		time.Sleep(Grace - time.Millisecond)
 		synctest.Wait()
 		select {
@@ -83,7 +87,7 @@ func TestWaitIdleReadsToEOFWhenNothingHoldsThePipe(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		done := make(chan struct{})
 		result := make(chan bool, 1)
-		go func() { result <- waitIdle(done, make(chan struct{}), func() bool { return false }, Hooks{}) }()
+		go func() { result <- waitIdle(done, make(chan struct{}), always(pipesEnded), Hooks{}) }()
 		time.Sleep(10 * Grace)
 		synctest.Wait()
 		select {
@@ -95,6 +99,41 @@ func TestWaitIdleReadsToEOFWhenNothingHoldsThePipe(t *testing.T) {
 		synctest.Wait()
 		if closed := <-result; !closed {
 			t.Fatal("the wait did not report the ended pipes")
+		}
+	})
+}
+
+// A grace that elapses while a pipe holds output no reader has taken measured the readers' latency, not a holder's silence: the wait arms the
+// grace again, and only a grace that finds the pipes with nothing unread releases it.
+func TestWaitIdleArmsTheGraceAgainWhileAPipeHoldsUnreadOutput(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		verdicts := []graceVerdict{pipesBehind, pipesBehind, pipesQuiet}
+		var asked atomic.Int32
+		result := make(chan bool, 1)
+		go func() {
+			result <- waitIdle(make(chan struct{}), make(chan struct{}), func() graceVerdict {
+				return verdicts[asked.Add(1)-1]
+			}, Hooks{})
+		}()
+		time.Sleep(3*Grace - time.Millisecond)
+		synctest.Wait()
+		select {
+		case <-result:
+			t.Fatalf("the wait resolved before the third grace; the pipes were asked %d times", asked.Load())
+		default:
+		}
+		if n := asked.Load(); n != 2 {
+			t.Fatalf("the pipes were asked %d times in two graces, want 2", n)
+		}
+		time.Sleep(time.Millisecond)
+		synctest.Wait()
+		select {
+		case closed := <-result:
+			if closed {
+				t.Fatal("the wait reported closed pipes; want release by the grace that found nothing unread")
+			}
+		default:
+			t.Fatal("the wait did not resolve at the third grace")
 		}
 	})
 }
@@ -246,7 +285,7 @@ func TestWaitIdleFollowsTheGraceTimerHook(t *testing.T) {
 		}}
 		activity := make(chan struct{})
 		result := make(chan bool, 1)
-		go func() { result <- waitIdle(make(chan struct{}), activity, yes, hooks) }()
+		go func() { result <- waitIdle(make(chan struct{}), activity, always(pipesQuiet), hooks) }()
 		for range 3 {
 			activity <- struct{}{}
 			<-rearmed
