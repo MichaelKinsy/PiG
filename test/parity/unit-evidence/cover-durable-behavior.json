@@ -1,0 +1,103 @@
+[
+  {
+    "upstream": "packages/durable/src/images/exif.ts",
+    "package": "./durable/images",
+    "tests": [
+      "TestExifOrientationMatchesPiOnMalformedAndBoundaryInputs"
+    ],
+    "upstream_reference": "packages/durable/src/images/exif.ts:3-70 (exifOrientation, tiffStart, isExifHeader, ascii) run as-is under Node by durable/images/testdata/exif_oracle.mjs over thousands of malformed, boundary, truncated and seeded-fuzz JPEG/WebP inputs; Pi's own cases are packages/durable/test/tools-images.test.ts:376-440 (ported as TestEXIFOrientation in ./durable/images/node)",
+    "mutation": "Each applied to durable/images/exif.go and failing TestExifOrientationMatchesPiOnMalformedAndBoundaryInputs: `little := data[tiff] == 0x49 && data[tiff+1] == 0x49` -> `little := false`; u32 little-endian drop `uint32(data[at+3])<<24`; `value >= 1 && value <= 8` -> `value >= 0 && value <= 8`; remove the `marker == 0xff` fill-byte branch; `data[0] == 0xff && data[1] == 0xd8` -> `data[0] == 0xff`; `ascii(data, 0, \"RIFF\") && ascii(data, 8, \"WEBP\")` -> `ascii(data, 0, \"RIFF\")`; remove the `directory+2 > len(data)` guard (panics); remove the `entry+12 > len(data)` guard; entry stride `index*12` -> `index*11`; `at(data, offset+4) == 0 && at(data, offset+5) == 0` -> `at(data, offset+4) == 0`. Two mutants are equivalent and survive: `tiff+8` -> `tiff+9` and the JPEG loop bound `offset+4` -> `offset+5`."
+  },
+  {
+    "upstream": "packages/durable/src/images/index.ts",
+    "package": "./durable/images",
+    "tests": [
+      "TestPhotonImagesMatchPiAtTheLimitBoundaries",
+      "TestPhotonImagesMatchPiWhenAnImageOnePixelAcrossKeepsShrinking",
+      "TestPhotonImagesMatchPiOnTheJPEGQualityLadder",
+      "TestPhotonImagesMatchPiWhenAPNGIsExactlyAsLongAsTheByteLimit",
+      "TestPhotonImagesMatchPiOnACorpus"
+    ],
+    "upstream_reference": "packages/durable/src/images/index.ts:36-139 (createPhotonImages, prepare, encodeWithin, transposed) run as-is with Photon 0.3.3 under Node by durable/images/testdata/images_oracle.mjs; Pi's own cases are packages/durable/test/tools-images.test.ts (ported in ./durable/images/node)",
+    "mutation": "Each applied to durable/images/images.go and failing the named oracle tests: `inline && orientation == 1 &&` -> `inline &&`; `(inline || true) && orientation == 1 &&`; `bounds.Dx() <= limits.MaxWidth` -> `<`; `bounds.Dy() <= limits.MaxHeight` -> `<`; `Base64Length(...) <= int64(limits.MaxBytes)` -> `<`; `if err != nil || decoded.Bounds().Empty() {` -> `if false && (...) {`; `jsRound(float64(width)*scale)` -> `int(float64(width)*scale)`; `jsRound(float64(height)*scale)` -> `int(math.Ceil(float64(height)*scale))`; `math.Floor(x + 0.5)` -> `x + 0.49` and `x + 0.51`; drop `max(1, ...)` on width and on height; `target.Width != width || target.Height != height` -> `&&`; `target.Width == 1 && target.Height == 1` -> `||`; `size.Width != bounds.Dx() || size.Height != bounds.Dy()` -> `&&`; `[]int{80, 70, 55, 40}` -> `{80, 70, 55, 30}`, `{85, 70, 55, 40}`, `{80, 65, 55, 40}`, `{80, 70, 50, 40}`; orientation 2, 3, 4, 6, 8 and the width/height swap threshold."
+  },
+  {
+    "upstream": "packages/durable/src/images/node-worker.ts",
+    "package": "./durable/images/node",
+    "tests": [
+      "TestCreateNodePhotonImages",
+      "TestTheWorkerKeepsTheCallersBytes",
+      "TestTheWorkersFailuresReachTheirCallerAndTheWorkerGoesOn",
+      "TestTheWorkerHonoursACancelledContext",
+      "TestTheWorkerLeavesIdleMsAfterItsLastImage",
+      "TestTheWorkerStaysThirtySecondsByDefault",
+      "TestARequestAsTheWorkerGoesIdleIsServedByANewWorker"
+    ],
+    "upstream_reference": "packages/durable/src/images/node-worker.ts:1-35 (PrepareRequest, PrepareReply, the message handler) and packages/durable/src/images/node.ts:28-140 (PhotonThread: #settled arms the idle timer, prepare clears it, `idleMs ?? 30_000`); Pi's cases are packages/durable/test/tools-images.test.ts:511-565 (ported as TestCreateNodePhotonImages)",
+    "mutation": "Each applied to durable/images/node/node.go and failing the named tests: `bytes: bytes.Clone(data)` -> `bytes: data` (TestTheWorkerKeepsTheCallersBytes); remove `timer.Reset(w.idle)` (TestTheWorkerLeavesIdleMsAfterItsLastImage); remove `close(t.done)` (TestARequestAsTheWorkerGoesIdleIsServedByANewWorker); `defaultIdle = 30 * time.Second` -> `3 * time.Second` and `31 * time.Second` (TestTheWorkerStaysThirtySecondsByDefault); `panic(r.panic)` -> `return nil, nil` and `return r.result, r.err` -> `return r.result, nil` (TestTheWorkersFailuresReachTheirCallerAndTheWorkerGoesOn); remove either ctx.Done() case in Prepare and `w.thread = nil` (TestTheWorkerHonoursACancelledContext, TestTheWorkerExitsWhenIdleAndTheNextImageStartsAnother); `idle = time.Duration(*options.IdleMs) * time.Millisecond` -> `idle = defaultIdle`; pass `tools.DEFAULT_IMAGE_LIMITS` or a fixed mime type to the inner processor."
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/schema.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestSqliteSchemaMatchesPiForEveryPrefix"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/schema.ts:8-63 (TABLE_NAMES, INDEX_NAMES, createSqliteSchema, DEFAULT_SQLITE_SCHEMA) run as-is under Node with Chord's validateSqliteSchemaPrefix by durable/storage/sqlite/testdata/schema_oracle.mjs over 55 prefixes",
+    "mutation": "Each applied to durable/storage/sqlite/schema.go and failing TestSqliteSchemaMatchesPiForEveryPrefix: every one of the 25 identifiers renamed (`actual + \"tasks_by_kind\"` -> `actual + \"tasks_by_kindx\"`) and every one left unprefixed (`\"tasks_by_kind\"`); `if prefix != nil {` -> `if prefix != nil && *prefix != \"\" {`; `ValidateSqliteSchemaPrefix(*prefix)` skipped; `actual = *prefix` -> `_ = *prefix`; the default schema built with prefix `x_`. All 54 mutants are killed."
+  },
+  {
+    "upstream": "packages/durable/src/tools/image-processor.ts",
+    "package": "./durable/tools",
+    "tests": [
+      "TestImageProcessorHelpersMatchPi"
+    ],
+    "upstream_reference": "packages/durable/src/tools/image-processor.ts:9-58 (DEFAULT_IMAGE_LIMITS, INLINE_IMAGE_TYPES, toBase64, base64Length) run as-is under Node by durable/tools/testdata/image_processor_oracle.mjs; Pi's own toBase64 case is packages/durable/test/tools-images.test.ts:488-509",
+    "mutation": "Each applied to durable/tools/image_processor.go and failing TestImageProcessorHelpersMatchPi: DEFAULT_IMAGE_LIMITS MaxWidth 2000 -> 1999, MaxHeight 2000 -> 1999, MaxBytes 4.5 MiB -> 5 MiB; INLINE_IMAGE_TYPES gaining `image/bmp` and losing `image/webp`, `image/gif` or `image/jpeg`; `(byteLength + 2) / 3 * 4` -> `byteLength / 3 * 4`, `(byteLength + 1) / 3 * 4` and the unpadded `(byteLength*4 + 2) / 3`; `base64.StdEncoding` -> `base64.RawStdEncoding` and `base64.URLEncoding`. All 12 mutants are killed."
+  },
+  {
+    "upstream": "packages/durable/src/codemode/codemode.ts",
+    "package": "./durable/codemode",
+    "tests": [
+      "TestCodemodeDeclarationsMatchPi",
+      "TestSearchToolsReturnsEightMatchesWithoutALimit"
+    ],
+    "upstream_reference": "packages/durable/src/codemode/codemode.ts:86-165 (CODEMODE_MODULE_VERSION, CODEMODE_TOOL_NAME, CodemodeRunDoc, CodemodeJournalDoc, CodemodeStoreDoc), :233-266 (createCodemodeTool, createCodemodeExtension and its `codemode` section) run as-is under Node by durable/codemode/testdata/codemode_oracle.mjs; :233 and :936 (DEFAULT_SEARCH_LIMIT = 8) for the default searchTools() limit. Pi's script-execution cases are packages/durable/test/codemode.test.ts (ported as TestDurableCodeMode)",
+    "mutation": "Each applied to durable/codemode/tool.go and failing the named tests: `Replay: durable.ReplaySafe` -> `durable.ReplayUnsafe`; `Callers: []durable.ToolCaller{durable.CallerModel}` -> `{}`; `return Section(callable, options.Namespaces, budget)` -> `Section(callable, nil, budget)`; `!strings.HasPrefix(tool.Name, InternalPrefix) && !tool.Deferred` -> `!tool.Deferred` and -> `!strings.HasPrefix(tool.Name, InternalPrefix)`; `if options.models() {` -> `if true {`; `maxLines: 100_000` -> `99_999`; `const defaultSearchLimit = 8` -> `9` (TestSearchToolsReturnsEightMatchesWithoutALimit); durable/codemode/docs.go: each document Version 1 -> 2, the store checkpoint `info.DeltasSinceBase >= 64` -> `> 64` and `>= 65`, and `checkpointWhen` false -> true on the run document."
+  },
+  {
+    "upstream": "packages/durable/src/codemode/describe.ts",
+    "package": "./durable/codemode",
+    "tests": [
+      "TestDescribeMatchesPiOnSeededToolSets"
+    ],
+    "upstream_reference": "packages/durable/src/codemode/describe.ts:1-157 (codemodeDescription, sampleOf, namespaceOf, codemodeSection, selectCatalog, DEFAULT_CODEMODE_INLINE_BUDGET) run as-is under Node with Pi's pi-codemode declarations by durable/codemode/testdata/describe_oracle.mjs over 14 seeded tool sets with the budget swept one token at a time; Pi's own cases are packages/durable/test/codemode-describe.test.ts (ported as the TestDescribe* tests)",
+    "mutation": "Each applied to durable/codemode/describe.go and failing TestDescribeMatchesPiOnSeededToolSets or the ported TestDescribe* tests: `const charsPerToken = 4` -> `5`; `const DefaultInlineBudget = 3000` -> `3001`; `if entry.cost > remaining {` -> `>=`; `for len(active) > 0 {` -> `> 1`; `len(queue) > 0` -> `> 1`; `len(visible) < len(group.entries)` -> `<=`; `jsstring.Length(namespace.Prefix) > jsstring.Length(found.Prefix)` -> `>=` (two namespaces of one prefix); the StructuredOutputSchema marshal error branch inverted. The remaining sort-comparator survivors (a nil namespace group always sorts first by construction) are equivalent."
+  },
+  {
+    "upstream": "packages/durable/src/codemode/output.ts",
+    "package": "./durable/codemode",
+    "tests": [
+      "TestFormatResultMatchesPi"
+    ],
+    "upstream_reference": "packages/durable/src/codemode/output.ts:1-206 (formatResult, valueText, truncate, saveImages) run as-is under Node by durable/codemode/testdata/output-oracle.mjs, which generates durable/codemode/testdata/output-golden.json (60 cases)",
+    "mutation": "Each applied to durable/codemode/output.go and failing TestFormatResultMatchesPi: `json.Unmarshal(value, &text) == nil && bytes.HasPrefix(...)` -> `||`; `length <= budget` -> `<`; `lines <= 2*lineBudget` -> `<`; `2*lineBudget` -> `3*lineBudget`; `tailChars > 0` -> `>= 0` and `> 1`; `n <= 0` -> `n <= 1` in lastLines; `budget / 2` and the removed-token count. An operator pass over output.go leaves only two equivalent survivors: `n > len(lines)` for `n >= len(lines)` in lastLines and the dropped-rune value in decodeBase64."
+  },
+  {
+    "upstream": "packages/durable/src/search.ts",
+    "package": "./durable/internal/search",
+    "tests": [
+      "TestTokenizeAndRankDocumentsMatchPiOnSeededInputs"
+    ],
+    "upstream_reference": "packages/durable/src/search.ts:7-85 (STOP_WORDS, stem, tokenize, rankDocuments) run as-is under Node by durable/internal/search/testdata/search_oracle.mjs over 700 seeded texts and 4000 seeded rankings",
+    "mutation": "Each applied to durable/internal/search/search.go and failing TestTokenizeAndRankDocumentsMatchPiOnSeededInputs: each of the 21 stop words removed and an extra stop word added; stem thresholds `len(term) > 4` -> `>= 4` and `> 5` (ies and plural endings), `len(term) > 3` -> `>= 3` and `> 4`; each alternative of the plural regexp removed and `ses` added; `ss` guard removed; camelCase regexps changed; `jsstring.ToLower` -> `strings.ToLower`; k1 1.2 -> 1.3; b 0.75 -> 0.7; query terms not deduplicated; the IDF half terms; `score > 0` -> `>= 0`; `sort.SliceStable` -> `sort.Slice` and the tie comparator; limit slice off by one. Survivors are equivalent: `tf*(k1+1)` -> `tf*k1` scales every score alike, `limit <= 0` -> `< 0`, a missing documents guard and a missing zero-length guard change no ranking."
+  },
+  {
+    "upstream": "packages/durable/src/tool-search/tool-search.ts",
+    "package": "./durable/toolsearch",
+    "tests": [
+      "TestToolSearchMatchesPiOnSeededDeferredTools"
+    ],
+    "upstream_reference": "packages/durable/src/tool-search/tool-search.ts:11-92 (TOOL_SEARCH_TOOL_NAME, DEFAULT_TOOL_SEARCH_LIMIT, schemaText, searchText, createToolSearchTool, createToolSearchExtension) run as-is under Node, executing the tool over 6000 seeded cases, by durable/toolsearch/testdata/tool_search_oracle.mjs; Pi's own cases are packages/durable/test/tool-search.test.ts (ported in toolsearch_test.go)",
+    "mutation": "Each applied to durable/toolsearch/toolsearch.go and failing TestToolSearchMatchesPiOnSeededDeferredTools: the empty-query check, its message and the limit message; `limit != math.Trunc(limit) || limit <= 0` -> `limit <= 0` and `limit != math.Trunc(limit) || limit < 0`; `limit := float64(DefaultLimit)` -> `DefaultLimit + 1`; the MaxInt32 clamp; first-line cut, trim and CR strip of the description; plural `len(loaded) == 1` -> `== 2` and never; the search text without the description, a duplicated description, no schema descriptions, no property names, no `items`, and each of anyOf, oneOf and allOf not walked; `properties` not walked; control without loads and no control; `Replay: ReplaySafe` -> `ReplayUnsafe`; the extension name and tool list; `ToolName` and `DefaultLimit`. Equivalent survivors: the name with `_` as spaces (the tokenizer splits `_` anyway) and blank search-text parts (they add no terms)."
+  }
+]
