@@ -133,10 +133,10 @@ format-version-policy: ## Reject remaining Pig-owned format discriminators (stri
 	@go run ./test/parity/cmd/formatversions -strict -marker-roots ".,piglets"
 
 closure-check: interface-deps ## Validate deterministic closure schema/store/derivation/query contracts
-	go test ./test/parity/closure ./test/parity/cmd/closure
+	$(GO_TEST) ./test/parity/closure ./test/parity/cmd/closure
 
 correspondence-check: interface-deps
-	go test ./test/parity/correspondence ./test/parity/cmd/correspondence
+	$(GO_TEST) ./test/parity/correspondence ./test/parity/cmd/correspondence
 	@go run ./test/parity/cmd/correspondence compare \
 		-root . \
 		-upstream-version "$(UPSTREAM_VERSION)" \
@@ -159,7 +159,7 @@ porter-campaign: ## Run read-only workers
 	@PIG_BIN="$(PARITY_PIG_BIN)" ./automation/porter/run-pig-porter-campaign.sh "$(MODE)" $(FAMILIES)
 
 porter-check: ## Verify the direct Porter contract and Piglet extension adapter
-	go test ./test/parity/porter ./test/parity/cmd/porter
+	$(GO_TEST) ./test/parity/porter ./test/parity/cmd/porter
 	@python3 -B -m unittest discover -s automation/porter -p 'test_*.py'
 	@go build -buildvcs=false -o $(CHECK_PIG_BIN) ./cmd/pig
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/porter/extensions/pig-porter >/dev/null
@@ -183,7 +183,7 @@ sdk-apidiff: ## Fail on an incompatible extension SDK change since the pinned re
 	@go run ./automation/ci/sdkapidiff
 
 custom-factory-ledger-drift: ## Validate the checked-in internal draft
-	@go test $(GO_TEST_CI_COUNT) ./test/parity/cmd/customfactoryledger
+	@$(GO_TEST) $(GO_TEST_CI_COUNT) ./test/parity/cmd/customfactoryledger
 	@go run ./test/parity/cmd/customfactoryledger -check
 
 check-contracts-fast: closure-check correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps portmap-check behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build ## Local generated contract validation and drift gates
@@ -248,7 +248,7 @@ parity: parity-bin ## Scenario-driven comparison with resource-sensitive concurr
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
-	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
+	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" $(GO_TEST) -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
 	    -args -pig-parity.tags=hermetic -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(RESULTS)
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
 	@$(MAKE) -s coverage
@@ -261,7 +261,7 @@ parity-fast: parity-bin ## One strict Pig/Pi pair per hermetic scenario for the 
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
-	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
+	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" $(GO_TEST) -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
 	    -args -pig-parity.tags=hermetic -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(RESULTS) \
 	    $(if $(PARITY_SHARD),-pig-parity.shard=$(PARITY_SHARD))
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
@@ -277,7 +277,7 @@ parity-family: parity-bin ## Run one hermetic family and stop on the first faile
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
-	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
+	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" $(GO_TEST) -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
 	    -args -pig-parity.dir="$(CURDIR)/test/parity/scenarios/$(FAMILY)" -pig-parity.tags=hermetic -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(SCOPED_RESULTS)
 	@$(MAKE) -s require-parity-ran RESULTS=$(SCOPED_RESULTS)
 
@@ -287,7 +287,7 @@ parity-driver: parity-bin ## Run one pair for selected execution modes
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
-	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
+	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" $(GO_TEST) -tags=parity -count=1 -timeout $(PARITY_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
 	    -args -pig-parity.tags=hermetic -pig-parity.drivers="$(DRIVER)" -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(SCOPED_RESULTS)
 	@$(MAKE) -s require-parity-ran RESULTS=$(SCOPED_RESULTS)
 
@@ -298,7 +298,7 @@ parity-stress: parity-bin ## Repeat parity under the default group scheduler
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
-	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=2 -timeout $(PARITY_STRESS_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
+	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" $(GO_TEST) -tags=parity -count=2 -timeout $(PARITY_STRESS_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
 	    -args -pig-parity.tags=hermetic -pig-parity.runs=1 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(RESULTS)
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
 	@$(MAKE) -s coverage
@@ -311,7 +311,7 @@ parity-durable: parity-bin ## Run every scenario 3x in one go test invocation (d
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
-	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -timeout $(PARITY_DURABLE_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
+	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" $(GO_TEST) -tags=parity -count=1 -timeout $(PARITY_DURABLE_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
 	    -args -pig-parity.tags=hermetic -pig-parity.runs=3 -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(RESULTS)
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
 	@$(MAKE) -s coverage
@@ -325,7 +325,7 @@ parity-live: parity-bin ## Run every scenario but the owner-credentials ones und
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
-	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -v -timeout $(PARITY_LIVE_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
+	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" $(GO_TEST) -tags=parity -count=1 -v -timeout $(PARITY_LIVE_TIMEOUT) -parallel $(PARITY_PARALLEL) ./test/parity/runner \
 	    -args -pig-parity.exclude-tags=owner-credentials -pig-parity.group-limits=$(PARITY_GROUP_LIMITS) -pig-parity.results=$(RESULTS)
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
 	@$(MAKE) -s coverage
@@ -338,7 +338,7 @@ parity-live-owner: parity-bin ## Run the owner-credentials scenarios with PIG_PA
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
-	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -v -timeout 10m -parallel 1 ./test/parity/runner \
+	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" $(GO_TEST) -tags=parity -count=1 -v -timeout 10m -parallel 1 ./test/parity/runner \
 	    -args -pig-parity.tags=owner-credentials -pig-parity.serial=true
 
 # Authoritative performance gate: runs only scenarios that enforce
@@ -350,7 +350,7 @@ parity-perf: parity-bin ## Authoritative performance gate: runs only scenarios t
 	@run_id=$$$$; \
 	  cleanup_tmux() { tmux -L "pig-parity-$$run_id" list-sessions -F '#{session_name}' 2>/dev/null | xargs -I{} tmux -L "pig-parity-$$run_id" kill-session -t {} 2>/dev/null || true; }; \
 	  trap cleanup_tmux EXIT; \
-	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" go test -tags=parity -count=1 -v -timeout 30m -parallel 1 ./test/parity/runner \
+	  PIG_PARITY_RUN_ID="$$run_id" PIG_PARITY_PIG_BIN="$(PARITY_PIG_BIN)" $(GO_TEST) -tags=parity -count=1 -v -timeout 30m -parallel 1 ./test/parity/runner \
 	    -args -pig-parity.tags=fast,hermetic -pig-parity.serial=true -pig-parity.runtime-ratio-only=true -pig-parity.runs=1 \
 	    -pig-parity.results=$(RESULTS)
 	@$(MAKE) -s require-parity-ran RESULTS=$(RESULTS)
@@ -369,7 +369,7 @@ parity-flow-coverage: parity-deps
 		GOCOVERDIR="$$covdir" \
 		PIG_PARITY_PIG_BIN="$$covdir/pig" \
 		PIG_PARITY_PI_BIN="$(PIG_PARITY_PI_BIN)" \
-		go test -tags=parity ./test/parity/runner -run '$(PARITY_FLOW_RUN)' -count=1 -timeout 30m; \
+		$(GO_TEST) -tags=parity ./test/parity/runner -run '$(PARITY_FLOW_RUN)' -count=1 -timeout 30m; \
 		go tool covdata textfmt -i="$$covdir" -o="$(PARITY_FLOW_COVERAGE)"; \
 		echo "$(PARITY_FLOW_COVERAGE)"
 
@@ -512,7 +512,7 @@ ledger-frontier: ## Write the ranking of root gaps by the rows they unblock to $
 
 ledger-equivalence: ## Prove on lane branches that the cached derivation equals one from scratch (BRANCHES="ref ref ref"; slow: two full derivations per branch)
 	@test -n "$(BRANCHES)" || { echo "ledger-equivalence: set BRANCHES to lane branch refs" >&2; exit 2; }
-	@LEDGER_EQUIV_BRANCHES="$(BRANCHES)" go test ./test/parity/interface-closure/autobind -run TestCacheEquivalenceOnLaneBranches -v -timeout 120m
+	@LEDGER_EQUIV_BRANCHES="$(BRANCHES)" $(GO_TEST) ./test/parity/interface-closure/autobind -run TestCacheEquivalenceOnLaneBranches -v -timeout 120m
 
 interface-mapping-strict: ## Require every semantic interface mapping to be fully closed, and no Node-only gap on a high-use export
 	@$(MAKE) -s sdk-exports-release

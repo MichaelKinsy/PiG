@@ -27,20 +27,20 @@ for unit in "${units[@]}"; do
   case "$unit" in
     cli-*)
       if run=$(automation/ci/test-shard-pattern.sh "${unit#cli-}" 8 ./coding/cli); then
-        go test -timeout 30m -run "$run" ./coding/cli || failed=1
+        automation/ci/go-test.sh -timeout 30m -run "$run" ./coding/cli || failed=1
       else
         failed=1
       fi
       ;;
     extension-host-*)
       if run=$(automation/ci/test-shard-pattern.sh "${unit##*-}" 3 ./coding/extension/host/subprocess); then
-        go test -timeout 30m -run "$run" ./coding/extension/host/subprocess || failed=1
+        automation/ci/go-test.sh -timeout 30m -run "$run" ./coding/extension/host/subprocess || failed=1
       else
         failed=1
       fi
       ;;
     packages)
-      go test -timeout 30m ./env ./coding/piglet || failed=1
+      automation/ci/go-test.sh -timeout 30m ./env ./coding/piglet || failed=1
       ;;
   esac
   echo "::endgroup::"

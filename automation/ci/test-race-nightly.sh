@@ -39,9 +39,9 @@ if [[ -n "$shard" ]]; then
   run=(-run "$(automation/ci/test-shard-pattern.sh "${shard%/*}" "${shard#*/}" "${packages[0]}")")
 fi
 if [[ ${#packages[@]} -gt 0 ]]; then
-  go test -race -count=1 -timeout "$timeout" "${run[@]+"${run[@]}"}" "${packages[@]}"
+  "$root/automation/ci/go-test.sh" -race -count=1 -timeout "$timeout" "${run[@]+"${run[@]}"}" "${packages[@]}"
 fi
 for module in "${modules[@]+"${modules[@]}"}"; do
-  (cd "$module" && GOWORK=off go test -race -count=1 -timeout "$timeout" ./...)
+  (cd "$module" && GOWORK=off "$root/automation/ci/go-test.sh" -race -count=1 -timeout "$timeout" ./...)
 done
 echo "test-race-nightly: no data race in ${packages[*]+"${packages[*]}"} ${modules[*]+"${modules[*]}"}."

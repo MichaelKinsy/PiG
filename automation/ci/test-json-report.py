@@ -2,15 +2,18 @@
 # SPDX-License-Identifier: MIT
 """Summarize `go test -json` output as it streams.
 
-Usage: go test -json ... | test-json-report.py [--out FILE] [--slowest N]
+Usage: go test -json ... | test-json-report.py [--out FILE] [--slowest N] [--verbatim]
 
 Prints one line per finished package (ok, FAIL, cached, no test files), the
 complete output of every failed test, of every test still running when its
 package failed (a timeout or a crash), and of every build failure, and at the
 end the N slowest tests and packages with their elapsed seconds. The raw
-event stream is copied to FILE when --out is given, so the run can be
+event stream is copied to FILE byte for byte when --out is given, so the run can be
 inspected later with any test2json tool. The exit status is 0; the caller
 takes the status from go test itself.
+
+--verbatim prints every output event as it arrives instead, which is the text of
+the same run under go test -v (use it for a command that asked for -v).
 """
 
 import argparse
@@ -23,24 +26,33 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out")
     parser.add_argument("--slowest", type=int, default=10)
+    parser.add_argument("--verbatim", action="store_true")
     args = parser.parse_args()
-    # Text mode on Windows writes "\r\n" for every "\n". The report and the raw copy keep go test's "\n" line endings there too.
-    sys.stdout.reconfigure(newline="\n")
-    raw = open(args.out, "a", encoding="utf-8", newline="\n") if args.out else None
+    # The report is UTF-8 whatever the console's code page is, and a character it cannot encode is replaced instead of ending the shard. Text mode on Windows writes "\r\n" for every "\n"; the report keeps go test's "\n" line endings there too.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", newline="\n")
+    # The raw copy is the bytes go test wrote, unchanged: stdin is read as bytes, so no code page, newline translation or surrogate escape touches it.
+    raw = open(args.out, "ab") if args.out else None
     outputs: dict[tuple[str, str], list[str]] = defaultdict(list)
     build_output: dict[str, list[str]] = defaultdict(list)
     tests: list[tuple[float, str, str]] = []
     packages: list[tuple[float, str]] = []
     failed_packages = 0
-    for line in sys.stdin:
+    for raw_line in sys.stdin.buffer:
         if raw:
-            raw.write(line)
+            raw.write(raw_line)
+        # go test's events are UTF-8 JSON; a line that is not (test binary noise) is shown with replacement characters.
+        line = raw_line.decode("utf-8", errors="replace")
         try:
             event = json.loads(line)
         except ValueError:
             sys.stdout.write(line)
             continue
         action = event.get("Action")
+        if args.verbatim:
+            if action in ("output", "build-output"):
+                sys.stdout.write(event.get("Output", ""))
+                sys.stdout.flush()
+            continue
         if action == "build-output":
             build_output[event.get("ImportPath", "")].append(event.get("Output", ""))
             continue
