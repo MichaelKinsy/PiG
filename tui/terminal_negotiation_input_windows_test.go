@@ -38,6 +38,7 @@ func withTerminalInput(t *testing.T, test string, index int, body func(*testing.
 			t.Fatal(err)
 		}
 		defer restore()
+		diagTrace("CHILD raw mode entered")
 		sent := 0
 		body(t, interactiveTestInput{
 			file: os.Stdin,
@@ -64,6 +65,9 @@ func withTerminalInput(t *testing.T, test string, index int, body func(*testing.
 	console := startInPseudoConsole(t, os.Args[0], "-test.run=^"+test+"$", "-test.count=1")
 	console.typeRequestedKeys(t, keys)
 	console.wait(t)
+	if os.Getenv("PIG_DIAG_NEGSTOP") != "" {
+		t.Logf("DIAG child console output: %q", console.output())
+	}
 }
 
 // typeRequestedKeys types each numbered keys file the child writes, in order,
@@ -74,6 +78,7 @@ func (p *pseudoConsole) typeRequestedKeys(t *testing.T, keys string) {
 	for next := 1; time.Now().Before(deadline); {
 		text, err := readSharingDelete(fmt.Sprintf("%s.%d", keys, next))
 		if err == nil {
+			diagTrace("PARENT typing %q", string(text))
 			p.write(t, string(text))
 			next++
 			continue

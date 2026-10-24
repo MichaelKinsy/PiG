@@ -24,6 +24,14 @@ import (
 	"golang.org/x/term"
 )
 
+// diagTrace prints a timestamped line to stderr when PIG_DIAG_NEGSTOP is set (throwaway diag).
+func diagTrace(format string, args ...any) {
+	if os.Getenv("PIG_DIAG_NEGSTOP") == "" {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "DIAG %s pid=%d "+format+"\r\n", append([]any{time.Now().Format("15:04:05.000000"), os.Getpid()}, args...)...)
+}
+
 const (
 	defaultEscapeTimeoutMs    = 10
 	defaultSSHEscapeTimeoutMs = 100
@@ -589,6 +597,7 @@ func (t *ProcessTerminal) forwardInputFrom(ctx context.Context, source io.Reader
 			ms = max(0, int(math.Ceil(float64(time.Until(deadline))/float64(time.Millisecond))))
 		}
 		data, err := reader.read(ms)
+		diagTrace("forwardInput read %q err=%v", data, err)
 		if len(data) > 0 {
 			input.Process(data)
 		} else if err == nil {

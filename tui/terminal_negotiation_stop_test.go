@@ -89,12 +89,15 @@ func stopAfterNegotiationOnlyInput(t *testing.T, reply string, in interactiveTes
 		in.release()
 		<-done
 	}()
+	diagTrace("TEST send %q owedBefore=%d", reply, terminal.pendingKeyboardProtocolDeviceAttributes.Load())
 	in.send(t, reply)
 	select {
 	case <-output.seen:
+		diagTrace("TEST seen owed=%d", terminal.pendingKeyboardProtocolDeviceAttributes.Load())
 	case <-time.After(5 * time.Second):
 		t.Fatal("negotiation did not reach the production reader")
 	}
+	diagTrace("TEST stopping")
 	stopped := make(chan struct{})
 	go func() { terminal.Stop(); close(stopped) }()
 	select {
@@ -105,6 +108,7 @@ func stopAfterNegotiationOnlyInput(t *testing.T, reply string, in interactiveTes
 		<-stopped
 		t.Fatal("Stop blocked after negotiation-only input; the next read bypassed cancellable readiness")
 	}
+	diagTrace("TEST stopped owed=%d", terminal.pendingKeyboardProtocolDeviceAttributes.Load())
 	select {
 	case data := <-inputs:
 		t.Fatalf("negotiation delivered as input: %q", data)
@@ -114,6 +118,7 @@ func stopAfterNegotiationOnlyInput(t *testing.T, reply string, in interactiveTes
 	}
 	in.send(t, "x")
 	data, err := readTestInput(in.file)
+	diagTrace("TEST final read %q %v", data, err)
 	if err != nil || string(data) != "x" {
 		t.Fatalf("next terminal owner read %q, %v; want x", data, err)
 	}

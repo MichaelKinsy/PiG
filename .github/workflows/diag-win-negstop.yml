@@ -1,0 +1,36 @@
+name: diag-win-negstop
+on:
+  push:
+    branches: [diag/win-negotiation-stop]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      GOTRACEBACK: all
+      PIG_DIAG_NEGSTOP: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: x200 current test
+        run: go test ./tui -run '^TestStopAfterNegotiationOnlyInput$' -v -count=200 -timeout 20m 2>&1 | tee negstop.log; grep -c -- '--- FAIL: TestStopAfterNegotiationOnlyInput/' negstop.log || true
+        shell: bash
+        continue-on-error: true
+      - name: summary
+        run: |
+          echo "=== fail count"; grep -c -- '--- FAIL' negstop.log || true
+          echo "=== pass count"; grep -c -- '--- PASS: TestStopAfterNegotiationOnlyInput/' negstop.log || true
+          echo "=== first failures"; grep -n -B2 -A6 -- '--- FAIL: TestStopAfterNegotiationOnlyInput/' negstop.log | head -150
+        shell: bash
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: negstop-log
+          path: negstop.log
