@@ -4,11 +4,11 @@ Generated from `709` PORT_MAP entries and `821` parity scenarios.
 
 ## Status
 
-- **Porting:** 632 / 634 intended-portable entries ✅ (99.7%).
-- **Behavior verification:** 583 / 632 ported entries (92.2%); 0 weak-only, 49 untested.
+- **Porting:** 633 / 634 intended-portable entries ✅ (99.8%).
+- **Behavior verification:** 584 / 633 ported entries (92.3%); 0 weak-only, 49 untested.
 - **Upstream test porting:** 692 ported / 0 partial / 0 pending (5 other dispositions; [file mapping](interfaces/test-mapping-v1.4.0+acf83acf.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.4.0+acf83acf.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 709. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 709. Breakdown: 75 n/a (designed out) · 1 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -20,7 +20,7 @@ Raw PORT_MAP rows: 709. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See 
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 53.8% |
 | `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 97.4% |
 | `durable` | 84 | 9 | 75 | 75 | 0 | 0 | 100.0% | 86.7% |
-| `env` | 23 | 3 | 20 | 19 | 1 | 0 | 95.0% | 100.0% |
+| `env` | 23 | 3 | 20 | 20 | 0 | 0 | 100.0% | 100.0% |
 | `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 15 | 0 | 0 | 100.0% | 100.0% |
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
@@ -28,7 +28,7 @@ Raw PORT_MAP rows: 709. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See 
 
 - **Four core packages (agent, ai, coding-agent, tui):** 463 / 464 intended-portable files ✅ (99.8%) from 514 rows; 452 behavioral (97.6%), 0 weak-only, 11 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 498 / 499 intended-portable files ✅ (99.8%) from 557 rows; 481 behavioral (96.6%), 0 weak-only, 17 untested.
-- **Whole monorepo (11 packages):** 632 / 634 intended-portable files ✅ (99.7%) from 709 rows; 583 behavioral (92.2%), 0 weak-only, 49 untested.
+- **Whole monorepo (11 packages):** 633 / 634 intended-portable files ✅ (99.8%) from 709 rows; 584 behavioral (92.3%), 0 weak-only, 49 untested.
 - **Interface closure:** 13363 of 13363 semantic interface IDs closed (217 designed-out, 13146 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
@@ -728,7 +728,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/env/daemon/src/scan.rs` | ✅ | 0 | 3 (unit:./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding, unit:./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding, unit:./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding) | not run | ./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding, ./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding, ./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding |
 | `packages/env/daemon/src/sys/mod.rs` | n/a | 0 | 0 | not run |  |
 | `packages/env/daemon/src/sys/unix.rs` | ✅ | 0 | 11 (unit:./durable/env/node:TestShellCommandRunsAsTheLeaderOfANewSession, unit:./env:TestDaemonExecMatchesPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonOpensASocketLikePisDaemon, unit:./env:TestDaemonStatReportsTheFilesIdentityLikePisDaemon) | not run | ./durable/env/node:TestShellCommandRunsAsTheLeaderOfANewSession, ./env:TestDaemonExecMatchesPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonOpensASocketLikePisDaemon, ./env:TestDaemonStatReportsTheFilesIdentityLikePisDaemon |
-| `packages/env/daemon/src/sys/windows.rs` | 🟡 | 0 | 0 | not run |  |
+| `packages/env/daemon/src/sys/windows.rs` | ✅ | 0 | 6 (unit:./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, unit:./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, unit:./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, unit:./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, unit:./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, unit:./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath) | not run | ./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, ./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, ./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, ./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, ./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath, ./env/daemon:TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath |
 | `packages/env/daemon/src/watch.rs` | ✅ | 0 | 11 (unit:./env/daemon:TestWatchEventsMatchTheRustDaemon, unit:./env:TestDaemonWatchMatchesPisDaemon, unit:./env:TestDaemonWatchMatchesPisDaemon, unit:./env:TestDaemonWatchMatchesPisDaemon, unit:./env:TestDaemonWatchMatchesPisDaemon, unit:./env:TestDaemonWatchMatchesPisDaemon, unit:./env:TestDaemonWatchMatchesPisDaemon, unit:./env:TestDaemonWatchRequestsMatchPisDaemon, unit:./env:TestDaemonWatchRequestsMatchPisDaemon, unit:./env:TestDaemonWatchRequestsMatchPisDaemon, unit:./env:TestDaemonWatchRequestsMatchPisDaemon) | not run | ./env/daemon:TestWatchEventsMatchTheRustDaemon, ./env:TestDaemonWatchMatchesPisDaemon, ./env:TestDaemonWatchMatchesPisDaemon, ./env:TestDaemonWatchMatchesPisDaemon, ./env:TestDaemonWatchMatchesPisDaemon, ./env:TestDaemonWatchMatchesPisDaemon, ./env:TestDaemonWatchMatchesPisDaemon, ./env:TestDaemonWatchRequestsMatchPisDaemon, ./env:TestDaemonWatchRequestsMatchPisDaemon, ./env:TestDaemonWatchRequestsMatchPisDaemon, ./env:TestDaemonWatchRequestsMatchPisDaemon |
 | `packages/env/daemon/src/window.rs` | ✅ | 0 | 7 (unit:./env/daemon:TestWindowCountsEverythingAndKeepsMoreThanTheWindowAfterASkip, unit:./env/daemon:TestWindowTrimsOnCharacterBoundariesAndRecordsHowTheSkipEnds, unit:./env:TestDaemonExecMatchesPisDaemon, unit:./env:TestDaemonExecMatchesPisDaemon, unit:./env:TestDaemonExecMatchesPisDaemon, unit:./env:TestDaemonExecMatchesPisDaemon, unit:./env:TestDaemonExecMatchesPisDaemon) | not run | ./env/daemon:TestWindowCountsEverythingAndKeepsMoreThanTheWindowAfterASkip, ./env/daemon:TestWindowTrimsOnCharacterBoundariesAndRecordsHowTheSkipEnds, ./env:TestDaemonExecMatchesPisDaemon, ./env:TestDaemonExecMatchesPisDaemon, ./env:TestDaemonExecMatchesPisDaemon, ./env:TestDaemonExecMatchesPisDaemon, ./env:TestDaemonExecMatchesPisDaemon |
 | `packages/evals/src/cli.ts` | ✅ | 0 | 6 (unit:./internal/evals:TestParseEvalCliMatchesUpstream, unit:./internal/evals:TestRunEvalCliExitsZeroWhenEveryPairScores, unit:./internal/evals:TestRunEvalCliFailures, unit:./internal/evals:TestRunEvalCliOrdersRequestedFilesByUTF16CodeUnit, unit:./internal/evals:TestRunEvalCliPlansRunsAndReports, unit:./internal/evals:TestRunEvalCliSortsRequestedFilesByCodeUnit) | not run | ./internal/evals:TestParseEvalCliMatchesUpstream, ./internal/evals:TestRunEvalCliExitsZeroWhenEveryPairScores, ./internal/evals:TestRunEvalCliFailures, ./internal/evals:TestRunEvalCliOrdersRequestedFilesByUTF16CodeUnit, ./internal/evals:TestRunEvalCliPlansRunsAndReports, ./internal/evals:TestRunEvalCliSortsRequestedFilesByCodeUnit |

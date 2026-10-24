@@ -22232,6 +22232,31 @@
       ]
     },
     {
+      "id": "BF-D197",
+      "title": "The env daemon's limit of open files is the hard limit, where Pi's daemon keeps the soft limit it inherited",
+      "symptom": "none. Pi's daemon leaves the limit alone (no `setrlimit` call in any file of `packages/env/daemon/src`) and maps the system's `EMFILE` as it should (`src/sys/unix.rs:35`). The two counts differ because the two runtimes differ.",
+      "rootCause": "nothing in PiG reaches the limit on purpose. The Go runtime's raise is the toolchain's own behavior (every Go program on Unix has it), and undoing it to give a program Pi's smaller limit would make PiG fail on workloads that succeed, in a daemon whose handle table already caps the count.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D197",
+      "removeWhen": "the Go runtime lets a program keep its inherited soft limit, or Pi's daemon raises its own soft limit to the hard limit at start, or an owner decision reverses this one; then the marker, the two tests and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "9868e242c6",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "env/daemon/descriptor_limit_linux_test.go::TestDescriptorLimitIsTheHardLimit",
+        "env/daemon_descriptor_limit_divergence_test.go::TestDaemonDescriptorLimitIsTheHardLimitUnlikePisDaemon",
+        "env/daemon_wire_oracle_test.go::TestDaemonHandlesAreLimitedLikePisDaemon"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -36628,6 +36653,11 @@
       "id": "D190",
       "title": "The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a…",
       "entry": "BF-648ff3e-13"
+    },
+    {
+      "id": "D197",
+      "title": "The env daemon's limit of open files is the hard limit, where Pi's daemon keeps the soft limit it inherited",
+      "entry": "BF-D197"
     }
   ],
   "exemptCommits": {
