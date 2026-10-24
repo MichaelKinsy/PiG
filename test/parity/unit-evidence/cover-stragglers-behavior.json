@@ -1,0 +1,1108 @@
+[
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestIsOpenRouterModelMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `provider == \"openrouter\" ||` with `false ||`; TestIsOpenRouterModelMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestIsOpenRouterModelMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `strings.Contains(baseURL, \"openrouter.ai\")` with `strings.HasSuffix(baseURL, \"openrouter.ai\")`; TestIsOpenRouterModelMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestApplyOpenRouterReportedCostMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `!math.IsInf(value, 0) && value >= 0` with `!math.IsInf(value, 0) && value > 0`; TestApplyOpenRouterReportedCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestApplyOpenRouterReportedCostMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `case \"false\":\\n\\t\\tusage.Cost.Total = cost` with `case \"false\":\\n\\t\\tusage.Cost.Total = usage.Cost.Total`; TestApplyOpenRouterReportedCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestApplyOpenRouterReportedCostMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `usage.Cost.Total = cost + upstream` with `usage.Cost.Total = upstream`; TestApplyOpenRouterReportedCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestApplyOpenRouterReportedCostMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `upstream, ok = prompt+completions, true` with `upstream, ok = prompt-completions, true`; TestApplyOpenRouterReportedCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestApplyOpenRouterReportedCostMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `|| upstream < 0 {` with `|| upstream <= 0 {`; TestApplyOpenRouterReportedCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestApplyOpenRouterReportedCostMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `\\t\\tusage.Cost.Total = cost + upstream\\n\\t\\tusage.Cost.TotalFromProvider = new(true)` with `\\t\\tusage.Cost.Total = cost + upstream`; TestApplyOpenRouterReportedCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestApplyOpenRouterReportedCostMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `case \"false\":\\n\\t\\tusage.Cost.Total = cost\\n\\t\\tusage.Cost.TotalFromProvider = new(true)` with `case \"false\":\\n\\t\\tusage.Cost.Total = cost`; TestApplyOpenRouterReportedCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/openrouter-cost.ts",
+  "package": "./ai",
+  "tests": [
+   "TestApplyOpenRouterReportedCostMatchesPi"
+  ],
+  "upstream_reference": "packages/ai/test/openrouter-cost.test.ts (all five cases ported by TestIsOpenRouterModel and TestApplyOpenRouterReportedCost); ai/testdata/openrouter_cost.mjs runs the pinned Pi's utils/openrouter-cost.js over the same and further inputs",
+  "mutation": "ai/openrouter_cost.go: replace `if !promptOK || !completionsOK {` with `if !promptOK && !completionsOK {`; TestApplyOpenRouterReportedCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `if !(perToken >= 0) {` with `if !(perToken > 0) {`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `scaled := perToken * 1_000_000` with `scaled := perToken * 1_000`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `jsstring.ToFixed(scaled, 6)` with `jsstring.ToFixed(scaled, 5)`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `InputCostPer1M:      openRouterPerMillion(override.Prompt, base.Input)` with `InputCostPer1M:      openRouterPerMillion(override.Prompt, 0)`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `CacheWriteCostPer1M: openRouterPerMillion(override.InputCacheWrite, base.CacheWrite)` with `CacheWriteCostPer1M: openRouterPerMillion(override.InputCacheWrite, 0)`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `override.UTCStart != nil || override.UTCEnd != nil || override.UTCDays != nil {` with `override.UTCEnd != nil || override.UTCDays != nil {`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `override.UTCStart != nil || override.UTCEnd != nil || override.UTCDays != nil {` with `override.UTCStart != nil || override.UTCDays != nil {`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `override.UTCStart != nil || override.UTCEnd != nil || override.UTCDays != nil {` with `override.UTCStart != nil || override.UTCEnd != nil {`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `if math.IsInf(scaled, 0) {\\n\\t\\treturn scaled\\n\\t}` with `if math.IsInf(scaled, 0) {\\n\\t\\treturn 0\\n\\t}`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `InputTokensAbove:    *override.MinPromptTokens,` with `InputTokensAbove:    0,`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `Output:     openRouterPerMillion(pricing.Completion, 0),` with `Output:     openRouterPerMillion(pricing.Prompt, 0),`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/openrouter-api.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterCostMatchesPi"
+  ],
+  "upstream_reference": "ai/testdata/openrouter_cost.mjs runs the pinned Pi's providers/openrouter-api.js openRouterCost over pricing documents, tiers and time-of-day overrides",
+  "mutation": "ai/openrouter_api.go: replace `CacheRead:  openRouterPerMillion(pricing.InputCacheRead, 0),` with `CacheRead:  openRouterPerMillion(pricing.InputCacheWrite, 0),`; TestOpenRouterCostMatchesPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/model-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestModelSchemaExportsMatchPi"
+  ],
+  "upstream_reference": "ai/providers/model-schema.js of the pinned Pi: TestModelSchemaExportsMatchPi compares every export with the Go schema tree, and the rendered models.schema.json is byte-equal to the schema Pi publishes (.upstream/current/packages/coding-agent/schemas/models.schema.json)",
+  "mutation": "internal/codingagent/configschema/model.go: replace `[]string{\"minimal\", \"low\", \"medium\", \"high\", \"xhigh\", \"max\"}` with `[]string{\"minimal\", \"low\", \"medium\", \"high\", \"xhigh\"}`; TestModelSchemaExportsMatchPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/model-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestModelSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "ai/providers/model-schema.js of the pinned Pi: TestModelSchemaExportsMatchPi compares every export with the Go schema tree, and the rendered models.schema.json is byte-equal to the schema Pi publishes (.upstream/current/packages/coding-agent/schemas/models.schema.json)",
+  "mutation": "internal/codingagent/configschema/model.go: replace `Opt{\"maximum\", 100}` with `Opt{\"maximum\", 101}`; TestModelSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/model-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestModelSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "ai/providers/model-schema.js of the pinned Pi: TestModelSchemaExportsMatchPi compares every export with the Go schema tree, and the rendered models.schema.json is byte-equal to the schema Pi publishes (.upstream/current/packages/coding-agent/schemas/models.schema.json)",
+  "mutation": "internal/codingagent/configschema/model.go: replace `Opt{\"exclusiveMinimum\", 0}` with `Opt{\"minimum\", 0}`; TestModelSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/model-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestModelSchemaExportsMatchPi"
+  ],
+  "upstream_reference": "ai/providers/model-schema.js of the pinned Pi: TestModelSchemaExportsMatchPi compares every export with the Go schema tree, and the rendered models.schema.json is byte-equal to the schema Pi publishes (.upstream/current/packages/coding-agent/schemas/models.schema.json)",
+  "mutation": "internal/codingagent/configschema/model.go: replace `[]string{\"none\", \"short\", \"long\"}` with `[]string{\"short\", \"long\"}`; TestModelSchemaExportsMatchPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/model-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestModelSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "ai/providers/model-schema.js of the pinned Pi: TestModelSchemaExportsMatchPi compares every export with the Go schema tree, and the rendered models.schema.json is byte-equal to the schema Pi publishes (.upstream/current/packages/coding-agent/schemas/models.schema.json)",
+  "mutation": "internal/codingagent/configschema/model.go: replace `Optional(\"maxPerRequest\", Integer(Opt{\"minimum\", 1}` with `Optional(\"maxPerRequest\", Integer(Opt{\"minimum\", 0}`; TestModelSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/model-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestModelSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "ai/providers/model-schema.js of the pinned Pi: TestModelSchemaExportsMatchPi compares every export with the Go schema tree, and the rendered models.schema.json is byte-equal to the schema Pi publishes (.upstream/current/packages/coding-agent/schemas/models.schema.json)",
+  "mutation": "internal/codingagent/configschema/model.go: replace `\"Maximum serialized provider request size in bytes.\"` with `\"Maximum serialized provider request size in kilobytes.\"`; TestModelSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/model-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestModelSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "ai/providers/model-schema.js of the pinned Pi: TestModelSchemaExportsMatchPi compares every export with the Go schema tree, and the rendered models.schema.json is byte-equal to the schema Pi publishes (.upstream/current/packages/coding-agent/schemas/models.schema.json)",
+  "mutation": "internal/codingagent/configschema/model.go: replace `P(\"inputTokensAbove\", Number(` with `Optional(\"inputTokensAbove\", Number(`; TestCompatSchemaExportsMatchPi, TestModelSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_a.go: delete `Literal(\"openai-nosession\"), `; TestCompatSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_a.go: replace `Literal(\"thinking_budget_tokens\")` with `Literal(\"thinking_budget_token\")`; TestCompatSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_a.go: replace `Optional(\"p99\", Number(` with `Optional(\"p98\", Number(`; TestCompatSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_a.go: replace `Union(literals(\"thinking.enabled\", \"thinking.effort\", \"thinking.budget\"))` with `Union(literals(\"thinking.enabled\", \"thinking.budget\"))`; TestCompatSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_a.go: replace `Union([]*Schema{Number(), String()}, D(description))` with `Union([]*Schema{String(), Number()}, D(description))`; TestCompatSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_b.go: delete `{\"azure-openai-responses\", \"OpenAIResponsesCompatSchema\"},\\n`; TestCompatSchemaExportsMatchPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_b.go: replace `{\"typesafe-system-one\", \"SystemOneCompatSchema\"}` with `{\"typesafe-system-one\", \"BedrockCompatSchema\"}`; TestCompatSchemaExportsMatchPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestCompatSchemasPreserveAPISpecificDefaults"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_a.go (line 137): replace `Default(true)` with `Default(false)`; TestCompatSchemaExportsMatchPi, TestCompatSchemasPreserveAPISpecificDefaults fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestCompatSchemasPreserveAPISpecificDefaults"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_b.go (line 8): replace `Default(true)` with `Default(false)`; TestCompatSchemaExportsMatchPi, TestCompatSchemasPreserveAPISpecificDefaults fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestCompatSchemasPreserveAPISpecificDefaults"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_b.go (line 25): replace `Default(false)` with `Default(true)`; TestCompatSchemaExportsMatchPi, TestCompatSchemasPreserveAPISpecificDefaults fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_b.go (line 47): replace `Default(false)` with `Default(true)`; TestCompatSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/ai/src/providers/compat-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestCompatSchemaExportsMatchPi",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/ai/test/compat-schema.test.ts (TestCompatSchemasPreserveAPISpecificDefaults, TestProviderCompatSchemaAssignsNoAPISpecificDefaults); TestCompatSchemaExportsMatchPi compares every export of the pinned Pi's compat-schema.js, and the rendered models.schema.json is byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/compat_a.go (line 108): replace `Default(true)` with `Default(false)`; TestCompatSchemaExportsMatchPi, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `Optional(\"keepRecentTokens\", nonNegativeSafeInteger(Default(d.compactionKeepRecentTokens)))` with `Optional(\"keepRecentTokens\", nonNegativeSafeInteger())`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror",
+   "TestSettingsSchemaRejectsWhatRuntimeAccessorsReject"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `{\"minimum\", 0}, {\"maximum\", int64(1<<53 - 1)}` with `{\"minimum\", 1}, {\"maximum\", int64(1<<53 - 1)}`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror, TestSettingsSchemaRejectsWhatRuntimeAccessorsReject fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `literals(\"auto\", \"sse\", \"websocket\", \"websocket-cached\")` with `literals(\"auto\", \"sse\", \"websocket\")`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `literals(\"fork\", \"tree\", \"none\")` with `literals(\"fork\", \"tree\")`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror",
+   "TestSettingsSchemaRejectsWhatRuntimeAccessorsReject"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `Optional(\"inlineBudget\", Number(Opt{\"minimum\", 0}, ` with `Optional(\"inlineBudget\", Number(`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror, TestSettingsSchemaRejectsWhatRuntimeAccessorsReject fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror",
+   "TestSettingsSchemaRejectsWhatRuntimeAccessorsReject"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `Union([]*Schema{Number(Opt{\"minimum\", 0}), Literal(\"disabled\")}, opts...)` with `Union([]*Schema{Number(), Literal(\"disabled\")}, opts...)`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror, TestSettingsSchemaRejectsWhatRuntimeAccessorsReject fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror",
+   "TestRepresentativeDocumentsValidateAgainstTheGeneratedSchemas"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `{\"additionalProperties\", true}` with `{\"additionalProperties\", false}`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror, TestRepresentativeDocumentsValidateAgainstTheGeneratedSchemas fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `Optional(\"outputPad\", Union([]*Schema{Literal(0), Literal(1)}` with `Optional(\"outputPad\", Union([]*Schema{Literal(0), Literal(2)}`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `literals(\"regular\", \"fullscreen\")` with `literals(\"fullscreen\")`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `Boolean(Default(d.warningsAnthropicExtraUsage))` with `Boolean()`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `compactionReserveTokens: 16384, compactionKeepRecentTokens: 20000` with `compactionReserveTokens: 16384, compactionKeepRecentTokens: 20001`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `markdownMermaid: \"streaming\"` with `markdownMermaid: \"final\"`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts ported over the rendered settings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/settings.schema.json",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `Optional(\"fullscreenWheelScrollLines\", Union([]*Schema{Number(), Literal(\"auto\")}` with `Optional(\"fullscreenWheelScrollLines\", Union([]*Schema{Number(), Literal(\"manual\")}`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/keybindings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts (keybindings cases) over the rendered keybindings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/keybindings.schema.json",
+  "mutation": "internal/codingagent/keybindings_schema.go: replace `for _, id := range tui.TUIKeybindingOrder {` with `for _, id := range tui.TUIKeybindingOrder[1:] {`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/keybindings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts (keybindings cases) over the rendered keybindings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/keybindings.schema.json",
+  "mutation": "internal/codingagent/keybindings_schema.go: replace `for _, id := range km.KeybindingIDs() {` with `for _, id := range km.KeybindingIDs()[1:] {`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/keybindings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts (keybindings cases) over the rendered keybindings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/keybindings.schema.json",
+  "mutation": "internal/codingagent/keybindings_schema.go: replace `Name: \"KeybindingValue\"` with `Name: \"KeybindingValues\"`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/keybindings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror",
+   "TestRepresentativeDocumentsValidateAgainstTheGeneratedSchemas"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts (keybindings cases) over the rendered keybindings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/keybindings.schema.json",
+  "mutation": "internal/codingagent/keybindings_schema.go: replace `configschema.Union([]*configschema.Schema{keyIDSchema(), configschema.Array(keyIDSchema())}, opts...)` with `configschema.Union([]*configschema.Schema{keyIDSchema()}, opts...)`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror, TestRepresentativeDocumentsValidateAgainstTheGeneratedSchemas fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/keybindings-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestKeybindingsSchemaValidatesKeySyntax",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts (keybindings cases) over the rendered keybindings.schema.json, judged by the pinned Pi's typebox; the rendered artifact is byte-equal to Pi's published schemas/keybindings.schema.json",
+  "mutation": "internal/codingagent/keybindings_schema.go: replace `Opt{K: \"pattern\", V: KeyIDPattern()}` with `Opt{K: \"pattern\", V: \"^.*$\"}`; TestKeybindingsSchemaValidatesKeySyntax, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestKeybindingsSchemaValidatesKeySyntax",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/key_id_schema.go: replace `\"ctrl\", \"shift\", \"alt\", \"super\"` with `\"ctrl\", \"shift\", \"alt\"`; TestKeybindingsSchemaValidatesKeySyntax, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestKeybindingsSchemaValidatesKeySyntax",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/key_id_schema.go (line 53): replace `{0,4}` with `{0,3}`; TestKeybindingsSchemaValidatesKeySyntax, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestKeybindingsSchemaValidatesKeySyntax",
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror",
+   "TestRepresentativeDocumentsValidateAgainstTheGeneratedSchemas"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/key_id_schema.go (line 53): replace `\"|\") + \"))(` with `\"|\") + \")))(`; TestKeybindingsSchemaValidatesKeySyntax, TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror, TestRepresentativeDocumentsValidateAgainstTheGeneratedSchemas fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/key_id_schema.go: replace `k.Escape, k.Esc, ` with `k.Esc, `; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestKeyIDValidationMatchesPiKeyIdSchema",
+   "TestKeybindingsFileLoadingMatchesPi"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/key_id_schema.go: replace `first >= 0 &&` with `first > 0 &&`; TestKeyIDValidationMatchesPiKeyIdSchema, TestKeybindingsFileLoadingMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestKeyIDValidationMatchesPiKeyIdSchema",
+   "TestKeybindingsFileLoadingMatchesPi"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/key_id_schema.go: replace `s[0] <= 'z'` with `s[0] <= 'y'`; TestKeyIDValidationMatchesPiKeyIdSchema, TestKeybindingsFileLoadingMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestKeybindingsFileLoadingMatchesPi"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/key_id_schema.go: replace `\"ctrl\", \"shift\", \"alt\", \"super\"` with `\"ctrl\", \"shift\", \"alt\"`; TestKeybindingsFileLoadingMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestKeybindingsFileLoadingMatchesPi"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/key_id_schema.go: replace `k.Escape, k.Esc, ` with `k.Esc, `; TestKeybindingsFileLoadingMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestKeyIDValidationMatchesPiKeyIdSchema",
+   "TestKeybindingsFileLoadingMatchesPi"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/keybindings.go: replace `if isKeyID(v) {` with `if true {`; TestKeyIDValidationMatchesPiKeyIdSchema, TestKeybindingsFileLoadingMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestKeyIDValidationMatchesPiKeyIdSchema",
+   "TestKeybindingsFileLoadingMatchesPi"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/keybindings.go: replace `if !ok || !isKeyID(s) {` with `if !ok {`; TestKeyIDValidationMatchesPiKeyIdSchema, TestKeybindingsFileLoadingMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/key-id-schema.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestKeyIDValidationMatchesPiKeyIdSchema"
+  ],
+  "upstream_reference": "packages/coding-agent/test/config-schemas.test.ts 'validates keybinding syntax'; TestKeyIDValidationMatchesPiKeyIdSchema compares isKeyID and the keybindings.json value check with the pinned Pi's compiled KeyIdSchema and KeybindingValueSchema over every modifier run before every key; TestKeybindingsFileLoadingMatchesPi loads keybindings.json through Pi's KeybindingsManager",
+  "mutation": "internal/codingagent/key_id_schema.go: replace `s[0] >= '0' && s[0] <= '9'` with `s[0] >= '1' && s[0] <= '9'`; TestKeyIDValidationMatchesPiKeyIdSchema fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `result := BranchSummaryConfig{ReserveTokens: 16384}` with `result := BranchSummaryConfig{ReserveTokens: 16385}`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `result := ProviderRetryConfig{MaxRetryDelayMs: 60000}` with `result := ProviderRetryConfig{MaxRetryDelayMs: 60001}`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `MaxRetries:      3,     // upstream default: 3` with `MaxRetries:      4,     // upstream default: 3`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `if mode == \"always\" || mode == \"hidden\" {\\n\\t\\treturn mode\\n\\t}\\n\\treturn \"auto\"` with `if mode == \"always\" || mode == \"hidden\" {\\n\\t\\treturn mode\\n\\t}\\n\\treturn \"hidden\"`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `return tui.TuiModeFullscreen\\n}\\n\\nfunc (sm *SettingsManager) GetFullscreenExitOutput` with `return tui.TuiModeRegular\\n}\\n\\nfunc (sm *SettingsManager) GetFullscreenExitOutput`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `if a == \"\" {\\n\\t\\treturn \"tree\"` with `if a == \"\" {\\n\\t\\treturn \"fork\"`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `default:\\n\\t\\treturn \"default\"\\n\\t}\\n}\\n\\n// RetryConfig` with `default:\\n\\t\\treturn \"all\"\\n\\t}\\n}\\n\\n// RetryConfig`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `\\tReserveTokens:    16384,\\n\\tKeepRecentTokens: 20000,` with `\\tReserveTokens:    16385,\\n\\tKeepRecentTokens: 20000,`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `return WarningSettings{AnthropicExtraUsage: true, anthropicExtraUsageSet: true}` with `return WarningSettings{AnthropicExtraUsage: false, anthropicExtraUsageSet: true}`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `s.EnableSkillCommands == nil || *s.EnableSkillCommands` with `s.EnableSkillCommands != nil && *s.EnableSkillCommands`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `return SessionShareDestinationAuto\\n}` with `return SessionShareDestinationGist\\n}`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `if s.ImageWidthCells == 0 && !s.imageWidthCellsSet {\\n\\t\\treturn 60\\n\\t}\\n\\treturn max(1, s.ImageWidthCells)` with `if s.ImageWidthCells == 0 && !s.imageWidthCellsSet {\\n\\t\\treturn 61\\n\\t}\\n\\treturn max(1, s.ImageWidthCells)`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `if s.AutocompleteMaxVisible == nil {\\n\\t\\treturn 5` with `if s.AutocompleteMaxVisible == nil {\\n\\t\\treturn 6`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `if s.Markdown == nil || s.Markdown.CodeBlockIndent == nil {\\n\\t\\treturn \"  \"` with `if s.Markdown == nil || s.Markdown.CodeBlockIndent == nil {\\n\\t\\treturn \" \"`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `return OutputPadNone\\n\\t}\\n\\treturn OutputPadOne` with `return OutputPadNone\\n\\t}\\n\\treturn OutputPadNone`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `defaultCacheWarmingMode CacheWarmingMode = \"streaming\"` with `defaultCacheWarmingMode CacheWarmingMode = \"idle\"`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetEnableInstallTelemetry() bool {\\n\\treturn readMerged(sm, func(s *Settings) bool { return s.EnableInstallTelemetry == nil || *s.EnableInstallTelemetry })` with `func (sm *SettingsManager) GetEnableInstallTelemetry() bool {\\n\\treturn readMerged(sm, func(s *Settings) bool { return s.EnableInstallTelemetry != nil && *s.EnableInstallTelemetry })`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/settings.go: replace `MaxAgentDelayMs: 60000, // upstream default cap` with `MaxAgentDelayMs: 61000, // upstream default cap`; TestSettingsDefaultsMatchPiOnAnEmptySettingsManager fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `compactionReserveTokens: 16384,` with `compactionReserveTokens: 16385,`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `transport: \"auto\", sessionShareDestination: \"auto\"` with `transport: \"sse\", sessionShareDestination: \"auto\"`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestRenderedSchemasAreByteEqualToThePinnedPiPackage",
+   "TestRenderedSchemasAreByteEqualToTheUpstreamMirror"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "internal/codingagent/configschema/settings.go: replace `codemodeMode:                \"on\", codemodeInlineBudget: 3000,` with `codemodeMode:                \"on\", codemodeInlineBudget: 3001,`; TestRenderedSchemasAreByteEqualToThePinnedPiPackage, TestRenderedSchemasAreByteEqualToTheUpstreamMirror fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./coding/extension/builtin/codemode",
+  "tests": [
+   "TestCodemodeDefaultsAreThePinnedPiSettingsDefaults"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "coding/extension/builtin/codemode/description.go: replace `const DefaultInlineBudget = 3000` with `const DefaultInlineBudget = 3001`; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-defaults.ts",
+  "package": "./coding/extension/builtin/codemode",
+  "tests": [
+   "TestCodemodeDefaultsAreThePinnedPiSettingsDefaults"
+  ],
+  "upstream_reference": "TestSettingsDefaultsMatchPiOnAnEmptySettingsManager reads every leaf of the pinned Pi's SETTINGS_DEFAULTS and the value Pi's SettingsManager getter returns on empty settings; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults does the same for codemode; the rendered settings.schema.json defaults are byte-equal to Pi's published schema",
+  "mutation": "coding/extension/builtin/codemode/tool.go: replace `\\treturn ModeOn\\n}\\n\\nfunc (o Options) inlineBudget` with `\\treturn ModeOnly\\n}\\n\\nfunc (o Options) inlineBudget`; TestCodemodeDefaultsAreThePinnedPiSettingsDefaults fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/client-identity.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent",
+   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled"
+  ],
+  "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
+  "mutation": "coding/client_identity.go: replace `UserAgent: new(ai.UserAgentDetailed)` with `UserAgent: new(ai.UserAgentShort)`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent, TestSDKTurnsAttributionOffWhenTelemetryIsDisabled fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/client-identity.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent",
+   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled"
+  ],
+  "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
+  "mutation": "coding/client_identity.go: replace `Version: new(Version)` with `Version: new(\"0.0.0\")`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent, TestSDKTurnsAttributionOffWhenTelemetryIsDisabled fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/client-identity.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled",
+   "TestSDKTurnsAttributionOffWithPITelemetryZero"
+  ],
+  "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
+  "mutation": "coding/client_identity.go: replace `if settings.IsInstallTelemetryEnabled() {` with `if true {`; TestSDKTurnsAttributionOffWhenTelemetryIsDisabled, TestSDKTurnsAttributionOffWithPITelemetryZero fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/client-identity.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled",
+   "TestSDKTurnsAttributionOffWithPITelemetryZero"
+  ],
+  "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
+  "mutation": "coding/client_identity.go: replace `identity.AttributionNull = true` with `identity.AttributionNull = false`; TestSDKTurnsAttributionOffWhenTelemetryIsDisabled, TestSDKTurnsAttributionOffWithPITelemetryZero fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/client-identity.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent"
+  ],
+  "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
+  "mutation": "coding/client_identity.go: replace `identity.Attribution = new(ai.PiAttribution)` with `identity.Attribution = nil`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/client-identity.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent",
+   "TestSDKTurnsAttributionOffWhenTelemetryIsDisabled",
+   "TestSDKTurnsAttributionOffWithPITelemetryZero"
+  ],
+  "upstream_reference": "packages/coding-agent/test/sdk-client-identity.test.ts ported (D26): the identity the session sends with each request",
+  "mutation": "coding/client_identity.go: replace `if settings.IsInstallTelemetryEnabled() {` with `if !settings.IsInstallTelemetryEnabled() {`; TestSDKIdentifiesPiGWithADetailedUserAgentAndAttributionAsACLIAgent, TestSDKTurnsAttributionOffWhenTelemetryIsDisabled, TestSDKTurnsAttributionOffWithPITelemetryZero fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/version.ts",
+  "package": "./ai",
+  "tests": [
+   "TestUserAgentVersionFieldFollowsPi"
+  ],
+  "upstream_reference": "packages/ai/test/identity.test.ts 'formats user agents' and the PI_AI_VERSION default (D65: PiG's product name and composite version stand in); ai/testdata/user_agent_version.mjs runs the pinned Pi's formatUserAgent",
+  "mutation": "ai/identity.go: replace `if identity != nil && identity.Version != nil {` with `if identity != nil && identity.Version != nil && *identity.Version != \"\" {`; TestUserAgentVersionFieldFollowsPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/version.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClientIdentityVersionDefaultsToTheProductVersion",
+   "TestFormatUserAgentForms",
+   "TestProductVersionAvailableWithoutMain",
+   "TestUserAgentVersionFieldFollowsPi"
+  ],
+  "upstream_reference": "packages/ai/test/identity.test.ts 'formats user agents' and the PI_AI_VERSION default (D65: PiG's product name and composite version stand in); ai/testdata/user_agent_version.mjs runs the pinned Pi's formatUserAgent",
+  "mutation": "ai/identity.go: replace `return ProductVersion\\n}` with `return \"0.0.0\"\\n}`; TestClientIdentityVersionDefaultsToTheProductVersion, TestFormatUserAgentForms, TestProductVersionAvailableWithoutMain, TestUserAgentVersionFieldFollowsPi fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/version.ts",
+  "package": "./ai",
+  "tests": [
+   "TestProductVersionAvailableWithoutMain"
+  ],
+  "upstream_reference": "packages/ai/test/identity.test.ts 'formats user agents' and the PI_AI_VERSION default (D65: PiG's product name and composite version stand in); ai/testdata/user_agent_version.mjs runs the pinned Pi's formatUserAgent",
+  "mutation": "ai/user_agent.go: replace `var ProductVersion = pigversion.Version` with `var ProductVersion = pigversion.Version + \"-x\"`; TestProductVersionAvailableWithoutMain fail"
+ },
+ {
+  "upstream": "packages/ai/src/utils/version.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClientIdentityVersionDefaultsToTheProductVersion",
+   "TestFormatUserAgentForms",
+   "TestUserAgentVersionFieldFollowsPi"
+  ],
+  "upstream_reference": "packages/ai/test/identity.test.ts 'formats user agents' and the PI_AI_VERSION default (D65: PiG's product name and composite version stand in); ai/testdata/user_agent_version.mjs runs the pinned Pi's formatUserAgent",
+  "mutation": "ai/identity.go: replace `return *identity.Version` with `return ProductVersion`; TestClientIdentityVersionDefaultsToTheProductVersion, TestFormatUserAgentForms, TestUserAgentVersionFieldFollowsPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestThemeTokenMetadataMatchesPi"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_json.go: replace `{\"border\", false, \"Normal borders\"}` with `{\"border\", false, \"Normal border\"}`; TestThemeTokenMetadataMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOmittedOptionalThemeTokensFallBackAsInPi",
+   "TestThemeTokenMetadataMatchesPi"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_json.go: replace `{\"scrollbarTrack\", true,` with `{\"scrollbarTrack\", false,`; TestOmittedOptionalThemeTokensFallBackAsInPi, TestThemeTokenMetadataMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOmittedOptionalThemeTokensFallBackAsInPi",
+   "TestThemeTokenMetadataMatchesPi"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_loader.go: replace `{\"scrollbarTrack\", \"muted\"}` with `{\"scrollbarTrack\", \"text\"}`; TestOmittedOptionalThemeTokensFallBackAsInPi, TestThemeTokenMetadataMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOmittedOptionalThemeTokensFallBackAsInPi",
+   "TestThemeTokenMetadataMatchesPi"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_loader.go: replace `{\"searchMatchText\", \"text\"}` with `{\"searchMatchText\", \"muted\"}`; TestOmittedOptionalThemeTokensFallBackAsInPi, TestThemeTokenMetadataMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBuiltinThemeTokensMatchPi",
+   "TestOmittedOptionalThemeTokensFallBackAsInPi",
+   "TestThemeTokenMetadataMatchesPi"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_loader.go: replace `\"selectedBg\": true, \"searchMatchBg\": true,` with `\"selectedBg\": true,`; TestBuiltinThemeTokensMatchPi, TestOmittedOptionalThemeTokensFallBackAsInPi, TestThemeTokenMetadataMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOmittedOptionalThemeTokensFallBackAsInPi",
+   "TestThemeTokenMetadataMatchesPi",
+   "TestThemeTokenVariantsMatchPiThemeTokens"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_json.go: replace `{\"borderAccent\", false,` with `{\"borderAccents\", false,`; TestOmittedOptionalThemeTokensFallBackAsInPi, TestThemeTokenMetadataMatchesPi, TestThemeTokenVariantsMatchPiThemeTokens fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOmittedOptionalThemeTokensFallBackAsInPi",
+   "TestThemeTokenMetadataMatchesPi"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_loader.go: replace `{\"thinkingMax\", \"thinkingXhigh\"}` with `{\"thinkingMax\", \"thinkingHigh\"}`; TestOmittedOptionalThemeTokensFallBackAsInPi, TestThemeTokenMetadataMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOmittedOptionalThemeTokensFallBackAsInPi",
+   "TestThemeTokenMetadataMatchesPi"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_json.go: replace `{\"thinkingMax\", true,` with `{\"thinkingMax\", false,`; TestOmittedOptionalThemeTokensFallBackAsInPi, TestThemeTokenMetadataMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOmittedOptionalThemeTokensFallBackAsInPi",
+   "TestThemeTokenMetadataMatchesPi"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_loader.go: delete `{\"searchMatchBg\", \"selectedBg\"},\\n`; TestOmittedOptionalThemeTokensFallBackAsInPi, TestThemeTokenMetadataMatchesPi fail"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOmittedOptionalThemeTokensFallBackAsInPi",
+   "TestThemeTokenMetadataMatchesPi"
+  ],
+  "upstream_reference": "the pinned Pi's THEME_TOKENS (order, slot, description, fallback) read by TestThemeTokenMetadataMatchesPi, theme loading with omitted optional tokens by TestOmittedOptionalThemeTokensFallBackAsInPi, and the built-in themes by TestBuiltinThemeTokensMatchPi",
+  "mutation": "tui/theme_loader.go: replace `\"toolPendingBg\": true, \"toolSuccessBg\": true,` with `\"toolPendingBg\": true,`; TestOmittedOptionalThemeTokensFallBackAsInPi, TestThemeTokenMetadataMatchesPi fail"
+ }
+]
