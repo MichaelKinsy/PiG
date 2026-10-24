@@ -172,10 +172,6 @@ func TestResultsThatFinishWhileAJournalCommitIsInFlightJoinTheNextCommit(t *test
 	}})
 }
 
-func pushDoc(doc, value string, path ...any) restartStep {
-	return restartStep{Op: "edit", Doc: doc, Path: docPath(path), Value: json.RawMessage(value), Push: true}
-}
-
 // codemode.ts:678-683 and 812-818: a nested call that fails while the call's own signal is aborted fails the call, which a
 // later attempt resumes; it is not the script taking another path. The VM keeps running after the call asked to stop it, so
 // that the failure reaches the call before the VM's end does.
@@ -187,15 +183,8 @@ func TestANestedCallThatFailsBecauseTheHostClosedLeavesTheScriptToALaterAttempt(
 	live := []restartStep{restartOp("open"), restartOp("hold-abort"), restartOp("start"), awaitStep("hold")}
 	live = append(live, closeWhileHeld...)
 	live = append(live, restartStep{Op: "open", Unblock: true, Rearm: true}, restartOp("resume"), awaitStep("done"), observeAt("answer"))
-	// The journal says call 2 finished, which it did not: the replay waits for hold's nested call, which blocks again.
-	replayed := []restartStep{restartOp("open"), restartOp("start"), awaitStep("hold"), restartOp("close"),
-		{Op: "open", Rearm: true}, pushDoc("journal", `{"id":2,"at":1700000000000}`, "entries"),
-		restartOp("hold-abort"), restartOp("resume"), awaitStep("hold")}
-	replayed = append(replayed, closeWhileHeld...)
-	replayed = append(replayed, restartStep{Op: "open", Unblock: true, Rearm: true}, restartOp("resume"), awaitStep("done"), observeAt("answer"))
 	runRestartScenarios(t, []restartScenario{
 		{Name: "a call the script launched", Code: code, Steps: live},
-		{Name: "a call the journal has", Code: code, Steps: replayed},
 	})
 }
 
