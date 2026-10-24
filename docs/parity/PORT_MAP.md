@@ -822,7 +822,7 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/env/daemon/src/scan.rs` | `durable/env/line_scan.go` (LineScanner; tests in env/daemon/scan_test.go) | ✅ |
 | `packages/env/daemon/src/sys/mod.rs` | `(Rust module barrel: Go selects sys_unix.go or sys_windows.go by build constraint)` | n/a |
 | `packages/env/daemon/src/sys/unix.rs` | `env/daemon/sys_unix.go` | ✅ |
-| `packages/env/daemon/src/sys/windows.rs` | `env/daemon/sys_windows.go (commands run through durable/env/node and os/exec, so quote_argument has no Go function; its test is ported as TestEscapeArgQuotesArgumentsLikeLibuv in env/daemon/sys_windows_test.go on syscall.EscapeArg, which runs on Windows only, so the row stays partial on this host)` | 🟡 |
+| `packages/env/daemon/src/sys/windows.rs` | `env/daemon/sys_windows.go (commands run through durable/env/node, whose spawn path builds the Windows command line with nodespawn.SetCommandLine, libuv's quote_cmd_arg, so quote_argument has no Go function; its test is ported as TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath in env/daemon/sys_windows_test.go, which sends each vector through the daemon's exec to a helper child and compares the command line and the received argv; Windows only, proven green and mutation-killed on windows-latest)` | ✅ |
 | `packages/env/daemon/src/watch.rs` | `env/daemon/watch.go` | ✅ |
 | `packages/env/daemon/src/window.rs` | `env/daemon/window.go (tests in env/daemon/window_test.go)` | ✅ |
 

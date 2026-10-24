@@ -970,5 +970,59 @@
   ],
   "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
   "mutation": "env/daemon/exec.go: replace `if milliseconds <= maxTimeoutMs {` with `if true {`; TestDaemonExecMatchesPisDaemon fails."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "durable/env/node/exec.go: in spawnSpec, drop empty arguments from the argv (`args: typed[1:]` becomes a loop keeping only non-empty ones); TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "durable/env/node/exec.go: in spawnSpec, join the arguments into one argument with single spaces (`args: []string{joined}`); TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "durable/env/node/exec.go: in spawnSpec, pre-quote every argument with nodespawn.QuoteCmdArg before os/exec sees it; TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "internal/nodespawn/cmdline.go: in QuoteCmdArg, disable the doubling of backslashes before a double quote or the end (`case quoteHit && c == '\\\\':` becomes `case false && quoteHit && c == '\\\\':`); TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "durable/env/node/exec.go: delete `nodespawn.SetCommandLine(cmd)`, so os/exec's syscall.EscapeArg builds the command line; TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "internal/nodespawn/cmdline.go: in QuoteCmdArg, return an empty argument as nothing instead of `\"\"`; TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
  }
 ]
