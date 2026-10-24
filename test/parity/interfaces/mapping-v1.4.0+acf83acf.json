@@ -206920,9 +206920,9 @@
         "call:durable/codemode/call.go#call.execute"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/examples/spec_usage_upstream_test.go#TestSpecUsageHostSequenceRuns",
-        "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
-        "test:durable/tools/coding_tools_pi_oracle_test.go#TestReadOfImagesMatchesPi"
+        "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi"
       ]
     },
     {
@@ -210293,9 +210293,9 @@
         "call:durable/codemode/tool.go#CreateExtension"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/examples/spec_usage_upstream_test.go#TestSpecUsageHostSequenceRuns",
-        "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
-        "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication"
+        "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi"
       ]
     },
     {
@@ -210359,9 +210359,9 @@
         "call:durable/codemode/tool.go#CreateExtension"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
-        "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication",
-        "test:durable/core/driver/core_test.go#TestAgentIsServedByTheCoreFromTheRegistryAndTheStoredState"
+        "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication"
       ]
     },
     {
@@ -212722,9 +212722,9 @@
         "call:durable/codemode/tool.go#CreateExtension"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
-        "test:durable/core/driver/core_test.go#TestAgentIsServedByTheCoreFromTheRegistryAndTheStoredState",
-        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
+        "test:durable/core/driver/core_test.go#TestAgentIsServedByTheCoreFromTheRegistryAndTheStoredState"
       ]
     },
     {
@@ -212744,9 +212744,9 @@
         "call:durable/codemode/tool.go#CreateExtension"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
-        "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication",
-        "test:durable/examples/chat_examples_test.go#TestExample14SystemPrompt"
+        "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication"
       ]
     },
     {
@@ -219235,9 +219235,9 @@
         "call:durable/codemode/call.go#call.execute"
       ],
       "evidence": [
-        "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
-        "test:durable/tools/coding_tools_run_pi_oracle_test.go#TestCodingToolsRunLikePi",
-        "test:durable/tools/tool_declarations_upstream_test.go#TestWriteEditAndShellToolDeclarationsMatchUpstream"
+        "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
+        "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets"
       ]
     },
     {
@@ -220907,6 +220907,7 @@
         "call:durable/codemode/call.go#call.execute"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/codemode/constants_test.go#TestExportedConstantsAndDocumentMatchPi"
       ]
     },
@@ -220927,9 +220928,9 @@
         "call:durable/codemode/tool.go#CreateTool"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/constants_test.go#TestExportedConstantsAndDocumentMatchPi",
-        "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted"
+        "test:durable/codemode/constants_test.go#TestExportedConstantsAndDocumentMatchPi"
       ]
     },
     {
@@ -220971,9 +220972,9 @@
         "call:durable/codemode/call.go#call.execute"
       ],
       "evidence": [
+        "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets",
         "test:durable/codemode/describe_test.go#TestDescribeListsCallableToolsAsDeclarationsGroupedByNamespace",
-        "test:durable/codemode/describe_test.go#TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteAndSaysWhatIsLeftOut",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
+        "test:durable/codemode/describe_test.go#TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteAndSaysWhatIsLeftOut"
       ]
     },
     {
@@ -221014,6 +221015,7 @@
         "call:durable/codemode/call.go#call.execute"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
         "test:durable/codemode/constants_test.go#TestExportedConstantsAndDocumentMatchPi"
       ]
@@ -221077,9 +221079,9 @@
         "call:durable/codemode/call.go#call.callGlobal"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
-        "test:durable/codemode/output_tool_test.go#TestDiscoveryGlobalsCheckTheirArguments",
-        "test:durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch"
+        "test:durable/codemode/output_tool_test.go#TestDiscoveryGlobalsCheckTheirArguments"
       ]
     },
     {
@@ -221099,9 +221101,9 @@
         "call:durable/codemode/tool.go#CreateExtension"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
-        "test:durable/codemode/models_test.go#TestCodeModeModelCallsRunInTheCallingPhasesTrace",
-        "test:durable/codemode/models_test.go#TestCodeModeModels"
+        "test:durable/codemode/models_test.go#TestCodeModeModelCallsRunInTheCallingPhasesTrace"
       ]
     },
     {
@@ -221121,9 +221123,9 @@
         "call:durable/codemode/tool.go#CreateExtension"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
-        "test:durable/codemode/models_test.go#TestCodeModeModelCallsRunInTheCallingPhasesTrace",
-        "test:durable/codemode/models_test.go#TestCodeModeModels"
+        "test:durable/codemode/models_test.go#TestCodeModeModelCallsRunInTheCallingPhasesTrace"
       ]
     },
     {
@@ -221143,9 +221145,9 @@
         "call:durable/codemode/tool.go#CreateTool"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted",
-        "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun",
-        "test:durable/codemode/call_test.go#TestTheFirstRunRecordsTheVMsFingerprint"
+        "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun"
       ]
     },
     {
@@ -221165,9 +221167,9 @@
         "call:durable/codemode/tool.go#CreateTool"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
         "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted",
-        "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun",
-        "test:durable/codemode/call_test.go#TestTheFirstRunRecordsTheVMsFingerprint"
+        "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun"
       ]
     },
     {
@@ -221187,6 +221189,7 @@
         "call:durable/codemode/tool.go#CreateExtension"
       ],
       "evidence": [
+        "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets",
         "test:durable/codemode/constants_test.go#TestExportedConstantsAndDocumentMatchPi"
       ]
     },
@@ -227630,8 +227633,8 @@
       ],
       "evidence": [
         "test:durable/images/node/tools_images_test.go#TestCreateNodePhotonImages",
-        "test:durable/images/node/worker_test.go#TestTheWorkerExitsWhenIdleAndTheNextImageStartsAnother",
-        "test:durable/images/node/worker_test.go#TestWorkerFalsePreparesWithThePlainProcessor"
+        "test:durable/images/node/worker_idle_test.go#TestTheWorkerLeavesIdleMsAfterItsLastImage",
+        "test:durable/images/node/worker_test.go#TestTheWorkerExitsWhenIdleAndTheNextImageStartsAnother"
       ]
     },
     {
@@ -234444,9 +234447,9 @@
         "call:durable/toolsearch/toolsearch.go#CreateExtension"
       ],
       "evidence": [
+        "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi",
-        "test:durable/toolsearch/toolsearch_test.go#TestAppendsEachLoadedToolInLoadOrderNotRegistryOrder",
-        "test:durable/toolsearch/toolsearch_test.go#TestFindsNothingForAnUnrelatedQueryAndLoadsNothing"
+        "test:durable/toolsearch/toolsearch_test.go#TestAppendsEachLoadedToolInLoadOrderNotRegistryOrder"
       ]
     },
     {
@@ -234466,9 +234469,9 @@
         "call:durable/toolsearch/toolsearch.go#CreateExtension"
       ],
       "evidence": [
+        "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi",
-        "test:durable/toolsearch/toolsearch_test.go#TestAppendsEachLoadedToolInLoadOrderNotRegistryOrder",
-        "test:durable/toolsearch/toolsearch_test.go#TestFindsNothingForAnUnrelatedQueryAndLoadsNothing"
+        "test:durable/toolsearch/toolsearch_test.go#TestAppendsEachLoadedToolInLoadOrderNotRegistryOrder"
       ]
     },
     {
@@ -234488,6 +234491,7 @@
         "call:durable/toolsearch/toolsearch.go#CreateTool"
       ],
       "evidence": [
+        "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi"
       ]
     },
@@ -234508,6 +234512,7 @@
         "call:durable/toolsearch/toolsearch.go#CreateTool"
       ],
       "evidence": [
+        "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi"
       ]
     },
@@ -234528,6 +234533,7 @@
         "call:durable/toolsearch/toolsearch.go#CreateTool"
       ],
       "evidence": [
+        "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi"
       ]
     },
@@ -234548,6 +234554,7 @@
         "call:durable/toolsearch/toolsearch.go#CreateTool"
       ],
       "evidence": [
+        "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi"
       ]
     },
@@ -235108,9 +235115,9 @@
         "call:durable/tools/read_image.go#imageModelOf"
       ],
       "evidence": [
+        "test:durable/tools/image_processor_pi_oracle_test.go#TestImageProcessorHelpersMatchPi",
         "test:durable/images/images_test.go#TestAFormatProvidersDoNotTakeInlineBecomesPNG",
-        "test:durable/images/images_test.go#TestAJPEGThatMustBeReEncodedStaysAJPEG",
-        "test:durable/images/images_test.go#TestAPNGTooLargeForTheByteLimitBecomesAJPEGAtItsSizeThenShrinks"
+        "test:durable/images/images_test.go#TestAJPEGThatMustBeReEncodedStaysAJPEG"
       ]
     },
     {
@@ -235174,8 +235181,8 @@
         "call:durable/tools/read_image.go#imageModelOf"
       ],
       "evidence": [
-        "test:durable/images/photon_pi_oracle_test.go#TestPhotonImagesMatchPiOnACorpus",
         "test:durable/tools/coding_tools_pi_oracle_test.go#TestReadOfImagesMatchesPi",
+        "test:durable/tools/image_processor_pi_oracle_test.go#TestImageProcessorHelpersMatchPi",
         "test:durable/images/images_test.go#TestAPNGTooLargeForTheByteLimitBecomesAJPEGAtItsSizeThenShrinks"
       ]
     },
@@ -235323,9 +235330,9 @@
         "call:durable/tools/read_image.go#readImage"
       ],
       "evidence": [
-        "test:durable/images/photon_pi_oracle_test.go#TestPhotonImagesMatchPiOnACorpus",
         "test:durable/tools/coding_tools_pi_oracle_test.go#TestReadOfImagesMatchesPi",
-        "test:durable/images/images_test.go#TestAFormatProvidersDoNotTakeInlineBecomesPNG"
+        "test:durable/images/images_test.go#TestAFormatProvidersDoNotTakeInlineBecomesPNG",
+        "test:durable/images/images_test.go#TestAJPEGThatMustBeReEncodedStaysAJPEG"
       ]
     },
     {
