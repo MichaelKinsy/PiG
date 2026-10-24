@@ -144081,6 +144081,17 @@
       "shapeHash": "sha256:252de3ef99238a4043a99c6a43e9acc49d2e98dbeeefa1abfa11d976b81ea755"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#transportAlreadyClosed",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "transportAlreadyClosed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) bool"
+      },
+      "shapeHash": "sha256:4a5055322e6f75d7ee10cc59b4814e22cbd33d6a19d2b99d3e00212a527e3abf"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#turnEndWire",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "turnEndWire",
