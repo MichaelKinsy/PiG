@@ -1,7 +1,8 @@
+//go:build unix
+
 package extension_test
 
 import (
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -21,11 +22,7 @@ func TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan(t *testi
 		BeforeRead:   func() { <-graceExpired },
 		GraceExpired: func() { once.Do(func() { close(graceExpired) }) },
 	})
-	command, args := "sh", []string{"-c", "printf out; printf err >&2"}
-	if runtime.GOOS == "windows" {
-		command, args = "cmd", []string{"/c", "echo out& echo err 1>&2"}
-	}
-	result, err := extension.ExecCommand(ctx, t.TempDir(), command, args, nil)
+	result, err := extension.ExecCommand(ctx, t.TempDir(), "sh", []string{"-c", "printf out; printf err >&2"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
