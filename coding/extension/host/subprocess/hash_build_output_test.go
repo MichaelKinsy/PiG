@@ -96,6 +96,9 @@ func TestHashSourceDirIgnoresConcurrentChurnInReplacedModule(t *testing.T) {
 		tagged bool
 	}{{"cargo target", true}, {"untagged build output", false}} {
 		t.Run(tc.name, func(t *testing.T) {
+			if !tc.tagged && runtime.GOOS == "windows" {
+				t.Skip("Windows keeps a directory that another process is deleting visible to Lstat (it reads the directory entry without opening it) and answers its open with ERROR_ACCESS_DENIED or ERROR_SHARING_VIOLATION until the last handle closes. A live directory the walk may not list gives the same answers, so a hash cannot tell them apart without waiting, and the walk fails closed on both. A throwaway Windows run of this churn failed 100 of 100 iterations on that, with sharing violations and, after a Lstat re-check at the end of the walk, with the directory still there. What Windows guarantees is the tagged case, which never opens below the tag (the cargo target directory tests), and the classification tests with the real codes.")
+			}
 			extension, replaced := writeFixtureTree(t)
 			churn := filepath.Join(replaced, "tmp", "test-fixtures", "rust-target")
 			if err := os.MkdirAll(churn, 0o755); err != nil {
