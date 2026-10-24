@@ -161,11 +161,10 @@ func llamaOracleLabelIDs(mode string) map[string]int {
 	return ids
 }
 
-// serveLlamaOracle is the scripted llama-server llama_cpp_classify.mjs also is; it records every request it gets. It listens on listener, or on a fresh loopback port when that is nil.
-func serveLlamaOracle(t *testing.T, probe llamaOracleProbe, listener net.Listener, record func(llamaOracleExchange)) *httptest.Server {
-	t.Helper()
+// llamaOracleHandler is the scripted llama-server llama_cpp_classify.mjs also is; it records every request it gets.
+func llamaOracleHandler(probe llamaOracleProbe, record func(llamaOracleExchange)) http.Handler {
 	ids := llamaOracleLabelIDs(probe.Tokenizer)
-	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
 		exchange := llamaOracleExchange{Path: r.URL.Path, Body: string(raw)}
 		if v := r.Header.Get("Authorization"); v != "" {
@@ -221,7 +220,12 @@ func serveLlamaOracle(t *testing.T, probe llamaOracleProbe, listener net.Listene
 		}
 		top = append(top, probe.Noise...)
 		reply(200, `{"completion_probabilities":[{"top_logprobs":[`+strings.Join(top, ",")+`]}]}`)
-	}))
+	})
+}
+
+// serveLlamaOracle serves llamaOracleHandler on listener, or on a fresh loopback port when that is nil.
+func serveLlamaOracle(probe llamaOracleProbe, listener net.Listener, record func(llamaOracleExchange)) *httptest.Server {
+	server := httptest.NewUnstartedServer(llamaOracleHandler(probe, record))
 	if listener != nil {
 		_ = server.Listener.Close()
 		server.Listener = listener
@@ -264,22 +268,14 @@ func closeClassifierIdleConnections(t testing.TB) {
 	pool.CloseIdleConnections()
 }
 
-// runLlamaOracleProbe is one probe through ClassifyLlamaCpp: a scripted llama-server on listener (a fresh loopback port when nil), the result and every request the server saw. When it returns the server is closed, the
-// client holds no connection to it, and PiG knows nothing else about it.
-func runLlamaOracleProbe(t *testing.T, i int, probe llamaOracleProbe, listener net.Listener) (ClassifierResult, []llamaOracleExchange) {
+// classifyLlamaOracleProbe is one probe through ClassifyLlamaCpp against the scripted llama-server at baseURL (request headers as given).
+func classifyLlamaOracleProbe(t *testing.T, i int, probe llamaOracleProbe, baseURL string, headers ProviderHeaders) ClassifierResult {
 	t.Helper()
 	var state JsonObject
 	if err := sdkjson.Unmarshal([]byte(probe.State), &state); err != nil {
 		t.Fatal(err)
 	}
-	var mu sync.Mutex
-	var seen []llamaOracleExchange
-	server := serveLlamaOracle(t, probe, listener, func(e llamaOracleExchange) {
-		mu.Lock()
-		seen = append(seen, e)
-		mu.Unlock()
-	})
-	model := ClassifierModel{ID: fmt.Sprintf("m%d", i), Name: "M", API: ClassifierAPILlamaCppClassify, Provider: "p", BaseURL: server.URL + probe.BaseSuffix, Input: []string{"text"}, ContextWindow: 1000}
+	model := ClassifierModel{ID: fmt.Sprintf("m%d", i), Name: "M", API: ClassifierAPILlamaCppClassify, Provider: "p", BaseURL: baseURL + probe.BaseSuffix, Input: []string{"text"}, ContextWindow: 1000}
 	if probe.Images {
 		model.Input = []string{"text", "image"}
 	}
@@ -289,8 +285,38 @@ func runLlamaOracleProbe(t *testing.T, i int, probe llamaOracleProbe, listener n
 		request.Images = []ImageContent{{Data: "AAAA", MimeType: "image/png"}}
 	}
 	request.Questions = classifierQuestionsOf(probe.Questions)
-	options := ClassifierOptions{APIKey: probe.APIKey, Temperature: probe.Temperature}
-	result := ClassifyLlamaCpp(t.Context(), model, request, options)
+	options := ClassifierOptions{APIKey: probe.APIKey, Temperature: probe.Temperature, Headers: headers}
+	return ClassifyLlamaCpp(t.Context(), model, request, options)
+}
+
+// runLlamaOracleProbeOn is probe i through ClassifyLlamaCpp against the shared probe server: the result and every request the server saw for it.
+func runLlamaOracleProbeOn(t *testing.T, server *probeServer, i int, probe llamaOracleProbe) (ClassifierResult, []llamaOracleExchange) {
+	t.Helper()
+	var mu sync.Mutex
+	var seen []llamaOracleExchange
+	server.script(i, llamaOracleHandler(probe, func(e llamaOracleExchange) {
+		mu.Lock()
+		seen = append(seen, e)
+		mu.Unlock()
+	}))
+	result := classifyLlamaOracleProbe(t, i, probe, server.URL, probeOptionHeaders(i))
+	mu.Lock()
+	defer mu.Unlock()
+	return result, slices.Clone(seen)
+}
+
+// runLlamaOracleProbe is one probe through ClassifyLlamaCpp against a scripted llama-server of its own on listener (a fresh loopback port when nil), the result and every request the server saw. When it returns the server is
+// closed, the client holds no connection to it, and PiG knows nothing else about it.
+func runLlamaOracleProbe(t *testing.T, i int, probe llamaOracleProbe, listener net.Listener) (ClassifierResult, []llamaOracleExchange) {
+	t.Helper()
+	var mu sync.Mutex
+	var seen []llamaOracleExchange
+	server := serveLlamaOracle(probe, listener, func(e llamaOracleExchange) {
+		mu.Lock()
+		seen = append(seen, e)
+		mu.Unlock()
+	})
+	result := classifyLlamaOracleProbe(t, i, probe, server.URL, nil)
 	closeClassifierIdleConnections(t)
 	server.Close()
 	return result, seen
@@ -380,9 +406,11 @@ func TestLlamaCppClassifyMatchesPi(t *testing.T) {
 		slices.Sort(sorted)
 		return sorted, completions
 	}
-	failures, keyOrder := 0, 0
+	failures, keyOrder, wantRequests := 0, 0, 0
+	server := newProbeServer(t)
 	for i, probe := range probes {
-		result, seen := runLlamaOracleProbe(t, i, probe, nil)
+		result, seen := runLlamaOracleProbeOn(t, server, i, probe)
+		wantRequests += len(want[i].Requests)
 		answers, err := jsstring.MarshalJSON(result.Answers)
 		if err != nil {
 			t.Fatal(err)
@@ -444,6 +472,7 @@ func TestLlamaCppClassifyMatchesPi(t *testing.T) {
 			}
 		}
 	}
+	server.requireRouted(wantRequests)
 	if failures > 8 {
 		t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
 	}

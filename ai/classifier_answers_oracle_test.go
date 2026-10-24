@@ -6,9 +6,9 @@ import (
 	"io"
 	"maps"
 	"net/http"
-	"net/http/httptest"
 	"os/exec"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -170,10 +170,15 @@ func TestClassifierAnswersMatchPi(t *testing.T) {
 		{ID: "a", Question: ClassifierScoreQuestion{Instructions: "A", Criteria: []string{"só", "high \U0001F600"}}},
 	}
 	failures := 0
+	server := newProbeServer(t)
 	for i, probe := range probes {
-		var sent []byte
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			sent, _ = io.ReadAll(r.Body)
+		var mu sync.Mutex
+		var received []byte
+		server.script(i, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			raw, _ := io.ReadAll(r.Body)
+			mu.Lock()
+			received = raw
+			mu.Unlock()
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(probe.Status)
 			_, _ = w.Write([]byte(probe.Body))
@@ -183,9 +188,10 @@ func TestClassifierAnswersMatchPi(t *testing.T) {
 		if probe.Numeric {
 			asked = numericQuestions
 		}
-		result := ClassifyTypesafeSystemOne(t.Context(), model, ClassifierContext{State: JsonObject{"a": 1, "nested": []any{1, JsonObject{"b": nil}}}, Questions: asked}, ClassifierOptions{APIKey: "k"})
-		closeClassifierIdleConnections(t)
-		server.Close()
+		result := ClassifyTypesafeSystemOne(t.Context(), model, ClassifierContext{State: JsonObject{"a": 1, "nested": []any{1, JsonObject{"b": nil}}}, Questions: asked}, forProbe(ClassifierOptions{APIKey: "k"}, i))
+		mu.Lock()
+		sent := received
+		mu.Unlock()
 		if !sameRequest(sent, want[i].Request) {
 			if failures++; failures <= 12 {
 				t.Errorf("probe %q request:\n PiG %s\n Pi  %s", probe.Name, sent, want[i].Request)
@@ -213,6 +219,7 @@ func TestClassifierAnswersMatchPi(t *testing.T) {
 			}
 		}
 	}
+	server.requireRouted(len(probes))
 	if failures > 12 {
 		t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
 	}
