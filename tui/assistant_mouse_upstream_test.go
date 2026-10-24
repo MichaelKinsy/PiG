@@ -10,7 +10,7 @@ import (
 // Pi: packages/coding-agent/src/modes/interactive/components/assistant-message.ts:58 (AssistantMessageComponent.setHideThinkingBlock).
 func TestAssistantThinkingClicksThroughTerminal(t *testing.T) {
 	h := newAltHarness(t, 80, 24, TuiAltScreenOptions{})
-	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	content := []AssistantSegment{{Thinking: true, Text: "first reasoning"}, {Text: "answer"}, {Thinking: true, Text: "second reasoning"}}
 	block.SetContent(content)
 	h.tui.Add(block)
@@ -18,7 +18,7 @@ func TestAssistantThinkingClicksThroughTerminal(t *testing.T) {
 	// Pi's alternate screen consumes zone marks internally rather than writing them (tui-alt-screen.ts:1670).
 	var output bytes.Buffer
 	regular := NewWithOutput(&output, 80, 24)
-	zoneBlock := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	zoneBlock := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	zoneBlock.SetContent(content)
 	regular.Add(zoneBlock)
 	regular.Render()
@@ -52,7 +52,7 @@ func TestAssistantThinkingClicksThroughTerminal(t *testing.T) {
 }
 
 func BenchmarkAssistantThinkingClick(b *testing.B) {
-	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	block.SetContent([]AssistantSegment{{Thinking: true, Text: strings.Repeat("reasoning ", 10000)}})
 	block.Render(80)
 	event := componentMouseEvent(MouseClick, 1, 1)

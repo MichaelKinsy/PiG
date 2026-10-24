@@ -25,7 +25,7 @@ func TestAnthropicSSEEventsOwnTheirRawLines(t *testing.T) {
 			t.Errorf("event %d Raw = %q, want %q", i, event.Raw, want[i])
 		}
 	}
-	if state.raw != nil {
+	if len(state.raw) != 0 {
 		t.Errorf("flush left the state holding %q", state.raw)
 	}
 }

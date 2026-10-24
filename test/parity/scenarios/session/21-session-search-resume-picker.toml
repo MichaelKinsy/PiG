@@ -1,6 +1,6 @@
-# Upstream evidence: Pi 0.87.1 session-picker.ts and session-selector-search.ts:117-203.
+# Upstream evidence: Pi session-picker.ts and session-selector-search.ts (fields matched separately, Pi #11220).
 # Real --resume pickers read the same five named JSONL sessions, then search delta.
-# Pi ranks delta four, alpha one, golf seven; the pre-fix fixed fuzzy score swaps the last two.
+# Pi ranks the name hit delta four, then the message hit alpha one, and drops golf seven, whose message holds the letters of delta only scattered.
 # The shared search-cases.json DD1 row separately checks the reported two-result shape; the original WSL histories were not supplied.
 # Future message timestamps make the age column deterministically "now" in both products; no output normalization is applied.
 # The crop is the complete picker header, input and results through its closing border, excluding unrelated startup chrome.
@@ -26,8 +26,8 @@ capture_end_regex = "^─+$"
 
 [[tmux.steps]]
 keys = ["delta"]
-wait_visible_contains = ["> delta", "delta four", "alpha one", "golf seven"]
-wait_not_contains = ["bravo", "charlie"]
+wait_visible_contains = ["> delta", "delta four", "alpha one"]
+wait_not_contains = ["bravo", "charlie", "golf seven"]
 wait_timeout_seconds = 5
 
 [env]
@@ -39,6 +39,6 @@ pi_args = ["--no-extensions", "--no-skills", "--resume", "--session-dir", "sessi
 [assert]
 both_reach_ready = true
 escaped_output_equal = true
-both_contain = ["› delta four", "alpha one", "golf seven"]
-both_not_contain = ["bravo", "charlie"]
+both_contain = ["› delta four", "alpha one"]
+both_not_contain = ["bravo", "charlie", "golf seven"]
 runs = 3

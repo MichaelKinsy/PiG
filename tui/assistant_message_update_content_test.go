@@ -19,17 +19,17 @@ func TestAssistantMessageUpdateContentFollowsPi(t *testing.T) {
 		{Type: "thinking", Thinking: "pondering"},
 		{Type: "text", Text: "answer"},
 	}}
-	visible := NewAssistantMessageComponent(&message, false, nil, "", nil, nil)
+	visible := NewAssistantMessageComponent(&message, false, nil, "", nil, nil, "", "")
 	if got := assistantPlain(visible); !strings.Contains(got, "pondering") || !strings.Contains(got, "answer") {
 		t.Fatalf("constructor message not rendered: %q", got)
 	}
-	hidden := NewAssistantMessageComponent(&message, true, nil, "", nil, nil)
+	hidden := NewAssistantMessageComponent(&message, true, nil, "", nil, nil, "", "")
 	if got := assistantPlain(hidden); strings.Contains(got, "pondering") || !strings.Contains(got, "Thinking...") || !strings.Contains(got, "answer") {
 		t.Fatalf("hidden thinking: %q", got)
 	}
 
 	aborted := AssistantMessage{StopReason: "aborted", ErrorMessage: "Request was aborted", Content: []AssistantContentBlock{{Type: "text", Text: "partial"}}}
-	b := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	b := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	b.UpdateContent(aborted)
 	if got := assistantPlain(b); !strings.Contains(got, "Operation aborted") {
 		t.Fatalf("aborted diagnostic missing: %q", got)
@@ -54,7 +54,7 @@ func TestAssistantMessageUpdateContentFollowsPi(t *testing.T) {
 
 // upstream: assistant-message.ts:91 `isStreaming = this.isStreaming`: an omitted argument keeps the previous flag.
 func TestAssistantMessageUpdateContentKeepsStreamingFlag(t *testing.T) {
-	b := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	b := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	if b.IsStreaming() {
 		t.Fatal("a new block is not streaming")
 	}
@@ -84,7 +84,7 @@ func TestAssistantMessageConstructorMarkdownTransformers(t *testing.T) {
 		return strings.ToUpper(markdown), true
 	}
 	message := AssistantMessage{Content: []AssistantContentBlock{{Type: "thinking", Thinking: "hmm"}, {Type: "text", Text: "hello"}}}
-	b := NewAssistantMessageComponent(nil, false, nil, "", nil, []MarkdownTransformer{record, boom, undefined, upper})
+	b := NewAssistantMessageComponent(nil, false, nil, "", nil, []MarkdownTransformer{record, boom, undefined, upper}, "", "")
 	b.UpdateContent(message, true)
 	got := assistantPlain(b)
 	if !strings.Contains(got, "HELLO!") || !strings.Contains(got, "HMM!") {

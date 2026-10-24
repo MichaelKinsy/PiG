@@ -8,17 +8,17 @@ import (
 func TestMultiTurnSpacing(t *testing.T) {
 	c := NewContainer()
 	// First user msg (no spacer)
-	c.Add(NewUserMessageComponent("first message", nil, 1, nil))
+	c.Add(NewUserMessageComponent("first message", nil, 1, nil, "", ""))
 	// Assistant reply
-	amb := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	amb := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	amb.SetTextDelta("Hello")
 	c.Add(amb)
 	// Spacer before second user msg (mirrors upstream Spacer(1))
 	c.Add(NewSpacer(1))
 	// Second user msg
-	c.Add(NewUserMessageComponent("second message", nil, 1, nil))
+	c.Add(NewUserMessageComponent("second message", nil, 1, nil, "", ""))
 	// Second assistant reply
-	amb2 := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	amb2 := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	amb2.SetTextDelta("World")
 	c.Add(amb2)
 

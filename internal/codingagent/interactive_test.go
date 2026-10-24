@@ -258,7 +258,7 @@ func TestInteractiveMode_UsesChatContainerChildCountForUserSpacer(t *testing.T) 
 	if !m.chatContainer.IsEmpty() {
 		t.Fatal("new chat container should be empty")
 	}
-	m.appendToChat(tui.NewUserMessageComponent("first", nil, 1, nil))
+	m.appendToChat(tui.NewUserMessageComponent("first", nil, 1, nil, "", ""))
 	if m.chatContainer.IsEmpty() {
 		t.Fatal("chat container should not be empty after first message")
 	}

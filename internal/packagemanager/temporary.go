@@ -56,7 +56,7 @@ func ResolveTemporarySource(cwd, agentDir string, sm *codingagent.SettingsManage
 			return "", nil
 		}
 		if err := EnsureManagedPackageRoot(root); err != nil {
-			return "", err
+			return "", &InstallFailureError{Err: err}
 		}
 		command := DefaultNpmCommand(sm)
 		args := append([]string{}, command[1:]...)
@@ -66,7 +66,7 @@ func ResolveTemporarySource(cwd, agentDir string, sm *codingagent.SettingsManage
 		}
 		args = append(args, NpmInstallArgs(manager, ref.Locator, root, ref.NPMRegistry)...)
 		if err := RunPackageProcess("", command[0], args...); err != nil {
-			return "", err
+			return "", &InstallFailureError{Err: err}
 		}
 	}
 	return packageRoot, nil
@@ -111,7 +111,7 @@ func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, p
 			return "", nil
 		}
 		if err := InstallGitCheckout(sm, ref, checkout, packageRoot, ""); err != nil {
-			return "", err
+			return "", &InstallFailureError{Err: err}
 		}
 	case statErr != nil:
 		return "", statErr

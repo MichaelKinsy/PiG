@@ -11,7 +11,7 @@ import (
 // packages/coding-agent/test/user-message.test.ts:12
 func TestUpstreamUserMessageOSCMarkers(t *testing.T) {
 	t.Run("keeps user message height stable while moving closing OSC markers off line end", func(t *testing.T) {
-		component := NewUserMessageComponent("hello", nil, 1, nil)
+		component := NewUserMessageComponent("hello", nil, 1, nil, "", "")
 		lines := component.Render(20)
 		if len(lines) != 3 {
 			t.Fatalf("height=%d, want 3", len(lines))
@@ -42,7 +42,7 @@ func TestUpstreamUserMessageTransformerChain(t *testing.T) {
 				calls = append(calls, "suffix")
 				return markdown + " Done."
 			},
-		})
+		}, "", "")
 		upstreamContains(t, stripANSI(strings.Join(component.Render(80), "\n")), "The input is x². Done.")
 		if !slices.Equal(calls, []string{"formula", "suffix"}) {
 			t.Fatalf("calls=%q, want [formula suffix]", calls)
@@ -58,10 +58,25 @@ func TestUpstreamUserMessageInvalidation(t *testing.T) {
 			func(markdown string, _ markdowntransform.MarkdownTransformContext) string {
 				return markdown + " " + suffix
 			},
-		})
+		}, "", "")
 		upstreamContains(t, stripANSI(strings.Join(component.Render(80), "\n")), "Message before")
 		suffix = "after"
 		component.Invalidate()
 		upstreamContains(t, stripANSI(strings.Join(component.Render(80), "\n")), "Message after")
 	})
+}
+
+// packages/coding-agent/test/user-message.test.ts: "passes persisted entry identity in transformer context; live leaves it undefined".
+func TestUpstreamUserMessagePersistedEntryIdentity(t *testing.T) {
+	type identity struct{ messageID, timestamp string }
+	var captured []identity
+	capture := func(markdown string, context markdowntransform.MarkdownTransformContext) string {
+		captured = append(captured, identity{context.MessageID, context.Timestamp})
+		return markdown
+	}
+	NewUserMessageComponent("restored", nil, 1, []markdowntransform.MarkdownTransformer{capture}, "entry-abc", "2025-01-15T10:30:00.000Z").Render(80)
+	NewUserMessageComponent("live", nil, 1, []markdowntransform.MarkdownTransformer{capture}, "", "").Render(80)
+	if want := []identity{{"entry-abc", "2025-01-15T10:30:00.000Z"}, {"", ""}}; !slices.Equal(captured, want) {
+		t.Fatalf("captured %+v, want %+v", captured, want)
+	}
 }

@@ -104,18 +104,20 @@ func TestTemporaryGitInstallAndCleanup(t *testing.T) {
 			// package-manager.ts:2153-2181 (0.99.1) hashes the pinned ref into the temporary directory.
 			digest := sha256.Sum256([]byte("git-github.com-test/extension@v1"))
 			cached := filepath.Join(sm.AgentDir(), "tmp", "extensions", "git-github.com", fmt.Sprintf("%x", digest)[:8], "test", "extension")
-			configs := collectExtensionConfigs(cwd, sm.AgentDir(), sm, Args{Extensions: []string{source}, NoExtensions: true}, nil)
-			if len(configs) != 1 {
-				t.Fatalf("configs = %+v", configs)
-			}
 			if fail {
-				if configs[0].ResolveError() == nil {
-					t.Fatal("dependency failure was not surfaced")
+				// Pi 6dfb54678: a temporary source that cannot be installed contributes nothing and is reported as an install failure.
+				set := collectCLIExtensionConfigs(cwd, sm.AgentDir(), sm, []string{source})
+				if len(set.configs) != 0 || len(set.missing) != 0 || len(set.installFailures) != 1 || set.installFailures[0].Source != source || set.installFailures[0].Scope != "temporary" {
+					t.Fatalf("set = %+v, want one temporary install failure and no configs", set)
 				}
 				if _, err := os.Stat(cached); !os.IsNotExist(err) {
 					t.Fatalf("failed clone retained checkout: %v", err)
 				}
 				return
+			}
+			configs := collectExtensionConfigs(cwd, sm.AgentDir(), sm, Args{Extensions: []string{source}, NoExtensions: true}, nil)
+			if len(configs) != 1 {
+				t.Fatalf("configs = %+v", configs)
 			}
 			if configs[0].ResolveError() != nil || configs[0].Source != filepath.Join(cached, "pi-extensions", "session-breakdown.ts") {
 				t.Fatalf("temporary clone not resolved: %+v", configs)

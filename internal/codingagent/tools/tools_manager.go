@@ -57,10 +57,9 @@ type toolConfig struct {
 	BinaryName        string   // Name of the binary inside the archive
 	SystemBinaryNames []string // Alternative system command names to try
 	TagPrefix         string   // Prefix for tags ("v" or "")
-	// GetAssetName returns the release asset filename, or "" if the
-	// platform/arch combo is unsupported. Matches upstream
-	// (version, plat, architecture) → string|null.
-	GetAssetName func(version, plat, arch string) string
+	// GetAssetName returns the release asset filename for a release target
+	// (releaseTarget's suffix). Matches upstream (version, target) → string.
+	GetAssetName func(version, target string) string
 }
 
 // toolsTable selects fd and rg release archives for each platform.
@@ -72,44 +71,39 @@ var toolsTable = map[string]toolConfig{
 		BinaryName:        "fd",
 		SystemBinaryNames: []string{"fd", "fdfind"},
 		TagPrefix:         "v",
-		GetAssetName: func(version, plat, architecture string) string {
-			switch plat {
-			case "darwin":
-				return fmt.Sprintf("fd-v%s-%s-apple-darwin.tar.gz", version, archStr(architecture))
-			case "linux":
-				return fmt.Sprintf("fd-v%s-%s-unknown-linux-musl.tar.gz", version, archStr(architecture))
-			case "windows", "win32":
-				return fmt.Sprintf("fd-v%s-%s-pc-windows-msvc.zip", version, archStr(architecture))
-			}
-			return ""
-		},
+		GetAssetName:      func(version, target string) string { return "fd-v" + version + "-" + target },
 	},
 	"rg": {
-		Name:       "ripgrep",
-		Repo:       "BurntSushi/ripgrep",
-		BinaryName: "rg",
-		TagPrefix:  "",
-		GetAssetName: func(version, plat, architecture string) string {
-			switch plat {
-			case "darwin":
-				return fmt.Sprintf("ripgrep-%s-%s-apple-darwin.tar.gz", version, archStr(architecture))
-			case "linux":
-				return fmt.Sprintf("ripgrep-%s-%s-unknown-linux-musl.tar.gz", version, archStr(architecture))
-			case "windows", "win32":
-				return fmt.Sprintf("ripgrep-%s-%s-pc-windows-msvc.zip", version, archStr(architecture))
-			}
-			return ""
-		},
+		Name:         "ripgrep",
+		Repo:         "BurntSushi/ripgrep",
+		BinaryName:   "rg",
+		TagPrefix:    "",
+		GetAssetName: func(version, target string) string { return "ripgrep-" + version + "-" + target },
 	},
 }
 
-// archStr is upstream getAssetName's `architecture === "arm64" ? "aarch64" : "x86_64"`: every architecture other
-// than arm64 selects the x86_64 archive.
-func archStr(architecture string) string {
-	if architecture == "arm64" || architecture == "aarch64" {
-		return "aarch64"
+// releaseTarget mirrors upstream getReleaseTarget: the release target suffix shared by fd and ripgrep, or ""
+// when the platform or architecture has no prebuilt archive. Only x64 and arm64 are mapped; any other
+// architecture (ARM32, ia32, riscv64) must not fall back to an x86-64 binary (Pi #11209).
+func releaseTarget(plat, architecture string) string {
+	var archStr string
+	switch architecture {
+	case "arm64", "aarch64":
+		archStr = "aarch64"
+	case "x64", "amd64", "x86_64":
+		archStr = "x86_64"
+	default:
+		return ""
 	}
-	return "x86_64"
+	switch plat {
+	case "darwin":
+		return archStr + "-apple-darwin.tar.gz"
+	case "linux":
+		return archStr + "-unknown-linux-musl.tar.gz"
+	case "windows", "win32":
+		return archStr + "-pc-windows-msvc.zip"
+	}
+	return ""
 }
 
 // termuxPackages mirrors upstream TERMUX_PACKAGES (tools-manager.ts:339).
@@ -256,6 +250,12 @@ func (m *ToolsManager) BeginEnsureTool(tool string, onStatus func(ToolStatus)) (
 			pkg = tool
 		}
 		reportToolStatus(onStatus, "warning", config.Name+" not found. Install with: pkg install "+pkg)
+		return "", nil
+	}
+
+	// Prebuilt downloads only exist for the targets mapped in releaseTarget.
+	if releaseTarget(m.platform(), m.arch()) == "" {
+		reportToolStatus(onStatus, "warning", fmt.Sprintf("%s not found. Automatic download is not supported on %s/%s. Install %s with your system package manager.", config.Name, m.platform(), m.arch(), config.Name))
 		return "", nil
 	}
 
@@ -544,6 +544,10 @@ func (m *ToolsManager) downloadTool(ctx context.Context, tool string) (string, e
 	}
 	plat := m.platform()
 	architecture := m.arch()
+	target := releaseTarget(plat, architecture)
+	if target == "" {
+		return "", fmt.Errorf("Unsupported platform: %s/%s", plat, architecture)
+	}
 
 	// fd is pinned on darwin/x64, so skip the version lookup there.
 	version := "10.3.0"
@@ -555,10 +559,7 @@ func (m *ToolsManager) downloadTool(ctx context.Context, tool string) (string, e
 		}
 	}
 
-	assetName := config.GetAssetName(version, plat, architecture)
-	if assetName == "" {
-		return "", fmt.Errorf("Unsupported platform: %s/%s", plat, architecture)
-	}
+	assetName := config.GetAssetName(version, target)
 
 	if err := os.MkdirAll(m.BinDir(), 0o755); err != nil {
 		return "", err

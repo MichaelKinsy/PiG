@@ -4,6 +4,7 @@ package tui
 
 import (
 	"fmt"
+	"net/url"
 	"runtime"
 	"slices"
 	"strings"
@@ -61,7 +62,26 @@ type LoginDialogComponent struct {
 	// authURL is the shown sign-in URL, which `app.message.copy` copies.
 	authURL       *AuthURL
 	copyText      func(text string) error
+	openBrowser   func(url string)
 	requestRender func()
+	// deviceCodeAction is the pending device-code confirmation: set while the dialog shows a device code that offers a
+	// browser or clipboard action, and consumed by the first confirm key. deviceCodeHint is the row that shows the
+	// offer and then the progress (login-dialog.ts deviceCodeAction and deviceCodeHint).
+	deviceCodeAction *deviceCodeAction
+	deviceCodeHint   *loginDialogDeviceHint
+}
+
+type deviceCodeAction struct {
+	info OAuthDeviceCodeInfo
+	hint *loginDialogDeviceHint
+}
+
+// SetOpenBrowser supplies the launcher a confirmed device-code login opens its verification page with. A nil launcher
+// opens nothing.
+func (d *LoginDialogComponent) SetOpenBrowser(openBrowser func(url string)) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.openBrowser = openBrowser
 }
 
 // SetCopyToClipboard supplies the clipboard writer `app.message.copy` uses for a sign-in URL and the repaint request
@@ -134,6 +154,7 @@ func loginKeyHint(action TUIKeybinding, description string) string {
 func (d *LoginDialogComponent) ShowAuth(url, instructions string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.clearDeviceCodeActionLocked()
 	d.authURL = NewAuthURL(url, d.copyText, func() {
 		d.Invalidate()
 		if d.requestRender != nil {
@@ -150,20 +171,27 @@ func (d *LoginDialogComponent) ShowAuth(url, instructions string) {
 	d.Invalidate()
 }
 
-// OAuthDeviceCodeInfo is the user code and verification URL a device-code login shows (Pi's OAuthDeviceCodeInfo, ai compat/extension-oauth-types.ts:17); the dialog reads UserCode and VerificationURI.
+// OAuthDeviceCodeInfo is the user code and verification URL a device-code login shows (Pi's OAuthDeviceCodeInfo, ai compat/extension-oauth-types.ts:17). OpenBrowserOnConfirm and CopyCodeOnConfirm
+// are nil for Pi's undefined, which means true: a provider turns an action off with a pointer to false.
 type OAuthDeviceCodeInfo struct {
-	UserCode         string
-	VerificationURI  string
-	IntervalSeconds  float64
-	ExpiresInSeconds float64
+	UserCode             string
+	VerificationURI      string
+	OpenBrowserOnConfirm *bool
+	CopyCodeOnConfirm    *bool
+	IntervalSeconds      float64
+	ExpiresInSeconds     float64
 }
 
 // ShowDeviceCode replaces the dialog content with a verification URL and the user code, as Pi's showDeviceCode(info) does (login-dialog.ts:117).
+// Unless the provider opted out, it also offers to open the browser and copy the code on the confirm key.
 func (d *LoginDialogComponent) ShowDeviceCode(info OAuthDeviceCodeInfo) {
 	verificationURI, userCode := info.VerificationURI, info.UserCode
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.authURL = nil
+	openBrowser, copyCode := info.OpenBrowserOnConfirm == nil || *info.OpenBrowserOnConfirm, info.CopyCodeOnConfirm == nil || *info.CopyCodeOnConfirm
+	info.OpenBrowserOnConfirm, info.CopyCodeOnConfirm = &openBrowser, &copyCode
+	d.clearDeviceCodeActionLocked()
 	d.resetContent()
 	d.addSpacer()
 	for _, line := range linkedURLLines(verificationURI) {
@@ -171,7 +199,80 @@ func (d *LoginDialogComponent) ShowDeviceCode(info OAuthDeviceCodeInfo) {
 	}
 	d.addSpacer()
 	d.addLine(" " + ActiveTheme().Fg("warning", "Enter code: "+userCode))
+	if !d.cancelled && (openBrowser || copyCode) {
+		label := "to copy code"
+		switch {
+		case openBrowser && copyCode:
+			label = "to open browser and copy code"
+		case openBrowser:
+			label = "to open browser"
+		}
+		// This single row shows the progress and result text too, including in narrow terminals.
+		hint := &loginDialogDeviceHint{row: NewTruncatedText("("+loginKeyHint(KBSelectConfirm, label)+")", 1, 0)}
+		d.content.Add(hint)
+		d.deviceCodeHint = hint
+		d.deviceCodeAction = &deviceCodeAction{info: info, hint: hint}
+	}
 	d.Invalidate()
+}
+
+// loginDialogDeviceHint is the device-code offer row; its single child is replaced by progress and result text.
+type loginDialogDeviceHint struct{ row *TruncatedText }
+
+func (h *loginDialogDeviceHint) Render(width int) []string { return h.row.Render(width) }
+func (*loginDialogDeviceHint) Invalidate()                 {}
+
+// clearDeviceCodeActionLocked drops a pending device-code offer and its row. Every step that replaces or extends the
+// content calls it, so a confirm key after one acts on nothing.
+func (d *LoginDialogComponent) clearDeviceCodeActionLocked() {
+	if d.deviceCodeHint != nil {
+		d.content.Remove(d.deviceCodeHint)
+	}
+	d.deviceCodeHint = nil
+	d.deviceCodeAction = nil
+}
+
+func (d *LoginDialogComponent) setDeviceCodeStatusLocked(hint *loginDialogDeviceHint, message string) {
+	if d.cancelled || !d.focused || d.deviceCodeHint != hint {
+		return
+	}
+	hint.row = NewTruncatedText(ActiveTheme().Fg("dim", message), 1, 0)
+	d.Invalidate()
+}
+
+// activateDeviceCodeLocked is activateDeviceCode: it copies the code without delaying the browser launch or the login's
+// polling, and opens only web URLs, since the shared launcher also opens files.
+func (d *LoginDialogComponent) activateDeviceCodeLocked(info OAuthDeviceCodeInfo, hint *loginDialogDeviceHint) {
+	copyCode := info.CopyCodeOnConfirm != nil && *info.CopyCodeOnConfirm
+	if copyCode {
+		d.setDeviceCodeStatusLocked(hint, "Copying code...")
+		copyText := d.copyText
+		//portlint:allow golifetime the goroutine ends when the clipboard writer returns; it only takes the dialog lock and requests a repaint
+		go func() {
+			message := "Code copied to clipboard"
+			if copyText == nil || copyText(info.UserCode) != nil {
+				message = "Copy code manually"
+			}
+			d.mu.Lock()
+			d.setDeviceCodeStatusLocked(hint, message)
+			requestRender := d.requestRender
+			d.mu.Unlock()
+			// The repaint request stays outside the lock: a render takes it.
+			if requestRender != nil {
+				requestRender()
+			}
+		}()
+	} else {
+		d.setDeviceCodeStatusLocked(hint, "Browser open requested")
+	}
+	if info.OpenBrowserOnConfirm != nil && *info.OpenBrowserOnConfirm && d.openBrowser != nil {
+		if target, err := url.Parse(info.VerificationURI); err == nil && (target.Scheme == "https" || target.Scheme == "http") && target.Host != "" {
+			if target.Path == "" {
+				target.Path = "/"
+			}
+			d.openBrowser(target.String())
+		}
+	}
 }
 
 // linkedURLLines renders the hyperlinked URL and the platform's click hint.
@@ -190,6 +291,7 @@ func (d *LoginDialogComponent) ShowDetails(lines []string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.authURL = nil
+	d.clearDeviceCodeActionLocked()
 	d.resetContent()
 	d.addSpacer()
 	for _, line := range lines {
@@ -276,6 +378,7 @@ func (d *LoginDialogComponent) ShowSecretInput(prompt, placeholder string) <-cha
 func (d *LoginDialogComponent) showInput(prompt, placeholder string, secret, manual bool) <-chan string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.clearDeviceCodeActionLocked()
 	t := ActiveTheme()
 	d.inputMasked = secret && d.maskSecretInput
 	color := "text"
@@ -336,6 +439,7 @@ func (d *LoginDialogComponent) HandleInput(data string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if GetTUIKeybindings().Matches(data, KBSelectCancel) {
+		d.clearDeviceCodeActionLocked()
 		d.done = true
 		d.cancelled = true
 		// Pi's cancel aborts the login's signal before it rejects the pending input (login-dialog.ts:86-93), so a prompt
@@ -351,6 +455,14 @@ func (d *LoginDialogComponent) HandleInput(data string) {
 	}
 	if d.authURL != nil && GetTUIKeybindings().Matches(data, "app.message.copy") {
 		d.authURL.Copy()
+		return
+	}
+	if d.deviceCodeAction != nil && d.inputCh == nil && !d.cancelled && d.focused && GetTUIKeybindings().Matches(data, KBSelectConfirm) {
+		action := d.deviceCodeAction
+		// Consume once, so a repeated confirm cannot launch several browsers or clipboard writes.
+		d.deviceCodeAction = nil
+		d.activateDeviceCodeLocked(action.info, action.hint)
+		d.Invalidate()
 		return
 	}
 	if !d.inputActive {

@@ -58,7 +58,6 @@ paths = [
   "docs/parity/session-selector-rename.md",
   "docs/parity/session-selector-rename-refresh.md",
   "docs/parity/session-selector-scope-loading.md",
-  "docs/parity/session-selector-search.md",
   "docs/parity/shutdown-input-owner.md",
   "docs/parity/suspend.md",
   "docs/parity/user-message-content.md",

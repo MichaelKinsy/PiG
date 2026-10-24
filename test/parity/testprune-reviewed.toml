@@ -229,3 +229,52 @@ commit = "7a49fc497e"
 class = "CITE"
 cite = "packages/ai/src/models.ts:1255"
 reason = "Pi 7c22a93d0 makes calculateCost write usage.cost.totalFromProvider = false after the total (models.ts:1255), so each catalog-priced usage JSON expected here carries \"totalFromProvider\":false right after \"total\", the position Pi's calculateCost gives the key; the commit verified the strings by running Pi's calculateCost. Pi has no test of these provider usage strings, so there is no upstream line for them beyond that write; the values around the flag are unchanged."
+
+[[entry]]
+path = "internal/codingagent/session_selector_search_semantics_test.go"
+commit = "65ff3467c950339b75a8b0e7c7e060c0446bd90b"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts:195"
+reason = "Pi 8c03fef4d (#11220) matches each session field on its own (matchSession, session-selector-search.ts:195): name text scores in tier 0, id, message and cwd text in tier 1 and scattered name or cwd matches in tier 2; messages and ids never match as scattered characters, so the expected scores and matches follow Pi."
+
+[[entry]]
+path = "internal/codingagent/session_selector_test.go"
+commit = "65ff3467c950339b75a8b0e7c7e060c0446bd90b"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts:195"
+reason = "Pi 8c03fef4d (#11220): scattered characters match the name or the directory, never the message text, so the scattered query lgin no longer finds a session through its messages."
+
+[[entry]]
+path = "coding/extension/markdowntransform/markdowntransform_test.go"
+commit = "809ac2c8b958380038c709607e8bcff25ce50e6a"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/user-message.ts:65"
+reason = "Pi 64627838b (#11270) hands each message the entry id and timestamp as the transformers context messageId and timestamp (user-message.ts:65, passed to createMarkdownTransform); the constructors and createMarkdownTransform take the two trailing values, which these call sites pass empty (Pi undefined); no expected value changes."
+
+[[entry]]
+path = "tui/message_component_options_test.go"
+commit = "809ac2c8b958380038c709607e8bcff25ce50e6a"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/user-message.ts:65"
+reason = "Pi 64627838b (#11270) hands each message the entry id and timestamp as the transformers context messageId and timestamp (user-message.ts:65, passed to createMarkdownTransform); the constructors and createMarkdownTransform take the two trailing values, which these call sites pass empty (Pi undefined); no expected value changes."
+
+[[entry]]
+path = "tui/scoped_models_list_test.go"
+commit = "c55a48a7a610eb44ca29605205b7811d65016ccd"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts:255"
+reason = "Pi 606af8662 (#5916) renders the model name in parentheses after the id for a /scoped-models row when getDistinctModelName finds words the id lacks (scoped-models-selector.ts:255-259). The refreshed-list test's model has id model and name New, so its row reads 'model (New) [new]' instead of 'model [new]'; the new TestScopedModels_ShowsModelNamesThatDifferFromTheID ports Pi's own case."
+
+[[entry]]
+path = "ai/faux_provider_upstream_test.go"
+commit = "006a4963df9ea412989bd83fd463fa9344f040d0"
+class = "CITE"
+cite = "packages/ai/src/providers/faux.ts:266"
+reason = "Pi f3fa8bd92 makes every prompt token a cache read or a cache write and sets input to 0 while caching is simulated (faux.ts:266-271): the 'counts cached characters up to the first difference in the joined prompt' case now expects input 0 for the extended and edited prompts (cacheRead 4, cacheWrite 3 and cacheRead 3, cacheWrite 4 as before), the first call expects cacheWrite 4, and the rounding case expects cacheWrite 0 because its 4-token prompt is all read. Pi's faux-provider.test.ts changed the same expectations in the same commit."
+
+[[entry]]
+path = "internal/codingagent/tools/tools_manager_test.go"
+commit = "fdbd6ca4f0e1f86affb014d2d6e1f2c87126f177"
+class = "CITE"
+cite = "packages/coding-agent/src/utils/tools-manager.ts:33"
+reason = "Pi c8ec752cf (#11209) replaces getAssetName's per-platform arm64-or-x86_64 choice with getReleaseTarget (tools-manager.ts:33-41), which maps only x64 and arm64 and returns undefined for any other architecture or platform. TestArchStr, which asserted that riscv64 and 386 select the x86_64 archive, becomes TestReleaseTarget, which asserts that they select nothing."

@@ -833,3 +833,15 @@ func TestUpstreamMarkdown(t *testing.T) {
 		testMDStreamingFences(t)
 	})
 }
+
+// Pi 8a2ebd385 packages/tui/test/markdown.test.ts "Deeply nested blockquotes" "should render quotes nested deeper than the width allows without exploding" (#11272).
+func TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding(t *testing.T) {
+	lines := NewMarkdown(strings.Repeat(">", 60) + "x").Render(80)
+	plain := stripANSILines(lines)
+	for i, line := range plain {
+		plain[i] = strings.TrimRight(line, " ")
+	}
+	if len(plain) != 1 || !strings.HasSuffix(plain[0], "x") {
+		t.Fatalf("lines = %q, want a single line that keeps the content", plain)
+	}
+}

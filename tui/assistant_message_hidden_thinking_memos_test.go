@@ -25,7 +25,7 @@ func TestFinishedBlockKeepsNoMemosForAHiddenThinkingRun(t *testing.T) {
 		}},
 	} {
 		t.Run(hide.name, func(t *testing.T) {
-			block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+			block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 			for n := 0; n < len(thinking); n += len(thinking) / 20 {
 				block.SetThinkingDelta(thinking[n:min(n+len(thinking)/20, len(thinking))])
 				block.Render(100)

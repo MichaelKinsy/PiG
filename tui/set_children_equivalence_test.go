@@ -67,7 +67,7 @@ func TestStreamedAssistantMessageMatchesFreshBlock(t *testing.T) {
 	words := strings.Fields("plan the change **bold** `code` and\n\n- a list item\n- another one\n\nthen the answer ends here")
 	for round := range 40 {
 		hidden := round%3 == 0
-		streamed := NewAssistantMessageComponent(nil, hidden, nil, "", nil, nil)
+		streamed := NewAssistantMessageComponent(nil, hidden, nil, "", nil, nil, "", "")
 		var message AssistantMessage
 		for range 60 {
 			switch r := rng.IntN(10); {
@@ -92,7 +92,7 @@ func TestStreamedAssistantMessageMatchesFreshBlock(t *testing.T) {
 			streamed.UpdateContent(message, true)
 			hasToolCalls := slices.ContainsFunc(message.Content, func(block AssistantContentBlock) bool { return block.Type == "toolCall" })
 			streamed.SetHasToolCalls(hasToolCalls)
-			fresh := NewAssistantMessageComponent(&message, hidden, nil, "", nil, nil)
+			fresh := NewAssistantMessageComponent(&message, hidden, nil, "", nil, nil, "", "")
 			for _, width := range []int{30, 80} {
 				if got, want := streamed.Render(width), fresh.Render(width); !slices.Equal(got, want) {
 					t.Fatalf("round %d message %+v width %d:\n got %q\nwant %q", round, message, width, got, want)

@@ -56,35 +56,73 @@ def _is_boundary(unit: int) -> bool:
     return _is_js_space(chr(unit))
 
 
+class _Alignment:
+    """Pi's ``scorePositions`` accumulated one matched text index at a time, so the greedy alignment and each contiguous run share the arithmetic."""
+
+    __slots__ = ("score", "last", "consecutive")
+
+    def __init__(self) -> None:
+        self.score = 0.0
+        self.last = -1
+        self.consecutive = 0
+
+    def add(self, text: array, i: int) -> None:
+        # Reward consecutive matches; penalize gaps.
+        if self.last == i - 1:
+            self.consecutive += 1
+            self.score -= self.consecutive * 5
+        else:
+            self.consecutive = 0
+            if self.last >= 0:
+                self.score += (i - self.last - 1) * 2
+        # Reward word boundary matches.
+        if i == 0 or _is_boundary(text[i - 1]):
+            self.score -= 10
+        # Slight penalty for later matches.
+        self.score += i * 0.1
+        self.last = i
+
+
+def _index_units(text: bytes, query: bytes, start: int) -> int:
+    """``String.prototype.indexOf`` of a UTF-16 query from unit index ``start``: the unit index of the next occurrence, or -1."""
+    position = start * 2
+    while True:
+        found = text.find(query, position)
+        if found < 0:
+            return -1
+        if found % 2 == 0:
+            return found // 2
+        position = found + 1  # a match straddling two code units is not a match
+
+
 def _match_query(query: array, text: array) -> FuzzyMatch:
     if len(query) == 0:
         return FuzzyMatch(True, 0)
     if len(query) > len(text):
         return FuzzyMatch(False, 0)
-    query_index = 0
-    score = 0.0
-    last = -1
-    consecutive = 0
-    while query_index < len(query):
+    # Greedy alignment: each query character at its first occurrence after the previous one.
+    greedy = _Alignment()
+    start = 0
+    for unit in query:
         try:
-            i = text.index(query[query_index], last + 1)
+            i = text.index(unit, start)
         except ValueError:
-            break
-        is_boundary = i == 0 or _is_boundary(text[i - 1])
-        if last == i - 1:
-            consecutive += 1
-            score -= consecutive * 5
-        else:
-            consecutive = 0
-            if last >= 0:
-                score += (i - last - 1) * 2
-        if is_boundary:
-            score -= 10
-        score += i * 0.1
-        last = i
-        query_index += 1
-    if query_index < len(query):
-        return FuzzyMatch(False, 0)
+            return FuzzyMatch(False, 0)
+        greedy.add(text, i)
+        start = i + 1
+    score = greedy.score
+    # The greedy alignment can scatter the query over an earlier, unrelated part of the text, e.g. "opus" in
+    # "openrouter openrouter/anthropic/claude-opus" takes o, p, u from "openrouter". Also score every contiguous
+    # occurrence and keep the best alignment.
+    text_bytes = text.tobytes()
+    query_bytes = query.tobytes()
+    found = _index_units(text_bytes, query_bytes, 0)
+    while found >= 0:
+        run = _Alignment()
+        for k in range(len(query)):
+            run.add(text, found + k)
+        score = min(score, run.score)
+        found = _index_units(text_bytes, query_bytes, found + 1)
     if query == text:
         score -= 100
     return FuzzyMatch(True, score)

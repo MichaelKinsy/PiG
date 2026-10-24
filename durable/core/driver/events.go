@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
-	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
 // WatchEvents attaches to one conversation's agent events (events.ts watchEvents) over a view watch of the core with
@@ -33,8 +33,8 @@ func (s *coreSession) WatchEvents(ctx context.Context, conversationId durable.Co
 	current := m.first
 	snapshot := harness.ViewSnapshotEvent(current)
 	var once sync.Once
-	watch := session.NewCommittedWatchOn(m.hub.sched, []harness.AgentEvent{}, func() { once.Do(func() { m.hub.release(m.id); m.closeCore() }) },
-		func() []harness.AgentEvent { return []harness.AgentEvent{harness.ViewSnapshotEvent(current)} }, m.hub.report)
+	watch := chord.NewWatch([]harness.AgentEvent{}, func() { once.Do(func() { m.hub.release(m.id); m.closeCore() }) }, m.hub.report,
+		func() []harness.AgentEvent { return []harness.AgentEvent{harness.ViewSnapshotEvent(current)} }).On(m.hub.sched)
 	m.hub.bind(m.id, func(f rawFrame) {
 		after, ok := m.advance(f)
 		if !ok {

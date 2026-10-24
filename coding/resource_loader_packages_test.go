@@ -188,7 +188,7 @@ func TestDefaultLoaderInstallsMissingNPMPackages(t *testing.T) {
 			t.Fatalf("npm calls = %q, %v", data, err)
 		}
 	})
-	t.Run("failed installation rejects the reload", func(t *testing.T) {
+	t.Run("failed installation warns and the session starts", func(t *testing.T) {
 		f, _ := newFixture(t, true)
 		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: f.cwd, AgentDir: f.agentDir})
 		if err != nil {
@@ -199,12 +199,18 @@ func TestDefaultLoaderInstallsMissingNPMPackages(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if session, err := NewSession(services, SessionOptions{SessionManager: manager}); err == nil {
-			_ = session.Close()
-			t.Fatal("NewSession succeeded although the Package installation failed")
-		} else if !strings.Contains(err.Error(), "npm:installed-pkg") || !strings.HasSuffix(err.Error(), " failed with code 7") {
-			// The failure keeps Pi's runCommand message (package-manager.ts:2679) as the wrapped cause.
-			t.Fatalf("error = %v", err)
+		session, err := NewSession(services, SessionOptions{SessionManager: manager})
+		if err != nil {
+			t.Fatalf("NewSession = %v, want a session although the Package installation failed (Pi 6dfb54678)", err)
+		}
+		t.Cleanup(func() { _ = session.Close() })
+		// The failure keeps Pi's runCommand message (package-manager.ts:2679) in the warning that names the Package.
+		warnings := session.ResourceLoader().GetExtensions().Warnings
+		if len(warnings) != 1 || warnings[0].Path != "npm:installed-pkg" || !strings.Contains(warnings[0].Warning, " failed with code 7") {
+			t.Fatalf("warnings = %+v, want one install warning for npm:installed-pkg", warnings)
+		}
+		if got := skillNames(session.ResourceLoader()); len(got) != 0 {
+			t.Fatalf("skills = %v, want none from the skipped Package", got)
 		}
 	})
 	t.Run("offline installs nothing", func(t *testing.T) {

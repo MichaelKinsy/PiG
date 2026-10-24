@@ -450,3 +450,22 @@ func TestModelSelectorGetSearchInputIsTheLiveInput(t *testing.T) {
 		t.Errorf("SetFocused reaches the search input")
 	}
 }
+
+// #5916 (Pi 606af8662): packages/coding-agent/test/model-selector.test.ts "shows model names that differ from the ID".
+func TestModelSelector_ShowsModelNamesThatDifferFromTheID(t *testing.T) {
+	all := []ModelSelectorItem{
+		{Provider: "openrouter", ID: "minimax/minimax-m3", Name: "MiniMax M3 [parasail]"},
+		{Provider: "openrouter", ID: "claude-sonnet-4-5", Name: "Claude Sonnet 4.5"},
+	}
+	ms := NewStaticModelSelectorComponent("Select model", nil, all, "")
+	var rows []string
+	for _, line := range ms.Render(120) {
+		rows = append(rows, strings.TrimRight(stripANSI(line), " "))
+	}
+	joined := "\n" + strings.Join(rows, "\n") + "\n"
+	for _, want := range []string{"minimax/minimax-m3 (MiniMax M3 [parasail]) [openrouter]", "claude-sonnet-4-5 [openrouter]"} {
+		if !strings.Contains(joined, want+"\n") {
+			t.Errorf("rows lack %q:\n%s", want, joined)
+		}
+	}
+}

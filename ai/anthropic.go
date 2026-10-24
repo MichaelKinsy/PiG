@@ -1641,7 +1641,8 @@ func (p *anthropicProvider) applySampling(req *anthRequest, model *Model, transc
 			if slices.Contains(req.Betas, thinkingBindingControlsBeta) {
 				req.Thinking.BlockBinding = &anthBlockBinding{PrefixMismatchBehavior: "drop_block"}
 			}
-			req.OutputConfig = &anthOutputConfig{Effort: "high"}
+			// upstream: anthropic-messages.ts buildParams (Pi e3bc05e87). Effort markers set the level for every reply, and the top-level effort is part of the cached prompt, so it stays fixed. It is "low" because organizations can cap effort and reject requests containing any level above the cap.
+			req.OutputConfig = &anthOutputConfig{Effort: "low"}
 			if !effortMarkers {
 				req.OutputConfig.Effort = managedEffort
 			}
@@ -1807,19 +1808,10 @@ func decodeAnthropicEvent(sse anthropicStreamEvent, target any) error {
 	return nil
 }
 
-// decodeAnthropicDeltaEvent decodes a content_block_delta. A record with a member of an unexpected type takes a second pass that reads the members as
+// decodeAnthropicDeltaEventReflect decodes a content_block_delta that decodeAnthropicDeltaFast leaves, with json.Unmarshal and a second look. A record with a member of an unexpected type takes a second pass that reads the members as
 // anthropic-messages.ts:737-770 does: an index that is not a number matches no block, a delta type that is not a string matches no case, and the text, thinking,
 // partial_json and signature members are appended with `+=`, so a value that is not a string appends its JS String() form, and a null or absent member appends
 // "null" or "undefined". A null or absent delta decodes as an empty delta, for which the handler throws Pi's TypeError reading `event.delta.type`.
-func decodeAnthropicDeltaEvent(sse anthropicStreamEvent, ev *anthEventContentBlockDelta) error {
-	if fast, ok := decodeAnthropicDeltaFast(sse.JSON); ok {
-		*ev = fast
-		return nil
-	}
-	return decodeAnthropicDeltaEventReflect(sse, ev)
-}
-
-// decodeAnthropicDeltaEventReflect is the decode with json.Unmarshal and the second look, for every record the fast decode leaves.
 func decodeAnthropicDeltaEventReflect(sse anthropicStreamEvent, ev *anthEventContentBlockDelta) error {
 	text := sse.JSON
 	err := json.Unmarshal([]byte(text), ev)
@@ -1978,7 +1970,7 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 		if sse.valid {
 			observeErr = builder.observeValidProviderEvent(sse.JSON)
 		} else {
-			observeErr = builder.observeProviderEvent([]byte(sse.JSON))
+			observeErr = builder.observeProviderEventText(sse.JSON)
 		}
 		if err := observeErr; err != nil {
 			throw(err)
@@ -2086,10 +2078,15 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 			}
 
 		case "content_block_delta":
-			var ev anthEventContentBlockDelta
-			if err := decodeAnthropicDeltaEvent(sse, &ev); err != nil {
-				throw(err)
-				return
+			ev, fast := decodeAnthropicDeltaFast(sse.JSON)
+			if !fast {
+				// Only a record the fast decode leaves needs a heap target, so the ordinary delta's decode result stays on the stack.
+				slow := new(anthEventContentBlockDelta)
+				if err := decodeAnthropicDeltaEventReflect(sse, slow); err != nil {
+					throw(err)
+					return
+				}
+				ev = *slow
 			}
 			if ev.Delta.Type == "" {
 				// `event.delta.type` is read before the block is looked up.
@@ -2110,20 +2107,20 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 				if block, ok := output.Content[index].(TextContent); ok {
 					block.Text = builder.appendContent(index, block.Text, ev.Delta.Text)
 					output.Content[index] = block
-					builder.push(TextDeltaEvent{ContentIndex: index, Delta: ev.Delta.Text, Partial: output})
+					builder.pushTextDelta(index, ev.Delta.Text)
 				}
 			case "thinking_delta":
 				if block, ok := output.Content[index].(ThinkingContent); ok {
 					block.Thinking = builder.appendContent(index, block.Thinking, ev.Delta.Thinking)
 					output.Content[index] = block
-					builder.push(ThinkingDeltaEvent{ContentIndex: index, Delta: ev.Delta.Thinking, Partial: output})
+					builder.pushThinkingDelta(index, ev.Delta.Thinking)
 				}
 			case "input_json_delta":
 				if block, ok := output.Content[index].(ToolCall); ok {
 					block.scratch.partialJson = builder.appendArguments(index, block.scratch.partialJson, ev.Delta.PartialJSON)
 					block.setParsedArguments(builder.streamingArguments(index, block.scratch.partialJson))
 					output.Content[index] = block
-					builder.push(ToolCallDeltaEvent{ContentIndex: index, Delta: ev.Delta.PartialJSON, Partial: output})
+					builder.pushToolCallDelta(index, ev.Delta.PartialJSON)
 				}
 			case "signature_delta":
 				if block, ok := output.Content[index].(ThinkingContent); ok {

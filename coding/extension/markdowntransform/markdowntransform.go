@@ -28,6 +28,10 @@ type MarkdownTransformContext struct {
 	MessageType    MarkdownMessageType `json:"messageType"`
 	IsStreaming    bool                `json:"isStreaming"`
 	AvailableWidth int                 `json:"availableWidth"`
+	// MessageID is the persisted session-entry id. It is empty (Pi's undefined) for a live message or live rendering, and set when rendering from persisted session entries.
+	MessageID string `json:"messageId,omitempty"`
+	// Timestamp is the persisted session-entry ISO timestamp, with the same availability as MessageID.
+	Timestamp string `json:"timestamp,omitempty"`
 }
 
 // RetryRequester marks the message being transformed as changed, so its next frame transforms it again.
@@ -38,10 +42,11 @@ type MarkdownTransformer func(markdown string, context MarkdownTransformContext)
 
 // CreateMarkdownTransform returns the transform a Markdown component applies at its available width: each transformer
 // rewrites the Markdown in turn, and one that panics is skipped with the current Markdown kept. It is Pi's
-// createMarkdownTransform(messageType, isStreaming, transformers).
-func CreateMarkdownTransform(messageType MarkdownMessageType, isStreaming bool, transformers []MarkdownTransformer) func(markdown string, availableWidth int) string {
+// createMarkdownTransform(messageType, isStreaming, transformers, messageId, timestamp): messageID and timestamp are the persisted
+// entry's, or empty for a live message.
+func CreateMarkdownTransform(messageType MarkdownMessageType, isStreaming bool, transformers []MarkdownTransformer, messageID, timestamp string) func(markdown string, availableWidth int) string {
 	return func(markdown string, availableWidth int) string {
-		ctx := MarkdownTransformContext{MessageType: messageType, IsStreaming: isStreaming, AvailableWidth: availableWidth}
+		ctx := MarkdownTransformContext{MessageType: messageType, IsStreaming: isStreaming, AvailableWidth: availableWidth, MessageID: messageID, Timestamp: timestamp}
 		return ApplyMarkdownTransformers(markdown, ctx, transformers)
 	}
 }

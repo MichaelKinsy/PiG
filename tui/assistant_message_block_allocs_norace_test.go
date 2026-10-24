@@ -23,7 +23,7 @@ func leastAllocs(runs int, f func()) float64 {
 // block's children (spacers, the thinking run's mouse region) instead of building them again. Before, the tool-call delta
 // rebuilt every child (6 allocations) and a text delta allocated 11 times (2 of them this test's own text).
 func TestAssistantMessageDeltaAllocationCeiling(t *testing.T) {
-	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	message := AssistantMessage{Content: []AssistantContentBlock{
 		{Type: "thinking", Thinking: "Planning the change in a few words."},
 		{Type: "text", Text: "Here is the answer"},

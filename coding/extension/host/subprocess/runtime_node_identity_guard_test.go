@@ -45,7 +45,7 @@ func identityAllowances() []*identityAllowance {
 		allow(`^pi-ai/auth/oauth/radius\.js$`, `^"pi-gateway"$`, "the OAuth client id Radius registered for its gateway; the Go host sends the same one (ai/oauth_radius.go)."),
 		allow(`^pi-ai/api/openai-responses-shared\.js$`, `^earendil-works/pi`, docLink),
 		allow(`^pi-tui/components/markdown\.js$`, `^earendil-works/pi`, docLink),
-		allow(`^pi-coding-agent/(utils/child-process|core/tools/find)\.js$`, `^earendil-works/pi`, docLink),
+		allow(`^pi-coding-agent/(utils/child-process|core/exec|core/tools/find)\.js$`, `^earendil-works/pi`, docLink),
 		allow(`^pi-coding-agent/utils/changelog\.js$`, `^earendil-works/pi`, "GITHUB_REPO only formats pull-request links inside changelog text; nothing is requested."),
 		allow(`^pi-coding-agent/(migrations\.js|sdk-bundle/index\.js)$`, `^earendil-works/pi`, "migration guide links printed to the user; the Go host prints the same ones (internal/codingagent/migrations.go)."),
 		allow(`^pi-coding-agent/(config\.js|sdk-bundle/chunk-[A-Z0-9]+\.js)$`, `^earendil-works/pi`, "install-method message text (Download from ...); never requested."),

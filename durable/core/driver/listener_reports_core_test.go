@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
 
-// Pi reports a failing watch listener through the Session: every CommittedWatch is built with the Session's report
+// Pi reports a failing watch listener through the Session: every Watch is built with the Session's report
 // (session.ts watchDoc, view.ts watch, task-graph.ts watch), which also ends the watch. The Harness over the core reports
 // them the same way.
 
@@ -88,7 +88,7 @@ func TestCoreReportsAFailingWatchListenerAndEndsTheWatch(t *testing.T) {
 }
 
 func TestCoreReportsAFailingAgentEventListenerAndEndsTheStream(t *testing.T) {
-	// Pi events.ts watchEvents builds its CommittedWatch with `(error) => views.report(error)`.
+	// Pi events.ts watchEvents builds its Watch with `(error) => views.report(error)`.
 	reports := make(chan error, 16)
 	h, root, submit := nestedCoreOpen(t, &durable.Extension{Name: "nested", Tools: []*durable.ToolRegistration{
 		nestedCoreTool("batch", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {

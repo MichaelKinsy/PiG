@@ -19,7 +19,7 @@ func TestTextBlankCheckTrimsLikeJavaScript(t *testing.T) {
 // assistant-message.ts:110-125 trims a text or thinking run with String.prototype.trim before it renders: a run of only U+FEFF is blank and a leading U+FEFF is dropped, while U+0085 is kept.
 func TestAssistantMessageComponentTrimsRunsLikeJavaScript(t *testing.T) {
 	render := func(segments ...AssistantSegment) string {
-		block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+		block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 		block.SetContent(segments)
 		return strings.Join(block.Render(40), "\n")
 	}

@@ -3865,16 +3865,25 @@ class OAuthAuthInfo:
 class OAuthDeviceCodeInfo:
     user_code: str = ""
     verification_uri: str = ""
+    # Offer best-effort browser opening on user confirmation. None means true; clients may ignore it.
+    open_browser_on_confirm: bool | None = None
+    # Offer copying user_code on user confirmation, replacing the clipboard. None means true.
+    copy_code_on_confirm: bool | None = None
     interval_seconds: float = 0.0
     expires_in_seconds: float = 0.0
 
     def _to_wire(self) -> dict[str, Any]:
-        return {
+        wire: dict[str, Any] = {
             "userCode": self.user_code,
             "verificationUri": self.verification_uri,
             "intervalSeconds": self.interval_seconds,
             "expiresInSeconds": self.expires_in_seconds,
         }
+        if self.open_browser_on_confirm is not None:
+            wire["openBrowserOnConfirm"] = self.open_browser_on_confirm
+        if self.copy_code_on_confirm is not None:
+            wire["copyCodeOnConfirm"] = self.copy_code_on_confirm
+        return wire
 
 
 @dataclass
@@ -4802,7 +4811,8 @@ class Extension:
         assistant Markdown in the interactive transcript, after its own
         transformers; a later registration replaces an earlier one. It receives
         the Markdown and Pi's MarkdownTransformContext (messageType,
-        isStreaming, availableWidth); anything but a str return, or a raise,
+        isStreaming, availableWidth, and messageId and timestamp when rendering a
+        persisted session entry); anything but a str return, or a raise,
         keeps the input."""
         self._markdown_transformer = transformer
 

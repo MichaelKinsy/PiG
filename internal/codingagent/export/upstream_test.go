@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -100,8 +101,8 @@ func TestCustomToolResultHTMLTrimsSpacing(t *testing.T) {
 func TestExportHTMLPinnedAssets(t *testing.T) {
 	for name, want := range map[string]string{
 		"template.html":                     "47d208235b066c856dae69c60281a3b99d164b99be9b81153d880375c9327105",
-		"template.css":                      "8ee19851f8e583277ed396cbb76496687aa556707fdfc1f78d1118bff87c740a",
-		"template.js":                       "10bc6324f9cc3136a332d5670b25aa0a7280badd0565210beec7c1efb5036415",
+		"template.css":                      "c9d26cc314336192021d604c0f1a4a63115172b24d03500571379f9172c06fc9",
+		"template.js":                       "14fbe96123a82ee0f3efdd9f9634dd316c59810509fdbd8c5a5f41f3918c07a4",
 		"vendor/marked.min.js":              "438eedfcf932a414d0d0bfeea32dc365c063563b8ca713b4687fc8f8b501e5e4",
 		"vendor/marked-cjk-friendly.min.js": "93d2c938754cb24eef5b9ffecc268a98ef6beeb75dad614b0e874176aeeba565",
 		"vendor/highlight.min.js":           "837a6fa5b0c736b52bbde2b2b6190f305da3fc9ed41681db5321507057b5c846",
@@ -155,6 +156,44 @@ func TestExportHTMLRendering(t *testing.T) {
 	cmd := exec.CommandContext(t.Context(), "node", "testdata/render.cjs", output)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("export rendering: %v\n%s", err, output)
+	}
+}
+
+// Ports packages/coding-agent/test/export-html-system-messages.test.ts (Pi #11261): the template's system-message helpers.
+func TestExportHTMLSystemMessages(t *testing.T) {
+	template, err := filepath.Abs("assets/template.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output, err := exec.CommandContext(t.Context(), "node", "testdata/system_messages.cjs", template).CombinedOutput(); err != nil {
+		t.Fatalf("system message helpers: %v\n%s", err, output)
+	}
+}
+
+// Ports packages/coding-agent/test/export-html-deep-tree.test.ts (Pi #11225): a single-child chain deeper than the call stack.
+func TestExportHTMLDeepSessionTree(t *testing.T) {
+	const depth = 20_000
+	dir := t.TempDir()
+	var lines strings.Builder
+	fmt.Fprintf(&lines, `{"type":"session","version":3,"id":"deep-test","timestamp":"1970-01-01T00:00:00.000Z","cwd":%q}`+"\n", dir)
+	for i := range depth {
+		parent := "null"
+		if i > 0 {
+			parent = fmt.Sprintf(`"e%d"`, i-1)
+		}
+		fmt.Fprintf(&lines, `{"type":"message","id":"e%d","parentId":%s,"timestamp":%q,"message":{"role":"user","content":"x","timestamp":%d}}`+"\n",
+			i, parent, time.UnixMilli(int64(i)*1000).UTC().Format("2006-01-02T15:04:05.000Z"), i*1000)
+	}
+	input := filepath.Join(dir, "session.jsonl")
+	if err := os.WriteFile(input, []byte(lines.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output, err := ExportFromFile(input, filepath.Join(dir, "out.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.CommandContext(t.Context(), "node", "testdata/deep_tree.cjs", output, fmt.Sprint(depth)).CombinedOutput(); err != nil {
+		t.Fatalf("deep session tree: %v\n%s", err, out)
 	}
 }
 

@@ -40,10 +40,10 @@ func TestMarkdownCodeBlockIndentSettingReachesChatComponents(t *testing.T) {
 			outputPad:     1,
 			opts:          InteractiveModeOptions{SettingsManager: &SettingsManager{merged: settings}},
 		}
-		assistant := m.newAssistantMessageBlock()
+		assistant := m.newAssistantMessageBlock(messageMeta{})
 		assistant.SetTextDelta(body)
 		for name, component := range map[string]tui.Component{
-			"user":       m.newUserMessageBlock(body),
+			"user":       m.newUserMessageBlock(body, messageMeta{}),
 			"assistant":  assistant,
 			"compaction": tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: body}, m.markdownThemeWithSettings(), 1),
 		} {

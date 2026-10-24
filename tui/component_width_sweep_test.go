@@ -64,7 +64,7 @@ func sweepCases() []sweepCase {
 		}
 		return NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true}).Render(w)
 	}})
-	cs = append(cs, sweepCase{"UserMessageComponent", func(w int) []string { return NewUserMessageComponent(all, nil, 1, nil).Render(w) }})
+	cs = append(cs, sweepCase{"UserMessageComponent", func(w int) []string { return NewUserMessageComponent(all, nil, 1, nil, "", "").Render(w) }})
 	cs = append(cs, sweepCase{"UserMessageSelectorComponent", func(w int) []string { return newUserMessageSelectorForTest(sweepContent).Render(w) }})
 	cs = append(cs, sweepCase{"ToolExecution", func(w int) []string {
 		c := newToolCardForTest("bash 👨‍👩‍👧‍👦", all)

@@ -34,15 +34,19 @@ function optionalStrings(value, name) {
         throw new Error(`Invalid ${name}`);
     return [...value];
 }
+/**
+ * Accepts only `http:` and `https:` URLs. Servers supply these URLs, and the authorization endpoint is
+ * opened with the platform URL handler, so a `file:` or custom protocol URL would launch local programs.
+ */
 function safeUrl(value, name) {
     const text = requiredString(value, name);
     // URL parsing throws a `TypeError`, which discovery reserves for network failures.
-    if (!URL.canParse(text))
-        throw new Error(`Invalid ${name}`);
-    const url = new URL(text);
-    if (["javascript:", "data:", "vbscript:"].includes(url.protocol))
+    if (!URL.canParse(text) || !isHttpUrl(new URL(text)))
         throw new Error(`Invalid ${name}`);
     return text;
+}
+export function isHttpUrl(url) {
+    return url.protocol === "http:" || url.protocol === "https:";
 }
 function optionalUrl(value, name) {
     return absent(value) ? undefined : safeUrl(value, name);

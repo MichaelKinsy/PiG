@@ -1,5 +1,5 @@
 {
- "pi": "1.4.0+74f46864",
+ "pi": "1.4.0+acf83acf",
  "genai": "2.21.0",
  "node": "v24.19.0",
  "cap": 160,
@@ -3498,7 +3498,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 3
      }
     },
     {
@@ -3538,7 +3538,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 3
      }
     },
     {
@@ -4051,7 +4051,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 4
      }
     },
     {
@@ -4091,7 +4091,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 4
      }
     },
     {
@@ -4592,7 +4592,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 3
      }
     },
     {
@@ -4632,7 +4632,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 2
+      "durationMs": 3
      }
     },
     {

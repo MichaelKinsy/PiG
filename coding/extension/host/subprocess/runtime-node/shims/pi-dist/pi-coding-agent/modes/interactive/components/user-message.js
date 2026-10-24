@@ -12,12 +12,16 @@ export class UserMessageComponent extends Container {
     markdownTheme;
     outputPad;
     markdownTransformers;
-    constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = []) {
+    messageId;
+    timestamp;
+    constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
         super();
         this.text = text;
         this.markdownTheme = markdownTheme;
         this.outputPad = outputPad;
         this.markdownTransformers = markdownTransformers;
+        this.messageId = messageId;
+        this.timestamp = timestamp;
         this.rebuild();
     }
     setOutputPad(padding) {
@@ -34,7 +38,7 @@ export class UserMessageComponent extends Container {
         }, {
             preserveOrderedListMarkers: true,
             preserveBackslashEscapes: true,
-            transform: createMarkdownTransform("user", false, this.markdownTransformers),
+            transform: createMarkdownTransform("user", false, this.markdownTransformers, this.messageId, this.timestamp),
         }));
     }
     render(width) {

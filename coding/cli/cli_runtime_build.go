@@ -406,6 +406,8 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if err != nil {
 		return nil, cliCLIError("%v", err)
 	}
+	// An -e source that could not be installed warns before the package warnings and the load goes on (resource-loader.ts [...installWarnings, ...packageWarnings], Pi 6dfb54678).
+	packageWarnings = mergeExtensionWarnings(fromCodingAgentWarnings(packagemanager.PackageInstallWarnings(cliExtensions.installFailures)), packageWarnings)
 
 	var embeddedCells []subprocess.EmbeddedCell
 	if b.activePigletBaked {

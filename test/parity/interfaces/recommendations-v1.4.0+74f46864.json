@@ -179248,7 +179248,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "5 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -179259,8 +179259,6 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/extension#BashOperations",
-        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#BuiltinToolPeer.bashOperations",
-        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connBuiltinPeer.bashOperations",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#BashOperations",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashOperations"
       ],

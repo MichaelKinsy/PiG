@@ -164,6 +164,7 @@ func (m *InteractiveMode) newLoginDialog(name string, cancel func(), titleOverri
 	}, "", titleOverride...)
 	dialog.SetMaskSecretInput(m.maskSecretInput())
 	dialog.SetCopyToClipboard(copyToClipboard, m.requestRender)
+	dialog.SetOpenBrowser(OpenBrowser)
 	return dialog
 }
 
@@ -369,7 +370,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 		OnPrompt:        func(value ai.OAuthPrompt) (string, error) { return prompt(context.Background(), value) },
 		OnPromptContext: prompt,
 		OnDeviceCode: func(info ai.OAuthDeviceCodeInfo) {
-			showDeviceCode(dlg, tui.OAuthDeviceCodeInfo{UserCode: info.UserCode, VerificationURI: info.VerificationURI, IntervalSeconds: info.IntervalSeconds, ExpiresInSeconds: info.ExpiresInSeconds})
+			showDeviceCode(dlg, tui.OAuthDeviceCodeInfo{UserCode: info.UserCode, VerificationURI: info.VerificationURI, OpenBrowserOnConfirm: info.OpenBrowserOnConfirm, CopyCodeOnConfirm: info.CopyCodeOnConfirm, IntervalSeconds: info.IntervalSeconds, ExpiresInSeconds: info.ExpiresInSeconds})
 			notify()
 		},
 		OnAuth: func(info ai.OAuthAuthInfo) {
@@ -556,7 +557,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 			return loginMethod, nil
 		},
 		OnDeviceCode: func(info ai.OAuthDeviceCodeInfo) {
-			showDeviceCode(dlg, tui.OAuthDeviceCodeInfo{UserCode: info.UserCode, VerificationURI: info.VerificationURI, IntervalSeconds: info.IntervalSeconds, ExpiresInSeconds: info.ExpiresInSeconds})
+			showDeviceCode(dlg, tui.OAuthDeviceCodeInfo{UserCode: info.UserCode, VerificationURI: info.VerificationURI, OpenBrowserOnConfirm: info.OpenBrowserOnConfirm, CopyCodeOnConfirm: info.CopyCodeOnConfirm, IntervalSeconds: info.IntervalSeconds, ExpiresInSeconds: info.ExpiresInSeconds})
 			notify()
 		},
 		OnAuth: func(info ai.OAuthAuthInfo) {
@@ -863,7 +864,7 @@ func notifyAuthDialog(dlg *tui.LoginDialogComponent, event ai.AuthEvent) {
 			_ = openBrowser(e.URL)
 		}
 	case ai.AuthDeviceCodeEvent:
-		info := tui.OAuthDeviceCodeInfo{UserCode: e.UserCode, VerificationURI: e.VerificationURI}
+		info := tui.OAuthDeviceCodeInfo{UserCode: e.UserCode, VerificationURI: e.VerificationURI, OpenBrowserOnConfirm: e.OpenBrowserOnConfirm, CopyCodeOnConfirm: e.CopyCodeOnConfirm}
 		if e.IntervalSeconds != nil {
 			info.IntervalSeconds = *e.IntervalSeconds
 		}

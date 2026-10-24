@@ -17,14 +17,18 @@ export class AssistantMessageComponent extends Container {
     lastMessage;
     hasToolCalls = false;
     isStreaming = false;
+    messageId;
+    timestamp;
     thinkingVisibilityOverrides = new Map();
-    constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = []) {
+    constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
         super();
         this.hideThinkingBlock = hideThinkingBlock;
         this.markdownTheme = markdownTheme;
         this.hiddenThinkingLabel = hiddenThinkingLabel;
         this.outputPad = outputPad;
         this.markdownTransformers = markdownTransformers;
+        this.messageId = messageId;
+        this.timestamp = timestamp;
         // Container for text/thinking content
         this.contentContainer = new Container();
         this.addChild(this.contentContainer);
@@ -83,7 +87,7 @@ export class AssistantMessageComponent extends Container {
                 // Assistant text messages with no background - trim the text
                 // Set paddingY=0 to avoid extra spacing before tool executions
                 this.contentContainer.addChild(new Markdown(content.text.trim(), this.outputPad, 0, this.markdownTheme, undefined, {
-                    transform: createMarkdownTransform("assistant", this.isStreaming, this.markdownTransformers),
+                    transform: createMarkdownTransform("assistant", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp),
                 }));
             }
             else if (content.type === "thinking") {
@@ -115,7 +119,7 @@ export class AssistantMessageComponent extends Container {
                         color: (text) => theme.fg("thinkingText", text),
                         italic: true,
                     }, {
-                        transform: createMarkdownTransform("assistant-thinking", this.isStreaming, this.markdownTransformers),
+                        transform: createMarkdownTransform("assistant-thinking", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp),
                     });
                 this.contentContainer.addChild(new MouseRegion(thinkingComponent, (event) => {
                     if (event.type !== "click" || event.button !== "left")

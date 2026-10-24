@@ -27,7 +27,7 @@ func TestUserMessageStartShowsTheJoinedUntrimmedText(t *testing.T) {
 			m.chatContainer = tui.NewContainer()
 			m.handleAgentEvent(agent.MessageStartEvent{Message: agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: tc.content}}})
 			want := tui.NewContainer()
-			want.AddChild(m.newUserMessageBlock(tc.text))
+			want.AddChild(m.newUserMessageBlock(tc.text, messageMeta{}))
 			if got, wantRows := m.chatContainer.Render(60), want.Render(60); !reflect.DeepEqual(got, wantRows) {
 				t.Fatalf("chat rows %q, want the rows of %q: %q", got, tc.text, wantRows)
 			}

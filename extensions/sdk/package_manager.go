@@ -13,6 +13,15 @@ type ResolvedPaths struct {
 	Skills     []ResolvedResource `json:"skills"`
 	Prompts    []ResolvedResource `json:"prompts"`
 	Themes     []ResolvedResource `json:"themes"`
+	// InstallFailures lists the configured packages that were skipped because installing them failed.
+	InstallFailures []PackageInstallFailure `json:"installFailures,omitempty"`
+}
+
+// PackageInstallFailure is Pi's PackageInstallFailure: a configured package that could not be installed while resolving resources. Scope is "user", "project" or "temporary".
+type PackageInstallFailure struct {
+	Source  string `json:"source"`
+	Scope   string `json:"scope"`
+	Message string `json:"message"`
 }
 
 // ConfiguredPackage is Pi's ConfiguredPackage: a package named in the user or project settings. Scope is "user" or "project".

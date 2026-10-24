@@ -38,7 +38,7 @@ func TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil(t *testing.T) {
 		t.Fatalf("delivered %+v", seen[0])
 	}
 	mu.Unlock()
-	// Retirement delivers a nil value and ends the watch (observation.ts retire/#drain: the source's explicit retirement).
+	// Retirement delivers a nil value and ends the watch (chord watch.ts retire/#drain: the source's explicit retirement).
 	commit(t, harness.Session, func(tx durable.Tx) error { return tx.RetireDoc(watchStateDoc) })
 	eventuallyTrue(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(seen) == 2 })
 	mu.Lock()

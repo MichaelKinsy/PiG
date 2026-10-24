@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "pi-dist/pi-coding-agent/cli/args.js",
-      "sha256": "b05547c70311daba414710d1cba298e8fceb48601a83c99d7f4759680e37acb7"
+      "sha256": "391d4f5e9139130a0543fb3df5a8df177e0133151b0d0abb69a33ed18d4c952a"
     },
     {
       "path": "pi-dist/pi-coding-agent/cli/auth-check.js",
@@ -123,7 +123,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/exec.js",
-      "sha256": "6aed92abe5273445a9bddcd92d4178264d0a23890b54b175a0efc73b20cdf53f"
+      "sha256": "8ef96af3a5cc562fe3be7a2ea124a905f97e3a04bee48dabe0d4e18166b9c2ef"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/experimental.js",
@@ -227,7 +227,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/package-manager.js",
-      "sha256": "dd7cf13133cf888df34a5561bab081861dbd21fa3bc84bd9a0f7e8c5fc3f70f8"
+      "sha256": "cae0a9987856d43fa38a631818609fec32f79fe8f97c149b168ae32493186d4a"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/pi-manifest.js",
@@ -259,7 +259,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/resource-loader.js",
-      "sha256": "516483aa645dd7b03ca97ea3892b2feb5de72c82c85aeb2a0f08b30ab0611986"
+      "sha256": "545de8a6121b6494bfa4e246f56478bdf403291697dc7df606b7e1eb30fb21fa"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/runtime-credentials.js",
@@ -279,7 +279,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/session-manager.js",
-      "sha256": "2fcdb6ea6c50f2cfa7aac17b8c9c79b5619e909b86eaf00cbf4bb5e6f0f73038"
+      "sha256": "14bed314bf4e42b7c44a8adec222ba27b33e20d699b3c0c076f196e4914bdd62"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/settings-defaults.js",
@@ -523,7 +523,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/main.js",
-      "sha256": "c7c8d1ec45d8affd536016f39216c6628983b9957e0288da7f6473466b4baf3e"
+      "sha256": "152bdbc1df4830973ad5e7681d1586198d901aa01d912b7edb9fe967aa38ac4a"
     },
     {
       "path": "pi-dist/pi-coding-agent/migrations.js",
@@ -547,7 +547,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/assistant-message.js",
-      "sha256": "6c131c7b4d8980983fcaa6b151af2368794e7dc03f451171973748317f53d34d"
+      "sha256": "75ec73111a6a2c7cf5e3e7d2e1bcf833b80d5ec9b7e18d97db3eebcc081469a7"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/auth-url.js",
@@ -639,11 +639,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/login-dialog.js",
-      "sha256": "851cbc21784baa6daa2960e9cac026cf56f4f626c9e01d010566e10fb319abfd"
+      "sha256": "3a6e89c0a1d585bd01078e58b15b75de40b83fd07b7cde4a9689ab4ae3a96235"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/markdown-transform.js",
-      "sha256": "31ad2245189328104a31bb9b12f58b0a12e4af9c7924775a242c9dcd526d2c1a"
+      "sha256": "b3ea9e143146e7be4c9ff27e1443836561174f57facc612994687134df375100"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/mermaid.js",
@@ -651,7 +651,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/model-selector.js",
-      "sha256": "ab348207755fe65385309a671ed80e307536a85adb23065522d4f7b288517530"
+      "sha256": "b8ee91d00a5fa8f4c391a04c30b1a393e7e96c119305064802dd1597a2a5740c"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js",
@@ -667,11 +667,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/scoped-models-selector.js",
-      "sha256": "c44e3ffc90e676194d0d131a5d224f85adedd7ee390287d5562c0c57bf920d64"
+      "sha256": "28055bb808dd9b2daa6fca7fbfa28bde422b127cf9937d4dc5d722805e46b7bc"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/session-selector-search.js",
-      "sha256": "65120aa7bebf506f546988cab5d519dbcb3aa3ea4865cc34073133405b30a352"
+      "sha256": "2b2e5bfd0d122f872c262cb13d5587e3099d96f0b7c74eb773fed9441f6aa3ec"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/session-selector.js",
@@ -727,7 +727,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/user-message.js",
-      "sha256": "f496d21074f1bba146e4a88d6c1879e38b19a6ae93d1ddc9c015a983d40882c6"
+      "sha256": "636f599ed5b5996decedc6891fd24ec733d739ac28022abffee5c63653c3b363"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/visual-truncate.js",
@@ -739,7 +739,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js",
-      "sha256": "2cb5362a21a6c887659dd9f3e252dd6bd25d509e2e7a8dbe2c8200c278c92965"
+      "sha256": "4981866572b5602988f210d8d933fd35af14e73a11052143285015e34384fbe8"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js",
@@ -747,7 +747,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/model-search.js",
-      "sha256": "5fbe3c08cc30c21fe38bfb3a86bb790b020b8c4a2fec8e14e57419560f790a92"
+      "sha256": "934ba6a0bd884263e92ca28c843461e2758836db6a5dbfdef3b5324b6a1a3df0"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/program-status-reporter.js",
@@ -803,7 +803,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/package-manager-cli.js",
-      "sha256": "be207ad778060002d0cfbf444babb96b4d0be6d61e12613297a3c569ba17f715"
+      "sha256": "66ff1f928b536290d8901fdbed7301d4d3848b426d70dca037ea7e4fb3b1dc1c"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/abort.js",
@@ -903,7 +903,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/shell.js",
-      "sha256": "f1e61708c725a337882bb08abac995bafc7a42883558ea1c46cc1917aff5d778"
+      "sha256": "57dd12450505faaf713b7cfeddff43ce8bd6238b3cfb755f87bdc83ee6134fc2"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/sleep.js",
@@ -923,7 +923,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/tools-manager.js",
-      "sha256": "4a8c8fc56b88dc306d10f476f6dfed2469dbd8d812251f40cc20f3e97b6928ec"
+      "sha256": "969ef1a6018c1e773b3c0a4be42642c7cf10cb07687f74004f458fb2262d9595"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/version-check.js",

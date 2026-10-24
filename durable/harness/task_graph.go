@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -74,7 +75,7 @@ type TaskGraph struct {
 // TaskGraphWatch is a serialized exact-frame watch of the task graph.
 type TaskGraphWatch = durable.WatchHandle[TaskGraph]
 
-// taskGraphObserver is a CommittedWatch of the graph.
+// taskGraphObserver is a chord.Watch of the graph.
 type taskGraphObserver interface {
 	Advance(ctx context.Context, value TaskGraph, ops []durable.Op)
 	SourceEnded(failure error)
@@ -145,9 +146,9 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage,
 
 // Watch returns a serialized exact-frame watch of the graph; cancelling ctx stops it.
 func (view *TaskGraphView) Watch(ctx context.Context) (TaskGraphWatch, error) {
-	var watch *session.CommittedWatch[TaskGraph]
+	var watch *chord.Watch[TaskGraph]
 	if _, err := view.attach(ctx, func(value TaskGraph, release func()) taskGraphObserver {
-		watch = session.NewCommittedWatch(view.session, value, release, nil)
+		watch = session.NewSessionWatch(view.session, value, release, nil)
 		return watch
 	}); err != nil {
 		return nil, err

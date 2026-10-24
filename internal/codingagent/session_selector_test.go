@@ -38,9 +38,13 @@ func TestFilterAndSortSessions(t *testing.T) {
 	if len(got) != 1 || got[0].ID != "2" {
 		t.Fatalf("phrase filter got=%v", got)
 	}
-	got = filterAndSortSessions(sessions, `lgin`, sessionSortRelevance)
-	if len(got) == 0 || got[0].ID != "1" && got[0].ID != "3" {
+	// Scattered characters match the name or the directory, never the message text (Pi #11220).
+	got = filterAndSortSessions(sessions, `gma`, sessionSortRelevance)
+	if len(got) != 1 || got[0].ID != "3" {
 		t.Fatalf("fuzzy filter got=%v", got)
+	}
+	if got = filterAndSortSessions(sessions, `lgin`, sessionSortRelevance); len(got) != 0 {
+		t.Fatalf("scattered characters of the message text matched: %v", got)
 	}
 	got = filterAndSortSessions(sessions, `login`, sessionSortRecent)
 	if len(got) != 2 || got[0].ID != "3" && got[0].ID != "1" {

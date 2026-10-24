@@ -152,3 +152,65 @@ func TestModelSelectorSearchMatchesRawNameAndFooterFallsBackToID(t *testing.T) {
 		t.Fatalf("footer did not fall back to id:\n%s", joined)
 	}
 }
+
+// Ports packages/coding-agent/test/model-search.test.ts (Pi #11220, #10065): ranking a query that a scattered alignment used to bury.
+func TestModelSelectorSearchRanksContiguousMatchesAboveScatteredOnes(t *testing.T) {
+	rank := func(items []ModelSearchItem, query string) []string {
+		filtered := FuzzyFilter(items, query, GetModelSelectorSearchText)
+		out := make([]string, len(filtered))
+		for i, item := range filtered {
+			out[i] = item.ID
+		}
+		return out
+	}
+	t.Run("ranks models containing the query above scattered matches", func(t *testing.T) {
+		got := rank([]ModelSearchItem{
+			{Provider: "openrouter", ID: "openai/gpt-oss-120b", Name: "OpenAI: gpt-oss-120b"},
+			{Provider: "openrouter", ID: "anthropic/claude-sonnet-4.5", Name: "Anthropic: Claude Sonnet 4.5"},
+			{Provider: "openrouter", ID: "anthropic/claude-opus-4.1", Name: "Anthropic: Claude Opus 4.1"},
+			{Provider: "anthropic", ID: "claude-sonnet-4-5", Name: "Claude Sonnet 4.5"},
+			{Provider: "anthropic", ID: "claude-opus-4-1", Name: "Claude Opus 4.1"},
+		}, "opus")
+		first := slices.Sorted(slices.Values(got[:2]))
+		if want := []string{"anthropic/claude-opus-4.1", "claude-opus-4-1"}; !slices.Equal(first, want) {
+			t.Fatalf("first two = %v, want %v", first, want)
+		}
+	})
+	t.Run("ranks the typed model above models sharing a long provider prefix", func(t *testing.T) {
+		got := rank([]ModelSearchItem{
+			{Provider: "fireworks", ID: "accounts/fireworks/models/deepseek-v4-flash-0731"},
+			{Provider: "fireworks", ID: "accounts/fireworks/models/kimi-k3"},
+			{Provider: "fireworks", ID: "accounts/fireworks/routers/firerouter", Name: "FireRouter"},
+		}, "firerouter")
+		if got[0] != "accounts/fireworks/routers/firerouter" {
+			t.Fatalf("ranking = %v, want the router first", got)
+		}
+	})
+}
+
+// #5916 (Pi 606af8662): packages/coding-agent/test/model-search.test.ts getDistinctModelName.
+func TestGetDistinctModelName(t *testing.T) {
+	hidden := []ModelSearchItem{
+		{ID: "claude-sonnet-4-5", Name: "Claude Sonnet 4.5"},
+		{ID: "openai/gpt-oss-120b", Name: "OpenAI: gpt-oss-120b"},
+		{ID: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0", Name: "Claude Sonnet 4.5 (EU)"},
+		{ID: "gpt-5", Name: ""},
+		{ID: "gpt-5"},
+	}
+	for _, item := range hidden {
+		if got := GetDistinctModelName(item); got != "" {
+			t.Errorf("GetDistinctModelName(%+v) = %q, want it hidden", item, got)
+		}
+	}
+	shown := []ModelSearchItem{
+		{ID: "minimax/minimax-m3", Name: "MiniMax M3 [rasmus@openrouter, parasail]"},
+		{ID: "gemini-3.1-flash-lite-image", Name: "Nano Banana 2 Lite"},
+		// Single-character words must match a whole ID token: "4" is not covered by "mistral-small-2603".
+		{ID: "mistral-small-2603", Name: "Mistral Small 4"},
+	}
+	for _, item := range shown {
+		if got := GetDistinctModelName(item); got != item.Name {
+			t.Errorf("GetDistinctModelName(%+v) = %q, want %q", item, got, item.Name)
+		}
+	}
+}

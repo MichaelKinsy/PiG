@@ -53,6 +53,15 @@ func (builder *assistantStreamBuilder) observeProviderEvent(raw []byte) error {
 	return builder.observeProviderEventJSON(raw)
 }
 
+// observeProviderEventText is observeProviderEvent for the text of a wire event: with no observer it makes no copy of the text.
+func (builder *assistantStreamBuilder) observeProviderEventText(text string) error {
+	if builder.providerEvent == nil {
+		builder.awaitProviderEvent()
+		return nil
+	}
+	return builder.observeProviderEvent([]byte(text))
+}
+
 // observeValidProviderEvent is observeProviderEvent for the text of a wire event that the adapter's decoder already accepted with json.Valid, so deciding whether an unwanted observer may skip it does not validate it again.
 func (builder *assistantStreamBuilder) observeValidProviderEvent(text string) error {
 	if builder.providerEvent == nil {

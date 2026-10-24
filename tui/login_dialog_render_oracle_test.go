@@ -7,6 +7,7 @@ import (
 	"math/rand/v2"
 	"os/exec"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -169,6 +170,10 @@ func runLdRenderWithPig(probe ldRenderProbe) []ldRenderFrame {
 			watch("prompt", dialog.ShowPrompt(step.Message, step.Placeholder))
 		case "keys":
 			dialog.HandleInput(step.Keys)
+			// A confirmed device code copies off the input path; Pi's copy settles within the step's two event-loop turns.
+			for deadline := time.Now().Add(5 * time.Second); strings.Contains(strings.Join(dialog.Render(80), "\n"), "Copying code...") && time.Now().Before(deadline); {
+				time.Sleep(time.Millisecond)
+			}
 		}
 		time.Sleep(2 * time.Millisecond)
 		eventsMu.Lock()

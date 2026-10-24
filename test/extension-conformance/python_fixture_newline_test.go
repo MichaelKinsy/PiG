@@ -9,8 +9,32 @@ import (
 	"testing"
 )
 
-// pythonTextWrite matches an open() call whose mode writes text: "w", "a" or "x" (with an optional "+"), not a binary mode.
-var pythonTextWrite = regexp.MustCompile(`\bopen\(.*,\s*"[wax]\+?"`)
+// pythonTextWrite matches an open() call whose mode writes text: "w", "a" or "x" (with an optional "+"), not a binary mode. The mode is the
+// second positional argument or the mode= keyword, in single or double quotes.
+var pythonTextWrite = regexp.MustCompile(`\bopen\(.*(?:,\s*|\bmode\s*=\s*)["'][wax]\+?["']`)
+
+// pythonNoTranslation matches the newline="" (or newline=”) argument that turns the translation off.
+var pythonNoTranslation = regexp.MustCompile(`newline\s*=\s*(?:""|'')`)
+
+func TestPythonTextWriteRuleRecognizesEveryModeForm(t *testing.T) {
+	for code, want := range map[string]bool{
+		`open(path, "w")`:                  true,
+		`open(path, 'w')`:                  true,
+		`open(path, mode="w")`:             true,
+		`open(path, mode='a+')`:            true,
+		`open(path, "w", newline="")`:      false,
+		`open(path, 'w', newline='')`:      false,
+		`open(path, mode="w", newline="")`: false,
+		`open(path, "wb")`:                 false,
+		`open(path, mode="rb")`:            false,
+		`open(path)`:                       false,
+		`with open(path, "r") as f:`:       false,
+	} {
+		if got := pythonTextWrite.MatchString(code) && !pythonNoTranslation.MatchString(code); got != want {
+			t.Errorf("%s: flagged = %v, want %v", code, got, want)
+		}
+	}
+}
 
 // A Python fixture that writes a file the test reads back must write the bytes it means. Python's text mode turns "\n" into os.linesep, which is
 // "\r\n" on Windows, so a marker file the test splits on "\n" (as it does for the Go, Rust and Node fixtures' markers) ended every line in "\r"
@@ -34,7 +58,7 @@ func TestPythonFixturesWriteFilesWithoutNewlineTranslation(t *testing.T) {
 				continue
 			}
 			switch {
-			case pythonTextWrite.MatchString(code) && !strings.Contains(code, `newline=""`):
+			case pythonTextWrite.MatchString(code) && !pythonNoTranslation.MatchString(code):
 				t.Errorf("%s:%d opens a file for text writing without newline=\"\" (Windows would write CRLF): %s", path, number+1, code)
 			case strings.Contains(code, ".write_text("):
 				t.Errorf("%s:%d write_text translates \"\\n\" on Windows; write the encoded bytes: %s", path, number+1, code)

@@ -33,7 +33,7 @@ func TestAnthropicManagedEffortBodyFollowsTheBetasSent(t *testing.T) {
 			name:        "computed betas keep every managed field",
 			computed:    true,
 			wantBetas:   midConvo + "," + binding,
-			wantBinding: true, wantMarkers: []string{"high", "low"}, wantEffort: "high",
+			wantBinding: true, wantMarkers: []string{"high", "low"}, wantEffort: "low",
 		},
 		{
 			name:         "a model header override without the managed betas",
@@ -50,7 +50,7 @@ func TestAnthropicManagedEffortBodyFollowsTheBetasSent(t *testing.T) {
 			name:        "an override listing both managed betas keeps every managed field",
 			headers:     ProviderHeaders{"anthropic-beta": new("custom-beta," + binding + "," + midConvo)},
 			wantBetas:   "custom-beta," + binding + "," + midConvo,
-			wantBinding: true, wantMarkers: []string{"high", "low"}, wantEffort: "high",
+			wantBinding: true, wantMarkers: []string{"high", "low"}, wantEffort: "low",
 		},
 		{
 			name:        "the binding beta alone keeps block_binding and drops the markers",
@@ -62,7 +62,7 @@ func TestAnthropicManagedEffortBodyFollowsTheBetasSent(t *testing.T) {
 			name:        "the mid-conversation beta alone keeps the markers and drops block_binding",
 			headers:     ProviderHeaders{"anthropic-beta": new(midConvo)},
 			wantBetas:   midConvo,
-			wantMarkers: []string{"high", "low"}, wantEffort: "high",
+			wantMarkers: []string{"high", "low"}, wantEffort: "low",
 		},
 		{
 			// A beta is matched by its whole name, as the API does: a longer name that starts with a managed beta is another beta.

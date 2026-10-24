@@ -29,8 +29,8 @@ func TestUpstreamUserMessageTransformerContext(t *testing.T) {
 				return markdown + " Done."
 			},
 		}
-		component := tui.NewUserMessageComponent("The input is $x^2$.", nil, 1, nil)
-		component.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageUser, false, transformers))
+		component := tui.NewUserMessageComponent("The input is $x^2$.", nil, 1, nil, "", "")
+		component.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageUser, false, transformers, "", ""))
 		rendered := widthx.StripAnsi(strings.Join(component.Render(80), "\n"))
 		if !strings.Contains(rendered, "The input is x². Done.") {
 			t.Fatalf("transforms not rendered: %q", rendered)

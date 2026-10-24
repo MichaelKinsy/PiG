@@ -1969,6 +1969,8 @@ class OAuthLoginCallbacks {
     this.runtime.fireAndForget("oauth.cb.onDeviceCode", {
       userCode: info.userCode ?? "",
       verificationUri: info.verificationUri ?? "",
+      openBrowserOnConfirm: info.openBrowserOnConfirm,
+      copyCodeOnConfirm: info.copyCodeOnConfirm,
       intervalSeconds: info.intervalSeconds,
       expiresInSeconds: info.expiresInSeconds,
     });

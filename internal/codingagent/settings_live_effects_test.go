@@ -167,7 +167,7 @@ func TestOnSettingAppliedUpdatesEditorAndOutputLayout(t *testing.T) {
 	if mode.outputPad != 0 {
 		t.Fatalf("output padding = %d, want 0", mode.outputPad)
 	}
-	block := mode.newAssistantMessageBlock()
+	block := mode.newAssistantMessageBlock(messageMeta{})
 	block.SetTextDelta("hello")
 	if got := block.Render(20)[1]; !strings.HasPrefix(got, "\x1b]133;B\x07\x1b]133;C\x07hello") {
 		t.Fatalf("new assistant block retained old padding: %q", got)
@@ -180,7 +180,7 @@ func TestOnSettingAppliedUpdatesEditorAndOutputLayout(t *testing.T) {
 // (toggleThinkingVisibility), and persists the preference. Mirrors upstream
 // settings-selector.ts's hide-thinking callback (interactive-mode.ts:3340-3355).
 func TestOnSettingAppliedTogglesThinkingVisibility(t *testing.T) {
-	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	block.SetThinkingDelta("reasoning about the answer")
 	mode := &InteractiveMode{
 		tuiInst:         tui.NewWithOutput(io.Discard, 100, 30),
@@ -232,7 +232,7 @@ func TestOnSettingAppliedOutputPaddingReachesEveryChatAndPendingChild(t *testing
 	bash := tui.NewBashExecutionComponent("make", nil, false, 1)
 	bash.AppendOutput("live output\n")
 	compaction := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "s", TokensBefore: 10}, nil, 1)
-	pendingUser := tui.NewUserMessageComponent("queued", nil, 1, nil)
+	pendingUser := tui.NewUserMessageComponent("queued", nil, 1, nil, "", "")
 	chat, pending := tui.NewContainer(), tui.NewContainer()
 	chat.Add(bash)
 	chat.Add(compaction)

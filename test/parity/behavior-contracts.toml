@@ -1,4 +1,4 @@
-upstream_version = "1.4.0+74f46864"
+upstream_version = "1.4.0+acf83acf"
 
 [[contract]]
 id = "coding-agent/extension-input/remapped-confirm"
@@ -1169,12 +1169,13 @@ id = "coding-agent/login-dialog/cancel-copy-input"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/login-dialog.ts#LoginDialogComponent.handleInput"
 family = "oauth"
 kind = "boundary-transition"
-claim = "the configured tui.select.cancel binding cancels on every press (abort, onComplete, rejecting the pending input), app.message.copy copies a shown sign-in URL, every other key edits the prompt Input whose submit resolves the pending value and replaces the field with the submitted text, and a submit after cancel changes nothing"
+claim = "the configured tui.select.cancel binding cancels on every press (abort, onComplete, rejecting the pending input), app.message.copy copies a shown sign-in URL, tui.select.confirm activates a shown device-code action once while focused with no pending input and no abort (the action is consumed first, so a repeated Enter launches nothing more), every other key edits the prompt Input whose submit resolves the pending value and replaces the field with the submitted text, and a submit after cancel changes nothing"
 status = "ported"
 pig_targets = ["tui/login_dialog.go#HandleInput", "tui/login_dialog.go#showInput"]
 evidence = [
   "tui/login_dialog_oracle_test.go#TestLoginDialogInputMatchesPi",
   "tui/login_dialog_cancel_order_test.go#TestLoginDialogCancelAbortsBeforeEndingTheInput",
+  "tui/login_dialog_device_code_test.go",
   "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
 ]
 
@@ -1182,8 +1183,8 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
 start = "\thandleInput(data: string): void {"
 end = "\t\tthis.input.handleInput(data);\n\t}\n"
-sha256 = "bfa63e0009926a73edf461ae72bf088c56d01e59df7f9a37e669121c037f2a6c"
-keybindings = ["app.message.copy", "tui.select.cancel"]
+sha256 = "8f4bb2e32aa579ae165bc6510c3317b2f9cac8a3e6b0bafbc4abb429e875fae2"
+keybindings = ["app.message.copy", "tui.select.cancel", "tui.select.confirm"]
 
 [[contract]]
 id = "coding-agent/session-selector/list-input-state-machine"
@@ -2206,13 +2207,14 @@ id = "tui/markdown/render-token"
 upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.renderToken"
 family = "tui-components"
 kind = "markdown-render"
-claim = "each block (heading with its depth styling, paragraph, fenced and indented code, block quote, rule, list, table, definition, space) renders as Pi does, including the blank row after a block when another block follows, the rows a quote or a code border adds, and the rows reference definitions leave"
+claim = "each block (heading with its depth styling, paragraph, fenced and indented code, block quote, rule, list, table, definition, space) renders as Pi does, including the blank row after a block when another block follows, the rows a quote or a code border adds (a quote narrower than three columns renders its blocks without a border and without wrapping them again, Pi 8a2ebd385), and the rows reference definitions leave"
 status = "ported"
 pig_targets = [
   "tui/markdown.go#renderContent"
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -2221,7 +2223,7 @@ evidence = [
 path = "packages/tui/src/components/markdown.ts"
 start = "\tprivate renderToken("
 end = "\n\tprivate renderInlineTokens("
-sha256 = "fef36e3ebb976c63b5d0969326ac95ff5eba0fb6427925df81540452c8039b11"
+sha256 = "75b4b9e4bbef726797e7e011c9b71923034a1acea8a93ed0acbc5ff7064134e8"
 keybindings = []
 
 [[contract]]
@@ -3524,7 +3526,7 @@ evidence = [
 path = "packages/tui/src/terminal-image.ts"
 start = "function detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink: () => boolean): TerminalCapabilities {"
 end = "export function getCapabilities(): TerminalCapabilities {"
-sha256 = "445dd2fc98cc7c75af16202b44e0b1182ccf5bffabea103cc6a97ca95c3f614c"
+sha256 = "3ce9ff97537885ceb8b1837abc2b22eaf45011c0fb0ec357f59de995af575a14"
 keybindings = []
 
 [[contract]]
@@ -4543,7 +4545,7 @@ id = "coding-agent/interactive/render-session-entries"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionEntries"
 family = "interactive-input"
 kind = "render-layout"
-claim = "rendering session entries drops the fullscreen text selection first, renders custom and cache_warm usage entries as themselves, message, custom_message, branch_summary (non-empty) and compaction entries as their context messages, and adds the compaction or branch-summary cost notice after a summary with usage"
+claim = "rendering session entries drops the fullscreen text selection first, renders custom and cache_warm usage entries as themselves, message, custom_message, branch_summary (non-empty) and compaction entries as their context messages (each message carries its entry id and timestamp into the Markdown transformer context), and adds the compaction or branch-summary cost notice after a summary with usage"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_transcript.go#renderSessionEntryListWithHistory",
@@ -4553,6 +4555,7 @@ evidence = [
   "internal/codingagent/interactive_selection_reset_test.go#TestRenderSessionEntriesDropsFullscreenTextSelection",
   "internal/codingagent/interactive_resume_bash_test.go#TestResumedSessionRendersPersistedBashExecutionBlocks",
   "internal/codingagent/interactive_cache_warming_test.go#TestRebuildRendersPersistedCacheWarmingUsage",
+  "internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
   "test/parity/scenarios/interactive-rendering/52-resumed-bash-execution.toml",
 ]
 
@@ -4560,7 +4563,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate renderSessionEntries("
 end = "\tprivate addCacheWarmingUsage(entry: UsageEntry): void {"
-sha256 = "2b2b25206364d285d7c41e975e8cb4445f067d843608d45b8c404c7efdf26eb6"
+sha256 = "648111b5a7b1efeed7e794234dea03c87a290b9bc287210e210ed1b4e453b1d6"
 keybindings = []
 
 [[contract]]
@@ -4568,7 +4571,7 @@ id = "coding-agent/interactive/render-session-items"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionItems"
 family = "interactive-input"
 kind = "render-layout"
-claim = "session items render in order: assistant messages with one tool card per tool call (expanded per the toggle; an aborted or error stop settles each card with the abort or error text, otherwise the card stays pending until its toolResult), toolResults update only their pending card, cache-miss notices derived from every session entry in file order follow non-aborted assistant messages, and the remaining pending cards stay live"
+claim = "session items render in order: assistant messages with one tool card per tool call (expanded per the toggle; an aborted or error stop settles each card with the abort or error text, otherwise the card stays pending until its toolResult), toolResults update only their pending card, cache-miss notices derived from every session entry in file order follow non-aborted assistant messages, the remaining pending cards stay live, and each user or assistant message is added with its entry id and timestamp"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_transcript.go#renderSessionEntryListWithHistory",
@@ -4577,6 +4580,7 @@ evidence = [
   "internal/codingagent/interactive_resume_tools_test.go#TestResumeAbortedToolIgnoresOrphanedResult",
   "internal/codingagent/interactive_resume_tools_test.go#TestInteractiveMode_ResumeShellToolsShowRecordedDuration",
   "internal/codingagent/interactive_cache_miss_entries_test.go#TestRebuiltCacheMissNoticesScanEveryEntryInFileOrder",
+  "internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
   "test/parity/scenarios/interactive-rendering/24-resume-file-tool-previews.toml",
 ]
 
@@ -4584,7 +4588,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate renderSessionItems("
 end = "\t/**\n\t * Render session entries to chat."
-sha256 = "1119b21ed42ccb12f8de87c5983fada2acffc3197bd4b85d80940d02a89943e3"
+sha256 = "b62249f9dc4f10d262e5000b814d99da8b60dcfef920348da0513a80a5c86df6"
 keybindings = []
 
 [[contract]]

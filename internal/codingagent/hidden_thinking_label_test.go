@@ -26,7 +26,7 @@ func TestExtensionHiddenThinkingLabelReachesAssistantBlocks(t *testing.T) {
 		return strings.Join(block.Render(60), "\n")
 	}
 	newBlock := func() *tui.AssistantMessageComponent {
-		block := m.newAssistantMessageBlock()
+		block := m.newAssistantMessageBlock(messageMeta{})
 		block.SetContent([]tui.AssistantSegment{{Thinking: true, Text: "a long chain of reasoning"}, {Text: "answer"}})
 		m.assistantBlocks = append(m.assistantBlocks, block)
 		return block
@@ -77,7 +77,7 @@ func runPostedOwnerTasks(m *InteractiveMode) {
 // newAssistantMessageBlockWithThinking returns a registered assistant block holding one thinking run and an answer.
 func (m *InteractiveMode) newAssistantMessageBlockWithThinking(t *testing.T) *tui.AssistantMessageComponent {
 	t.Helper()
-	block := m.newAssistantMessageBlock()
+	block := m.newAssistantMessageBlock(messageMeta{})
 	block.SetContent([]tui.AssistantSegment{{Thinking: true, Text: "a long chain of reasoning"}, {Text: "answer"}})
 	m.assistantBlocks = append(m.assistantBlocks, block)
 	return block

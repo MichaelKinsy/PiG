@@ -2,14 +2,14 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { detectCapabilities, getTerminalColorMode } from "../../../pi-tui.mjs";
 import chalk from "../../../chalk/source/index.js";
-import { CONFIG_DIR_NAME } from "../config.js";
+import { APP_NAME, CONFIG_DIR_NAME } from "../config.js";
 import { loadThemeFromPath } from "../modes/interactive/theme/theme.js";
 import { canonicalizePath, isLocalPath, resolvePath } from "../utils/paths.js";
 import { stripBom } from "../utils/text.js";
 import { createEventBus } from "./event-bus.js";
 import { clearExtensionCache, createExtensionRuntime, loadExtensionFromFactory, loadExtensionsCached, } from "./extensions/loader.js";
 import { findGitPaths } from "./footer-data-provider.js";
-import { DefaultPackageManager } from "./package-manager.js";
+import { DefaultPackageManager, } from "./package-manager.js";
 import { loadPromptTemplates } from "./prompt-templates.js";
 import { SettingsManager } from "./settings-manager.js";
 import { loadSkills } from "./skills.js";
@@ -53,6 +53,20 @@ function collectExtensionPackageWarnings(extensionPaths, metadataByPath) {
         });
     }
     return warnings;
+}
+/** Describe a package that was skipped because it could not be installed, including how to drop it. */
+function describePackageInstallFailure(failure) {
+    const hint = failure.scope === "temporary"
+        ? "Check the source and try again."
+        : `Run "${APP_NAME} remove ${failure.source}${failure.scope === "project" ? " --local" : ""}" to remove it from settings.json.`;
+    return `failed to install (${failure.message}). ${hint}`;
+}
+/** One-line startup warning for a package that could not be installed. */
+export function formatPackageInstallWarning(failure) {
+    return `Extension package "${failure.source}": ${describePackageInstallFailure(failure)}`;
+}
+function collectPackageInstallWarnings(...failures) {
+    return failures.flatMap((entries) => (entries ?? []).map((failure) => ({ path: failure.source, warning: describePackageInstallFailure(failure) })));
 }
 function mergeExtensionWarnings(result, warnings) {
     result.warnings = [
@@ -370,6 +384,7 @@ export class DefaultResourceLoader {
         const cliExtensionPaths = await this.packageManager.resolveExtensionSources(this.additionalExtensionPaths, {
             temporary: true,
         });
+        const installWarnings = collectPackageInstallWarnings(resolvedPaths.installFailures, cliExtensionPaths.installFailures);
         // Kept on the instance so post-reload passes (extendResources) can still resolve package metadata.
         this.resourceMetadataByPath = new Map();
         const metadataByPath = this.resourceMetadataByPath;
@@ -410,7 +425,7 @@ export class DefaultResourceLoader {
             !this.disabledBuiltinExtensions.has(path.slice(BUILTIN_PATH_PREFIX.length)));
         const packageWarnings = collectExtensionPackageWarnings(extensionPaths, metadataByPath);
         const extensionsResult = await this.loadFinalExtensionSet(extensionPaths, preTrustExtensions);
-        mergeExtensionWarnings(extensionsResult, packageWarnings);
+        mergeExtensionWarnings(extensionsResult, [...installWarnings, ...packageWarnings]);
         for (const p of this.additionalExtensionPaths) {
             if (isLocalPath(p)) {
                 const resolved = this.resolveResourcePath(p);
@@ -508,8 +523,9 @@ export class DefaultResourceLoader {
             resource.metadata,
         ]));
         const packageWarnings = collectExtensionPackageWarnings(extensionPaths, metadataByPath);
+        const installWarnings = collectPackageInstallWarnings(resolvedPaths.installFailures, cliExtensionPaths.installFailures);
         const extensionsResult = await loadExtensionsCached(extensionPaths, this.cwd, this.eventBus);
-        mergeExtensionWarnings(extensionsResult, packageWarnings);
+        mergeExtensionWarnings(extensionsResult, [...installWarnings, ...packageWarnings]);
         if (!options.includeInlineFactories) {
             return extensionsResult;
         }

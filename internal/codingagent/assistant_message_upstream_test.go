@@ -21,10 +21,10 @@ func upstreamAssistant(content ...ai.AssistantContentBlock) *agent.AssistantMess
 }
 
 func upstreamAssistantBlock(message *agent.AssistantMessage, hidden bool, streaming *bool, transforms ...extension.MarkdownTransformer) *tui.AssistantMessageComponent {
-	block := tui.NewAssistantMessageComponent(nil, hidden, nil, "", nil, nil)
+	block := tui.NewAssistantMessageComponent(nil, hidden, nil, "", nil, nil, "", "")
 	for _, kind := range []extension.MarkdownMessageType{extension.MarkdownMessageAssistant, extension.MarkdownMessageAssistantThinking} {
 		transform := func(text string, width int) string {
-			return markdowntransform.CreateMarkdownTransform(kind, streaming != nil && *streaming, transforms)(text, width)
+			return markdowntransform.CreateMarkdownTransform(kind, streaming != nil && *streaming, transforms, "", "")(text, width)
 		}
 		if kind == extension.MarkdownMessageAssistant {
 			block.SetMarkdownTransform(transform)
@@ -220,7 +220,7 @@ func TestAssistantMessageUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/assistant-message.test.ts:266
 	t.Run("uses configured output padding for user messages", func(t *testing.T) {
 		for _, pad := range []int{1, 0} {
-			block := tui.NewUserMessageComponent("hello", nil, 1, nil)
+			block := tui.NewUserMessageComponent("hello", nil, 1, nil, "", "")
 			block.SetOutputPad(pad)
 			prefix := strings.Repeat(" ", pad) + "hello"
 			if !slices.ContainsFunc(block.Render(40), func(line string) bool { return strings.HasPrefix(widthx.StripAnsi(line), prefix) }) {

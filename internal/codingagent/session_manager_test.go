@@ -164,6 +164,49 @@ func TestSessionManagerForkFromFile_CopiesFullTreeToNewFile(t *testing.T) {
 	}
 }
 
+// .upstream/current/packages/coding-agent/test/session-manager/custom-session-id.test.ts "SessionManager.forkFrom copies all entries unchanged into
+// the forked session" (Pi ed76cca69, for the one-fd write of Pi 8ddc44ec8).
+func TestSessionManagerForkFromFile_CopiesAllEntriesUnchangedIntoTheForkedSession(t *testing.T) {
+	dir := t.TempDir()
+	sourcePath := filepath.Join(dir, "source.jsonl")
+	lines := []string{fmt.Sprintf(`{"type":"session","version":3,"id":"source-id","timestamp":"2026-10-23T00:00:00.000Z","cwd":%q}`, dir)}
+	parentID := "null"
+	for i := range 50 {
+		id := fmt.Sprintf("e%d", i)
+		lines = append(lines, fmt.Sprintf(`{"type":"message","id":%q,"parentId":%s,"timestamp":"2026-10-23T00:00:00.000Z","message":{"role":"user","content":"message %d","timestamp":0}}`, id, parentID, i))
+		parentID = fmt.Sprintf("%q", id)
+	}
+	if err := os.WriteFile(sourcePath, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	forked, err := NewSessionManagerWithDir(dir, filepath.Join(dir, "sessions")).ForkFromFile(sourcePath)
+	if err != nil {
+		t.Fatalf("ForkFromFile: %v", err)
+	}
+
+	data, err := os.ReadFile(forked.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	written := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	if len(written) != 51 {
+		t.Fatalf("forked file has %d lines, want 51", len(written))
+	}
+	var header struct {
+		ParentSession string `json:"parentSession"`
+	}
+	if err := json.Unmarshal([]byte(written[0]), &header); err != nil || header.ParentSession != sourcePath {
+		t.Fatalf("header parentSession = %q (%v), want %q", header.ParentSession, err, sourcePath)
+	}
+	if !slices.Equal(written[1:], lines[1:]) {
+		t.Fatalf("the forked entries differ from the source entries")
+	}
+	if got := len(forked.GetEntries()); got != 50 {
+		t.Fatalf("forked session has %d entries, want 50", got)
+	}
+}
+
 func TestSessionManagerForkFromFile_MissingSourceErrors(t *testing.T) {
 	dir := t.TempDir()
 	sm := NewSessionManagerWithDir("/tmp/test-forkfrom", dir)

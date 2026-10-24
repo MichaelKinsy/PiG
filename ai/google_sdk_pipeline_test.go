@@ -127,7 +127,7 @@ func TestGoogleSDKPipelineMatchesNodeTickOrder(t *testing.T) {
 					next(1)
 					fetched.resolve(&googleFetchResponse{body: stream})
 				})
-				settled := awaitContinuation(turn, sdk.settled)
+				settled := awaitContinuation(turn, &sdk.settled)
 				if settled.err != nil {
 					t.Error(settled.err)
 					return
@@ -135,7 +135,7 @@ func TestGoogleSDKPipelineMatchesNodeTickOrder(t *testing.T) {
 				generator := settled.value.(*tslibAsyncIterator)
 				got = append(got, clock.stamp("sdk-resolved"))
 				for index := 0; ; index++ {
-					next := awaitContinuation(turn, generator.next(nil).settled)
+					next := awaitContinuation(turn, &generator.next(nil).settled)
 					if next.err != nil {
 						t.Error(next.err)
 						return

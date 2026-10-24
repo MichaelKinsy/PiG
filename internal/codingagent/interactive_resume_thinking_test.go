@@ -228,7 +228,7 @@ func TestInteractiveModeSetHiddenThinkingLabelReachesExistingAndLaterBlocks(t *t
 		t.Fatalf("existing block kept the old label:\n%s", got)
 	}
 
-	later := m.newAssistantMessageBlock()
+	later := m.newAssistantMessageBlock(messageMeta{})
 	later.SetContent([]tui.AssistantSegment{{Thinking: true, Text: "SECOND_THOUGHT"}})
 	if rendered := stripANSITest(strings.Join(later.Render(80), "\n")); !strings.Contains(rendered, "Pondering") || strings.Contains(rendered, "SECOND_THOUGHT") {
 		t.Fatalf("a block created after the label was set rendered:\n%s", rendered)

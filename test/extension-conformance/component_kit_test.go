@@ -966,15 +966,15 @@ func kitConversationResult(card *tui.ToolExecutionComponent, text string, isErro
 // the first frame's state or, with next, the second's.
 func newKitConversationTree(t *testing.T, next bool) tui.Component {
 	t.Helper()
-	user := tui.NewUserMessageComponent("Fix **the** kit build\n\n- one\n- two", nil, 1, nil)
+	user := tui.NewUserMessageComponent("Fix **the** kit build\n\n- one\n- two", nil, 1, nil, "", "")
 	reply := "Done. **Bold** reply\n\n1. a\n2. b"
 	if next {
 		reply += "\n\nThen more kit."
 	}
-	streaming := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	streaming := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	streaming.SetContent([]tui.AssistantSegment{{Thinking: true, Text: "Reading the *kit* file"}, {Text: reply}})
 	streaming.SetTerminalError("stop", "")
-	failed := tui.NewAssistantMessageComponent(nil, true, nil, "", nil, nil)
+	failed := tui.NewAssistantMessageComponent(nil, true, nil, "", nil, nil, "", "")
 	failed.SetHiddenThinkingLabel("Pondering kit...")
 	failed.SetOutputPad(0)
 	failed.SetContent([]tui.AssistantSegment{{Thinking: true, Text: "secret"}, {Text: "Visible kit"}})

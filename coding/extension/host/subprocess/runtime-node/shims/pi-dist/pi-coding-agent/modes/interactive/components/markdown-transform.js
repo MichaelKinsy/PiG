@@ -1,5 +1,5 @@
-export function createMarkdownTransform(messageType, isStreaming, transformers) {
-    return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming, availableWidth }, transformers);
+export function createMarkdownTransform(messageType, isStreaming, transformers, messageId, timestamp) {
+    return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming, availableWidth, messageId, timestamp }, transformers);
 }
 function applyMarkdownTransformers(markdown, context, transformers) {
     let transformedMarkdown = markdown;

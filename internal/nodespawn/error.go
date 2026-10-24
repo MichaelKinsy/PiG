@@ -1,6 +1,12 @@
 package nodespawn
 
-import "syscall"
+import (
+	"errors"
+	"os/exec"
+	"syscall"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+)
 
 // Error is the error Node's child_process.spawn(file, args) reports for a
 // program it does not start.
@@ -35,4 +41,26 @@ func (e *Error) Unwrap() error {
 		return nil
 	}
 	return e.errno
+}
+
+// SpawnMessage is the message of the error Node's spawn reports for file when err stopped it: nodespawn errors already carry
+// it, and any other start error gets "spawn <file> <code>" for the errnos libuv reports with the file (a missing program,
+// which os/exec reports as exec.ErrNotFound, is ENOENT) and the bare "spawn <code>" for the rest, as ChildProcess.spawn throws
+// those (internal/child_process.js). An error without an errno keeps its text.
+func SpawnMessage(file string, err error) string {
+	if spawnErr, ok := errors.AsType[*Error](err); ok {
+		return spawnErr.Error()
+	}
+	code := nodeerrno.ErrorCode(err)
+	if errors.Is(err, exec.ErrNotFound) {
+		code = "ENOENT"
+	}
+	if code == "" {
+		return err.Error()
+	}
+	switch code {
+	case "EACCES", "EAGAIN", "EMFILE", "ENFILE", "ENOENT":
+		return "spawn " + file + " " + code
+	}
+	return "spawn " + code
 }

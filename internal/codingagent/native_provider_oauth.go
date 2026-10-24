@@ -34,7 +34,7 @@ func adaptExtensionOAuthLogin(login func(context.Context, ai.OAuthLoginCallbacks
 		credential, err := login(ctx, ai.OAuthLoginCallbacks{
 			OnAuth: func(info ai.OAuthAuthInfo) { notify(ai.AuthURLEvent(info)) },
 			OnDeviceCode: func(info ai.OAuthDeviceCodeInfo) {
-				notify(ai.AuthDeviceCodeEvent{UserCode: info.UserCode, VerificationURI: info.VerificationURI, IntervalSeconds: new(info.IntervalSeconds), ExpiresInSeconds: new(info.ExpiresInSeconds)})
+				notify(ai.AuthDeviceCodeEvent{UserCode: info.UserCode, VerificationURI: info.VerificationURI, OpenBrowserOnConfirm: info.OpenBrowserOnConfirm, CopyCodeOnConfirm: info.CopyCodeOnConfirm, IntervalSeconds: new(info.IntervalSeconds), ExpiresInSeconds: new(info.ExpiresInSeconds)})
 			},
 			OnProgress: func(message string) { notify(ai.AuthProgressEvent{Message: message}) },
 			OnPrompt:   func(value ai.OAuthPrompt) (string, error) { return prompt(ctx, value) }, OnPromptContext: prompt,

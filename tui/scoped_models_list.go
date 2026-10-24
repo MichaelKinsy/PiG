@@ -394,7 +394,13 @@ func (s *ScopedModelsList) renderRow(i int) string {
 		prefix = fg(th.Accent, "→ ")
 		id = fg(th.Accent, id)
 	}
-	return prefix + status + id + badge
+	nameText := ""
+	if available {
+		if name := GetDistinctModelName(ModelSearchItem{ID: strings.TrimPrefix(m.FullID, m.Provider+"/"), Name: m.Name}); name != "" {
+			nameText = fg(th.Muted, " ("+name+")")
+		}
+	}
+	return prefix + status + id + nameText + badge
 }
 
 // footerParts mirrors upstream getFooterText's key hints and enabled count.

@@ -9,7 +9,7 @@ import (
 // columns before the text, so the component must not clamp it to 1.
 func TestAssistantMessageOutputPadIsNotClamped(t *testing.T) {
 	pad := 3
-	assistant := NewAssistantMessageComponent(nil, false, nil, "", &pad, nil)
+	assistant := NewAssistantMessageComponent(nil, false, nil, "", &pad, nil, "", "")
 	assistant.SetTextDelta("hello")
 	if got := stripANSI(assistant.Render(20)[1]); !strings.HasPrefix(got, "   hello") {
 		t.Fatalf("constructor pad 3: %q", got)

@@ -87,9 +87,9 @@ func (s *windowScript) message() Component {
 	s.serial++
 	switch s.rng.IntN(7) {
 	case 0:
-		return NewUserMessageComponent(s.text(1+s.rng.IntN(20)), nil, 1, nil)
+		return NewUserMessageComponent(s.text(1+s.rng.IntN(20)), nil, 1, nil, "", "")
 	case 1:
-		block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+		block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 		block.SetContent([]AssistantSegment{{Thinking: true, Text: s.text(3)}, {Text: s.text(1 + s.rng.IntN(40))}})
 		return block
 	case 2:
@@ -185,7 +185,7 @@ func (s *windowScript) edit() {
 		s.rareEdit(op - 100)
 	case op < 22: // stream into the tail message
 		if s.tail == nil {
-			s.tail = NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+			s.tail = NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 			s.tailLen = 0
 			s.chat.Add(s.tail)
 		}

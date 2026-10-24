@@ -140,7 +140,7 @@ func TestAssistantMessageComponentRenderMatchesPi(t *testing.T) {
 			label = *probe.Label
 		}
 		pad := probe.Pad
-		component := NewAssistantMessageComponent(&message, probe.Hide, nil, label, &pad, nil)
+		component := NewAssistantMessageComponent(&message, probe.Hide, nil, label, &pad, nil, "", "")
 		check := func(frame int) {
 			for w, width := range probe.Widths {
 				got := component.Render(width)

@@ -58,7 +58,7 @@ func TestUserMessageComponentRenderMatchesPi(t *testing.T) {
 	for i, probe := range probes {
 		SetCapabilities(TerminalCapabilities{TrueColor: true})
 		SetTheme(probe.Theme)
-		component := NewUserMessageComponent(probe.Text, nil, probe.Pad, nil)
+		component := NewUserMessageComponent(probe.Text, nil, probe.Pad, nil, "", "")
 		check := func(frame int) {
 			for w, width := range probe.Widths {
 				got := component.Render(width)

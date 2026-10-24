@@ -395,10 +395,12 @@ type OAuthAuthInfoWire struct {
 }
 
 type OAuthDeviceCodeInfoWire struct {
-	UserCode         string  `json:"userCode"`
-	VerificationURI  string  `json:"verificationUri"`
-	IntervalSeconds  float64 `json:"intervalSeconds,omitempty"`
-	ExpiresInSeconds float64 `json:"expiresInSeconds,omitempty"`
+	UserCode             string  `json:"userCode"`
+	VerificationURI      string  `json:"verificationUri"`
+	OpenBrowserOnConfirm *bool   `json:"openBrowserOnConfirm,omitempty"`
+	CopyCodeOnConfirm    *bool   `json:"copyCodeOnConfirm,omitempty"`
+	IntervalSeconds      float64 `json:"intervalSeconds,omitempty"`
+	ExpiresInSeconds     float64 `json:"expiresInSeconds,omitempty"`
 }
 
 type OAuthProgressWire struct {

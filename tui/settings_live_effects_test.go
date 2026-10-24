@@ -33,8 +33,8 @@ func TestEditorRuntimeSettingsApplyImmediately(t *testing.T) {
 }
 
 func TestMessageOutputPaddingAppliesImmediately(t *testing.T) {
-	user := NewUserMessageComponent("hello", nil, 1, nil)
-	assistant := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	user := NewUserMessageComponent("hello", nil, 1, nil, "", "")
+	assistant := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	assistant.SetTextDelta("hello")
 	custom := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "hello"}, nil, nil, 1)
 

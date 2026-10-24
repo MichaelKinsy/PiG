@@ -733,7 +733,13 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 				j++
 			}
 		renderQuote:
-			quote := m.renderQuote(strings.Join(quoted, "\n"), lazyUnderlines, lazyLines, lazyIndented, lazyBreaks, width, !onlyDroppedDefinitions(j))
+			quote, bordered := m.renderQuote(strings.Join(quoted, "\n"), lazyUnderlines, lazyLines, lazyIndented, lazyBreaks, width, !onlyDroppedDefinitions(j))
+			if !bordered && j == len(lines) && lines[len(lines)-1] != "" && strings.Trim(lines[len(lines)-1], " \t") == "" {
+				// A lazy last line of spaces is a space token of the quote only when it is longer than one character (below).
+				for len(quote) > 0 && quote[len(quote)-1] == "" {
+					quote = quote[:len(quote)-1]
+				}
+			}
 			if len(quote) == 0 {
 				silentEnd = len(out)
 			}
@@ -742,7 +748,21 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 			if last := lines[len(lines)-1]; j == len(lines) && last != "" && strings.Trim(last, " \t") == "" {
 				listSpaceEnd = len(out)
 			}
-			if !markedBlankLine(spacingNextLine(j - 1)) {
+			if !bordered {
+				// A quote narrower than a border adds no trailing blank row of its own, as a list does (markdown.ts renderToken blockquote, Pi 8a2ebd385).
+				listEnd = j
+				// The last row of its children is a space token that the end-of-text trim must keep.
+				if len(quote) > 0 && quote[len(quote)-1] == "" {
+					silentEnd = len(out)
+				}
+				// A lazy last line of spaces is a space token inside the quote, which adds an empty row of its own.
+				if last := lines[len(lines)-1]; j == len(lines) && len(last) > 1 && strings.Trim(last, " \t") == "" {
+					out = append(out, "")
+					silentEnd = len(out)
+					listSpaceEnd = len(out)
+				}
+			}
+			if bordered && !markedBlankLine(spacingNextLine(j-1)) {
 				if len(quote) == 0 && !m.suppressBlockSpacing {
 					// A quote that renders no rows is still a token, so its spacing row is not merged with a blank before it.
 					out = append(out, "")

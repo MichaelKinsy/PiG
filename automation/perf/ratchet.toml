@@ -18,11 +18,11 @@
 "ai.stream.toolcall_delta.bytes" = 3600
 
 # ai: bytes per SSE delta record through the HTTP client, decoder, builder and event stream (TestProviderStreamPerFrameAllocationGate); the allocation count per record is TestStreamFrameAllocationCeilings'.
-"ai.provider_frame.openai-completions-text.bytes" = 3660
-"ai.provider_frame.openai-completions-toolcall.bytes" = 7920
-"ai.provider_frame.openai-responses-text.bytes" = 3250
-"ai.provider_frame.anthropic-text.bytes" = 3800
-"ai.provider_frame.anthropic-toolcall.bytes" = 6580
+"ai.provider_frame.openai-completions-text.bytes" = 1130
+"ai.provider_frame.openai-completions-toolcall.bytes" = 4700
+"ai.provider_frame.openai-responses-text.bytes" = 1000
+"ai.provider_frame.anthropic-text.bytes" = 1010
+"ai.provider_frame.anthropic-toolcall.bytes" = 3550
 
 # ai: bytes of one short streamed openai-completions request and response through the real HTTP client (TestProviderResponseAllocationGate); a body read costs the bytes it carries, not the 64 KiB read size.
 "ai.provider_response.openai-completions.bytes" = 45400
@@ -67,10 +67,10 @@
 "process.print_tools.gc_cycles" = 0
 "process.print_tools.goroutines_created" = 114
 "process.print_tools.auth_stats" = 16
-"ai.provider_frame.google-text.bytes" = 4460
-"ai.provider_frame.mistral-text.bytes" = 4460
+"ai.provider_frame.google-text.bytes" = 2070
+"ai.provider_frame.mistral-text.bytes" = 3400
 # Codex Responses over SSE (its own decoder, continuation iterator and per-event clones): measured 4548-4656 B per frame on linux/amd64.
-"ai.provider_frame.openai-codex-responses-text.bytes" = 4900
+"ai.provider_frame.openai-codex-responses-text.bytes" = 1760
 
 # coding: goroutine wake-ups (a parked goroutine made runnable through the scheduler, runtime/trace; an iter.Pull coroutine switch is not one) per 16-byte tool-call arguments delta of a write streamed through a Session in -p text mode, marginal between 1k and 2k deltas, at GOMAXPROCS=1 (TestStreamWakesPerDelta). "text" streams from the faux provider, "extension" adds one in-process message_update handler, "openai_text" streams openai-completions from a local HTTP server, one flushed SSE record per delta. Measured at 4cfaf24153: 5.36, 5.36, 11.9; LW roadmap S1, S2 and S3 take them to at most 1.
 "coding.pipeline.text.wakes_per_delta" = 5.5

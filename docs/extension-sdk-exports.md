@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 392 | 392 | 392 |
+| `pi-coding-agent` | 920 | 306 | 910 | 392 | 392 | 392 |
 | `pi-tui` | 365 | 85 | 364 | 147 | 147 | 147 |
 | `pi-ai` | 97 | 197 | 97 | 67 | 67 | 67 |
 | `pi-ai/compat` | 156 | 204 | 156 | 123 | 123 | 123 |

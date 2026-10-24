@@ -1110,15 +1110,16 @@ func Main(args []string, options *MainOptions) {
 		exitProcess(1)
 	}
 
-	// Metadata includes scope warnings and startup settings diagnostics, but suppresses runtime diagnostics and their failure status.
+	// Metadata reports the startup settings diagnostics and the runtime diagnostics, such as the warning of a package that could not be installed, and never their failure status (main.ts, Pi 6dfb54678).
+	metadataDiagnostics := codingagent.DeduplicateDiagnostics(slices.Concat(startupSettingsDiagnostics, startupDiagnostics))
 	if flags.Help {
-		codingagent.ReportDiagnostics(startupSettingsDiagnostics)
+		codingagent.ReportDiagnostics(metadataDiagnostics)
 		// upstream: cli/args.ts printHelp styles with chalk.bold, whose level is chalk's stdout supports-color level (FORCE_COLOR, --no-color, TERM, CI), not only whether stdout is a terminal.
 		printHelp(os.Stdout, chalkStdoutColor(), extensionHelpFlags(build.Extensions)...)
 		exitProcess(0)
 	}
 	if flags.ListModels != "" || flags.ListModelsAll {
-		codingagent.ReportDiagnostics(startupSettingsDiagnostics)
+		codingagent.ReportDiagnostics(metadataDiagnostics)
 		printModelList(build.Services.Registry().ModelRegistry, flags.ListModels)
 		exitProcess(0)
 	}

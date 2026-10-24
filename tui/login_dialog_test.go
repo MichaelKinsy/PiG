@@ -112,7 +112,7 @@ func TestLoginDialog_ShowDeviceCode(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		hint = "Cmd+click to open"
 	}
-	want := []string{"", " https://github.com/login/device", " " + hint, "", " Enter code: WDJB-MJHT", "", " Waiting for authentication...", " (escape/ctrl+c to cancel)"}
+	want := []string{"", " https://github.com/login/device", " " + hint, "", " Enter code: WDJB-MJHT", " (enter to open browser and copy code)", "", " Waiting for authentication...", " (escape/ctrl+c to cancel)"}
 	body := lines[2 : len(lines)-1]
 	if len(body) != len(want) {
 		t.Fatalf("device-code lines = %q, want %q", body, want)

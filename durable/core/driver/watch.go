@@ -10,19 +10,19 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/harness"
-	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
 // Watches over the core's `watch.open` and `watch.close` api requests (PROTOCOL.md, "api", `watch.open`; ABI section 8.1). The
 // core answers watch.open with the committed value at the acquisition boundary and then publishes every later frame of that
 // watch in a `published` notice {watchId, frame: {value?, ops}}, in commit order, with no overlap with the first value and no
 // gap. A document frame carries its value; a view or graph frame carries only ops, which the driver applies to the value it
-// holds. Frames are delivered through session.CommittedWatch, the serialized exact-frame observer of the Go port of
-// session/observation.ts, so Start, Stop, cancellation and the bounded pending queue are Pi's. A frame whose value is null
+// holds. Frames are delivered through chord.Watch, the serialized exact-frame observer of the Go port of
+// chord/src/watch.ts, so Start, Stop, cancellation and the bounded pending queue are Pi's. A frame whose value is null
 // is the retirement of a document: the driver retires the watch, which delivers [["r", null]] and ends retired.
 
 // rawFrame is one frame as the core published it; value is nil when the frame carries only ops.
@@ -38,7 +38,7 @@ func (f rawFrame) retires() bool { return string(f.value) == "null" }
 
 // watchHub routes the core's watch frames to the watches the session opened.
 type watchHub struct {
-	sched *session.DeliveryScheduler
+	sched *chord.DeliveryScheduler
 	// report is the Session's report: it receives a failing state or watch listener (view.ts, task-graph.ts and session.ts
 	// attach with `onError: (error) => session.report(error)`).
 	report func(error)
@@ -101,7 +101,7 @@ func (h *watchHub) spawn(fn func()) {
 }
 
 func newWatchHub(report func(error)) *watchHub {
-	return &watchHub{sched: session.NewDeliveryScheduler(), report: report, sinks: map[uint32]func(rawFrame){}, early: map[uint32][]rawFrame{}}
+	return &watchHub{sched: chord.NewDeliveryScheduler(), report: report, sinks: map[uint32]func(rawFrame){}, early: map[uint32][]rawFrame{}}
 }
 
 // reserve allocates a watch ID and holds the frames that arrive for it until bind installs the watch (a notice may carry
@@ -311,10 +311,10 @@ func typed[T any](v any) (T, error) {
 	return out, json.Unmarshal(raw, &out)
 }
 
-// watchOf wraps a mount in a CommittedWatch delivering on the session's scheduler.
-func watchOf[T any](ctx context.Context, m *mountSource[T]) *session.CommittedWatch[T] {
+// watchOf wraps a mount in a chord.Watch delivering on the session's scheduler.
+func watchOf[T any](ctx context.Context, m *mountSource[T]) *chord.Watch[T] {
 	var once sync.Once
-	watch := session.NewCommittedWatchOn(m.hub.sched, m.first, func() { once.Do(func() { m.hub.release(m.id); m.closeCore() }) }, nil, m.hub.report)
+	watch := chord.NewWatch(m.first, func() { once.Do(func() { m.hub.release(m.id); m.closeCore() }) }, m.hub.report, nil).On(m.hub.sched)
 	m.hub.bind(m.id, func(f rawFrame) {
 		// The core's frame of a retired document carries the value null: the source's explicit retirement.
 		if f.retires() {

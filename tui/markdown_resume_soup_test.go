@@ -107,7 +107,7 @@ func TestResumedAssistantBlockEqualsAFreshBlock(t *testing.T) {
 	theme := GetMarkdownTheme()
 	theme.CodeBlockIndent = &indent
 	newBlock := func() *AssistantMessageComponent {
-		block := NewAssistantMessageComponent(nil, false, &theme, "", nil, nil)
+		block := NewAssistantMessageComponent(nil, false, &theme, "", nil, nil, "", "")
 		block.SetMarkdownTransform(func(markdown string, width int) string { return markdown })
 		return block
 	}

@@ -11,50 +11,63 @@ import { homedir } from "os";
 import { basename, dirname, join } from "path";
 
 // pi-dist/pi-tui/fuzzy.js
+function scorePositions(textLower, positions) {
+  let score = 0;
+  let lastMatchIndex = -1;
+  let consecutiveMatches = 0;
+  for (const i of positions) {
+    if (lastMatchIndex === i - 1) {
+      consecutiveMatches++;
+      score -= consecutiveMatches * 5;
+    } else {
+      consecutiveMatches = 0;
+      if (lastMatchIndex >= 0) {
+        score += (i - lastMatchIndex - 1) * 2;
+      }
+    }
+    if (i === 0 || /[\s\-_./:]/.test(textLower[i - 1])) {
+      score -= 10;
+    }
+    score += i * 0.1;
+    lastMatchIndex = i;
+  }
+  return score;
+}
+__name(scorePositions, "scorePositions");
+function matchQuery(normalizedQuery, textLower) {
+  if (normalizedQuery.length === 0) {
+    return { matches: true, score: 0 };
+  }
+  if (normalizedQuery.length > textLower.length) {
+    return { matches: false, score: 0 };
+  }
+  const positions = [];
+  let lastMatchIndex = -1;
+  for (let queryIndex = 0; queryIndex < normalizedQuery.length; queryIndex++) {
+    const i = textLower.indexOf(normalizedQuery[queryIndex], lastMatchIndex + 1);
+    if (i === -1) {
+      return { matches: false, score: 0 };
+    }
+    positions.push(i);
+    lastMatchIndex = i;
+  }
+  let score = scorePositions(textLower, positions);
+  for (let start = textLower.indexOf(normalizedQuery); start !== -1; start = textLower.indexOf(normalizedQuery, start + 1)) {
+    for (let k = 0; k < positions.length; k++) {
+      positions[k] = start + k;
+    }
+    score = Math.min(score, scorePositions(textLower, positions));
+  }
+  if (normalizedQuery === textLower) {
+    score -= 100;
+  }
+  return { matches: true, score };
+}
+__name(matchQuery, "matchQuery");
 function fuzzyMatch(query, text) {
   const queryLower = query.toLowerCase();
   const textLower = text.toLowerCase();
-  const matchQuery = /* @__PURE__ */ __name((normalizedQuery) => {
-    if (normalizedQuery.length === 0) {
-      return { matches: true, score: 0 };
-    }
-    if (normalizedQuery.length > textLower.length) {
-      return { matches: false, score: 0 };
-    }
-    let queryIndex = 0;
-    let score = 0;
-    let lastMatchIndex = -1;
-    let consecutiveMatches = 0;
-    while (queryIndex < normalizedQuery.length) {
-      const i = textLower.indexOf(normalizedQuery[queryIndex], lastMatchIndex + 1);
-      if (i === -1)
-        break;
-      const isWordBoundary = i === 0 || /[\s\-_./:]/.test(textLower[i - 1]);
-      if (lastMatchIndex === i - 1) {
-        consecutiveMatches++;
-        score -= consecutiveMatches * 5;
-      } else {
-        consecutiveMatches = 0;
-        if (lastMatchIndex >= 0) {
-          score += (i - lastMatchIndex - 1) * 2;
-        }
-      }
-      if (isWordBoundary) {
-        score -= 10;
-      }
-      score += i * 0.1;
-      lastMatchIndex = i;
-      queryIndex++;
-    }
-    if (queryIndex < normalizedQuery.length) {
-      return { matches: false, score: 0 };
-    }
-    if (normalizedQuery === textLower) {
-      score -= 100;
-    }
-    return { matches: true, score };
-  }, "matchQuery");
-  const primaryMatch = matchQuery(queryLower);
+  const primaryMatch = matchQuery(queryLower, textLower);
   if (primaryMatch.matches) {
     return primaryMatch;
   }
@@ -64,7 +77,7 @@ function fuzzyMatch(query, text) {
   if (!swappedQuery) {
     return primaryMatch;
   }
-  const swappedMatch = matchQuery(swappedQuery);
+  const swappedMatch = matchQuery(swappedQuery, textLower);
   if (!swappedMatch.matches) {
     return primaryMatch;
   }
@@ -5961,7 +5974,16 @@ var Markdown = class {
           const lineWithReappliedStyle = line.replace(/\x1b\[0m/g, `\x1B[0m${quoteStylePrefix}`);
           return quoteStyle(lineWithReappliedStyle);
         }, "applyQuoteStyle");
-        const quoteContentWidth = Math.max(1, width - 2);
+        if (width < 3) {
+          const quoteTokens2 = token.tokens || [];
+          for (let i = 0; i < quoteTokens2.length; i++) {
+            for (const line of this.renderToken(quoteTokens2[i], width, quoteTokens2[i + 1]?.type, styleContext)) {
+              lines.push(line);
+            }
+          }
+          break;
+        }
+        const quoteContentWidth = width - 2;
         const quoteInlineStyleContext = {
           applyText: /* @__PURE__ */ __name((text) => text, "applyText"),
           stylePrefix: quoteStylePrefix
@@ -5971,7 +5993,9 @@ var Markdown = class {
         for (let i = 0; i < quoteTokens.length; i++) {
           const quoteToken = quoteTokens[i];
           const nextQuoteToken = quoteTokens[i + 1];
-          renderedQuoteLines.push(...this.renderToken(quoteToken, quoteContentWidth, nextQuoteToken?.type, quoteInlineStyleContext));
+          for (const line of this.renderToken(quoteToken, quoteContentWidth, nextQuoteToken?.type, quoteInlineStyleContext)) {
+            renderedQuoteLines.push(line);
+          }
         }
         while (renderedQuoteLines.length > 0 && renderedQuoteLines[renderedQuoteLines.length - 1] === "") {
           renderedQuoteLines.pop();
@@ -7998,7 +8022,7 @@ import { getKeybindings as getKeybindings7 } from "../keybindings.js";
 import { isKeyRelease } from "../keys.js";
 
 // pi-dist/pi-tui/layout.js
-import { cropKittyImageLine, getKittyImageMetadata, isImageLine as isImageLine2 } from "../terminal-image.js";
+import { cropKittyImageLine, getKittyImageMetadata, getMaxKittyImageRows, isImageLine as isImageLine2 } from "../terminal-image.js";
 import { CURSOR_MARKER as CURSOR_MARKER3, compositeTuiLine as compositeTuiLine2 } from "../tui.js";
 import { extractAnsiCode, getActiveBackgroundAnsi, getGraphemeCellRange, sliceByColumn as sliceByColumn3, visibleWidth as visibleWidth12 } from "../utils.js";
 var OSC133_ZONE_PREFIX = /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/;
@@ -8251,21 +8275,23 @@ function paintBox(box, screen, totalWidth) {
   for (const child of box.children)
     paintBox(child, screen, totalWidth);
   if (box.scrollView && box.scrollContentLines && box.scrollView.scrollTop > 0 && box.rect.height > 0) {
-    for (let imageRow = box.scrollView.scrollTop - 1; imageRow >= 0; imageRow--) {
+    const scrollTop = box.scrollView.scrollTop;
+    const minRow = Math.max(0, scrollTop - getMaxKittyImageRows());
+    for (let imageRow = scrollTop - 1; imageRow >= minRow; imageRow--) {
       const imageLine = box.scrollContentLines[imageRow] ?? "";
+      if (!isImageLine2(imageLine))
+        continue;
       const metadata = getKittyImageMetadata(imageLine);
-      if (metadata) {
-        const hiddenRows = box.scrollView.scrollTop - imageRow;
-        if (hiddenRows < metadata.rows) {
-          const visibleRows = Math.min(box.rect.height, metadata.rows - hiddenRows);
-          const cropped = cropKittyImageLine(imageLine, hiddenRows, visibleRows);
-          if (box.rect.x === 0 && box.rect.width >= totalWidth)
-            screen[box.rect.y] = cropped;
-        }
-        break;
+      if (!metadata)
+        continue;
+      const hiddenRows = scrollTop - imageRow;
+      if (hiddenRows < metadata.rows) {
+        const visibleRows = Math.min(box.rect.height, metadata.rows - hiddenRows);
+        const cropped = cropKittyImageLine(imageLine, hiddenRows, visibleRows);
+        if (box.rect.x === 0 && box.rect.width >= totalWidth)
+          screen[box.rect.y] = cropped;
       }
-      if (imageLine !== "")
-        break;
+      break;
     }
   }
   paintScrollbar(box, screen, totalWidth);
@@ -8431,7 +8457,7 @@ var MAX_CACHED_OFFSCREEN_KITTY_TRANSMISSION_BYTES = 32 * 1024 * 1024;
 var MAX_CACHED_OFFSCREEN_KITTY_DECODED_BYTES = 64 * 1024 * 1024;
 var DOUBLE_CLICK_INTERVAL_MS = 500;
 var COPY_ERROR_FLASH_DURATION_MS = 5e3;
-var TERMINAL_WORD_SELECTION_JOINERS = /* @__PURE__ */ new Set(["/", "-"]);
+var TERMINAL_WORD_SELECTION_JOINERS = /* @__PURE__ */ new Set(["/", "-", "+", "\\", "~", "_", "."]);
 var TuiAltScreen = class extends TuiBase {
   static {
     __name(this, "TuiAltScreen");

@@ -29,5 +29,5 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['SESSION_SEARCH ["DD1 five named sessions",["00000000-0000-4000-8000-000000000004","a"]]', 'FUZZY_UNICODE ["😀","x😀",-4.7]']
+both_contain = ['SESSION_SEARCH ["DD1 five named sessions",["00000000-0000-4000-8000-000000000004"]]', 'FUZZY_UNICODE ["😀","x😀",-4.7]']
 runs = 3

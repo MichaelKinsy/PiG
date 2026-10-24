@@ -279,7 +279,14 @@ func (parser *partialJSONParser) parseStrText() (any, bool) {
 	}
 	if character, ok := parser.charAt(parser.index); ok && character == '"' {
 		parser.index++
-		value, ok := jsonParseValue(jsSubstring(text, start, parser.index-boolToInt(escape)))
+		literal := jsSubstring(text, start, parser.index-boolToInt(escape))
+		if len(literal) >= 2 && literal[0] == '"' && literal[len(literal)-1] == '"' {
+			var stack [128]byte
+			if body, ok := appendJSONStringUnits(stack[:0], literal[1:len(literal)-1]); ok {
+				return string(body), true
+			}
+		}
+		value, ok := jsonParseValue(literal)
 		return value, ok
 	}
 	if parser.strings != nil && parser.strings.poisoned != start && text[start] == '"' {
