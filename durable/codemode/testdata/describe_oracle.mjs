@@ -3,16 +3,20 @@
 //   | {op: "sample", tool}      a tool is {name, description, parameters, structuredOutputSchema?}
 // stdout: per op {ok} or {err} (an Error's message).
 // usage: node describe_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-durable)
+import { realpathSync } from "node:fs";
 import module from "node:module";
 import { pathToFileURL } from "node:url";
 
 const packages = process.argv[2].replace(/\/?$/, "/");
+// The mirror is reached through a symlink; modules report their real path.
+const sourceRoot = pathToFileURL(realpathSync(packages)).href;
 const interop = process.env.PI_INTEROP_DIR.replace(/\/?$/, "/");
-// Packages the source imports by name resolve as they do from the installed @earendil-works/pi-durable.
+// Every package Pi's source imports by name resolves as it does from the installed @earendil-works/pi-durable, so the oracle
+// does not depend on the node_modules of the Pi mirror; packages imported by those packages resolve as they normally do.
 const parent = pathToFileURL(`${interop}node_modules/@earendil-works/pi-durable/dist/index.js`).href;
 module.registerHooks({
 	resolve(specifier, context, next) {
-		if (specifier.startsWith("@earendil-works/") || specifier.startsWith("@silvia-odwyer/")) {
+		if (context.parentURL?.startsWith(sourceRoot) && !/^(\.|\/|node:|file:|data:)/.test(specifier)) {
 			return next(specifier, { ...context, parentURL: parent });
 		}
 		return next(specifier, context);

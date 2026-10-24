@@ -6,16 +6,19 @@
 // Values are JSON text so that undefined and null stay apart: a missing key is undefined.
 // stdout: per op {ok} or {err}.
 // usage: node codemode_helpers_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-durable)
+import { realpathSync } from "node:fs";
 import module from "node:module";
 import { pathToFileURL } from "node:url";
 
 const packages = process.argv[2].replace(/\/?$/, "/");
+// The mirror is reached through a symlink; modules report their real path.
+const sourceRoot = pathToFileURL(realpathSync(packages)).href;
 const interop = process.env.PI_INTEROP_DIR.replace(/\/?$/, "/");
 const parent = pathToFileURL(`${interop}node_modules/@earendil-works/pi-durable/dist/index.js`).href;
 const target = pathToFileURL(`${packages}durable/src/codemode/codemode.ts`).href;
 module.registerHooks({
 	resolve(specifier, context, next) {
-		if (!/^(\.|\/|node:|file:|data:)/.test(specifier)) {
+		if (context.parentURL?.startsWith(sourceRoot) && !/^(\.|\/|node:|file:|data:)/.test(specifier)) {
 			return next(specifier, { ...context, parentURL: parent });
 		}
 		return next(specifier, context);
