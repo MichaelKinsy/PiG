@@ -2685,6 +2685,70 @@
       ]
     },
     {
+      "id": "BF-1c1887a-2",
+      "title": "The Go, Rust and Python extension SDKs' `calculateCost` now include `totalFromProvider: false` in the cost it…",
+      "symptom": "The Go, Rust and Python extension SDKs' `calculateCost` now include `totalFromProvider: false` in the cost it returns, as Pi's `calculateCost` does, so a cost an extension computes with the SDK matches the cost the host records for catalog-priced usage.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go, Rust and Python extension SDKs' `calculateCost` now include `totalFromProvider: false` in the cost it returns, as Pi's `calculateCost` does, so a cost an extension computes with the SDK matches the cost the host records for catalog-priced usage.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1c1887a562",
+          "date": "2026-10-23",
+          "pr": "298"
+        }
+      ],
+      "tests": [
+        "ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks",
+        "ai/usage_json_test.go::TestUsageCostTotalFromProviderWire",
+        "automation/ci/bugledger/bugledger_test.go::TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote",
+        "chord/host/close_queued_hold_test.go::TestCloseDropsAHoldQueuedBeforeItsLinkClosed",
+        "chord/state_source_test.go::TestConformanceReplicatedStateSourceContract",
+        "durable/core/driver/watch_test.go::TestConversationWatchFollowsCommits",
+        "durable/core/driver/watch_test.go::TestDocumentWatchValueFollowsCommitsUntilStopped",
+        "durable/documents_family_definition_test.go::TestDocFamilyDefinitionCarriesPisFamilyDiscriminator",
+        "durable/examples/agent_examples_test.go::TestExample25CodingAgent",
+        "durable/examples/agent_examples_test.go::TestExample26PlanMode",
+        "durable/examples/agent_examples_test.go::TestExample27Reviewer",
+        "durable/examples/background_subagents_example_test.go::TestExample22SubagentBackground",
+        "durable/examples/chat_examples_test.go::TestExample13Chat",
+        "durable/examples/chat_examples_test.go::TestExample14SystemPrompt",
+        "durable/examples/chat_examples_test.go::TestExample16CodingTools",
+        "durable/examples/context_examples_test.go::TestExample08Context",
+        "durable/examples/harness_examples_test.go::TestExample05Harness",
+        "durable/examples/harness_examples_test.go::TestExample06Configuration",
+        "durable/examples/harness_examples_test.go::TestExample07HarnessConversations",
+        "durable/examples/harness_examples_test.go::TestExample09RegistryReload",
+        "durable/examples/inbox_override_examples_test.go::TestExample19Inbox",
+        "durable/examples/inbox_override_examples_test.go::TestExample29ToolOverride",
+        "durable/examples/lifecycle_examples_test.go::TestExample15RealModel",
+        "durable/examples/lifecycle_examples_test.go::TestExample20LateJoin",
+        "durable/examples/lifecycle_examples_test.go::TestExample21SubagentForeground",
+        "durable/examples/lifecycle_examples_test.go::TestExample28SandboxPerConversation",
+        "durable/examples/lifecycle_examples_test.go::TestExample30ReloadAndRestart",
+        "durable/examples/print_examples_test.go::TestExample17Print",
+        "durable/examples/print_examples_test.go::TestExample18JsonStorages",
+        "durable/examples/session_examples_test.go::TestExample04Watches",
+        "durable/examples/task_examples_test.go::TestExample10ExtensionState",
+        "durable/examples/task_examples_test.go::TestExample11Tasks",
+        "durable/examples/task_examples_test.go::TestExample12Recovery",
+        "durable/examples/tasks_compaction_examples_test.go::TestExample23ChildTasks",
+        "durable/examples/tasks_compaction_examples_test.go::TestExample24Compaction",
+        "durable/harness/harness_read_only_test.go::TestReadOnlyHarness",
+        "durable/json_test.go::TestCopyJsonDetachesAndRejectsNonFiniteNumbers",
+        "durable/session/session_adoption_internal_test.go::TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage",
+        "durable/session/session_adoption_test.go::TestSessionAdoptionInsideStorageCommit",
+        "internal/usagetotals/usagetotals_test.go::TestCombineUsageMarksTheTotalProviderReportedOnlyWhenBothTotalsAre",
+        "test/parity/interface-closure/autobind/library_test.go::TestAliasesOwnerKnowsGenericAliases"
+      ]
+    },
+    {
       "id": "BF-1ca0e2f",
       "title": "fix(codingagent): the terminal reader yields to the main loop it readied before it polls again",
       "symptom": "fix(codingagent): the terminal reader yields to the main loop it readied before it polls again",
@@ -9651,6 +9715,25 @@
         "coding/session_context_settings_upstream_test.go::TestRestoreSessionRuntimeStateExplicitModelSelection",
         "coding/session_resume_auth_gate_test.go::TestResumedSessionDoesNotRestoreAModelWithoutAuth"
       ]
+    },
+    {
+      "id": "BF-5bdbf20",
+      "title": "fix(cli): keep scratch install output off the validate-only report",
+      "symptom": "fix(cli): keep scratch install output off the validate-only report",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5bdbf201de",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-5c4167a",
@@ -21994,6 +22077,25 @@
       "tests": []
     },
     {
+      "id": "BF-9e1cf18",
+      "title": "fix: restore the train's sdk-bundle chunks after the main merge, gzip the changelog, gofmt the newline test",
+      "symptom": "fix: restore the train's sdk-bundle chunks after the main merge, gzip the changelog, gofmt the newline test",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9e1cf188c5",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9f4702c",
       "title": "A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error…",
       "symptom": "Previously it was shown as a warning.",
@@ -31916,6 +32018,25 @@
       ]
     },
     {
+      "id": "BF-e889b8d",
+      "title": "fix(cli): mark the validate-only scratch install as D28 and cold",
+      "symptom": "fix(cli): mark the validate-only scratch install as D28 and cold",
+      "rootCause": "divergence-consistency requires a typed additive marker and perf-lint requires the cold single-use stat to be annotated.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e889b8d149",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-e90ac19",
       "title": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last…",
       "symptom": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last blocks of the message that can still change instead of lexing, wrapping and laying out all of it, so a 60,000-character answer costs about 5% of the CPU it did, with the same output.",
@@ -34574,6 +34695,25 @@
       ]
     },
     {
+      "id": "BF-f90fedc",
+      "title": "fix(cli): satisfy errcheck and gocritic in the validate-only change",
+      "symptom": "fix(cli): satisfy errcheck and gocritic in the validate-only change",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f90fedc1f1",
+          "date": "2026-10-22"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f98d129",
       "title": "Clearing the queued messages (RPC `clear_queue`, the SDK, the interactive restore-to-editor key) no longer…",
       "symptom": "Clearing the queued messages (RPC `clear_queue`, the SDK, the interactive restore-to-editor key) no longer destroys custom messages that an extension queued with `sendMessage({ deliverAs })`.",
@@ -36244,6 +36384,25 @@
         "internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages",
         "internal/codingagent/native_thinking_options_test.go::TestSubprocessRequestMetadataKeepsKeyOrder"
       ]
+    },
+    {
+      "id": "BF-fee313a",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "fee313a4b2",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-ffcd800",
