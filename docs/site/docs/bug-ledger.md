@@ -28,6 +28,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-022d99f](#bf-022d99f) | fix(tui): the login dialog's input renders at every prompt position | PiG's own defect | All platforms | Unreleased |
 | [BF-02887e3](#bf-02887e3) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
 | [BF-037b2e3](#bf-037b2e3) | A session message whose members are in another order than Pi writes them, or that holds members PiG does not… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0387059](#bf-0387059) | The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon… | PiG's own defect | All platforms | Unreleased |
 | [BF-03ad544](#bf-03ad544) | fix(tui): card of an unregistered tool is Pi's formatToolExecution | PiG's own defect | All platforms | Unreleased |
 | [BF-040088e](#bf-040088e) | `ai.CloudflareStreams` drops the deferred fetch and cancel operations of the API it wraps, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-051a79d](#bf-051a79d) | A Provider object registered by an extension (`pi.registerProvider(provider)`) now receives the session's… | PiG's own defect | All platforms | 0.5.0 |
@@ -1297,6 +1298,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8cc072521` (2026-10-08), `433d232815` (2026-10-09), `037b2e327b` (2026-10-10), `3b5673d924` (2026-10-10), `63222832e9` (2026-10-10), `f9ef071708` (2026-10-10)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/message_shape_test.go::TestMemberScanAcceptsMessagesPiWrites`, `agent/message_shape_test.go::TestMemberScanAcceptsOnlyTextTheFieldsEncodeTo`, `agent/message_source_test.go::TestDecodedMessageInPiOrderRetainsNoText`, `agent/message_source_test.go::TestDecodedMessageWritesTheObjectItWasDecodedFrom`, `agent/message_source_test.go::TestWithEmptyContentSpreadsContent` and 19 more in docs/bug-ledger.json
 - **Release note:** A session message whose members are in another order than Pi writes them, or that holds members PiG does not model, now reaches RPC `get_messages`, extension events and the built session context exactly as Pi returns it: the object parsed from the file, written with `JSON.stringify`. Before, PiG rewrote such a message in its own member order and dropped unknown members. Context edits and handler replacements without content keep the content member in place, as the JavaScript spread does. A system message without content is kept and gets empty content, as in Pi; before, PiG dropped it. Messages Pi wrote are unaffected and retain no extra memory.
+
+### BF-0387059
+
+**The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon does, instead of refusing it; the clients still refuse such a timeout, as Pi's do.
+- **Root cause:** Pi refuses a timeout above 2^31-1 ms in the clients (durable env/node.ts and env remote-env.ts, both ported and unchanged); only a raw request reaches the daemon, which Pi runs without a deadline. Regression: the TestDaemonExecMatchesPisDaemon case "timeout above what Node can arm" (red before, green after). Also clears the lint findings of the earlier test files.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0387059efb` (2026-10-24)
+- **Tests:** `durable/env/node/rename_directory_pi_test.go::TestRenameFileReportsTheErrorOfRename2ForADirectoryDestination`, `env/daemon_wire_exec_oracle_test.go::TestDaemonExecMatchesPisDaemon`, `env/daemon_wire_exec_oracle_test.go::TestDaemonWatchMatchesPisDaemon`
+- **Release note:** The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon does, instead of refusing it; the clients still refuse such a timeout, as Pi's do.
 
 ### BF-03ad544
 

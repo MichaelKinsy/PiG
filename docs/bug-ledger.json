@@ -286,6 +286,30 @@
       ]
     },
     {
+      "id": "BF-0387059",
+      "title": "The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon…",
+      "symptom": "The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon does, instead of refusing it; the clients still refuse such a timeout, as Pi's do.",
+      "rootCause": "Pi refuses a timeout above 2^31-1 ms in the clients (durable env/node.ts and env remote-env.ts, both ported and unchanged); only a raw request reaches the daemon, which Pi runs without a deadline. Regression: the TestDaemonExecMatchesPisDaemon case \"timeout above what Node can arm\" (red before, green after). Also clears the lint findings of the earlier test files.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon does, instead of refusing it; the clients still refuse such a timeout, as Pi's do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0387059efb",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "durable/env/node/rename_directory_pi_test.go::TestRenameFileReportsTheErrorOfRename2ForADirectoryDestination",
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonExecMatchesPisDaemon",
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonWatchMatchesPisDaemon"
+      ]
+    },
+    {
       "id": "BF-03ad544",
       "title": "fix(tui): card of an unregistered tool is Pi's formatToolExecution",
       "symptom": "fix(tui): card of an unregistered tool is Pi's formatToolExecution",

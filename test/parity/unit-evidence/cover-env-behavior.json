@@ -961,5 +961,14 @@
   ],
   "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
   "mutation": "env/list_files.go: replace `Truncated: reply.JSON[\"truncated\"] == true` with `Truncated: false`; TestListFilesCancelsAListingInTheDaemon, TestRemoteExecutionEnvOverAPipeConformance fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `if milliseconds <= maxTimeoutMs {` with `if true {`; TestDaemonExecMatchesPisDaemon fails."
  }
 ]
