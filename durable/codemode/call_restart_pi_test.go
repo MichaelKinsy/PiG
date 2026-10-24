@@ -653,13 +653,13 @@ func (r *restartRun) step(step restartStep) {
 		case "hold":
 			mustWait(r.t, r.f.holds.reached)
 		case "journal":
-			eventually(r.t, func() bool { j := r.journal(); return j != nil && len(j.Entries) >= step.Entries })
+			waitUntil(r.t, func() bool { j := r.journal(); return j != nil && len(j.Entries) >= step.Entries })
 		case "issuedAfter":
 			var want int
 			if err := json.Unmarshal(step.Value, &want); err != nil {
 				r.t.Fatal(err)
 			}
-			eventually(r.t, func() bool {
+			waitUntil(r.t, func() bool {
 				j := r.journal()
 				return j != nil && step.Index < len(j.Entries) && j.Entries[step.Index].IssuedAfter != nil && *j.Entries[step.Index].IssuedAfter == want
 			})
@@ -668,19 +668,19 @@ func (r *restartRun) step(step restartStep) {
 			if err := json.Unmarshal(step.Value, &want); err != nil {
 				r.t.Fatal(err)
 			}
-			eventually(r.t, func() bool { j := r.journal(); return j != nil && j.FirstIssued != nil && *j.FirstIssued == want })
+			waitUntil(r.t, func() bool { j := r.journal(); return j != nil && j.FirstIssued != nil && *j.FirstIssued == want })
 		case "commits":
-			eventually(r.t, func() bool { return r.storage.enteredCommits() >= step.Count })
+			waitUntil(r.t, func() bool { return r.storage.enteredCommits() >= step.Count })
 		case "globals-finished":
-			eventually(r.t, func() bool { return r.finishedGlobals.Load() >= int64(step.Count) })
+			waitUntil(r.t, func() bool { return r.finishedGlobals.Load() >= int64(step.Count) })
 		case "held-events":
-			eventually(r.t, func() bool { r.vm.mu.Lock(); defer r.vm.mu.Unlock(); return len(r.vm.queued) >= step.Count })
+			waitUntil(r.t, func() bool { r.vm.mu.Lock(); defer r.vm.mu.Unlock(); return len(r.vm.queued) >= step.Count })
 		case "vm-ended":
 			<-r.vm.ended
 		case "abort-requested":
 			<-r.vm.abortRequested
 		case "nested":
-			eventually(r.t, func() bool { return nestedCount(r.t, r.opened) >= step.Count })
+			waitUntil(r.t, func() bool { return nestedCount(r.t, r.opened) >= step.Count })
 		case "done":
 			waiting, stop := context.WithTimeout(testContext, time.Minute)
 			settled, err := r.sub.Wait(waiting)
@@ -914,4 +914,17 @@ func compactJSON(value any) string {
 		return fmt.Sprint(value)
 	}
 	return string(encoded)
+}
+
+// waitUntil polls check until it holds, for as long as a slow machine needs (a minute at most): what a scenario waits for is
+// a state of the documents, never a duration.
+func waitUntil(t *testing.T, check func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(time.Minute)
+	for !check() {
+		if time.Now().After(deadline) {
+			t.Fatal("the awaited state was not reached in a minute")
+		}
+		time.Sleep(time.Millisecond)
+	}
 }

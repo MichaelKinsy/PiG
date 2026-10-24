@@ -39,14 +39,20 @@ func startsWith(store string) restartStep { return setDoc("run", store, "start",
 // run went on when the journal has entries or the count of its first run is recorded (:499-500); without either, the script
 // simply ends as it did before.
 func TestAResumedScriptThatEndsInItsFirstRunDivergesOnlyWhereTheLiveRunWentOn(t *testing.T) {
-	const code = `if (load("k")) return "early"; await tools.echo({ text: "a" }); await tools.hold({});`
+	// Globals, not tools: the rows of a tool call that settles as the script ends show it ok in Pi and cancelled in PiG when the
+	// machine is slow (see the handoff), and the rows are not what this is about.
+	const code = `if (load("k")) return "early"; await next(); await tools.hold({});`
 	before := []restartStep{awaitJournal(1), awaitFirstIssued(1)}
 	early := startsWith(`{"k":true}`)
+	withNext := func(scenario restartScenario) restartScenario {
+		scenario.Globals = []string{"next"}
+		return scenario
+	}
 	runRestartScenarios(t, []restartScenario{
-		restartSteps("the journal has an entry and the count was recorded", code, before, []restartStep{early}),
-		restartSteps("the journal has an entry and no count was recorded", code, before, []restartStep{early, deleteDoc("journal", "firstIssued")}),
-		restartSteps("the journal has no entries and the count was recorded", code, before, []restartStep{early, truncateDoc("journal", 0, "entries")}),
-		restartSteps("the journal has no entries and no count was recorded", code, before, []restartStep{early, truncateDoc("journal", 0, "entries"), deleteDoc("journal", "firstIssued")}),
+		withNext(restartSteps("the journal has an entry and the count was recorded", code, before, []restartStep{early})),
+		withNext(restartSteps("the journal has an entry and no count was recorded", code, before, []restartStep{early, deleteDoc("journal", "firstIssued")})),
+		withNext(restartSteps("the journal has no entries and the count was recorded", code, before, []restartStep{early, truncateDoc("journal", 0, "entries")})),
+		withNext(restartSteps("the journal has no entries and no count was recorded", code, before, []restartStep{early, truncateDoc("journal", 0, "entries"), deleteDoc("journal", "firstIssued")})),
 		// The replay made the call the entry answers (id 1 of 1), so only the entry itself says the live run went on. A global's
 		// call has no row in the details, which show a finished tool call as cancelled in PiG where Pi shows it ok when the
 		// script ended before the replay's nested call settled (see the handoff).
@@ -63,20 +69,24 @@ func TestAResumedScriptThatEndsInItsFirstRunDivergesOnlyWhereTheLiveRunWentOn(t 
 // codemode.ts:498-502: past the first run, the live run went on when the result's entry records a count, or when a later
 // entry answers a call the replay never made (`entry.id > during.issued`); an entry for a call the replay did make does not.
 func TestAResumedScriptThatEndsAfterAResultDivergesOnlyWhereALaterEntryAnswersACallItNeverMade(t *testing.T) {
-	const twoCalls = `const first = tools.slow({ id: 1 }); const second = tools.slow({ id: 2 });
+	const twoCalls = `const first = gslow(1); const second = gslow(2);
 		await Promise.race([first, second]);
 		if (load("k")) return "early";
 		await Promise.all([first, second]);
 		await tools.hold({});`
-	const oneCall = `await tools.echo({ text: "a" }); if (load("k")) return "early"; await tools.echo({ text: "b" }); await tools.hold({});`
+	const oneCall = `await next(); if (load("k")) return "early"; await next(); await tools.hold({});`
+	withGlobals := func(scenario restartScenario) restartScenario {
+		scenario.Globals = []string{"gslow", "next"}
+		return scenario
+	}
 	early := startsWith(`{"k":true}`)
 	// Call 1 finishes first, and the script goes on with both calls made (2 issued); call 2's entry follows.
 	raced := []restartStep{releaseSlow(1), awaitIssuedAfter(0, 2), releaseSlow(2), awaitJournal(2)}
 	runRestartScenarios(t, []restartScenario{
-		restartSteps("a later entry is for a call the replay made, and the count was not recorded", twoCalls, raced, []restartStep{early, deleteDoc("journal", "entries", 0, "issuedAfter")}),
-		restartSteps("a later entry is for a call the replay made, and the count was recorded", twoCalls, raced, []restartStep{early}),
-		restartSteps("a later entry is for a call the replay never made", oneCall, []restartStep{awaitJournal(2)}, []restartStep{early, deleteDoc("journal", "entries", 0, "issuedAfter")}),
-		restartSteps("the result's count was recorded", oneCall, []restartStep{awaitJournal(2), awaitIssuedAfter(0, 2)}, []restartStep{early}),
+		withGlobals(restartSteps("a later entry is for a call the replay made, and the count was not recorded", twoCalls, raced, []restartStep{early, deleteDoc("journal", "entries", 0, "issuedAfter")})),
+		withGlobals(restartSteps("a later entry is for a call the replay made, and the count was recorded", twoCalls, raced, []restartStep{early})),
+		withGlobals(restartSteps("a later entry is for a call the replay never made", oneCall, []restartStep{awaitJournal(2)}, []restartStep{early, deleteDoc("journal", "entries", 0, "issuedAfter")})),
+		withGlobals(restartSteps("the result's count was recorded", oneCall, []restartStep{awaitJournal(2), awaitIssuedAfter(0, 2)}, []restartStep{early})),
 	})
 }
 
