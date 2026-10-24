@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 	"unicode/utf16"
 	"unicode/utf8"
@@ -303,7 +304,7 @@ var (
 // pipeReadable reports whether a read of the pipe returns without blocking: input is queued, or the pipe has ended and the read reports the end of input. A pipe that cannot be peeked is readable too, so the read reports its failure.
 func pipeReadable(handle windows.Handle) bool {
 	var available uint32
-	r1, _, _ := procPeekNamedPipe.Call(uintptr(handle), 0, 0, 0, uintptr(unsafe.Pointer(&available)), 0) //nolint:gosec // G103: PeekNamedPipe writes the count of bytes queued, and x/sys has no wrapper for it.
+	r1, _, _ := syscall.SyscallN(procPeekNamedPipe.Addr(), uintptr(handle), 0, 0, 0, uintptr(unsafe.Pointer(&available)), 0) //nolint:gosec // G103: PeekNamedPipe writes the count of bytes queued, and x/sys has no wrapper for it. SyscallN, unlike LazyProc.Call, keeps the count and the argument list on the stack.
 	return r1 == 0 || available != 0
 }
 
