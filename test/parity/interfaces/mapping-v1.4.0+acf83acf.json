@@ -117091,9 +117091,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsMakeTheSameCallsAndOutputForTheSameStartSeedAndResults"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder"
       ]
     },
     {
@@ -117113,9 +117113,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsMakeTheSameCallsAndOutputForTheSameStartSeedAndResults",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections"
       ]
     },
     {
@@ -117135,9 +117135,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder"
       ]
     },
     {
@@ -117157,9 +117157,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult",
-        "test:codemode/run_members_pi_test.go#TestRunOptionsMembersAndRunDeliverFinishedMatchPi"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"
       ]
     },
     {
@@ -117179,9 +117179,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult",
-        "test:codemode/start_test.go#TestStartForwardsTheStartDataAndTheCallsOfTheScript"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"
       ]
     },
     {
@@ -117221,9 +117221,9 @@
         "call:codemode/execution.go#execution.deliver"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsEndWithAnErrorTheScriptCannotCatchWhenTheCallerAborts",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsKeepTheClockMonotonicAndRejectAClockValueThatIsNotFinite",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsLeaveACallWaitingWhenItsAnswerCannotBeSerialized"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsKeepTheClockMonotonicAndRejectAClockValueThatIsNotFinite"
       ]
     },
     {
@@ -121440,9 +121440,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsMakeTheSameCallsAndOutputForTheSameStartSeedAndResults"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder"
       ]
     },
     {
@@ -121462,9 +121462,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsMakeTheSameCallsAndOutputForTheSameStartSeedAndResults",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections"
       ]
     },
     {
@@ -121484,9 +121484,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder"
       ]
     },
     {
@@ -121506,9 +121506,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult",
-        "test:codemode/run_members_pi_test.go#TestRunOptionsMembersAndRunDeliverFinishedMatchPi"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"
       ]
     },
     {
@@ -121528,9 +121528,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult",
-        "test:codemode/start_test.go#TestStartForwardsTheStartDataAndTheCallsOfTheScript"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"
       ]
     },
     {
@@ -121570,9 +121570,9 @@
         "call:codemode/execution.go#execution.deliver"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsEndWithAnErrorTheScriptCannotCatchWhenTheCallerAborts",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsKeepTheClockMonotonicAndRejectAClockValueThatIsNotFinite",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsLeaveACallWaitingWhenItsAnswerCannotBeSerialized"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsKeepTheClockMonotonicAndRejectAClockValueThatIsNotFinite"
       ]
     },
     {
@@ -125378,9 +125378,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsMakeTheSameCallsAndOutputForTheSameStartSeedAndResults"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder"
       ]
     },
     {
@@ -125400,9 +125400,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsMakeTheSameCallsAndOutputForTheSameStartSeedAndResults",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections"
       ]
     },
     {
@@ -125422,9 +125422,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder"
       ]
     },
     {
@@ -125444,9 +125444,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult",
-        "test:codemode/run_members_pi_test.go#TestRunOptionsMembersAndRunDeliverFinishedMatchPi"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"
       ]
     },
     {
@@ -125466,9 +125466,9 @@
         "call:codemode/execution.go#execution.forwardCall"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsNumberCallsToGlobalsWithToolsAndAnswerErrorsAsRejections",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult",
-        "test:codemode/start_test.go#TestStartForwardsTheStartDataAndTheCallsOfTheScript"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"
       ]
     },
     {
@@ -125508,9 +125508,9 @@
         "call:codemode/execution.go#execution.deliver"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:codemode/deterministic_test.go#TestDeterministicRunsEndWithAnErrorTheScriptCannotCatchWhenTheCallerAborts",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsKeepTheClockMonotonicAndRejectAClockValueThatIsNotFinite",
-        "test:codemode/deterministic_test.go#TestDeterministicRunsLeaveACallWaitingWhenItsAnswerCannotBeSerialized"
+        "test:codemode/deterministic_test.go#TestDeterministicRunsKeepTheClockMonotonicAndRejectAClockValueThatIsNotFinite"
       ]
     },
     {
@@ -209433,9 +209433,9 @@
         "call:durable/harness/define.go#DefineTool"
       ],
       "evidence": [
+        "test:durable/codemode/call_rows_pi_test.go#TestNestedCallRowsTakeTheirStatusAndErrorTextFromTheResult",
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
-        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
+        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
       ]
     },
     {
@@ -209455,9 +209455,9 @@
         "call:durable/harness/define.go#DefineTool"
       ],
       "evidence": [
+        "test:durable/codemode/call_rows_pi_test.go#TestNestedCallRowsTakeTheirStatusAndErrorTextFromTheResult",
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
-        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
+        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
       ]
     },
     {
@@ -212544,9 +212544,9 @@
         "call:durable/codemode/call.go#call.callTool"
       ],
       "evidence": [
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
         "test:durable/core/driver/harness_nested_core_test.go#TestCoreANestedCallToAnUnavailableToolIsAnErrorResult",
-        "test:durable/core/driver/harness_nested_core_test.go#TestCoreANestedCallsStructuredOutput",
-        "test:durable/core/driver/harness_nested_core_test.go#TestCoreANestedKeyReturnsItsCallAndRecordsUsage"
+        "test:durable/core/driver/harness_nested_core_test.go#TestCoreANestedCallsStructuredOutput"
       ]
     },
     {
@@ -217910,9 +217910,9 @@
         "call:durable/codemode/call.go#call.callGlobal"
       ],
       "evidence": [
-        "test:durable/tools/powershell_upstream_test.go#TestPowerShellPrepareChangesTheScriptAndItsErrorFailsTheCall",
-        "test:durable/core/driver/harness_nested_core_test.go#TestCoreACallerThatReturnsAbortsTheNestedCallsItLeftRunning",
-        "test:durable/core/driver/harness_nested_core_test.go#TestCoreANestedCallToAnUnavailableToolIsAnErrorResult"
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths",
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestTheHeaderShowsTheWallTimeFromTheHarnessClock",
+        "test:durable/tools/powershell_upstream_test.go#TestPowerShellPrepareChangesTheScriptAndItsErrorFailsTheCall"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -219081,9 +219081,9 @@
         "call:durable/codemode/call.go#call.complete"
       ],
       "evidence": [
-        "test:durable/harness/tool_pi_oracle_test.go#TestToolResultHelpersMatchPi",
-        "test:durable/tools/coding_tools_pi_oracle_test.go#TestReadOfImagesMatchesPi",
-        "test:durable/tools/coding_tools_run_pi_oracle_test.go#TestCodingToolsRunLikePi"
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestCodemodeHelpersMatchPi",
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths",
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestTheHeaderShowsTheWallTimeFromTheHarnessClock"
       ]
     },
     {
@@ -220952,7 +220952,7 @@
       "evidence": [
         "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted",
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun"
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths"
       ]
     },
     {
@@ -220973,8 +220973,8 @@
       ],
       "evidence": [
         "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets",
-        "test:durable/codemode/describe_test.go#TestDescribeListsCallableToolsAsDeclarationsGroupedByNamespace",
-        "test:durable/codemode/describe_test.go#TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteAndSaysWhatIsLeftOut"
+        "test:durable/codemode/call_replay_pi_test.go#TestDescribeNamespaceListsEveryToolOfItsNamespaceAndMatchesItByIdentifier",
+        "test:durable/codemode/describe_test.go#TestDescribeListsCallableToolsAsDeclarationsGroupedByNamespace"
       ]
     },
     {
@@ -220994,8 +220994,9 @@
         "call:durable/codemode/call.go#call.details"
       ],
       "evidence": [
-        "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/models_test.go#TestCodeModeModels"
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths",
+        "test:durable/codemode/call_rows_pi_test.go#TestNestedCallRowsTakeTheirStatusAndErrorTextFromTheResult",
+        "test:durable/codemode/codemode_test.go#TestDurableCodeMode"
       ]
     },
     {
@@ -221037,9 +221038,9 @@
         "call:durable/codemode/call.go#call.complete"
       ],
       "evidence": [
-        "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch",
-        "test:durable/codemode/models_test.go#TestCodeModeModelCallsRunInTheCallingPhasesTrace"
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths",
+        "test:durable/codemode/call_rows_pi_test.go#TestNestedCallRowsTakeTheirStatusAndErrorTextFromTheResult",
+        "test:durable/codemode/codemode_test.go#TestDurableCodeMode"
       ]
     },
     {
@@ -221080,8 +221081,8 @@
       ],
       "evidence": [
         "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
-        "test:durable/codemode/output_tool_test.go#TestDiscoveryGlobalsCheckTheirArguments"
+        "test:durable/codemode/call_replay_pi_test.go#TestDescribeNamespaceListsEveryToolOfItsNamespaceAndMatchesItByIdentifier",
+        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
       ]
     },
     {
@@ -221145,9 +221146,9 @@
         "call:durable/codemode/tool.go#CreateTool"
       ],
       "evidence": [
-        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted",
-        "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun"
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths",
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestTheHeaderShowsTheWallTimeFromTheHarnessClock",
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi"
       ]
     },
     {
@@ -221167,9 +221168,9 @@
         "call:durable/codemode/tool.go#CreateTool"
       ],
       "evidence": [
-        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted",
-        "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun"
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths",
+        "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestTheHeaderShowsTheWallTimeFromTheHarnessClock",
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi"
       ]
     },
     {
