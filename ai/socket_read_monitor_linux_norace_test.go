@@ -122,8 +122,9 @@ func TestStreamingTransportReadDoesNotWakeTheRuntimeMonitor(t *testing.T) {
 	_ = file.Close()
 	t.Cleanup(func() { _ = server.Process.Kill(); _ = server.Wait() })
 	url := "http://" + listener.Addr().String() + "/"
-	standard, _, standardReads := streamSyscallEntries(t, &http.Client{Transport: &http.Transport{}}, url)
+	// The provider transport streams first and alone. The trace counts every goroutine of the process, and net/http's default transport leaves a readLoop goroutine on its keep-alive connection that enters a system call when it next reads or closes it (a read right after the body's EOF, a close at teardown); run first, that goroutine could enter its system call during the provider's window and be counted against it. The provider transport's own connection has only raw reads, which the trace does not record, so whatever it leaves behind adds nothing to the default reads' count.
 	raw, sites, rawReads := streamSyscallEntries(t, streamingHTTPClient(), url)
+	standard, _, standardReads := streamSyscallEntries(t, &http.Client{Transport: &http.Transport{}}, url)
 	t.Logf("system calls entered while streaming: net/http default reads %d over %d returning reads, provider transport %d over %d returning reads", standard, standardReads, raw, rawReads)
 	if standard == 0 {
 		t.Fatal("net/http's default reads entered no system call: the trace is not recording them, so the provider transport's count proves nothing")
