@@ -12198,8 +12198,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
-        "test:ai/identity_pi_messages_test.go#TestPiMessagesSendsTheIdentityUserAgentBelowRequestHeaders"
+        "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
+        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -12219,9 +12219,9 @@
         "call:ai/identity.go#GetClientVersion"
       ],
       "evidence": [
+        "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
         "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
-        "test:ai/identity_test.go#TestClientIdentityJSON",
-        "test:ai/identity_test.go#TestClientIdentityVersionDefaultsToTheProductVersion"
+        "test:ai/identity_test.go#TestClientIdentityJSON"
       ]
     },
     {
@@ -20686,8 +20686,8 @@
       ],
       "evidence": [
         "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
-        "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream",
-        "test:ai/xai_responses_upstream_test.go#TestXAIResponsesGrok47CapabilitiesAndLongContextPricing"
+        "test:ai/openrouter_cost_oracle_test.go#TestOpenRouterCostMatchesPi",
+        "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream"
       ]
     },
     {
@@ -28836,8 +28836,8 @@
       ],
       "evidence": [
         "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
+        "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"
       ]
     },
     {
@@ -55182,8 +55182,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
-        "test:ai/identity_pi_messages_test.go#TestPiMessagesSendsTheIdentityUserAgentBelowRequestHeaders"
+        "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
+        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -55203,9 +55203,9 @@
         "call:ai/identity.go#GetClientVersion"
       ],
       "evidence": [
+        "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
         "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
-        "test:ai/identity_test.go#TestClientIdentityJSON",
-        "test:ai/identity_test.go#TestClientIdentityVersionDefaultsToTheProductVersion"
+        "test:ai/identity_test.go#TestClientIdentityJSON"
       ]
     },
     {
@@ -64633,8 +64633,8 @@
       ],
       "evidence": [
         "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
-        "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream",
-        "test:ai/xai_responses_upstream_test.go#TestXAIResponsesGrok47CapabilitiesAndLongContextPricing"
+        "test:ai/openrouter_cost_oracle_test.go#TestOpenRouterCostMatchesPi",
+        "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream"
       ]
     },
     {
@@ -72951,8 +72951,8 @@
       ],
       "evidence": [
         "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
+        "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"
       ]
     },
     {
@@ -91675,8 +91675,8 @@
       ],
       "evidence": [
         "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
-        "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream",
-        "test:ai/xai_responses_upstream_test.go#TestXAIResponsesGrok47CapabilitiesAndLongContextPricing"
+        "test:ai/openrouter_cost_oracle_test.go#TestOpenRouterCostMatchesPi",
+        "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream"
       ]
     },
     {
@@ -92856,6 +92856,7 @@
         "call:ai/openrouter_api.go#OpenRouterCost"
       ],
       "evidence": [
+        "test:ai/openrouter_cost_oracle_test.go#TestOpenRouterCostMatchesPi",
         "test:ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates"
       ]
     },
@@ -92876,6 +92877,7 @@
         "call:ai/openrouter_api.go#OpenRouterCost"
       ],
       "evidence": [
+        "test:ai/openrouter_cost_oracle_test.go#TestOpenRouterCostMatchesPi",
         "test:ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates"
       ]
     },
@@ -92996,9 +92998,9 @@
         "call:ai/openrouter_api.go#OpenRouterCost"
       ],
       "evidence": [
+        "test:ai/openrouter_cost_oracle_test.go#TestOpenRouterCostMatchesPi",
         "test:ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates",
-        "test:cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterCostSerializesNegativeZeroAsZero",
-        "test:cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterCatalogParsingUpstream"
+        "test:cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterCostSerializesNegativeZeroAsZero"
       ]
     },
     {
@@ -97272,8 +97274,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
-        "test:ai/identity_pi_messages_test.go#TestPiMessagesSendsTheIdentityUserAgentBelowRequestHeaders"
+        "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
+        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -97293,9 +97295,9 @@
         "call:ai/identity.go#GetClientVersion"
       ],
       "evidence": [
+        "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
         "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
-        "test:ai/identity_test.go#TestClientIdentityJSON",
-        "test:ai/identity_test.go#TestClientIdentityVersionDefaultsToTheProductVersion"
+        "test:ai/identity_test.go#TestClientIdentityJSON"
       ]
     },
     {
@@ -98541,6 +98543,7 @@
         "call:ai/openrouter_cost.go#applyOpenRouterReportedCost"
       ],
       "evidence": [
+        "test:ai/openrouter_cost_oracle_test.go#TestApplyOpenRouterReportedCostMatchesPi",
         "test:ai/openrouter_cost_test.go#TestApplyOpenRouterReportedCost"
       ]
     },
@@ -98561,6 +98564,7 @@
         "call:ai/openrouter_cost.go#applyOpenRouterReportedCost"
       ],
       "evidence": [
+        "test:ai/openrouter_cost_oracle_test.go#TestApplyOpenRouterReportedCostMatchesPi",
         "test:ai/openrouter_cost_test.go#TestApplyOpenRouterReportedCost"
       ]
     },
@@ -98581,6 +98585,7 @@
         "call:ai/openrouter_cost.go#isOpenRouterModel"
       ],
       "evidence": [
+        "test:ai/openrouter_cost_oracle_test.go#TestIsOpenRouterModelMatchesPi",
         "test:ai/openrouter_cost_test.go#TestIsOpenRouterModel"
       ]
     },
@@ -98601,6 +98606,7 @@
         "call:ai/openrouter_cost.go#isOpenRouterModel"
       ],
       "evidence": [
+        "test:ai/openrouter_cost_oracle_test.go#TestIsOpenRouterModelMatchesPi",
         "test:ai/openrouter_cost_test.go#TestIsOpenRouterModel"
       ]
     },
@@ -98621,6 +98627,7 @@
         "call:ai/openrouter_cost.go#applyOpenRouterReportedCost"
       ],
       "evidence": [
+        "test:ai/openrouter_cost_oracle_test.go#TestApplyOpenRouterReportedCostMatchesPi",
         "test:ai/openrouter_cost_test.go#TestApplyOpenRouterReportedCost"
       ]
     },
@@ -100528,8 +100535,8 @@
       ],
       "evidence": [
         "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
+        "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"
       ]
     },
     {
@@ -139277,9 +139284,9 @@
         "call:coding/extension/builtin/codemode/execute.go#Execute"
       ],
       "evidence": [
+        "test:coding/extension/builtin/codemode/settings_defaults_oracle_test.go#TestCodemodeDefaultsAreThePinnedPiSettingsDefaults",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/builtin/codemode/execute_oracle_test.go#TestExecuteOutputMatchesPi",
-        "test:coding/extension/builtin/codemode/session_free_upstream_test.go#TestDeclaresModelsOnlyForAToolCreatedWithModelAccess"
+        "test:coding/extension/builtin/codemode/execute_oracle_test.go#TestExecuteOutputMatchesPi"
       ]
     },
     {
@@ -139299,6 +139306,7 @@
         "call:coding/extension/builtin/codemode/tool.go#Options.inlineBudget"
       ],
       "evidence": [
+        "test:coding/extension/builtin/codemode/settings_defaults_oracle_test.go#TestCodemodeDefaultsAreThePinnedPiSettingsDefaults",
         "test:coding/extension/builtin/codemode/options_override_test.go#TestInlineBudgetSettingAboveTheIntRangeStaysLarge"
       ]
     },
@@ -139306,7 +139314,7 @@
       "id": "pkg:coding-agent/.#CodemodeExtensionOptions::property:mode",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2d03863e0517b71da617d7cae5bc89b5c69c7fb3ed1707de3e701d56b6d0feaa",
-      "rationale": "Derived by the interface gap detector: CodemodeExtensionOptions::property:mode is Go coding/extension/builtin/codemode/tool.go#Options.mode (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CodemodeExtensionOptions::property:mode is Go coding/extension/builtin/codemode/tool.go#Options.mode (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/builtin/codemode/tool.go#Options.mode"
       ],
@@ -139319,7 +139327,7 @@
         "call:coding/extension/builtin/codemode/tool.go#Options.mode"
       ],
       "evidence": [
-        "reach:coding/extension/builtin/codemode/tool.go#Options.mode"
+        "test:coding/extension/builtin/codemode/settings_defaults_oracle_test.go#TestCodemodeDefaultsAreThePinnedPiSettingsDefaults"
       ]
     },
     {
@@ -191389,9 +191397,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCacheWarmingMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -191411,9 +191419,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCacheWarmingMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -191475,9 +191483,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCodeBlockIndent"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_code_block_indent_test.go#TestSettingsKeepAnAuthoredEmptyOrNullCodeBlockIndent"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -191497,9 +191505,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCodeBlockIndent"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_code_block_indent_test.go#TestSettingsKeepAnAuthoredEmptyOrNullCodeBlockIndent"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -191519,9 +191527,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCollapseChangelog"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_getters_alloc_test.go#TestSettingsScalarGettersDoNotCopySettings"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -191541,9 +191549,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCollapseChangelog"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_getters_alloc_test.go#TestSettingsScalarGettersDoNotCopySettings"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -191563,9 +191571,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCompactionEnabled"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_memory_upstream_test.go#TestInMemorySettingsReloadUpstream",
-        "test:coding/session_settings_accessors_test.go#TestSessionReportsQueueModesAndTheAutoSettings"
+        "test:internal/codingagent/settings_memory_upstream_test.go#TestInMemorySettingsReloadUpstream"
       ]
     },
     {
@@ -191585,9 +191593,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCompactionEnabled"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_memory_upstream_test.go#TestInMemorySettingsReloadUpstream",
-        "test:coding/session_settings_accessors_test.go#TestSessionReportsQueueModesAndTheAutoSettings"
+        "test:internal/codingagent/settings_memory_upstream_test.go#TestInMemorySettingsReloadUpstream"
       ]
     },
     {
@@ -191695,9 +191703,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCompactionSettings"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_resolved_getters_oracle_test.go#TestSettingsManagerResolvedGettersMatchPi",
-        "test:coding/compaction_api_test.go#TestCompactionHelpersArePublicAndAgreeWithSettingsDefaults",
-        "test:coding/settings_manager_pi_test.go#TestInMemorySettingsManagerResolvesCompactionOverridesLikePi"
+        "test:coding/compaction_api_test.go#TestCompactionHelpersArePublicAndAgreeWithSettingsDefaults"
       ]
     },
     {
@@ -191717,9 +191725,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetCompactionSettings"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_resolved_getters_oracle_test.go#TestSettingsManagerResolvedGettersMatchPi",
-        "test:coding/compaction_api_test.go#TestCompactionHelpersArePublicAndAgreeWithSettingsDefaults",
-        "test:coding/settings_manager_pi_test.go#TestInMemorySettingsManagerResolvesCompactionOverridesLikePi"
+        "test:coding/compaction_api_test.go#TestCompactionHelpersArePublicAndAgreeWithSettingsDefaults"
       ]
     },
     {
@@ -191949,9 +191957,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetDoubleEscapeAction"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -191971,9 +191979,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetDoubleEscapeAction"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -192035,9 +192043,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetEnableAnalytics"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/first_time_setup_test.go#TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI",
-        "test:internal/codingagent/settings_getters_alloc_test.go#TestSettingsScalarGettersDoNotCopySettings"
+        "test:internal/codingagent/first_time_setup_test.go#TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI"
       ]
     },
     {
@@ -192057,9 +192065,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetEnableAnalytics"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/first_time_setup_test.go#TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI",
-        "test:internal/codingagent/settings_getters_alloc_test.go#TestSettingsScalarGettersDoNotCopySettings"
+        "test:internal/codingagent/first_time_setup_test.go#TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI"
       ]
     },
     {
@@ -192159,9 +192167,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetEnableSkillCommands"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
       ]
     },
     {
@@ -192181,9 +192189,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetEnableSkillCommands"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
       ]
     },
     {
@@ -192289,9 +192297,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetFollowUpMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
       ]
     },
     {
@@ -192311,9 +192319,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetFollowUpMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
       ]
     },
     {
@@ -192673,9 +192681,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetImageWidthCells"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsWriteKeepsAnAuthoredNonPositiveImageWidthCells",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsWriteKeepsAnAuthoredNonPositiveImageWidthCells"
       ]
     },
     {
@@ -192695,9 +192703,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetImageWidthCells"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsWriteKeepsAnAuthoredNonPositiveImageWidthCells",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsWriteKeepsAnAuthoredNonPositiveImageWidthCells"
       ]
     },
     {
@@ -192927,9 +192935,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetOutputPad"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -192949,9 +192957,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetOutputPad"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -193103,7 +193111,7 @@
       "evidence": [
         "test:internal/codingagent/provider_retry_settings_upstream_test.go#TestProviderRetrySettingsDistinguishUnsetFromExplicitZero",
         "test:internal/codingagent/provider_retry_settings_upstream_test.go#TestProviderRetrySettingsPreservesGlobalSettingsNotOverriddenByProject",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
       ]
     },
     {
@@ -193125,7 +193133,7 @@
       "evidence": [
         "test:internal/codingagent/provider_retry_settings_upstream_test.go#TestProviderRetrySettingsDistinguishUnsetFromExplicitZero",
         "test:internal/codingagent/provider_retry_settings_upstream_test.go#TestProviderRetrySettingsPreservesGlobalSettingsNotOverriddenByProject",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager"
       ]
     },
     {
@@ -193145,9 +193153,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetQuietStartup"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupSettingReadsAsPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupValueSpelling"
+        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupSettingReadsAsPi"
       ]
     },
     {
@@ -193167,9 +193175,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetQuietStartup"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupSettingReadsAsPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupValueSpelling"
+        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupSettingReadsAsPi"
       ]
     },
     {
@@ -193233,9 +193241,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetRetrySettings"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -193255,9 +193263,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetRetrySettings"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -193321,9 +193329,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetSessionShareDestination"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/session_share_destination_test.go#TestShareHandlerUploadsToPiGForEveryShareDestination",
-        "test:internal/codingagent/settings_session_share_destination_test.go#TestSettingsManager_GetSessionShareDestination",
-        "test:internal/codingagent/settings_session_share_destination_test.go#TestSettingsManager_SetSessionShareDestinationPersistsGlobally"
+        "test:internal/codingagent/settings_session_share_destination_test.go#TestSettingsManager_GetSessionShareDestination"
       ]
     },
     {
@@ -193343,9 +193351,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetSessionShareDestination"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/session_share_destination_test.go#TestShareHandlerUploadsToPiGForEveryShareDestination",
-        "test:internal/codingagent/settings_session_share_destination_test.go#TestSettingsManager_GetSessionShareDestination",
-        "test:internal/codingagent/settings_session_share_destination_test.go#TestSettingsManager_SetSessionShareDestinationPersistsGlobally"
+        "test:internal/codingagent/settings_session_share_destination_test.go#TestSettingsManager_GetSessionShareDestination"
       ]
     },
     {
@@ -193497,9 +193505,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetShowCacheMissNotices"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -193519,9 +193527,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetShowCacheMissNotices"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -193583,9 +193591,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetShowImages"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_getters_alloc_test.go#TestSettingsScalarGettersDoNotCopySettings"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -193605,9 +193613,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetShowImages"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_getters_alloc_test.go#TestSettingsScalarGettersDoNotCopySettings"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -193713,9 +193721,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetSteeringMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues",
-        "test:coding/session_resource_accessors_test.go#TestSessionSettingsManagerIsTheManagerItPersistsThrough"
+        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
       ]
     },
     {
@@ -193735,9 +193743,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetSteeringMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues",
-        "test:coding/session_resource_accessors_test.go#TestSessionSettingsManagerIsTheManagerItPersistsThrough"
+        "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
       ]
     },
     {
@@ -194019,9 +194027,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetTransport"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_getters_alloc_test.go#TestSettingsScalarGettersDoNotCopySettings"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -194041,9 +194049,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetTransport"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_getters_oracle_test.go#TestSettingsManagerGettersMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
-        "test:internal/codingagent/settings_getters_alloc_test.go#TestSettingsScalarGettersDoNotCopySettings"
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
       ]
     },
     {
@@ -194105,9 +194113,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetTuiMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_tui_mode_oracle_test.go#TestSettingsTuiModeAndFullscreenExitOutputMatchPi"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -194127,9 +194135,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.GetTuiMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/settings_tui_mode_oracle_test.go#TestSettingsTuiModeAndFullscreenExitOutputMatchPi"
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -277714,8 +277722,8 @@
       ],
       "evidence": [
         "test:tui/theme_load_random_oracle_test.go#TestLoadThemeFromPathOnRandomColorsMatchesPi",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestBuiltInHeaderColorsTheTextMarkInAppleTerminal256"
+        "test:tui/theme_tokens_metadata_oracle_test.go#TestOmittedOptionalThemeTokensFallBackAsInPi",
+        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
       ]
     },
     {
