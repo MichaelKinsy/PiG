@@ -118,7 +118,7 @@ func TestTokenizeAndRankDocumentsMatchPiOnSeededInputs(t *testing.T) {
 		default:
 			documents := make([]Document, len(op.Documents))
 			for j, d := range op.Documents {
-				documents[j] = Document{Name: d.Name, Text: d.Text}
+				documents[j] = Document(d)
 			}
 			got = RankDocuments(op.Query, documents, op.Limit)
 			if len(pi[i]) > 1 {

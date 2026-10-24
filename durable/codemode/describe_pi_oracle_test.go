@@ -218,7 +218,7 @@ func registration(t *testing.T, raw json.RawMessage) *durable.ToolRegistration {
 func namespacesOf(in []describeNS) []Namespace {
 	out := make([]Namespace, len(in))
 	for i, ns := range in {
-		out[i] = Namespace{Name: ns.Name, Description: ns.Description, Instructions: ns.Instructions, Prefix: ns.Prefix}
+		out[i] = Namespace(ns)
 	}
 	return out
 }
