@@ -222,9 +222,7 @@ type HostCallbacks struct {
 
 	// AppendEntry appends a custom session entry.
 	// upstream: types.ts:1450: AppendEntryHandler
-	// direct is non-nil for ctx.sessionManager.appendCustomEntry, which
-	// writes the log only and has already returned the entry's id; nil is
-	// pi.appendEntry, which also emits entry_appended.
+	// A non-nil direct carries the identity already allocated in the extension process. direct.Event distinguishes pi.appendEntry (true) from ctx.sessionManager.appendCustomEntry (false). A nil direct asks the host to allocate the identity and emit entry_appended.
 	AppendEntry func(customType string, data any, direct *DirectEntryAppend) error
 
 	// Exec runs a local command and returns stdout/stderr/exit status.
