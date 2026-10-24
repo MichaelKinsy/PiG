@@ -2530,3 +2530,27 @@ Parity allowance: `TestHardLinkAliasesDifferFromPi` runs the pinned Pi's queue a
 Remove when: Pi orders hard-link aliases (and, on a case-insensitive filesystem where its `realpath` keeps case, case aliases) by file identity, or an owner decision reverses this one; then the identity check, its marker, the allowance test and this record go.
 
 SCRUTINIZED:approved
+
+## D197 The env daemon's limit of open files is the hard limit, where Pi's daemon keeps the soft limit it inherited
+
+What: PiG's env daemon (`env/daemon`) runs under the Go runtime, which raises the soft `RLIMIT_NOFILE` of the process to the hard limit (on Linux to one below it, `syscall/rlimit.go`) before `main` starts. Pi's daemon (`packages/env/daemon`, Rust) never touches the limit, so it runs under the soft limit the client's shell passed on. On a default shell (soft limit 1024) Pi's daemon answers an `open`, `write` or `opendir` with `EMFILE` once about 1020 handles are open (each handle holds one descriptor), where PiG's daemon goes on until the hard limit or its own handle table (4096 handles, the same `EMFILE` Pi's daemon reports at that count, `packages/env/daemon/src/main.rs:42-43` and `:116-120`) stops it. A client that opens fewer handles than the soft limit sees no difference. The commands the daemon starts are not affected: Go restores the inherited limit for a child process.
+
+Why: nothing in PiG reaches the limit on purpose. The Go runtime's raise is the toolchain's own behavior (every Go program on Unix has it), and undoing it to give a program Pi's smaller limit would make PiG fail on workloads that succeed, in a daemon whose handle table already caps the count.
+
+Pi bug: none. Pi's daemon leaves the limit alone (no `setrlimit` call in any file of `packages/env/daemon/src`) and maps the system's `EMFILE` as it should (`src/sys/unix.rs:35`). The two counts differ because the two runtimes differ.
+
+Scope: Unix hosts only (Windows has no such limit), and only a daemon started with a soft limit below both its hard limit and 4096. On macOS the Go runtime raises the soft limit to the hard limit or `kern.maxfilesperproc`, whichever is lower. Everything else, including the handle table limit and its message, is equal to Pi's (`TestDaemonHandlesAreLimitedLikePisDaemon`).
+
+Workaround: none needed in PiG. Pi's count cannot be reproduced in PiG: the runtime raises the limit again whatever the daemon inherits.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not lower the limit to Pi's).
+
+Call-site markers: `env/daemon/server.go` (`Serve`, where the daemon's connection starts).
+
+Evidence: `TestDaemonDescriptorLimitIsTheHardLimitUnlikePisDaemon` (`env/daemon_descriptor_limit_divergence_test.go`) starts Pi's daemon (built from the pin) and PiG's with a soft limit of 64 and the host's hard limit, and opens directories until one fails: Pi's refuses with `EMFILE` before 64, PiG opens all 300. `TestDescriptorLimitIsTheHardLimit` (`env/daemon/descriptor_limit_linux_test.go`) pins that the runtime leaves PiG's soft limit at the hard limit or one below it. The first fails when either daemon changes its behavior, the second when the runtime stops raising the limit.
+
+Parity allowance: the wire tests that open thousands of handles (`TestDaemonHandlesAreLimitedLikePisDaemon`) start both daemons with the soft limit raised to the hard limit (`startWireDaemon` in `env/daemon_wire_oracle_test.go`), so the count under test is the handle table's, equal on both sides.
+
+Remove when: the Go runtime lets a program keep its inherited soft limit, or Pi's daemon raises its own soft limit to the hard limit at start, or an owner decision reverses this one; then the marker, the two tests and this record go.
+
+SCRUTINIZED:approved

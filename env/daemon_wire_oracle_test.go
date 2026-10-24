@@ -41,12 +41,23 @@ type wireDaemon struct {
 // startWireDaemon starts binary as `serve --token tok` with exactly the environment given, in cwd.
 func startWireDaemon(t *testing.T, binary, cwd string, environment []string) *wireDaemon {
 	t.Helper()
+	return startWireDaemonWithSoftLimit(t, binary, cwd, environment, "")
+}
+
+// startWireDaemonWithSoftLimit is startWireDaemon with the soft limit of open files set to softLimit (a count the shell's
+// ulimit accepts) instead of the hard limit; the empty string means the hard limit.
+func startWireDaemonWithSoftLimit(t *testing.T, binary, cwd string, environment []string, softLimit string) *wireDaemon {
+	t.Helper()
 	read, write, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
 	// The soft limit of open files goes to the hard one: Go raises it by itself, Pi's daemon does not, and the handle limit is what is under test.
-	command := exec.Command("sh", "-c", `ulimit -n "$(ulimit -Hn)" 2>/dev/null; exec "$0" "$@"`, binary, "serve", "--token", "tok")
+	script := `ulimit -n "$(ulimit -Hn)" 2>/dev/null; exec "$0" "$@"`
+	if softLimit != "" {
+		script = "ulimit -S -n " + softLimit + `; exec "$0" "$@"`
+	}
+	command := exec.Command("sh", "-c", script, binary, "serve", "--token", "tok")
 	command.Dir = cwd
 	command.Env = environment
 	command.Stdout = write
