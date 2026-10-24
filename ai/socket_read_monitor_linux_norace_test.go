@@ -3,17 +3,18 @@
 package ai
 
 import (
-	"bufio"
+	"bytes"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
-	"strings"
+	"runtime/trace"
 	"testing"
 	"time"
+
+	xtrace "golang.org/x/exp/trace"
 )
 
 // The race detector's build reads sockets through syscall.Read (socket_read_race_linux.go), which wakes the monitor thread by design.
@@ -22,6 +23,9 @@ import (
 const socketWriterEnv = "PIG_TEST_SOCKET_WRITER"
 
 const socketWriterChunks = 150
+
+// socketWriterEvent is each chunk the helper writes.
+const socketWriterEvent = "data: {\"delta\":\"chunk\"}\n\n"
 
 // TestSocketWriterHelper is the paced HTTP server process of TestStreamingTransportReadDoesNotWakeTheRuntimeMonitor, so no write system call of the measured process wakes the monitor thread.
 func TestSocketWriterHelper(t *testing.T) {
@@ -36,66 +40,69 @@ func TestSocketWriterHelper(t *testing.T) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		for range socketWriterChunks {
 			time.Sleep(2 * time.Millisecond)
-			_, _ = io.WriteString(w, "data: {\"delta\":\"chunk\"}\n\n")
+			_, _ = io.WriteString(w, socketWriterEvent)
 			w.(http.Flusher).Flush()
 		}
 	})}
 	_ = server.Serve(listener)
 }
 
-// voluntarySwitches sums voluntary context switches over the process's threads.
-func voluntarySwitches(t *testing.T) int {
-	t.Helper()
-	paths, err := filepath.Glob("/proc/self/task/*/status")
-	if err != nil {
-		t.Fatal(err)
-	}
-	total := 0
-	for _, path := range paths {
-		file, err := os.Open(path)
-		if err != nil {
-			continue // the thread exited
-		}
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			if value, ok := strings.CutPrefix(scanner.Text(), "voluntary_ctxt_switches:"); ok {
-				count, _ := strconv.Atoi(strings.TrimSpace(value))
-				total += count
-			}
-		}
-		_ = file.Close()
-	}
-	return total
-}
-
-// switchesPerChunk streams the helper's paced response through client and returns the process's voluntary context switches per body read that returned data.
-func switchesPerChunk(t *testing.T, client *http.Client, url string) float64 {
+// streamSyscallEntries streams the helper's paced response through client and returns the system calls the process's goroutines entered while the body was read, by the site that made each call, and the body reads that returned data. The whole response must arrive: a read that lost or cut the stream would count fewer system calls for the wrong reason. How many chunks each read returns depends on how far the client lags the helper, so only the total is checked. The execution trace records one goroutine transition to the system-call state for each syscall.Syscall (every blocking call the runtime knows) and none for a raw system call, so the count is exact: it does not depend on how the host schedules the process, the helper or the load around them.
+func streamSyscallEntries(t *testing.T, client *http.Client, url string) (entries int, sites map[string]int, dataReads int) {
 	t.Helper()
 	response, err := client.Get(url)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = response.Body.Close() }()
+	var recorded bytes.Buffer
+	if err := trace.Start(&recorded); err != nil {
+		t.Fatal(err)
+	}
 	buffer := make([]byte, 4096)
-	before := voluntarySwitches(t)
-	chunks := 0
-	for {
-		n, err := response.Body.Read(buffer)
+	received := 0
+	var readErr error
+	for readErr == nil {
+		var n int
+		n, readErr = response.Body.Read(buffer)
+		received += n
 		if n > 0 {
-			chunks++
+			dataReads++
+		}
+	}
+	trace.Stop()
+	if want := socketWriterChunks * len(socketWriterEvent); !errors.Is(readErr, io.EOF) || received != want {
+		t.Fatalf("read %d bytes ending in %v, want the whole %d-byte stream ending in EOF", received, readErr, want)
+	}
+	reader, err := xtrace.NewReader(&recorded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sites = map[string]int{}
+	for {
+		event, err := reader.ReadEvent()
+		if errors.Is(err, io.EOF) {
+			return entries, sites, dataReads
 		}
 		if err != nil {
-			break
+			t.Fatal(err)
+		}
+		if event.Kind() != xtrace.EventStateTransition {
+			continue
+		}
+		transition := event.StateTransition()
+		if transition.Resource.Kind != xtrace.ResourceGoroutine {
+			continue
+		}
+		// A goroutine already in a system call when the trace starts is reported leaving an undetermined state; only entries count.
+		if from, to := transition.Goroutine(); to == xtrace.GoSyscall && from != xtrace.GoUndetermined {
+			entries++
+			sites[stackSite(transition.Stack)]++
 		}
 	}
-	after := voluntarySwitches(t)
-	if chunks < socketWriterChunks/2 {
-		t.Fatalf("read %d chunks, want about %d", chunks, socketWriterChunks)
-	}
-	return float64(after-before) / float64(chunks)
 }
 
-// A socket read that enters a blocking system call while the process is idle wakes the runtime's monitor thread, which then sleeps and wakes every 20 µs until the process is idle again: several context switches per streamed chunk. The provider transport's raw socket read leaves the monitor asleep.
+// A socket read that enters a blocking system call while the process is idle wakes the runtime's monitor thread, which then sleeps and wakes every 20 µs until the process is idle again: several context switches per streamed chunk. The runtime wakes the monitor only from a goroutine's system-call entry or exit (proc.go reentersyscall's entersyscallWakeSysmon, exitsyscallTryGetP and exitsyscallNoP) and when the world restarts (startTheWorldWithSema), so a read that enters no system call cannot wake it. The provider transport's raw socket read enters none, while net/http's default read enters one for each read(2); the trace counts both exactly, where the context switches the monitor costs depend on the host's scheduling and the load on it.
 func TestStreamingTransportReadDoesNotWakeTheRuntimeMonitor(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -115,10 +122,13 @@ func TestStreamingTransportReadDoesNotWakeTheRuntimeMonitor(t *testing.T) {
 	_ = file.Close()
 	t.Cleanup(func() { _ = server.Process.Kill(); _ = server.Wait() })
 	url := "http://" + listener.Addr().String() + "/"
-	standard := switchesPerChunk(t, &http.Client{Transport: &http.Transport{}}, url)
-	raw := switchesPerChunk(t, streamingHTTPClient(), url)
-	t.Logf("voluntary context switches per chunk: net/http default reads %.2f, provider transport %.2f", standard, raw)
-	if raw > standard/2 {
-		t.Fatalf("provider transport cost %.2f context switches per chunk, default net/http reads %.2f; want at most half", raw, standard)
+	standard, _, standardReads := streamSyscallEntries(t, &http.Client{Transport: &http.Transport{}}, url)
+	raw, sites, rawReads := streamSyscallEntries(t, streamingHTTPClient(), url)
+	t.Logf("system calls entered while streaming: net/http default reads %d over %d returning reads, provider transport %d over %d returning reads", standard, standardReads, raw, rawReads)
+	if standard == 0 {
+		t.Fatal("net/http's default reads entered no system call: the trace is not recording them, so the provider transport's count proves nothing")
+	}
+	if raw != 0 {
+		t.Fatalf("provider transport entered %d system calls while streaming %d chunks, want none (each can wake the runtime's monitor thread); by site:%s", raw, socketWriterChunks, wakeReasons(sites))
 	}
 }
