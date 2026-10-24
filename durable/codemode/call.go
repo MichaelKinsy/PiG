@@ -1223,10 +1223,9 @@ func countImages(result durable.NestedToolExecutionResult) int {
 	if err != nil {
 		return 0
 	}
+	// Items are any: Pi counts the image blocks and skips every other item (`item?.type === "image"`), whatever it is.
 	var value struct {
-		Output []struct {
-			Type any `json:"type"`
-		} `json:"output"`
+		Output []any `json:"output"`
 	}
 	//portlint:allow jsonclone once per models.generateImages() call, which costs a provider request; the stored result has no typed form here
 	if json.Unmarshal(raw, &value) != nil { //perf:ok once per models.generateImages() call, which costs a provider request; the value is a stored result and has no typed form here
@@ -1234,7 +1233,7 @@ func countImages(result durable.NestedToolExecutionResult) int {
 	}
 	count := 0
 	for _, item := range value.Output {
-		if item.Type == "image" {
+		if object, ok := item.(map[string]any); ok && object["type"] == "image" {
 			count++
 		}
 	}
