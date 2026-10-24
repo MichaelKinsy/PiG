@@ -192,6 +192,11 @@ func TestDiagConsoleKeystroke(t *testing.T) {
 	if dir := os.Getenv(diagConsoleChildEnv); dir != "" {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+		restore, err := NewProcessTerminal(os.Stdin, os.Stdout).EnterRawMode()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer restore()
 		count := 0
 		done := make(chan error, 1)
 		go func() {

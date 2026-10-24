@@ -43,6 +43,8 @@ jobs:
         run: |
           set -euo pipefail
           : > "$RUNNER_TEMP/old.console.txt"; : > "$RUNNER_TEMP/new.console.txt"
+          (cd "$RUNNER_TEMP/old" && go test ./tui -run '^TestDiagConsoleKeystroke$' -count=1 -v) | tail -8
+          go test ./tui -run '^TestDiagConsoleKeystroke$' -count=1 -v | tail -8
           for i in 1 2 3 4 5 6 7 8 9 10; do
             (cd "$RUNNER_TEMP/old" && go test ./tui -run '^TestDiagConsoleKeystroke$' -count=1 -v) | grep -E '^BenchmarkDiagConsole' >> "$RUNNER_TEMP/old.console.txt" || true
             go test ./tui -run '^TestDiagConsoleKeystroke$' -count=1 -v | grep -E '^BenchmarkDiagConsole' >> "$RUNNER_TEMP/new.console.txt" || true
@@ -55,3 +57,9 @@ jobs:
           (cd "$RUNNER_TEMP/old" && go test ./tui -run '^(TestDiagLifecycle|TestDiagIdleCPU)$' -count=1 -v) || true
           echo "=== NEW (this change)"
           go test ./tui -run '^(TestDiagLifecycle|TestDiagIdleCPU)$' -count=1 -v
+      - name: The pipe tests and the codingagent target test on the final code
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./tui -run 'TestWindowsInputWaiter|TestReadInputStreamLeavesAPipe|TestReadInputStreamDeliversAPipe' -count=10 -timeout 10m
+          go test ./internal/codingagent -run '^(TestInteractiveShutdownLeavesTerminalFileForNextReader|TestKeystrokeReachesTheOwnerInOneHandOff)$' -count=30 -timeout 10m
