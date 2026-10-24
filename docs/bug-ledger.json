@@ -8582,6 +8582,29 @@
       ]
     },
     {
+      "id": "BF-5379ab4",
+      "title": "fix(durable/codemode): count image blocks in a generateImages result as Pi does, and compare the code mode…",
+      "symptom": "fix(durable/codemode): count image blocks in a generateImages result as Pi does, and compare the code mode helpers with Pi",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5379ab4607",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "durable/codemode/codemode_helpers_pi_oracle_test.go::TestCodemodeHelpersMatchPi",
+        "durable/codemode/codemode_helpers_pi_oracle_test.go::TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths",
+        "durable/codemode/codemode_helpers_pi_oracle_test.go::TestTheHeaderShowsTheWallTimeFromTheHarnessClock"
+      ]
+    },
+    {
       "id": "BF-5380e0a",
       "title": "fix(extension): load failure shows the extension's own cause; registration edge-case rows",
       "symptom": "fix(extension): load failure shows the extension's own cause; registration edge-case rows",
