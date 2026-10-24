@@ -29,6 +29,8 @@ SHARDED_SPEC=(
   ./coding/extension/host/subprocess:3
   ./test/extension-conformance:3
 )
+# Under -race a package runs several times slower, so make test-changed multiplies the shard count of an edited sharded package by this factor (the shard patterns partition the package for any count; the weights apply only to the count CI uses).
+RACE_SHARD_FACTOR=${TEST_CHANGED_RACE_SHARDS:-3}
 MODE=${1:-default}
 COUNT_FLAG=()
 # CI restores the Go build cache, test results included, from earlier commits, and the scratch paths below are stable, so a result could replay there. The cache key misses inputs a child process reads (a script, a Node or Python oracle, a fixture build), so CI runs every test.
@@ -133,9 +135,9 @@ if [[ "$MODE" == changed ]]; then
   fi
 fi
 
-# Resolve the sharded packages that exist in this module and take them out of the whole-package groups.
+# Resolve the sharded packages that exist in this module and take them out of the whole-package groups. Changed mode shards them as CI does (SHARDED_SPEC, test-shard-pattern.sh and its weights): one go test process of a heavy package outlives go test's 10-minute timeout on a loaded host, especially under -race.
 declare -A SHARD_COUNT=()
-if [[ ( "$MODE" != changed || -n "${TEST_CHANGED_FOR:-}" ) && "$MODE" != report ]]; then
+if [[ "$MODE" != report ]]; then
   for spec in "${SHARDED_SPEC[@]}"; do
     spec_pkg=$(go list "${spec%:*}")
     in_all=
@@ -383,6 +385,22 @@ case "$MODE" in
     RACE_FLAG=()
     run_group "changed fast-parallel" "$FAST_PARALLEL" "${plain_fast[@]}" || status=$?
     run_group "changed subprocess-bounded" "$SUBPROCESS_PARALLEL" "${plain_heavy[@]}" || status=$?
+    # The sharded packages the change affects run in the shards of SHARDED_SPEC, edited ones under -race. The scoped light run leaves them to the test-fast-sharded row.
+    sharded_run=0
+    if [[ -z "${TEST_CHANGED_FOR:-}" ]]; then
+      mapfile -t sharded_pkgs < <(printf '%s\n' "${!SHARD_COUNT[@]}" | sort)
+      for pkg in "${sharded_pkgs[@]}"; do
+        in_list "$pkg" "${AFFECTED[@]}" || continue
+        sharded_run=$((sharded_run + 1))
+        shards=${SHARD_COUNT[$pkg]}
+        if in_list "$pkg" "${DIRECT_PKGS[@]}"; then
+          RACE_FLAG=(-race)
+          shards=$((shards * RACE_SHARD_FACTOR))
+        fi
+        run_sharded_pkg changed "$SUBPROCESS_PARALLEL" "$pkg" "$shards" || status=$?
+        RACE_FLAG=()
+      done
+    fi
     if in_list "$CLI_PKG" "${HEAVY_PKGS[@]}"; then
       in_list "$CLI_PKG" "${DIRECT_PKGS[@]}" && RACE_FLAG=(-race)
       run_cli_shards "$SUBPROCESS_PARALLEL" || status=$?
@@ -394,7 +412,7 @@ case "$MODE" in
       fault=1
       run_fault_group "$SERIAL_PARALLEL" || status=$?
     fi
-    if [[ ${#FAST_PKGS[@]} -eq 0 && ${#HEAVY_PKGS[@]} -eq 0 && -z "$fault" ]]; then echo "[test-grouped] changed: no Go package is affected"; fi
+    if [[ ${#FAST_PKGS[@]} -eq 0 && ${#HEAVY_PKGS[@]} -eq 0 && $sharded_run -eq 0 && -z "$fault" ]]; then echo "[test-grouped] changed: no Go package is affected"; fi
     exit "$status"
     ;;
   report)
