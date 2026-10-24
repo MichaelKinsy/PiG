@@ -120,10 +120,10 @@ jobs:
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
           py="$(command -v python3 || command -v python)"
           "$py" automation/pin/pin.py install-oracle
-      # The Windows jobs build test binaries with the default flag set; -c -o <dir>/ writes each package's binary and runs none.
+      # The Windows jobs build test binaries with the default flag set; -c writes each package's binary under a unique name and runs none.
       - name: Compile every test binary
         shell: bash
-        run: go test -c -o "$RUNNER_TEMP/testbins/" ./...
+        run: automation/ci/compile-test-binaries.sh "$RUNNER_TEMP/testbins"
       - name: Save the Go build cache
         if: ${{ !cancelled() }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
