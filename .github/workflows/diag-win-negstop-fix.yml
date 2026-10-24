@@ -1,0 +1,69 @@
+name: diag-win-negstop-fix
+on:
+  push:
+    branches: [diag/win-negotiation-stop-fix]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      GOTRACEBACK: all
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: DA1 replies to one query
+        shell: bash
+        continue-on-error: true
+        run: |
+          go test ./tui -run '^TestDiagDA1Count$' -v -count=30 -timeout 10m 2>&1 | tee da1.log
+          echo "=== runs"; grep -c -e 'DA1COUNT' da1.log || true
+          echo "=== replies_on_stdin histogram"; grep -o -e 'replies_on_stdin=[0-9]*' da1.log | sort | uniq -c
+          echo "=== da1_query_reached_outer_terminal histogram"; grep -o -e 'da1_query_reached_outer_terminal=[a-z]*' da1.log | sort | uniq -c
+          echo "=== one sample"; grep -m1 -e 'DA1COUNT' da1.log
+      - name: fixed negotiation stop, all subtests, x1000
+        shell: bash
+        continue-on-error: true
+        run: |
+          go test ./tui -run '^TestStopAfterNegotiationOnlyInput$' -v -count=1000 -timeout 30m 2>&1 | tee stop.log
+          echo "=== FAIL lines"; grep -c -e '--- FAIL' stop.log || true
+          echo "=== PASS subtests"; grep -c -e '--- PASS: TestStopAfterNegotiationOnlyInput/' stop.log || true
+      - name: harness regression test and sibling harness tests x200
+        shell: bash
+        continue-on-error: true
+        run: |
+          go test ./tui -run '^(TestTerminalInputCarriesOnlyWhatIsSent|TestForwardTerminalNormalizesNativeShiftEnterAfterFraming|TestForwardTerminalFramesAndHoldsNegotiationPrefix|TestForwardTerminalNegotiationRespectsBatchOrder)$' -v -count=200 -timeout 30m 2>&1 | tee sib.log
+          echo "=== FAIL lines"; grep -c -e '--- FAIL' sib.log || true
+          for n in TestTerminalInputCarriesOnlyWhatIsSent TestForwardTerminalNormalizesNativeShiftEnterAfterFraming TestForwardTerminalFramesAndHoldsNegotiationPrefix TestForwardTerminalNegotiationRespectsBatchOrder; do echo "$n PASS: $(grep -c -e "--- PASS: $n " sib.log)"; done
+      - name: mutation, the old harness (process terminal writes the query) must fail the regression test
+        shell: bash
+        continue-on-error: true
+        run: |
+          cp tui/terminal_negotiation_input_windows_test.go /tmp/harness.orig
+          sed -i 's/NewProcessTerminalWithOutput(os.Stdin, os.Stdout, ioDiscard{}).EnterRawMode()/EnterRawMode()/' tui/terminal_negotiation_input_windows_test.go
+          git diff --stat
+          go test ./tui -run '^TestTerminalInputCarriesOnlyWhatIsSent$' -v -count=20 -timeout 10m 2>&1 | tee mut.log
+          echo "=== mutation FAIL lines"; grep -c -e '--- FAIL' mut.log || true
+          echo "=== mutation PASS lines"; grep -c -e '--- PASS' mut.log || true
+          grep -m3 -e 'did not send' -e 'first input' mut.log || true
+          cp /tmp/harness.orig tui/terminal_negotiation_input_windows_test.go
+          git diff --stat
+      - name: whole tui package once
+        shell: bash
+        run: |
+          go test ./tui -count=1 -timeout 20m 2>&1 | tail -30
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: negstop-fix-logs
+          path: |
+            da1.log
+            stop.log
+            sib.log
+            mut.log
