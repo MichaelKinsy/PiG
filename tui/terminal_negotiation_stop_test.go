@@ -34,27 +34,50 @@ func preserveKeyboardProtocolState(t *testing.T) {
 	})
 }
 
-// expectKeyboardProtocolReply marks the DA1 reply a keyboard protocol query would have written to this terminal as owed. Only that reply is negotiation; later DA1 replies answer other queries and are forwarded (terminal.ts:262,272).
+// expectKeyboardProtocolReply marks the DA1 reply a keyboard protocol query would have written to this terminal as owed. Only that reply is negotiation; later DA1 replies answer other queries and are forwarded (terminal.ts:298,313).
 func expectKeyboardProtocolReply(terminal *ProcessTerminal) {
 	terminal.pendingKeyboardProtocolDeviceAttributes.Add(1)
 }
 
 // interactiveTestInput is the input a test reads through the production
 // reader: the file the reader owns, send to type into it, and release to end
-// a read that is still blocked when the test finishes.
+// a read that is still blocked when the test finishes. The input carries only
+// what a test sends: no reply of its own precedes the first send.
 type interactiveTestInput struct {
 	file    *os.File
 	send    func(t *testing.T, keys string)
 	release func()
-	// queryReplyOwed marks input that carries the DA1 reply to the keyboard protocol query the test process itself wrote when it entered raw mode: the Windows pseudo console answers that query on the console input the terminal under test reads.
-	queryReplyOwed bool
 }
 
-// ownQueryReply records on terminal the reply the input owes it, so the terminal consumes that DA1 reply as negotiation and forwards later ones (terminal.ts:262,272).
-func (in interactiveTestInput) ownQueryReply(terminal *ProcessTerminal) {
-	if in.queryReplyOwed {
-		expectKeyboardProtocolReply(terminal)
-	}
+// The input holds only what a test sends. On Windows the child reads a pseudo console, which answers every query written to it, so a child that wrote the keyboard protocol query would find the console's DA1 reply ahead of the first key. A terminal that owes no reply forwards that reply (terminal.ts:262,313), and a test that types a DA1 reply of its own, such as TestStopAfterNegotiationOnlyInput, gets two for the one it owes.
+func TestTerminalInputCarriesOnlyWhatIsSent(t *testing.T) {
+	withTerminalInput(t, "TestTerminalInputCarriesOnlyWhatIsSent", 0, func(t *testing.T, in interactiveTestInput) {
+		preserveKeyboardProtocolState(t)
+		terminal := NewProcessTerminalWithOutput(in.file, nil, ioDiscard{})
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan struct{})
+		inputs := make(chan string, 4)
+		go func() {
+			defer close(done)
+			terminal.forwardInput(ctx, func(data []byte) { inputs <- string(data) }, nil)
+		}()
+		defer func() { cancel(); in.release(); <-done }()
+		in.send(t, "x")
+		select {
+		case got := <-inputs:
+			if got != "x" {
+				t.Fatalf("first input %q, want the x the test sent", got)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("the key the test sent did not arrive")
+		}
+		// The console writes its reply within a millisecond of a query, so a quiet input here means the child wrote none.
+		select {
+		case got := <-inputs:
+			t.Fatalf("input %q arrived that the test did not send", got)
+		case <-time.After(100 * time.Millisecond):
+		}
+	})
 }
 
 // Pi terminal.ts:setupStdinBuffer consumes negotiation in its data callback and
