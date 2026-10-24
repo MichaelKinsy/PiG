@@ -21,10 +21,10 @@ type outputCase struct {
 	Name  string `json:"name"`
 	Input struct {
 		Result struct {
-			OK     bool             `json:"ok"`
-			Output []cm.OutputItem  `json:"output"`
-			Value  *json.RawMessage `json:"value"`
-			Error  *cm.Error        `json:"error"`
+			OK     bool            `json:"ok"`
+			Output []cm.OutputItem `json:"output"`
+			Value  json.RawMessage `json:"value"`
+			Error  *cm.Error       `json:"error"`
 		} `json:"result"`
 		WallMs          float64      `json:"wallMs"`
 		GeneratedImages int          `json:"generatedImages"`
@@ -64,7 +64,7 @@ func TestFormatResultMatchesPi(t *testing.T) {
 		t.Run(c.Name, func(t *testing.T) {
 			result := cm.Result{OK: c.Input.Result.OK, Output: c.Input.Result.Output, Error: c.Input.Result.Error}
 			if c.Input.Result.Value != nil {
-				result.Value = *c.Input.Result.Value
+				result.Value = c.Input.Result.Value
 			}
 			type written struct {
 				name string

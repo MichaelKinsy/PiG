@@ -1180,6 +1180,454 @@
   "written": []
  },
  {
+  "name": "null value",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [],
+    "value": null,
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "null"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "text one under the token budget",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "text exactly at the token budget",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "text one over the token budget",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 11)\nTotal output lines: 1\n\nxxxxxxxxxxxxxxxxxxxx…1 tokens truncated…xxxxxxxxxxxxxxxxxxxx\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 41,
+    "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
+  ]
+ },
+ {
+  "name": "lines exactly at the line budget",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 106
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "lines one over the line budget",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 106
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 11)\nTotal output lines: 7\n\nrow 0\nrow 1\nrow 2…2 tokens truncated…row 4\nrow 5\nrow 6\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 41,
+    "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6"
+   }
+  ]
+ },
+ {
+  "name": "zero token budget",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "abc\ndef"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 0,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 2)\nTotal output lines: 2\n\n…2 tokens truncated…\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 7,
+    "text": "abc\ndef"
+   }
+  ]
+ },
+ {
+  "name": "a one-line head and tail",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6\nrow 7\nrow 8\nrow 9"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 102
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 15)\nTotal output lines: 10\n\nrow 0…13 tokens truncated…row 9\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 59,
+    "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6\nrow 7\nrow 8\nrow 9"
+   }
+  ]
+ },
+ {
+  "name": "a two-line head and tail",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6\nrow 7\nrow 8\nrow 9"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 104
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 15)\nTotal output lines: 10\n\nrow 0\nrow 1…10 tokens truncated…row 8\nrow 9\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 59,
+    "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6\nrow 7\nrow 8\nrow 9"
+   }
+  ]
+ },
+ {
+  "name": "a budget of one character",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "abcdef"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 2)\nTotal output lines: 1\n\n…2 tokens truncated…f\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 6,
+    "text": "abcdef"
+   }
+  ]
+ },
+ {
   "name": "within budget",
   "input": {
    "result": {
