@@ -29,6 +29,13 @@ type Hooks struct {
 	// GraceExpired runs each time the idle grace elapses, before Wait asks
 	// whether the pipes can still produce output.
 	GraceExpired func()
+	// BeforeDeliver runs in a reader once it has taken bytes from a pipe,
+	// before it hands them to onData: the bytes are out of the pipe and in
+	// no one's hands yet.
+	BeforeDeliver func()
+	// Released runs in Wait once the grace released the pipes and Wait closed
+	// them, before it waits for the readers to stop.
+	Released func()
 }
 
 // IdleTimer is the clock of the grace that Wait measures. Every field is
@@ -53,8 +60,7 @@ type Pipes struct {
 	activity chan struct{}
 	done     chan struct{}
 
-	mu        sync.Mutex
-	accepting bool
+	mu sync.Mutex
 
 	// stopped[i] is set once the reader of files[i] has returned: nothing more
 	// is taken from that pipe, so it holds no output a reader will deliver.
@@ -62,8 +68,10 @@ type Pipes struct {
 }
 
 // Start reads each file until it fails or ends, calling onData with the index
-// of the file and the bytes read. Calls to onData never overlap, and none
-// starts after Wait has abandoned the pipes. The chunk is lent for the call:
+// of the file and the bytes read. Calls to onData never overlap. Every chunk a
+// reader has taken from a pipe is delivered, also when Wait released the pipes
+// meanwhile: Wait returns after the readers stopped, so no call outlives it.
+// The chunk is lent for the call:
 // each pipe reads into one buffer of its own, so onData copies what it keeps.
 func Start(files []*os.File, onData func(index int, chunk []byte), hooks Hooks) *Pipes {
 	p := &Pipes{
@@ -73,7 +81,6 @@ func Start(files []*os.File, onData func(index int, chunk []byte), hooks Hooks) 
 		activity:  make(chan struct{}, 1),
 		done:      make(chan struct{}),
 		stopped:   make([]atomic.Bool, len(files)),
-		accepting: true,
 	}
 	var readers sync.WaitGroup
 	for index, file := range files {
@@ -101,11 +108,10 @@ func (p *Pipes) read(index int, file *os.File) {
 	for {
 		n, err := file.Read(buf)
 		if n > 0 {
-			p.mu.Lock()
-			if !p.accepting {
-				p.mu.Unlock()
-				return
+			if p.hooks.BeforeDeliver != nil {
+				p.hooks.BeforeDeliver()
 			}
+			p.mu.Lock()
 			if p.onData != nil {
 				p.onData(index, buf[:n])
 			}
@@ -141,9 +147,10 @@ const (
 // child has exited, keep reading until every pipe ends, or until no data has
 // arrived on any pipe for Grace (re-armed on every chunk). A descendant that
 // inherited a pipe therefore neither blocks the call nor truncates output it
-// is still writing. Wait then closes the pipes, discards what a reader had not
-// yet delivered when the grace released the wait, and returns after every
-// reader has stopped. It reports whether every pipe ended.
+// is still writing. Wait then closes the pipes, discards what a held pipe
+// still holds unread when the grace released the wait (a reader that has
+// taken a chunk delivers it), and returns after every reader has stopped. It
+// reports whether every pipe ended.
 //
 // The grace exists only for a descendant that still holds a pipe, and it
 // measures that holder's silence, not a reader's latency. A reader that a busy
@@ -172,13 +179,11 @@ func (p *Pipes) Wait(mayHoldOutput func() bool) bool {
 	default:
 	}
 	closed := waitIdle(p.done, p.activity, func() graceVerdict { return p.verdict(mayHoldOutput) }, p.hooks)
-	if !closed {
-		p.mu.Lock()
-		p.accepting = false
-		p.mu.Unlock()
-	}
 	for _, file := range p.files {
 		_ = file.Close()
+	}
+	if p.hooks.Released != nil {
+		p.hooks.Released()
 	}
 	<-p.done
 	return closed

@@ -375,3 +375,51 @@ func TestPipesWaitReleasesOnTheGraceTimerOnlyAfterTheHolderOutputIsConsumed(t *t
 		t.Fatalf("output = %q, want %q", got.String(), want.String())
 	}
 }
+
+// A reader that has taken a chunk out of a held pipe delivers it, though the grace released the pipe before the reader handed the chunk over: the
+// chunk is out of the pipe, so the pipe holds nothing the release discards. The test holds the reader between its read and the delivery until Wait
+// has released and closed the pipe.
+func TestPipesWaitDeliversAChunkAReaderTookBeforeTheGraceReleasedTheHeldPipe(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = w.Close() })
+	var (
+		mu    sync.Mutex
+		got   strings.Builder
+		taken = make(chan struct{})
+		once  sync.Once
+		gone  = make(chan struct{})
+	)
+	expired := make(chan time.Time, 1)
+	pipes := Start([]*os.File{r}, func(_ int, chunk []byte) {
+		mu.Lock()
+		defer mu.Unlock()
+		got.Write(chunk)
+	}, Hooks{
+		BeforeDeliver: func() {
+			once.Do(func() { close(taken) })
+			<-gone
+		},
+		Released: func() { close(gone) },
+		GraceTimer: func() IdleTimer {
+			return IdleTimer{Expired: expired, Rearm: func() {}, Stop: func() {}}
+		},
+	})
+	if _, err := w.WriteString("kept"); err != nil {
+		t.Fatal(err)
+	}
+	<-taken
+	waited := make(chan bool, 1)
+	go func() { waited <- pipes.Wait(yes) }()
+	expired <- time.Now()
+	if closed := <-waited; closed {
+		t.Fatal("Wait reported an ended pipe while the holder keeps its write end open")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if got.String() != "kept" {
+		t.Fatalf("output = %q, want %q", got.String(), "kept")
+	}
+}
