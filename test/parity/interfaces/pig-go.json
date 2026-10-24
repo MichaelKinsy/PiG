@@ -114909,6 +114909,17 @@
       "shapeHash": "sha256:e4c1158616483342ca8f284c1a2457a685f6ecdeefa07bc47e7461e442d20a4a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#IsCacheDirectory",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "IsCacheDirectory",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(dir string) (bool, error)"
+      },
+      "shapeHash": "sha256:63983dfe596fd9b0574cf7da2e252060da496c4155c86a12d4702eca80ab5a5f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#KnownGoToolchainFailure",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "KnownGoToolchainFailure",
@@ -114929,6 +114940,17 @@
         "type": "func(artifactPath string, now time.Time) error"
       },
       "shapeHash": "sha256:af126819cfab8b0529158a7e521bb12901a4c40d7c60719a0b6a4d88b821d0be"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#NewVanishTracker",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "NewVanishTracker",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *VanishTracker"
+      },
+      "shapeHash": "sha256:e29c0b357343376004e2aa47908f58919f0a784d694cad506bbd8137eaf69c49"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#PrebuiltExtension",
@@ -115204,6 +115226,50 @@
         "type": "func(entryDir string, want EntryIdentity) (string, bool)"
       },
       "shapeHash": "sha256:fd83756c0efdf24e2225941708d350889687295ffe2065c627b52952bd619e6b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#VanishTracker",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "VanishTracker",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "VanishTracker"
+      },
+      "shapeHash": "sha256:d7a5b758df426f2a09880345efb0e1fe08f9b2b8086570b67122841180e2deab"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#VanishTracker.Vanished",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "VanishTracker.Vanished",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(dir string, err error) bool"
+      },
+      "shapeHash": "sha256:0797e92137b2304be91dcc06a7945952b48143b4ef2178be6fc461afcbcd927c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#VanishTracker.Verify",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "VanishTracker.Verify",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#VanishTracker.vanished",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "VanishTracker.vanished",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string, err error, lstat func() error) bool"
+      },
+      "shapeHash": "sha256:b24357b1a3b440a4e7c0054f01787d27342b30a8505ee715bb6cde0a3875507e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#WithGoBuildModule",
@@ -115976,6 +116042,17 @@
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#deferredDir",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "deferredDir",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "deferredDir"
+      },
+      "shapeHash": "sha256:e9cb87dd1635328c74c00d1e104ea71c6fc981665c239526c117e194aae7043b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#diagnosticMessage",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "diagnosticMessage",
@@ -116521,9 +116598,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(fsys io/fs.FS, dir string, add func(string) error) error"
+        "type": "func(fsys io/fs.FS, dir string, add func(string) error, vanish *VanishTracker) error"
       },
-      "shapeHash": "sha256:ef2c5b703ba015d12bd412198678656ad8a8437f295b0e7c54a1e7c66c8908fb"
+      "shapeHash": "sha256:fd8bc1d2c026dee51859e25205c95ca81004875e3f17960a0e8cf907f61e5f80"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#hashGoModuleFS",
@@ -116535,6 +116612,17 @@
         "type": "func(fsys io/fs.FS, label string) string"
       },
       "shapeHash": "sha256:13a926d4e8b035dbaee5164e3baa20b7c3f189ff8a03bb81c9c977612c1fc611"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#hashGoModuleFSTracked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "hashGoModuleFSTracked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fsys io/fs.FS, label string, vanish *VanishTracker) string"
+      },
+      "shapeHash": "sha256:6f33f398a619a8a36d85aac2184031da9cce60aec75a7f9d628107e32c72cf20"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#hashTree",
@@ -118548,6 +118636,17 @@
         "type": "func(ctx context.Context, delay time.Duration) error"
       },
       "shapeHash": "sha256:8e7ad5aa6a2f4ae9d6933a8a7372f6edff9187a335dd6b17a7d22f0ae6e0ece7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#windowsDeletion",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "windowsDeletion",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(error) (pending bool, denied bool)"
+      },
+      "shapeHash": "sha256:9ce3ee94ecbc302bbbb515c4662ec09be6465b4f4f0203baded97322f68aeb5a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#writeBuildLog",

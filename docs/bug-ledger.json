@@ -4294,6 +4294,31 @@
       "tests": []
     },
     {
+      "id": "BF-3154dfb",
+      "title": "Starting a Go extension no longer fails with `hash \u003cdir\u003e after its build: open …/release/deps/rmeta…: no…",
+      "symptom": "Starting a Go extension no longer fails with `hash \u003cdir\u003e after its build: open …/release/deps/rmeta…: no such file or directory` when a Cargo build runs in a directory its `go.mod` replaces.",
+      "rootCause": "walkDirSources excluded build output only by directory name (target, dist, hidden, vendor, node_modules), so a target directory named anything else (rust-target) was walked as source, and any error from reading a directory another process had just deleted was fatal. runtimecell's hashGoModule already treats a tree marked with CACHEDIR.TAG as build output and a vanished directory as holding no source; the subprocess builder's walk never got the same rule.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting a Go extension no longer fails with `hash \u003cdir\u003e after its build: open …/release/deps/rmeta…: no such file or directory` when a Cargo build runs in a directory its `go.mod` replaces. The source hash that guards a build against an edit made while it ran walked every replaced module in full, including a Cargo target directory not named `target`, and a temp directory rustc deleted between the listing and the read failed the whole hash. The walk now skips a tree marked with a `CACHEDIR.TAG` signature, as Cargo marks every target directory it creates, and a directory that vanishes mid-walk, as the packed-cell hash already did. A source file that cannot be read still fails the hash.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3154dfb77f",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/hash_build_output_test.go::TestHashSourceDirFailsClosedOnUnreadableSourceFile",
+        "coding/extension/host/subprocess/hash_build_output_test.go::TestHashSourceDirIgnoresConcurrentChurnInReplacedModule",
+        "coding/extension/host/subprocess/hash_build_output_test.go::TestHashSourceDirSkipsCacheDirectoryTreesOfReplacedModules",
+        "test/extension-conformance/provider_stream_test.go::TestProviderProducersAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-31740ec",
       "title": "A `waitForIdle()` waiter registered during a run stays pending through `agent_settled` handlers and the…",
       "symptom": "A `waitForIdle()` waiter registered during a run stays pending through `agent_settled` handlers and the prompts they defer, and an abort while settlement is in progress discards those prompts (D142, Pi #10704, #10705).",
