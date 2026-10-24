@@ -1,0 +1,57 @@
+name: diag-win-perf
+on:
+  push:
+    branches: [diag/win-perf-waiter]
+permissions:
+  contents: read
+jobs:
+  perf:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    env:
+      GOTRACEBACK: all
+      GOCACHE: ${{ github.workspace }}\.gocache
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Old tree (main bc1f0c440b) and tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install golang.org/x/perf/cmd/benchstat@latest
+          git worktree add "$RUNNER_TEMP/old" bc1f0c440b
+          cp tui/diag_perf_windows_test.go "$RUNNER_TEMP/old/tui/"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Pipe path benchmarks, old and new alternating, count 10 each
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > "$RUNNER_TEMP/old.txt"; : > "$RUNNER_TEMP/new.txt"
+          for round in 1 2; do
+            (cd "$RUNNER_TEMP/old" && go test ./tui -run '^$' -bench 'BenchmarkDiag' -benchtime=2000x -count=5) | grep -E '^Benchmark' >> "$RUNNER_TEMP/old.txt"
+            go test ./tui -run '^$' -bench 'BenchmarkDiag' -benchtime=2000x -count=5 | grep -E '^Benchmark' >> "$RUNNER_TEMP/new.txt"
+          done
+          benchstat "$RUNNER_TEMP/old.txt" "$RUNNER_TEMP/new.txt"
+      - name: Console path round trip through a pseudo console, count 10 each
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > "$RUNNER_TEMP/old.console.txt"; : > "$RUNNER_TEMP/new.console.txt"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            (cd "$RUNNER_TEMP/old" && go test ./tui -run '^TestDiagConsoleKeystroke$' -count=1 -v) | grep -E '^BenchmarkDiagConsole' >> "$RUNNER_TEMP/old.console.txt" || true
+            go test ./tui -run '^TestDiagConsoleKeystroke$' -count=1 -v | grep -E '^BenchmarkDiagConsole' >> "$RUNNER_TEMP/new.console.txt" || true
+          done
+          benchstat "$RUNNER_TEMP/old.console.txt" "$RUNNER_TEMP/new.console.txt"
+      - name: Goroutines, handles and idle CPU, old then new
+        shell: bash
+        run: |
+          echo "=== OLD (main bc1f0c440b)"
+          (cd "$RUNNER_TEMP/old" && go test ./tui -run '^(TestDiagLifecycle|TestDiagIdleCPU)$' -count=1 -v) || true
+          echo "=== NEW (this change)"
+          go test ./tui -run '^(TestDiagLifecycle|TestDiagIdleCPU)$' -count=1 -v
