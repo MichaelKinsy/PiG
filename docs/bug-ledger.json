@@ -34689,6 +34689,44 @@
       ]
     },
     {
+      "id": "BF-fa131b5",
+      "title": "The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an…",
+      "symptom": "The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an empty path carries `path`, `realpath` of a symbolic link loop is `ELOOP`, a directory renamed over a non-empty directory is `ENOTEMPTY` and a file over a directory `EISDIR` (also in the Durable Node environment's `renameFile`), `opendir` of a file is `ENOTDIR` before any permission check, errors the daemon's table does not name are `UNKNOWN` with the system's text, an empty write to a full device succeeds, an exec timeout is `timeout` and `timeoutMs: 0` times out at once, spawn and spill failures read as Rust's `io::Error`, and a command is the leader of a new session as Node's detached spawn makes it.",
+      "rootCause": "A differential test of the daemon against Pi's own Rust daemon (every file operation, exec, watch, hello, framing) found nine differences: the error JSON omitted an empty path; realpath of a symlink loop was UNKNOWN, not ELOOP; a directory renamed over a non-empty directory was EEXIST, not ENOTEMPTY (Node and the daemon now call rename(2) through nodeerrno.Rename); opendir of an unreadable file was EACCES, not ENOTDIR; errors outside the daemon's table (ENXIO) were named, not UNKNOWN; an empty write to a full device failed; an exec timeout read timeout:\u003cs\u003e and a timeout of 0 was refused; spawn and spill failures did not use the text of Rust's io::Error; and commands were process-group…",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an empty path carries `path`, `realpath` of a symbolic link loop is `ELOOP`, a directory renamed over a non-empty directory is `ENOTEMPTY` and a file over a directory `EISDIR` (also in the Durable Node environment's `renameFile`), `opendir` of a file is `ENOTDIR` before any permission check, errors the daemon's table does not name are `UNKNOWN` with the system's text, an empty write to a full device succeeds, an exec timeout is `timeout` and `timeoutMs: 0` times out at once, spawn and spill failures read as Rust's `io::Error`, and a command is the leader of a new session as Node's detached spawn makes it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fa131b5961",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "durable/env/node/exec_session_leader_test.go::TestShellCommandRunsAsTheLeaderOfANewSession",
+        "durable/env/node/rename_directory_pi_test.go::TestRenameFileReportsTheErrorOfRename2ForADirectoryDestination",
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonCancelRightBehindItsRequestMatchesPisDaemon",
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonExecCancelMatchesPisDaemon",
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonExecMatchesPisDaemon",
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonHelloMatchesPisDaemon",
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonRepliesBeforeBulkOutputLikePisDaemon",
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonWatchMatchesPisDaemon",
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonWatchRequestsMatchPisDaemon",
+        "env/daemon_wire_oracle_test.go::TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon",
+        "env/daemon_wire_oracle_test.go::TestDaemonEndsOnAFramingErrorLikePisDaemon",
+        "env/daemon_wire_oracle_test.go::TestDaemonFileOperationsMatchPisDaemon",
+        "env/daemon_wire_oracle_test.go::TestDaemonHandlesAreLimitedLikePisDaemon",
+        "env/daemon_wire_oracle_test.go::TestDaemonNameEncodingsMatchPisDaemon",
+        "env/daemon_wire_oracle_test.go::TestDaemonOpensASocketLikePisDaemon",
+        "env/daemon_wire_oracle_test.go::TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon",
+        "env/daemon_wire_oracle_test.go::TestDaemonStatReportsTheFilesIdentityLikePisDaemon"
+      ]
+    },
+    {
       "id": "BF-fa3da97",
       "title": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before…",
       "symptom": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.",
