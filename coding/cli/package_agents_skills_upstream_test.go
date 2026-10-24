@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -189,7 +190,16 @@ func TestPackageManagerHomeDirFallsBackToSystemHome(t *testing.T) {
 			}
 			out, err := exec.CommandContext(t.Context(), strings.TrimSpace(string(binary)), "-p", `process.env.HOME || require('node:os').homedir()`).Output()
 			if err != nil {
-				t.Fatal(err)
+				// Without a HOME and without an entry for the user in the system's user database (a container run as a uid that its passwd file does not list), Node's os.homedir() throws SystemError uv_os_homedir ENOENT, and Pi's getHomeDir
+				// with it. A Go string function cannot throw: PiG has no home directory to report and returns "". That is the only way the oracle can fail here; any other failure is the test's.
+				var exit *exec.ExitError
+				if !errors.As(err, &exit) || !strings.Contains(string(exit.Stderr), "uv_os_homedir") {
+					t.Fatal(err)
+				}
+				if got := packageManagerHomeDir(); got != "" {
+					t.Fatalf("Node getHomeDir() throws (%s); system-home fallback=%q, want an empty home", strings.TrimSpace(string(exit.Stderr)), got)
+				}
+				return
 			}
 			want := strings.TrimRight(string(out), "\r\n")
 			if got := packageManagerHomeDir(); got != want {
