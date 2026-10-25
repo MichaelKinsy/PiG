@@ -3180,6 +3180,38 @@
       ]
     },
     {
+      "id": "BF-224dbd9",
+      "title": "On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a…",
+      "symptom": "On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit.",
+      "rootCause": "childwait.Wait ends the post-exit wait when the 100 ms grace of Pi's waitForChildProcess elapses and mayHoldOutput says a descendant may hold the pipe, which on Unix is always true (a process that left the group can). The grace measures a quiet writer, but the reader that was to take the output had not run for that long on a busy machine, so what the shell wrote before it exited was still unread in the pipe and Wait closed it and dropped it: the bash tool, user bash and an extension's exec reported no output for a command that printed. A reader that had taken a chunk but not yet handed it over lost it the same way when the grace released a quiet held pipe in that gap.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit. PiG ended the wait for the output pipe after Pi's 100 ms post-exit grace even though the command had written its output before it exited and the reader had not yet taken it, so the output was lost; on a loaded machine `echo answer` came back as `(no output)`. PiG now asks the pipe itself when the grace elapses: a pipe that no process holds is read to its end, a pipe that holds output nobody has read yet keeps the wait going, and only a pipe that a background process still holds and that is quiet is released after the grace, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "224dbd923f",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "internal/childwait/pipe_blocked_unix_test.go::TestPollPipeAnswersWhileAReaderIsBlockedInReadingIt",
+        "internal/childwait/pipe_unix_test.go::TestPipesWaitDeliversEveryPipeWhenOneEndedAndAHolderKeepsTheOther",
+        "internal/childwait/pipe_unix_test.go::TestPipesWaitDeliversWhatWaitsUnreadInAPipeAHolderKeepsOpen",
+        "internal/childwait/pipe_unix_test.go::TestPipesWaitReadsToEOFAfterTheGraceWhenEveryWriteEndIsClosed",
+        "internal/childwait/pipe_unix_test.go::TestPollPipeReportsTheWriteEndsAndTheBytesOfAPipe",
+        "internal/childwait/pipe_unix_test.go::TestPollPipeTakesNothingAndLeavesTheReaderWorking",
+        "internal/childwait/wait_test.go::TestPipesWaitDeliversAChunkAReaderTookBeforeTheGraceReleasedTheHeldPipe",
+        "internal/childwait/wait_test.go::TestWaitIdleArmsTheGraceAgainWhileAPipeHoldsUnreadOutput",
+        "internal/codingagent/tools/bash_output_complete_test.go::TestLocalShellOperationsReadToEOFAfterTheGrace",
+        "internal/codingagent/tools/bash_output_complete_test.go::TestShellToolReturnsTheOutputOfACommandThatExitedBeforeItsReaderRan",
+        "internal/codingagent/tools/bash_output_holder_unix_test.go::TestLocalShellOperationsKeepTheOutputOfAnExitedShellWhileADescendantHoldsThePipe"
+      ]
+    },
+    {
       "id": "BF-2280bf8",
       "title": "The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated…",
       "symptom": "The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated `ai.StreamX`/`ai.StreamSimpleX` aliases) end a failure inside the API's own stream the way Pi's API module does: the final message carries the module's `api` (its own API for azure-openai-responses, bedrock-converse-stream, google-generative-ai, google-vertex and openai-codex-responses, the model's `api` otherwise), and a request aborted before it starts stops with `aborted` instead of `error`.",
@@ -18611,6 +18643,28 @@
         "test/docs-drift/divergences_test.go::TestDivergenceLedgerEqualsItsRecordFiles",
         "test/docs-drift/divergences_test.go::TestEveryActiveDivergenceIsInTheBundle",
         "test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence"
+      ]
+    },
+    {
+      "id": "BF-8f88d43",
+      "title": "On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is…",
+      "symptom": "On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit.",
+      "rootCause": "extension.ExecCommand ended the post-exit wait when the 100 ms grace of Pi's waitForChildProcess elapsed, because on every platform it told childwait that a descendant might still hold the output pipes. On Windows nothing else can answer (a pipe cannot be asked without waiting behind the reader that is blocked in reading it: PeekNamedPipe blocked behind ReadFile on windows-latest), so a reader that a busy machine had not run for the grace lost what the child wrote before it exited, as the bash tool's shell did on Unix. The bash tool's shell does not have this on Windows: it starts suspended and joins a job object, and an empty job tells Wait that no process holds the pipe.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit. The command now starts suspended and joins a job object before it can start another process, as the bash tool's shell already did, so PiG knows when no process holds the output pipes any more and reads them to the end instead of dropping what the command had written before it exited.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8f88d43fa5",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_drain_test.go::TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan"
       ]
     },
     {

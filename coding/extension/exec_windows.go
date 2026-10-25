@@ -2,7 +2,12 @@
 
 package extension
 
-import "os"
+import (
+	"os"
+	"os/exec"
+
+	"github.com/MichaelKinsy/PiG/internal/jobgroup"
+)
 
 // terminate mirrors upstream's proc.kill("SIGTERM"), which Node implements on
 // Windows with libuv's uv_process_kill: TerminateProcess ends the child alone
@@ -14,3 +19,10 @@ import "os"
 func terminate(process *os.Process) (noExitCode bool) {
 	return process.Kill() == nil
 }
+
+// The child starts suspended and joins a job object before it runs, as the bash tool's shell does (internal/jobgroup), so that an empty job tells Wait
+// that no process holds the output pipes. Pi's exec kills the child alone: the job never kills anything.
+func prepareChildGroup(cmd *exec.Cmd)                  { jobgroup.Suspend(cmd) }
+func attachChildGroup(process *os.Process)             { jobgroup.Attach(process) }
+func releaseChildGroup(process *os.Process)            { jobgroup.Release(process) }
+func childGroupMayHoldOutput(process *os.Process) bool { return jobgroup.MayHoldOutput(process) }

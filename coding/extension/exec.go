@@ -89,11 +89,16 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 	cmd.Stderr = stderrWrite
 	// Upstream spawns with shell: false, so on Windows libuv finds the
 	// program and the child receives Node's libuv command line.
+	prepareChildGroup(cmd)
 	nodespawn.SetProgram(cmd)
 	nodespawn.SetCommandLine(cmd)
 
 	// Start closes the child's ends of the pipes.
 	err := nodespawn.Start(cmd)
+	if err == nil {
+		attachChildGroup(cmd.Process)
+		defer releaseChildGroup(cmd.Process)
+	}
 	// exec() has now completed its synchronous prefix: the spawn was attempted
 	// and, on success, the child is running. A subprocess host may advance the
 	// extension's ordered call lane while this command completes independently.
@@ -128,7 +133,7 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 
 	// Only a test installs drain hooks (export_test.go); every other call
 	// measures the grace on the wall clock.
-	hooks, _ := ctx.Value(execDrainHooksKey{}).(childwait.Hooks)
+	hooks, _ := ctx.Value(execDrainHooksKey{}).(*childwait.Hooks)
 	var stdout, stderr strings.Builder
 	pipes := childwait.Start([]*os.File{stdoutRead, stderrRead}, func(index int, chunk []byte) {
 		if index == 0 {
@@ -156,8 +161,8 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 
 	// Wait returns the exit error of a failed status, which the state carries.
 	_ = cmd.Wait()
-	// A descendant that holds a pipe may still be running on every platform.
-	pipes.Wait(func() bool { return true })
+	// A descendant that holds a pipe may still be running: where the child has no job, the pipes tell Wait.
+	pipes.Wait(func() bool { return childGroupMayHoldOutput(cmd.Process) })
 	close(stopWatch)
 	<-watchDone
 

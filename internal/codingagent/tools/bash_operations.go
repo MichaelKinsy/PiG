@@ -214,7 +214,7 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		if opts.OnData != nil {
 			opts.OnData(chunk)
 		}
-	}, childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired})
+	}, testStdioHooks())
 
 	waitErr := cmd.Wait()
 	input.Wait()
@@ -299,6 +299,14 @@ var (
 	testHookStdioGraceExpired func()
 	testHookAfterShellStart   func()
 )
+
+// testStdioHooks is nil outside tests, so a command's pipes carry no hooks.
+func testStdioHooks() *childwait.Hooks {
+	if testHookBeforeStdioRead == nil && testHookStdioGraceExpired == nil {
+		return nil
+	}
+	return &childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired}
+}
 
 // testHookTimeoutTimer replaces the wall-clock timer that arms a command's timeout, so a test can fire the timeout once the command has done
 // what the test needs: Pi arms its timeout as a delay after the spawn, which a machine too loaded to start the shell in time overruns before

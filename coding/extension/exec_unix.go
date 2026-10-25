@@ -4,6 +4,7 @@ package extension
 
 import (
 	"os"
+	"os/exec"
 	"syscall"
 )
 
@@ -15,3 +16,10 @@ func terminate(process *os.Process) (noExitCode bool) {
 	_ = process.Signal(syscall.SIGTERM)
 	return false
 }
+
+// A descendant can leave the child's process group (setsid) and still hold the output pipes, so no group tells Wait that none does; the pipes
+// themselves do (internal/childwait).
+func prepareChildGroup(*exec.Cmd)              {}
+func attachChildGroup(*os.Process)             {}
+func releaseChildGroup(*os.Process)            {}
+func childGroupMayHoldOutput(*os.Process) bool { return true }

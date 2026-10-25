@@ -107033,6 +107033,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#attachChildGroup",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "attachChildGroup",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(*os.Process)"
+      },
+      "shapeHash": "sha256:db76dbfdf14c1febad33979d9b70bd5bc662df927ae8906f71e1de5e6e4c197d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#beforeAgentStartOptionsKey",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "beforeAgentStartOptionsKey",
@@ -107075,6 +107086,17 @@
         "type": "callOrderKey"
       },
       "shapeHash": "sha256:c26c51e14232ff3830c3dbe8e77f187d44598a8b8b020ce8e2bed7f981bb2dd5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#childGroupMayHoldOutput",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "childGroupMayHoldOutput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(*os.Process) bool"
+      },
+      "shapeHash": "sha256:ec1334147a53d45f465a53610f38638d9541c7d5399803ac55a1895b17bc035b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#cmdCtxKey",
@@ -108034,6 +108056,17 @@
       "shapeHash": "sha256:61a7e6e45ff82bcff6118b412fafb522236388c56e26b582eb6604bad6ba680a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#prepareChildGroup",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "prepareChildGroup",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(*os/exec.Cmd)"
+      },
+      "shapeHash": "sha256:6ad5ffe8863c14a2f0668522f4329e058fd69f82429cd46202f03ff8b733eb2c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#providerConfigJSON",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "providerConfigJSON",
@@ -108197,6 +108230,17 @@
         "type": "func(data []byte) error"
       },
       "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#releaseChildGroup",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "releaseChildGroup",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(*os.Process)"
+      },
+      "shapeHash": "sha256:db76dbfdf14c1febad33979d9b70bd5bc662df927ae8906f71e1de5e6e4c197d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#replaceProviderHeaders",
@@ -294658,6 +294702,17 @@
         "type": "func(timeout time.Duration) (\u003c-chan time.Time, func())"
       },
       "shapeHash": "sha256:6e677cb65fae642219c3ded23944850a8b2290419dc2787424f7631200a978c8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testStdioHooks",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "testStdioHooks",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/internal/childwait.Hooks"
+      },
+      "shapeHash": "sha256:644d35fdb5dd011a953994e4b3d70b00d95d00e18897e77a8bf685bbe95908cd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#toWireTruncation",

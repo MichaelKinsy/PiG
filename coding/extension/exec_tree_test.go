@@ -378,8 +378,8 @@ func newLateDrain() *lateDrain {
 	return &lateDrain{expired: make(chan time.Time, 1), draining: make(chan struct{}), progress: make(chan struct{}, 1)}
 }
 
-func (d *lateDrain) hooks() childwait.Hooks {
-	return childwait.Hooks{
+func (d *lateDrain) hooks() *childwait.Hooks {
+	return &childwait.Hooks{
 		GraceTimer: func() childwait.IdleTimer {
 			d.drainOnce.Do(func() { close(d.draining) })
 			return childwait.IdleTimer{Expired: d.expired, Rearm: func() {}, Stop: func() {}}

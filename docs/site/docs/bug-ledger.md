@@ -117,6 +117,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-20aee29](#bf-20aee29) | The crash notice prints the year of a crash time the way Node's toLocaleString does: unpadded, and counted… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-211af49](#bf-211af49) | `/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2165463](#bf-2165463) | On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once… | PiG's own defect | Windows | 0.5.0 |
+| [BF-224dbd9](#bf-224dbd9) | On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a… | PiG's own defect | macOS, Linux | Unreleased |
 | [BF-2280bf8](#bf-2280bf8) | The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2309604](#bf-2309604) | Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2316fe3](#bf-2316fe3) | The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet… | PiG's own defect | Windows | 0.5.3 |
@@ -626,6 +627,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8d23cfc](#bf-8d23cfc) | Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8f88d43](#bf-8f88d43) | On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is… | PiG's own defect | Windows | Unreleased |
 | [BF-905f3d0](#bf-905f3d0) | A trap of the codemode module on a Worker no longer loses the output the script printed before it: the host… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9088293](#bf-9088293) | The Azure OpenAI base URL is parsed and serialized with the WHATWG URL parser, as Pi does: hosts are… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-909581e](#bf-909581e) | The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
@@ -2515,6 +2517,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `21654635e7` (2026-10-13)
 - **Tests:** `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptCustomCompatibilitySettingsAndRejectMalformedKnownFields`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInKeybindingsJSONWithoutTreatingItAsAnAction`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInSettingsJSON`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasValidateSchemaInModelsJSONAtRuntime`, `internal/pilock/delete_pending_windows_test.go::TestAcquireRetriesLockBeingRemovedAtMkdirThenSurfacesIt`, `internal/pilock/delete_pending_windows_test.go::TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink`, `internal/pilock/delete_pending_windows_test.go::TestAuthAcquireRetriesLockBeingRemovedAtStatThatIsStaleOrALink`, `internal/pilock/delete_pending_windows_test.go::TestAuthAcquireWaitsOutLockBeingRemovedAtMkdir` and 4 more in docs/bug-ledger.json
 - **Release note:** On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once with `EPERM: operation not permitted, mkdir '….lock'` when another process has just released the lock and Windows still holds the directory pending deletion. As in Pi 1.2.0, the lock is retried: the synchronous path within its ten attempts, the cancellable path up to five times. Settings and trust locks still fail on the first `EPERM`, as in Pi.
+
+### BF-224dbd9
+
+**On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit.
+- **Root cause:** childwait.Wait ends the post-exit wait when the 100 ms grace of Pi's waitForChildProcess elapses and mayHoldOutput says a descendant may hold the pipe, which on Unix is always true (a process that left the group can). The grace measures a quiet writer, but the reader that was to take the output had not run for that long on a busy machine, so what the shell wrote before it exited was still unread in the pipe and Wait closed it and dropped it: the bash tool, user bash and an extension's exec reported no output for a command that printed. A reader that had taken a chunk but not yet handed it over lost it the same way when the grace released a quiet held pipe in that gap.
+- **User impact:** Lost or altered data
+- **Platform:** macOS, Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `224dbd923f` (2026-10-24)
+- **Tests:** `internal/childwait/pipe_blocked_unix_test.go::TestPollPipeAnswersWhileAReaderIsBlockedInReadingIt`, `internal/childwait/pipe_unix_test.go::TestPipesWaitDeliversEveryPipeWhenOneEndedAndAHolderKeepsTheOther`, `internal/childwait/pipe_unix_test.go::TestPipesWaitDeliversWhatWaitsUnreadInAPipeAHolderKeepsOpen`, `internal/childwait/pipe_unix_test.go::TestPipesWaitReadsToEOFAfterTheGraceWhenEveryWriteEndIsClosed`, `internal/childwait/pipe_unix_test.go::TestPollPipeReportsTheWriteEndsAndTheBytesOfAPipe`, `internal/childwait/pipe_unix_test.go::TestPollPipeTakesNothingAndLeavesTheReaderWorking`, `internal/childwait/wait_test.go::TestPipesWaitDeliversAChunkAReaderTookBeforeTheGraceReleasedTheHeldPipe`, `internal/childwait/wait_test.go::TestWaitIdleArmsTheGraceAgainWhileAPipeHoldsUnreadOutput` and 3 more in docs/bug-ledger.json
+- **Release note:** On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit. PiG ended the wait for the output pipe after Pi's 100 ms post-exit grace even though the command had written its output before it exited and the reader had not yet taken it, so the output was lost; on a loaded machine `echo answer` came back as `(no output)`. PiG now asks the pipe itself when the grace elapses: a pipe that no process holds is read to its end, a pipe that holds output nobody has read yet keeps the wait going, and only a pipe that a background process still holds and that is quiet is released after the grace, as in Pi.
 
 ### BF-2280bf8
 
@@ -9578,6 +9594,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `8f450993c6` (2026-10-11)
 - **Tests:** `coding/cli/rpc_compaction_thinking_only_test.go::TestRPCCompactionSurvivesThinkingOnlyMessagesTheRequestsOmit`, `internal/codingagent/compaction/serialization_oracle_test.go::TestSerializeConversationMatchesPiOracle`, `internal/codingagent/compaction/serialization_upstream_test.go::TestSerializeConversationUpstream`, `internal/codingagent/compaction/utils_test.go::TestSerializeConversation_AssistantThinkingIsOmitted`, `test/docs-drift/bug_ledger_test.go::TestBugLedgerTestsExist`, `test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules`, `test/docs-drift/divergences_test.go::TestDivergenceLedgerEqualsItsRecordFiles`, `test/docs-drift/divergences_test.go::TestEveryActiveDivergenceIsInTheBundle` and 1 more in docs/bug-ledger.json
 - **Release note:** Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed thinking is often not in the live context, so including it could make the summarization request larger than the context it summarizes and compaction fail on every attempt.
+
+### BF-8f88d43
+
+**On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit.
+- **Root cause:** extension.ExecCommand ended the post-exit wait when the 100 ms grace of Pi's waitForChildProcess elapsed, because on every platform it told childwait that a descendant might still hold the output pipes. On Windows nothing else can answer (a pipe cannot be asked without waiting behind the reader that is blocked in reading it: PeekNamedPipe blocked behind ReadFile on windows-latest), so a reader that a busy machine had not run for the grace lost what the child wrote before it exited, as the bash tool's shell did on Unix. The bash tool's shell does not have this on Windows: it starts suspended and joins a job object, and an empty job tells Wait that no process holds the pipe.
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `8f88d43fa5` (2026-10-24)
+- **Tests:** `coding/extension/exec_drain_test.go::TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan`
+- **Release note:** On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit. The command now starts suspended and joins a job object before it can start another process, as the bash tool's shell already did, so PiG knows when no process holds the output pipes any more and reads them to the end instead of dropping what the command had written before it exited.
 
 ### BF-905f3d0
 
