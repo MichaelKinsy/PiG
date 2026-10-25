@@ -59,9 +59,6 @@ func TestPackageManagerHomeDirThrowsWhereNodesHomedirDoes(t *testing.T) {
 	}
 }
 
-//go:fix inline
-func ptr(s string) *string { return new(s) }
-
 // package-manager.ts:2464 computes the user's ~/.agents/skills before addAutoDiscoveredResources checks any directory, so resolve() rejects with getHomeDir's error
 // whatever the settings and the directories hold.
 func TestValidateAutoDiscoveredOverridesRejectsWhereNoHomeDirectoryExists(t *testing.T) {
