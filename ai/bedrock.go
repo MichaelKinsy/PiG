@@ -276,6 +276,7 @@ func bedrockClientOptions(cfg aws.Config, httpClient bedrockruntime.HTTPClient) 
 			options.HTTPClient = httpClient
 		}
 		options.Retryer = newBedrockRetryer(options.RetryMode)
+		// pig divergence (D196): the HTTP-tolerant signer is installed only when loadBedrockConfig set a token, never under skip-auth.
 		if cfg.BearerAuthTokenProvider != nil {
 			options.BearerAuthSigner = bedrockBearerSigner{}
 		}
@@ -345,6 +346,10 @@ func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options Str
 	if trimmed := strings.TrimSpace(baseURL); useEndpoint && trimmed != "" {
 		cfg.BaseEndpoint = aws.String(strings.TrimRight(trimmed, "/"))
 	}
+	// pig divergence (D195): an empty AWS_BEARER_TOKEN_BEDROCK is no token, as in Pi's own provider-env lookup (getProviderEnvValue), so the request is signed with the
+	// credentials found. Pi's AWS SDK selects bearer auth for any variable that is present, empty or not, and the request fails signing before it is sent.
+	// pig divergence (D196): under skip-auth no bearer signer is installed here, so a token in the process environment, which the Go SDK picks up itself, keeps the SDK's
+	// HTTPS-only signer; Pi's SDK sends the Authorization header over http://.
 	if token := firstNonEmptyString(options.BearerToken, options.APIKey, getProviderEnvValue("AWS_BEARER_TOKEN_BEDROCK", env)); token != "" && !skipAuth {
 		cfg.BearerAuthTokenProvider = staticBearerTokenProvider(token)
 		cfg.AuthSchemePreference = []string{"httpBearerAuth"}

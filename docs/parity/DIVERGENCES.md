@@ -2550,5 +2550,50 @@ Evidence: `TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands`
 Parity allowance: `TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands` is the allowance: the Pi half pins the crash, the PiG half pins the run. No paired corpus runs without a home directory, so none changes.
 
 Remove when: Pi stops resolving the home directory at import (so `--version` and `list` run there without one), or an owner decision reverses this one; then PiG's startup fails at the same point as Pi's, the markers, the allowance test and this record go.
+## D195 An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request fails before it is sent
+
+What: with `AWS_BEARER_TOKEN_BEDROCK` exported but empty, PiG's Bedrock provider ignores it and signs the request with SigV4 and the credentials it finds (static keys, a profile, the default chain, or the dummy keys of `AWS_BEDROCK_SKIP_AUTH=1`). Pi 1.4.0 sends nothing: its own lookup treats an empty value as unset (`getProviderEnvValue`, `packages/ai/src/utils/provider-env.ts:45-51`; `packages/ai/src/api/bedrock-converse-stream.ts:185-191`, so `skipAuth` stays on and no `config.token` is set at `:242-245`), but the AWS JavaScript SDK chooses bearer auth for a variable that is merely present (`@aws-sdk/core` `NODE_AUTH_SCHEME_PREFERENCE_OPTIONS.environmentVariableSelector`: `if (bearerTokenKey in env) return ["httpBearerAuth"]`, and `@aws-sdk/token-providers` `fromEnvSigningName`: `bearerTokenKey in process.env`, reading the empty value), so the stream ends with "request could not be signed with `token` since the `token` is not defined". The difference shows with a workflow or a shell profile that maps an unset secret to an empty variable.
+
+Why: an empty variable names no credential. Failing every request because an unset secret was exported as an empty string breaks a working IAM or profile setup for no reason a user can act on, and PiG's own lookup, like Pi's, already treats the value as absent. The Go SDK PiG uses agrees: `resolveEnvBearerToken` returns on an empty value (`third_party/awssdk/service/bedrockruntime/api_client.go:980-984`).
+
+Pi bug: the failure is an AWS JavaScript SDK side effect that Pi's own `getProviderEnvValue` does not intend. Pi decides "no token" and the SDK decides "bearer".
+
+Scope: `AWS_BEARER_TOKEN_BEDROCK` set to the empty string in the process environment (the AWS SDKs read only that one), on the `bedrock-converse-stream` API, with or without `AWS_BEDROCK_SKIP_AUTH`, static keys or a profile. An unset variable and a non-empty one behave as in Pi: the first signs with SigV4, the second sends `Authorization: Bearer <token>` (the case over `http://` with skip-auth is D196).
+
+Workaround: none needed in PiG. In Pi, unset the variable instead of exporting it empty.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not mirror the SDK's presence check: a stray empty variable must not break a working credential setup).
+
+Call-site markers: `ai/bedrock.go` (`loadBedrockConfig`, the bearer token selection).
+
+Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/bedrock_bearer_divergence_test.go`) runs Pi's `bedrock-converse-stream` through the Node oracle and PiG's provider against a loopback server with the variable empty, under skip-auth and under static keys: Pi sends nothing and ends with the signing error, PiG sends a SigV4 request; its controls (variable unset, with keys) agree. The test fails when either side changes.
+
+Parity allowance: none needed beyond that test. The paired Bedrock oracles (`TestBedrockRequestBodyMatchesPi` and the others) scrub every `AWS_*` variable before they run Pi, so they do not see the difference.
+
+Remove when: Pi or its AWS SDK treats an empty `AWS_BEARER_TOKEN_BEDROCK` as unset (Pi passes `authSchemePreference` itself, or the SDK tests for a non-empty value), or an owner decision reverses this one; then the marker, the D195 cases of the test and this record go.
+
+SCRUTINIZED:approved
+
+## D196 Under skip-auth a bearer token from the process environment is not sent over an http:// endpoint, where Pi's AWS SDK sends it
+
+What: with `AWS_BEDROCK_SKIP_AUTH=1` and a non-empty `AWS_BEARER_TOKEN_BEDROCK` in the process environment, and a model `baseUrl` that is `http://` (a local proxy or a gateway that "needs no authentication"), PiG's request fails before it is sent with "bearer token with HTTP request requires HTTPS". Pi 1.4.0 sends it with `Authorization: Bearer <token>` over plain HTTP. In both products the AWS SDK selects bearer auth from the variable although `AWS_BEDROCK_SKIP_AUTH=1` asked for dummy keys (Pi: `packages/ai/src/api/bedrock-converse-stream.ts:185-191` sets no `config.token` under skip-auth, `@aws-sdk/core` `NODE_AUTH_SCHEME_PREFERENCE_OPTIONS.environmentVariableSelector` picks `httpBearerAuth` and `@aws-sdk/token-providers` `fromEnvSigningName` reads the variable; PiG: `resolveEnvBearerToken`, `third_party/awssdk/service/bedrockruntime/api_client.go:980-984`). The difference is the signer: PiG's own bearer path installs `bedrockBearerSigner`, which sends the header over HTTP as Pi's SDK does, but only when `loadBedrockConfig` set a token, which it never does under skip-auth, so the SDK's default signer applies and refuses a request that is not HTTPS (`smithy-go` `auth/bearer/middleware.go:97`, `SignHTTPSMessage.SignWithBearerToken`). Without skip-auth, or over `https://`, PiG and Pi send the same header.
+
+Why: the refusal keeps a bearer token off an unencrypted connection. Pi's behavior sends it in clear text to a host the user chose; PiG does not override the Go SDK's guard to repeat that.
+
+Pi bug: Pi sends a credential over plain HTTP because the JavaScript SDK has no HTTPS check for bearer tokens, and its skip-auth option does not stop the SDK from picking up the token.
+
+Scope: `AWS_BEDROCK_SKIP_AUTH=1` with `AWS_BEARER_TOKEN_BEDROCK` non-empty in the process environment and an `http://` `baseUrl`, on the `bedrock-converse-stream` API. A token passed in the provider environment, as `bearerToken` or as the API key, is not read under skip-auth by either product's own code, and takes PiG's HTTP-tolerant path when skip-auth is off.
+
+Workaround: none needed in PiG. Use an `https://` endpoint, or unset the variable. In Pi, the same two steps avoid sending the token in clear text.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not mirror: PiG keeps the Go SDK's HTTPS-only bearer guard where skip-auth leaves the token to the SDK).
+
+Call-site markers: `ai/bedrock.go` (`loadBedrockConfig`, the bearer token selection; `bedrockClientOptions`, the bearer signer).
+
+Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/bedrock_bearer_divergence_test.go`) runs Pi through the Node oracle and PiG's provider against an `http://` loopback server with skip-auth and a token: Pi's request arrives with `Authorization: Bearer tok`, PiG sends nothing and ends with the HTTPS error; its control (a token without skip-auth over `http://`) sends `Bearer tok` in both. The test fails when either side changes.
+
+Parity allowance: none needed beyond that test. The paired Bedrock oracles scrub every `AWS_*` variable before they run Pi.
+
+Remove when: Pi refuses to send a bearer token over HTTP (its SDK adds an HTTPS check, or Pi installs a signer that does), or PiG installs `bedrockBearerSigner` under skip-auth and the owner approves sending the token over HTTP there; then the markers, the D196 case of the test and this record go.
 
 SCRUTINIZED:approved

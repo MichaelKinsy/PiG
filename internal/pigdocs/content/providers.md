@@ -212,6 +212,11 @@ export AWS_REGION=us-west-2    # AWS_DEFAULT_REGION also works
 
 ECS task credentials and IRSA work through the standard `AWS_CONTAINER_CREDENTIALS_*` and `AWS_WEB_IDENTITY_TOKEN_FILE` variables.
 
+Two differences from Pi involve `AWS_BEARER_TOKEN_BEDROCK`:
+
+- An empty `AWS_BEARER_TOKEN_BEDROCK` (exported with no value, as a workflow does for an unset secret) counts as no token: PiG signs with the credentials it finds. Pi's AWS SDK treats the variable as set and fails the request before sending it (D195).
+- With `AWS_BEDROCK_SKIP_AUTH=1`, a token in the process environment is not sent over an `http://` endpoint: PiG's request fails with "bearer token with HTTP request requires HTTPS". Pi sends the `Authorization: Bearer` header in clear text there (D196). Use an `https://` endpoint or unset the variable.
+
 ### Cloudflare AI Gateway
 
 The gateway needs a token, an account ID, and a gateway ID:
