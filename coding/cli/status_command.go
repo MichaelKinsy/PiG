@@ -23,7 +23,7 @@ type statusOutput struct {
 	Resources statusResources `json:"resources"`
 	Piglets   statusPiglets   `json:"piglets"`
 	Errors    []string        `json:"errors"`
-	Warnings  []string        `json:"warnings,omitempty"`
+	Warnings  []string        `json:"warnings"`
 }
 
 type statusPaths struct {
@@ -117,6 +117,7 @@ func collectStatus() statusOutput {
 		},
 		Resources: statusResources{ByKind: map[string]int{}},
 		Errors:    []string{},
+		Warnings:  []string{},
 	}
 	settings := codingagent.NewSettingsManager(cwd, agentDir)
 	for _, settingsError := range settings.DrainErrors() {
@@ -152,7 +153,7 @@ func collectStatus() statusOutput {
 		// the fatal error status treats a duplicate as here. Skills, prompts
 		// and themes, by contrast, key their runtime set by name (dedupeSkills/
 		// dedupePrompts/dedupeThemes), so a same-scope duplicate is unusable
-		// and stays an error. (pig additive D41)
+		// and stays an error. pig additive (D41)
 		seenIdentities := make(map[string]string, len(resources))
 		for _, resource := range resources {
 			kind := packagecontent.Kind(resource.ResourceType)
