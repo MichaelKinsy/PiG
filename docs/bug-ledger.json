@@ -18469,6 +18469,26 @@
       ]
     },
     {
+      "id": "BF-8cfd25f",
+      "title": "A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its…",
+      "symptom": "A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its default through `Context::get_flag` before any value is set, as the Go, Node, Python and Lisp SDKs do and as Pi's `registerFlag` does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its default through `Context::get_flag` before any value is set, as the Go, Node, Python and Lisp SDKs do and as Pi's `registerFlag` does. The Rust SDK kept flag defaults only from the load-time snapshot, so a flag registered later read `None`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8cfd25fa19",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8d008eb",
       "title": "fix(interactive): paint the requested first frame before the color wait returns",
       "symptom": "fix(interactive): paint the requested first frame before the color wait returns",
