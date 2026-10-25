@@ -4421,14 +4421,6 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "internal/codingagent/resource_paths.go"
-func = "PackageManagerHomeDir"
-pattern = "env-stat"
-detail = "os.LookupEnv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "internal/codingagent/resource_paths.go"
 func = "ResolvePromptInput"
 pattern = "env-stat"
 detail = "os.Stat"
