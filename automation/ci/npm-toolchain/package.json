@@ -5,6 +5,7 @@
   "description": "The npm that CI installs with automation/ci/install-npm-toolchain.sh. Keep in step with NPM_VERSION in .github/workflows/ci.yml.",
   "dependencies": {
     "http-cache-semantics": "4.3.0",
+    "ip-address": "10.7.4",
     "npm": "12.1.0",
     "postcss-selector-parser": "7.1.6"
   }

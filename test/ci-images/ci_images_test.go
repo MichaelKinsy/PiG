@@ -63,8 +63,8 @@ func TestNpmRuntimeRemovesAdvisoryOverridesFromBundledNpm(t *testing.T) {
 }
 
 // npm's tarball bundles its dependencies, and a lockfile cannot replace a bundled copy. The toolchain and the
-// parity image remove npm's bundled http-cache-semantics and postcss-selector-parser, so neither lock describes those
-// bundled copies, and each lock pins the patched copy npm then resolves.
+// parity image remove npm's bundled http-cache-semantics, ip-address and postcss-selector-parser, so neither lock
+// describes those bundled copies, and each lock pins the patched copy npm then resolves.
 func TestNpmLocksPinPatchedCopiesInsteadOfBundledOnes(t *testing.T) {
 	root := repoRoot(t)
 	for _, dir := range []string{
@@ -88,7 +88,7 @@ func TestNpmLocksPinPatchedCopiesInsteadOfBundledOnes(t *testing.T) {
 				t.Fatalf("%s/%s: %v", dir, name, err)
 			}
 		}
-		for _, dependency := range []string{"http-cache-semantics", "postcss-selector-parser"} {
+		for _, dependency := range []string{"http-cache-semantics", "ip-address", "postcss-selector-parser"} {
 			want, ok := manifest.Dependencies[dependency]
 			if !ok {
 				t.Errorf("%s does not pin %s directly", dir, dependency)
