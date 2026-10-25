@@ -1,9 +1,11 @@
 ;;;; SPDX-License-Identifier: MIT
 ;;;; Builds a runner image. Run by the host as
 ;;;;   sbcl --noinform --non-interactive --no-sysinit --no-userinit --disable-debugger --load build.lisp
-;;;; with PIG_LISP_SDK_ROOT, PIG_LISP_SCRATCH, PIG_LISP_OUTPUT, PIG_LISP_COMPRESSION (a zstd level or "none") and
+;;;; with PIG_LISP_SDK_ROOT, PIG_LISP_SCRATCH, PIG_LISP_OUTPUT and
+;;;; PIG_LISP_EXTRA_ROOTS (JSON array of Quicklisp source trees the host resolved) and PIG_LISP_MODE=scan (write the
+;;;; systems ASDF cannot find, as a JSON array, to PIG_LISP_OUTPUT instead of building) and
 ;;;; PIG_LISP_MEMBERS (JSON: [{"name","root","system"|"file"}...], empty for the standalone base image) in the environment.
-;;;; ASDF sees only the SDK and the members' own roots, and writes only into the scratch directory.
+;;;; ASDF sees only the SDK, the members' own roots and the resolved Quicklisp trees, and writes only into the scratch directory.
 
 (require :asdf)
 (require :sb-bsd-sockets)
@@ -23,7 +25,6 @@
 (defvar *sdk-root* (slash (or (env "PIG_LISP_SDK_ROOT") (fail "PIG_LISP_SDK_ROOT is not set"))))
 (defvar *scratch* (slash (or (env "PIG_LISP_SCRATCH") (fail "PIG_LISP_SCRATCH is not set"))))
 (defvar *output* (or (env "PIG_LISP_OUTPUT") (fail "PIG_LISP_OUTPUT is not set")))
-(defvar *compression* (or (env "PIG_LISP_COMPRESSION") "none"))
 (defvar *members-json* (or (env "PIG_LISP_MEMBERS") "[]"))
 
 (setf *compile-verbose* nil *compile-print* nil)
@@ -38,6 +39,42 @@
     (error (e) (fail "loading the pig-sdk system: ~A" e))))
 
 ;;; the SDK is loaded: PIG: symbols can be read from here on
+
+(defun builtin-system-p (name)
+  (or (member name '("asdf" "uiop") :test #'string=)
+      (and (> (length name) 3) (string= (subseq name 0 3) "sb-"))
+      (and (> (length name) 5) (string= (subseq name 0 5) "uiop/"))
+      (and (> (length name) 5) (string= (subseq name 0 5) "asdf/"))))
+
+(defun dependency-name (spec)
+  "The system a :depends-on entry names, or NIL when it names none that applies (:require, an unmet :feature)."
+  (cond ((stringp spec) (string-downcase spec))
+        ((and spec (symbolp spec)) (string-downcase (symbol-name spec)))
+        ((and (consp spec) (eq (first spec) :version)) (dependency-name (second spec)))
+        ((and (consp spec) (eq (first spec) :feature))
+         (and (uiop:featurep (second spec)) (dependency-name (third spec))))
+        (t nil)))
+
+(defun unresolved-dependencies (system-names)
+  "Systems the named ones need, directly or through systems ASDF finds, that ASDF cannot find in the source registry."
+  (let ((seen (make-hash-table :test 'equal)) (missing '()))
+    (labels ((visit-component (component)
+               (dolist (spec (asdf:component-sideway-dependencies component))
+                 (let ((name (dependency-name spec)))
+                   (when name (visit-name name))))
+               (when (typep component 'asdf:parent-component)
+                 (mapc #'visit-component (asdf:component-children component))))
+             (visit-name (name)
+               (unless (or (gethash name seen) (builtin-system-p name))
+                 (setf (gethash name seen) t)
+                 (let ((system (asdf:find-system name nil)))
+                   (if system (visit-component system) (push name missing))))))
+      (mapc #'visit-name system-names))
+    (sort missing #'string<)))
+
+(defun write-scan (file names)
+  (with-open-file (out file :direction :output :if-exists :supersede :external-format :utf-8)
+    (write-string (pig:to-json (coerce names 'vector)) out)))
 
 (defun bake (member)
   (let* ((name (pig:jget member "name")) (root (slash (pig:jget member "root")))
@@ -70,16 +107,19 @@
       (pig::register-member name (symbol-function (car candidates))))))
 
 (let* ((members (coerce (pig:from-json *members-json*) 'list))
-       (roots (mapcar (lambda (m) (slash (pig:jget m "root"))) members)))
+       (roots (mapcar (lambda (m) (slash (pig:jget m "root"))) members))
+       (extra (mapcar #'slash (coerce (pig:from-json (or (env "PIG_LISP_EXTRA_ROOTS") "[]")) 'list))))
   (asdf:initialize-source-registry
    `(:source-registry :ignore-inherited-configuration (:directory ,*sdk-root*)
-                      ,@(mapcar (lambda (root) `(:tree ,root)) roots)))
+                      ,@(mapcar (lambda (root) `(:tree ,root)) roots)
+                      ,@(mapcar (lambda (root) `(:tree ,root)) extra)))
+  (when (equal (env "PIG_LISP_MODE") "scan")
+    (let ((systems (loop for m in members for s = (pig:jget m "system") when s collect s)))
+      (handler-case (write-scan *output* (unresolved-dependencies systems))
+        (error (e) (fail "scanning the dependencies: ~A" e)))
+      (sb-ext:exit :code 0 :abort t)))
   (handler-bind ((warning (lambda (w) (when (typep w 'style-warning) (muffle-warning w)))))
     (mapc #'bake members)))
 
 (sb-ext:disable-debugger)
-(let ((compress (cond ((string= *compression* "none") nil)
-                      ((find :sb-core-compression *features*) (parse-integer *compression*))
-                      (t (fail "compression ~A was requested but this SBCL has no :sb-core-compression" *compression*)))))
-  (sb-ext:save-lisp-and-die *output* :executable t :toplevel #'pig::image-main :save-runtime-options t
-                                     :compression compress))
+(sb-ext:save-lisp-and-die *output* :executable t :toplevel #'pig::image-main :save-runtime-options t)

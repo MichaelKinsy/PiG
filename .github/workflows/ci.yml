@@ -266,7 +266,7 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
       # The pinned SBCL (automation/dev/toolchains.lock) builds and runs Lisp extension images; the conformance rows and make test-sdk-lisp
-      # fail without it. install-sbcl.sh builds it from the checksummed release source once, and the cache keeps the prefix for the pin.
+      # fail without it. install-sbcl.sh installs the checksummed official binary, and the cache keeps the prefix for the pin.
       - name: Restore the pinned SBCL
         if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -278,7 +278,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          automation/ci/install-apt-packages.sh libzstd-dev
           prefix="$(automation/ci/install-sbcl.sh)"
           echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
           echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
@@ -749,6 +748,11 @@ jobs:
           # TestMain dumps every goroutine if its setup has not reached m.Run by then; the test alarm covers only m.Run.
           PIG_TEST_STALL_DUMP: 4m
         run: automation/ci/windows-cli-units.sh
+      - name: Install the pinned SBCL
+        # The Lisp SDK rows run in the extension jobs; SBCL's official Windows installer is checked against the lock's SHA-256.
+        if: startsWith(matrix.shard, 'extension-')
+        shell: pwsh
+        run: ./automation/ci/install-sbcl.ps1 -GithubEnv
       - name: Select this job's extension tests
         # Each extension job runs its half of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one job.
         if: startsWith(matrix.shard, 'extension-')
@@ -871,7 +875,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          brew install zstd
           prefix="$(automation/ci/install-sbcl.sh)"
           echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
           echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"

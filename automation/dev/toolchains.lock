@@ -17,9 +17,8 @@ tinygo	0.42.0	darwin	amd64	tinygo-org/tinygo	https://github.com/tinygo-org/tinyg
 tinygo	0.42.0	darwin	arm64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.42.0/tinygo0.42.0.darwin-arm64.tar.gz	493da3585e66c5da677a4be39402faf2041b4e45a61eb456e4547eca753a544e
 #
 # sbcl rows pin the Steel Bank Common Lisp that builds and runs Lisp extension images (automation/ci/install-sbcl.sh). Pig's pinned SBCL is
-# built from the release source with :sb-core-compression and zstd linked statically, so every platform runs one compiler and compressed
-# images need no libzstd at run time. Bootstrap rows are the official binaries that build it: Linux amd64 uses 2.6.9 itself, macOS arm64 uses
-# 2.4.0 (the newest arm64-darwin binary SBCL publishes). The source row is checked against the signed manifest sbcl-2.6.9-crhodes.asc (key D6839CA0
+# the official 2.6.9 binary on Linux amd64 and Windows amd64; macOS arm64 has no 2.6.9 binary, so the release source is built there, bootstrapped by
+# the 2.4.0 binary (the newest arm64-darwin binary SBCL publishes). Images are saved uncompressed (about 40 MB, started in about 9 ms). The source row is checked against the signed manifest sbcl-2.6.9-crhodes.asc (key D6839CA0
 # A67F74D9 DFB70922 EBD595A9 100D63CD): it lists 14ea1b03... for the uncompressed tar, which is what this .bz2 decompresses to. A windows row is an
 # official installer whose digest was recorded from SourceForge when it was pinned; SBCL's manifest does not cover installers.
 sbcl-source	2.6.9	any	any	sbcl.org	http://prdownloads.sourceforge.net/sbcl/sbcl-2.6.9-source.tar.bz2?download	c6fd1d735570eb4ff34caf9609988ca77ed0bd12b55d09a4fed075be890da513

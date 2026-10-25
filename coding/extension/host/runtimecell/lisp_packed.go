@@ -25,11 +25,6 @@ import (
 // does not already cover.
 const lispImageFormat = "pig-lisp-image-1"
 
-// lispImageCompression is the zstd level the cached image is saved with ("none" saves it uncompressed). PIG_LISP_IMAGE_COMPRESSION overrides it for
-// diagnostics; the choice is part of the cell hash.
-// pig additive (D19): the pinned SBCL is built with :sb-core-compression, which shrinks an image about three times for a longer start.
-const lispImageCompression = "3"
-
 // LispExtension describes one factory-style Lisp extension that can be built into a generated runner image. The factory is the one
 // function NEW-EXTENSION its ASDF system, or its single source file, defines; Package names the system or the file (without .lisp).
 type LispExtension struct {
@@ -58,13 +53,6 @@ type lispMember struct {
 	Root   string `json:"root"`
 	System string `json:"system,omitempty"`
 	File   string `json:"file,omitempty"`
-}
-
-func lispCompression() string {
-	if value := strings.TrimSpace(os.Getenv("PIG_LISP_IMAGE_COMPRESSION")); value != "" {
-		return value
-	}
-	return lispImageCompression
 }
 
 func sbclExecutable() string {
@@ -132,7 +120,7 @@ func lispCellHash(cacheRoot, key string, extensions []LispExtension, sdkRoot str
 	_, _ = h.Write([]byte("\x00"))
 	hashBuildInput(h, "sdk", sdkHash)
 	hashBuildInput(h, "runtime", commandVersion(cacheRoot, sbclExecutable(), "--version"))
-	hashBuildInput(h, "compression", lispCompression())
+	hashBuildInput(h, "quicklisp", quicklispDist+" "+quicklispReleasesSHA256+" "+quicklispSystemsSHA256)
 	hashBuildInput(h, "goos", runtime.GOOS+"/"+runtime.GOARCH)
 	for _, ext := range extensions {
 		for _, part := range []string{ext.Name, ext.Package, ext.Factory, ext.Hash} {
@@ -210,6 +198,14 @@ func buildLispImage(ctx context.Context, cacheRoot, key string, normalized []Lis
 				for i, ext := range normalized {
 					names[i] = ext.Name
 				}
+				extraRoots, err := resolveLispDependencies(ctx, cacheRoot, sbcl, sdkRoot, scratch, memberJSON, members)
+				if err != nil {
+					return "", err
+				}
+				extraJSON, err := json.Marshal(append([]string{}, extraRoots...))
+				if err != nil {
+					return "", err
+				}
 				buildprogress.Phase(ctx, "Building Lisp image", strings.Join(names, ", ")+" (compile, save image)")
 				cmd := linkerexec.CommandContext(ctx, sbcl, "--noinform", "--disable-ldb", "--lose-on-corruption", "--end-runtime-options",
 					"--non-interactive", "--no-sysinit", "--no-userinit", "--disable-debugger",
@@ -219,7 +215,7 @@ func buildLispImage(ctx context.Context, cacheRoot, key string, normalized []Lis
 					"PIG_LISP_SDK_ROOT="+filepath.ToSlash(sdkRoot),
 					"PIG_LISP_SCRATCH="+filepath.ToSlash(scratch),
 					"PIG_LISP_OUTPUT="+filepath.ToSlash(out),
-					"PIG_LISP_COMPRESSION="+lispCompression(),
+					"PIG_LISP_EXTRA_ROOTS="+string(extraJSON),
 					"PIG_LISP_MEMBERS="+string(memberJSON))
 				//portlint:allow clock measures sbcl's elapsed time for the failure record (a duration, not a date); the package's Now seam dates cache entries for collection
 				started := time.Now()
@@ -345,4 +341,51 @@ func LispBuildFailure(cacheRoot, logKey, dir string, buildErr error, output []by
 	}
 	log := fmt.Sprintf("time: %s\ndirectory: %s\nerror: %v\nelapsed: %s\ncontext: %v\n\n--- sbcl output ---\n%s", time.Now().UTC().Format(time.RFC3339), dir, buildErr, run.Elapsed, run.ContextErr, output)
 	return &BuildFailure{Summary: summary, Cause: cause, Log: writeBuildLog(cacheRoot, logKey, []byte(log))}, recordable
+}
+
+// resolveLispDependencies finds the systems the members need that ASDF cannot find in the SDK and the members' own roots, and resolves them
+// from the pinned Quicklisp dist (ResolveQuicklisp). A member that is a single file has none.
+func resolveLispDependencies(ctx context.Context, cacheRoot, sbcl, sdkRoot, scratch string, memberJSON []byte, members []lispMember) ([]string, error) {
+	hasSystem := false
+	for _, member := range members {
+		hasSystem = hasSystem || member.System != ""
+	}
+	if !hasSystem {
+		return nil, nil
+	}
+	scanFile := filepath.Join(scratch, "unresolved.json")
+	buildprogress.Phase(ctx, "Scanning Lisp dependencies", "")
+	cmd := linkerexec.CommandContext(ctx, sbcl, "--noinform", "--disable-ldb", "--lose-on-corruption", "--end-runtime-options",
+		"--non-interactive", "--no-sysinit", "--no-userinit", "--disable-debugger",
+		"--load", filepath.Join(sdkRoot, "src", "build.lisp"))
+	cmd.Dir = scratch
+	cmd.Env = append(cacheBuildEnvironment(scratch),
+		"PIG_LISP_SDK_ROOT="+filepath.ToSlash(sdkRoot),
+		"PIG_LISP_SCRATCH="+filepath.ToSlash(scratch),
+		"PIG_LISP_OUTPUT="+filepath.ToSlash(scanFile),
+		"PIG_LISP_MODE=scan",
+		"PIG_LISP_MEMBERS="+string(memberJSON))
+	if output, err := buildprogress.CombinedOutput(ctx, cmd); err != nil {
+		return nil, fmt.Errorf("scan Lisp dependencies: %w: %s", err, oneLine(string(output)))
+	}
+	data, err := os.ReadFile(scanFile)
+	if err != nil {
+		return nil, fmt.Errorf("scan Lisp dependencies: %w", err)
+	}
+	var unresolved []string
+	if err := json.Unmarshal(data, &unresolved); err != nil {
+		return nil, fmt.Errorf("scan Lisp dependencies: %w", err)
+	}
+	if len(unresolved) == 0 {
+		return nil, nil
+	}
+	buildprogress.Phase(ctx, "Fetching Lisp dependencies", "Quicklisp "+quicklispDist+": "+strings.Join(unresolved, ", "))
+	roots, err := ResolveQuicklisp(ctx, cacheRoot, unresolved)
+	if err != nil {
+		return nil, fmt.Errorf("resolve Lisp dependencies %s: %w", strings.Join(unresolved, ", "), err)
+	}
+	for i := range roots {
+		roots[i] = filepath.ToSlash(roots[i])
+	}
+	return roots, nil
 }
