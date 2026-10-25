@@ -246,6 +246,8 @@ func loadCause(err error) string {
 		text = after
 	}
 	cause, _, _ := strings.Cut(text, " (packed")
+	// A Go, Rust, Python or Lisp runner reports why it failed on its stderr, whose log path differs on every run; the note before it is the host's.
+	cause, _, _ = strings.Cut(cause, " (register handshake")
 	return cause
 }
 

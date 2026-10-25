@@ -2,7 +2,7 @@
 // scenario is data: the extension every SDK's scenario driver builds from its
 // Spec, the host-side Steps the harness runs against the real host, and the
 // observation Want that every SDK must produce byte for byte. The Go, Node,
-// Python and Rust drivers (test/extension-conformance/testdata/scenario-driver-*)
+// Python, Rust and Lisp drivers (test/extension-conformance/testdata/scenario-driver-*)
 // each read the same Spec and register it through their SDK's public API, so a
 // scenario exists once and an SDK that differs fails its own row.
 package sdkscenarios
@@ -15,10 +15,11 @@ const (
 	Node   SDK = "node"
 	Python SDK = "python"
 	Rust   SDK = "rust"
+	Lisp   SDK = "lisp"
 )
 
 // SDKs lists every SDK in a stable order.
-var SDKs = []SDK{Go, Node, Python, Rust}
+var SDKs = []SDK{Go, Node, Python, Rust, Lisp}
 
 // Red records an SDK's row that is known to fail today. While the entry exists
 // the row must produce exactly Got, so a further regression inside a red row

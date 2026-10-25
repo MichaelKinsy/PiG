@@ -1,4 +1,4 @@
-// Package pigsdk stages Pig's extension SDKs (Go, Python, and Rust) into the
+// Package pigsdk stages Pig's extension SDKs (Go, Python, Lisp, and Rust) into the
 // config root so out-of-tree extension builds and packed runtime cells can use
 // the API that matches the running binary.
 //
@@ -33,6 +33,7 @@
 //	<config-root>/state/pigsdk/
 //	  sdk-<hash16>/      go.mod + *.go              (Go)
 //	  sdk-py-<hash16>/   pig_sdk/__init__.py + ...  (Python)
+//	  sdk-lisp-<hash16>/ pig-sdk.asd + src/*.lisp   (Lisp)
 //	  sdk-rs-<hash16>/   Cargo.toml + src/*.rs      (Rust)
 //	each with a .pig-sdk-version content-hash marker.
 package pigsdk
@@ -67,7 +68,7 @@ const markerFile = ".pig-sdk-version"
 
 // sdkBundle describes one language's embedded SDK.
 type sdkBundle struct {
-	lang  string // "go" | "python" | "rust"
+	lang  string // "go" | "python" | "lisp" | "rust"
 	files []string
 	fsys  fs.FS
 }
@@ -79,11 +80,11 @@ type bundleHashCache struct {
 }
 
 var bundleHashes = map[string]*bundleHashCache{
-	"go": {}, "python": {}, "rust": {},
+	"go": {}, "python": {}, "lisp": {}, "rust": {},
 }
 
 // sdkBases names each language's staged directories under <config-root>/state/pigsdk: a build stages into <base>-<hash16>, and a PiG that predates per-build directories stages into <base> itself. It covers every language, embedded by this build or not, because another build sharing the config root may embed one this build strips.
-var sdkBases = [...]struct{ lang, base string }{{"go", "sdk"}, {"python", "sdk-py"}, {"rust", "sdk-rs"}}
+var sdkBases = [...]struct{ lang, base string }{{"go", "sdk"}, {"python", "sdk-py"}, {"lisp", "sdk-lisp"}, {"rust", "sdk-rs"}}
 
 // sdkBase returns lang's directory base from sdkBases.
 func sdkBase(lang string) string {
@@ -106,11 +107,11 @@ func registerBundle(lang string, bundle func() (sdkBundle, bool)) {
 	})
 }
 
-// bundles lists the embedded SDKs in staging order (go, python, rust).
+// bundles lists the embedded SDKs in staging order (go, python, lisp, rust).
 // pig additive (D92): each language's SDK lives in its sdk_<lang>_on.go shim, which a Piglet Binary compiles out with pig_strip_extension_sdk_<lang>; a stripped language is left out.
 func bundles() []sdkBundle {
-	out := make([]sdkBundle, 0, 3)
-	for _, bundle := range [...]func() (sdkBundle, bool){goBundle, pythonBundle, rustBundle} {
+	out := make([]sdkBundle, 0, 4)
+	for _, bundle := range [...]func() (sdkBundle, bool){goBundle, pythonBundle, lispBundle, rustBundle} {
 		if b, ok := bundle(); ok {
 			out = append(out, b)
 		}
@@ -362,7 +363,7 @@ func (b sdkBundle) ensure(configRoot string) (bool, error) {
 // in the running binary. This build reads only its own staged directory, so it
 // is either current or not staged yet.
 type StageStatus struct {
-	Lang     string // "go" | "python" | "rust"
+	Lang     string // "go" | "python" | "lisp" | "rust"
 	Dir      string // absolute directory this build stages the SDK in
 	Staged   bool   // a marker file exists
 	Current  bool   // the marker matches the embedded SDK
@@ -802,7 +803,7 @@ func printUsage(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "")
 	_, _ = fmt.Fprintln(w, "  --all             also drop builds with no SDK fingerprint")
 	_, _ = fmt.Fprintln(w, "  --dry-run         report what would be dropped, stage nothing")
-	_, _ = fmt.Fprintln(w, "  --sdk-path [lang]     print this binary's staged SDK directory (go|python|rust, default go)")
+	_, _ = fmt.Fprintln(w, "  --sdk-path [lang]     print this binary's staged SDK directory (go|python|lisp|rust, default go)")
 	_, _ = fmt.Fprintln(w, "  --sdk-version [lang]  print an embedded SDK content hash")
 	_, _ = fmt.Fprintln(w, "")
 	_, _ = fmt.Fprintln(w, "Staged-versus-embedded status is reported by `pig diagnose`.")

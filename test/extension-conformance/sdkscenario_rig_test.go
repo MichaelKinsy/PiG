@@ -83,6 +83,11 @@ func scenarioDriverConfig(t *testing.T, root string, sdk sdkscenarios.SDK, name 
 		config.Factory = "new_extension"
 		config.SDKName = "pig-sdk-py"
 		config.Package = "scenario_driver"
+	case sdkscenarios.Lisp:
+		config.Source = filepath.Join(base, "scenario-driver-lisp")
+		config.Factory = "new-extension"
+		config.SDKName = "pig-sdk-lisp"
+		config.Package = "scenario-driver"
 	case sdkscenarios.Rust:
 		config.Source = filepath.Join(base, "scenario-driver-rust")
 		config.Factory = "new_extension"

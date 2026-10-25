@@ -289,7 +289,10 @@ func detectBuildType(src string) (string, error) {
 	if hasNodeSource(src) {
 		return "node", nil
 	}
-	return "", fmt.Errorf("cannot detect build type in %s: need go.mod, Cargo.toml, package.json, or a .ts/.js entrypoint", src)
+	if hasLispSource(src) {
+		return "lisp", nil
+	}
+	return "", fmt.Errorf("cannot detect build type in %s: need go.mod, Cargo.toml, package.json, a .ts/.js entrypoint, or an ASDF .asd/.lisp factory", src)
 }
 
 // sourceUnchanged reports an error when the source files of srcDir no longer hash to the stamp read before the build. Nothing is
@@ -350,6 +353,8 @@ func hashSourceDirStamped(src, buildType string) (digest, stamp string, err erro
 		exts = []string{".rs", ".toml", ".lock"}
 	case "node":
 		exts = []string{".ts", ".js", ".mjs", ".cjs", ".json"}
+	case "lisp":
+		exts = []string{".lisp", ".asd"}
 	}
 
 	info, err := os.Stat(src)
@@ -734,6 +739,8 @@ func sdkSourceExts(buildType string) []string {
 		return []string{".rs", ".toml", ".lock"}
 	case "python":
 		return []string{".py", ".toml", ".lock"}
+	case "lisp":
+		return []string{".lisp", ".asd"}
 	case "node":
 		return []string{".js", ".mjs", ".cjs", ".ts", ".json"}
 	}
@@ -1214,4 +1221,22 @@ func (b *Builder) CurrentCacheEntry(name, srcDir string) (string, bool, error) {
 	entry := filepath.Join(b.cacheDir, fileNameComponent(name)+"-"+hash)
 	_, valid := runtimecell.ValidEntry(entry, runtimecell.EntryIdentity{InputDigest: hash, Artifact: extensionArtifactName(runtime.GOOS, buildType), Language: buildType})
 	return entry, valid, nil
+}
+
+// hasLispSource reports whether dir holds an ASDF system definition or a Lisp source file.
+func hasLispSource(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+		switch strings.ToLower(filepath.Ext(entry.Name())) {
+		case ".lisp", ".asd":
+			return true
+		}
+	}
+	return false
 }

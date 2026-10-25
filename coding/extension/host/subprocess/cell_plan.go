@@ -19,6 +19,7 @@ const (
 	CellStrategyPackedGo     CellStrategy = "packed-go"
 	CellStrategyPackedRust   CellStrategy = "packed-rust"
 	CellStrategyPackedPython CellStrategy = "packed-python"
+	CellStrategyPackedLisp   CellStrategy = "packed-lisp"
 	// CellStrategyPackedNode hosts every packable TS/JS extension in one Node
 	// process, the way upstream pi loads all its extensions in one process
 	// (N8). Unlike the other packed strategies this needs no compiled runner:
@@ -94,7 +95,7 @@ func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 			node.configs = append(node.configs, indexedConfig{config: cfg, index: index})
 			continue
 		}
-		if isPackableGoFactory(cfg) || isPackableRustFactory(cfg) || isPackablePythonFactory(cfg) {
+		if isPackableGoFactory(cfg) || isPackableRustFactory(cfg) || isPackablePythonFactory(cfg) || isPackableLispFactory(cfg) {
 			key := packGroupKey(cfg)
 			compatible := current != nil && current.key == key
 			if compatible && cfg.RuntimeLanguage == "go" {
@@ -112,6 +113,15 @@ func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 					other, _, _ := strings.Cut(previous.config.Package, ".")
 					// pig additive (D20): Python caches imports by module name, so independent roots for one module need separate interpreters.
 					if module == other && cfg.Source != previous.config.Source {
+						compatible = false
+						break
+					}
+				}
+			}
+			if compatible && cfg.RuntimeLanguage == "lisp" {
+				for _, previous := range current.configs {
+					// pig additive (D20): the members of one image share its package namespace and its ASDF system names, so two roots that name the same system or file cannot share it.
+					if cfg.Package == previous.config.Package && cfg.Source != previous.config.Source {
 						compatible = false
 						break
 					}
@@ -152,6 +162,12 @@ func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 // "isolation: dedicated" extension into the packer.
 func isShareableIsolation(isolation string) bool {
 	return isolation == "" || strings.EqualFold(isolation, "shared-ok")
+}
+
+func isPackableLispFactory(cfg ExtConfig) bool {
+	return isShareableIsolation(cfg.Isolation) &&
+		cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "lisp" &&
+		cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "new-extension"
 }
 
 func isPackableGoFactory(cfg ExtConfig) bool {
@@ -259,6 +275,10 @@ func packedCellAt(groupKey string, configs []ExtConfig, order int) CellSpec {
 	if first.RuntimeLanguage == "python" {
 		strategy = CellStrategyPackedPython
 		prefix = "packed-python"
+	}
+	if first.RuntimeLanguage == "lisp" {
+		strategy = CellStrategyPackedLisp
+		prefix = "packed-lisp"
 	}
 	if first.RuntimeLanguage == "node" {
 		strategy = CellStrategyPackedNode
@@ -382,6 +402,21 @@ func (c CellSpec) PythonExtensions() ([]runtimecell.PythonExtension, error) {
 			Factory: factory,
 			Hash:    valueOr(cfg.ContentHash, cfg.Source),
 		})
+	}
+	return out, nil
+}
+
+func (c CellSpec) LispExtensions() ([]runtimecell.LispExtension, error) {
+	if c.Strategy != CellStrategyPackedLisp {
+		return nil, fmt.Errorf("cell %s is %s, not packed-lisp", c.Key, c.Strategy)
+	}
+	out := make([]runtimecell.LispExtension, 0, len(c.Extensions))
+	for _, cfg := range c.Extensions {
+		ext, err := lispExtensionFromConfig(cfg)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, ext)
 	}
 	return out, nil
 }
