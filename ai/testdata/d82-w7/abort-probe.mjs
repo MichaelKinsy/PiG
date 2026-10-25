@@ -1,5 +1,6 @@
 // Cancellation-text probe: runs a Pi-compatible CLI in --mode rpc against a server that holds the response at one point, sends {"type":"abort"}, and prints the assistant message that ends the turn.
 // Phases: pre-headers (request received, nothing sent), post-headers (200 sent, no body), mid-body (200 plus one text record sent).
+// The abort is sent when the point is observed, never after a delay: before headers, when the server has read the whole request; after headers, when the CLI's own event stream shows it handled what the server sent (the assistant message starts once the headers are in, and the first record ends in a text delta), by which time the CLI is waiting for the next body byte again. The turn ends at the CLI's agent_settled event. No timer decides a point or a result, so a loaded machine only makes the probe slower; a CLI that never reaches a point is stopped by the caller's deadline.
 // Usage: node abort-probe.mjs <api|all> <node> <cli.js|binary> [out.json]
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
@@ -30,16 +31,15 @@ const firstRecords = {
 const baseUrlFor = (port) => api === 'google-generative-ai' ? `http://127.0.0.1:${port}/v1beta` : api === 'anthropic-messages' ? `http://127.0.0.1:${port}` : `http://127.0.0.1:${port}/v1`;
 
 async function run(phase) {
-	let held;
-	const heldPromise = new Promise((resolve) => { held = resolve; });
+	let requested;
+	const requestedPromise = new Promise((resolve) => { requested = resolve; });
 	const sockets = new Set();
 	const server = createServer(async (req, res) => {
 		for await (const _ of req) { /* drain the request */ }
-		if (phase === 'pre-headers') { held(); return; }
+		if (phase === 'pre-headers') { requested(); return; }
 		res.writeHead(200, { 'content-type': 'text/event-stream' });
 		if (phase === 'mid-body') res.write(firstRecords[api]());
 		else res.flushHeaders();
-		setTimeout(held, 50);
 	});
 	server.on('connection', (socket) => sockets.add(socket));
 	await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -49,34 +49,46 @@ async function run(phase) {
 	writeFileSync(join(agent, 'models.json'), JSON.stringify({ providers: { p: { api, baseUrl: baseUrlFor(server.address().port), apiKey: 'k', models: [{ id: 'strict', name: 'strict', reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128000, maxTokens: 1000 }] } } }));
 	const isScript = bin.endsWith('.js');
 	const child = spawn(isScript ? nodeBin : bin, [...(isScript ? [bin] : []), '--mode', 'rpc', '--offline', '--no-extensions', '--model', 'p/strict', '--no-context-files', '--no-skills', '--session-dir', join(dir, 's')], { cwd: dir, env: { ...process.env, HOME: dir, PI_CODING_AGENT_DIR: agent, PIG_CODING_AGENT_DIR: agent, PIG_HOME: join(dir, 'pighome') }, stdio: ['pipe', 'pipe', 'inherit'] });
+	child.stdin.on('error', () => { /* a CLI that exited is reported by gone below */ });
 	const result = { phase, types: [] };
-	const done = new Promise((resolve) => {
-		const timer = setTimeout(() => { result.unsettled = true; resolve(); }, 20000);
-		createInterface({ input: child.stdout }).on('line', (line) => {
-			let event;
-			try { event = JSON.parse(line); } catch { return; }
-			if (event.type === 'message_update') result.types.push(event.assistantMessageEvent.type);
-			if (event.type === 'message_end' && event.message.role === 'assistant') {
-				result.stopReason = event.message.stopReason;
-				result.errorMessage = event.message.errorMessage;
-				result.content = event.message.content.map((block) => block.text ?? block.type);
-			}
-			if (event.type === 'agent_settled') { clearTimeout(timer); resolve(); }
-		});
+	const observers = new Set();
+	const observe = (matches) => new Promise((resolve) => { observers.add({ matches, resolve }); });
+	// The CLI's events the abort point and the end of the turn are read from. Both are registered before the prompt, so no event is missed.
+	const reached = {
+		'post-headers': (event) => event.type === 'message_start' && event.message.role === 'assistant',
+		'mid-body': (event) => event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta',
+	}[phase];
+	const atPoint = phase === 'pre-headers' ? requestedPromise : observe(reached);
+	const settled = observe((event) => event.type === 'agent_settled');
+	createInterface({ input: child.stdout }).on('line', (line) => {
+		let event;
+		try { event = JSON.parse(line); } catch { return; }
+		if (event.type === 'message_update') result.types.push(event.assistantMessageEvent.type);
+		if (event.type === 'message_end' && event.message.role === 'assistant') {
+			result.stopReason = event.message.stopReason;
+			result.errorMessage = event.message.errorMessage;
+			result.content = event.message.content.map((block) => block.text ?? block.type);
+		}
+		for (const observer of observers) if (observer.matches(event)) { observers.delete(observer); observer.resolve(); }
 	});
-	child.stdin.write(JSON.stringify({ id: 'p', type: 'prompt', message: 'hi' }) + '\n');
-	await heldPromise;
-	child.stdin.write(JSON.stringify({ id: 'a', type: 'abort' }) + '\n');
-	await done;
-	// Windows holds the child's cwd open until the process exits, so wait for the exit before removing the directory.
-	const exited = new Promise((resolve) => { if (child.exitCode !== null || child.signalCode !== null) resolve(); else child.once('exit', resolve); });
-	child.kill();
-	for (const socket of sockets) socket.destroy();
-	server.close();
-	const escalate = setTimeout(() => child.kill('SIGKILL'), 5000);
-	await exited;
-	clearTimeout(escalate);
-	rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+	const gone = new Promise((_, reject) => child.once('close', (code, signal) => reject(new Error(`${bin} exited (${code ?? signal}) before ${phase} finished`))));
+	gone.catch(() => { /* raised only where it is awaited */ });
+	try {
+		child.stdin.write(JSON.stringify({ id: 'p', type: 'prompt', message: 'hi' }) + '\n');
+		await Promise.race([atPoint, gone]);
+		child.stdin.write(JSON.stringify({ id: 'a', type: 'abort' }) + '\n');
+		await Promise.race([settled, gone]);
+	} finally {
+		// Windows holds the child's cwd open until the process exits, so wait for the exit before removing the directory.
+		const exited = new Promise((resolve) => { if (child.exitCode !== null || child.signalCode !== null) resolve(); else child.once('exit', resolve); });
+		child.kill();
+		for (const socket of sockets) socket.destroy();
+		server.close();
+		const escalate = setTimeout(() => child.kill('SIGKILL'), 5000);
+		await exited;
+		clearTimeout(escalate);
+		rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+	}
 	return result;
 }
 

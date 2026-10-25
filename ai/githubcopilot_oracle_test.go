@@ -55,7 +55,7 @@ func copilotHelperProbes() []copilotHelperProbe {
 	return probes
 }
 
-// Pi's private normalizeDomain, getBaseUrlFromToken and getGitHubCopilotBaseUrl run in Node from the pinned source against the same probes. Pi's
+// Pi's private normalizeDomain, getBaseUrlFromToken and getGitHubCopilotBaseUrl run in Node from the pinned source against the same probes. The answers are the qualified Node's (.node-version, ada 4): Node 22.19 and 24.19 reject the host of https://xn--.example, so another release fails this test before it compares anything. Pi's
 // null and "" both mean no domain (every caller tests truthiness), which Go reports as an empty domain with ok false.
 func TestGitHubCopilotHelpersMatchPi(t *testing.T) {
 	probes := copilotHelperProbes()
@@ -64,7 +64,7 @@ func TestGitHubCopilotHelpersMatchPi(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := filepath.Join(testenv.ModuleRoot(t), ".upstream", "current", "packages", "ai", "src", "auth", "oauth", "github-copilot.ts")
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/github_copilot_helpers.mjs", source)
+	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), "--disable-warning=ExperimentalWarning", "testdata/github_copilot_helpers.mjs", source)
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

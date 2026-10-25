@@ -290,6 +290,15 @@ func TestToolsBashPort(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:724
 	t.Run("should not count a trailing newline as an extra truncated bash output line", func(t *testing.T) {
+		// The notice ends with the random temp path of the full-output log; Pi asserts the whole output lacks "4001", which fails whenever that
+		// path happens to contain it. Put 4001 in the directory on purpose so the check below must exclude the path to pass.
+		spoofed := filepath.Join(t.TempDir(), "dir-4001")
+		if err := os.MkdirAll(spoofed, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range []string{"TMPDIR", "TMP", "TEMP"} {
+			t.Setenv(key, spoofed)
+		}
 		tool := &BashTool{CWD: t.TempDir(), Operations: portBashOperations(func(_ context.Context, _, _ string, opts BashOperationsExecOptions) (BashOperationsResult, error) {
 			for i := 1; i <= 4000; i++ {
 				opts.OnData(fmt.Appendf(nil, "line-%04d\n", i))
@@ -305,7 +314,22 @@ func TestToolsBashPort(t *testing.T) {
 		if details.Truncation.TotalLines != 4000 || details.Truncation.OutputLines != 2000 {
 			t.Fatal(details.Truncation)
 		}
-		requireTextParts(t, result, []string{"line-2001", "line-4000", "[Showing lines 2001-4000 of 4000. Full output: "}, []string{"4001"})
+		if !strings.HasPrefix(details.FullOutputPath, spoofed) {
+			t.Fatalf("full output path %q is not under %q", details.FullOutputPath, spoofed)
+		}
+		// Only the path is excluded; every other character of the output is still checked.
+		text := strings.ReplaceAll(result.Text(), details.FullOutputPath, "<full-output-path>")
+		if result.IsError {
+			t.Fatalf("tool failed: %s", result.Text())
+		}
+		for _, want := range []string{"line-2001", "line-4000", "[Showing lines 2001-4000 of 4000. Full output: <full-output-path>]"} {
+			if !strings.Contains(text, want) {
+				t.Errorf("output %q lacks %q", text, want)
+			}
+		}
+		if strings.Contains(text, "4001") {
+			t.Errorf("output %q contains %q", text, "4001")
+		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:746
 	t.Run("should decode UTF-8 characters split across output chunks", func(t *testing.T) {

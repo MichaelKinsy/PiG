@@ -53,9 +53,11 @@ fi
 mkdir -p "$store"
 tmp=$(mktemp -d "$store/.run.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
-status=0
-"$@" > >(tee "$tmp/log") 2>&1 || status=$?
-wait
+# A pipeline, not tee in a process substitution: bash does not wait for a process substitution, so a tee that starts after the gate has finished wrote its log into a directory already moved into the store, and the stored entry had no log.
+set +e
+"$@" 2>&1 | tee "$tmp/log"
+status=${PIPESTATUS[0]}
+set -e
 if [[ $status -eq 0 ]]; then
   for i in "${!outs[@]}"; do
     tar -C "${outs[i]}" -cf "$tmp/out-$i.tar" .

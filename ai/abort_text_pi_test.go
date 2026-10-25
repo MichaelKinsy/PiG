@@ -127,7 +127,7 @@ func TestProviderAbortTextsMatchPi(t *testing.T) {
 							_, _ = strings.NewReader(abortFirstRecord(api)).WriteTo(w)
 						}
 						w.(http.Flusher).Flush()
-						// Abort only after the client has consumed what was sent and is reading the socket again, as Pi's probe aborts after its timer.
+						// Abort only after the client has consumed what was sent and is reading the socket again, as Pi's probe aborts once the CLI's own events show it handled what the server sent.
 						if !barrier.WaitReading(r.Context(), r.RemoteAddr) {
 							return
 						}

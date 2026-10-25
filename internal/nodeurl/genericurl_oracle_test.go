@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"os/exec"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // ParseURL against Node's own `new URL(value)` for every scheme (non-special, http, https, ws, wss, ftp and file): opaque paths,
@@ -35,7 +37,7 @@ func TestParseURLMatchesNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/parse_url.mjs")
+	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), "testdata/parse_url.mjs")
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

@@ -2124,7 +2124,11 @@ func TestCompactionEventsAndLiveStatus(t *testing.T) {
 	})
 }
 
-// reopenCompaction reopens the Harness over path with the same setup and script.
+// reopenCompaction reopens the Harness over path with the same setup and script, and resumes it. Resuming starts the
+// pending work on the scheduler's goroutines at once, so a caller queues the script's responses for that work before
+// it reopens: upstream's resume() returns synchronously and its continuations run only after the test's next
+// statement (harness-compaction.test.ts:1621), an order Go does not give, and a request that finds its queue empty
+// fails with "No scripted ... response".
 func reopenCompaction(t *testing.T, path string, chat *compactionChat) *compactionChat {
 	t.Helper()
 	harness, root := openChat(t, openSqlite(t, path), chat.setup)
@@ -2188,8 +2192,8 @@ func TestCompactionRecovery(t *testing.T) {
 		generation := chat.live(t).Run.TaskId
 		expectMatch(t, must(chat.harness.GetTask(testContext, generation)).State, jsonText(t, map[string]any{"status": "waiting", "checkpoint": map[string]any{"phase": "prepare", "overflow": overflowText}}))
 		chat.close(t)
-		chat = reopenCompaction(t, path, chat)
 		chat.faux.pushSummary(scriptFailure("bad request"))
+		chat = reopenCompaction(t, path, chat)
 		settled := must(submissionOfHarness(t, chat.harness, input.Id()).Wait(testContext))
 		expectSettled(t, settled, durable.SubmissionUnanswered, "model_error")
 		expectEqualJSON(t, settled.Detail, jsonText(t, overflowText))
@@ -2217,8 +2221,8 @@ func TestCompactionRecovery(t *testing.T) {
 		id := chat.compact(t, nil)
 		awaitGate(t, reached)
 		chat.close(t)
-		chat = reopenCompaction(t, path, chat)
 		chat.faux.pushSummary(scriptSummary())
+		chat = reopenCompaction(t, path, chat)
 		if outcome := chat.outcome(t, id); outcome.Status != durable.OutcomeCompleted {
 			t.Fatalf("outcome = %s", outcome.Status)
 		}
@@ -2241,8 +2245,8 @@ func TestCompactionRecovery(t *testing.T) {
 		usageBefore := must(durable.Snapshot(testContext, chat.harness, UsageDoc, chat.root.Id())).Models["faux/faux-1"]
 		expectMatch(t, must(chat.harness.GetTask(testContext, id)).State, `{"checkpoint":{"phase":"summarize"}}`)
 		chat.close(t)
-		chat = reopenCompaction(t, path, chat)
 		chat.faux.pushSummary(scriptSummary())
+		chat = reopenCompaction(t, path, chat)
 		if outcome := chat.outcome(t, id); outcome.Status != durable.OutcomeCompleted {
 			t.Fatalf("outcome = %s", outcome.Status)
 		}
@@ -2302,8 +2306,8 @@ func TestCompactionRecovery(t *testing.T) {
 		mu.Lock()
 		now += 120_000
 		mu.Unlock()
-		chat = reopenCompaction(t, path, chat)
 		chat.faux.pushSummary(scriptSummary())
+		chat = reopenCompaction(t, path, chat)
 		if outcome := chat.outcome(t, id); outcome.Status != durable.OutcomeCompleted {
 			t.Fatalf("outcome = %s", outcome.Status)
 		}
@@ -2326,9 +2330,9 @@ func TestCompactionRecovery(t *testing.T) {
 		input := submitInput(t, chat.root, sized("u4", 200))
 		awaitGate(t, reached)
 		chat.close(t)
-		chat = reopenCompaction(t, path, chat)
 		chat.faux.pushSummary(scriptSummary())
 		chat.faux.pushAgent(scriptAnswer("a4"))
+		chat = reopenCompaction(t, path, chat)
 		expectSettled(t, must(submissionOfHarness(t, chat.harness, input.Id()).Wait(testContext)), durable.SubmissionDone, "")
 		expectEqualJSON(t, lastN(chat.kinds(t), 3), `["pi.compaction","pi.system","pi.assistant"]`)
 		chat.close(t)
@@ -2345,8 +2349,8 @@ func TestCompactionRecovery(t *testing.T) {
 		chat.faux.pushSummary(scriptSummary())
 		outcome := chat.outcome(t, chat.compact(t, nil))
 		chat.close(t)
-		chat = reopenCompaction(t, path, chat)
 		chat.faux.pushAgent(scriptAnswer("answered"))
+		chat = reopenCompaction(t, path, chat)
 		expectSettled(t, must(submissionOfHarness(t, chat.harness, input.Id()).Wait(testContext)), durable.SubmissionDone, "")
 		expectSettled(t, must(chat.summarySubmission(t, outcome).Wait(testContext)), durable.SubmissionDone, "")
 		chat.close(t)

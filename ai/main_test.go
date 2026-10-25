@@ -15,7 +15,8 @@ import (
 
 // TestMain scopes the temporary directory and the agent-directory variables (testenv.ScopeTempDir), so a test, or a Pi oracle child it starts, never
 // reads or writes the credentials and settings of the user running `go test`. Its `!command` credentials run without the ten-second timeout
-// (shellWithoutTimeout).
+// (shellWithoutTimeout). It builds the Codex request encoder before any test runs, so no testing/synctest bubble makes it (see
+// TestCodexRequestEncoderServesSynctestBubblesAndTheRestOfTheProcess).
 func TestMain(m *testing.M) {
 	root, err := os.MkdirTemp("", "pig-ai-")
 	if err != nil {
@@ -30,6 +31,7 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS != "windows" {
 		configvalue.SetExecutorForTest(shellWithoutTimeout)
 	}
+	compressCodexRequestBody(nil)
 	code := testenv.RunWithoutGoroutineLeaks(m)
 	if err := os.RemoveAll(root); err != nil {
 		fmt.Fprintln(os.Stderr, "remove scoped test temp directory:", err)

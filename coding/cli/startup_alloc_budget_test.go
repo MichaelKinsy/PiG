@@ -201,6 +201,9 @@ func startupLevelCeilingFor(goos string) (objects, bytes uint64) {
 // prompts stays a few hundred bytes per level.
 const startupLevels = 32
 
+// startupLevelRuns is how many shallow and deep pairs the per-level budget may measure to find one within budget.
+const startupLevelRuns = 10
+
 func TestStartupAllocationPerDirectoryLevel(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the pig binary")
@@ -214,18 +217,45 @@ func TestStartupAllocationPerDirectoryLevel(t *testing.T) {
 	if err := os.MkdirAll(deep, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	if runtime.GOOS != "windows" {
+		// measuredEnvironment passes no HOME, so pig asks the system's user database for the home directory, and the per-level work depends on the answer: with no entry for the user (a container run as a uid its
+		// passwd file does not list) there is no home, the user's ~/.agents/skills becomes the relative ".agents/skills", and every level's comparison against it resolves that path again, 17 objects a level
+		// instead of 13. The fixture's home states the home directory, as it does for every user who has one. Windows always has one, and its budgets were measured without HOME.
+		fixture.env = []string{"HOME=" + fixture.home}
+	}
 	fixture.measure(ctx, t, fixture.cwd, startupPrompt...) // stages the embedded docs and SDKs
-	shallowRun := fixture.warmPrompt(ctx, t, fixture.cwd)
-	deepRun := fixture.warmPrompt(ctx, t, deep)
 	perLevel := func(shallow, deep uint64) uint64 {
 		if deep < shallow {
 			return 0
 		}
 		return (deep - shallow) / startupLevels
 	}
-	objects, bytes := perLevel(shallowRun.AllocObjects, deepRun.AllocObjects), perLevel(shallowRun.AllocBytes, deepRun.AllocBytes)
-	t.Logf("warm first prompt from %s: %d bytes, %d objects; %d levels deeper: %d bytes, %d objects; per level %d bytes, %d objects", fixture.cwd, shallowRun.AllocBytes, shallowRun.AllocObjects, startupLevels, deepRun.AllocBytes, deepRun.AllocObjects, bytes, objects)
 	objectsCeiling, bytesCeiling := startupLevelCeilingFor(runtime.GOOS)
+	// The bytes of two whole-process totals carry the runtime's own allocations: under CPU contention the scheduler starts extra OS threads, and each costs 6 objects and about 5,100 bytes (runtime.newm, see
+	// startupVersionRuns), and a deep run makes more system calls to be caught in the middle of than a shallow one. Thirty deep runs on a loaded machine measured +0, +5.2-7.3 or +10.6-13.3 KB over the quiet
+	// minimum, in steps of one thread; thirty quiet ones, under 2.2 KB: 2,300 bytes a level at rest, 2,666 once with two threads more in the deep runs. Like --version, the measurement is repeated
+	// and one whole pair is judged: noise passes in a later pair, a regression (a level costing more) is over budget in every pair and fails with the smallest pair's numbers.
+	type levelPair struct {
+		shallow, deep  profiling.ProcessMetrics
+		objects, bytes uint64
+	}
+	within := func(p levelPair) bool {
+		return p.objects <= objectsCeiling && (p.bytes <= bytesCeiling || runtime.GOOS == "darwin")
+	}
+	var best levelPair
+	for run := 1; run <= startupLevelRuns; run++ {
+		pair := levelPair{shallow: fixture.warmPrompt(ctx, t, fixture.cwd), deep: fixture.warmPrompt(ctx, t, deep)}
+		pair.objects, pair.bytes = perLevel(pair.shallow.AllocObjects, pair.deep.AllocObjects), perLevel(pair.shallow.AllocBytes, pair.deep.AllocBytes)
+		t.Logf("run %d: warm first prompt from %s: %d bytes, %d objects; %d levels deeper: %d bytes, %d objects; per level %d bytes, %d objects", run, fixture.cwd, pair.shallow.AllocBytes, pair.shallow.AllocObjects, startupLevels, pair.deep.AllocBytes, pair.deep.AllocObjects, pair.bytes, pair.objects)
+		if run == 1 || pair.bytes < best.bytes || (pair.bytes == best.bytes && pair.objects < best.objects) {
+			best = pair
+		}
+		if within(pair) {
+			best = pair
+			break
+		}
+	}
+	objects, bytes := best.objects, best.bytes
 	if objects > objectsCeiling {
 		startupBudgetError(t, "each directory level above the working directory costs a warm first prompt %d bytes in %d objects, ceiling %d bytes in %d objects", bytes, objects, bytesCeiling, objectsCeiling)
 	}
@@ -253,6 +283,8 @@ var startupPrompt = []string{"--model", "test-faux/faux-1", "--no-extensions", "
 // host temp directory.
 type startupFixture struct {
 	binary, cwd, home, agentDir, tmp string
+	// env is added to the measured environment.
+	env []string
 }
 
 func newStartupFixture(t *testing.T) *startupFixture {
@@ -276,7 +308,7 @@ func (f *startupFixture) measure(ctx context.Context, t *testing.T, cwd string, 
 	}
 	command := exec.CommandContext(ctx, f.binary, args...)
 	command.Dir = cwd
-	command.Env = append(measuredEnvironment(os.Environ()), "TMPDIR="+f.tmp, "PIG_HOME="+f.home, "PIG_CODING_AGENT_DIR="+f.agentDir, "PIG_PROFILE=metrics", "PIG_PROFILE_DIR="+dir, "GOMAXPROCS=1",
+	command.Env = append(append(measuredEnvironment(os.Environ()), f.env...), "TMPDIR="+f.tmp, "PIG_HOME="+f.home, "PIG_CODING_AGENT_DIR="+f.agentDir, "PIG_PROFILE=metrics", "PIG_PROFILE_DIR="+dir, "GOMAXPROCS=1",
 		"PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("pig %v: %v\n%s", args, err, output)

@@ -7,10 +7,11 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"net/http/httptest"
 	"os/exec"
 	"reflect"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -132,10 +133,12 @@ func TestOpenAIDecisionsMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &want); err != nil {
 		t.Fatal(err)
 	}
-	failures := 0
+	failures, wantRequests := 0, 0
+	server := newProbeServer(t)
 	for i, probe := range probes {
-		var seen []llamaOracleExchange
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var mu sync.Mutex
+		var recorded []llamaOracleExchange
+		server.script(i, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw, _ := io.ReadAll(r.Body)
 			exchange := llamaOracleExchange{Path: r.URL.RequestURI(), Body: string(raw)}
 			if v := r.Header.Get("Authorization"); v != "" {
@@ -144,11 +147,14 @@ func TestOpenAIDecisionsMatchesPi(t *testing.T) {
 			if v := r.Header.Get("Content-Type"); v != "" {
 				exchange.ContentType = &v
 			}
-			seen = append(seen, exchange)
+			mu.Lock()
+			recorded = append(recorded, exchange)
+			mu.Unlock()
 			w.Header().Set("Content-Type", probe.ContentType)
 			w.WriteHeader(probe.Status)
 			_, _ = io.WriteString(w, probe.Body)
 		}))
+		wantRequests += len(want[i].Requests)
 		var cost ModelCost
 		if err := json.Unmarshal(probe.Cost, &cost); err != nil {
 			t.Fatal(err)
@@ -166,9 +172,10 @@ func TestOpenAIDecisionsMatchesPi(t *testing.T) {
 			}
 			request.Images = append(request.Images, ImageContent{Data: fmt.Sprintf("AAAA%d", n), MimeType: mime})
 		}
-		result := ClassifyOpenAIDecisions(t.Context(), model, request, ClassifierOptions{APIKey: probe.APIKey})
-		closeClassifierIdleConnections(t)
-		server.Close()
+		result := ClassifyOpenAIDecisions(t.Context(), model, request, forProbe(ClassifierOptions{APIKey: probe.APIKey}, i))
+		mu.Lock()
+		seen := slices.Clone(recorded)
+		mu.Unlock()
 		answers, err := jsstring.MarshalJSON(result.Answers)
 		if err != nil {
 			t.Fatal(err)
@@ -211,6 +218,7 @@ func TestOpenAIDecisionsMatchesPi(t *testing.T) {
 			}
 		}
 	}
+	server.requireRouted(wantRequests)
 	if failures > 8 {
 		t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
 	}

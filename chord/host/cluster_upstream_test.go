@@ -640,9 +640,17 @@ func clusterPluginLoader(wait func()) FacetLoader {
 	}
 }
 
-// joinWorker connects a child host named session:S1 to server over a memory link, as the tests that build their own
-// server do: server.accept(down, ...) and createHost({ name, upstream: up, ... }).
-func joinWorker(t *testing.T, server *HostImpl, link func(down *MemoryLink) Link, options HostOptions) (*HostImpl, *MemoryLink) {
+// prepareWorker builds a child host named session:S1 for server over a memory link, as the tests that build their own
+// server do: server.accept(down, ...) and createHost({ name, ... }). connect is the upstream connection createHost({
+// upstream: up }) makes; a test installs its facets before it calls it (cluster.test.ts:449-460).
+//
+// Pi makes these calls in one synchronous turn, and its memory link delivers a frame in a later promise job (link.ts:259),
+// so the install always precedes the delivery of the worker's hello. That hello makes a parent ahead of the worker start
+// reconciling it at once (host.ts:987 peerHello, cluster.ts:123 reconcileChild); the child takes its reload slot when the
+// prepare frame arrives (reload.ts:143 beginReload) and keeps it through its module loading, and host.ts:381 refuses an
+// install meanwhile ("host.install during a reload"). Go delivers on the link's goroutine, so an Install after the
+// connect can lose to that reconciliation: the worker installs first and connects last, the order that keeps Pi's.
+func prepareWorker(t *testing.T, server *HostImpl, link func(down *MemoryLink) Link, options HostOptions) (worker *HostImpl, up *MemoryLink, connect func()) {
 	t.Helper()
 	down, up := MemoryLinkPair()
 	var accepted Link = down
@@ -654,10 +662,17 @@ func joinWorker(t *testing.T, server *HostImpl, link func(down *MemoryLink) Link
 	}
 	options.Self = kindHost()
 	options.Name = "session:S1"
-	options.Upstream = &UpstreamOptions{Link: up, ConnectOptions: ConnectOptions{Principal: kindServer()}}
 	options.OnError = func(error) {}
-	worker := CreateHost(options)
+	worker = CreateHost(options)
 	t.Cleanup(func() { _ = worker.Close() })
+	return worker, up, func() { worker.Connect(up, ConnectOptions{Principal: kindServer()}) }
+}
+
+// joinWorker is prepareWorker and the connect at once, for a worker that installs nothing.
+func joinWorker(t *testing.T, server *HostImpl, link func(down *MemoryLink) Link, options HostOptions) (*HostImpl, *MemoryLink) {
+	t.Helper()
+	worker, up, connect := prepareWorker(t, server, link, options)
+	connect()
 	return worker, up
 }
 
@@ -681,10 +696,11 @@ func TestCrossHostReloadAChildThatSaysHelloWhileAReloadRunsIsReconciledAfterItNe
 	reloading := clusterReloadAsync(server, []PluginRef{ModuleRef("server-plugin")}, ReloadOptions{Remote: sessionRemote("greeter")})
 	waitFor(t, "the reload to load its modules", func() bool { return hostReloading(server) })
 	// The worker connects while the reload loads its modules: it announces the server's current code version.
-	worker, _ := joinWorker(t, server, nil, HostOptions{Loader: modules.loader})
+	worker, _, connect := prepareWorker(t, server, nil, HostOptions{Loader: modules.loader})
 	if err := worker.Install(modules.modules["greeter"], LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
+	connect()
 	waitFor(t, "the hello to wait for the reload", func() bool {
 		var deferred int
 		server.run(func() { deferred = server.deferredHellos.Len() })
@@ -772,10 +788,11 @@ func TestCrossHostReloadAChildReconciledAfterItsParentRetiredOldCodeVersionsMayR
 	if previous, ok := server.PreviousCodeVersion(); ok {
 		t.Fatalf("server previous = %d, want none", previous)
 	}
-	worker, _ := joinWorker(t, server, nil, HostOptions{Loader: modules.loader})
+	worker, _, connect := prepareWorker(t, server, nil, HostOptions{Loader: modules.loader})
 	if err := worker.Install(modules.modules["greeter"], LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
+	connect()
 	waitFor(t, "the worker to be reconciled", func() bool { return worker.CodeVersion() == server.CodeVersion() })
 	// Without the parent's retire watermark it would keep code version 1 until the parent's next retirement.
 	waitFor(t, "the worker to retire its previous code version", func() bool {
@@ -797,8 +814,6 @@ func TestCrossHostReloadAChildReconciledAfterItsParentRetiredOldCodeVersionsMayR
 func TestCrossHostReloadAReconciliationRunningWhenAReloadStartsSyncsTheChildOnlyAfterItToTheCommittedCodeVersion(t *testing.T) {
 	modules := &clusterModules{modules: map[string]Facet{"greeter": greeterFacet("v1", false)}}
 	serverLoading, workerLoading, workerLoads := newClusterLatch(), newClusterLatch(), newClusterLatch()
-	t.Cleanup(serverLoading.open)
-	t.Cleanup(workerLoading.open)
 	var blockServer, blockWorker atomic.Bool
 	blockWorker.Store(true)
 	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}, Loader: clusterPluginLoader(func() {
@@ -814,7 +829,7 @@ func TestCrossHostReloadAReconciliationRunningWhenAReloadStartsSyncsTheChildOnly
 		t.Fatal(err)
 	}
 	// The worker connects behind: its reconciliation to code version 2 waits in the worker's module loading.
-	worker, _ := joinWorker(t, server, nil, HostOptions{Loader: func(names []string) ([]Facet, error) {
+	worker, _, connect := prepareWorker(t, server, nil, HostOptions{Loader: func(names []string) ([]Facet, error) {
 		workerLoads.open()
 		if blockWorker.Load() {
 			workerLoading.wait()
@@ -824,6 +839,11 @@ func TestCrossHostReloadAReconciliationRunningWhenAReloadStartsSyncsTheChildOnly
 	if err := worker.Install(modules.modules["greeter"], LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
+	connect()
+	// Cleanups run last first: the latches open before the hosts close. A failure below must not leave worker.Close
+	// waiting for the loader, which waits for a latch that a cleanup registered earlier would open only after it.
+	t.Cleanup(serverLoading.open)
+	t.Cleanup(workerLoading.open)
 	workerLoads.waitT(t, "the worker's reconciliation to load its modules")
 	// A reload starts before the reconciliation committed; the worker is not one of its participants.
 	blockServer.Store(true)
@@ -900,12 +920,13 @@ func TestCrossHostReloadAReconnectingChildBehindItsParentStillRetainingItsPrevio
 	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
 	t.Cleanup(func() { _ = server.Close() })
 	// The retire frame is lost: the worker keeps code version 1, not permitted to retire it.
-	worker, up := joinWorker(t, server, func(down *MemoryLink) Link {
+	worker, up, connect := prepareWorker(t, server, func(down *MemoryLink) Link {
 		return &droppingLink{inner: down, drop: func(frame Frame) bool { return frame.T() == "retire" }}
 	}, HostOptions{Loader: modules.loader})
 	if err := worker.Install(modules.modules["greeter"], LoadOptions{}); err != nil {
 		t.Fatal(err)
 	}
+	connect()
 	waitLinked(t, server, worker)
 	modules.set("greeter", greeterFacet("v2", false))
 	if _, err := server.Reload(nil, ReloadOptions{Remote: sessionRemote("greeter")}); err != nil {

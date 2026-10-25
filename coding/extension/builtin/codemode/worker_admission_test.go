@@ -242,6 +242,21 @@ func TestCodemodeWorkerAdmissionQueuesABurstInArrivalOrder(t *testing.T) {
 		release func()
 	}
 	granted := make(chan admission, 6)
+	var held []admission
+	// Release what the test holds when it ends, so a failure here does not leave slots taken for the tests after it.
+	t.Cleanup(func() {
+		for _, a := range held {
+			a.release()
+		}
+		for {
+			select {
+			case a := <-granted:
+				a.release()
+			default:
+				return
+			}
+		}
+	})
 	for i := range 6 {
 		started := make(chan struct{})
 		go func() {
@@ -251,7 +266,8 @@ func TestCodemodeWorkerAdmissionQueuesABurstInArrivalOrder(t *testing.T) {
 				t.Errorf("reserve %d = %v", i, outcome)
 				return
 			}
-			granted <- admission{i, release}
+			var once sync.Once
+			granted <- admission{i, func() { once.Do(release) }}
 		}()
 		<-started
 		// The goroutine enters the queue before the next one is started.
@@ -268,8 +284,12 @@ func TestCodemodeWorkerAdmissionQueuesABurstInArrivalOrder(t *testing.T) {
 			}
 			time.Sleep(time.Millisecond)
 		}
+		// The first two are admitted as they queue: take each from its goroutine before the next starts. Their sends to
+		// granted are not ordered by their grants, so receiving both afterwards would order them by the scheduler.
+		if i < 2 {
+			held = append(held, receiveWithin(t, granted, 5*time.Second, "an admission"))
+		}
 	}
-	var held []admission
 	for released := range 4 {
 		for len(held) < released+2 {
 			held = append(held, receiveWithin(t, granted, 5*time.Second, "an admission"))

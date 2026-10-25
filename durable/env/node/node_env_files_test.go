@@ -126,12 +126,33 @@ func TestNodeExecutionEnvTracksAndCleansUpChildren(t *testing.T) {
 	}
 }
 
-// node.ts:1007-1016 writeFile: a failing write reports the write failure for the file (ENOSPC on /dev/full).
+// node.ts:1007-1016 writeFile: a failing write reports the write failure for the file. The file opens and the write itself fails:
+// a size limit of zero makes the kernel refuse the first byte with EFBIG (libuv's message is "EFBIG: file too large, write"), on Linux
+// and on macOS alike. /dev/full, which gives ENOSPC on Linux, does not exist on macOS, where creating it in /dev fails at open with EACCES.
+// The limit is process-wide, so it is set only in a subprocess this test owns.
 func TestNodeExecutionEnvWriteFailureIsReported(t *testing.T) {
-	env, _ := newTestEnv(t)
-	err := env.WriteFile(background, "/dev/full", "data")
+	const mode = "PIG_NODE_ENV_WRITE_FAILURE"
+	if os.Getenv(mode) != "1" {
+		child := exec.Command(os.Args[0], "-test.run=^TestNodeExecutionEnvWriteFailureIsReported$")
+		child.Env = append(os.Environ(), mode+"=1")
+		if output, err := child.CombinedOutput(); err != nil {
+			t.Fatalf("write failure child: %v\n%s", err, output)
+		}
+		return
+	}
+	var limit syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_FSIZE, &limit); err != nil {
+		t.Fatal(err)
+	}
+	limit.Cur = 0
+	if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &limit); err != nil {
+		t.Fatal(err)
+	}
+	env, root := newTestEnv(t)
+	path := filepath.Join(root, "limited.txt")
+	err := env.WriteFile(background, path, "data")
 	fileErr, ok := errors.AsType[*durableenv.FileError](err)
-	if !ok || fileErr.Path != "/dev/full" || !strings.Contains(fileErr.Message, "write") {
-		t.Fatalf("WriteFile to /dev/full = %v, want a write failure for /dev/full", err)
+	if !ok || fileErr.Path != path || fileErr.Code != durableenv.FileErrorUnknown || fileErr.Message != "EFBIG: file too large, write" || !errors.Is(err, syscall.EFBIG) {
+		t.Fatalf("WriteFile past a zero size limit = %v (%#v), want an unknown FileError %q for %s caused by EFBIG", err, fileErr, "EFBIG: file too large, write", path)
 	}
 }

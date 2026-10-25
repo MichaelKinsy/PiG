@@ -95,3 +95,40 @@ func TestCachedGateReplaysOnlyAnUnchangedPass(t *testing.T) {
 	t.Setenv("CI", "true")
 	step("CI always runs", 6, false)
 }
+
+// The gate's log is stored by tee, which bash starts alongside the gate. A tee that starts late must not leave a stored entry without its log: the next run would replay it with "cat: log: No such file".
+func TestCachedGateStoresTheLogOfALateTee(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the gate scripts run under bash on Unix runners")
+	}
+	realTee, err := exec.LookPath("tee")
+	if err != nil {
+		t.Skip("no tee on PATH")
+	}
+	bin := t.TempDir()
+	writeCIFixture(t, bin, "tee", "#!/bin/sh\nsleep 1\nexec "+realTee+" \"$@\"\n")
+	repo := t.TempDir()
+	for _, args := range [][]string{{"init", "-q"}, {"add", "."}, {"commit", "-q", "-m", "fixture"}} {
+		if args[0] == "add" {
+			writeCIFixture(t, repo, "input.txt", "one\n")
+		}
+		cmd := exec.CommandContext(t.Context(), "git", append([]string{"-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"}, args...)...)
+		cmd.Dir = repo
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	t.Setenv("PIG_CACHE_HOME", t.TempDir())
+	t.Setenv("CI", "")
+	t.Setenv("PIG_GATE_CACHE", "")
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	script := repoScript(t, "automation/ci/cached-gate.sh")
+	for _, name := range []string{"first run", "replay"} {
+		cmd := exec.CommandContext(t.Context(), testenv.Bash(t), script, "fixture", "--", "bash", "-c", "echo gate output")
+		cmd.Dir = repo
+		out, err := cmd.CombinedOutput()
+		if err != nil || !strings.Contains(string(out), "gate output") {
+			t.Fatalf("%s: err=%v\n%s", name, err, out)
+		}
+	}
+}

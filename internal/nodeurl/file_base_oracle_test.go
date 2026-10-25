@@ -6,14 +6,13 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // A file base keeps its first path segment as a drive letter only when the segment is exactly a letter and ":" (ada 4, Node 24.22.1 and 26.12.1). Node 22.19 and 24.19 keep any segment that starts with them ("C:ab", "u:p@[::1]:9000"), so this runs on the qualified Node (.node-version).
 func TestResolveOnFileBaseDriveLettersMatchesNode(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node is not installed")
-	}
+	node := testenv.RequireQualifiedNode(t)
 	bases := []string{
 		"file:///C:", "file:///C:/", "file:///C:/c", "file:///C|/c", "file:///c:/a/b", "file:///C:a", "file:///C:ab", "file:///C:ab/c", "file:///C:a/b", "file:///ab:/c", "file:///u:p@h/c",
 		"file:///u:p@[::1]:9000", "file:///u:p@[::1]:9000?a=b#f", "file:///u:p@0x7f.1?a=%zz", "file://host/C:/x", "file://host/C:ab/x", "file:///%43:/x", "file:///C:%2f/x", "file:///1:/x", "file:///:/x",

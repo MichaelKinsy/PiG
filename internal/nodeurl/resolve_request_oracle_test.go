@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"reflect"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // requestTargetProbes build the request targets a callback server can receive: origin-form paths with dot segments, encoded dots and slashes, backslashes, repeated slashes and queries of every shape;
@@ -36,7 +38,7 @@ func TestResolveURLRequestTargetsMatchNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/resolve_request.mjs")
+	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), "testdata/resolve_request.mjs")
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

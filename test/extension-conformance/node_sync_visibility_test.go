@@ -119,17 +119,18 @@ export default function (pi) {
     line(ctx, "config-ids", mr.getRegisteredProviderIds().includes("sync-x"));
     mr.unregisterProvider("sync-x");
     line(ctx, "config-unregistered", reads(mr, "sync-x", "m"));
-    await sleep(300);
+    // Pi's own barrier (model-registry.ts:55-57): the awaited refresh settles the availability pass the unregistration launched unawaited (model-runtime.ts:964) and clears its provisional marks. How long that takes is the host's, so nothing here waits a fixed time.
+    await mr.refresh({ allowNetwork: false });
     line(ctx, "config-settled", reads(mr, "sync-x", "m"));
   } });
-  // The same registration and unregistration after the handler yielded: the host's later publications keep the view the write made.
+  // The same registration and unregistration after the handler yielded: the host's later publications keep the view the write made. Each write is followed by the awaited refresh Pi documents as the barrier before synchronous registry reads (model-registry.ts:55-57): it supersedes and awaits the refresh the registration launched unawaited (model-runtime.ts:956, 964) and returns once the registry has settled, whatever time that takes.
   pi.registerCommand("settle", { handler: async (_args, ctx) => {
     const mr = ctx.modelRegistry;
     mr.registerProvider("sync-y", config("http://y.invalid/v1"));
-    await sleep(300);
+    await mr.refresh({ allowNetwork: false });
     line(ctx, "settle-registered", reads(mr, "sync-y", "m"));
     mr.unregisterProvider("sync-y");
-    await sleep(300);
+    await mr.refresh({ allowNetwork: false });
     line(ctx, "settle-unregistered", reads(mr, "sync-y", "m"));
   } });
   // A registration over a built-in provider changes its models in place, and its unregistration restores them (model-runtime.ts:942-948): the models stay.
@@ -173,7 +174,7 @@ export default function (pi) {
 //	unregistered  [false,false,false,true,{"configured":true,"source":"environment","label":"configured provider"},false]   (hasConfiguredAuth and the status are Pi's provisional marks, which its async availability refresh clears)
 //	settled       [false,false,false,false,{"configured":false},false]
 //
-// An unregistration removes the models in the same turn: find, getAll and getAvailable. The provisional marks are not mirrored: the host answers with the settled state.
+// An unregistration removes the models in the same turn: find, getAll and getAvailable. The provisional marks are not mirrored: the host answers with the settled state. "settled" is read after `await modelRegistry.refresh({ allowNetwork: false })`, Pi's barrier before synchronous registry reads (model-registry.ts:55-57); Pi 1.4.0 prints the same four lines with that await as with a 300 ms sleep.
 func TestNodeRegistryProviderRegistrationIsVisibleInTheSameTick(t *testing.T) {
 	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
 		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-registry", nodeSyncRegistryFixture})
@@ -195,7 +196,7 @@ func TestNodeRegistryProviderRegistrationIsVisibleInTheSameTick(t *testing.T) {
 	})
 }
 
-// The host's later publications keep what the write made: the registered provider is still there after the handler yielded, and the unregistered one stays gone.
+// The host's later publications keep what the write made: the registered provider is still there after the handler yielded and its registry refresh settled, and the unregistered one stays gone. Each read follows an awaited refresh (model-registry.ts:55-57), so the read waits for the refresh the write queued, as long as it takes, and not for a fixed time.
 func TestNodeRegistryRegistrationSurvivesLaterPublications(t *testing.T) {
 	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
 		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-registry", nodeSyncRegistryFixture})

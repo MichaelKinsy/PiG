@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"runtime/debug"
 	"runtime/trace"
 	"slices"
 	"strings"
@@ -81,21 +82,19 @@ func (reasons wakeReasons) String() string {
 	return out.String()
 }
 
-// stackSite is the innermost frame of stack outside the runtime and sync packages ("pkg.func file:line"), or the innermost frame when there is none.
+// stackSite is the innermost frame of stack outside the runtime and sync packages ("pkg.func file:line"). A stack that never leaves them belongs to a runtime goroutine, and its outermost frame, the function the goroutine runs (runtime.gcBgMarkWorker), names it.
 func stackSite(stack xtrace.Stack) string {
-	first, site := "", ""
+	outermost, site := "", ""
 	for frame := range stack.Frames() {
 		where := fmt.Sprintf("%s %s:%d", frame.Func, frame.File[strings.LastIndexByte(frame.File, '/')+1:], frame.Line)
-		if first == "" {
-			first = where
-		}
+		outermost = where
 		if !strings.HasPrefix(frame.Func, "runtime.") && !strings.HasPrefix(frame.Func, "sync.") {
 			site = where
 			break
 		}
 	}
 	if site == "" {
-		site = first
+		site = outermost
 	}
 	if site == "" {
 		site = "no stack"
@@ -183,8 +182,11 @@ func goroutineWakes(t *testing.T, trace io.Reader) (wakes, unblocks int, why wak
 }
 
 // Handing execution from one turn to another is a coroutine switch: a provider that awaits between pushes and a consumer that iterates on another goroutine do not wake a goroutine per event. The channel baton at 4cfaf24153 woke one goroutine per event here, each wake 2-2.5 us of process CPU on a multi-core host. GOMAXPROCS=1 makes every hand-off find its receiver parked, so the count is the number of hops and does not depend on timing.
+//
+// The collector is off for the measurement too. The count covers every goroutine of the process, so a GC cycle that starts inside a run puts the runtime's mark worker (runtime.gcBgMarkWorker) on it, one wake each time the scheduler runs the worker. A fractional worker, the only kind under GOMAXPROCS=1, leaves as soon as the clock shows no time has passed since the cycle began (pollFractionalWorkerExit), and the clock on Windows advances in steps of half a millisecond or more, so a cycle wakes the worker dozens of times where one on Linux wakes it once or a few times: native-2 counted 555 wakes in its 1000-event run and none in its 500-event run, by the chance of where a cycle began. SetGCPercent(-1) also waits for a cycle that is already marking.
 func TestContinuationHandOffWakesPerEvent(t *testing.T) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	defer debug.SetGCPercent(debug.SetGCPercent(-1))
 	const n = 500
 	small, smallUnblocks, smallWhy := continuationHandOffWakes(t, n)
 	large, largeUnblocks, largeWhy := continuationHandOffWakes(t, 2*n)

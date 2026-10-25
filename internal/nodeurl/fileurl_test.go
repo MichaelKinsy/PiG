@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"golang.org/x/net/idna"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // fileURLCases covers hosts (IDNA, case, percent-encoding, IPv4 shorthand,
@@ -77,10 +79,7 @@ func TestFileURLToPathMatchesNode(t *testing.T) {
 
 // DomainToUnicode matches Node's url.domainToUnicode on hosts with "xn--" labels: valid Punycode, Punycode that decodes to ASCII or to a label that is unstable or invalid under UTS #46, and random payloads. Node 24.22.1 and 26.12.1 (ada 4) keep any label they cannot decode and validate; Node 22.19 and 24.19 (ada 2 and 3) refuse the host instead, so this runs on the qualified Node (.node-version).
 func TestDomainToUnicodeMatchesNode(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node is not installed")
-	}
+	node := testenv.RequireQualifiedNode(t)
 	hosts := []string{"xn--mnich-kva.example", "xn--ls8h", "xn--a", "xn--", "a.xn--", "xn--a-ecp.ru", "xn--Mnchen-3ya.de", "xn--bcher-kva.de", "xn--zzzzzz", "xn--a-", "xn--abc", "xn--mgbh0fb", "xn--mnchen-3ya.xn--a.b", "XN--LS8H", "a.b", "127.0.0.1"}
 	rng := rand.New(rand.NewSource(20261021))
 	const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789-"

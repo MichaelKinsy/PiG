@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"os/exec"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 type nodeURLAnswer struct {
@@ -56,7 +58,7 @@ func compareParseWithNode(t *testing.T, inputs []string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/url.mjs")
+	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), "testdata/url.mjs")
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

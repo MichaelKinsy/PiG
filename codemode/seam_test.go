@@ -272,10 +272,20 @@ func (alreadyStarted) start() {}
 // execution.ts posts the queued replies synchronously when the channel arrives (VmChannel.post never waits for the VM),
 // so a VM that computes forever after a call still meets its deadline. The launcher here is the in-process worker
 // returned late, after the VM's first call was answered, as a host goroutine descheduled while the VM starts would.
+//
+// The deadline is armed when the launcher returns the channel (execution.launch), which is the moment under test. The
+// worker's own ready event would arm it 100 ms after the VM starts, and on a loaded host the VM's first call is not
+// answered by then: the execution times out with no reply queued, the launcher below then waits for a queued reply that
+// can no longer come, and the runaway VM it started has no channel to be stopped through, so Execute never returns
+// (the nightly -race libs job sat in this test for an hour). So the worker's ready event arms nothing here.
 func TestAQueuedReplyDoesNotKeepARunawayScriptFromTimingOut(t *testing.T) {
 	sandbox := sandboxWith(t, nil, echoTool("echo"))
-	var channel vmChannel
+	// abandoned ends the launcher's wait when the test is over, before the sandbox's cleanup waits for the execution.
+	abandoned := make(chan struct{})
+	t.Cleanup(func() { close(abandoned) })
+	launched := make(chan vmChannel, 1)
 	sandbox.launcher = func(ctx context.Context, data VmStartData, events vmEvents) (vmChannel, error) {
+		events.ready = func() {}
 		worker, err := sandbox.launchWorker(ctx, data, events)
 		if err != nil {
 			return nil, err
@@ -283,9 +293,16 @@ func TestAQueuedReplyDoesNotKeepARunawayScriptFromTimingOut(t *testing.T) {
 		// The VM runs before the host holds the channel: its start is brought forward and the host's start is a no-op.
 		worker.start()
 		for queuedReplies(sandbox) < 1 {
-			runtime.Gosched()
+			select {
+			case <-abandoned:
+				worker.stop()
+				return nil, errScriptSettled
+			default:
+				runtime.Gosched()
+			}
 		}
-		channel = alreadyStarted{worker}
+		channel := alreadyStarted{worker}
+		launched <- channel
 		return channel, nil
 	}
 	results := make(chan Result, 1)
@@ -293,6 +310,14 @@ func TestAQueuedReplyDoesNotKeepARunawayScriptFromTimingOut(t *testing.T) {
 		result, _ := sandbox.Execute(context.Background(), "tools.echo(1); while (true) {}", ExecuteOptions{TimeoutMs: 100})
 		results <- result
 	}()
+	// The wait for the channel covers loading the module and starting the VM, which take as long as the host needs; the
+	// bound below starts when the channel has arrived, the only wait the execution's own deadline governs.
+	var channel vmChannel
+	select {
+	case channel = <-launched:
+	case result := <-results:
+		t.Fatalf("Execute returned before the launcher did: %+v (%+v)", result, result.Error)
+	}
 	select {
 	case result := <-results:
 		if result.OK || result.Error.Kind != ErrorTimeout {
