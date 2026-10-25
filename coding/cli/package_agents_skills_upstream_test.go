@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/nodehome"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -189,11 +191,22 @@ func TestPackageManagerHomeDirFallsBackToSystemHome(t *testing.T) {
 			}
 			out, err := exec.CommandContext(t.Context(), strings.TrimSpace(string(binary)), "-p", `process.env.HOME || require('node:os').homedir()`).Output()
 			if err != nil {
-				t.Fatal(err)
+				// With no HOME and no entry for the user in the system's user database (a container run as a uid that its passwd file does not list), Node's os.homedir() throws SystemError
+				// uv_os_homedir ENOENT, and Pi's getHomeDir with it; PiG's throws the same error. Any other failure of the oracle is the test's.
+				var exit *exec.ExitError
+				if !errors.As(err, &exit) || !strings.Contains(string(exit.Stderr), noHomeDirectoryMessage) {
+					t.Fatal(err)
+				}
+				got, gotErr := packageManagerHomeDir()
+				var thrown *nodehome.Error
+				if !errors.As(gotErr, &thrown) || gotErr.Error() != noHomeDirectoryMessage {
+					t.Fatalf("Node getHomeDir() throws %q; system-home fallback=%q, %v", noHomeDirectoryMessage, got, gotErr)
+				}
+				return
 			}
 			want := strings.TrimRight(string(out), "\r\n")
-			if got := packageManagerHomeDir(); got != want {
-				t.Fatalf("system-home fallback=%q; Node getHomeDir()=%q", got, want)
+			if got, err := packageManagerHomeDir(); err != nil || got != want {
+				t.Fatalf("system-home fallback=%q, %v; Node getHomeDir()=%q", got, err, want)
 			}
 		})
 	}

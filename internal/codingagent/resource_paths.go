@@ -7,9 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/user"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -18,26 +16,29 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/nodehome"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
-// PackageManagerHomeDir prefers nonempty HOME on every platform. Otherwise it uses the platform home variable, including an explicit empty value, or the OS user database when that variable is absent.
-func PackageManagerHomeDir() string {
+// PackageManagerHomeDir is Pi's getHomeDir (package-manager.ts:233-235), `process.env.HOME || homedir()`: a nonempty HOME on every platform, else Node's os.homedir() (the platform home variable, an explicit empty value included, else the user database's home directory). Where Node's call throws, because no
+// home variable is set and the user database has no entry for the process's user, so does this, with *nodehome.Error: Pi's getHomeDir throws there, and a project that supplies a "user" skills directory through a path relative to the working directory must not be the answer.
+// pig divergence (D200): Pi never gets here without a home directory, because it crashes at import in every mode (tools-manager.ts:11 getBinDir -> getAgentDir -> normalizePath -> homedir(), utils/paths.ts:89); PiG, whose PIG_HOME needs no home directory, runs `--version`, `list` and the other commands that load no resources, and fails with Pi's error here, where Pi's home lookup would run.
+func PackageManagerHomeDir() (string, error) {
 	if home := os.Getenv("HOME"); home != "" {
-		return home
+		return home, nil
 	}
-	key := "HOME"
-	if runtime.GOOS == "windows" {
-		key = "USERPROFILE"
+	return nodehome.Dir()
+}
+
+// userAgentsSkillsDir is the user's ~/.agents/skills (package-manager.ts:2464), and false when getHomeDir throws. ValidateAutoDiscoveredOverrides reports that throw, where Pi's resolve() rejects; a collector that is asked
+// anyway lists no user .agents skills, and has no directory to tell the project's ancestor .agents/skills from.
+func userAgentsSkillsDir() (string, bool) {
+	home, err := PackageManagerHomeDir()
+	if err != nil {
+		return "", false
 	}
-	if home, present := os.LookupEnv(key); present {
-		return home
-	}
-	if current, err := user.Current(); err == nil {
-		return current.HomeDir
-	}
-	return ""
+	return filepath.Join(home, ".agents", "skills"), true
 }
 
 // TopLevelResourcePaths lists a scope's settings entries, then its auto-discovered resources, as package-manager.ts resourcePrecedenceRank orders them.
@@ -146,7 +147,13 @@ func ValidateAutoDiscoveredOverrides(cwd, agentDir string, sm *SettingsManager, 
 	add := func(steps []step, dir string, paths func() []string, overrides []string, baseDir string, kind packagecontent.Kind) []step {
 		return append(steps, step{dir, paths, overrides, baseDir, kind})
 	}
-	userAgentsSkills := filepath.Join(PackageManagerHomeDir(), ".agents", "skills")
+	// pig divergence (D200): the home lookup fails here, at Pi's resolve(), and not at load as in Pi; see PackageManagerHomeDir.
+	// package-manager.ts:2464 computes the user's ~/.agents/skills first, before any directory is checked, and getHomeDir throws there when no home directory can be found.
+	home, err := PackageManagerHomeDir()
+	if err != nil {
+		return err
+	}
+	userAgentsSkills := filepath.Join(home, ".agents", "skills")
 	var steps []step
 	if projectTrusted {
 		root, project := ProjectConfigDir(cwd), sm.GetProjectSettings()
@@ -242,9 +249,9 @@ func NewAgentsSkillScan(cwd string) *AgentsSkillScan { return &AgentsSkillScan{c
 // Dirs returns the scanned directories, nearest first.
 func (s *AgentsSkillScan) Dirs() []AgentsSkillDir {
 	s.once.Do(func() {
-		userAgentsSkills := filepath.Join(PackageManagerHomeDir(), ".agents", "skills")
+		userAgentsSkills, haveUser := userAgentsSkillsDir()
 		for _, dir := range DiscoverAncestorAgentsSkillDirs(s.cwd) {
-			if !samePath(dir, userAgentsSkills) {
+			if !haveUser || !samePath(dir, userAgentsSkills) {
 				s.dirs = append(s.dirs, AgentsSkillDir{Dir: dir, Skills: packagecontent.DiscoverAgentSkillDirs(dir)})
 			}
 		}
@@ -276,8 +283,9 @@ func AmbientSkillResourcesIn(scan *AgentsSkillScan, cwd, agentDir string, sm *Se
 		inputs = append(inputs, resolvedResources(packagecontent.ResolveConfiguredStates(userSettings, agentDir, packagecontent.Skills), PathMetadata{Source: "local", Scope: "user", Origin: "top-level"})...)
 		userAuto := packagecontent.DiscoverAutomatic(filepath.Join(agentDir, "skills"), packagecontent.Skills)
 		inputs = append(inputs, resolvedResources(automaticStates(userAuto, userSettings, agentDir, packagecontent.Skills), PathMetadata{Source: "auto", Scope: "user", Origin: "top-level", BaseDir: agentDir})...)
-		userAgentsSkills := filepath.Join(PackageManagerHomeDir(), ".agents", "skills")
-		inputs = append(inputs, resolvedResources(automaticStates(packagecontent.DiscoverAgentSkillDirs(userAgentsSkills), userSettings, filepath.Dir(userAgentsSkills), packagecontent.Skills), PathMetadata{Source: "auto", Scope: "user", Origin: "top-level", BaseDir: filepath.Dir(userAgentsSkills)})...)
+		if userAgentsSkills, ok := userAgentsSkillsDir(); ok {
+			inputs = append(inputs, resolvedResources(automaticStates(packagecontent.DiscoverAgentSkillDirs(userAgentsSkills), userSettings, filepath.Dir(userAgentsSkills), packagecontent.Skills), PathMetadata{Source: "auto", Scope: "user", Origin: "top-level", BaseDir: filepath.Dir(userAgentsSkills)})...)
+		}
 	}
 	return inputs
 }

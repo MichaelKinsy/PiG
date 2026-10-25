@@ -89021,9 +89021,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() string"
+        "type": "func() (string, error)"
       },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageModelRuntime",
@@ -237576,9 +237576,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func() string"
+        "type": "func() (string, error)"
       },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#PackageManagerOwner",
@@ -281414,6 +281414,17 @@
         "type": "func() map[string]struct{}"
       },
       "shapeHash": "sha256:994c479e95f100279eccb653c095f87d5caf593dece87d69d3492ac09348d743"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#userAgentsSkillsDir",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "userAgentsSkillsDir",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (string, bool)"
+      },
+      "shapeHash": "sha256:a449d26f3b9ebd2f5463387b05ed9938b3c6ce4694d9c56bdf83c124dc36e320"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#userBashResultOverride",

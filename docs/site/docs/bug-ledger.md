@@ -755,6 +755,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D153](#bf-d153) | The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D155](#bf-d155) | Selection lists page with PageUp and PageDown (Pi #7629) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D156](#bf-d156) | MCP server `url` expands environment references (Pi #10654) | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D200](#bf-d200) | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -849,6 +850,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-beeb36a](#bf-beeb36a) | Running with no home directory now fails the way Pi's package manager does, instead of reading the project's… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1055c4](#bf-c1055c4) | Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as… | PiG's own defect | Windows, macOS | 0.5.0 |
 | [BF-c10ae73](#bf-c10ae73) | In RPC mode, runs that an extension command's handler sends with `sendMessage` or `sendUserMessage` start in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c122088](#bf-c122088) | A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored… | PiG's own defect | All platforms | 0.5.0 |
@@ -11383,6 +11385,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b06ad928d7` (2026-10-09), `0c8e8b07be` (2026-10-10), `922bd78903` (2026-10-10)
 - **Tests:** `coding/extension/mcp_url_expansion_test.go::TestExpandMcpURL`, `coding/extension/mcp_url_expansion_test.go::TestValidateMcpServerConfigChecksTheExpandedURL`, `coding/mcpext/connection_test.go::TestMCPConnectionsExpandTheServerURLReferences`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuShowsTheExpandedURL`
 
+### BF-D200
+
+**With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D200)
+- **Symptom:** none claimed; Pi's behaviour is a crash at load rather than a reported error, and is kept for the paths that need a home directory.
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi stops resolving the home directory at import (so `--version` and `list` run there without one), or an owner decision reverses this one; then PiG's startup fails at the same point as Pi's, the markers, the allowance test and this record go.
+- **Fix commits:** `99f0027ef1` (2026-10-24)
+- **Tests:** `coding/cli/no_home_directory_test.go::TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands`, `coding/cli/no_home_directory_test.go::TestStartupFailsWhereNoHomeDirectoryExists`, `coding/cli/no_home_directory_test.go::TestStartupFollowsNodeWhenThereIsNoHomeDirectory`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -12691,6 +12708,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bdb7ad8292` (2026-10-09), `c715193fab` (2026-10-09)
 - **Tests:** `ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB`, `ai/sse_long_line_test.go::TestSSEDecoderBoundsALine`, `ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength`
 - **Release note:** A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder. A line is now bounded where Pi's runtime bounds it, at Node's maximum string length (512 MiB), so a server that never ends a line cannot exhaust memory (D134).
+
+### BF-beeb36a
+
+**Running with no home directory now fails the way Pi's package manager does, instead of reading the project's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** With no `HOME` and no entry for your user in the system's user database (a container run as a user its passwd file does not list), `pig` used to take the home directory to be empty, so the `.agents/skills` directory of the current project was listed as the user's `~/.agents/skills`, with user scope and without the project-trust prompt.
+- **Root cause:** PiG's PackageManagerHomeDir ported `process.env.HOME || homedir()` (package-manager.ts:233-235, the pin's getHomeDir) with a failing branch that returned "" where Node's os.homedir() throws `SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)`. Pi's callers are resolvePath (:2213, :2217) and addAutoDiscoveredResources (:2464, the first statement that matters in resolve()), so Pi's resolve() rejects there; PiG's collectors ignore errors and rely on ValidateAutoDiscoveredOverrides, which runs first in startup, reload and the config command (validateConfiguredResourceEntries), to report what Pi's resolve() rejects with. That…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `beeb36afc7` (2026-10-24)
+- **Tests:** `coding/cli/no_home_directory_test.go::TestResourceLoadingFailsWhereNoHomeDirectoryExists`, `coding/cli/no_home_directory_test.go::TestStartupFailsWhereNoHomeDirectoryExists`, `coding/cli/no_home_directory_test.go::TestStartupFollowsNodeWhenThereIsNoHomeDirectory`, `coding/cli/package_agents_skills_upstream_test.go::TestPackageManagerHomeDirFallsBackToSystemHome`, `internal/codingagent/home_dir_test.go::TestNoHomeDirectoryLeavesTheProjectsAgentsSkillsTheProjectsOnly`, `internal/codingagent/home_dir_test.go::TestPackageManagerHomeDirThrowsWhereNodesHomedirDoes`, `internal/codingagent/home_dir_test.go::TestValidateAutoDiscoveredOverridesRejectsWhereNoHomeDirectoryExists`, `internal/nodehome/nodehome_test.go::TestDirIsNodesOSHomedir` and 1 more in docs/bug-ledger.json
+- **Release note:** Running with no home directory now fails the way Pi's package manager does, instead of reading the project's `.agents/skills` as your own. With no `HOME` and no entry for your user in the system's user database (a container run as a user its passwd file does not list), `pig` used to take the home directory to be empty, so the `.agents/skills` directory of the current project was listed as the user's `~/.agents/skills`, with user scope and without the project-trust prompt. Startup in print and RPC mode, a reload and `pig config` now stop with `A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)` and exit status 1, which is what Node's `os.homedir()`, and so Pi, reports there. Pi stops even earlier, at load, whatever the mode; PiG, which can run without a home directory by setting `PIG_HOME`, stops when it loads resources.
 
 ### BF-c1055c4
 
@@ -17023,6 +17054,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D187 | A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single… | deliberate difference |
 | D188 | Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place | deliberate difference |
 | D190 | The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a… | [BF-648ff3e-13](#bf-648ff3e-13) |
+| D200 | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | [BF-D200](#bf-d200) |
 
 ## Fix-titled commits that are not bugs in a release
 

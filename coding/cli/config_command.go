@@ -346,7 +346,11 @@ func collectConfigResourceItemsIn(scan *codingagent.AgentsSkillScan, cwd, agentD
 	appendTopLevel(global.Prompts, "user", "local", userBase, "prompts", nil)
 	appendTopLevel(global.Themes, "user", "local", userBase, "themes", nil)
 
-	userAgentsSkills := filepath.Join(packageManagerHomeDir(), ".agents", "skills")
+	home, err := packageManagerHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	userAgentsSkills := filepath.Join(home, ".agents", "skills")
 	if projectResourcesEnabled {
 		appendTopLevel(project.Extensions, "project", "auto", projectBase, "extensions", collectAutoDiscoveredResourcePaths(filepath.Join(projectBase, "extensions"), "extensions"))
 		appendTopLevel(project.Skills, "project", "auto", projectBase, "skills", collectAutoDiscoveredResourcePaths(filepath.Join(projectBase, "skills"), "skills"))

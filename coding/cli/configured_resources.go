@@ -84,8 +84,8 @@ func collectThemePaths(cwd, agentDir string, sm *codingagent.SettingsManager, fl
 	return dedupStrings(paths)
 }
 
-// packageManagerHomeDir is Pi's getHomeDir (package-manager.ts).
-func packageManagerHomeDir() string { return codingagent.PackageManagerHomeDir() }
+// packageManagerHomeDir is Pi's getHomeDir (package-manager.ts), which throws where no home directory can be found.
+func packageManagerHomeDir() (string, error) { return codingagent.PackageManagerHomeDir() }
 
 // collectSkillInputs appends --skill paths after resolved project, user, and Package skills, as DefaultResourceLoader.reload does. --no-skills keeps the explicit paths alone.
 // Ports packages/coding-agent/src/core/resource-loader.ts

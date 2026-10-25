@@ -21971,6 +21971,31 @@
       ]
     },
     {
+      "id": "BF-D200",
+      "title": "With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and…",
+      "symptom": "none claimed; Pi's behaviour is a crash at load rather than a reported error, and is kept for the paths that need a home directory.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D200",
+      "removeWhen": "Pi stops resolving the home directory at import (so `--version` and `list` run there without one), or an owner decision reverses this one; then PiG's startup fails at the same point as Pi's, the markers, the allowance test and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "99f0027ef1",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "coding/cli/no_home_directory_test.go::TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands",
+        "coding/cli/no_home_directory_test.go::TestStartupFailsWhereNoHomeDirectoryExists",
+        "coding/cli/no_home_directory_test.go::TestStartupFollowsNodeWhenThereIsNoHomeDirectory"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -24996,6 +25021,36 @@
         "ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB",
         "ai/sse_long_line_test.go::TestSSEDecoderBoundsALine",
         "ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength"
+      ]
+    },
+    {
+      "id": "BF-beeb36a",
+      "title": "Running with no home directory now fails the way Pi's package manager does, instead of reading the project's…",
+      "symptom": "With no `HOME` and no entry for your user in the system's user database (a container run as a user its passwd file does not list), `pig` used to take the home directory to be empty, so the `.agents/skills` directory of the current project was listed as the user's `~/.agents/skills`, with user scope and without the project-trust prompt.",
+      "rootCause": "PiG's PackageManagerHomeDir ported `process.env.HOME || homedir()` (package-manager.ts:233-235, the pin's getHomeDir) with a failing branch that returned \"\" where Node's os.homedir() throws `SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)`. Pi's callers are resolvePath (:2213, :2217) and addAutoDiscoveredResources (:2464, the first statement that matters in resolve()), so Pi's resolve() rejects there; PiG's collectors ignore errors and rely on ValidateAutoDiscoveredOverrides, which runs first in startup, reload and the config command (validateConfiguredResourceEntries), to report what Pi's resolve() rejects with. That…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Running with no home directory now fails the way Pi's package manager does, instead of reading the project's `.agents/skills` as your own. With no `HOME` and no entry for your user in the system's user database (a container run as a user its passwd file does not list), `pig` used to take the home directory to be empty, so the `.agents/skills` directory of the current project was listed as the user's `~/.agents/skills`, with user scope and without the project-trust prompt. Startup in print and RPC mode, a reload and `pig config` now stop with `A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)` and exit status 1, which is what Node's `os.homedir()`, and so Pi, reports there. Pi stops even earlier, at load, whatever the mode; PiG, which can run without a home directory by setting `PIG_HOME`, stops when it loads resources.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "beeb36afc7",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "coding/cli/no_home_directory_test.go::TestResourceLoadingFailsWhereNoHomeDirectoryExists",
+        "coding/cli/no_home_directory_test.go::TestStartupFailsWhereNoHomeDirectoryExists",
+        "coding/cli/no_home_directory_test.go::TestStartupFollowsNodeWhenThereIsNoHomeDirectory",
+        "coding/cli/package_agents_skills_upstream_test.go::TestPackageManagerHomeDirFallsBackToSystemHome",
+        "internal/codingagent/home_dir_test.go::TestNoHomeDirectoryLeavesTheProjectsAgentsSkillsTheProjectsOnly",
+        "internal/codingagent/home_dir_test.go::TestPackageManagerHomeDirThrowsWhereNodesHomedirDoes",
+        "internal/codingagent/home_dir_test.go::TestValidateAutoDiscoveredOverridesRejectsWhereNoHomeDirectoryExists",
+        "internal/nodehome/nodehome_test.go::TestDirIsNodesOSHomedir",
+        "internal/nodehome/nodehome_test.go::TestErrorIsNodesMessage"
       ]
     },
     {
@@ -36061,6 +36116,11 @@
       "id": "D190",
       "title": "The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a…",
       "entry": "BF-648ff3e-13"
+    },
+    {
+      "id": "D200",
+      "title": "With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and…",
+      "entry": "BF-D200"
     }
   ],
   "exemptCommits": {
