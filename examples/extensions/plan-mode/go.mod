@@ -3,7 +3,7 @@ module example.com/plan-mode
 go 1.26
 
 require (
-	github.com/MichaelKinsy/PiG/extensions/sdk v0.3.1-0.20261022211800-1963ae7765f7
+	github.com/MichaelKinsy/PiG/extensions/sdk v0.5.3
 	golang.org/x/text v0.41.0
 )
 

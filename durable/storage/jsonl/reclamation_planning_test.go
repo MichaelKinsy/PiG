@@ -86,7 +86,7 @@ func TestJsonlCommitNamesAFailedSidecarPathJoin(t *testing.T) {
 	createRoot(t, storage)
 	id := mint[durable.DocumentId](t, storage)
 	fileSystem.armed = true
-	_, err := storage.Commit(testContext, []durable.StorageWrite{durable.DocumentCreateWrite{Record: sessionDocument(id, "first"), Content: base(chorddelta.JsonObjectOf("count", 1))}})
+	_, err := storage.Commit(testContext, []durable.StorageWrite{durable.DocumentCreateWrite{Record: sessionDocument(id, "first"), Content: base(chorddelta.JsonObjectOf("count", 1))}}, func(durable.Seq) {})
 	if err == nil || err.Error() != "JSONL path join failed: injected join failure" {
 		t.Fatalf("commit error = %v, want JSONL path join failed: injected join failure", err)
 	}

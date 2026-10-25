@@ -12,7 +12,7 @@ import (
 )
 
 // Runs Pi's packages/durable/src/errors.ts (Node, types stripped) over the same constructor calls and compares name, message,
-// Error-ness and cause with PiG's StorageRequestError, SessionFailed, ConversationBusy and ReadAfterWrite.
+// Error-ness and cause with PiG's StorageRequestError, SessionFailed, ConversationBusy, ReadAfterWrite and ReadOnlySession.
 func TestStorageRequestErrorAndSessionFailedMatchPi(t *testing.T) {
 	ops := []map[string]any{
 		{"class": "StorageRequestError", "message": "Invalid storage cursor"},
@@ -23,6 +23,8 @@ func TestStorageRequestErrorAndSessionFailedMatchPi(t *testing.T) {
 		{"class": "SessionFailed", "cause": "undefined"},
 		{"class": "ConversationBusy", "id": 7},
 		{"class": "ReadAfterWrite", "method": "scan"},
+		{"class": "ReadOnlySession", "what": "a commit with writes"},
+		{"class": "ReadOnlySession", "what": "running tasks"},
 	}
 	payload, err := json.Marshal(ops)
 	if err != nil {
@@ -58,10 +60,13 @@ func TestStorageRequestErrorAndSessionFailedMatchPi(t *testing.T) {
 		NewSessionFailed(nil),
 		NewConversationBusy(7),
 		NewReadAfterWrite("scan"),
+		NewReadOnlySession("a commit with writes"),
+		NewReadOnlySession("running tasks"),
 	}
 	names := []interface{ Name() string }{
 		NewStorageRequestError(""), NewStorageRequestError(""), NewStorageRequestError(""),
 		NewSessionFailed(nil), NewSessionFailed(nil), NewSessionFailed(nil), NewConversationBusy(7), NewReadAfterWrite("scan"),
+		NewReadOnlySession(""), NewReadOnlySession(""),
 	}
 	for i, err := range got {
 		want := pi[i]

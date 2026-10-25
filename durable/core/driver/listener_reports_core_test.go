@@ -8,16 +8,17 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/chord"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/core/driver"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
 
-// Pi reports a failing state or watch listener through the Session: view.ts and task-graph.ts attach their states with
-// `{ onError: (error) => this.#session.report(error) }`, session.ts documentState does the same, and every CommittedWatch is
-// built with the Session's report (session.ts watchDoc, view.ts watch, task-graph.ts watch), which also ends the watch. The
-// Harness over the core reports them the same way.
+// Pi reports a failing watch listener through the Session: every CommittedWatch is built with the Session's report
+// (session.ts watchDoc, view.ts watch, task-graph.ts watch), which also ends the watch. The Harness over the core reports
+// them the same way.
+
+var stateDoc = defineDoc("state.state", 1, func() obj { return delta.JsonObjectOf("value", 0, "retained", delta.JsonObjectOf("label", "stable")) })
 
 func openReportingCoreHarness(t *testing.T) (harness.Harness, harness.Conversation, <-chan error) {
 	t.Helper()
@@ -55,34 +56,6 @@ func appendCoreNote(t *testing.T, root harness.Conversation) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func TestCoreReportsAFailingStateListener(t *testing.T) {
-	t.Run("of a conversation's view state", func(t *testing.T) {
-		_, root, reports := openReportingCoreHarness(t)
-		state, err := root.ViewState(t.Context())
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer state.Dispose()
-		failure := errors.New("view state listener failed")
-		state.Subscribe(func(harness.ConversationView, context.Context, chord.ReplicatedStateDelivery) { panic(failure) })
-		appendCoreNote(t, root)
-		expectReport(t, reports, failure)
-	})
-
-	t.Run("of the task graph's state", func(t *testing.T) {
-		h, root, reports := openReportingCoreHarness(t)
-		state, err := h.TaskGraph(t.Context())
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer state.Dispose()
-		failure := errors.New("graph state listener failed")
-		state.Subscribe(func(harness.TaskGraph, context.Context, chord.ReplicatedStateDelivery) { panic(failure) })
-		appendCoreNote(t, root)
-		expectReport(t, reports, failure)
-	})
 }
 
 func TestCoreReportsAFailingWatchListenerAndEndsTheWatch(t *testing.T) {
@@ -142,20 +115,6 @@ func commitCoreDoc(t *testing.T, h harness.Harness, change func(tx durable.Tx) e
 	}
 }
 
-func TestCoreReportsAFailingDocumentStateListener(t *testing.T) {
-	h, _, reports := openReportingCoreHarness(t)
-	commitCoreDoc(t, h, touchStateDoc)
-	state, err := h.DocumentStateErased(t.Context(), stateDoc)
-	if err != nil || state == nil {
-		t.Fatalf("state: %v %v", state, err)
-	}
-	defer state.Dispose()
-	failure := errors.New("document state listener failed")
-	state.Subscribe(func(durable.JsonObject, context.Context, chord.ReplicatedStateDelivery) { panic(failure) })
-	commitCoreDoc(t, h, increment(stateDoc))
-	expectReport(t, reports, failure)
-}
-
 func expectWatchListenerError(t *testing.T, closed <-chan struct{}, end func() durable.WatchEnd, failure error) {
 	t.Helper()
 	select {
@@ -166,19 +125,4 @@ func expectWatchListenerError(t *testing.T, closed <-chan struct{}, end func() d
 	if got := end(); got.Reason != durable.WatchListenerError || !errors.Is(got.Error, failure) {
 		t.Fatalf("the watch ended %+v, want listener_error with the listener's error", got)
 	}
-}
-
-func TestCoreReportsAFailingTypedDocumentStateListener(t *testing.T) {
-	// durable.DocumentStateOf over the core: the typed layer's listener failure goes to the Session's report too.
-	h, _, reports := openReportingCoreHarness(t)
-	commitCoreDoc(t, h, touchStateDoc)
-	state, err := durable.DocumentStateOf(t.Context(), h, stateDoc)
-	if err != nil || state == nil {
-		t.Fatalf("state: %v %v", state, err)
-	}
-	defer state.Dispose()
-	failure := errors.New("typed document state listener failed")
-	state.Subscribe(func(*durable.JsonObject, context.Context, chord.ReplicatedStateDelivery) { panic(failure) })
-	commitCoreDoc(t, h, increment(stateDoc))
-	expectReport(t, reports, failure)
 }

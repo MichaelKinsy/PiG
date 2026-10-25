@@ -22,7 +22,7 @@ type commitCounter struct {
 	endedIn map[durable.TaskId]int
 }
 
-func (store *commitCounter) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (store *commitCounter) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	store.mu.Lock()
 	store.commits++
 	for _, write := range writes {
@@ -31,7 +31,7 @@ func (store *commitCounter) Commit(ctx context.Context, writes []durable.Storage
 		}
 	}
 	store.mu.Unlock()
-	return store.Storage.Commit(ctx, writes)
+	return store.Storage.Commit(ctx, writes, adopt)
 }
 
 func (store *commitCounter) ended(id durable.TaskId) int {

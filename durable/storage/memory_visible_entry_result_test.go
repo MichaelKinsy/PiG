@@ -28,11 +28,11 @@ func TestMemoryStorageVisibleEntryReturnsItsCommitSeqAndACopy(t *testing.T) {
 	write := func(id durable.EntryId) durable.StorageWrite {
 		return durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: root, Kind: "plain", Data: map[string]any{"n": int64(id)}}}
 	}
-	firstSeq, err := store.Commit(ctx, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: root}}, write(first)})
+	firstSeq, err := store.Commit(ctx, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: root}}, write(first)}, func(durable.Seq) {})
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondSeq, err := store.Commit(ctx, []durable.StorageWrite{write(second)})
+	secondSeq, err := store.Commit(ctx, []durable.StorageWrite{write(second)}, func(durable.Seq) {})
 	if err != nil {
 		t.Fatal(err)
 	}

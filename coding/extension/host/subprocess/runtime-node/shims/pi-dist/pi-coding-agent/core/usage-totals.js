@@ -34,6 +34,8 @@ export function combineUsage(first, second) {
             cacheRead: first.cost.cacheRead + second.cost.cacheRead,
             cacheWrite: first.cost.cacheWrite + second.cost.cacheWrite,
             total: first.cost.total + second.cost.total,
+            // A sum is provider-reported only when every part is.
+            totalFromProvider: first.cost.totalFromProvider === true && second.cost.totalFromProvider === true,
         },
     };
 }

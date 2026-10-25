@@ -18,7 +18,7 @@ func TestMemoryStorageLineageThroughAMissingParentConversationFails(t *testing.T
 		{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 2, Parent: &durable.ConversationParent{ConversationId: 9, At: 5}}}},
 		{durable.EntryWrite{Value: durable.EntryRecord{Id: 3, ConversationId: 2, Kind: "note"}}, durable.EntryWrite{Value: durable.EntryRecord{Id: 5, ConversationId: 9, Kind: "note", Head: &head}}},
 	} {
-		if _, err := memory.Commit(ctx, writes); err != nil {
+		if _, err := memory.Commit(ctx, writes, func(durable.Seq) {}); err != nil {
 			t.Fatal(err)
 		}
 	}

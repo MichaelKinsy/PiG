@@ -244,7 +244,7 @@ func taskOf(t *testing.T, h harness.Harness, id durable.TaskId) *durable.TaskRec
 	return record
 }
 
-func graphNode(graph durable.AttachedReplicatedState[harness.TaskGraph], id durable.TaskId) (harness.TaskGraphNode, bool) {
+func graphNode(graph harness.TaskGraphWatch, id durable.TaskId) (harness.TaskGraphNode, bool) {
 	node, ok := graph.Value().Tasks[strconv.FormatInt(int64(id), 10)]
 	return node, ok
 }
@@ -288,7 +288,7 @@ func TestBlockedTasks(t *testing.T) {
 			if inspected.Kind != harness.TaskInspectionBlocked || inspected.Reason != "restart_limit" {
 				t.Fatalf("inspection %+v, want blocked: restart_limit", inspected)
 			}
-			graph, err := h.TaskGraph(t.Context())
+			graph, err := startedTaskGraph(t.Context(), h)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -315,7 +315,7 @@ func TestBlockedTasks(t *testing.T) {
 			if _, started := state.get(); started != 4 {
 				t.Fatalf("starts %d, want 4", started)
 			}
-			graph.Dispose()
+			_, _ = graph.Stop()
 		})
 	})
 
@@ -410,7 +410,7 @@ func TestBlockedTasks(t *testing.T) {
 			pollUntil(t, "the phase started", func() bool { _, started := state.get(); return started == 1 })
 			rig.kill() // a crash: a close would not count
 			current = rig.open()
-			graph, err := current.h.TaskGraph(t.Context())
+			graph, err := startedTaskGraph(t.Context(), current.h)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -428,7 +428,7 @@ func TestBlockedTasks(t *testing.T) {
 			if _, started := state.get(); started != 2 {
 				t.Fatalf("starts %d, want 2", started)
 			}
-			graph.Dispose()
+			_, _ = graph.Stop()
 		})
 	})
 
@@ -601,7 +601,7 @@ func TestBlockedTasks(t *testing.T) {
 			installTasks(t, second, "v2", v2.Erased())
 			rig.registry = second
 			current = rig.open()
-			graph, err := current.h.TaskGraph(t.Context())
+			graph, err := startedTaskGraph(t.Context(), current.h)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -610,7 +610,7 @@ func TestBlockedTasks(t *testing.T) {
 			pollUntil(t, "the wake idle", func() bool { return !current.h.Wake().Active })
 			expectWake(t, current.h.Wake(), false)
 			pollUntil(t, "the host told it is idle", func() bool { last, ok := current.wakes.last(); return ok && !last.Active })
-			graph.Dispose()
+			_, _ = graph.Stop()
 		})
 	})
 
@@ -636,7 +636,7 @@ func TestBlockedTasks(t *testing.T) {
 			// The next open marks it `restart`; without its definition, it waits for one to clean up.
 			rig.registry = harness.CreateRegistry()
 			current = rig.open()
-			graph, err := current.h.TaskGraph(t.Context())
+			graph, err := startedTaskGraph(t.Context(), current.h)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -646,7 +646,7 @@ func TestBlockedTasks(t *testing.T) {
 				return record != nil && record.AbortReason == durable.AbortedByRestart
 			})
 			pollUntil(t, "the graph shows the missing definition", func() bool { node, ok := graphNode(graph, id); return ok && node.Blocked == "missing_task" })
-			graph.Dispose()
+			_, _ = graph.Stop()
 		})
 	})
 
@@ -666,7 +666,7 @@ func TestBlockedTasks(t *testing.T) {
 			registry := harness.CreateRegistry()
 			rig := newCrashRig(t, core, registry, harness.HarnessSettings{})
 			current := rig.open()
-			graph, err := current.h.TaskGraph(t.Context())
+			graph, err := startedTaskGraph(t.Context(), current.h)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -689,7 +689,7 @@ func TestBlockedTasks(t *testing.T) {
 			if outcome := waitFinished2(t, current.h, id).State.Outcome; outcome == nil || outcome.Status != durable.OutcomeCompleted {
 				t.Fatalf("outcome %+v, want completed", outcome)
 			}
-			graph.Dispose()
+			_, _ = graph.Stop()
 		})
 	})
 }

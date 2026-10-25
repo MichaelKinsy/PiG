@@ -162,8 +162,8 @@ func TestBeforeRequestHookChangesDoNotReachTheStoredContext(t *testing.T) {
 	closeHarness(t, harness)
 }
 
-// TestConversationViewEntriesAreDetachedFromTheStoredContext Conversation.viewState and Conversation.watch serve the structural view (packages/durable/src/harness/types.ts:551-554).
-// mutation-checked: Conversation.ViewState and Conversation.Watch returning nil fail it.
+// TestConversationViewEntriesAreDetachedFromTheStoredContext Conversation.watch serves the structural view (packages/durable/src/harness/types.ts:551-554).
+// mutation-checked: Conversation.Watch returning nil fails it.
 func TestConversationViewEntriesAreDetachedFromTheStoredContext(t *testing.T) {
 	harness, _ := openHarness(t, cacheTestStorage(t), nil)
 	root := must(harness.Root(testContext, nil))
@@ -185,11 +185,6 @@ func TestConversationViewEntriesAreDetachedFromTheStoredContext(t *testing.T) {
 	if _, err := watch.Stop(); err != nil {
 		t.Fatal(err)
 	}
-	state := must(root.ViewState(testContext))
-	for _, entry := range state.Value().Entries {
-		damageMessages(entry.Model)
-	}
-	state.Dispose()
 	if again := must(root.Context(testContext, nil)); !reflect.DeepEqual(again, pristine) {
 		t.Fatal("a view observer's changes to its entries reached the stored context")
 	}

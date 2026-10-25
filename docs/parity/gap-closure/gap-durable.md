@@ -201,12 +201,12 @@ All 47 `*.test.ts` files carry a `ported` disposition in `test/parity/interfaces
 | 14, 15, 17 | `chat_examples_test.go` | ported before |
 | 18, 19 | `print_examples_test.go` | ported before |
 | 20, 30 | `inbox_override_examples_test.go` | ported before |
-| 16 real model | `lifecycle_examples_test.go` `TestExample16RealModel` | ported here with the faux provider: OpenAI is outside durable and the script prints "skipped" without a key; the pi.live watch path is the content |
-| 21 late join | `lifecycle_examples_test.go` `TestExample21LateJoin` | ported here |
-| 22 foreground subagent | `lifecycle_examples_test.go` `TestExample22SubagentForeground` | ported here |
+| 16 real model | `lifecycle_examples_test.go` `TestExample15RealModel` | ported here with the faux provider: OpenAI is outside durable and the script prints "skipped" without a key; the pi.live watch path is the content |
+| 21 late join | `lifecycle_examples_test.go` `TestExample20LateJoin` | ported here |
+| 22 foreground subagent | `lifecycle_examples_test.go` `TestExample21SubagentForeground` | ported here |
 | 23 background subagents | `background_subagents_example_test.go` | ported here (spawn, send, stop, status, restart with an in-flight reporter) |
-| 24 child tasks | `tasks_compaction_examples_test.go` `TestExample24ChildTasks` | ported here (failFast, abort cascade with refunds, task graph, restart) |
-| 25 compaction | `tasks_compaction_examples_test.go` `TestExample25Compaction` | ported here; the overflow step differs from the script, see below |
+| 24 child tasks | `tasks_compaction_examples_test.go` `TestExample23ChildTasks` | ported here (failFast, abort cascade with refunds, task graph, restart) |
+| 25 compaction | `tasks_compaction_examples_test.go` `TestExample24Compaction` | ported here; the overflow step differs from the script, see below |
 | 26 coding agent | `agent_examples_test.go` | ported here (live settings getter, env follows `cwd`) |
 | 27 plan mode | `agent_examples_test.go` | ported here (tool filter, `Cleared`, system prompt switches) |
 | 28 reviewer | `agent_examples_test.go` | ported here (`onYield` loop, stored agent) |

@@ -1099,49 +1099,28 @@ type Tx interface {
 	RetireDoc(token AnyDocToken, args ...any) error
 }
 
-// DocumentState is disposable, read-only Chord state bound to one committed document incarnation of type T; its
-// value is nil once the incarnation is retired. The state holds the JSON value (T is phantom, as for Draft);
-// DecodeDoc[T](state.Value()) reads it as T.
-type DocumentState[T any] = *chord.AttachedReplicatedState[JsonObject]
-
-// AttachedReplicatedState is a synchronously hydrated publication-only Chord state backed by one source attachment.
-type AttachedReplicatedState[T any] = *chord.AttachedReplicatedState[T]
-
-// WatchEndReason is why a watch ended.
-type WatchEndReason string
+// WatchEndReason is why a watch ended; it is Chord's (index.ts re-exports Chord's WatchEnd and WatchHandle).
+type WatchEndReason = chord.WatchEndReason
 
 const (
-	WatchStopped       WatchEndReason = "stopped"
-	WatchCancelled     WatchEndReason = "cancelled"
-	WatchSessionClosed WatchEndReason = "session_closed"
-	WatchRetired       WatchEndReason = "retired"
-	WatchListenerError WatchEndReason = "listener_error"
-	// WatchSessionFailed ends a watch when the Session failed; Error is the failure.
-	WatchSessionFailed WatchEndReason = "session_failed"
+	WatchStopped       = chord.WatchStopped
+	WatchCancelled     = chord.WatchCancelled
+	WatchRetired       = chord.WatchRetired
+	WatchEnded         = chord.WatchEnded
+	WatchListenerError = chord.WatchListenerError
+	// WatchFailed ends a watch when the Session failed; Error is the failure, usually a Storage error (see SessionFailed).
+	WatchFailed = chord.WatchFailed
 )
 
-// WatchEnd is the terminal result of one document watch; Error is set only for listener_error and session_failed.
-type WatchEnd struct {
-	Reason WatchEndReason
-	Error  error
-}
+// WatchEnd is the terminal result of one watch.
+type WatchEnd = chord.WatchEnd
 
 // WatchHandle is a serialized exact-frame observation of an immutable value with bounded pending delivery.
-type WatchHandle[T any] interface {
-	// Value is the acquisition revision before Start and the latest delivered immutable revision afterward.
-	Value() T
-	// Start installs the sole asynchronous listener. It never invokes it inline.
-	Start(listener func(ctx context.Context, value T, ops []Op) error)
-	// Stop idempotently stops future callbacks and returns this watch's terminal result.
-	Stop() (WatchEnd, error)
-	// Closed returns a channel closed when the watch terminates and the terminal result; an already-running callback
-	// remains caller-owned.
-	Closed() <-chan struct{}
-	// End returns the terminal result once Closed is closed.
-	End() WatchEnd
-}
+type WatchHandle[T any] = chord.WatchHandle[T]
 
-// DocumentWatch is a watch of one document incarnation; the value is nil once retired.
+// DocumentWatch is a watch of one committed document incarnation. A retirement delivers [["r", null]] with a nil value,
+// then ends the watch as retired; the Session's close ends it as ended, its failure as failed with the error that failed
+// it.
 type DocumentWatch[T any] = WatchHandle[*T]
 
 // DocumentReader holds committed document reads (Session.snapshot and snapshotAsOf).
@@ -1178,7 +1157,7 @@ type SessionEnd struct {
 type Session interface {
 	DocumentObserver
 	DocumentReader
-	// Commit runs one atomic transaction on the Session mutation line. Inside the callback read only through tx: Snapshot, DocumentState, WatchDoc, GetTask and the other Session and runtime reads may queue on the line the callback holds, and then never return.
+	// Commit runs one atomic transaction on the Session mutation line. Inside the callback read only through tx: Snapshot, WatchDoc, GetTask and the other Session and runtime reads may queue on the line the callback holds, and then never return.
 	Commit(ctx context.Context, change func(tx Tx) (any, error)) (any, error)
 	// Close seals admission, settles admitted commits, then closes storage.
 	Close(ctx context.Context) error
@@ -1192,9 +1171,6 @@ type Session interface {
 	Closed() <-chan struct{}
 	// End returns how the Session ended once Closed is closed.
 	End() SessionEnd
-	// DocumentStateErased returns a disposable state of the document's JSON value, or nil when absent. Typed
-	// states use the DocumentStateOf helper.
-	DocumentStateErased(ctx context.Context, token AnyDocToken, args ...any) (DocumentState[JsonObject], error)
 }
 
 // Committer runs one atomic Session commit: a Session, a Conversation, or a tool's ToolExecutionApi.
@@ -1225,10 +1201,14 @@ type EntryAt struct {
 // Implementations enforce atomicity, global ID ownership, immutable conversation/entry creation, document record
 // consistency, and detached values; Session serializes commits.
 type Storage interface {
-	// Commit atomically persists one batch and returns its sequence. Once it returns, later reads through this
-	// storage observe it.
-	Commit(ctx context.Context, writes []StorageWrite) (Seq, error)
-	// MintId returns a fresh candidate from the Session-global numeric ID namespace.
+	// Commit atomically persists one batch and returns its sequence. Once the batch is durable, call adopt(seq)
+	// exactly once, synchronously and before this storage's next commit starts, then return seq; a commit that fails
+	// before it is durable never calls adopt. adopt is the caller's in-memory adoption of the batch, so memory always
+	// shows a complete prefix of the log; it must not panic. Once it returns, later reads through this storage observe
+	// the batch.
+	Commit(ctx context.Context, writes []StorageWrite, adopt func(seq Seq)) (Seq, error)
+	// MintId returns a fresh candidate from the Session-global numeric ID namespace, greater than every ID minted since
+	// this storage was opened and every ID stored, also across reopen.
 	MintId() (int64, error)
 	// Conversation looks up one conversation by exact ID; nil when absent.
 	Conversation(ctx context.Context, id ConversationId) (*ConversationRecord, error)

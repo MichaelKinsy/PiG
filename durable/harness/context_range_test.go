@@ -29,7 +29,7 @@ func cacheTestStorage(t *testing.T) *sqlite.SqliteStorage {
 
 func commitWrites(t *testing.T, storage durable.Storage, writes ...durable.StorageWrite) {
 	t.Helper()
-	if _, err := storage.Commit(testContext, writes); err != nil {
+	if _, err := storage.Commit(testContext, writes, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -1185,6 +1185,21 @@ func promotedOnto(s *sym, owner string) bool {
 	return obj == s.Obj
 }
 
+// aliasesOwner reports whether tn is an alias of owner: only an alias is identical to the owner. A generic alias
+// (`type WatchHandle[T any] = chord.WatchHandle[T]`) is not identical to the generic owner, whose instantiation it declares with
+// its own type parameters, so it is an alias when it unaliases to an instance of the owner.
+func aliasesOwner(tn *types.TypeName, owner *types.TypeName) bool {
+	if types.Identical(tn.Type(), owner.Type()) {
+		return true
+	}
+	alias, ok := tn.Type().(*types.Alias)
+	if !ok || alias.TypeParams().Len() == 0 {
+		return false
+	}
+	named, ok := types.Unalias(alias).(*types.Named)
+	return ok && types.Identical(named.Origin(), owner.Type())
+}
+
 // aliasedInto reports whether a Go directory that ports the package declares an exported alias of the member's owner type
 // (`type RoutedServerPresentation = services.RoutedServerPresentation` in the server port): the member is reached through the
 // alias as public API of that package, as Pi's `export interface` in the published file, although the type is declared elsewhere.
@@ -1203,7 +1218,7 @@ func aliasedInto(ix *index, s *sym, dirs map[string]bool) bool {
 		}
 		scope := pi.Types.Scope()
 		for _, name := range scope.Names() {
-			if tn, ok := scope.Lookup(name).(*types.TypeName); ok && tn.Exported() && types.Identical(tn.Type(), owner.Type()) { // only an alias is identical to the owner
+			if tn, ok := scope.Lookup(name).(*types.TypeName); ok && tn.Exported() && aliasesOwner(tn, owner) {
 				return true
 			}
 		}

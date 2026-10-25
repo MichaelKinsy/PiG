@@ -253,12 +253,12 @@ func TestAFailedStorageCall(t *testing.T) {
 		sfSessionFailed(t, <-task, failure)
 		sfSessionFailed(t, <-idle, failure)
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchSessionFailed || !errors.Is(end.Error, failure) {
-			t.Fatalf("watch ended %+v, want session_failed with the first error", end)
+		if end := watch.End(); end.Reason != durable.WatchFailed || !errors.Is(end.Error, failure) {
+			t.Fatalf("watch ended %+v, want failed with the first error", end)
 		}
 		<-stream.Closed()
-		if end := stream.End(); end.Reason != durable.WatchSessionFailed || !errors.Is(end.Error, failure) {
-			t.Fatalf("stream ended %+v, want session_failed with the first error", end)
+		if end := stream.End(); end.Reason != durable.WatchFailed || !errors.Is(end.Error, failure) {
+			t.Fatalf("stream ended %+v, want failed with the first error", end)
 		}
 		// Every later call, and a wait that starts now.
 		_, err := harness.GetTask(testContext, id)
@@ -445,8 +445,8 @@ func TestAFailedStorageCall(t *testing.T) {
 		_ = harness.Close(testContext)
 	})
 
-	// harness-storage-failure.test.ts:232 it("ends what a task holds with session_failed, not as cancelled by its signal")
-	t.Run("ends what a task holds with session_failed, not as cancelled by its signal", func(t *testing.T) {
+	// harness-storage-failure.test.ts:232 it("ends what a task holds as failed, not as cancelled by its signal")
+	t.Run("ends what a task holds as failed, not as cancelled by its signal", func(t *testing.T) {
 		type ends struct {
 			watch durable.WatchEnd
 			idle  error
@@ -494,8 +494,8 @@ func TestAFailedStorageCall(t *testing.T) {
 		}
 		sfEnded(t, harness, durable.SessionEndFailed, failure)
 		got := <-finished
-		if got.watch.Reason != durable.WatchSessionFailed || !errors.Is(got.watch.Error, failure) {
-			t.Fatalf("the task's watch ended %+v, want session_failed", got.watch)
+		if got.watch.Reason != durable.WatchFailed || !errors.Is(got.watch.Error, failure) {
+			t.Fatalf("the task's watch ended %+v, want failed", got.watch)
 		}
 		sfSessionFailed(t, got.idle, failure)
 		_ = harness.Close(testContext)

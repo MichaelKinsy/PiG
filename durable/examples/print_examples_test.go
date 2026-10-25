@@ -1,4 +1,4 @@
-// Ports packages/durable/test/examples/18-print.ts and 19-json.ts.
+// Ports packages/durable/test/examples/17-print.ts and 18-json.ts.
 
 package examples_test
 
@@ -52,8 +52,8 @@ func codingAssistant(t *testing.T, store durable.Storage, cwd string) (harness.H
 	return opened, root
 }
 
-// 18-print.ts: ask one question and print the final answer.
-func TestExample18Print(t *testing.T) {
+// 17-print.ts: ask one question and print the final answer.
+func TestExample17Print(t *testing.T) {
 	directory := t.TempDir()
 	if err := os.WriteFile(filepath.Join(directory, "README.md"), []byte("docs"), 0o644); err != nil {
 		t.Fatal(err)
@@ -78,11 +78,11 @@ func TestExample18Print(t *testing.T) {
 	closeSession(t, opened)
 }
 
-// 19-json.ts: the same coding turn over each storage the script offers (sqlite, jsonl, memory). Not ported: the
+// 18-json.ts: the same coding turn over each storage the script offers (sqlite, jsonl, memory). Not ported: the
 // script's two output modes. `--ops` prints the conversation watch (Conversation.Watch, which durable/harness still
 // stubs: view.go waits on durable/session observation exports) and the default mode prints watchEvents
 // (harness/events.ts, not in durable/harness yet). The OPENAI_API_KEY path needs a live key.
-func TestExample19JsonStorages(t *testing.T) {
+func TestExample18JsonStorages(t *testing.T) {
 	stores := map[string]func(t *testing.T) durable.Storage{
 		"memory": func(*testing.T) durable.Storage { return storage.NewMemoryStorage() },
 		"jsonl": func(t *testing.T) durable.Storage {

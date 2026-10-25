@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -942,7 +943,7 @@ func (c *Conn) Retire(reason string) error {
 }
 
 // Close gracefully shuts down the connection. Sends a shutdown message if
-// possible, then closes the socket.
+// possible, then closes the socket. It returns nil when the peer already ended the transport: the peer's own close ends the read loop, which closes the socket, so Close finds it closed or the shutdown frame has nowhere to go. Pi's RpcClient.stop likewise succeeds for a process that exited on its own (rpc-client.ts:145-168; the exit only rejects the pending requests, :107-112). A failure of the close itself, or a liveness failure, is still returned.
 func (c *Conn) Close(reason string) error {
 	if !c.closing.CompareAndSwap(false, true) {
 		return nil // already closed
@@ -989,6 +990,12 @@ func (c *Conn) Close(reason string) error {
 		c.cancel()
 	}
 	err := c.conn.Close()
+	if transportAlreadyClosed(err) {
+		err = nil
+	}
+	if transportAlreadyClosed(shutdownErr) {
+		shutdownErr = nil
+	}
 
 	// Wait for goroutines to exit.
 	<-c.done
@@ -1020,6 +1027,11 @@ func (c *Conn) Close(reason string) error {
 	}
 	c.producerTasks.Wait()
 	return shutdownErr
+}
+
+// transportAlreadyClosed reports whether err only says the transport had already ended: this side's socket closed, the peer's end closed (end of stream, closed pipe), or the peer reset the connection, as happens when the peer closes first.
+func transportAlreadyClosed(err error) bool {
+	return errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ECONNRESET)
 }
 
 // startProducerTask admits a stream worker or a retry waiter (afterRetryBackoff) before close and joins it with connection shutdown. Pending requests wake on connection closure, so producer cleanup cannot outlive Close.

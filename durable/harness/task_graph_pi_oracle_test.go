@@ -15,7 +15,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -44,17 +43,18 @@ type graphOp struct {
 	End string `json:"end,omitempty"`
 }
 
+type graphDelivery struct {
+	Ops json.RawMessage `json:"ops"`
+}
+
 type graphOutcome struct {
 	Index int             `json:"index"`
 	OK    json.RawMessage `json:"ok"`
 	Err   string          `json:"err"`
 	Live  json.RawMessage `json:"live"`
 	Fresh json.RawMessage `json:"fresh"`
-	// Deliveries is what the long-lived state's subscriber received since the previous step.
-	Deliveries []struct {
-		Kind     string `json:"kind"`
-		Sequence int    `json:"sequence"`
-	} `json:"deliveries"`
+	// Deliveries is the operations of each frame the long-lived watch's listener received since the previous step.
+	Deliveries []graphDelivery `json:"deliveries"`
 }
 
 var graphProbeTask = durable.DefineTask(durable.TaskDefinition[durable.JsonValue, durable.JsonValue, durable.JsonValue, struct{}]{
@@ -78,22 +78,21 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 	store := storage.NewMemoryStorage()
 	line := session.CreateSession(store)
 	view := NewTaskGraphView(line, store, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }})
-	live, err := view.State(ctx)
+	live, err := view.Watch(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var mu sync.Mutex
-	var deliveries []struct {
-		Kind     string `json:"kind"`
-		Sequence int    `json:"sequence"`
-	}
-	live.Subscribe(func(_ TaskGraph, _ context.Context, delivery chord.ReplicatedStateDelivery) {
+	var deliveries []graphDelivery
+	live.Start(func(_ context.Context, _ TaskGraph, ops []durable.Op) error {
+		encoded, err := json.Marshal(ops)
+		if err != nil {
+			return err
+		}
 		mu.Lock()
-		deliveries = append(deliveries, struct {
-			Kind     string `json:"kind"`
-			Sequence int    `json:"sequence"`
-		}{string(delivery.Kind), delivery.Sequence})
+		deliveries = append(deliveries, graphDelivery{Ops: encoded})
 		mu.Unlock()
+		return nil
 	})
 	var convs []durable.ConversationId
 	var tasks []durable.TaskId
@@ -184,7 +183,7 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 			outcome.OK = encoded
 		}
 		line.WaitDeliveries()
-		fresh, err := NewTaskGraphView(line, store, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }}).State(ctx)
+		fresh, err := NewTaskGraphView(line, store, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }}).Watch(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -194,13 +193,13 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 		if outcome.Fresh, err = json.Marshal(fresh.Value()); err != nil {
 			t.Fatal(err)
 		}
-		fresh.Dispose()
+		_, _ = fresh.Stop()
 		mu.Lock()
 		outcome.Deliveries, deliveries = deliveries, nil
 		mu.Unlock()
 		outcomes = append(outcomes, outcome)
 	}
-	live.Dispose()
+	_, _ = live.Stop()
 	if err := line.Close(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
@@ -347,6 +346,17 @@ func graphDiff(pi, pig any, label string) string {
 	return out
 }
 
-func sameDeliveries[T any](a, b []T) bool {
-	return len(a) == 0 && len(b) == 0 || reflect.DeepEqual(a, b)
+func sameDeliveries(a, b []graphDelivery) bool {
+	decode := func(deliveries []graphDelivery) []any {
+		decoded := make([]any, 0, len(deliveries))
+		for _, delivery := range deliveries {
+			var ops any
+			if err := json.Unmarshal(delivery.Ops, &ops); err != nil {
+				return nil
+			}
+			decoded = append(decoded, ops)
+		}
+		return decoded
+	}
+	return len(a) == 0 && len(b) == 0 || reflect.DeepEqual(decode(a), decode(b))
 }

@@ -27,5 +27,5 @@ timeout_seconds = 30
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['{"phase":"loaded","loader":"function","cost":{"input":2,"output":4,"cacheRead":0.19999999999999998,"cacheWrite":0.3,"total":6.5}}']
+both_contain = ['{"phase":"loaded","loader":"function","cost":{"input":2,"output":4,"cacheRead":0.19999999999999998,"cacheWrite":0.3,"total":6.5,"totalFromProvider":false}}']
 runs = 3

@@ -83,7 +83,7 @@ func (s *controlledStorage) commitAt(index int) []durable.StorageWrite {
 	return s.commits[index]
 }
 
-func (s *controlledStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (s *controlledStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	s.mu.Lock()
 	s.commits = append(s.commits, append([]durable.StorageWrite(nil), writes...))
 	held := s.commitGate
@@ -104,7 +104,7 @@ func (s *controlledStorage) Commit(ctx context.Context, writes []durable.Storage
 	if failure != nil {
 		return 0, failure
 	}
-	return s.MemoryStorage.Commit(ctx, writes)
+	return s.MemoryStorage.Commit(ctx, writes, adopt)
 }
 
 func (s *controlledStorage) Close(ctx context.Context) error {

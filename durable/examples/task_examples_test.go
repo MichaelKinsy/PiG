@@ -1,4 +1,4 @@
-// Ports packages/durable/test/examples/11-extension-state.ts, 12-tasks.ts and 13-recovery.ts.
+// Ports packages/durable/test/examples/10-extension-state.ts, 11-tasks.ts and 12-recovery.ts.
 
 package examples_test
 
@@ -21,8 +21,8 @@ type todos struct {
 	Items []string `json:"items"`
 }
 
-// 11-extension-state.ts: an extension keeps its own document, written by its tool and rendered into the prompt.
-func TestExample11ExtensionState(t *testing.T) {
+// 10-extension-state.ts: an extension keeps its own document, written by its tool and rendered into the prompt.
+func TestExample10ExtensionState(t *testing.T) {
 	todosDoc := durable.DefineDoc(durable.DocDefinition[todos]{
 		CommonDocDefinition: durable.CommonDocDefinition[todos]{Kind: "example.todos", Version: 1, Initial: func() todos { return todos{Items: []string{}} }, CheckpointWhen: func(todos, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
@@ -145,8 +145,8 @@ type receipt struct {
 	Receipt int `json:"receipt"`
 }
 
-// 12-tasks.ts: a durable state machine. The charge is idempotent: its effect is keyed, so a rerun cannot charge twice.
-func TestExample12Tasks(t *testing.T) {
+// 11-tasks.ts: a durable state machine. The charge is idempotent: its effect is keyed, so a rerun cannot charge twice.
+func TestExample11Tasks(t *testing.T) {
 	payments := map[string]int{}
 	type paymentTask = durable.TaskRuntime[paymentInput, paymentState, receipt, any]
 	payment := durable.DefineTask(durable.TaskDefinition[paymentInput, paymentState, receipt, any]{
@@ -202,10 +202,10 @@ type tickState struct {
 	N     int    `json:"n"`
 }
 
-// 13-recovery.ts: a task survives a close and a reopen of its storage. A memo keeps the visible effect (the print)
+// 12-recovery.ts: a task survives a close and a reopen of its storage. A memo keeps the visible effect (the print)
 // from repeating when a phase reruns.
 // upstream: packages/durable/src/harness/types.ts:192-193 memo reads or sets a named memo entry, and types.ts:200 getTask reads a task record, through the tool execution API after recovery.
-func TestExample13Recovery(t *testing.T) {
+func TestExample12Recovery(t *testing.T) {
 	databasePath := filepath.Join(t.TempDir(), "session.sqlite")
 	var printed []int
 	var reachedTick atomic.Int64
@@ -230,7 +230,7 @@ func TestExample13Recovery(t *testing.T) {
 				}
 				reachedTick.Store(int64(n))
 				// Save the final result, or the next tick after a short sleep. The sleep is stored with the checkpoint, so the task holds no
-				// invocation meanwhile, and a Harness opened later continues it once its time has come (13-recovery.ts).
+				// invocation meanwhile, and a Harness opened later continues it once its time has come (12-recovery.ts).
 				if n == task.Input.To {
 					return runtime.Commit(ctx, func(durable.Tx, durable.RunningTask[tickInput, tickState, string]) (*durable.NextTaskState[tickState, string], error) {
 						result := fmt.Sprintf("counted to %d", n)

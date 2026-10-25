@@ -50,7 +50,7 @@ func (s *coreSession) WatchEvents(ctx context.Context, conversationId durable.Co
 		if events := harness.TranslateViewEvents(conversationId, before, after, f.ops, publication, held); len(events) > 0 {
 			watch.Advance(m.hub.deliveryContext(), events, nil)
 		}
-	}, func() { watch.CloseSession(nil) })
+	}, func() { watch.SourceEnded(nil) })
 	if ctx.Done() != nil {
 		watch.ObserveCancellation(ctx)
 	}

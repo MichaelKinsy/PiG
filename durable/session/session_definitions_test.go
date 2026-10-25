@@ -3,7 +3,6 @@ package session_test
 import (
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -81,9 +80,6 @@ var (
 	_ = func(kernel *session.SessionImpl, tx durable.Tx, conversationId durable.ConversationId, at durable.EntryId) {
 		_ = keep[*definitionState](durable.Snapshot(ctx, kernel, definitionLatestDoc, conversationId))
 		_ = keep[*definitionState](durable.SnapshotAsOf(ctx, kernel, definitionRewindableDoc, at, conversationId))
-		var state *chord.AttachedReplicatedState[obj]
-		state, _ = kernel.DocumentStateErased(ctx, definitionSessionDoc)
-		_ = state
 		var watch durable.WatchHandle[obj]
 		watch, _ = kernel.WatchDocErased(ctx, definitionSessionDoc)
 		_ = watch
@@ -284,20 +280,13 @@ _, _ = d.TxAppendEntry(tx, marker, 1, d.TypedEntryDraft[int]{Data: 1})`)
 			t.Fatalf("session document = %+v, want value 7", value)
 		}
 
-		// session.watchDoc(SessionDoc, conversationId, context) and documentState: the owner is not read.
+		// session.watchDoc(SessionDoc, conversationId, context): the owner is not read.
 		watch, err := harness.Session.WatchDocErased(ctx, definitionSessionDoc, conversationId)
 		must(t, err)
 		if watch == nil || watch.Value().Value("value") != float64(7) {
 			t.Fatalf("watch of a Session document with an owner argument = %v", watch)
 		}
 		_, _ = watch.Stop()
-		var state durable.DocumentState[any] // session.documentState returns DocumentState<T>: the committed value, nil once retired
-		state, err = harness.Session.DocumentStateErased(ctx, definitionSessionDoc, conversationId)
-		must(t, err)
-		if state == nil || state.Value().Value("value") != float64(7) {
-			t.Fatalf("state of a Session document with an owner argument = %v", state)
-		}
-		state.Dispose()
 
 		// tx.doc(SessionFamily, "k"): no seed is `undefined` upstream, which copyJson rejects; nothing is created.
 		err = tryCommit(harness.Session, func(tx durable.Tx) error {

@@ -490,7 +490,7 @@ func (store *recordingStorage) setLive(id durable.DocumentId) {
 	store.mu.Unlock()
 }
 
-func (store *recordingStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (store *recordingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	store.mu.Lock()
 	liveId := store.liveId
 	store.mu.Unlock()
@@ -500,7 +500,7 @@ func (store *recordingStorage) Commit(ctx context.Context, writes []durable.Stor
 			kind = string(change.Content.Kind)
 		}
 	}
-	seq, err := store.MemoryStorage.Commit(ctx, writes)
+	seq, err := store.MemoryStorage.Commit(ctx, writes, adopt)
 	if err == nil && kind != "" {
 		store.mu.Lock()
 		store.written[seq] = kind

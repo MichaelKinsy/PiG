@@ -9,6 +9,7 @@ func TestErrorNames(t *testing.T) {
 		"SessionFailed":       NewSessionFailed(nil).Name(),
 		"ConversationBusy":    NewConversationBusy(7).Name(),
 		"ReadAfterWrite":      NewReadAfterWrite("doc").Name(),
+		"ReadOnlySession":     NewReadOnlySession("running tasks").Name(),
 	} {
 		if got != want {
 			t.Errorf("name = %q, want %q", got, want)

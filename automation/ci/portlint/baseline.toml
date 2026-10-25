@@ -4149,7 +4149,7 @@ snippet = "if err := add(path.Join(dir, name)); err != nil {"
 check = "pathseparators"
 file = "coding/extension/host/runtimecell/hash_go_module.go"
 func = "hashGoModuleDir"
-snippet = "if err := hashGoModuleDir(fsys, path.Join(dir, name), add); err != nil {"
+snippet = "if err := hashGoModuleDir(fsys, path.Join(dir, name), add, vanish); err != nil {"
 
 [[hit]]
 check = "pathseparators"

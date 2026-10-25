@@ -1585,3 +1585,77 @@ func TestLocateDoesNotDependOnTheOrderOfAMap(t *testing.T) {
 		}
 	}
 }
+
+// noteOf returns the committed entry that carries note.
+func noteOf(t *testing.T, r testRepo, note string) Entry {
+	t.Helper()
+	l, _, err := readCommitted(r.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range l.Entries {
+		if e.Note == note {
+			return e
+		}
+	}
+	t.Fatalf("no entry for the note %q", note)
+	return Entry{}
+}
+
+// A divergence that fixes a Pi defect ahead of Pi ends when Pi ships the fix, and its record leaves docs/parity/DIVERGENCES.md. The release note
+// of the fix, which a squash landing kept from the committed ledger because the landing replaced its commits, must then lose the divergence and
+// the class "fixed ahead of Pi", as it does when the full history regenerates it. Left as it was, the ledger names a divergence that no record
+// holds and DIVERGENCES.md and the ledger disagree on every later run.
+func TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote(t *testing.T) {
+	const note = "Escape lets a stuck tool go after a grace period (D2)."
+	retired := divergenceFixture
+	dev := newFixture(t)
+	release := dev.run("rev-parse", "HEAD")
+	dev.write("tool.go", "package x\n")
+	dev.write("changelog.d/tool.md", "### Fixed\n\n- "+note+"\n")
+	dev.commit("tool: abandon a stuck tool", "tool.go", "changelog.d/tool.md")
+	dev.write("docs/parity/DIVERGENCES.md", divergenceFixture+"\n## D2 Aborted tools\n\nWhat: PiG stops.\n\nPi bug: Pi waits forever.\n\nPi issue: https://example.com/pi/issues/1\n\nRemove when: Pi stops waiting.\n\nSCRUTINIZED:approved\n")
+	dev.commit("Record D2", "docs/parity/DIVERGENCES.md")
+	if err := run(dev.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	dev.commit("Add the ledger", jsonPath, pagePath)
+	if e := noteOf(t, dev, note); e.Class != ClassAheadOfPi || e.Divergence != "D2" || e.RemoveWhen == "" {
+		t.Fatalf("the note of D2 is not fixed ahead of Pi: %+v", e)
+	}
+
+	// The full history regenerates the note without the divergence.
+	dev.write("docs/parity/DIVERGENCES.md", retired)
+	if err := runWith(dev.root, "0.4.1", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	full := noteOf(t, dev, note)
+	if full.Class == ClassAheadOfPi || full.Divergence != "" || full.PiIssue != "" || full.RemoveWhen != "" {
+		t.Fatalf("the full history keeps the retired divergence: %+v", full)
+	}
+	dev.run("checkout", "-q", "--", "docs/parity/DIVERGENCES.md", jsonPath, pagePath)
+
+	pub := squash(t, dev, release)
+	pub.write("docs/parity/DIVERGENCES.md", retired)
+	pub.commit("Retire D2", "docs/parity/DIVERGENCES.md")
+	if err := run(pub.root, "0.4.1", true, false); err == nil {
+		t.Fatal("the committed ledger still names the retired D2, so the check must fail")
+	}
+	if err := run(pub.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	kept := noteOf(t, pub, note)
+	if kept.Class != full.Class || kept.Divergence != "" || kept.PiIssue != "" || kept.RemoveWhen != "" || kept.ID != full.ID {
+		t.Fatalf("a kept note after the retirement = %+v, want the class %q and ID %s of the full history", kept, full.Class, full.ID)
+	}
+	if err := run(pub.root, "0.4.1", true, false); err != nil {
+		t.Fatalf("the regenerated ledger must pass the check: %v", err)
+	}
+	once := committedBytes(t, pub)
+	if err := run(pub.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	if twice := committedBytes(t, pub); !bytes.Equal(once, twice) {
+		t.Fatal("a second regeneration with no new commit changed the ledger")
+	}
+}

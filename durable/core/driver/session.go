@@ -119,6 +119,10 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 	if cfg.Core == nil || cfg.DB == nil || (cfg.Harness.Models == nil && cfg.Harness.ModelsFunc == nil) || cfg.Harness.Registry == nil {
 		return nil, errors.New("driver.Open needs Core, DB, Harness.Models and Harness.Registry")
 	}
+	if cfg.Harness.ReadOnly {
+		// HarnessOptions.readOnly (Pi be14d9732) is served by the Go Harness only; ignoring it would open a writer.
+		return nil, fmt.Errorf("HarnessOptions.ReadOnly: %w", ErrUnsupported)
+	}
 	// Pi harness.ts:178-179: `const report = safeReport(options.onReport); const now = safeNow(options.now, report)`.
 	cfg.Harness.OnReport = harness.SafeReport(cfg.Harness.OnReport)
 	cfg.Harness = cfg.Harness.WithModelsView()

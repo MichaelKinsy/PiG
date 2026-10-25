@@ -51,10 +51,11 @@ async function fetchInstallerArtifact(url, label) {
     return await response.text();
 }
 async function runManagedNpmCi(stageDir) {
+    // No age-gate override: the release lockfile pins every package, so npm never
+    // resolves versions and a configured min-release-age does not apply.
     const args = [
         "ci",
         "--ignore-scripts",
-        "--min-release-age=0",
         "--omit=dev",
         "--include=optional",
         "--no-fund",

@@ -4,87 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
-
-// Upstream observation.ts SessionSourceAttachment.publish drains from a microtask inside try/catch and disposes the
-// attachment on an unexpected listener failure; #drain resets #delivering in a finally.
-// Pi source: packages/chord/src/api.ts, packages/chord/src/services/state-internals.ts
-// mutation-checked: zeroing the results of ReplicatedStateSourceAttachment.Dispose fails it
-// Pi: packages/chord/src/services/state.ts:279 (dispose)
-// packages/chord/src/types.ts:84-100: a ReplicatedStateSourceAttachment is activated with the sole listener and disposed to stop delivery.
-func TestSessionSourceAttachmentIsolatesListenerFailure(t *testing.T) {
-	scheduler := newPending()
-	released := 0
-	source := newCommittedStateSource[durable.JsonObject](delta.JsonObjectOf("v", 0.0), func() { released++ }, scheduler)
-	failing, err := source.Attach()
-	if err != nil {
-		t.Fatal(err)
-	}
-	healthy, err := source.Attach()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var delivered []int
-	if err := failing.Activate(func(chord.ReplicatedStateSourceFrame[durable.JsonObject]) { panic("listener failed") }); err != nil {
-		t.Fatal(err)
-	}
-	if err := healthy.Activate(func(frame chord.ReplicatedStateSourceFrame[durable.JsonObject]) {
-		delivered = append(delivered, frame.Cursor)
-	}); err != nil {
-		t.Fatal(err)
-	}
-	source.Advance(context.Background(), delta.JsonObjectOf("v", 1.0), []durable.Op{{"s", []any{"v"}, 1.0}})
-	scheduler.wait()
-	if !failing.(*sessionSourceAttachment[durable.JsonObject]).disposed {
-		t.Fatal("a failing listener disposes its attachment")
-	}
-	source.Advance(context.Background(), delta.JsonObjectOf("v", 2.0), []durable.Op{{"s", []any{"v"}, 2.0}})
-	scheduler.wait()
-	if len(delivered) != 2 || delivered[0] != 1 || delivered[1] != 2 {
-		t.Fatalf("the healthy attachment keeps receiving frames: %v", delivered)
-	}
-	if released != 0 {
-		t.Fatal("the source stays attached while one attachment remains")
-	}
-	healthy.Dispose()
-	if released != 1 {
-		t.Fatal("the last disposal releases the source")
-	}
-}
-
-// A synchronous activation drain that panics propagates, as upstream's activate() throws, and leaves the attachment
-// able to deliver later frames because delivering is reset.
-func TestSessionSourceAttachmentResetsDeliveringAfterPanic(t *testing.T) {
-	scheduler := newPending()
-	source := newCommittedStateSource[durable.JsonObject](delta.NewJsonObject(0), func() {}, scheduler)
-	attachment, err := source.Attach()
-	if err != nil {
-		t.Fatal(err)
-	}
-	source.Advance(context.Background(), delta.JsonObjectOf("v", 1.0), nil)
-	calls := 0
-	func() {
-		defer func() {
-			if recover() == nil {
-				t.Fatal("the activation drain propagates the listener panic")
-			}
-		}()
-		_ = attachment.Activate(func(chord.ReplicatedStateSourceFrame[durable.JsonObject]) {
-			calls++
-			if calls == 1 {
-				panic("first frame failed")
-			}
-		})
-	}()
-	source.Advance(context.Background(), delta.JsonObjectOf("v", 2.0), nil)
-	scheduler.wait()
-	if calls != 2 {
-		t.Fatalf("calls %d, want 2", calls)
-	}
-}
 
 // Upstream CommittedWatch.advance overflows to `this.#replace?.() ?? value`: a replacement source that yields null
 // falls back to the newest value.
@@ -105,4 +27,88 @@ func TestCommittedWatchOverflowReplacementFallsBackToValue(t *testing.T) {
 		t.Fatalf("the overflow op replaces the root with the newest value: %#v", frame.ops)
 	}
 	_, _ = watch.Stop()
+}
+
+// session-watches.test.ts "ends retired only on its source's retirement, never on a null value": a frame whose value is
+// null is an ordinary frame; only the source's explicit retirement ends the watch retired.
+func TestCommittedWatchEndsRetiredOnlyOnItsSourcesRetirement(t *testing.T) {
+	scheduler := newPending()
+	watch := newCommittedWatch[any](1.0, func() {}, nil, scheduler)
+	watch.report = func(error) {}
+	type frame struct {
+		value any
+		ops   []durable.Op
+	}
+	var frames []frame
+	watch.Start(func(_ context.Context, value any, ops []durable.Op) error {
+		frames = append(frames, frame{value, ops})
+		return nil
+	})
+	watch.Advance(context.Background(), nil, []durable.Op{{"r", nil}})
+	watch.Advance(context.Background(), 2.0, []durable.Op{{"r", 2.0}})
+	scheduler.wait()
+	want := []frame{{nil, []durable.Op{{"r", nil}}}, {2.0, []durable.Op{{"r", 2.0}}}}
+	if len(frames) != len(want) || frames[0].value != nil || frames[1].value != 2.0 {
+		t.Fatalf("frames %#v, want %#v", frames, want)
+	}
+	select {
+	case <-watch.Closed():
+		t.Fatalf("a null value ended the watch %+v", watch.End())
+	default:
+	}
+	if end, _ := watch.Stop(); end.Reason != durable.WatchStopped {
+		t.Fatalf("end %+v, want stopped", end)
+	}
+}
+
+// A retirement delivers [["r", null]] with the zero value as the watch's last frame, then ends it retired.
+func TestCommittedWatchRetireDeliversTheLastFrameThenEndsRetired(t *testing.T) {
+	scheduler := newPending()
+	released := 0
+	watch := newCommittedWatch[durable.JsonObject](delta.JsonObjectOf("v", 0.0), func() { released++ }, nil, scheduler)
+	var values []durable.JsonObject
+	var ops [][]durable.Op
+	watch.Start(func(_ context.Context, value durable.JsonObject, frameOps []durable.Op) error {
+		values = append(values, value)
+		ops = append(ops, frameOps)
+		return nil
+	})
+	watch.Retire(context.Background())
+	// Neither a frame nor a second retirement follows the retirement.
+	watch.Advance(context.Background(), delta.JsonObjectOf("v", 1.0), []durable.Op{{"r", 1.0}})
+	watch.Retire(context.Background())
+	scheduler.wait()
+	<-watch.Closed()
+	if len(values) != 1 || values[0] != nil || len(ops[0]) != 1 || ops[0][0][0] != "r" || ops[0][0][1] != nil {
+		t.Fatalf("frames %#v %#v, want one [[r null]] frame with a nil value", values, ops)
+	}
+	if end := watch.End(); end.Reason != durable.WatchRetired || released != 1 {
+		t.Fatalf("end %+v released %d, want retired once detached", end, released)
+	}
+	if watch.Value() != nil {
+		t.Fatalf("value %#v, want the retirement's nil", watch.Value())
+	}
+}
+
+// session-watches.test.ts "retains neither its Session nor its listener once stopped, while still referenced": an ended
+// watch drops every reference into its source. Upstream observes it through garbage collection; the Go form checks the
+// references themselves.
+func TestCommittedWatchDropsItsReferencesOnceEnded(t *testing.T) {
+	scheduler := newPending()
+	watch := newCommittedWatch[durable.JsonObject](delta.JsonObjectOf("v", 0.0), func() {}, func() durable.JsonObject { return nil }, scheduler)
+	watch.report = func(error) {}
+	watch.Start(func(context.Context, durable.JsonObject, []durable.Op) error { return nil })
+	watch.Advance(context.Background(), delta.JsonObjectOf("v", 1.0), []durable.Op{{"s", "/v", 1.0}})
+	scheduler.wait()
+	if end, _ := watch.Stop(); end.Reason != durable.WatchStopped {
+		t.Fatalf("end %+v, want stopped", end)
+	}
+	watch.mu.Lock()
+	defer watch.mu.Unlock()
+	if watch.detach != nil || watch.report != nil || watch.replace != nil || watch.listener != nil || watch.scheduler != nil || watch.pending != nil {
+		t.Fatalf("an ended watch holds its source: %+v", watch)
+	}
+	if watch.value == nil || watch.value.Value("v") != 1.0 {
+		t.Fatalf("what it delivered last stays readable, got %#v", watch.value)
+	}
 }

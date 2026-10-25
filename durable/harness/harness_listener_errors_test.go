@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -59,7 +58,7 @@ func TestListenerAndReportErrors(t *testing.T) {
 				Publication: func(context.Context, ConversationView, ConversationView, []durable.Op, durable.CommitPublication) {
 					panic(failure)
 				},
-				CloseSession: func(error) {},
+				End: func(error) {},
 			}, nil
 		}); err != nil {
 			t.Fatal(err)
@@ -83,8 +82,8 @@ func TestListenerAndReportErrors(t *testing.T) {
 			t.Fatal(err)
 		}
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchSessionClosed {
-			t.Fatalf("the watch ended %+v, want session_closed", end)
+		if end := watch.End(); end.Reason != durable.WatchEnded {
+			t.Fatalf("the watch ended %+v, want ended", end)
 		}
 	})
 
@@ -99,7 +98,7 @@ func TestListenerAndReportErrors(t *testing.T) {
 			"by the cases above")
 	})
 
-	// PiG coverage beyond the Pi file: the task graph's and the replicated states' observers, contained as view.ts is.
+	// PiG coverage beyond the Pi file: the task graph's observers, contained as view.ts is.
 	t.Run("keeps feeding the other observers of the task graph when one throws, and closes them all", func(t *testing.T) {
 		// Pi task-graph.ts advance (:203) and the close subscription (:77) contain each observer's call. The graph's own
 		// observers do not throw, so a throwing one is mounted directly in front of a watch.
@@ -137,27 +136,11 @@ func TestListenerAndReportErrors(t *testing.T) {
 		case <-time.After(10 * time.Second):
 			t.Fatal("the watch behind the throwing observer never closed with the Session")
 		}
-		if end := watch.End(); end.Reason != durable.WatchSessionClosed {
-			t.Fatalf("the watch ended %+v, want session_closed", end)
+		if end := watch.End(); end.Reason != durable.WatchEnded {
+			t.Fatalf("the watch ended %+v, want ended", end)
 		}
 		// The advance and the close of the throwing observer each failed once, and each was reported.
 		sfReports(t, reports, failure, failure)
-	})
-
-	t.Run("reports the failure of a listener of a view's state or of the task graph's state", func(t *testing.T) {
-		// Pi view.ts and task-graph.ts: `replicatedState(observer, { onError: (error) => this.#session.report(error) })`.
-		harness, root, reports := sfStarted(t, newControlledStorage(), &signalLog{})
-		impl := harness.(*harnessImpl)
-		viewState := must(impl.host.views.State(testContext, root.Id()))
-		graphState := must(impl.taskGraph.State(testContext))
-		failure := errors.New("state listener failed")
-		viewState.Subscribe(func(ConversationView, context.Context, chord.ReplicatedStateDelivery) { panic(failure) })
-		graphState.Subscribe(func(TaskGraph, context.Context, chord.ReplicatedStateDelivery) { panic(failure) })
-		impl.WaitDeliveries()
-		sfReports(t, reports, failure, failure)
-		viewState.Dispose()
-		graphState.Dispose()
-		_ = harness.Close(testContext)
 	})
 
 	// harness-storage-failure.test.ts:552 it("reports a throwing watch listener, which ends that watch")
@@ -190,7 +173,7 @@ func (observer throwingGraphObserver) Advance(context.Context, TaskGraph, []dura
 	panic(observer.failure)
 }
 
-func (observer throwingGraphObserver) CloseSession(error) { panic(observer.failure) }
+func (observer throwingGraphObserver) SourceEnded(error) { panic(observer.failure) }
 
 func TestSafeNow(t *testing.T) {
 	// harness-storage-failure.test.ts:603 it("reports a throwing clock once, also when the report handler reads the clock again")

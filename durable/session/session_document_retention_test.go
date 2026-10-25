@@ -154,24 +154,24 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		opened.close(t)
 	})
 
-	// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:144 "never evicts a document a watch or a document state observes, and evicts it once the last detaches"
-	t.Run("never evicts a document a watch or a document state observes, and evicts it once the last detaches", func(t *testing.T) {
+	// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:144 "never evicts a document a watch observes, and evicts it once the last watch detaches"
+	t.Run("never evicts a document a watch observes, and evicts it once the last watch detaches", func(t *testing.T) {
 		opened := openRetention(1_000)
 		conversationId := opened.conversation(t)
 		opened.bump(t, conversationId, 1)
 		watch := watchOf(t, opened, retentionCounterDoc, conversationId)
-		state, err := opened.session.DocumentStateErased(ctx, retentionCounterDoc, conversationId)
-		must(t, err)
+		kept := watchOf(t, opened, retentionCounterDoc, conversationId)
+		kept.Start(func(context.Context, obj, []durable.Op) error { return nil })
 		seen := &watchRecorder{}
 		watch.Start(func(_ context.Context, value obj, ops []durable.Op) error { seen.record(value, ops); return nil })
 		opened.clock.advance(1_000_000)
 		opened.bump(t, conversationId, 1)
 		opened.settleLine(t)
 		// Still cached: a read long after its retention passed loads nothing from Storage.
-		if num(state.Value().Value("count")) != 2 {
-			t.Fatalf("state value %v, want count 2", state.Value())
-		}
 		eventuallyTrue(t, func() bool {
+			if value := kept.Value(); value == nil || num(value.Value("count")) != 2 {
+				return false
+			}
 			for _, delivery := range seen.all() {
 				if delivery.value != nil && num(delivery.value.Value("count")) == 2 {
 					return true
@@ -187,15 +187,16 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		if opened.storage.DocumentReadCount() != reads {
 			t.Fatal("an observed document is read from the cache")
 		}
-		_, err = watch.Stop()
+		_, err := watch.Stop()
 		must(t, err)
 		opened.clock.advance(1_000_000)
 		opened.bump(t, conversationId, 1)
 		opened.settleLine(t)
-		if num(state.Value().Value("count")) != 3 {
-			t.Fatalf("state value %v, want count 3", state.Value())
-		}
-		state.Dispose()
+		eventuallyTrue(t, func() bool {
+			value := kept.Value()
+			return value != nil && num(value.Value("count")) == 3
+		})
+		_, _ = kept.Stop()
 		opened.clock.advance(1_000_000)
 		commit(t, opened.session, func(durable.Tx) error { return nil })
 		opened.touchSessionDoc(t)
@@ -368,7 +369,7 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		opened := openRetention(600_000)
 		conversationId := opened.conversation(t)
 		opened.bump(t, conversationId, 1)
-		_, err := opened.session.DocumentStateErased(ctx, retentionCounterDoc, conversationId)
+		_, err := opened.session.WatchDocErased(ctx, retentionCounterDoc, conversationId)
 		must(t, err)
 		opened.close(t)
 		if sizes := opened.sizes(); sizes.Cached != 0 || sizes.Idle != 0 || sizes.Attached != 0 {
@@ -384,13 +385,13 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		if idle := opened.sizes().Idle; idle != 2 {
 			t.Fatalf("idle %d, want 2", idle)
 		}
-		state, err := opened.session.DocumentStateErased(ctx, retentionCounterDoc, conversationId)
+		watch, err := opened.session.WatchDocErased(ctx, retentionCounterDoc, conversationId)
 		must(t, err)
 		must(t, opened.session.UnloadDocuments())
 		if sizes := opened.sizes(); sizes.Cached != 0 || sizes.Idle != 0 || sizes.Attached != 1 {
 			t.Fatalf("sizes %+v, want nothing cached or idle and one pinned incarnation", sizes)
 		}
-		state.Dispose()
+		_, _ = watch.Stop()
 		if attached := opened.sizes().Attached; attached != 0 {
 			t.Fatalf("attached %d, want 0", attached)
 		}
@@ -497,11 +498,15 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		opened := openRetention(0)
 		conversationId := opened.conversation(t)
 		opened.bump(t, conversationId, 1)
-		state, err := opened.session.DocumentStateErased(ctx, retentionCounterDoc, conversationId)
-		must(t, err)
+		watch := watchOf(t, opened, retentionCounterDoc, conversationId)
+		watch.Start(func(context.Context, obj, []durable.Op) error { return nil })
 		commit(t, opened.session, func(tx durable.Tx) error { return tx.RetireDoc(retentionCounterDoc, conversationId) })
-		if state.Value() != nil {
-			t.Fatalf("state value %v, want retired", state.Value())
+		<-watch.Closed()
+		if end := watch.End(); end.Reason != durable.WatchRetired {
+			t.Fatalf("end %+v, want retired", end)
+		}
+		if watch.Value() != nil {
+			t.Fatalf("watch value %v, want retired", watch.Value())
 		}
 		// A retired incarnation never changes again: its observer pins nothing.
 		if attached := opened.sizes().Attached; attached != 0 {
@@ -510,7 +515,7 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		opened.bump(t, conversationId, 5)
 		opened.untilCached(t, 0)
 		expectEqual(t, opened.snapshot(t, retentionCounterDoc, conversationId), delta.JsonObjectOf("count", 5))
-		state.Dispose()
+		_, _ = watch.Stop()
 		opened.close(t)
 	})
 
@@ -523,7 +528,7 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		gate := opened.storage.HoldFindDocument()
 		attaching := make(chan error, 1)
 		go func() {
-			_, err := opened.session.DocumentStateErased(ctx, retentionCounterDoc, conversationId)
+			_, err := opened.session.WatchDocErased(ctx, retentionCounterDoc, conversationId)
 			attaching <- err
 		}()
 		waitClosed(t, gate.Entered())
@@ -542,8 +547,8 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		}
 	})
 
-	// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:382 "evicts on its timer without a commit, and tolerates a detach called twice"
-	t.Run("evicts on its timer without a commit, and tolerates a detach called twice", func(t *testing.T) {
+	// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:382 "evicts on its timer without a commit, and tolerates a stop called twice"
+	t.Run("evicts on its timer without a commit, and tolerates a stop called twice", func(t *testing.T) {
 		storage := sessiontest.NewControlledStorage()
 		twenty := 20.0
 		kernel := session.NewSessionImpl(storage, session.Hooks{}, nil, func() *float64 { return &twenty })
@@ -551,10 +556,10 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		must(t, tryCommit(kernel, func(tx durable.Tx) error {
 			return mustDoc(t, tx, retentionCounterDoc, conversationId).Set("count", 1)
 		}))
-		state, err := kernel.DocumentStateErased(ctx, retentionCounterDoc, conversationId)
+		watch, err := kernel.WatchDocErased(ctx, retentionCounterDoc, conversationId)
 		must(t, err)
-		state.Dispose()
-		state.Dispose()
+		_, _ = watch.Stop()
+		_, _ = watch.Stop()
 		deadline := time.Now().Add(2 * time.Second)
 		for kernel.DocumentCacheSizes().Cached > 0 && time.Now().Before(deadline) {
 			time.Sleep(10 * time.Millisecond)
@@ -626,14 +631,14 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 			withMigrate(func(value obj, _ int) obj { return delta.JsonObjectOf("count", value.Value("count"), "v2", true) }))
 		opened := openRetention(0)
 		commit(t, opened.session, func(tx durable.Tx) error { _, err := tx.Doc(v1); return err })
-		state, err := opened.session.DocumentStateErased(ctx, v1)
+		watch, err := opened.session.WatchDocErased(ctx, v1)
 		must(t, err)
 		expectEqual(t, opened.snapshot(t, v2), delta.JsonObjectOf("count", 3, "v2", true))
 		opened.settleLine(t)
 		if cached := opened.sizes().Cached; cached != 1 {
 			t.Fatalf("cached %d, want 1", cached)
 		}
-		state.Dispose()
+		_, _ = watch.Stop()
 		opened.untilCached(t, 0)
 		opened.close(t)
 	})

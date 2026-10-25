@@ -1187,7 +1187,6 @@
  "pkg:durable/.#HookApi::property:watchDoc": "durable/types.go#DocumentObserver.WatchDocErased",
  "pkg:durable/.#MemoryStorage::property:entry::call:1": "durable/storage/memory.go#MemoryStorage.VisibleEntry",
  "pkg:durable/.#MemoryStorage::property:prepareCommit::call:0": "durable/storage/memory.go#MemoryStorage.PrepareCommitAt",
- "pkg:durable/.#Session::property:documentState": "durable/types.go#Session.DocumentStateErased",
  "pkg:durable/.#Session::property:snapshot": "durable/types.go#DocumentReader.SnapshotErased",
  "pkg:durable/.#Session::property:snapshotAsOf": "durable/types.go#DocumentReader.SnapshotAsOfErased",
  "pkg:durable/.#Session::property:watchDoc": "durable/types.go#DocumentObserver.WatchDocErased",

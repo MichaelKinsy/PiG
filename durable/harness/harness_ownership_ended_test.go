@@ -156,7 +156,7 @@ func (store *ownMarkFailingStorage) fail(id durable.TaskId) {
 	store.mu.Unlock()
 }
 
-func (store *ownMarkFailingStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (store *ownMarkFailingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	store.mu.Lock()
 	marks := false
 	for _, write := range writes {
@@ -171,7 +171,7 @@ func (store *ownMarkFailingStorage) Commit(ctx context.Context, writes []durable
 	if marks {
 		return 0, store.failure
 	}
-	return store.Storage.Commit(ctx, writes)
+	return store.Storage.Commit(ctx, writes, adopt)
 }
 
 func ownExpectFailedEnd(t *testing.T, harness Harness, failure error) {

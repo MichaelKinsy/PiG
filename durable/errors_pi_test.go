@@ -21,6 +21,9 @@ func TestDurableErrorNamesMatchPi(t *testing.T) {
 	if got := NewConversationBusy(1).Name(); got != "ConversationBusy" {
 		t.Errorf("ConversationBusy name = %q", got)
 	}
+	if got := NewReadOnlySession("x").Name(); got != "ReadOnlySession" {
+		t.Errorf("ReadOnlySession name = %q", got)
+	}
 }
 
 func TestDurableErrorMessagesAndCauseMatchErrorsTS(t *testing.T) {
@@ -29,6 +32,9 @@ func TestDurableErrorMessagesAndCauseMatchErrorsTS(t *testing.T) {
 	}
 	if got, want := NewConversationBusy(12).Error(), "Conversation 12 is busy"; got != want {
 		t.Errorf("ConversationBusy = %q, want %q", got, want)
+	}
+	if got, want := NewReadOnlySession("a commit with writes").Error(), "Read-only Harness: a commit with writes refused"; got != want {
+		t.Errorf("ReadOnlySession = %q, want %q", got, want)
 	}
 	cause := errors.New("disk full")
 	failed := NewSessionFailed(cause)

@@ -27,7 +27,7 @@ func storedSubmission(t *testing.T, create durable.SubmissionCreate) (durable.Su
 	if _, err := memory.Commit(ctx, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: create.ConversationId}},
 		durable.SubmissionWrite{Value: record},
-	}); err != nil {
+	}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	stored, err := memory.Submission(ctx, record.Id)
@@ -105,7 +105,7 @@ func TestSettledSubmissionRecordUnionEveryVariantIsStored(t *testing.T) {
 	for _, record := range settled {
 		writes = append(writes, durable.SubmissionWrite{Value: record})
 	}
-	if _, err := memory.Commit(ctx, writes); err != nil {
+	if _, err := memory.Commit(ctx, writes, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	for _, record := range settled {
@@ -167,7 +167,7 @@ func TestDocumentCreateUnionEveryScopeHistoryAndForkIsStored(t *testing.T) {
 		created = append(created, create)
 		writes = append(writes, durable.DocumentCreateWrite{Record: create, Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("v", 1)}})
 	}
-	if _, err := memory.Commit(ctx, writes); err != nil {
+	if _, err := memory.Commit(ctx, writes, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	for _, create := range created {

@@ -86,6 +86,20 @@ func (*SessionFailed) Error() string {
 // Unwrap returns the cause.
 func (e *SessionFailed) Unwrap() error { return e.Cause }
 
+// ReadOnlySession reports that the Harness was opened read-only (HarnessOptions.ReadOnly): a commit with writes, or a call
+// that would run tasks, was refused. Nothing was written, and the Harness stays usable for reads.
+type ReadOnlySession struct {
+	What string
+}
+
+// NewReadOnlySession returns the error for the refused operation what, such as "a commit with writes".
+func NewReadOnlySession(what string) *ReadOnlySession { return &ReadOnlySession{What: what} }
+
+// Name is the `name` property, "ReadOnlySession".
+func (*ReadOnlySession) Name() string { return "ReadOnlySession" }
+
+func (e *ReadOnlySession) Error() string { return "Read-only Harness: " + e.What + " refused" }
+
 // ConversationBusy reports that a submission reached a busy conversation and was not admitted.
 type ConversationBusy struct {
 	ConversationId ConversationId

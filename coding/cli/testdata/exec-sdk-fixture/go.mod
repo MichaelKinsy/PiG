@@ -2,6 +2,6 @@ module github.com/MichaelKinsy/PiG/testdata/exec-sdk-fixture
 
 go 1.26
 
-require github.com/MichaelKinsy/PiG/extensions/sdk v0.3.1-0.20261022211800-1963ae7765f7
+require github.com/MichaelKinsy/PiG/extensions/sdk v0.5.3
 
 replace github.com/MichaelKinsy/PiG/extensions/sdk => ../../../../extensions/sdk

@@ -602,7 +602,7 @@ func TestCoreCloseSealsAdmissionBeforeSignallingHandlersAndStopsWatchesBeforeJoi
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if watchEnd.Reason != durable.WatchSessionClosed {
-		t.Fatalf("watch ended %+v, want session_closed", watchEnd)
+	if watchEnd.Reason != durable.WatchEnded {
+		t.Fatalf("watch ended %+v, want ended", watchEnd)
 	}
 }

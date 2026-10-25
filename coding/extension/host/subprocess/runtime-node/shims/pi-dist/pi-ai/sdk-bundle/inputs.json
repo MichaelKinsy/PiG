@@ -179,7 +179,7 @@
     },
     {
       "path": "pi-dist/pi-ai/models.js",
-      "sha256": "de6323034ca216eefecdfc44dd5c93f22713b34a01f2eb21a6d0a5ce85f9bb19"
+      "sha256": "b2730ffa727d4a19a212172d031344fd6e0992082df233952233a15116824ac4"
     },
     {
       "path": "pi-dist/pi-ai/providers/all.js",
@@ -259,7 +259,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "cc48ce3d6fe8d1a6919782b0b0bf5239a750a7880d7c075de3c1966d879f9ff6"
+      "sha256": "a9507ad3c47ac0da71a11b36e143842b41e0bda4f3d1a00811e7fe2eebbc9d8b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -363,15 +363,15 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",
-      "sha256": "e3cb85944bdbc7fb369204dac3001c683e422ca44f305112e77fb1c5dbfbb79e"
+      "sha256": "4d3b6505c87e3959624430b789b534d6a36a22b1d475b4b5ca0d7a9f6845038c"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "8858aafc35dddc64e504a029413ad11b2f3657429acb96330532a5e042ce5f5e"
+      "sha256": "cbe65d07905d409ef4d81ec5d9258157e0f5b75a62c2dbf7d153133fdba3dc6d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "601a908570175a93712f282030d331661fa49ff21139160186271d21445c798e"
+      "sha256": "9734b4f932db67d582ba1ad32682f3195db48fc555d3f681e23fb4c4eec80097"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
@@ -399,7 +399,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/vercel-ai-gateway.json",
-      "sha256": "6e44f86808a629ded1b9e26b30908d104ad94b7bd2168a3b35c2390069c66899"
+      "sha256": "10f211af694b0ab1ed32176f562a74bfd1042031a70682dad8ad565a9a38c3fd"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",

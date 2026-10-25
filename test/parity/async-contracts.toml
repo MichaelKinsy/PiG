@@ -1,10 +1,10 @@
-version = "1.4.0"
+version = "1.4.0+74f46864"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
 disposition = "deferred"
 contracts = ["concurrent-joined", "microtask-ordering"]
-evidence = ["test:test/extension-conformance/tool_dispatch_test.go", "test:coding/extension/host/subprocess/tool_dispatch_wire_test.go", "test:coding/cli/audit_992_subprocess_tool_dispatch_test.go", "test:extensions/sdk/tool_prepare_arguments_test.go", "test:extensions/sdk-py/tests/test_tool_dispatch.py", "test:extensions/sdk-rs/tests/tool_dispatch_wire.rs", "test:agent/settle_order_test.go", "test:coding/extension/host/subprocess/dialog_reply_order_test.go", "test:coding/cli/parallel_tool_end_order_test.go", "scenario:test/parity/scenarios/rpc/62-rpc-parallel-tool-dialog-order.toml", "test:test/extension-conformance/tool_dialog_order_test.go", "test:extensions/sdk/tool_dialog_order_test.go", "test:extensions/sdk-py/tests/test_tool_dialog_order.py", "test:extensions/sdk-rs/src/tool_start_order.rs"]
+evidence = ["test:test/extension-conformance/tool_dispatch_test.go", "test:coding/extension/host/subprocess/tool_dispatch_wire_test.go", "test:coding/cli/audit_992_subprocess_tool_dispatch_test.go", "test:extensions/sdk/tool_prepare_arguments_test.go", "test:extensions/sdk-py/tests/test_tool_dispatch.py", "test:extensions/sdk-rs/tests/tool_dispatch_wire.rs", "test:agent/tool_settle_test.go", "test:coding/extension/host/subprocess/dialog_reply_order_test.go", "test:coding/cli/parallel_tool_end_order_test.go", "scenario:test/parity/scenarios/rpc/62-rpc-parallel-tool-dialog-order.toml", "test:test/extension-conformance/tool_dialog_order_test.go", "test:extensions/sdk/tool_dialog_order_test.go", "test:extensions/sdk-py/tests/test_tool_dialog_order.py", "test:extensions/sdk-rs/src/tool_start_order.rs"]
 rationale = "Extension tool dispatch: prepareToolCall (:707-716) runs the tool's prepareArguments, then validates the result, so a subprocess tool is asked for its prepared arguments (tool_prepare_arguments, awaited by the source-order loop) before the host validates. executeToolCallsParallel (:619-647, 820-837) invokes every prepared call through Promise.all(map) in source order and each reaches tool.execute synchronously: the host writes a batch's tool_call requests in source order (one call lane per connection, each call releasing its place once its request is written) and every SDK runtime starts handlers in arrival order. Completion is joined. A call's tool_execution_end follows its own execute promise: calls whose answers arrive back to back from the runtime (a timer, or a dialog answered on one stdin chunk) end in the order the answers arrived, because the one JS thread runs their continuations in settle order, while the results keep source order. The host records the order where the answers are read (the connection read loop for a tool_call response, the RPC stdin line for a dialog answer) and keeps it where the calls continue (agent.SettleGate: the batch's ends, and the replies to a connection's dialog calls); goroutines that wait for the answers wake in no order, so without it the ends came out in a different order on most runs. Existing full-file async obligations outside extension tool dispatch remain deferred. Delta at Pi bd3c9b82: adc5fa9f/04a93bad add DEFAULT_AGENT_IDENTITY and pass a merged identity in the stream options; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
@@ -643,6 +643,13 @@ disposition = "translated"
 contracts = ["awaited", "microtask-ordering"]
 evidence = ["test:chord/replicated_state_delivery_upstream_test.go#TestReplicatedStatePublicDelivery", "test:chord/replicated_state_delivery_upstream_test.go#TestAttachedReplicatedStateListenerErrors", "test:chord/replicated_state_delivery_upstream_test.go#TestMutableReplicatedStateReportsRejectedCallbacksThroughItsDefaultReporter", "test:chord/replicated_state_upstream_test.go#TestTransactionalReplicatedState", "test:chord/replicated_state_upstream_test.go#TestAuthoritativeReplicatedStateSources"]
 rationale = "Async uses in state.ts. (1) StateSubscriber.drain (:126-148): a listener's PromiseLike result suspends that subscription only. A void Promise.resolve(result).then resumes the drain when it settles and reports a rejection first (:133-141). The producer never awaits it. Overflow keeps at most 100 pending deliveries (:115-124), and close() drops pending work without aborting or joining the running callback (:154-157). In Go a listener passed to SubscribeAsync returns a Completion (a <-chan error, chord/state.go:48). stateSubscriber.drain (:199) starts `go subscriber.await(completion)` and returns, and await (:226) reports a non-nil error, clears running and drains again, so delivery stays serialized per subscription and the producer does not block. Like Pi's unawaited then, nothing joins that goroutine; it ends when the completion settles (portlint golifetime note at :216). It may still report after unsubscribe, as Pi does (the 'still observes a callback rejection after unsubscribe' subtest). (2) reportErrorAsync (:394-398) rethrows in a queueMicrotask, so a listener or source failure never reaches the publishing caller or the source and becomes an uncaught exception afterwards. In Go, reportErrorAsync (:152) calls the reporter installed with SetUncaughtErrorReporter (:147). The default (init :135) runs exitOnUncaught on its own goroutine, so the publishing call is not interrupted. Publish, Replace and receive never return listener failures (TestMutableReplicatedStateReportsRejectedCallbacksThroughItsDefaultReporter; 'reports listener failures without throwing them into the source'). The tests replace the reporter. No test observes that the default reporter fires after the call returns. (3) change() (:262-266) rejects a PromiseLike callback result: it swallows the result's rejection with .catch, aborts the draft and throws a TypeError. Go's mutate is func(draft) error, so an asynchronous callback cannot be expressed. replicated-state.test.ts:46 has no Go form and its slot tests a panicking callback. (4) Publisher.publish (:215-238) is reentrancy-serialized by #delivering, so publications made during delivery are delivered by the running loop in sequence order. Go's statePublisher.deliver (:349) keeps that loop under a mutex that it never holds across a listener, and also accepts publications from other goroutines into the running loop. MutableReplicatedState.change detects reentrancy per goroutine (goroutineid, :499-531) and serializes concurrent changes with changeMu, enqueuing the revision before releasing the lock, so concurrent changes publish in adoption order. These are Go additions with no Pi counterpart, because Pi has one thread. There are no timers, AbortSignals, or Promise.all/race."
+
+[[files]]
+path = "packages/chord/src/watch.ts"
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:durable/session/observation_internal_test.go#TestCommittedWatchRetireDeliversTheLastFrameThenEndsRetired", "test:durable/session/committed_watch_retired_pi_test.go#TestCommittedWatchRejectsASecondCancellationObserver", "test:durable/session/session_watches_test.go#TestSessionDocumentWatches"]
+rationale = "Types only, with three Promise members. WatchHandle.start installs the sole listener, whose Promise<void> result is awaited by the watch's serial drain: Go's Start takes a func returning an error and runs it on a delivery goroutine, never inline, one frame at a time, and a returned error ends the watch with listener_error. WatchHandle.stop returns Promise<WatchEnd>: Go's Stop is a blocking call that ends the watch once and returns the terminal WatchEnd (a callback already running keeps running and is not joined). WatchHandle.closed is Promise<WatchEnd>: Go's Closed is a channel closed once by the single terminate, and End reads the result after it. The cancellation signal passed to observeCancellation is the context.Context given to ObserveCancellation, which ends the watch with cancelled. The end reasons are stopped, cancelled, retired, ended, listener_error and failed (session_closed and session_failed are ended and failed since Pi 92ab5360)."
 
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/index.ts"
@@ -1622,7 +1629,7 @@ path = "packages/durable/src/harness/harness.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f/04a93bad add DEFAULT_HARNESS_IDENTITY and wrap the Models once with the identity; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f/04a93bad add DEFAULT_HARNESS_IDENTITY and wrap the Models once with the identity; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators'. Delta at Pi be14d9732: Conversation.compact, Conversation.abort, Conversation.waitForIdle, Harness.waitForTask and Harness.waitForIdle become `async`, so the ReadOnlySession that tasks.resume() throws on a read-only Harness is a rejection of the returned promise, never a synchronous throw out of the call. Go returns it as the call's error: TaskScheduler.TryResume returns *durable.ReadOnlySession to Compact, Abort, WaitForIdle, WaitForTask and the Submissions resume hook (Submit, Wait), while Harness.Resume, which is synchronous upstream too, panics with it. Ordering is unchanged: the check is the first step of each call, before any commit. Evidence: durable/harness/harness_read_only_test.go#TestReadOnlyHarness."
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
@@ -1668,10 +1675,10 @@ rationale = "Waiting for a submission to settle is a blocking call on the caller
 
 [[files]]
 path = "packages/durable/src/harness/task-graph.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/harness/harness_task_graph_test.go"]
+rationale = "Harness.taskGraph() is removed in Pi 92ab5360: watchTaskGraph() returns a WatchHandle (see packages/chord/src/watch.ts), whose Promise members are the blocking Start, Stop and Closed of the Go watch, and whose value is the live graph once the watch is started. The graph's own async obligations outside the watch remain deferred: the per-file contract has not been reviewed for this pin."
 
 [[files]]
 path = "packages/durable/src/harness/tool.ts"
@@ -1740,15 +1747,15 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 path = "packages/durable/src/session/observation.ts"
 disposition = "translated"
 contracts = ["detached-owned", "cancellable", "microtask-ordering"]
-evidence = ["test:durable/session/session_watches_test.go#TestSessionDocumentWatches", "test:durable/session/session_watches_test.go#TestSessionWatchEntersTheCommittedFrameBeforeTheCommitReturns", "test:durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall"]
-rationale = "A watch drains its frames serially: one delivery at a time, in commit order, on a goroutine the Session tracks (WaitDeliveries), and a started watch with no callback in flight takes the committed frame into delivery before the publishing commit returns, as the drain microtask enters the listener before the commit's caller resumes. `closed` is a channel closed once by the single terminate, which detaches, drops the pending frames, removes the cancellation hook and ends the watch; a callback already running keeps running and is not joined. A listener's failure is reported through the Session before the watch ends with listener_error, and a failed Session ends it with session_failed and the error."
+evidence = ["test:durable/session/session_watches_test.go#TestSessionDocumentWatches", "test:durable/session/session_watches_test.go#TestSessionWatchEntersTheCommittedFrameBeforeTheCommitReturns", "test:durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall", "test:durable/session/observation_internal_test.go#TestCommittedWatchEndsRetiredOnlyOnItsSourcesRetirement", "test:durable/session/observation_internal_test.go#TestCommittedWatchRetireDeliversTheLastFrameThenEndsRetired", "test:durable/session/observation_internal_test.go#TestCommittedWatchDropsItsReferencesOnceEnded"]
+rationale = "A watch drains its frames serially: one delivery at a time, in commit order, on a goroutine the Session tracks (WaitDeliveries), and a started watch with no callback in flight takes the committed frame into delivery before the publishing commit returns, as the drain microtask enters the listener before the commit's caller resumes. `closed` is a channel closed once by the single terminate, which detaches, drops the pending frames, removes the cancellation hook and ends the watch; a callback already running keeps running and is not joined. A listener's failure is reported through the Session before the watch ends with listener_error, and a failed Session ends it with the failed reason and the error. Since Pi 92ab5360 the source ends a watch explicitly: Retire(ctx) queues the last frame, [[\"r\", null]] with the zero value, which is delivered like any frame and after which the watch ends retired, and an Advance after it is dropped (an Advance of a null value no longer retires); SourceEnded(nil) ends it ended when the Session closes and SourceEnded(err) ends it failed with the error. Both are synchronous, once-only terminations through the single terminate: they drop the pending frames and every reference the watch holds into its source (listener, detach, report, replace, scheduler), so a stopped watch that is still referenced keeps nothing but its last value alive; a callback already running keeps running and is not joined. The frame the delivery goroutine took before an end still reaches the listener it was taken with, as the drain microtask has captured the listener by then. Upstream's FinalizationRegistry check of the dropped references has no Go counterpart: TestCommittedWatchDropsItsReferencesOnceEnded asserts the fields."
 
 [[files]]
 path = "packages/durable/src/session/session.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:durable/session/session_adoption_test.go#TestSessionAdoptionInsideStorageCommit", "test:durable/session/session_adoption_internal_test.go#TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage", "test:durable/session/session_watches_test.go#TestSessionWatchEntersTheCommittedFrameBeforeTheCommitReturns"]
+rationale = "Storage adoption (Pi 92ab5360): #runCommit passes Storage.commit an adopt callback and Storage calls it once, synchronously, when the batch is durable and before its next commit; the Session adopts the staged documents inside it, so the adopted state is visible to any read that Storage starts from inside adopt. Go's runCommit does the same through a callback that keeps its own error or panic (a panic must not reach Storage), then publishes the commit synchronously before the Session's call returns, which is the microtask order of the upstream promise. A Storage that rejects after adopting fails the Session without discarding the adopted changes; one that rejects before adopting discards them and fails the Session; one that resolves without adopting fails it with 'Storage committed without adopting the batch'; a failed adoption fails the Session with its own error, which never reaches Storage. The Session's close, task, checkpoint and watch-acquisition async obligations outside the commit path remain deferred, as the per-file contract has not been reviewed for this pin."
 
 [[files]]
 path = "packages/durable/src/session/transaction.ts"
@@ -1783,7 +1790,7 @@ path = "packages/durable/src/storage/memory.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: 4c25119f changes it and cae9fd28 reverts it; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: 4c25119f changes it and cae9fd28 reverts it; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Pi 92ab5360: commit(writes, adopt, context) calls adopt(seq) once, synchronously, after the batch is applied and before the commit resolves; Go's MemoryStorage.Commit calls adopt under its write lock after applying the batch, so an adopt callback must not read the storage on its own goroutine and wait for the result."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/cloudflare.ts"
@@ -1843,10 +1850,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/testing/storage-conformance.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage"]
+rationale = "New in Pi 92ab5360: checkAdoption wraps every case's Storage so that adopt runs exactly once, with the committed sequence, before the commit resolves, and never for a commit that rejects; the new case 'adopts a durable commit once before resolving, and never a failed one' starts a read from inside adopt, as a promise that runs once the adopting commit returns. In Go the read runs on its own goroutine, because the memory and JSONL storages hold their commit lock while adopting, and the case receives its result after Commit returns; a storage that never adopts fails the order check and starts no read. The suite's other async obligations remain deferred: the per-file contract has not been reviewed for this pin."
 
 [[files]]
 path = "packages/durable/src/testing/types.ts"

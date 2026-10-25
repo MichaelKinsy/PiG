@@ -22,11 +22,11 @@
     "upstream": "packages/durable/src/harness/agent.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample15SystemPrompt",
-      "TestExample27PlanMode"
+      "TestExample14SystemPrompt",
+      "TestExample26PlanMode"
     ],
-    "upstream_reference": "packages/durable/src/harness/agent.ts:95 (applyChange); packages/durable/src/harness/agent.ts:158 (ResolveAgent); packages/durable/src/harness/agent.ts:1-263; packages/durable/test/examples/14-chat.ts; packages/durable/test/examples/24-child-tasks.ts; packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/agent.go:381 `if change.Extensions.state == changeSet {` -> `if change.Extensions.state != changeSet {` (TestExample27PlanMode FAIL); durable/harness/agent.go:517 `} else if wrap.WrapSection != nil {` -> `} else if wrap.WrapSection == nil {` (TestExample15SystemPrompt FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/agent.ts:95 (applyChange); packages/durable/src/harness/agent.ts:158 (ResolveAgent); packages/durable/src/harness/agent.ts:1-263; packages/durable/test/examples/13-chat.ts; packages/durable/test/examples/23-child-tasks.ts; packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/agent.go:381 `if change.Extensions.state == changeSet {` -> `if change.Extensions.state != changeSet {` (TestExample26PlanMode FAIL); durable/harness/agent.go:517 `} else if wrap.WrapSection != nil {` -> `} else if wrap.WrapSection == nil {` (TestExample14SystemPrompt FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/agent.ts",
@@ -43,10 +43,10 @@
     "upstream": "packages/durable/src/harness/json.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample21LateJoin"
+      "TestExample20LateJoin"
     ],
-    "upstream_reference": "packages/durable/src/harness/json.ts:1-32; packages/durable/test/examples/21-late-join.ts",
-    "mutation": "durable/harness/json.go:58 `if items, isArray := value.([]any); isArray && array.Len() <= len(item` -> `if items, isArray := value.([]any); isArray && array.Len() < len(items` (TestExample21LateJoin FAIL); durable/harness/json.go:71 `if isLeaf(current) && isLeaf(value) && current == value {` -> `if isLeaf(current) && isLeaf(value) && current != value {` (TestExample21LateJoin FAIL); durable/harness/json.go:50 `if err := assignSlot(objectSlot{object, name}, record[name]); err != n` -> `if err := assignSlot(objectSlot{object, name}, record[name]); err == n` (TestExample21LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/json.ts:1-32; packages/durable/test/examples/20-late-join.ts",
+    "mutation": "durable/harness/json.go:58 `if items, isArray := value.([]any); isArray && array.Len() <= len(item` -> `if items, isArray := value.([]any); isArray && array.Len() < len(items` (TestExample20LateJoin FAIL); durable/harness/json.go:71 `if isLeaf(current) && isLeaf(value) && current == value {` -> `if isLeaf(current) && isLeaf(value) && current != value {` (TestExample20LateJoin FAIL); durable/harness/json.go:50 `if err := assignSlot(objectSlot{object, name}, record[name]); err != n` -> `if err := assignSlot(objectSlot{object, name}, record[name]); err == n` (TestExample20LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/json.ts",
@@ -71,20 +71,10 @@
     "upstream": "packages/durable/src/harness/task-graph.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample24ChildTasks"
+      "TestExample23ChildTasks"
     ],
-    "upstream_reference": "packages/durable/src/harness/task-graph.ts:1-223; packages/durable/src/harness/task-graph.ts:18 (MarshalJSON); packages/durable/src/harness/task-graph.ts:96 (Watch); packages/durable/test/examples/24-child-tasks.ts",
-    "mutation": "durable/harness/task_graph.go:258 `if record.State.Status == durable.TaskTerminal {` -> `if record.State.Status != durable.TaskTerminal {` (TestExample24ChildTasks FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
-  },
-  {
-    "upstream": "packages/durable/src/session/observation.ts",
-    "package": "./durable/session",
-    "tests": [
-      "TestCommittedObservationHarnessSurface",
-      "TestSessionSourceAttachmentIsolatesListenerFailure"
-    ],
-    "upstream_reference": "packages/durable/src/session/observation.ts:119 (Dispose); packages/durable/src/session/observation.ts:1-302",
-    "mutation": "durable/session/observation.go:316 `attachment.disposed = true` -> `attachment.disposed = false` (TestSessionSourceAttachmentIsolatesListenerFailure FAIL); durable/session/observation.go:542 `if err != nil {` -> `if err == nil {` (TestCommittedObservationHarnessSurface FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/task-graph.ts:1-223; packages/durable/src/harness/task-graph.ts:18 (MarshalJSON); packages/durable/src/harness/task-graph.ts:96 (Watch); packages/durable/test/examples/23-child-tasks.ts",
+    "mutation": "durable/harness/task_graph.go:258 `if record.State.Status == durable.TaskTerminal {` -> `if record.State.Status != durable.TaskTerminal {` (TestExample23ChildTasks FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/session/observation.ts",
@@ -99,10 +89,10 @@
     "upstream": "packages/durable/src/session/observation.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample21LateJoin"
+      "TestExample20LateJoin"
     ],
-    "upstream_reference": "packages/durable/src/session/observation.ts:119 (Dispose); packages/durable/src/session/observation.ts:1-302; packages/durable/test/examples/21-late-join.ts",
-    "mutation": "durable/session/observation.go:35 `return false` -> `return true` (TestExample21LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/session/observation.ts:119 (Dispose); packages/durable/src/session/observation.ts:1-302; packages/durable/test/examples/20-late-join.ts",
+    "mutation": "durable/session/observation.go:35 `return false` -> `return true` (TestExample20LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/storage/sqlite/node.ts",
@@ -221,19 +211,19 @@
     "upstream": "packages/durable/src/harness/live.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample21LateJoin"
+      "TestExample20LateJoin"
     ],
-    "upstream_reference": "packages/durable/src/harness/live.ts:1-176; packages/durable/src/harness/live.ts:149 (SettleSchedulerOutcome); packages/durable/test/examples/21-late-join.ts",
-    "mutation": "durable/harness/live.go:209 `slots := live.Array(\"tools\")` -> `slots := live.Array(\"toolsX\")` (TestExample21LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/live.ts:1-176; packages/durable/src/harness/live.ts:149 (SettleSchedulerOutcome); packages/durable/test/examples/20-late-join.ts",
+    "mutation": "durable/harness/live.go:209 `slots := live.Array(\"tools\")` -> `slots := live.Array(\"toolsX\")` (TestExample20LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/tool.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample26CodingAgent"
+      "TestExample25CodingAgent"
     ],
-    "upstream_reference": "packages/durable/src/harness/tool.ts:1-499; packages/durable/src/harness/tool.ts:285 (publishProgress); packages/durable/src/harness/tool.ts:480 (boundContent); packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/tool.go:456 `if err != nil {` -> `if err == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/tool.ts:1-499; packages/durable/src/harness/tool.ts:285 (publishProgress); packages/durable/src/harness/tool.ts:480 (boundContent); packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/tool.go:456 `if err != nil {` -> `if err == nil {` (TestExample25CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/tool.ts",
@@ -344,10 +334,10 @@
     "upstream": "packages/durable/src/harness/context.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample26CodingAgent"
+      "TestExample25CodingAgent"
     ],
-    "upstream_reference": "packages/durable/src/harness/context.ts:129 (OrderToolResults); packages/durable/src/harness/context.ts:59 (DeriveContext); packages/durable/src/harness/context.ts:42 (ReadContext); packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/context.go:68 `if err != nil {` -> `if err == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/context.ts:129 (OrderToolResults); packages/durable/src/harness/context.ts:59 (DeriveContext); packages/durable/src/harness/context.ts:42 (ReadContext); packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/context.go:68 `if err != nil {` -> `if err == nil {` (TestExample25CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/chord/src/output.ts",
@@ -440,11 +430,11 @@
     "upstream": "packages/durable/src/harness/define.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample26CodingAgent",
-      "TestExample28Reviewer"
+      "TestExample25CodingAgent",
+      "TestExample27Reviewer"
     ],
-    "upstream_reference": "packages/durable/src/harness/define.ts:20 (Section); packages/durable/src/harness/define.ts:29 (Hook); packages/durable/src/harness/define.ts:34 (WrapTool); packages/durable/src/harness/define.ts:39 (WrapSection); packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/define.go:34 `if len(options) > 0 && options[0].Tag != nil {` -> `if len(options) >= 0 && options[0].Tag != nil {` (TestExample26CodingAgent FAIL); durable/harness/define.go:42 `return durable.HookRegistration{Task: task.AnyDefinition().Name, Handl` -> `return durable.HookRegistration{Task: task.AnyDefinition().Name, Handl` (TestExample28Reviewer FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/define.ts:20 (Section); packages/durable/src/harness/define.ts:29 (Hook); packages/durable/src/harness/define.ts:34 (WrapTool); packages/durable/src/harness/define.ts:39 (WrapSection); packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/define.go:34 `if len(options) > 0 && options[0].Tag != nil {` -> `if len(options) >= 0 && options[0].Tag != nil {` (TestExample25CodingAgent FAIL); durable/harness/define.go:42 `return durable.HookRegistration{Task: task.AnyDefinition().Name, Handl` -> `return durable.HookRegistration{Task: task.AnyDefinition().Name, Handl` (TestExample27Reviewer FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/define.ts",
@@ -471,12 +461,12 @@
     "upstream": "packages/durable/src/harness/prompt.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample19JsonStorages",
-      "TestExample26CodingAgent",
-      "TestExample27PlanMode"
+      "TestExample18JsonStorages",
+      "TestExample25CodingAgent",
+      "TestExample26PlanMode"
     ],
-    "upstream_reference": "packages/durable/src/harness/prompt.ts:122 (planSections); packages/durable/src/harness/prompt.ts:144 (systemEntry); packages/durable/src/harness/prompt.ts:66 (PlanSystemEntries); packages/durable/test/examples/18-print.ts; packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/prompt.go:211 `} else if next != value {` -> `} else if next == value {` (TestExample27PlanMode FAIL); durable/harness/prompt.go:229 `if tools != nil && len(tools.toolsRemoved) > 0 {` -> `if tools == nil && len(tools.toolsRemoved) > 0 {` (TestExample26CodingAgent FAIL); durable/harness/prompt.go:102 `drafts := make([]SystemDraft, 0, len(sections))` -> `drafts := make([]SystemDraft, 1, len(sections))` (TestExample19JsonStorages FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/prompt.ts:122 (planSections); packages/durable/src/harness/prompt.ts:144 (systemEntry); packages/durable/src/harness/prompt.ts:66 (PlanSystemEntries); packages/durable/test/examples/17-print.ts; packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/prompt.go:211 `} else if next != value {` -> `} else if next == value {` (TestExample26PlanMode FAIL); durable/harness/prompt.go:229 `if tools != nil && len(tools.toolsRemoved) > 0 {` -> `if tools == nil && len(tools.toolsRemoved) > 0 {` (TestExample25CodingAgent FAIL); durable/harness/prompt.go:102 `drafts := make([]SystemDraft, 0, len(sections))` -> `drafts := make([]SystemDraft, 1, len(sections))` (TestExample18JsonStorages FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/usage.ts",
@@ -492,10 +482,10 @@
     "upstream": "packages/durable/src/harness/usage.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample26CodingAgent"
+      "TestExample25CodingAgent"
     ],
-    "upstream_reference": "packages/durable/src/harness/usage.ts:58 (AddUsageState); packages/durable/src/harness/usage.ts:1-73; packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/usage.go:128 `if usage.Reasoning != nil {` -> `if usage.Reasoning == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/usage.ts:58 (AddUsageState); packages/durable/src/harness/usage.ts:1-73; packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/usage.go:128 `if usage.Reasoning != nil {` -> `if usage.Reasoning == nil {` (TestExample25CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/storage/jsonl/node.ts",
@@ -606,19 +596,19 @@
     "upstream": "packages/durable/src/harness/provider.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample26CodingAgent"
+      "TestExample25CodingAgent"
     ],
-    "upstream_reference": "packages/durable/src/harness/provider.ts:26 (ensureProviderSessionId); packages/durable/src/harness/provider.ts:1-40; packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/provider.go:38 `if err != nil {` -> `if err == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/provider.ts:26 (ensureProviderSessionId); packages/durable/src/harness/provider.ts:1-40; packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/provider.go:38 `if err != nil {` -> `if err == nil {` (TestExample25CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/util.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample26CodingAgent"
+      "TestExample25CodingAgent"
     ],
-    "upstream_reference": "packages/durable/src/harness/util.ts:8 (Add); packages/durable/src/harness/util.ts:45 (ScanAll); packages/durable/src/harness/util.ts:31 (Resolve); packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/util.go:41 `if ctx.Err() != nil {` -> `if ctx.Err() == nil {` (TestExample26CodingAgent FAIL); durable/harness/util.go:143 `if page.Next == nil {` -> `if page.Next != nil {` (TestExample26CodingAgent FAIL); durable/harness/util.go:107 `if set != nil {` -> `if set == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/util.ts:8 (Add); packages/durable/src/harness/util.ts:45 (ScanAll); packages/durable/src/harness/util.ts:31 (Resolve); packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/util.go:41 `if ctx.Err() != nil {` -> `if ctx.Err() == nil {` (TestExample25CodingAgent FAIL); durable/harness/util.go:143 `if page.Next == nil {` -> `if page.Next != nil {` (TestExample25CodingAgent FAIL); durable/harness/util.go:107 `if set != nil {` -> `if set == nil {` (TestExample25CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/util.ts",
@@ -702,11 +692,11 @@
     "upstream": "packages/durable/src/harness/registry.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample07Configuration",
-      "TestExample26CodingAgent"
+      "TestExample06Configuration",
+      "TestExample25CodingAgent"
     ],
-    "upstream_reference": "packages/durable/src/harness/registry.ts:82 (Uninstall); packages/durable/src/harness/registry.ts:96 (validateExtension); packages/durable/src/harness/registry.ts:1-115; packages/durable/test/examples/06-harness.ts; packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/registry.go:163 `next := slices.DeleteFunc(slices.Clone(current), func(installed *durab` -> `next := slices.DeleteFunc(slices.Clone(current), func(installed *durab` (TestExample07Configuration FAIL); durable/harness/registry.go:196 `if !sectionKeyPattern.MatchString(key) {` -> `if sectionKeyPattern.MatchString(key) {` (TestExample26CodingAgent FAIL); durable/harness/registry.go:171 `if err != nil {` -> `if err == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/registry.ts:82 (Uninstall); packages/durable/src/harness/registry.ts:96 (validateExtension); packages/durable/src/harness/registry.ts:1-115; packages/durable/test/examples/05-harness.ts; packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/registry.go:163 `next := slices.DeleteFunc(slices.Clone(current), func(installed *durab` -> `next := slices.DeleteFunc(slices.Clone(current), func(installed *durab` (TestExample06Configuration FAIL); durable/harness/registry.go:196 `if !sectionKeyPattern.MatchString(key) {` -> `if sectionKeyPattern.MatchString(key) {` (TestExample25CodingAgent FAIL); durable/harness/registry.go:171 `if err != nil {` -> `if err == nil {` (TestExample25CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/registry.ts",
@@ -731,10 +721,10 @@
     "upstream": "packages/durable/src/harness/view.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample21LateJoin"
+      "TestExample20LateJoin"
     ],
-    "upstream_reference": "packages/durable/src/harness/view.ts:1-245; packages/durable/src/harness/view.ts:135 (Attach); packages/durable/test/examples/21-late-join.ts",
-    "mutation": "durable/harness/view.go:182 `if err != nil {` -> `if err == nil {` (TestExample21LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/view.ts:1-245; packages/durable/src/harness/view.ts:135 (Attach); packages/durable/test/examples/20-late-join.ts",
+    "mutation": "durable/harness/view.go:182 `if err != nil {` -> `if err == nil {` (TestExample20LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/storage/memory.ts",
@@ -838,12 +828,12 @@
     "upstream": "packages/durable/src/harness/harness.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample08HarnessConversations",
-      "TestExample23SubagentBackground",
-      "TestExample26CodingAgent"
+      "TestExample07HarnessConversations",
+      "TestExample22SubagentBackground",
+      "TestExample25CodingAgent"
     ],
-    "upstream_reference": "packages/durable/src/harness/harness.ts:312 (Conversation); packages/durable/src/harness/harness.ts:1-437; packages/durable/src/harness/harness.ts:305 (Root); packages/durable/test/examples/06-harness.ts; packages/durable/test/examples/23-subagent-background.ts; packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/harness.go:301 `if found == nil {` -> `if found != nil {` (TestExample08HarnessConversations FAIL); durable/harness/harness.go:537 `if record.(*durable.ConversationRecord) == nil {` -> `if record.(*durable.ConversationRecord) != nil {` (TestExample23SubagentBackground FAIL); durable/harness/harness.go:286 `if options != nil {` -> `if options == nil {` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/harness.ts:312 (Conversation); packages/durable/src/harness/harness.ts:1-437; packages/durable/src/harness/harness.ts:305 (Root); packages/durable/test/examples/05-harness.ts; packages/durable/test/examples/22-subagent-background.ts; packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/harness.go:301 `if found == nil {` -> `if found != nil {` (TestExample07HarnessConversations FAIL); durable/harness/harness.go:537 `if record.(*durable.ConversationRecord) == nil {` -> `if record.(*durable.ConversationRecord) != nil {` (TestExample22SubagentBackground FAIL); durable/harness/harness.go:286 `if options != nil {` -> `if options == nil {` (TestExample25CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/harness.ts",
@@ -946,10 +936,10 @@
     "upstream": "packages/durable/src/harness/inbox.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample26CodingAgent"
+      "TestExample25CodingAgent"
     ],
-    "upstream_reference": "packages/durable/src/harness/inbox.ts:114 (RemoveInboxItem); packages/durable/src/harness/inbox.ts:1-133; packages/durable/src/harness/inbox.ts:65 (ApplyBoundary); packages/durable/test/examples/26-coding-agent.ts",
-    "mutation": "durable/harness/inbox.go:125 `reset := false` -> `reset := true` (TestExample26CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/inbox.ts:114 (RemoveInboxItem); packages/durable/src/harness/inbox.ts:1-133; packages/durable/src/harness/inbox.ts:65 (ApplyBoundary); packages/durable/test/examples/25-coding-agent.ts",
+    "mutation": "durable/harness/inbox.go:125 `reset := false` -> `reset := true` (TestExample25CodingAgent FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/submissions.ts",
@@ -965,10 +955,10 @@
     "upstream": "packages/durable/src/harness/submissions.ts",
     "package": "./durable/examples",
     "tests": [
-      "TestExample20Inbox"
+      "TestExample19Inbox"
     ],
-    "upstream_reference": "packages/durable/src/harness/submissions.ts:148 (AdmitSubmission); packages/durable/src/harness/submissions.ts:64 (Get); packages/durable/src/harness/submissions.ts:90 (Abort); packages/durable/test/examples/20-inbox.ts; packages/durable/test/examples/24-child-tasks.ts",
-    "mutation": "durable/harness/submissions.go:242 `if boundary != nil {` -> `if boundary == nil {` (TestExample20Inbox FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/durable/src/harness/submissions.ts:148 (AdmitSubmission); packages/durable/src/harness/submissions.ts:64 (Get); packages/durable/src/harness/submissions.ts:90 (Abort); packages/durable/test/examples/19-inbox.ts; packages/durable/test/examples/23-child-tasks.ts",
+    "mutation": "durable/harness/submissions.go:242 `if boundary != nil {` -> `if boundary == nil {` (TestExample19Inbox FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/session/forks.ts",

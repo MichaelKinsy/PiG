@@ -44,8 +44,9 @@ type Submissions struct {
 	now       func() float64
 	// queueModes is read at each admission, on the Session line.
 	queueModes func() QueueModes
-	// resume enables task scheduling; submitting or waiting asks for progress.
-	resume  func()
+	// resume enables task scheduling; submitting or waiting asks for progress. It fails with *durable.ReadOnlySession on a
+	// read-only Harness.
+	resume  func() error
 	waiters Waiters[durable.SubmissionId, durable.SettledSubmissionRecord]
 	// closeMu makes Wait's closed check and waiter registration one step with respect to close, which upstream's single thread gives for free: a waiter registered after RejectAll would never settle.
 	closeMu sync.Mutex
@@ -54,7 +55,7 @@ type Submissions struct {
 
 // NewSubmissions subscribes to the Session's commits and close.
 // telemetry is the Harness's root adapter, the parent of input admissions; nil is the no-op context.
-func NewSubmissions(line *session.SessionImpl, storage durable.Storage, now func() float64, queueModes func() QueueModes, resume func(), root telemetry.TelemetryContext) *Submissions {
+func NewSubmissions(line *session.SessionImpl, storage durable.Storage, now func() float64, queueModes func() QueueModes, resume func() error, root telemetry.TelemetryContext) *Submissions {
 	if root == nil {
 		root = telemetry.NoopTelemetryContext
 	}
@@ -73,7 +74,9 @@ func NewSubmissions(line *session.SessionImpl, storage durable.Storage, now func
 
 // Submit admits a submission in one commit; see AdmitSubmission.
 func (submissions *Submissions) Submit(ctx context.Context, conversationId durable.ConversationId, draft durable.SubmissionDraft) (durable.Submission, error) {
-	submissions.resume()
+	if err := submissions.resume(); err != nil {
+		return nil, err
+	}
 	parent := submissions.telemetry
 	if draft.Type != durable.SubmissionTypeInput {
 		parent = chordctx.Telemetry(ctx)
@@ -148,7 +151,9 @@ func (submissions *Submissions) Wait(ctx context.Context, id durable.SubmissionI
 }
 
 func (submissions *Submissions) waitSettled(ctx context.Context, id durable.SubmissionId) (durable.SettledSubmissionRecord, error) {
-	submissions.resume()
+	if err := submissions.resume(); err != nil {
+		return durable.SettledSubmissionRecord{}, err
+	}
 	// Check and register on the line so no settling publication falls between them.
 	type found struct {
 		record *durable.SubmissionRecord

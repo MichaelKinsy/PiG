@@ -651,10 +651,6 @@ func TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites(t 
 	r := openCoreDB(t)
 	v1, v2 := shapeDocs()
 	r.commit(t, func(tx durable.Tx) error { return touch(tx, v1) })
-	state, err := r.s.DocumentStateErased(t.Context(), v1)
-	if err != nil || state == nil {
-		t.Fatalf("state: %v %v", state, err)
-	}
 	w, err := r.s.WatchDocErased(t.Context(), v1)
 	if err != nil || w == nil {
 		t.Fatalf("watch: %v %v", w, err)
@@ -679,7 +675,6 @@ func TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites(t 
 	}
 	eq(t, "watch value", w.Value(), "map[names:[first second]]")
 	_, _ = w.Stop()
-	state.Dispose()
 }
 
 // session-checkpoints-migrations.test.ts:833 "serves an older token from Storage after a newer token migrated only in memory".

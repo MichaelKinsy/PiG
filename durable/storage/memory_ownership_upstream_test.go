@@ -15,14 +15,14 @@ import (
 func TestMemoryStorageClonesRetainedWritesAndReads(t *testing.T) {
 	ctx := t.Context()
 	memory := storage.NewMemoryStorage()
-	if _, err := memory.Commit(ctx, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}}); err != nil {
+	if _, err := memory.Commit(ctx, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	entryID := durable.IdFromNumber[durable.EntryId](2)
 	data := map[string]any{"nested": []any{1}}
 	if _, err := memory.Commit(ctx, []durable.StorageWrite{durable.EntryWrite{Value: durable.EntryRecord{
 		Id: entryID, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "test", Data: data,
-	}}}); err != nil {
+	}}}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	data["nested"].([]any)[0] = 99 // edit the value passed to commit
@@ -65,7 +65,7 @@ func TestMemoryStorageConversationReadsAreCopies(t *testing.T) {
 	if _, err := memory.Commit(ctx, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: child, Parent: &durable.ConversationParent{ConversationId: durable.ROOT_CONVERSATION_ID, At: durable.IdFromNumber[durable.EntryId](2)}}},
-	}); err != nil {
+	}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	first, err := memory.Conversation(ctx, child)

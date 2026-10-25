@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// The document cache is bounded by use (session.ts SessionImpl): a document with no watch or document state attached
+// The document cache is bounded by use (session.ts SessionImpl): a document with no watch attached
 // leaves it once it was not read or written for the retention period, and the next access loads it from Storage.
 // Eviction runs as a job on the mutation line, so no transaction ever holds a tracker that leaves.
 

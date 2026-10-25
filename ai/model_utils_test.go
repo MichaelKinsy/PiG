@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"reflect"
 	"slices"
 	"testing"
 )
@@ -258,11 +259,11 @@ func TestCalculateCostTierBoundaryMatchesUpstream(t *testing.T) {
 		input int
 		want  UsageCost
 	}{
-		{272_000, UsageCost{Input: 1.36, Output: 0.030000000000000002, Total: 1.3900000000000001}},
-		{272_001, UsageCost{Input: 2.7200100000000003, Output: 0.045000000000000005, Total: 2.76501}},
+		{272_000, UsageCost{Input: 1.36, Output: 0.030000000000000002, Total: 1.3900000000000001, TotalFromProvider: new(false)}},
+		{272_001, UsageCost{Input: 2.7200100000000003, Output: 0.045000000000000005, Total: 2.76501, TotalFromProvider: new(false)}},
 	} {
 		usage := &Usage{Input: tc.input, Output: 1000}
-		if got := CalculateCost(model, usage); got != tc.want {
+		if got := CalculateCost(model, usage); !reflect.DeepEqual(got, tc.want) {
 			t.Fatalf("input %d: cost = %#v, want %#v", tc.input, got, tc.want)
 		}
 	}

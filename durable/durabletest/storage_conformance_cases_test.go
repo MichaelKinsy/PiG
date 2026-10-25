@@ -9,14 +9,15 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance: the same 25 named cases, each Run returning the provider's failure when the provider fails.
+// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance: the same 26 named cases, each Run returning the provider's failure when the provider fails.
 // mutation-checked: dropping the reads and writes of StorageConformanceCase.Name, StorageConformanceCase.Run, StorageConformanceOptions.WithStorage fails it
 // Pi: packages/durable/src/testing/runner.ts:7 (name)
 // Pi: packages/durable/src/testing/runner.ts:23 (run)
 // Pi: packages/durable/src/testing/runner.ts:16 (withStorage)
-// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance (cases are packages/durable/src/testing/types.ts:20 StorageConformanceCase, each with a name and a run): the same 24 named cases, each Run returning the provider's failure when the provider fails.
+// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance (cases are packages/durable/src/testing/types.ts:20 StorageConformanceCase, each with a name and a run): the same 26 named cases, each Run returning the provider's failure when the provider fails.
 func TestCreateStorageConformanceCasesMatchUpstream(t *testing.T) {
 	want := []string{
+		"adopts a durable commit once before resolving, and never a failed one",
 		"commits mixed table writes atomically and rolls all of them back on failure",
 		"continues an entry cursor below its last item after a newer commit",
 		"copies stored document bases independently and rejects ambiguous sources",

@@ -1,4 +1,4 @@
-// Ports packages/durable/test/examples/20-inbox.ts and 30-tool-override.ts.
+// Ports packages/durable/test/examples/19-inbox.ts and 29-tool-override.ts.
 
 package examples_test
 
@@ -18,9 +18,9 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/tools"
 )
 
-// 20-inbox.ts: submissions to a busy conversation queue in pi.inbox; a queued input can be withdrawn; whenBusy reject
+// 19-inbox.ts: submissions to a busy conversation queue in pi.inbox; a queued input can be withdrawn; whenBusy reject
 // fails without writing.
-func TestExample20Inbox(t *testing.T) {
+func TestExample19Inbox(t *testing.T) {
 	held := make(chan struct{})
 	slow := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		select {
@@ -123,11 +123,11 @@ func TestExample20Inbox(t *testing.T) {
 	closeSession(t, opened)
 }
 
-// 30-tool-override.ts: a conversation overrides one built-in tool by extension (a bash with a venv prefix), and a
+// 29-tool-override.ts: a conversation overrides one built-in tool by extension (a bash with a venv prefix), and a
 // wrapper times every bash call without replacing it.
 // Pi source: packages/durable/src/tools/bash.ts
 // mutation-checked: dropping the reads and writes of BashToolOptions.CommandPrefix fails it
-func TestExample30ToolOverride(t *testing.T) {
+func TestExample29ToolOverride(t *testing.T) {
 	project := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(project, ".venv", "bin"), 0o755); err != nil {
 		t.Fatal(err)

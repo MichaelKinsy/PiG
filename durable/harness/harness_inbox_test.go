@@ -1114,7 +1114,7 @@ func (store *inboxRecordingStorage) setInbox(id durable.DocumentId) {
 	store.mu.Unlock()
 }
 
-func (store *inboxRecordingStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (store *inboxRecordingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	store.mu.Lock()
 	for _, write := range writes {
 		change, ok := write.(durable.DocumentChangeWrite)
@@ -1126,5 +1126,5 @@ func (store *inboxRecordingStorage) Commit(ctx context.Context, writes []durable
 		store.written = append(store.written, inboxWrite{Kind: string(change.Content.Kind), Empty: empty})
 	}
 	store.mu.Unlock()
-	return store.MemoryStorage.Commit(ctx, writes)
+	return store.MemoryStorage.Commit(ctx, writes, adopt)
 }

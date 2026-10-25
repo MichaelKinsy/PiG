@@ -93,7 +93,23 @@ type chat struct {
 	registry harness.Registry
 	// telemetry is the adapter the Harness opens with; nil opens it without telemetry.
 	telemetry telemetry.TelemetryContext
+	// now is the Harness clock (chat-support.ts ChatSetup.now); nil is the wall clock.
+	now func() float64
 }
+
+// manualClock is a Harness clock a test moves by hand: it stands still until advance, so a deadline relative to it passes
+// when the test says so and never because the machine was slow.
+type manualClock struct{ ms atomic.Int64 }
+
+func newManualClock() *manualClock {
+	c := &manualClock{}
+	c.ms.Store(time.Now().UnixMilli())
+	return c
+}
+
+func (c *manualClock) now() float64 { return float64(c.ms.Load()) }
+
+func (c *manualClock) advance(d time.Duration) { c.ms.Add(d.Milliseconds()) }
 
 func chatSetup() *chat {
 	faux := ai.NewFauxProvider(ai.FauxConfig{})
@@ -110,7 +126,7 @@ func (c *chat) open(t *testing.T, storage durable.Storage) (harness.Harness, har
 // openWith opens the Harness with an execution environment, when given.
 func (c *chat) openWith(t *testing.T, storage durable.Storage, environment env.ExecutionEnv) (harness.Harness, harness.Conversation) {
 	t.Helper()
-	options := harness.HarnessOptions{Models: c.models, Registry: c.registry, Telemetry: c.telemetry}
+	options := harness.HarnessOptions{Models: c.models, Registry: c.registry, Telemetry: c.telemetry, Now: c.now}
 	if environment != nil {
 		options.Env = func(context.Context, harness.EnvTarget) (env.ExecutionEnv, error) { return environment, nil }
 	}
@@ -206,12 +222,18 @@ func done() ai.FauxResponseStep {
 type vmCount struct {
 	sandbox *cm.Sandbox
 	starts  atomic.Int32
+	// noTimer starts every VM without its own execution timer (Pi's start() without options.timeoutMs, execution.ts:549),
+	// so that the stored deadline is the only one a test exercises.
+	noTimer atomic.Bool
 	mu      sync.Mutex
 	onStart func(*cm.Run)
 }
 
 func (v *vmCount) Start(ctx context.Context, code string, options cm.RunOptions) (*cm.Run, error) {
 	v.starts.Add(1)
+	if v.noTimer.Load() {
+		options.TimeoutMs = nil
+	}
 	run, err := v.sandbox.Start(ctx, code, options)
 	v.mu.Lock()
 	hook := v.onStart
@@ -558,7 +580,7 @@ func (s *heldStorage) holdCommits() *gate {
 	return g
 }
 
-func (s *heldStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (s *heldStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	s.mu.Lock()
 	held, fail := s.held, s.fail
 	s.fail = nil
@@ -571,7 +593,7 @@ func (s *heldStorage) Commit(ctx context.Context, writes []durable.StorageWrite)
 			return 0, err
 		}
 	}
-	return s.MemoryStorage.Commit(ctx, writes)
+	return s.MemoryStorage.Commit(ctx, writes, adopt)
 }
 
 // detailsOf is the details of the code mode call's result entry.

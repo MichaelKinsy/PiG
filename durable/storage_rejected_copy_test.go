@@ -39,7 +39,7 @@ func TestMemoryStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect(t *testin
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: 2}},
 		conversationDocumentWrite(5, "doc"),
 	}
-	if _, err := memory.Commit(t.Context(), setup); err != nil {
+	if _, err := memory.Commit(t.Context(), setup, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	source := durable.DocumentCopySource{Id: 5, At: durable.CurrentPoint}

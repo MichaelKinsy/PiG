@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl/node"
@@ -82,7 +83,7 @@ func TestJsonlCloseMakesEveryLaterCallFailWithTheClosedError(t *testing.T) {
 	if _, err := storage.MintId(); err == nil || err.Error() != "JsonlStorage is closed" {
 		t.Fatalf("MintId after Close = %v, want the closed error", err)
 	}
-	if _, err := storage.Commit(testContext, nil); err == nil || err.Error() != "JsonlStorage is closed" {
+	if _, err := storage.Commit(testContext, nil, func(durable.Seq) {}); err == nil || err.Error() != "JsonlStorage is closed" {
 		t.Fatalf("Commit after Close = %v, want the closed error", err)
 	}
 }

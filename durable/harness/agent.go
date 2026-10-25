@@ -279,7 +279,7 @@ type HarnessSettings struct {
 	// only newer entries. Busy conversations always keep it; 0 drops it once the conversation is idle. Nil selects the
 	// default, ten minutes.
 	ContextRetentionMs *float64
-	// DocumentRetentionMs is how long a loaded document that no watch or document state observes stays in memory after
+	// DocumentRetentionMs is how long a loaded document that no watch observes stays in memory after
 	// its last read or write; the next access loads it from Storage. Observed documents always stay. Nil selects the
 	// default, ten minutes; 0 drops one right after use; +Inf keeps them. Anything else that is not a number of
 	// milliseconds, 0 or more, means the default.

@@ -687,7 +687,6 @@ func TestSessionTrackerCacheAcrossDefinitionVersions(t *testing.T) {
 	t.Run("sends observers of an older shape a root replacement after a newer token writes", func(t *testing.T) {
 		harness := open()
 		touch(t, harness, cacheV1Doc)
-		state := documentState(t, harness, cacheV1Doc)
 		watch := watchDoc(t, harness, ctx, cacheV1Doc)
 		delivered := make(chan []durable.Op, 1)
 		watch.Start(func(_ ctxT, _ obj, ops []durable.Op) error { delivered <- ops; return nil })
@@ -697,10 +696,8 @@ func TestSessionTrackerCacheAcrossDefinitionVersions(t *testing.T) {
 		})
 		frames := <-delivered
 		flush(harness)
-		expectEqual(t, state.Value(), delta.JsonObjectOf("names", []any{"first", "second"}))
 		expectEqual(t, watch.Value(), delta.JsonObjectOf("names", []any{"first", "second"}))
 		expectEqual(t, frames, []any{[]any{"r", delta.JsonObjectOf("names", []any{"first", "second"})}})
-		state.Dispose()
 		_, _ = watch.Stop()
 	})
 

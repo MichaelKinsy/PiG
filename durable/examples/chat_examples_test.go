@@ -1,4 +1,4 @@
-// Ports packages/durable/test/examples/14-chat.ts, 15-system-prompt.ts and 17-coding-tools.ts.
+// Ports packages/durable/test/examples/13-chat.ts, 14-system-prompt.ts and 16-coding-tools.ts.
 
 package examples_test
 
@@ -80,8 +80,8 @@ func transcriptKinds(t *testing.T, conversation harness.Conversation) []string {
 	return kinds
 }
 
-// 14-chat.ts: one question answered by the faux model, with a system preamble from an extension section.
-func TestExample14Chat(t *testing.T) {
+// 13-chat.ts: one question answered by the faux model, with a system preamble from an extension section.
+func TestExample13Chat(t *testing.T) {
 	registry := harness.CreateRegistry()
 	untagged := false
 	installed(t, registry, new(durable.Extension{
@@ -105,9 +105,9 @@ func TestExample14Chat(t *testing.T) {
 	closeSession(t, opened)
 }
 
-// 15-system-prompt.ts: extensions contribute prompt sections; wrappers change them; a subagent differs by extension
+// 14-system-prompt.ts: extensions contribute prompt sections; wrappers change them; a subagent differs by extension
 // set and instructions; the cwd is re-rendered after it changes.
-func TestExample15SystemPrompt(t *testing.T) {
+func TestExample14SystemPrompt(t *testing.T) {
 	untagged := false
 	section := func(key string, render func(input durable.PromptInput) *string, tag *bool) *durable.PromptSection {
 		return &durable.PromptSection{Key: key, Tag: tag, Render: func(_ context.Context, input durable.PromptInput) (*string, error) {
@@ -223,9 +223,9 @@ func TestExample15SystemPrompt(t *testing.T) {
 	closeSession(t, opened)
 }
 
-// 17-coding-tools.ts: a coding-agent tool turn on JSONL storage: the model reads, edits and runs commands, then
+// 16-coding-tools.ts: a coding-agent tool turn on JSONL storage: the model reads, edits and runs commands, then
 // answers. The upstream timing hook around `cat /tmp/1gb.txt` only measures and prints; it is not ported.
-func TestExample17CodingTools(t *testing.T) {
+func TestExample16CodingTools(t *testing.T) {
 	directory := t.TempDir()
 	if err := os.WriteFile(filepath.Join(directory, "notes.txt"), []byte("hello world\n"), 0o644); err != nil {
 		t.Fatal(err)

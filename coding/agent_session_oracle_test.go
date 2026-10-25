@@ -624,7 +624,7 @@ func normalizedHTMLExport(t *testing.T, path, dir string) map[string]any {
 		delete(header, "cwd")
 	}
 	page := strings.ReplaceAll(strings.Replace(html, encoded, "<DATA>", 1), dir, "<cwd>")
-	// The template script is Pi's file with the OpenRouter total-cost hunks of D124 (TestExportHTMLPinnedAssets pins both hashes); everything around it is compared byte for byte.
+	// The template script is Pi's file (TestExportHTMLPinnedAssets pins its hash); everything around it is compared byte for byte.
 	const scriptOpen, scriptClose = "\n  <script>\n", "\n  </script>"
 	if open := strings.LastIndex(page, scriptOpen); open >= 0 {
 		if closing := strings.Index(page[open:], scriptClose); closing >= 0 {

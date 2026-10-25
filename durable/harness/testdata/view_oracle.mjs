@@ -81,7 +81,7 @@ for (const program of JSON.parse(input)) {
 					conversations[0],
 					(value, release) => {
 						initial = clone(value);
-						return { advance: (next, ops) => events.push({ step: current, value: clone(next), ops: clone(ops) }), closeSession() {}, release };
+						return { advance: (next, ops) => events.push({ step: current, value: clone(next), ops: clone(ops) }), end() {}, release };
 					},
 					ctx,
 				);

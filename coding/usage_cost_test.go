@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -45,7 +46,7 @@ func pricedModel(t *testing.T) (*AgentSessionServices, *ai.Model, ai.UsageCost) 
 	}
 	// Priced at run time in float64, as JavaScript evaluates calculateCost.
 	price := func(rate float64, tokens int) float64 { return (rate / 1000000) * float64(tokens) }
-	want := ai.UsageCost{Input: price(3, 1000), Output: price(15, 500), CacheRead: price(0.3, 1000)}
+	want := ai.UsageCost{Input: price(3, 1000), Output: price(15, 500), CacheRead: price(0.3, 1000), TotalFromProvider: new(false)}
 	want.Total = want.Input + want.Output + want.CacheRead + want.CacheWrite
 	return services, model, want
 }
@@ -67,7 +68,7 @@ func TestSessionPersistsProviderPricedUsageCost(t *testing.T) {
 	if _, err := session.Send(context.Background(), "hello"); err != nil {
 		t.Fatal(err)
 	}
-	if got := persistedAssistantCost(t, session.Path()); got != want {
+	if got := persistedAssistantCost(t, session.Path()); !reflect.DeepEqual(got, want) {
 		t.Fatalf("persisted usage.cost = %#v, want %#v", got, want)
 	}
 	if stats := session.GetSessionStats(); stats.Cost != want.Total {
@@ -79,7 +80,7 @@ func TestSessionPersistsProviderPricedUsageCost(t *testing.T) {
 func TestModelRuntimePricesProviderUsage(t *testing.T) {
 	services, model, want := pricedModel(t)
 	result := services.ModelRuntime().Complete(context.Background(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}, ai.StreamOptions{})
-	if result.StopReason != ai.StopReasonStop || result.Usage.Cost != want {
+	if result.StopReason != ai.StopReasonStop || !reflect.DeepEqual(result.Usage.Cost, want) {
 		t.Fatalf("result stop %q usage.cost = %#v, want %#v", result.StopReason, result.Usage.Cost, want)
 	}
 }

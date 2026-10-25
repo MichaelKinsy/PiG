@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Ports packages/ai/src/utils/openrouter-cost.ts (pi-mono commit 83ca8020, #9980). pig divergence (D124): Pi 1.1.0 does not have this file.
+// Ports packages/ai/src/utils/openrouter-cost.ts (Pi cae8d69e5, #10286, fixes #9980).
 
 // openRouterUsageAccounting holds the billing fields OpenRouter adds to streamed usage at runtime. Each field keeps its raw JSON so that
 // absent, null and wrongly typed values stay distinct, as openrouter-cost.ts tests them with typeof and === null.
@@ -40,6 +40,7 @@ func applyOpenRouterReportedCost(usage *Usage, reported openRouterUsageAccountin
 	switch string(bytes.TrimSpace(reported.IsBYOK)) {
 	case "false":
 		usage.Cost.Total = cost
+		usage.Cost.TotalFromProvider = new(true)
 	case "true":
 		var details map[string]json.RawMessage
 		if len(reported.CostDetails) == 0 || json.Unmarshal(reported.CostDetails, &details) != nil || details == nil {
@@ -58,5 +59,6 @@ func applyOpenRouterReportedCost(usage *Usage, reported openRouterUsageAccountin
 			return
 		}
 		usage.Cost.Total = cost + upstream
+		usage.Cost.TotalFromProvider = new(true)
 	}
 }

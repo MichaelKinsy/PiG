@@ -103,7 +103,7 @@ func TestRPCUsageWritesTheMemberOrderOfItsValue(t *testing.T) {
 		want  string
 	}{
 		{"provider", provider, providerOrder},
-		{"combined", combined, `{"input":2,"output":4,"cacheRead":0,"cacheWrite":0,"cacheWrite1h":10,"reasoning":8,"totalTokens":6,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}`},
+		{"combined", combined, `{"input":2,"output":4,"cacheRead":0,"cacheWrite":0,"cacheWrite1h":10,"reasoning":8,"totalTokens":6,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0,"totalFromProvider":false}}`},
 	} {
 		session, err := json.Marshal(tc.usage)
 		if err != nil {

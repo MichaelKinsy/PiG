@@ -6,7 +6,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
@@ -40,6 +39,11 @@ func watchDoc(t *testing.T, harness sessiontest.Harness, watchCtx context.Contex
 func setWatchValue(t *testing.T, harness sessiontest.Harness, value any) {
 	t.Helper()
 	setStateValue(t, harness, watchStateDoc, value)
+}
+
+func setStateValue(t *testing.T, harness sessiontest.Harness, token durable.AnyDocToken, value any) {
+	t.Helper()
+	commit(t, harness.Session, func(tx durable.Tx) error { return mustDoc(t, tx, token).Set("value", value) })
 }
 
 type watchDelivery struct {
@@ -386,7 +390,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		baseline := watch.Value()
 		commit(t, harness.Session, func(tx durable.Tx) error { return tx.RetireDoc(watchStateDoc) })
 		must(t, harness.Session.Close(ctx))
-		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchSessionClosed})
+		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchEnded})
 		if !same(watch.Value(), baseline) {
 			t.Fatal("the value stays at acquisition")
 		}
@@ -409,7 +413,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		waitClosed(t, entered)
 		commit(t, harness.Session, func(tx durable.Tx) error { return tx.RetireDoc(watchStateDoc) })
 		must(t, harness.Session.Close(ctx))
-		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchSessionClosed})
+		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchEnded})
 		close(release)
 		flush(harness)
 		expectEqual(t, recorder.values(), []any{1})
@@ -490,7 +494,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		if (<-deliveryContext).Done() != nil {
 			t.Fatal("the delivery carries no cancellation")
 		}
-		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchSessionClosed})
+		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchEnded})
 		close(release)
 	})
 
@@ -549,31 +553,6 @@ func TestSessionDocumentWatches(t *testing.T) {
 		if harness.Session.Failure() != nil {
 			t.Fatalf("a watch listener's failure failed the Session: %v", harness.Session.Failure())
 		}
-	})
-
-	t.Run("reports a document state's listener failure through the Session", func(t *testing.T) {
-		// Pi session.ts documentState: `replicatedState(source, { onError: (error) => this.report(error) })`.
-		var mu sync.Mutex
-		var reported []error
-		harness := sessiontest.OpenReportingTestSession(func(err error) {
-			mu.Lock()
-			reported = append(reported, err)
-			mu.Unlock()
-		})
-		commit(t, harness.Session, func(tx durable.Tx) error {
-			_, err := tx.Doc(watchStateDoc)
-			return err
-		})
-		state, err := harness.Session.DocumentStateErased(ctx, watchStateDoc)
-		must(t, err)
-		state.Subscribe(func(obj, context.Context, chord.ReplicatedStateDelivery) { panic(errors.New("state listener failed")) })
-		flush(harness)
-		mu.Lock()
-		defer mu.Unlock()
-		if len(reported) == 0 || reported[0].Error() != "state listener failed" {
-			t.Fatalf("reported %v, want the state listener's error", reported)
-		}
-		state.Dispose()
 	})
 
 	t.Run("hydrates migration without writing and observes the later exact edit", func(t *testing.T) {

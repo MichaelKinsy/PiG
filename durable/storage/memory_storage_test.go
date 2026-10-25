@@ -33,7 +33,7 @@ func TestMemoryStorageDoesNotExposeRetainedStateThroughAPreparedCommit(t *testin
 	memory := storage.NewMemoryStorage()
 	if _, err := memory.Commit(ctx, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
-	}); err != nil {
+	}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	entryId := durable.IdFromNumber[durable.EntryId](2)

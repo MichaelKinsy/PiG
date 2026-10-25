@@ -371,7 +371,7 @@ type anthEventMessageDelta struct {
 		OutputTokensDetails *struct {
 			ThinkingTokens *int `json:"thinking_tokens"`
 		} `json:"output_tokens_details,omitempty"`
-		// pig divergence (D124): OpenRouter adds billing fields to streamed message_delta usage at runtime, although its OpenAPI schema and the Anthropic SDK do not type them (pi-mono commit 83ca8020).
+		// OpenRouter adds billing fields to streamed message_delta usage at runtime, although its OpenAPI schema and the Anthropic SDK do not type them (anthropic-messages.ts).
 		openRouterUsageAccounting
 	} `json:"usage"`
 }
@@ -584,8 +584,6 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 				}
 			}
 		case AssistantMessage:
-			out = append(out, pendingSystem...)
-			pendingSystem = nil
 			var blocks []anthContentBlock
 			for _, content := range message.Content {
 				switch content := content.(type) {
@@ -622,6 +620,9 @@ func anthConvertMessagesDetailed(messages []Message, isOAuthToken, allowEmptySig
 				}
 			}
 			if len(blocks) > 0 {
+				// An assistant message that converts to no blocks is dropped, so the held updates wait for the next one that is sent (Pi #11091).
+				out = append(out, pendingSystem...)
+				pendingSystem = nil
 				messageIndex := len(out)
 				out = append(out, anthMessage{Role: "assistant", Content: blocks})
 				if managedProvider != "" && message.API == APIAnthropicMessages && message.Provider == managedProvider && isAnthropicEffort(AnthropicEffort(message.ProviderThinkingLevel)) {
@@ -2225,7 +2226,7 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 			}
 			usage.TotalTokens = usage.Input + usage.Output + usage.CacheRead + usage.CacheWrite
 			calculateUsageCost(usageCost, usage)
-			if isOpenRouterModel(p.cfg.ProviderID, p.cfg.BaseURL) { // pig divergence (D124)
+			if isOpenRouterModel(p.cfg.ProviderID, p.cfg.BaseURL) {
 				applyOpenRouterReportedCost(usage, ev.Usage.openRouterUsageAccounting)
 			}
 			builder.touch()

@@ -238,6 +238,9 @@ type TaskSchedulerOptions struct {
 	Conversation func(ctx context.Context, id durable.ConversationId, binding InvocationBinding) (durable.ConversationHandle, error)
 	// Context is the context of scheduler commits and invocations; it carries no caller cancellation.
 	Context context.Context
+	// ReadOnly is HarnessOptions.ReadOnly: Open loads live tasks as committed, running ones included, and the scheduler
+	// never commits, runs anything, or asks for a wakeup.
+	ReadOnly bool
 }
 
 // TaskScheduler is the durable task scheduler of one Harness (scheduler.ts:162-1243).
@@ -438,7 +441,8 @@ func (s *TaskScheduler) liveValuesLocked() []anyTaskRecord {
 }
 
 // Open loads live tasks and changes surviving running tasks back to pending, counting the restart. It dispatches nothing. A
-// task that reaches the restart limit this way is parked and reported.
+// task that reaches the restart limit this way is parked and reported. Read-only, it only loads them: a running task stays
+// as committed, running in another process.
 func (s *TaskScheduler) Open(ctx context.Context) error {
 	s.options.Session.ObserveCommits(func(_ context.Context, publication durable.CommitPublication) { s.observe(publication) })
 	s.options.Session.SubscribeClose(s.seal)
@@ -467,6 +471,9 @@ func (s *TaskScheduler) Open(ctx context.Context) error {
 			for _, record := range records {
 				s.trackLocked(nil, record)
 				s.resumed[record.Id] = struct{}{}
+				if s.options.ReadOnly {
+					continue
+				}
 				if record.AbandonOnRestart {
 					s.abandoned.Add(record.Id)
 				}
@@ -494,6 +501,9 @@ func (s *TaskScheduler) Open(ctx context.Context) error {
 	for _, record := range parked {
 		restarts := record.Restarts + 1
 		s.options.Report(context.Background(), fmt.Errorf("Task %d (%s) was cut off %d times without progress; it is parked until retryTask()", record.Id, record.Kind, restarts), s.aboutRecord(durable.ReportTaskParked, record))
+	}
+	if s.options.ReadOnly {
+		return nil
 	}
 	// Derive abort marks a crash left unapplied below cancelled owners, and finalize held outcomes.
 	s.mu.Lock()
@@ -530,8 +540,7 @@ func (s *TaskScheduler) Retry(ctx context.Context, id durable.TaskId) error {
 	if err != nil {
 		return err
 	}
-	s.Resume()
-	return nil
+	return s.TryResume()
 }
 
 // BlockedSubject is what BlockedReason reads of a task: the task graph keeps only this of each record.
@@ -624,18 +633,35 @@ func (s *TaskScheduler) notifyBlockedLocked() {
 }
 
 // Resume enables scheduling, and makes sleeping tasks that are due runnable: a host wakeup, such as an alarm, calls
-// this. It is idempotent; the kick does nothing once closing.
+// this. It is idempotent; the kick does nothing once closing. It panics with *durable.ReadOnlySession on a read-only
+// Harness, as scheduler.ts resume() throws.
 func (s *TaskScheduler) Resume() {
+	if err := s.TryResume(); err != nil {
+		panic(err)
+	}
+}
+
+// TryResume is Resume for the callers that are async upstream, where the throw is a rejection: it returns the
+// *durable.ReadOnlySession instead of panicking.
+func (s *TaskScheduler) TryResume() error {
+	if s.options.ReadOnly {
+		return durable.NewReadOnlySession("running tasks")
+	}
 	s.mu.Lock()
 	s.enabled = true
 	s.wakeDueLocked()
 	s.mu.Unlock()
 	s.kick()
+	return nil
 }
 
 // Wake is when the Session next needs a process: Active while some task can run now or is running, At for the earliest
 // sleep not yet due. Synchronous, from memory; a task whose chain is not loaded yet counts as it would alone.
 func (s *TaskScheduler) Wake() Wake {
+	// A read-only Harness runs nothing, so it never needs a process.
+	if s.options.ReadOnly {
+		return Wake{}
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.wakeLocked()
@@ -1184,7 +1210,8 @@ func (s *TaskScheduler) scheduleExpiryLocked(now float64, retention float64) {
 // ─── Ownership ───────────────────────────────────────────────────────────
 
 func (s *TaskScheduler) scheduleReconcileLocked() {
-	if s.reconcileScheduled || s.sealing.Load() {
+	// A read-only reconcile could only fail: what it writes is refused, and its own commits fail the Session.
+	if s.reconcileScheduled || s.sealing.Load() || s.options.ReadOnly {
 		return
 	}
 	s.reconcileScheduled = true
@@ -3453,7 +3480,7 @@ func (s *TaskScheduler) wakeDueLocked() {
 // (scheduler.ts #scheduleWake, a microtask after the change). Changes until the recomputation runs share it, as they share
 // upstream's one queued microtask.
 func (s *TaskScheduler) scheduleWakeLocked() {
-	if s.wakeScheduled || s.sealing.Load() {
+	if s.wakeScheduled || s.sealing.Load() || s.options.ReadOnly {
 		return
 	}
 	s.wakeScheduled = true

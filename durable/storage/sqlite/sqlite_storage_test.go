@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
@@ -78,13 +79,18 @@ type reopeningStorage struct {
 	path    string
 	options node.NodeSqliteStorageOptions
 	closed  bool
+	// mu is held for a whole commit, so the read the adoption case starts from inside adopt (on its own goroutine) waits
+	// out the reopen and then reads the recovered state.
+	mu sync.RWMutex
 }
 
-func (storage *reopeningStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (storage *reopeningStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+	storage.mu.Lock()
+	defer storage.mu.Unlock()
 	if storage.closed {
-		return storage.current.Commit(ctx, writes)
+		return storage.current.Commit(ctx, writes, adopt)
 	}
-	seq, err := storage.current.Commit(ctx, writes)
+	seq, err := storage.current.Commit(ctx, writes, adopt)
 	if closeErr := storage.current.Close(testContext); closeErr != nil && err == nil {
 		err = closeErr
 	}
@@ -107,6 +113,8 @@ func (storage *reopeningStorage) ScanConversations(ctx context.Context, query du
 }
 
 func (storage *reopeningStorage) Entry(ctx context.Context, id durable.EntryId) (*durable.EntryAt, error) {
+	storage.mu.RLock()
+	defer storage.mu.RUnlock()
 	return storage.current.Entry(ctx, id)
 }
 
@@ -199,7 +207,7 @@ func createRoot(t *testing.T, storage durable.Storage) durable.Seq {
 	t.Helper()
 	return must(storage.Commit(testContext, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
-	}))
+	}, func(durable.Seq) {}))
 }
 
 func pendingTask(id durable.TaskId) storedTask {
@@ -221,7 +229,7 @@ func mint[I durable.Id](t *testing.T, storage durable.Storage) I {
 
 func commit(t *testing.T, storage durable.Storage, writes ...durable.StorageWrite) durable.Seq {
 	t.Helper()
-	return must(storage.Commit(testContext, writes))
+	return must(storage.Commit(testContext, writes, func(durable.Seq) {}))
 }
 
 func openInspector(t *testing.T, path string, readOnly bool) *node.DatabaseSync {
@@ -394,7 +402,7 @@ func TestPicoSqliteStorage(t *testing.T) {
 		_, err := storage.Commit(testContext, []durable.StorageWrite{
 			durable.EntryWrite{Value: entry(transientId, durable.ROOT_CONVERSATION_ID, nil)},
 			durable.TaskWrite{Value: task},
-		})
+		}, func(durable.Seq) {})
 		expectError(t, err, "circular structure")
 		if found := must(storage.Entry(testContext, transientId)); found != nil {
 			t.Fatalf("transient entry = %+v", found)

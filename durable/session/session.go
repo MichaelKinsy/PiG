@@ -26,7 +26,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -53,6 +52,8 @@ type Hooks struct {
 	Report func(ctx context.Context, err error, info durable.ReportInfo)
 	// SetTimer arms the timers that evict idle documents (HarnessOptions.SetTimer); nil selects Go timers.
 	SetTimer durable.SetTimer
+	// ReadOnly refuses every commit with writes (HarnessOptions.ReadOnly).
+	ReadOnly bool
 }
 
 type commitListener struct {
@@ -113,7 +114,7 @@ type SessionImpl struct {
 type CreateSessionOptions struct {
 	// Now is the wall clock in milliseconds for task times; the default is the system clock.
 	Now func() float64
-	// DocumentRetentionMs is how long a loaded document that no watch or document state observes stays in memory after
+	// DocumentRetentionMs is how long a loaded document that no watch observes stays in memory after
 	// its last read or write; the next access loads it from Storage. Observed documents always stay. Nil selects the
 	// default, ten minutes; 0 drops a document right after use; +Inf keeps documents. Anything else that is not a
 	// number of milliseconds, 0 or more, means the default.
@@ -364,7 +365,6 @@ func (session *SessionImpl) CommitWith(ctx context.Context, change func(tx *Tran
 		return nil, err
 	}
 	result, err := enqueue(session, true, lineadmission.From(ctx), func() (any, error) { return session.runCommit(ctx, change, scope) })
-	session.scheduler.runDrains()
 	return result, err
 }
 
@@ -377,7 +377,7 @@ func (session *SessionImpl) WriteAtClose(ctx context.Context, writes func() []du
 			return struct{}{}, nil
 		}
 		if batch := writes(); len(batch) > 0 {
-			_, err := session.storage.Commit(context.WithoutCancel(ctx), batch)
+			_, err := session.storage.Commit(context.WithoutCancel(ctx), batch, func(durable.Seq) {})
 			return struct{}{}, err
 		}
 		return struct{}{}, nil
@@ -434,7 +434,6 @@ func (session *SessionImpl) CommitWithTicket(ticket *LineTicket, ctx context.Con
 		}
 		return session.runCommit(ctx, change, scope)
 	}()
-	session.scheduler.runDrains()
 	return result, err
 }
 
@@ -535,41 +534,6 @@ func (session *SessionImpl) SnapshotErased(ctx context.Context, token durable.An
 	return loaded.Tracker.Value(), nil
 }
 
-// DocumentStateErased returns a disposable read-only state of a document's committed value, or nil when absent.
-func (session *SessionImpl) DocumentStateErased(ctx context.Context, token durable.AnyDocToken, args ...any) (durable.DocumentState[durable.JsonObject], error) {
-	if err := session.assertUsable(); err != nil {
-		return nil, err
-	}
-	definition := token.AnyDefinition()
-	resolved, err := durable.ResolveAddress(definition, args)
-	if err != nil {
-		return nil, err
-	}
-	return enqueue(session, true, nil, func() (*chord.AttachedReplicatedState[durable.JsonObject], error) {
-		if err := session.assertHealthy(); err != nil {
-			return nil, err
-		}
-		loaded, err := session.loadDocument(ctx, definition, resolved.Id, resolved.Address)
-		if err != nil || loaded == nil {
-			return nil, err
-		}
-		var source *CommittedStateSource[durable.JsonObject]
-		detach, err := session.attachDocument(definition, loaded, func(value durable.JsonObject, release func()) documentObserver {
-			source = newCommittedStateSource(value, release, session.scheduler)
-			return stateObserver{source}
-		})
-		if err != nil {
-			return nil, err
-		}
-		state, err := chord.AttachReplicatedStateSource[durable.JsonObject](source, chord.ReplicatedStateSourceOptions{OnError: session.reportListener})
-		if err != nil {
-			detach()
-			return nil, err
-		}
-		return state, nil
-	})
-}
-
 // WatchDocErased returns a watch of a document's committed value, or nil when absent. Cancelling ctx before the
 // watch is returned rejects with the cancellation cause; afterwards it ends the watch with reason cancelled.
 func (session *SessionImpl) WatchDocErased(ctx context.Context, token durable.AnyDocToken, args ...any) (durable.WatchHandle[durable.JsonObject], error) {
@@ -606,15 +570,7 @@ func (session *SessionImpl) watchDoc(ctx context.Context, token durable.AnyDocTo
 		if loaded == nil {
 			return nil, nil
 		}
-		var watch *CommittedWatch[durable.JsonObject]
-		_, err = session.attachDocument(definition, loaded, func(value durable.JsonObject, release func()) documentObserver {
-			watch = NewCommittedWatch(session, value, release, nil)
-			return watchObserver{watch}
-		})
-		if err != nil {
-			return nil, err
-		}
-		return watch, nil
+		return session.attachDocument(definition, loaded)
 	})
 	if err != nil || watch == nil {
 		return nil, err
@@ -890,12 +846,7 @@ func (session *SessionImpl) UnloadDocuments() error {
 	return err
 }
 
-// RunDeliveries runs the state drains that publishing queued, on the calling goroutine: the drain microtask of a publication
-// that no commit's end ran, such as a task graph refresh a read on the line made (session.ts queueMicrotask of
-// SessionSourceAttachment.publish).
-func (session *SessionImpl) RunDeliveries() { session.scheduler.runDrains() }
-
-// WaitDeliveries blocks until every scheduled watch and state delivery has drained.
+// WaitDeliveries blocks until every scheduled watch delivery has drained.
 func (session *SessionImpl) WaitDeliveries() { session.scheduler.wait() }
 
 // AwaitDeliveriesEntered blocks until every watch delivery scheduled before the call has entered: its listener returned,
@@ -945,23 +896,59 @@ func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Trans
 		session.sweepDocuments()
 		return result, nil
 	}
-	// Once admitted, caller cancellation does not interrupt Storage settlement.
-	seq, err := session.storage.Commit(context.WithoutCancel(ctx), writes)
-	if err != nil {
-		// The guard has failed the Session.
+	if session.hooks.ReadOnly {
+		// Refused before Storage: the Session stays healthy, and the caller sees why.
 		tx.discard()
+		session.sweepDocuments()
+		return nil, durable.NewReadOnlySession("a commit with writes")
+	}
+	// Storage adopts the batch synchronously once it is durable, before its next commit; a panic here would reach
+	// Storage, so the callback keeps its own error.
+	var adoption *commitAdoption
+	adopt := func(committed durable.Seq) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				if recoveredErr, ok := recovered.(error); ok {
+					adoption = &commitAdoption{err: recoveredErr}
+					return
+				}
+				adoption = &commitAdoption{err: fmt.Errorf("%v", recovered)}
+			}
+		}()
+		documents, err := tx.adopt(committed)
+		adoption = &commitAdoption{documents: documents, err: err}
+	}
+	// Once admitted, caller cancellation does not interrupt Storage settlement.
+	seq, err := session.storage.Commit(context.WithoutCancel(ctx), writes, adopt)
+	if err != nil {
+		// The guard has failed the Session. A rejection after adoption leaves nothing staged to discard.
+		if adoption == nil {
+			tx.discard()
+		}
 		return nil, err
 	}
-	documents, err := tx.adopt(seq)
-	if err != nil {
-		// Storage already committed; a failed adoption leaves memory behind durable state.
+	if adoption == nil {
+		err := errors.New("Storage committed without adopting the batch")
 		session.failIn(ctx, err)
 		return nil, err
 	}
+	if adoption.err != nil {
+		// Storage already committed; a failed adoption leaves memory behind durable state.
+		session.failIn(ctx, adoption.err)
+		return nil, adoption.err
+	}
+	documents := adoption.documents
 	session.touchChanged(documents)
 	session.publish(ctx, seq, writes, documents)
 	session.sweepDocuments()
 	return result, nil
+}
+
+// commitAdoption is what the Session's adopt callback made of one batch: the document changes, or the error that
+// failed the adoption.
+type commitAdoption struct {
+	documents []durable.DocumentCommitChange
+	err       error
 }
 
 func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes []durable.StorageWrite, documents []durable.DocumentCommitChange) {
@@ -1051,39 +1038,9 @@ func (session *SessionImpl) DeferUntilPublished(run func()) {
 	session.deferMu.Unlock()
 }
 
-// documentObserver is a committed state source or watch attached to one incarnation.
-type documentObserver interface {
-	Advance(ctx context.Context, value durable.JsonObject, ops []durable.Op)
-	CloseSession(failure error)
-	// frameContext strips cancellation for a state, whose frames carry none; a watch observes its own.
-	frameContext(ctx context.Context) context.Context
-}
-
-type stateObserver struct {
-	source *CommittedStateSource[durable.JsonObject]
-}
-
-func (observer stateObserver) Advance(ctx context.Context, value durable.JsonObject, ops []durable.Op) {
-	observer.source.Advance(ctx, value, ops)
-}
-func (observer stateObserver) CloseSession(error) { observer.source.CloseSession() }
-func (stateObserver) frameContext(ctx context.Context) context.Context {
-	return context.WithoutCancel(ctx)
-}
-
-type watchObserver struct {
-	watch *CommittedWatch[durable.JsonObject]
-}
-
-func (observer watchObserver) Advance(ctx context.Context, value durable.JsonObject, ops []durable.Op) {
-	observer.watch.Advance(ctx, value, ops)
-}
-func (observer watchObserver) CloseSession(failure error)              { observer.watch.CloseSession(failure) }
-func (watchObserver) frameContext(ctx context.Context) context.Context { return ctx }
-
-// attachDocument attaches an observer to one committed incarnation: check the definition, then forward this
-// incarnation's committed changes and close. The returned detach removes both subscriptions.
-func (session *SessionImpl) attachDocument(definition *durable.AnyDocDefinition, loaded *LoadedDocument, create func(value durable.JsonObject, release func()) documentObserver) (func(), error) {
+// attachDocument attaches a watch to one committed incarnation: check the definition, then forward this incarnation's
+// committed changes, its retirement, and close. The watch's detach removes both subscriptions.
+func (session *SessionImpl) attachDocument(definition *durable.AnyDocDefinition, loaded *LoadedDocument) (*CommittedWatch[durable.JsonObject], error) {
 	if err := checkLoaded(definition, loaded); err != nil {
 		return nil, err
 	}
@@ -1102,7 +1059,7 @@ func (session *SessionImpl) attachDocument(definition *durable.AnyDocDefinition,
 		closer()
 		unpin()
 	}
-	observer := create(loaded.Tracker.Value(), detach)
+	watch := NewCommittedWatch(session, loaded.Tracker.Value(), detach, nil)
 	observed := loaded.ValueVersion
 	recordId := loaded.Record.Id
 	commit, err := session.subscribeCommits(func(ctx context.Context, publication durable.CommitPublication) {
@@ -1111,23 +1068,25 @@ func (session *SessionImpl) attachDocument(definition *durable.AnyDocDefinition,
 			if !ok || document.Record.Id != recordId {
 				continue
 			}
+			// A retired incarnation never changes again: its watch delivers the retirement but pins nothing.
+			if document.Value == nil {
+				unpin()
+				watch.Retire(ctx)
+				continue
+			}
 			ops := observedOperations(&observed, document)
-			// A migration-only base changes nothing for an observer of the new version.
+			// A migration-only base changes nothing for a watch of the new version.
 			if len(ops) == 0 {
 				continue
 			}
-			// A retired incarnation never changes again: its observers keep their last value but pin nothing.
-			if document.Value == nil {
-				unpin()
-			}
-			observer.Advance(observer.frameContext(ctx), document.Value, ops)
+			watch.Advance(ctx, document.Value, ops)
 		}
 	})
 	if err != nil {
 		unpin()
 		return nil, err
 	}
-	closer, err := session.subscribeClose(func() { observer.CloseSession(session.failure()) })
+	closer, err := session.subscribeClose(func() { watch.SourceEnded(session.failure()) })
 	if err != nil {
 		commit()
 		unpin()
@@ -1136,16 +1095,13 @@ func (session *SessionImpl) attachDocument(definition *durable.AnyDocDefinition,
 	detachMu.Lock()
 	unsubscribeCommit, unsubscribeClose = commit, closer
 	detachMu.Unlock()
-	return detach, nil
+	return watch, nil
 }
 
-// observedOperations returns the operations an observer applies for one committed change. An observer hydrated
-// under another definition version holds a differently shaped value, so it receives the new value as a root
+// observedOperations returns the operations a watch applies for one committed change of a live incarnation. A watch
+// hydrated under another definition version holds a differently shaped value, so it receives the new value as a root
 // replacement instead of operations for that shape.
 func observedOperations(observed *int, change durable.DocumentChange) []durable.Op {
-	if change.Value == nil {
-		return retirementOperations()
-	}
 	if *change.Version == *observed {
 		return change.Ops
 	}

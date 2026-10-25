@@ -1,5 +1,5 @@
 {
- "pi": "1.4.0",
+ "pi": "1.4.0+74f46864",
  "genai": "2.21.0",
  "node": "v24.19.0",
  "cap": 160,
@@ -247,7 +247,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -326,7 +327,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -374,7 +376,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -417,7 +420,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -460,7 +464,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -731,7 +736,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -810,7 +816,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -858,14 +865,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -901,14 +909,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -944,14 +953,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -1207,7 +1217,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -1286,7 +1297,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -1334,7 +1346,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -1377,7 +1390,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -1420,7 +1434,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -1707,7 +1722,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -1786,7 +1802,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
@@ -1834,14 +1851,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 4
      }
     },
     {
@@ -1877,14 +1895,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 4
      }
     },
     {
@@ -1920,14 +1939,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "toolUse",
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 4
      }
     },
     {
@@ -2172,7 +2192,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -2210,7 +2231,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -2357,7 +2379,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -2401,7 +2424,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -2440,7 +2464,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -2696,7 +2721,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -2734,7 +2760,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -2881,7 +2908,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -2925,7 +2953,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -2964,7 +2993,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -3228,7 +3258,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -3266,7 +3297,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -3413,7 +3445,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -3457,14 +3490,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -3496,14 +3530,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -3776,7 +3811,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -3814,7 +3850,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -3961,7 +3998,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -4005,14 +4043,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -4044,14 +4083,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -4312,7 +4352,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -4350,7 +4391,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -4497,7 +4539,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -4541,14 +4584,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -4580,14 +4624,15 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -4925,7 +4970,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -4968,7 +5014,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -5122,7 +5169,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -5171,7 +5219,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -5215,7 +5264,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -5259,7 +5309,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",
@@ -5303,7 +5354,8 @@
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 0,
-        "total": 0
+        "total": 0,
+        "totalFromProvider": false
        }
       },
       "stopReason": "stop",

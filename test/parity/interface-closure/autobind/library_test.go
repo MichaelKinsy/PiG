@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"go/types"
 	"os"
@@ -724,5 +725,40 @@ func TestLibraryDataSchemaIsReadThroughABuilderThatTakesIt(t *testing.T) {
 	}
 	if d := run([3]string{"lib/lib.go", "Label string `json:\"label\"`", "Label string `json:\"label\"`\n\tNote  string"}); d == nil || !d.Gap {
 		t.Errorf("a struct with an untagged sibling field is not wholly serializable data, got %+v", d)
+	}
+}
+
+// TestAliasesOwnerKnowsGenericAliases: L1. A generic alias of a generic owner (`type WatchHandle[T any] = lib.WatchHandle[T]`, durable's
+// re-export of Chord's watch type) is an alias of it; a defined generic type and an alias of another type are not.
+func TestAliasesOwnerKnowsGenericAliases(t *testing.T) {
+	const source = `package p
+
+type Owner[T any] interface{ Value() T }
+
+type Other[T any] interface{ Value() T }
+
+type Alias[T any] = Owner[T]
+
+type Defined[T any] Owner[T]
+
+type OfOther[T any] = Other[T]
+
+type Plain = int
+`
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "p.go", source, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg, err := (&types.Config{}).Check("p", fset, []*ast.File{file}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	typeName := func(name string) *types.TypeName { return pkg.Scope().Lookup(name).(*types.TypeName) }
+	owner := typeName("Owner")
+	for name, want := range map[string]bool{"Alias": true, "Defined": false, "OfOther": false, "Plain": false, "Owner": true} {
+		if got := aliasesOwner(typeName(name), owner); got != want {
+			t.Errorf("aliasesOwner(%s, Owner) = %v, want %v", name, got, want)
+		}
 	}
 }

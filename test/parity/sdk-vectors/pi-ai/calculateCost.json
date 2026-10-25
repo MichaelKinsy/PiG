@@ -1,5 +1,5 @@
 {
- "pin": "1.4.0",
+ "pin": "1.4.0+74f46864",
  "package": "pi-ai@1.4.0",
  "module": "pi-ai",
  "export": "calculateCost",
@@ -39,7 +39,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.001125,
-    "total": 0.019275000000000004
+    "total": 0.019275000000000004,
+    "totalFromProvider": false
    }
   },
   {
@@ -77,7 +78,8 @@
     "output": 0,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0
+    "total": 0,
+    "totalFromProvider": false
    }
   },
   {
@@ -115,7 +117,8 @@
     "output": 0.00015000000000000001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.60015
+    "total": 0.60015,
+    "totalFromProvider": false
    }
   },
   {
@@ -153,7 +156,8 @@
     "output": 0.00015000000000000001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.600153
+    "total": 0.600153,
+    "totalFromProvider": false
    }
   },
   {
@@ -191,7 +195,8 @@
     "output": 0.00007500000000000001,
     "cacheRead": 0.015,
     "cacheWrite": 0.18750375,
-    "total": 0.50257875
+    "total": 0.50257875,
+    "totalFromProvider": false
    }
   },
   {
@@ -229,7 +234,8 @@
     "output": 0.000015,
     "cacheRead": 3e-7,
     "cacheWrite": 0,
-    "total": 1.5000123
+    "total": 1.5000123,
+    "totalFromProvider": false
    }
   },
   {
@@ -267,7 +273,8 @@
     "output": 0.000015,
     "cacheRead": 3e-7,
     "cacheWrite": 0,
-    "total": 1.5000153
+    "total": 1.5000153,
+    "totalFromProvider": false
    }
   },
   {
@@ -305,7 +312,8 @@
     "output": 0.000015,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 1.500018
+    "total": 1.500018,
+    "totalFromProvider": false
    }
   },
   {
@@ -344,7 +352,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.00135,
-    "total": 0.019500000000000003
+    "total": 0.019500000000000003,
+    "totalFromProvider": false
    }
   },
   {
@@ -383,7 +392,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.0018,
-    "total": 0.019950000000000002
+    "total": 0.019950000000000002,
+    "totalFromProvider": false
    }
   },
   {
@@ -422,7 +432,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.001125,
-    "total": 0.019275000000000004
+    "total": 0.019275000000000004,
+    "totalFromProvider": false
    }
   },
   {
@@ -461,7 +472,8 @@
     "output": 0.00003,
     "cacheRead": 9e-7,
     "cacheWrite": 0.000915,
-    "total": 0.0009489
+    "total": 0.0009489,
+    "totalFromProvider": false
    }
   },
   {
@@ -500,7 +512,8 @@
     "output": 0.118365,
     "cacheRead": 0.007036799999999999,
     "cacheWrite": 0.003132,
-    "total": 0.49890180000000006
+    "total": 0.49890180000000006,
+    "totalFromProvider": false
    }
   },
   {
@@ -538,7 +551,8 @@
     "output": 0.000015,
     "cacheRead": 3e-7,
     "cacheWrite": 0.00000375,
-    "total": 0.00002205
+    "total": 0.00002205,
+    "totalFromProvider": false
    }
   },
   {
@@ -577,7 +591,8 @@
     "output": 0.000105,
     "cacheRead": 0.0000032999999999999997,
     "cacheWrite": 0.00004875,
-    "total": 0.00016605
+    "total": 0.00016605,
+    "totalFromProvider": false
    }
   },
   {
@@ -624,7 +639,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.001125,
-    "total": 0.019275000000000004
+    "total": 0.019275000000000004,
+    "totalFromProvider": false
    }
   },
   {
@@ -671,7 +687,8 @@
     "output": 0,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0
+    "total": 0,
+    "totalFromProvider": false
    }
   },
   {
@@ -718,7 +735,8 @@
     "output": 0.00015000000000000001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.60015
+    "total": 0.60015,
+    "totalFromProvider": false
    }
   },
   {
@@ -765,7 +783,8 @@
     "output": 0.00022500000000000002,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 1.200231
+    "total": 1.200231,
+    "totalFromProvider": false
    }
   },
   {
@@ -812,7 +831,8 @@
     "output": 0.00011250000000000001,
     "cacheRead": 0.03,
     "cacheWrite": 0.3750075,
-    "total": 1.00512
+    "total": 1.00512,
+    "totalFromProvider": false
    }
   },
   {
@@ -859,7 +879,8 @@
     "output": 0.0000225,
     "cacheRead": 6e-7,
     "cacheWrite": 0,
-    "total": 3.0000171
+    "total": 3.0000171,
+    "totalFromProvider": false
    }
   },
   {
@@ -906,7 +927,8 @@
     "output": 0.0000225,
     "cacheRead": 6e-7,
     "cacheWrite": 0,
-    "total": 3.0000231
+    "total": 3.0000231,
+    "totalFromProvider": false
    }
   },
   {
@@ -953,7 +975,8 @@
     "output": 0.0000225,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 3.0000285
+    "total": 3.0000285,
+    "totalFromProvider": false
    }
   },
   {
@@ -1001,7 +1024,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.00135,
-    "total": 0.019500000000000003
+    "total": 0.019500000000000003,
+    "totalFromProvider": false
    }
   },
   {
@@ -1049,7 +1073,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.0018,
-    "total": 0.019950000000000002
+    "total": 0.019950000000000002,
+    "totalFromProvider": false
    }
   },
   {
@@ -1097,7 +1122,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.001125,
-    "total": 0.019275000000000004
+    "total": 0.019275000000000004,
+    "totalFromProvider": false
    }
   },
   {
@@ -1145,7 +1171,8 @@
     "output": 0.00003,
     "cacheRead": 9e-7,
     "cacheWrite": 0.000915,
-    "total": 0.0009489
+    "total": 0.0009489,
+    "totalFromProvider": false
    }
   },
   {
@@ -1193,7 +1220,8 @@
     "output": 0.118365,
     "cacheRead": 0.007036799999999999,
     "cacheWrite": 0.003132,
-    "total": 0.49890180000000006
+    "total": 0.49890180000000006,
+    "totalFromProvider": false
    }
   },
   {
@@ -1240,7 +1268,8 @@
     "output": 0.000015,
     "cacheRead": 3e-7,
     "cacheWrite": 0.00000375,
-    "total": 0.00002205
+    "total": 0.00002205,
+    "totalFromProvider": false
    }
   },
   {
@@ -1288,7 +1317,8 @@
     "output": 0.000105,
     "cacheRead": 0.0000032999999999999997,
     "cacheWrite": 0.00004875,
-    "total": 0.00016605
+    "total": 0.00016605,
+    "totalFromProvider": false
    }
   },
   {
@@ -1356,7 +1386,8 @@
     "output": 0.002,
     "cacheRead": 0.0015,
     "cacheWrite": 0.0012,
-    "total": 0.0057
+    "total": 0.0057,
+    "totalFromProvider": false
    }
   },
   {
@@ -1424,7 +1455,8 @@
     "output": 0,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0
+    "total": 0,
+    "totalFromProvider": false
    }
   },
   {
@@ -1492,7 +1524,8 @@
     "output": 0.000019999999999999998,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.20001999999999998
+    "total": 0.20001999999999998,
+    "totalFromProvider": false
    }
   },
   {
@@ -1560,7 +1593,8 @@
     "output": 0.00022500000000000002,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 1.200231
+    "total": 1.200231,
+    "totalFromProvider": false
    }
   },
   {
@@ -1628,7 +1662,8 @@
     "output": 0.00011250000000000001,
     "cacheRead": 0.03,
     "cacheWrite": 0.3750075,
-    "total": 1.00512
+    "total": 1.00512,
+    "totalFromProvider": false
    }
   },
   {
@@ -1696,7 +1731,8 @@
     "output": 0.0000225,
     "cacheRead": 6e-7,
     "cacheWrite": 0,
-    "total": 3.0000171
+    "total": 3.0000171,
+    "totalFromProvider": false
    }
   },
   {
@@ -1764,7 +1800,8 @@
     "output": 0.00003,
     "cacheRead": 0.0000012,
     "cacheWrite": 0,
-    "total": 6.0000312
+    "total": 6.0000312,
+    "totalFromProvider": false
    }
   },
   {
@@ -1832,7 +1869,8 @@
     "output": 0.00003,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 6.000042
+    "total": 6.000042,
+    "totalFromProvider": false
    }
   },
   {
@@ -1901,7 +1939,8 @@
     "output": 0.002,
     "cacheRead": 0.0015,
     "cacheWrite": 0.001,
-    "total": 0.0055000000000000005
+    "total": 0.0055000000000000005,
+    "totalFromProvider": false
    }
   },
   {
@@ -1970,7 +2009,8 @@
     "output": 0.002,
     "cacheRead": 0.0015,
     "cacheWrite": 0.0006,
-    "total": 0.0051
+    "total": 0.0051,
+    "totalFromProvider": false
    }
   },
   {
@@ -2039,7 +2079,8 @@
     "output": 0.002,
     "cacheRead": 0.0015,
     "cacheWrite": 0.0012,
-    "total": 0.0057
+    "total": 0.0057,
+    "totalFromProvider": false
    }
   },
   {
@@ -2108,7 +2149,8 @@
     "output": 0.000004,
     "cacheRead": 0.000009,
     "cacheWrite": -0.000784,
-    "total": -0.00077
+    "total": -0.00077,
+    "totalFromProvider": false
    }
   },
   {
@@ -2177,7 +2219,8 @@
     "output": 0.015782,
     "cacheRead": 0.070368,
     "cacheWrite": 0.003002,
-    "total": 0.21260800000000002
+    "total": 0.21260800000000002,
+    "totalFromProvider": false
    }
   },
   {
@@ -2245,7 +2288,8 @@
     "output": 0.000002,
     "cacheRead": 0.000003,
     "cacheWrite": 0.000004,
-    "total": 0.000009999999999999999
+    "total": 0.000009999999999999999,
+    "totalFromProvider": false
    }
   },
   {
@@ -2314,7 +2358,8 @@
     "output": 0.000014,
     "cacheRead": 0.000033,
     "cacheWrite": 0.000052,
-    "total": 0.000102
+    "total": 0.000102,
+    "totalFromProvider": false
    }
   },
   {
@@ -2353,7 +2398,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.001125,
-    "total": 0.019275000000000004
+    "total": 0.019275000000000004,
+    "totalFromProvider": false
    }
   },
   {
@@ -2392,7 +2438,8 @@
     "output": 0,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0
+    "total": 0,
+    "totalFromProvider": false
    }
   },
   {
@@ -2431,7 +2478,8 @@
     "output": 0.00015000000000000001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.60015
+    "total": 0.60015,
+    "totalFromProvider": false
    }
   },
   {
@@ -2470,7 +2518,8 @@
     "output": 0.00015000000000000001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.600153
+    "total": 0.600153,
+    "totalFromProvider": false
    }
   },
   {
@@ -2509,7 +2558,8 @@
     "output": 0.00007500000000000001,
     "cacheRead": 0.015,
     "cacheWrite": 0.18750375,
-    "total": 0.50257875
+    "total": 0.50257875,
+    "totalFromProvider": false
    }
   },
   {
@@ -2548,7 +2598,8 @@
     "output": 0.000015,
     "cacheRead": 3e-7,
     "cacheWrite": 0,
-    "total": 1.5000123
+    "total": 1.5000123,
+    "totalFromProvider": false
    }
   },
   {
@@ -2587,7 +2638,8 @@
     "output": 0.000015,
     "cacheRead": 3e-7,
     "cacheWrite": 0,
-    "total": 1.5000153
+    "total": 1.5000153,
+    "totalFromProvider": false
    }
   },
   {
@@ -2626,7 +2678,8 @@
     "output": 0.000015,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 1.500018
+    "total": 1.500018,
+    "totalFromProvider": false
    }
   },
   {
@@ -2666,7 +2719,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.00135,
-    "total": 0.019500000000000003
+    "total": 0.019500000000000003,
+    "totalFromProvider": false
    }
   },
   {
@@ -2706,7 +2760,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.0018,
-    "total": 0.019950000000000002
+    "total": 0.019950000000000002,
+    "totalFromProvider": false
    }
   },
   {
@@ -2746,7 +2801,8 @@
     "output": 0.015000000000000001,
     "cacheRead": 0.00015,
     "cacheWrite": 0.001125,
-    "total": 0.019275000000000004
+    "total": 0.019275000000000004,
+    "totalFromProvider": false
    }
   },
   {
@@ -2786,7 +2842,8 @@
     "output": 0.00003,
     "cacheRead": 9e-7,
     "cacheWrite": 0.000915,
-    "total": 0.0009489
+    "total": 0.0009489,
+    "totalFromProvider": false
    }
   },
   {
@@ -2826,7 +2883,8 @@
     "output": 0.118365,
     "cacheRead": 0.007036799999999999,
     "cacheWrite": 0.003132,
-    "total": 0.49890180000000006
+    "total": 0.49890180000000006,
+    "totalFromProvider": false
    }
   },
   {
@@ -2865,7 +2923,8 @@
     "output": 0.000015,
     "cacheRead": 3e-7,
     "cacheWrite": 0.00000375,
-    "total": 0.00002205
+    "total": 0.00002205,
+    "totalFromProvider": false
    }
   },
   {
@@ -2905,7 +2964,8 @@
     "output": 0.000105,
     "cacheRead": 0.0000032999999999999997,
     "cacheWrite": 0.00004875,
-    "total": 0.00016605
+    "total": 0.00016605,
+    "totalFromProvider": false
    }
   },
   {
@@ -2943,7 +3003,8 @@
     "output": 0.0007,
     "cacheRead": 0.000014999999999999999,
     "cacheWrite": 0.000037037036700000004,
-    "total": 0.0008520370367000001
+    "total": 0.0008520370367000001,
+    "totalFromProvider": false
    }
   },
   {
@@ -2981,7 +3042,8 @@
     "output": 0,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0
+    "total": 0,
+    "totalFromProvider": false
    }
   },
   {
@@ -3019,7 +3081,8 @@
     "output": 0.000007,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.020007
+    "total": 0.020007,
+    "totalFromProvider": false
    }
   },
   {
@@ -3057,7 +3120,8 @@
     "output": 0.000007,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.020007100000000003
+    "total": 0.020007100000000003,
+    "totalFromProvider": false
    }
   },
   {
@@ -3095,7 +3159,8 @@
     "output": 0.0000035,
     "cacheRead": 0.0014999999999999998,
     "cacheWrite": 0.006172962906789,
-    "total": 0.017676462906789002
+    "total": 0.017676462906789002,
+    "totalFromProvider": false
    }
   },
   {
@@ -3133,7 +3198,8 @@
     "output": 7e-7,
     "cacheRead": 3e-8,
     "cacheWrite": 0,
-    "total": 0.050000630000000004
+    "total": 0.050000630000000004,
+    "totalFromProvider": false
    }
   },
   {
@@ -3171,7 +3237,8 @@
     "output": 7e-7,
     "cacheRead": 3e-8,
     "cacheWrite": 0,
-    "total": 0.05000073
+    "total": 0.05000073,
+    "totalFromProvider": false
    }
   },
   {
@@ -3209,7 +3276,8 @@
     "output": 7e-7,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.050000800000000005
+    "total": 0.050000800000000005,
+    "totalFromProvider": false
    }
   },
   {
@@ -3248,7 +3316,8 @@
     "output": 0.0007,
     "cacheRead": 0.000014999999999999999,
     "cacheWrite": 0.0000446913578,
-    "total": 0.0008596913578000001
+    "total": 0.0008596913578000001,
+    "totalFromProvider": false
    }
   },
   {
@@ -3287,7 +3356,8 @@
     "output": 0.0007,
     "cacheRead": 0.000014999999999999999,
     "cacheWrite": 0.00006,
-    "total": 0.0008750000000000001
+    "total": 0.0008750000000000001,
+    "totalFromProvider": false
    }
   },
   {
@@ -3326,7 +3396,8 @@
     "output": 0.0007,
     "cacheRead": 0.000014999999999999999,
     "cacheWrite": 0.000037037036700000004,
-    "total": 0.0008520370367000001
+    "total": 0.0008520370367000001,
+    "totalFromProvider": false
    }
   },
   {
@@ -3365,7 +3436,8 @@
     "output": 0.0000014,
     "cacheRead": 8.999999999999999e-8,
     "cacheWrite": 0.00003111111155600001,
-    "total": 0.000032701111556000004
+    "total": 0.000032701111556000004,
+    "totalFromProvider": false
    }
   },
   {
@@ -3404,7 +3476,8 @@
     "output": 0.0055236999999999994,
     "cacheRead": 0.0007036799999999999,
     "cacheWrite": 0.000103301233768,
-    "total": 0.018676281233768004
+    "total": 0.018676281233768004,
+    "totalFromProvider": false
    }
   },
   {
@@ -3442,7 +3515,8 @@
     "output": 7e-7,
     "cacheRead": 3e-8,
     "cacheWrite": 1.23456789e-7,
-    "total": 9.53456789e-7
+    "total": 9.53456789e-7,
+    "totalFromProvider": false
    }
   },
   {
@@ -3481,7 +3555,8 @@
     "output": 0.0000049,
     "cacheRead": 3.2999999999999996e-7,
     "cacheWrite": 0.0000016049382569999998,
-    "total": 0.000007134938256999999
+    "total": 0.000007134938256999999,
+    "totalFromProvider": false
    }
   },
   {
@@ -3519,7 +3594,8 @@
     "output": 0.01,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.0125
+    "total": 0.0125,
+    "totalFromProvider": false
    }
   },
   {
@@ -3557,7 +3633,8 @@
     "output": 0,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0
+    "total": 0,
+    "totalFromProvider": false
    }
   },
   {
@@ -3595,7 +3672,8 @@
     "output": 0.0001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.5001
+    "total": 0.5001,
+    "totalFromProvider": false
    }
   },
   {
@@ -3633,7 +3711,8 @@
     "output": 0.0001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.5001025
+    "total": 0.5001025,
+    "totalFromProvider": false
    }
   },
   {
@@ -3671,7 +3750,8 @@
     "output": 0.00005,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.25005
+    "total": 0.25005,
+    "totalFromProvider": false
    }
   },
   {
@@ -3709,7 +3789,8 @@
     "output": 0.00001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 1.2500075000000002
+    "total": 1.2500075000000002,
+    "totalFromProvider": false
    }
   },
   {
@@ -3747,7 +3828,8 @@
     "output": 0.00001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 1.25001
+    "total": 1.25001,
+    "totalFromProvider": false
    }
   },
   {
@@ -3785,7 +3867,8 @@
     "output": 0.00001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 1.2500125000000002
+    "total": 1.2500125000000002,
+    "totalFromProvider": false
    }
   },
   {
@@ -3824,7 +3907,8 @@
     "output": 0.01,
     "cacheRead": 0,
     "cacheWrite": 0.0005,
-    "total": 0.013000000000000001
+    "total": 0.013000000000000001,
+    "totalFromProvider": false
    }
   },
   {
@@ -3863,7 +3947,8 @@
     "output": 0.01,
     "cacheRead": 0,
     "cacheWrite": 0.0015,
-    "total": 0.014
+    "total": 0.014,
+    "totalFromProvider": false
    }
   },
   {
@@ -3902,7 +3987,8 @@
     "output": 0.01,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.0125
+    "total": 0.0125,
+    "totalFromProvider": false
    }
   },
   {
@@ -3941,7 +4027,8 @@
     "output": 0.00002,
     "cacheRead": 0,
     "cacheWrite": 0.002,
-    "total": 0.0020225
+    "total": 0.0020225,
+    "totalFromProvider": false
    }
   },
   {
@@ -3980,7 +4067,8 @@
     "output": 0.07891000000000001,
     "cacheRead": 0,
     "cacheWrite": 0.000385,
-    "total": 0.3879350000000001
+    "total": 0.3879350000000001,
+    "totalFromProvider": false
    }
   },
   {
@@ -4018,7 +4106,8 @@
     "output": 0.00001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.0000125
+    "total": 0.0000125,
+    "totalFromProvider": false
    }
   },
   {
@@ -4057,7 +4146,8 @@
     "output": 0.00007000000000000001,
     "cacheRead": 0,
     "cacheWrite": 0,
-    "total": 0.00007750000000000001
+    "total": 0.00007750000000000001,
+    "totalFromProvider": false
    }
   }
  ]

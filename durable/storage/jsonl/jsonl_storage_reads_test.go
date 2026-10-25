@@ -56,7 +56,7 @@ func TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose(t *test
 			Record:  durable.DocumentCreate{Id: documentId, Kind: "jsonl.family", Key: &key, Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
 			Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: chorddelta.JsonObjectOf("v", 1)},
 		},
-	})
+	}, func(durable.Seq) {})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose(t *test
 	if _, err := jsonlStore.Entry(ctx, entryId); err == nil {
 		t.Error("Entry after Close must fail")
 	}
-	if _, err := jsonlStore.Commit(ctx, nil); err == nil {
+	if _, err := jsonlStore.Commit(ctx, nil, func(durable.Seq) {}); err == nil {
 		t.Error("Commit after Close must fail")
 	}
 }
@@ -196,7 +196,7 @@ func TestJsonlStorageVisibleEntryFollowsConversationAncestry(t *testing.T) {
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: sibling, Parent: &durable.ConversationParent{ConversationId: root, At: afterFork}}},
 		entry(child, childOwn),
 		entry(sibling, siblingOwn),
-	}); err != nil {
+	}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {

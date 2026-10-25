@@ -6,7 +6,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
@@ -53,13 +52,13 @@ func TestCoreDropsAThrowingOnReportForAFailingListener(t *testing.T) {
 		reported <- err
 		panic(errors.New("report broke"))
 	}})
-	state, err := root.ViewState(t.Context())
+	watch, err := root.Watch(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer state.Dispose()
-	failure := errors.New("view state listener failed")
-	state.Subscribe(func(harness.ConversationView, context.Context, chord.ReplicatedStateDelivery) { panic(failure) })
+	defer func() { _, _ = watch.Stop() }()
+	failure := errors.New("view watch listener failed")
+	watch.Start(func(context.Context, harness.ConversationView, []durable.Op) error { return failure })
 	appendCoreNote(t, root)
 	expectReport(t, reported, failure)
 	appendCoreNote(t, root)

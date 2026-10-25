@@ -8,6 +8,40 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-23
+
+### Upgrading
+
+- Go API `durable`: `Storage.Commit` takes an adopt callback, as Pi's `commit(writes, adopt, context)`. Before: `storage.Commit(ctx, writes)`. After: `storage.Commit(ctx, writes, func(seq durable.Seq) {})`. A Storage calls it once, synchronously, when the batch is durable and before its next commit, and never for a commit that fails; a Storage that resolves without calling it fails the Session. Code that wraps or implements Storage must pass it through.
+- Go API `durable`, `chord`: `WatchHandle`, `WatchEnd` and the end reasons move to `chord`; `durable.WatchHandle`, `durable.WatchEnd` and the `Watch*` reason constants are aliases of them. The reasons `session_closed` and `session_failed` are now `ended` (`WatchEnded`) and `failed` (`WatchFailed`).
+- Go API `durable`: `Session.DocumentStateErased`, `DocumentState`, `DocumentStateOf`, `Conversation.ViewState` and `Harness.TaskGraph` are removed, as in Pi. Use `WatchDoc`, `Conversation.Watch` and `Harness.WatchTaskGraph`; start the watch to keep its value current, and stop it where the state was disposed.
+- A document watch ends `retired` only when its document is retired, not on a null value.
+
+### Added
+
+- `durable.HarnessOptions.ReadOnly` opens a Harness as a viewer of a session another process drives: open leaves running tasks as committed instead of recovering them, every commit with writes fails with the new `durable.ReadOnlySession` before it reaches Storage (the Session stays healthy, and a commit that writes nothing succeeds), `Resume()` panics with it and every call that enables scheduling returns it, `Wake()` is always inactive and `OnWake` is never called. Reads, snapshots and watches keep working; reopen without `ReadOnly` to write. Ports Pi's `HarnessOptions.readOnly`.
+- `ai.UsageCost.TotalFromProvider` (`usage.cost.totalFromProvider` on the wire) records whether `cost.total` is the billed cost the provider reported or an estimate from the model's catalog rates. Catalog-priced usage writes `false`, an absent value in a recorded session also means `false`, and a combined usage is provider-reported only when both parts are. Ports Pi's `Usage.cost.totalFromProvider`.
+
+### Changed
+
+- The Durable example tests are renumbered as in Pi (`TestExample04Watches` through `TestExample30ReloadAndRestart`); the chord-state example is gone.
+- `pig piglet validate` and `pig piglet add` accept `--allow-install-scripts`, which installs a Piglet's Packages with lifecycle scripts for that one command. Migration: a Piglet whose Package needs its install script to produce files must be validated or added with the flag. `pig install`, `pig update` and the other Package commands are unchanged and still run lifecycle scripts, as Pi does.
+
+### Fixed
+
+- A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id, params)` and the other `create<Tool>Tool` forms) no longer fails with "extension stopped while waiting for builtinTool.execute response" when another extension in the same process stops while the tool runs. The call has no `Context`, so it was sent over the connection of the first running extension in the process. The host now runs the tool for a fused extension directly, reaching back into the extension in the same process for the functions of its options and its streamed updates. <!-- fix: c47bafd99d -->
+- Extensions' `ui_prompt_start` and `ui_prompt_end` notifications are recorded in order when the host is slow to apply the start event's `ctx.ui.notify`: the dialog's answer is no longer let through, and the end event no longer sent, before the handler's own host call has applied. A blocked-on-a-host-call report from an extension runtime admitted the UI prompt drain as soon as it was read, while the call it announced was still queued; the admission now waits for that call. <!-- fix: f0b910f8ca -->
+- A fused Go extension's `createLocalBashOperations().exec` (and `createLocalPowerShellOperations`) no longer fails with "extension stopped while waiting for builtinTool.localExec response" when another extension in the same process stops while the command runs; a command past its `timeout` rejects with Pi's `timeout:<seconds>`. The call has no `Context`, so it was sent over the connection of the first running extension in the process, and ended with that extension, whichever made the call. The host now runs the command for a fused extension directly, as it already does for the other helpers that have no `Context`, so the command depends on no extension, as Pi's exec depends on none. <!-- fix: e97346436d -->
+- The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet validate` accepts as a built-in tool, and stated nothing for most of the other closed vocabulary. It now lists all eight built-in tools, the strip IDs of each strip list, the `agentEnv` runtime modes (`inject`, `image`) and policy presets (`minimal`, `standard`, `elevated`), and carries the parser's name, build target, output name, release version and secret patterns, the required `source` and `target` of a mount, and the rule that `agentEnv` names exactly one of `image`, `devContainer` and `source`. `make piglet-strip-ids` writes the strip ID enums, and tests that read the parser's sets from code fail when the schema and the parser disagree. <!-- fix: 2316fe38fb -->
+- OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's reported total as `usage.cost.total` for OpenAI Completions and Anthropic Messages streams, plus the upstream inference cost for a BYOK request, instead of the catalog estimate, and mark it provider-reported. The export HTML header uses the recorded total. Replaces PiG's earlier D124 form of this fix with Pi's. <!-- fix: a9015090a5 -->
+- An Anthropic request holds a mid-conversation system update until an assistant message that is actually sent, so an assistant message that converts to no blocks no longer moves the update before a user message. <!-- fix: e5a345eeba -->
+- `pig install <source> --validate-only` now validates git and npm sources that are not installed yet. It fetches them into a temporary directory that is removed afterwards, and no longer reports `stat …/git/<host>/<owner>/<repo>: no such file or directory`. Installed packages and settings are not touched. <!-- fix: 871b48d4015ef3e7d99f6581ae3f7fa58698532e -->
+- Installing a Package or Piglet from a local `git:file://` source on Windows no longer fails with `fatal: '$GIT_DIR' too big`. A file URL now checks out to `<install root>/localhost/<12 hex of the path's sha256>/<basename>` instead of re-nesting the whole absolute path, which pushed `$GIT_DIR` past Git for Windows' own path limit that `core.longpaths` does not lift. Sources Pi accepts keep Pi's exact layout. A file URL checkout made by an earlier version is not reused and is cloned again. <!-- fix: efded13767cd31c5d180aa24b1eb94a40e5d8696 -->
+
+### Security
+
+- `pig piglet validate` and `pig piglet add` no longer run the lifecycle scripts (`preinstall`, `install`, `postinstall`, `prepare`) of the npm Packages a Piglet names, of their dependencies, of the dependencies of its Git Packages, or of the npm or Git package of a Piglet source. Before, validating or adding a Piglet ran a publisher's `postinstall` before you had looked at it. `pig piglet build` and `pig --piglet` resolve the same way.
+
 ## [0.5.2] - 2026-10-22
 
 ### Upgrading

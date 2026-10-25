@@ -1,4 +1,4 @@
-// Ports packages/durable/test/examples/24-child-tasks.ts and 25-compaction.ts. Upstream's scripts print and pace
+// Ports packages/durable/test/examples/23-child-tasks.ts and 24-compaction.ts. Upstream's scripts print and pace
 // themselves with timers; each Go example asserts what the script prints.
 
 package examples_test
@@ -38,9 +38,9 @@ type checkoutState struct {
 	Payments []durable.TaskId `json:"payments,omitempty"`
 }
 
-// 24-child-tasks.ts: a task that owns child tasks. A checkout charges four payments at once and waits for them; the
+// 23-child-tasks.ts: a task that owns child tasks. A checkout charges four payments at once and waits for them; the
 // task graph shows its tree while they run; a declined card, a cancellation and a restart each end it.
-func TestExample24ChildTasks(t *testing.T) {
+func TestExample23ChildTasks(t *testing.T) {
 	// A fake bank: it declines an expired card at once, and confirms other charges after a moment.
 	var bankMu sync.Mutex
 	charged := map[string]bool{}
@@ -187,7 +187,9 @@ func TestExample24ChildTasks(t *testing.T) {
 	// aborts every payment (each refunds itself) before the checkout ends aborted.
 	id = checkout(root, "visa-5", "visa-6", "visa-7", "visa-8")
 	opened.Resume()
-	graph := must(opened.TaskGraph(background))
+	graph := must(opened.WatchTaskGraph(background))
+	// A started watch keeps its value current.
+	graph.Start(func(context.Context, harness.TaskGraph, []durable.Op) error { return nil })
 	eventually(t, func() bool {
 		nodes := graph.Value().Tasks
 		node, ok := nodes[idKey(id)]
@@ -206,7 +208,7 @@ func TestExample24ChildTasks(t *testing.T) {
 	if tree[idKey(id)].Owner != nil || tree[idKey(id)].State.Policy != durable.JoinFailFast {
 		t.Fatalf("checkout node: %+v", tree[idKey(id)])
 	}
-	graph.Dispose()
+	must(graph.Stop())
 	if _, err := opened.AbortTask(background, id); err != nil {
 		t.Fatal(err)
 	}
@@ -241,11 +243,11 @@ func TestExample24ChildTasks(t *testing.T) {
 
 func idKey(id durable.TaskId) string { return strconv.FormatInt(int64(id), 10) }
 
-// 25-compaction.ts: a long trip-planning chat whose older messages are summarized so the model context stays small.
+// 24-compaction.ts: a long trip-planning chat whose older messages are summarized so the model context stays small.
 // Pi source: packages/durable/src/harness/types.ts
 // mutation-checked: zeroing the results of Conversation.Compact fails it
 // mutation-checked: dropping the reads and writes of FauxModelDefinition.ContextWindow fails it
-func TestExample25Compaction(t *testing.T) {
+func TestExample24Compaction(t *testing.T) {
 	// A fake model with a tiny 3000-token window. It answers chat messages, writes summaries when asked to
 	// summarize, and once rejects a request as too long, the way real providers report a context overflow.
 	var mu sync.Mutex

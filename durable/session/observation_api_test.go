@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 
 	"github.com/MichaelKinsy/PiG/durable"
@@ -20,9 +19,6 @@ import (
 
 // The Harness drives committed observations directly (view.ts:90 and :104, events.ts:132); these cases pin the exported
 // constructor and lifecycle surface it uses.
-// Pi source: packages/chord/src/api.ts, packages/chord/src/services/state-internals.ts
-// mutation-checked: dropping the reads and writes of ReplicatedStateSourceFrame.Cursor fails it
-// packages/chord/src/types.ts:84-100: a ReplicatedStateSourceAttachment is activated with the sole listener and disposed to stop delivery.
 func TestCommittedObservationHarnessSurface(t *testing.T) {
 	t.Run("a session-bound watch delivers advanced frames and ends cancelled", func(t *testing.T) {
 		harness := open()
@@ -37,29 +33,6 @@ func TestCommittedObservationHarnessSurface(t *testing.T) {
 		harness.Session.WaitDeliveries()
 		if watch.End().Reason != durable.WatchCancelled || released != 1 {
 			t.Fatalf("end %+v released %d", watch.End(), released)
-		}
-	})
-
-	t.Run("a session-bound state source closes with the Session", func(t *testing.T) {
-		harness := open()
-		released := 0
-		source := session.NewCommittedStateSource(harness.Session, delta.JsonObjectOf("n", 0), func() { released++ })
-		attachment, err := source.Attach()
-		must(t, err)
-		expectEqual(t, attachment.Snapshot().Value, delta.JsonObjectOf("n", 0))
-		var frames []chord.ReplicatedStateSourceFrame[obj]
-		must(t, attachment.Activate(func(frame chord.ReplicatedStateSourceFrame[obj]) { frames = append(frames, frame) }))
-		source.Advance(context.Background(), delta.JsonObjectOf("n", 1), []durable.Op{{"s", "/n", 1}})
-		harness.Session.WaitDeliveries()
-		if len(frames) != 1 || frames[0].Cursor != attachment.Snapshot().Cursor+1 {
-			t.Fatalf("frames %+v", frames)
-		}
-		expectEqual(t, frames[0].Value, delta.JsonObjectOf("n", 1))
-		source.CloseSession()
-		attachment.Dispose()
-		harness.Session.WaitDeliveries()
-		if released != 1 {
-			t.Fatalf("released %d", released)
 		}
 	})
 

@@ -28,7 +28,7 @@ func TestRPCCombinedUsageKeepsTheLiteralOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const want = `"usage":{"input":2,"output":4,"cacheRead":0,"cacheWrite":6,"cacheWrite1h":6,"reasoning":2,"totalTokens":12,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}`
+	const want = `"usage":{"input":2,"output":4,"cacheRead":0,"cacheWrite":6,"cacheWrite1h":6,"reasoning":2,"totalTokens":12,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0,"totalFromProvider":false}}`
 	if !strings.Contains(string(session), want) {
 		t.Fatalf("session line usage\n got: %s\nwant: %s", session, want)
 	}

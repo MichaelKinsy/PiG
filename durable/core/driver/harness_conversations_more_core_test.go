@@ -628,12 +628,12 @@ func TestCoreConversationsForwardGenericSessionDocumentAPIs(t *testing.T) {
 	if err != nil || !sameJson(asOf, delta.JsonObjectOf("text", "first")) {
 		t.Fatalf("snapshotAsOf %v, %v", asOf, err)
 	}
-	state, err := h.DocumentStateErased(t.Context(), conversationNote, root.Id())
-	if err != nil || state == nil {
-		t.Fatalf("documentState %v, %v", state, err)
+	watch, err := h.WatchDocErased(t.Context(), conversationNote, root.Id())
+	if err != nil || watch == nil {
+		t.Fatalf("watchDoc %v, %v", watch, err)
 	}
-	if !sameJson(state.Value(), delta.JsonObjectOf("text", "second")) {
-		t.Fatalf("documentState value %v", state.Value())
+	if !sameJson(watch.Value(), delta.JsonObjectOf("text", "second")) {
+		t.Fatalf("watchDoc value %v", watch.Value())
 	}
-	state.Dispose()
+	_, _ = watch.Stop()
 }

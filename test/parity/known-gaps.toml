@@ -16,5 +16,5 @@
 # Each entry needs: scope, key (what the gate reports), tracking (issue URL once
 # the repository is public; until then the delivery/unresolved.tsv row), and why.
 
-pi_version = "1.4.0"
+pi_version = "1.4.0+74f46864"
 

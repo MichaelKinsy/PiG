@@ -270,7 +270,7 @@ func TestConversationViewsMatchPi(t *testing.T) {
 					entry.Initial = value
 					return &ViewObserver{Advance: func(_ context.Context, next ConversationView, ops []durable.Op) {
 						entry.Events = append(entry.Events, recorded{current, next, ops})
-					}, CloseSession: func(error) {}}, nil
+					}, End: func(error) {}}, nil
 				})
 				gotErr = err
 				if err == nil {

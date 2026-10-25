@@ -2,12 +2,10 @@ package session_test
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
@@ -40,7 +38,7 @@ func TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil(t *testing.T) {
 		t.Fatalf("delivered %+v", seen[0])
 	}
 	mu.Unlock()
-	// Retirement delivers a nil value and ends the watch (observation.ts advance/#drain: a null value retires it).
+	// Retirement delivers a nil value and ends the watch (observation.ts retire/#drain: the source's explicit retirement).
 	commit(t, harness.Session, func(tx durable.Tx) error { return tx.RetireDoc(watchStateDoc) })
 	eventuallyTrue(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(seen) == 2 })
 	mu.Lock()
@@ -159,44 +157,6 @@ func TestDeferUntilPublishedSurvivesAPanickingListener(t *testing.T) {
 	}
 }
 
-// DocumentStateOf is Session.documentState with a typed value: the attachment snapshot, each later committed
-// revision decoded as T with its delivery, nil once the document retires, and a nil state for an absent document.
-func TestDocumentStateOfDecodesRevisionsAndRetirement(t *testing.T) {
-	harness := createWatchHarness(t)
-	state, err := durable.DocumentStateOf[obj](ctx, harness.Session, watchStateDoc)
-	if err != nil || state == nil {
-		t.Fatalf("DocumentStateOf = %v, %v", state, err)
-	}
-	defer state.Dispose()
-	if initial := state.Value(); initial == nil || (*initial).Value("value") != float64(0) {
-		t.Fatalf("attachment value = %v", initial)
-	}
-	var mu sync.Mutex
-	var seen []*obj
-	unsubscribe := state.Subscribe(func(value *obj, _ context.Context, _ chord.ReplicatedStateDelivery) {
-		mu.Lock()
-		seen = append(seen, value)
-		mu.Unlock()
-	})
-	defer unsubscribe()
-	setWatchValue(t, harness, 3)
-	commit(t, harness.Session, func(tx durable.Tx) error { return tx.RetireDoc(watchStateDoc) })
-	eventuallyTrue(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(seen) >= 3 })
-	mu.Lock()
-	defer mu.Unlock()
-	// A subscriber first receives the current value, then each revision; the retirement is nil.
-	if seen[0] == nil || (*seen[0]).Value("value") != float64(0) || seen[1] == nil || (*seen[1]).Value("value") != float64(3) || seen[len(seen)-1] != nil {
-		t.Fatalf("deliveries = %v", seen)
-	}
-	if state.Value() != nil {
-		t.Fatalf("after retirement Value = %v", state.Value())
-	}
-	absent, err := durable.DocumentStateOf[obj](ctx, harness.Session, defineDoc("watch.never-state", 1, sessionScope, func() obj { return delta.NewJsonObject(0) }))
-	if err != nil || absent != nil {
-		t.Fatalf("absent document: %v, %v", absent, err)
-	}
-}
-
 type watchedNumber struct {
 	Value float64 `json:"value"`
 }
@@ -247,34 +207,5 @@ func TestWatchDocTypedValueDoesNotPanicOnAMismatchedRevision(t *testing.T) {
 	}
 	if value := watch.Value(); value == nil || value.Value != 3 {
 		t.Fatalf("Value after a mismatched revision = %+v, want the latest that decoded", value)
-	}
-}
-
-// Pi session.ts documentState attaches with `onError: (error) => this.report(error)`, so a listener of the typed state that
-// fails reaches the Session's report.
-func TestDocumentStateOfReportsAListenersFailureThroughTheSession(t *testing.T) {
-	var mu sync.Mutex
-	var reported []error
-	harness := sessiontest.OpenReportingTestSession(func(err error) {
-		mu.Lock()
-		reported = append(reported, err)
-		mu.Unlock()
-	})
-	commit(t, harness.Session, func(tx durable.Tx) error {
-		_, err := tx.Doc(watchStateDoc)
-		return err
-	})
-	state, err := durable.DocumentStateOf[obj](ctx, harness.Session, watchStateDoc)
-	if err != nil || state == nil {
-		t.Fatalf("DocumentStateOf = %v, %v", state, err)
-	}
-	defer state.Dispose()
-	failure := errors.New("typed state listener failed")
-	state.Subscribe(func(*obj, context.Context, chord.ReplicatedStateDelivery) { panic(failure) })
-	flush(harness)
-	mu.Lock()
-	defer mu.Unlock()
-	if len(reported) != 1 || !errors.Is(reported[0], failure) {
-		t.Fatalf("reported %v, want the typed state listener's failure once", reported)
 	}
 }

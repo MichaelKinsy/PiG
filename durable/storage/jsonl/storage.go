@@ -338,9 +338,9 @@ type resolvedSidecar struct {
 	path    string
 }
 
-// Commit publishes every sidecar record, then the main marker, then applies the batch in memory and reclaims sidecars
-// whose content the batch superseded.
-func (jsonl *JsonlStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+// Commit publishes every sidecar record, then the main marker, then applies the batch in memory, adopts it, and reclaims
+// sidecars whose content the batch superseded.
+func (jsonl *JsonlStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	jsonl.commitMu.Lock()
 	defer jsonl.commitMu.Unlock()
 	if err := jsonl.assertUsable(); err != nil {
@@ -383,6 +383,8 @@ func (jsonl *JsonlStorage) Commit(ctx context.Context, writes []durable.StorageW
 	}
 	seq := prepared.Apply()
 	jsonl.adoptSidecarState(resolved)
+	// The marker is appended: the batch is durable. Reclaiming sidecars comes after adoption.
+	adopt(seq)
 	jsonl.reclaimSidecars(ctx, reclamations)
 	return seq, nil
 }

@@ -67,7 +67,9 @@ func (conversation *conversationImpl) Submit(ctx context.Context, submission dur
 }
 
 func (conversation *conversationImpl) Compact(ctx context.Context, instructions *string) (durable.TaskId, error) {
-	conversation.host.tasks.Resume()
+	if err := conversation.host.tasks.TryResume(); err != nil {
+		return 0, err
+	}
 	input := CompactionInput{Reason: durable.CompactionManual, Instructions: instructions}
 	result, err := conversation.host.harness.CommitWith(ctx, func(tx *session.Transaction) (any, error) {
 		return CreateCompaction(tx, conversation.id, input, nil)
@@ -119,18 +121,18 @@ func (conversation *conversationImpl) Fork(ctx context.Context, at durable.Entry
 }
 
 func (conversation *conversationImpl) Abort(ctx context.Context, options *durable.ConversationAbortOptions) error {
-	conversation.host.tasks.Resume()
+	if err := conversation.host.tasks.TryResume(); err != nil {
+		return err
+	}
 	return conversation.host.tasks.AbortConversation(ctx, conversation.id, options != nil && options.Background)
 }
 
 func (conversation *conversationImpl) WaitForIdle(ctx context.Context) error {
-	conversation.host.tasks.Resume()
+	if err := conversation.host.tasks.TryResume(); err != nil {
+		return err
+	}
 	id := conversation.id
 	return conversation.host.tasks.WaitForIdle(ctx, &id)
-}
-
-func (conversation *conversationImpl) ViewState(ctx context.Context) (durable.AttachedReplicatedState[ConversationView], error) {
-	return conversation.host.views.State(ctx, conversation.id)
 }
 
 func (conversation *conversationImpl) Watch(ctx context.Context) (ConversationWatch, error) {
@@ -270,12 +272,16 @@ func (harness *harnessImpl) AbortTask(ctx context.Context, id durable.TaskId) (s
 }
 
 func (harness *harnessImpl) WaitForTask(ctx context.Context, id durable.TaskId) (durable.SettledTask[durable.JsonValue], error) {
-	harness.tasks.Resume()
+	if err := harness.tasks.TryResume(); err != nil {
+		return durable.SettledTask[durable.JsonValue]{}, err
+	}
 	return harness.tasks.WaitForTask(ctx, id)
 }
 
 func (harness *harnessImpl) WaitForIdle(ctx context.Context) error {
-	harness.tasks.Resume()
+	if err := harness.tasks.TryResume(); err != nil {
+		return err
+	}
 	return harness.tasks.WaitForIdle(ctx, nil)
 }
 
@@ -300,10 +306,6 @@ func (harness *harnessImpl) Usage(ctx context.Context) (UsageState, error) {
 		}
 	}
 	return total, nil
-}
-
-func (harness *harnessImpl) TaskGraph(ctx context.Context) (durable.AttachedReplicatedState[TaskGraph], error) {
-	return harness.taskGraph.State(ctx)
 }
 
 func (harness *harnessImpl) WatchTaskGraph(ctx context.Context) (TaskGraphWatch, error) {
@@ -586,6 +588,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		BeforeClose: func() { harness.tasks.Join() },
 		Report:      harness.report,
 		SetTimer:    options.SetTimer,
+		ReadOnly:    options.ReadOnly,
 	}, now, harness.documentRetentionMs)
 	// Every component reads and writes through the Session's failure guard (session.ts: the Harness uses `this.storage`).
 	storage = harness.Storage()
@@ -624,9 +627,10 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 			}
 			return &boundConversation{id: id, binding: binding, submissions: harness.submissions, tasks: harness.tasks}, nil
 		},
-		Context: context.WithoutCancel(ctx),
+		Context:  context.WithoutCancel(ctx),
+		ReadOnly: options.ReadOnly,
 	})
-	harness.submissions = NewSubmissions(harness.SessionImpl, storage, now, func() QueueModes { return QueueModesOf(harness.settings()) }, func() { harness.tasks.Resume() }, options.Telemetry)
+	harness.submissions = NewSubmissions(harness.SessionImpl, storage, now, func() QueueModes { return QueueModesOf(harness.settings()) }, harness.tasks.TryResume, options.Telemetry)
 	harness.taskGraph = NewTaskGraphView(harness.SessionImpl, storage, TaskGraphBlocking{
 		Blocked:          harness.tasks.BlockedReason,
 		SubscribeBlocked: harness.tasks.SubscribeBlocked,

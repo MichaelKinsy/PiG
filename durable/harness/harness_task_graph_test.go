@@ -12,7 +12,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -114,8 +113,15 @@ func sameGraph(a, b TaskGraph) bool {
 	return reflect.ValueOf(a.Tasks).UnsafePointer() == reflect.ValueOf(b.Tasks).UnsafePointer()
 }
 
-// graphValue reads a state's value under the Session's delivery order: once delivered, the state holds the revision.
-func graphValue(harness Harness, state durable.AttachedReplicatedState[TaskGraph]) TaskGraph {
+// startedGraph is a graph watch with a listener that ignores its frames: a started watch keeps its value current.
+func startedGraph(harness Harness) TaskGraphWatch {
+	watch := must(harness.WatchTaskGraph(testContext))
+	watch.Start(func(context.Context, TaskGraph, []durable.Op) error { return nil })
+	return watch
+}
+
+// graphValue reads a watch's value under the Session's delivery order: once delivered, the watch holds the revision.
+func graphValue(harness Harness, state TaskGraphWatch) TaskGraph {
 	harness.(*harnessImpl).WaitDeliveries()
 	return state.Value()
 }
@@ -128,14 +134,13 @@ func TestTaskGraphView(t *testing.T) {
 		root := mustRoot(t, harness, nil)
 		var mu sync.Mutex
 		var seen []TaskGraph
-		observe := func() durable.AttachedReplicatedState[TaskGraph] {
-			opened := must(harness.TaskGraph(testContext))
-			opened.Subscribe(func(value TaskGraph, _ context.Context, delivery chord.ReplicatedStateDelivery) {
-				if delivery.Kind == chord.DeliveryUpdate {
-					mu.Lock()
-					seen = append(seen, value)
-					mu.Unlock()
-				}
+		observe := func() TaskGraphWatch {
+			opened := must(harness.WatchTaskGraph(testContext))
+			opened.Start(func(_ context.Context, value TaskGraph, _ []durable.Op) error {
+				mu.Lock()
+				seen = append(seen, value)
+				mu.Unlock()
+				return nil
 			})
 			return opened
 		}
@@ -144,7 +149,7 @@ func TestTaskGraphView(t *testing.T) {
 		// The advanced value equals a fresh build from Storage once the last observer left.
 		rebuild := func() {
 			advanced := graphValue(harness, graph)
-			graph.Dispose()
+			_, _ = graph.Stop()
 			graph = observe()
 			if sameGraph(graph.Value(), advanced) {
 				t.Fatal("rebuilt graph shares the dropped revision")
@@ -239,7 +244,7 @@ func TestTaskGraphView(t *testing.T) {
 		}) {
 			t.Fatal("no revision lists both owned conversations")
 		}
-		graph.Dispose()
+		_, _ = graph.Stop()
 		mustClose(t, harness)
 	})
 
@@ -305,7 +310,7 @@ func TestTaskGraphView(t *testing.T) {
 			}
 			return true
 		})
-		running := must(firstHarness.TaskGraph(testContext))
+		running := startedGraph(firstHarness)
 		expectSameJSON(t, graphStatuses(running.Value()), map[string]any{foregroundKey: "running", backgroundKey: "running"})
 		mustClose(t, firstHarness)
 
@@ -426,7 +431,7 @@ func TestTaskGraphView(t *testing.T) {
 		})
 		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), []durable.AnyTask{spawner.Erased()})
 		root := mustRoot(t, harness, nil)
-		graph := must(harness.TaskGraph(testContext))
+		graph := startedGraph(harness)
 		id := commitValue(t, root, func(tx durable.Tx) (durable.TaskId, error) {
 			entry, err := tx.AppendEntry(root.Id(), durable.EntryDraft{Kind: "note"})
 			if err != nil {
@@ -442,10 +447,10 @@ func TestTaskGraphView(t *testing.T) {
 		want := slices.Sorted(slices.Values(createdIds))
 		mu.Unlock()
 		expectSameJSON(t, advanced.Tasks[taskKey(id)].Conversations, want)
-		graph.Dispose()
-		rebuilt := must(harness.TaskGraph(testContext))
+		_, _ = graph.Stop()
+		rebuilt := startedGraph(harness)
 		expectSameJSON(t, rebuilt.Value(), advanced)
-		rebuilt.Dispose()
+		_, _ = rebuilt.Stop()
 		gate.resolve()
 		must(harness.WaitForTask(testContext, id))
 		mustClose(t, harness)
@@ -486,15 +491,15 @@ func TestTaskGraphView(t *testing.T) {
 		_, err := attaching.wait()
 		expectError(t, err, "cancelled")
 		// No observer kept the mount: each new observer builds a new revision.
-		first := must(harness.TaskGraph(testContext))
+		first := startedGraph(harness)
 		value := first.Value()
-		first.Dispose()
-		second := must(harness.TaskGraph(testContext))
+		_, _ = first.Stop()
+		second := startedGraph(harness)
 		if sameGraph(second.Value(), value) {
 			t.Fatal("a cancelled acquisition kept the mount")
 		}
 		expectSameJSON(t, second.Value(), value)
-		second.Dispose()
+		_, _ = second.Stop()
 		mustClose(t, harness)
 	})
 
@@ -526,17 +531,14 @@ func TestTaskGraphView(t *testing.T) {
 		id := commitValue(t, root, func(tx durable.Tx) (durable.TaskId, error) {
 			return durable.CreateTask(tx, memo, nil, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}, ConversationId: &rootId})
 		})
-		first := must(harness.TaskGraph(testContext))
-		second := must(harness.TaskGraph(testContext))
+		first := must(harness.WatchTaskGraph(testContext))
+		second := must(harness.WatchTaskGraph(testContext))
 		if !sameGraph(second.Value(), first.Value()) {
 			t.Fatal("observers do not share one mount revision")
 		}
 		var mu sync.Mutex
 		var updates []string
-		first.Subscribe(func(value TaskGraph, _ context.Context, delivery chord.ReplicatedStateDelivery) {
-			if delivery.Kind != chord.DeliveryUpdate {
-				return
-			}
+		first.Start(func(_ context.Context, value TaskGraph, _ []durable.Op) error {
 			status := "gone"
 			if node, ok := value.Tasks[taskKey(id)]; ok {
 				status = string(node.State.Status)
@@ -544,6 +546,7 @@ func TestTaskGraphView(t *testing.T) {
 			mu.Lock()
 			updates = append(updates, status)
 			mu.Unlock()
+			return nil
 		})
 		snapshot := func() []string {
 			harness.(*harnessImpl).WaitDeliveries()
@@ -559,15 +562,15 @@ func TestTaskGraphView(t *testing.T) {
 		must(harness.WaitForTask(testContext, id))
 		expectStrings(t, snapshot(), []string{"running", "gone"})
 		last := first.Value()
-		first.Dispose()
-		second.Dispose()
+		_, _ = first.Stop()
+		_, _ = second.Stop()
 		// No observer is left, so the mount was dropped: a new observer builds a new revision.
-		rebuilt := must(harness.TaskGraph(testContext))
+		rebuilt := startedGraph(harness)
 		expectSameJSON(t, rebuilt.Value(), last)
 		if sameGraph(rebuilt.Value(), last) {
 			t.Fatal("rebuilt graph shares the dropped revision")
 		}
-		rebuilt.Dispose()
+		_, _ = rebuilt.Stop()
 		mustClose(t, harness)
 	})
 }

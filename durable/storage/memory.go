@@ -332,8 +332,8 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
-// Commit atomically persists one batch and returns its sequence.
-func (storage *MemoryStorage) Commit(_ context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+// Commit atomically persists one batch, adopts it, and returns its sequence.
+func (storage *MemoryStorage) Commit(_ context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 	prepared, err := storage.prepareCommitLocked(writes, durable.Seq(storage.nextSeq))
@@ -341,6 +341,7 @@ func (storage *MemoryStorage) Commit(_ context.Context, writes []durable.Storage
 		return 0, err
 	}
 	prepared.applyLocked()
+	adopt(prepared.seq)
 	return prepared.seq, nil
 }
 

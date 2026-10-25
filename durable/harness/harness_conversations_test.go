@@ -793,14 +793,14 @@ func TestHarnessLifecycleHandles(t *testing.T) {
 			t.Fatal(err)
 		}
 		expectJSON(t, asOf, `{"text":"first"}`)
-		state, err := harness.DocumentStateErased(testContext, noteDoc, root.Id())
-		if err != nil || state == nil {
-			t.Fatalf("state %v", err)
+		watch, err := harness.WatchDocErased(testContext, noteDoc, root.Id())
+		if err != nil || watch == nil {
+			t.Fatalf("watch %v", err)
 		}
-		if !reflect.DeepEqual(state.Value(), delta.JsonObjectOf("text", "second")) {
-			t.Fatalf("state value %v", state.Value())
+		if !reflect.DeepEqual(watch.Value(), delta.JsonObjectOf("text", "second")) {
+			t.Fatalf("watch value %v", watch.Value())
 		}
-		state.Dispose()
+		must(watch.Stop())
 		mustClose(t, harness)
 	})
 }

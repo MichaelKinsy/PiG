@@ -10,7 +10,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -106,8 +105,8 @@ type ViewObserver struct {
 	Advance func(ctx context.Context, value ConversationView, ops []durable.Op)
 	// Publication receives every publication, after the mount took it; ops are the mount's, possibly none.
 	Publication func(ctx context.Context, before, after ConversationView, ops []durable.Op, publication durable.CommitPublication)
-	// CloseSession receives the Session's failure, nil when it closed.
-	CloseSession func(failure error)
+	// End receives the Session's failure, nil when it closed.
+	End func(failure error)
 }
 
 // mountedDocs are the documents a view mounts, in mount order.
@@ -180,32 +179,10 @@ func NewConversationViews(sessionImpl *session.SessionImpl, storage durable.Stor
 		views.order = nil
 		views.mu.Unlock()
 		for _, observer := range observers {
-			session.Contained(func() { observer.CloseSession(failure) }, views.session.Report)
+			session.Contained(func() { observer.End(failure) }, views.session.Report)
 		}
 	})
 	return views
-}
-
-// State returns a disposable read-only Chord state of the view.
-func (views *ConversationViews) State(ctx context.Context, id durable.ConversationId) (durable.AttachedReplicatedState[ConversationView], error) {
-	var source *session.CommittedStateSource[ConversationView]
-	observer, detach, err := views.Attach(ctx, id, func(value ConversationView, release func(), _ durable.Storage) (*ViewObserver, error) {
-		source = session.NewCommittedStateSource(views.session, value, release)
-		return &ViewObserver{
-			Advance:      func(ctx context.Context, value ConversationView, ops []durable.Op) { source.Advance(ctx, value, ops) },
-			CloseSession: func(error) { source.CloseSession() },
-		}, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	_ = observer
-	state, err := chord.AttachReplicatedStateSource[ConversationView](source, chord.ReplicatedStateSourceOptions{OnError: views.session.Report})
-	if err != nil {
-		detach()
-		return nil, err
-	}
-	return state, nil
 }
 
 // Watch returns a serialized exact-frame watch of the view; cancelling ctx stops it.
@@ -214,8 +191,8 @@ func (views *ConversationViews) Watch(ctx context.Context, id durable.Conversati
 	_, _, err := views.Attach(ctx, id, func(value ConversationView, release func(), _ durable.Storage) (*ViewObserver, error) {
 		watch = session.NewCommittedWatch(views.session, value, release, nil)
 		return &ViewObserver{
-			Advance:      func(ctx context.Context, value ConversationView, ops []durable.Op) { watch.Advance(ctx, value, ops) },
-			CloseSession: watch.CloseSession,
+			Advance: func(ctx context.Context, value ConversationView, ops []durable.Op) { watch.Advance(ctx, value, ops) },
+			End:     watch.SourceEnded,
 		}, nil
 	})
 	if err != nil {

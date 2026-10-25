@@ -325,7 +325,7 @@ func TestSleepingTasks(t *testing.T) {
 			nap := napTask(1000, &runs)
 			rig := newSleepRig(t, core, nap.Erased())
 			h := rig.open(func(o *harness.HarnessOptions) { o.Now, o.OnWake = clock.now, wakes.add })
-			graph, err := h.TaskGraph(t.Context())
+			graph, err := startedTaskGraph(t.Context(), h)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -406,7 +406,7 @@ func TestSleepingTasks(t *testing.T) {
 			if !sawActive || !sawSleep {
 				t.Fatalf("wakes %v lack an active one (%v) or the sleep (%v)", all, sawActive, sawSleep)
 			}
-			graph.Dispose()
+			_, _ = graph.Stop()
 		})
 	})
 

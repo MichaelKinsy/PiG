@@ -57,7 +57,7 @@ func failed(run func() error) (failed bool) {
 // brokenStorage forgets every commit: reads see nothing.
 type brokenStorage struct{ durable.Storage }
 
-func (brokenStorage) Commit(context.Context, []durable.StorageWrite) (durable.Seq, error) {
+func (brokenStorage) Commit(context.Context, []durable.StorageWrite, func(durable.Seq)) (durable.Seq, error) {
 	return 0, nil
 }
 

@@ -350,8 +350,8 @@ func metadataNextId(metadata SqliteRow) (int64, error) {
 	return int64(value), nil
 }
 
-// Commit atomically persists one batch and returns its sequence.
-func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageWrite) (durable.Seq, error) {
+// Commit atomically persists one batch, adopts it, and returns its sequence.
+func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	if err := storage.assertOpen(); err != nil {
 		return 0, err
 	}
@@ -424,6 +424,8 @@ func (storage *SqliteStorage) Commit(_ context.Context, batch []durable.StorageW
 	if len(committedEntries) > 0 {
 		storage.retained.retainCommitted(committedEntries)
 	}
+	// COMMIT returned: the batch is durable.
+	adopt(committedSeq)
 	return committedSeq, nil
 }
 

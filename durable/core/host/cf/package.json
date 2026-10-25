@@ -20,6 +20,7 @@
 		"typescript": "7.0.2"
 	},
 	"overrides": {
+		"sharp": "0.35.5",
 		"undici": "7.29.1"
 	}
 }

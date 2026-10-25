@@ -36,7 +36,7 @@ func TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersis
 	if _, err := storage.Commit(t.Context(), []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
 		durable.TaskWrite{Value: task},
-	}); err != nil {
+	}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	if err := storage.Close(t.Context()); err != nil {

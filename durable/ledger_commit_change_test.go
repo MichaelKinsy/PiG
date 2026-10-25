@@ -3,8 +3,6 @@ package durable
 import (
 	"reflect"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/chord"
 )
 
 // types.ts:727-730 TableCommitChange is Extract<StorageWrite, conversation | entry | task | submission>: the four table writes are commit changes that keep their StorageWrite discriminators, and no document write is one.
@@ -62,16 +60,5 @@ func TestDocumentCommitChangeKindsAndCopySource(t *testing.T) {
 		if reflect.TypeOf(change).Implements(tableType) {
 			t.Errorf("%T must not be a TableCommitChange", change)
 		}
-	}
-}
-
-// types.ts:842 DocumentState<T> is the read-only Chord state attached to one committed document incarnation: its Go form is the attached replicated state of the document's JSON object.
-func TestDocumentStateIsTheAttachedReplicatedStateOfAJSONObject(t *testing.T) {
-	if got, want := reflect.TypeFor[DocumentState[JsonObject]](), reflect.TypeFor[*chord.AttachedReplicatedState[JsonObject]](); got != want {
-		t.Fatalf("DocumentState = %v, want %v", got, want)
-	}
-	var state DocumentState[JsonObject]
-	if state != nil {
-		t.Fatal("an unattached state is nil")
 	}
 }

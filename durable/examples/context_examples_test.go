@@ -1,4 +1,4 @@
-// Ports packages/durable/test/examples/09-context.ts: transcript history and model context.
+// Ports packages/durable/test/examples/08-context.ts: transcript history and model context.
 
 package examples_test
 
@@ -100,7 +100,7 @@ func entryKinds(entries []durable.EntryRecord) []string {
 // stored transcript newest first, including inherited parent entries; nothing is ever deleted by heads or edits.
 // Pi source: packages/durable/src/harness/types.ts
 // mutation-checked: zeroing the results of Conversation.Fork fails it
-func TestExample09Context(t *testing.T) {
+func TestExample08Context(t *testing.T) {
 	opened := openHarness(t, harness.CreateRegistry(), nil)
 	transcript, err := opened.CreateConversation(background, harness.ConversationCreateOptions{Ownership: ownerless.Ownership})
 	if err != nil {

@@ -10,7 +10,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
@@ -22,8 +21,9 @@ import (
 // core answers watch.open with the committed value at the acquisition boundary and then publishes every later frame of that
 // watch in a `published` notice {watchId, frame: {value?, ops}}, in commit order, with no overlap with the first value and no
 // gap. A document frame carries its value; a view or graph frame carries only ops, which the driver applies to the value it
-// holds. Frames are delivered through session.CommittedWatch and session.CommittedStateSource, the serialized exact-frame
-// observers of the Go port of session/observation.ts, so Start, Stop, cancellation and the bounded pending queue are Pi's.
+// holds. Frames are delivered through session.CommittedWatch, the serialized exact-frame observer of the Go port of
+// session/observation.ts, so Start, Stop, cancellation and the bounded pending queue are Pi's. A frame whose value is null
+// is the retirement of a document: the driver retires the watch, which delivers [["r", null]] and ends retired.
 
 // rawFrame is one frame as the core published it; value is nil when the frame carries only ops.
 type rawFrame struct {
@@ -32,6 +32,9 @@ type rawFrame struct {
 	// changes are the records the commit wrote for the conversation of a view opened with changes: true.
 	changes json.RawMessage
 }
+
+// retires reports the retirement frame of a document: its value is null.
+func (f rawFrame) retires() bool { return string(f.value) == "null" }
 
 // watchHub routes the core's watch frames to the watches the session opened.
 type watchHub struct {
@@ -44,7 +47,7 @@ type watchHub struct {
 	next    uint32
 	sinks   map[uint32]func(rawFrame)
 	early   map[uint32][]rawFrame
-	ends    []func() // CloseSession of each open watch
+	ends    []func() // SourceEnded of each open watch
 	bg      sync.WaitGroup
 	spawnMu sync.Mutex // guards shut; apart from mu because sinks run under mu and spawn
 	shut    bool       // closeSession ran: no further background work starts
@@ -160,7 +163,7 @@ func (h *watchHub) notice(n abi.Notice) {
 	}
 }
 
-// closeSession ends every open watch as Session.close does (reason session_closed) and waits for the watch.close requests.
+// closeSession ends every open watch as Session.close does (reason ended) and waits for the watch.close requests.
 func (h *watchHub) closeSession() {
 	h.mu.Lock()
 	ends := h.ends
@@ -313,37 +316,19 @@ func watchOf[T any](ctx context.Context, m *mountSource[T]) *session.CommittedWa
 	var once sync.Once
 	watch := session.NewCommittedWatchOn(m.hub.sched, m.first, func() { once.Do(func() { m.hub.release(m.id); m.closeCore() }) }, nil, m.hub.report)
 	m.hub.bind(m.id, func(f rawFrame) {
+		// The core's frame of a retired document carries the value null: the source's explicit retirement.
+		if f.retires() {
+			watch.Retire(m.hub.deliveryContext())
+			return
+		}
 		if value, ok := m.advance(f); ok {
 			watch.Advance(m.hub.deliveryContext(), value, f.ops)
 		}
-	}, func() { watch.CloseSession(nil) })
+	}, func() { watch.SourceEnded(nil) })
 	if ctx.Done() != nil {
 		watch.ObserveCancellation(ctx)
 	}
 	return watch
-}
-
-// stateOf wraps a mount in a disposable read-only Chord state (view.ts State, task-graph.ts State). Its source-contract and
-// listener failures go to report, as upstream's replicatedState(observer, { onError: (error) => session.report(error) })
-// (view.ts:118, task-graph.ts:93, session.ts:360).
-func stateOf[T any](m *mountSource[T], report func(error)) (*chord.AttachedReplicatedState[T], error) {
-	var once sync.Once
-	source := session.NewCommittedStateSourceOn(m.hub.sched, m.first, func() { once.Do(func() { m.hub.release(m.id); m.closeCore() }) })
-	m.hub.bind(m.id, func(f rawFrame) {
-		if value, ok := m.advance(f); ok {
-			source.Advance(m.hub.deliveryContext(), value, f.ops)
-			// Upstream's drain microtask delivers the frame to the state's subscribers after the commit settled; the owner
-			// goroutine must not run subscriber code, so the drain runs on its own goroutine.
-			m.hub.spawn(m.hub.sched.RunDrains)
-		}
-	}, source.CloseSession)
-	state, err := chord.AttachReplicatedStateSource[T](source, chord.ReplicatedStateSourceOptions{OnError: report})
-	if err != nil {
-		m.hub.release(m.id)
-		m.closeCore()
-		return nil, err
-	}
-	return state, nil
 }
 
 // watchDoc is Session.watchDoc (session.ts:268-298): the watch of a document's committed value, or nil when the document is
@@ -381,23 +366,6 @@ func (c *conversation) Watch(ctx context.Context) (harness.ConversationWatch, er
 	return watchOf(ctx, m), nil
 }
 
-func (c *conversation) ViewState(ctx context.Context) (durable.AttachedReplicatedState[harness.ConversationView], error) {
-	m, err := openWatch(ctx, c.s, map[string]any{"kind": "view", "conversationId": c.id}, typed[harness.ConversationView], viewReducer())
-	if err != nil || m == nil {
-		return nil, err
-	}
-	return stateOf(m, c.s.reportListener)
-}
-
-// TaskGraph is the task graph as a disposable read-only Chord state (task-graph.ts State).
-func (s *coreSession) TaskGraph(ctx context.Context) (durable.AttachedReplicatedState[harness.TaskGraph], error) {
-	m, err := openWatch(ctx, s, map[string]any{"kind": "graph"}, typed[harness.TaskGraph], reduceTaskGraph)
-	if err != nil || m == nil {
-		return nil, err
-	}
-	return stateOf(m, s.reportListener)
-}
-
 // WatchTaskGraph is a serialized exact-frame watch of the task graph.
 func (s *coreSession) WatchTaskGraph(ctx context.Context) (harness.TaskGraphWatch, error) {
 	m, err := openWatch(ctx, s, map[string]any{"kind": "graph"}, typed[harness.TaskGraph], reduceTaskGraph)
@@ -405,19 +373,4 @@ func (s *coreSession) WatchTaskGraph(ctx context.Context) (harness.TaskGraphWatc
 		return nil, err
 	}
 	return watchOf(ctx, m), nil
-}
-
-// DocumentStateErased is a disposable read-only Chord state of a document's committed value, or nil when the document is
-// absent (session.ts documentState).
-func (s *coreSession) DocumentStateErased(ctx context.Context, token durable.AnyDocToken, args ...any) (durable.AttachedReplicatedState[durable.JsonObject], error) {
-	def := token.AnyDefinition()
-	resolved, err := durable.ResolveAddress(def, args)
-	if err != nil {
-		return nil, err
-	}
-	m, err := openDocWatch(ctx, s, def, resolved.Address)
-	if err != nil || m == nil {
-		return nil, err
-	}
-	return stateOf(m, s.reportListener)
 }

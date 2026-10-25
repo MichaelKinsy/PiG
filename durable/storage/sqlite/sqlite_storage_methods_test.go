@@ -106,7 +106,7 @@ func TestSqliteStorageLookupsAndScansReadCommittedRecords(t *testing.T) {
 	}
 	must(storage.Commit(testContext, []durable.StorageWrite{
 		durable.EntryWrite{Value: entryOf(10, durable.ROOT_CONVERSATION_ID, "a")}, durable.EntryWrite{Value: entryOf(20, durable.ROOT_CONVERSATION_ID, "b")},
-	}))
+	}, func(durable.Seq) {}))
 	if got := must(storage.Entry(testContext, 20)); got == nil || got.Entry.Id != 20 || got.CommitSeq == 0 {
 		t.Fatalf("Entry(20) = %+v", got)
 	}

@@ -1,4 +1,4 @@
-// Ports packages/durable/test/examples/26-coding-agent.ts, 27-plan-mode.ts and 28-reviewer.ts. Upstream's scripts
+// Ports packages/durable/test/examples/25-coding-agent.ts, 26-plan-mode.ts and 27-reviewer.ts. Upstream's scripts
 // print; each Go example asserts what the script prints.
 
 package examples_test
@@ -41,9 +41,9 @@ func lastToolResultText(t *testing.T, conversation harness.Conversation) string 
 	return ""
 }
 
-// 26-coding-agent.ts: the built-in coding tools, a prompt that knows the working directory, settings backed by the
+// 25-coding-agent.ts: the built-in coding tools, a prompt that knows the working directory, settings backed by the
 // app's settings file, and an environment that follows the conversation's directory.
-func TestExample26CodingAgent(t *testing.T) {
+func TestExample25CodingAgent(t *testing.T) {
 	workspace, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -132,12 +132,12 @@ type plan struct {
 	Steps []string `json:"steps"`
 }
 
-// 27-plan-mode.ts: the user switches a conversation into a read-only planning mode, the agent writes a plan into the
+// 26-plan-mode.ts: the user switches a conversation into a read-only planning mode, the agent writes a plan into the
 // extension's own document, and switching back restores the full tool set.
 // Pi source: packages/durable/src/harness/types.ts
 // mutation-checked: zeroing the results of Conversation.Context fails it
 // mutation-checked: dropping the reads and writes of Extension.Sections, Extension.Tools fails it
-func TestExample27PlanMode(t *testing.T) {
+func TestExample26PlanMode(t *testing.T) {
 	// The current plan of a conversation. A fork keeps the plan it had at the fork entry.
 	planDoc := durable.DefineDoc(durable.DocDefinition[plan]{
 		CommonDocDefinition: durable.CommonDocDefinition[plan]{Kind: "app.plan", Version: 1, Initial: func() plan { return plan{Steps: []string{}} }, CheckpointWhen: func(plan, []durable.Op, durable.CheckpointInfo) bool { return false }},
@@ -273,10 +273,10 @@ func TestExample27PlanMode(t *testing.T) {
 	closeSession(t, opened)
 }
 
-// 28-reviewer.ts: a reviewer agent next to the main one: a cheaper model, a review role and loop, read-only tools,
+// 27-reviewer.ts: a reviewer agent next to the main one: a cheaper model, a review role and loop, read-only tools,
 // and its own checkout of the project.
 // mutation-checked: zeroing the results of Conversation.Entries fails it
-func TestExample28Reviewer(t *testing.T) {
+func TestExample27Reviewer(t *testing.T) {
 	const done = "No further findings."
 	// A role and a review loop: every answer that still has findings gets a second pass.
 	reviewer := new(durable.Extension{

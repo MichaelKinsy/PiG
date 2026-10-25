@@ -46,7 +46,7 @@ func storeToolTaskVersion1(t *testing.T, setup *chatState, checkpoint durable.Js
 	record.Version = 1
 	record.Input = input
 	record.State.Checkpoint = &checkpoint
-	if _, err := store.Commit(testContext, []durable.StorageWrite{durable.TaskWrite{Value: *record}}); err != nil {
+	if _, err := store.Commit(testContext, []durable.StorageWrite{durable.TaskWrite{Value: *record}}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(testContext); err != nil {

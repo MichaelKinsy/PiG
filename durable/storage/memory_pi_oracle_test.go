@@ -783,7 +783,7 @@ func runPigProgram(t *testing.T, program oracleProgram, memory durable.Storage, 
 					writes = append(writes, durable.EntryWrite{Value: record})
 				}
 			}
-			seq, err := memory.Commit(ctx, writes)
+			seq, err := memory.Commit(ctx, writes, func(durable.Seq) {})
 			result = settleOracle(seq, true, err)
 		case "tx":
 			if tx == nil {

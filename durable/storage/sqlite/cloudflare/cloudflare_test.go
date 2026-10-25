@@ -278,7 +278,7 @@ func TestDurableObjectSqliteAdapter(t *testing.T) {
 			_, err := storage.Commit(context.Background(), []durable.StorageWrite{
 				durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
 				durable.EntryWrite{Value: durable.EntryRecord{Id: entryId, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: kind}},
-			})
+			}, func(durable.Seq) {})
 			return err
 		}
 		var committed sync.WaitGroup

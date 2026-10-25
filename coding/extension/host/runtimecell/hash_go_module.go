@@ -57,6 +57,10 @@ func GoModuleSourceDigest(root string) (string, error) {
 
 // hashGoModuleFS hashes the module rooted at fsys; label identifies where it lives.
 func hashGoModuleFS(fsys fs.FS, label string) string {
+	return hashGoModuleFSTracked(fsys, label, NewVanishTracker())
+}
+
+func hashGoModuleFSTracked(fsys fs.FS, label string, vanish *VanishTracker) string {
 	h := sha256.New()
 	h.Write([]byte(label))
 	h.Write([]byte{0})
@@ -71,17 +75,20 @@ func hashGoModuleFS(fsys fs.FS, label string) string {
 		h.Write([]byte{0})
 		return nil
 	}
-	if err := hashGoModuleDir(fsys, ".", add); err != nil {
+	if err := hashGoModuleDir(fsys, ".", add, vanish); err != nil {
+		return "error:" + err.Error()
+	}
+	if err := vanish.Verify(); err != nil {
 		return "error:" + err.Error()
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func hashGoModuleDir(fsys fs.FS, dir string, add func(string) error) error {
+func hashGoModuleDir(fsys fs.FS, dir string, add func(string) error, vanish *VanishTracker) error {
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		// A directory deleted after its parent listed it held no source of this build.
-		if dir != "." && errors.Is(err, fs.ErrNotExist) {
+		if dir != "." && vanish.vanished(dir, err, func() error { _, lerr := fs.Stat(fsys, dir); return lerr }) {
 			return nil
 		}
 		return err
@@ -100,6 +107,9 @@ func hashGoModuleDir(fsys fs.FS, dir string, add func(string) error) error {
 	}
 	if dir != "." && slices.Contains(files, cacheDirTag) {
 		tagged, err := hasCacheDirSignature(fsys, path.Join(dir, cacheDirTag))
+		if err != nil && vanish.vanished(dir, err, func() error { _, lerr := fs.Stat(fsys, dir); return lerr }) {
+			return nil
+		}
 		if err != nil || tagged {
 			return err
 		}
@@ -147,7 +157,7 @@ func hashGoModuleDir(fsys fs.FS, dir string, add func(string) error) error {
 		if ignoredByGo(name) || name == "testdata" || name == "vendor" {
 			continue
 		}
-		if err := hashGoModuleDir(fsys, path.Join(dir, name), add); err != nil {
+		if err := hashGoModuleDir(fsys, path.Join(dir, name), add, vanish); err != nil {
 			return err
 		}
 	}
@@ -179,6 +189,11 @@ func hasCacheDirSignature(fsys fs.FS, name string) (bool, error) {
 		return false, err
 	}
 	return string(head[:n]) == cacheDirSignature, nil
+}
+
+// IsCacheDirectory reports whether the directory dir is the root of a tree marked with the CACHEDIR.TAG signature: build output that a build running beside a source hash fills and empties, never source. Cargo marks every target directory it creates, atomically with the directory itself.
+func IsCacheDirectory(dir string) (bool, error) {
+	return hasCacheDirSignature(os.DirFS(dir), cacheDirTag)
 }
 
 func ignoredByGo(name string) bool {

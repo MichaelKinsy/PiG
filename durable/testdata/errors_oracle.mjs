@@ -1,5 +1,5 @@
 // Run Pi's error classes (packages/durable/src/errors.ts, imported as-is with types stripped) over ops from stdin.
-// Op: {class: "StorageRequestError", message} | {class: "SessionFailed", cause?: {name, message} | string | null | "undefined"} | {class: "ConversationBusy", id} | {class: "ReadAfterWrite", method} | {op: "errorMessage", value}
+// Op: {class: "StorageRequestError", message} | {class: "SessionFailed", cause?: {name, message} | string | null | "undefined"} | {class: "ConversationBusy", id} | {class: "ReadAfterWrite", method} | {class: "ReadOnlySession", what} | {op: "errorMessage", value}
 // stdout: per op {name, message, instanceofError, hasCause, cause} for a class, {message} for errorMessage.
 // usage: node errors_oracle.mjs <packages dir>
 import { pathToFileURL } from "node:url";
@@ -31,6 +31,9 @@ for (const op of JSON.parse(input)) {
 			break;
 		case "ReadAfterWrite":
 			out.push(describe(new errors.ReadAfterWrite(op.method)));
+			break;
+		case "ReadOnlySession":
+			out.push(describe(new errors.ReadOnlySession(op.what)));
 			break;
 		case "errorMessage":
 			out.push({ message: errors.errorMessage(op.value) });

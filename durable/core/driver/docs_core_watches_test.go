@@ -271,7 +271,7 @@ func TestCoreSessionCloseDiscardsRetirementBufferedBeforeStart(t *testing.T) {
 	if err := r.s.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if end := awaitClosed(t, w); end.Reason != durable.WatchSessionClosed {
+	if end := awaitClosed(t, w); end.Reason != durable.WatchEnded {
 		t.Fatalf("end = %+v", end)
 	}
 	if !reflect.DeepEqual(w.Value(), baseline) {
@@ -294,7 +294,7 @@ func TestCoreSessionCloseDiscardsRetirementBehindAnInFlightCallback(t *testing.T
 	if err := r.s.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if end := awaitClosed(t, w); end.Reason != durable.WatchSessionClosed {
+	if end := awaitClosed(t, w); end.Reason != durable.WatchEnded {
 		t.Fatalf("end = %+v", end)
 	}
 	close(release)
@@ -332,7 +332,7 @@ func TestCoreSessionCloseDoesNotJoinAnInFlightCallbackNorCancelItsContext(t *tes
 	if delivered.Err() != nil {
 		t.Fatalf("the callback's context is not cancelled by close: %v", delivered.Err())
 	}
-	if end := awaitClosed(t, w); end.Reason != durable.WatchSessionClosed {
+	if end := awaitClosed(t, w); end.Reason != durable.WatchEnded {
 		t.Fatalf("end = %+v", end)
 	}
 	close(release)

@@ -114,7 +114,7 @@ func TestCoreTaskGraphBuildsFromCommittedTasksShowsSurvivorsPendingAfterReopenAn
 		}
 		return true
 	})
-	running, err := first.TaskGraph(t.Context())
+	running, err := startedTaskGraph(t.Context(), first)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ func TestCoreTaskGraphListsOwnedConversationsInIDOrder(t *testing.T) {
 		Abort: func(context.Context, spawnRecord, spawnRuntime) error { return nil },
 	})
 	h, root := openTasksHarness(t, spawner.Erased())
-	graph, err := h.TaskGraph(t.Context())
+	graph, err := startedTaskGraph(t.Context(), h)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,15 +293,28 @@ func TestCoreTaskGraphListsOwnedConversationsInIDOrder(t *testing.T) {
 	if got := advanced.Tasks[taskKey(id)].Conversations; !reflect.DeepEqual(got, want) {
 		t.Fatalf("owned conversations %v, want %v (ID order)", got, want)
 	}
-	graph.Dispose()
-	rebuilt, err := h.TaskGraph(t.Context())
+	_, _ = graph.Stop()
+	rebuilt, err := startedTaskGraph(t.Context(), h)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(graphJSON(t, rebuilt.Value()), graphJSON(t, advanced)) {
 		t.Fatalf("rebuilt graph %v, advanced %v", graphJSON(t, rebuilt.Value()), graphJSON(t, advanced))
 	}
-	rebuilt.Dispose()
+	_, _ = rebuilt.Stop()
 	close(gate)
 	waitSettled(t, h, id)
+}
+
+// startedTaskGraph opens a watch of the task graph and starts it with a listener that ignores its frames: a started watch
+// keeps its value current (harness-task-graph.test.ts, harness-blocked.test.ts).
+func startedTaskGraph(ctx context.Context, opener interface {
+	WatchTaskGraph(context.Context) (harness.TaskGraphWatch, error)
+}) (harness.TaskGraphWatch, error) {
+	watch, err := opener.WatchTaskGraph(ctx)
+	if err != nil {
+		return nil, err
+	}
+	watch.Start(func(context.Context, harness.TaskGraph, []durable.Op) error { return nil })
+	return watch, nil
 }

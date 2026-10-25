@@ -860,7 +860,7 @@ func TestAgentEvents(t *testing.T) {
 		stream := must(WatchEvents(testContext, harness, root.Id()))
 		closeHarness(t, harness)
 		<-stream.Closed()
-		if end := stream.End(); end.Reason != durable.WatchSessionClosed || end.Error != nil {
+		if end := stream.End(); end.Reason != durable.WatchEnded || end.Error != nil {
 			t.Fatalf("end %+v", end)
 		}
 	})

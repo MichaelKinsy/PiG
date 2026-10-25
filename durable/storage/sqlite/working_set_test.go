@@ -81,7 +81,7 @@ func commitEntries(t *testing.T, storage *sqlite.SqliteStorage, records ...durab
 	for index, record := range records {
 		writes[index] = durable.EntryWrite{Value: record}
 	}
-	must(storage.Commit(testContext, writes))
+	must(storage.Commit(testContext, writes, func(durable.Seq) {}))
 }
 
 func workingSetStorage(t *testing.T, bytes int64) (*sqlite.SqliteStorage, string) {
@@ -94,17 +94,17 @@ func forkedStore(t *testing.T, bytes int64) (*sqlite.SqliteStorage, string) {
 	storage, path := workingSetStorage(t, bytes)
 	must(storage.Commit(testContext, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}},
-	}))
+	}, func(durable.Seq) {}))
 	for id := durable.EntryId(10); id <= 60; id += 10 {
 		commitEntries(t, storage, entryOf(id, 1, fmt.Sprint("root ", id)))
 	}
 	must(storage.Commit(testContext, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: 2, Parent: &durable.ConversationParent{ConversationId: 1, At: 30}}},
-	}))
+	}, func(durable.Seq) {}))
 	commitEntries(t, storage, entryOf(35, 2, "child 35"), entryOf(45, 2, "child 45"), entryOf(55, 2, "child 55"))
 	must(storage.Commit(testContext, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: 3, Parent: &durable.ConversationParent{ConversationId: 2, At: 45}}},
-	}))
+	}, func(durable.Seq) {}))
 	commitEntries(t, storage, entryOf(47, 3, "grand 47"), entryOf(48, 3, "grand 48"))
 	return storage, path
 }
@@ -181,7 +181,7 @@ func TestWorkingSetFollowsCommits(t *testing.T) {
 
 func TestWorkingSetKeepsCommittedEntriesOutOfOrderAcrossReads(t *testing.T) {
 	storage, _ := workingSetStorage(t, sqlite.DefaultWorkingSetBytes)
-	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}))
+	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}, func(durable.Seq) {}))
 	commitEntries(t, storage, entryOf(30, 1, "thirty"), entryOf(10, 1, "ten"))
 	expectRange(t, storage, durable.EntryQuery{ConversationId: 1})
 	commitEntries(t, storage, entryOf(20, 1, "twenty"), entryOf(40, 1, "forty"))
@@ -203,7 +203,7 @@ func TestWorkingSetIgnoresAFailedCommit(t *testing.T) {
 		{"rolled back after writing", durable.TaskWrite{Value: durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]{Id: 501, ConversationId: 1}}},
 	} {
 		name, failing := failure.name, failure.failing
-		_, err := storage.Commit(testContext, []durable.StorageWrite{durable.EntryWrite{Value: entryOf(500, 1, "new")}, failing})
+		_, err := storage.Commit(testContext, []durable.StorageWrite{durable.EntryWrite{Value: entryOf(500, 1, "new")}, failing}, func(durable.Seq) {})
 		if err == nil {
 			t.Fatalf("%s: the batch committed", name)
 		}
@@ -235,7 +235,7 @@ func TestWorkingSetSeesAnotherConnectionsWrites(t *testing.T) {
 // evict and windows grow.
 func TestWorkingSetResultsAreNeverWrittenAgain(t *testing.T) {
 	storage, _ := workingSetStorage(t, 3000)
-	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}))
+	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}, func(durable.Seq) {}))
 	for id := durable.EntryId(101); id <= 108; id++ {
 		commitEntries(t, storage, entryOf(id, 1, fmt.Sprint("first ", id)))
 	}
@@ -264,7 +264,7 @@ func TestWorkingSetResultsAreNeverWrittenAgain(t *testing.T) {
 // where the window ends, so an unbounded capacity would let a caller's append overwrite the next committed entry.
 func TestWorkingSetRangeCannotAppendIntoTheWindow(t *testing.T) {
 	storage, _ := workingSetStorage(t, sqlite.DefaultWorkingSetBytes)
-	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}))
+	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}, func(durable.Seq) {}))
 	commitEntries(t, storage, entryOf(101, 1, "a"))
 	expectRange(t, storage, durable.EntryQuery{ConversationId: 1})
 	for id := durable.EntryId(102); id <= 106; id++ {
@@ -284,7 +284,7 @@ func TestWorkingSetOfZeroBytesRetainsNothingAndStillAnswers(t *testing.T) {
 	zero := int64(0)
 	storage := must(node.OpenNodeSqliteStorage(path, node.NodeSqliteStorageOptions{WorkingSetBytes: &zero}))
 	t.Cleanup(func() { _ = storage.Close(testContext) })
-	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}))
+	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}, func(durable.Seq) {}))
 	commitEntries(t, storage, entryOf(101, 1, "a"), entryOf(102, 1, "b"))
 	expectRange(t, storage, durable.EntryQuery{ConversationId: 1})
 	commitEntries(t, storage, entryOf(103, 1, "c"))
@@ -317,7 +317,7 @@ func TestWorkingSetLoadsThroughADatabaseWithoutARowReader(t *testing.T) {
 	}
 	storage := must(sqlite.Open(plainDatabase{database}))
 	t.Cleanup(func() { _ = storage.Close(testContext) })
-	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}))
+	must(storage.Commit(testContext, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: 1}}}, func(durable.Seq) {}))
 	commitEntries(t, storage, entryOf(10, 1, "a"), entryOf(20, 1, "b"))
 	expectRange(t, storage, durable.EntryQuery{ConversationId: 1})
 	reopened := reopen(t, path)

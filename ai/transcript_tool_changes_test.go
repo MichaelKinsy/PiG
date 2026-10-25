@@ -416,6 +416,40 @@ func TestTranscriptToolChangesAnthropicPoisonedHistory(t *testing.T) {
 	}
 }
 
+// packages/ai/test/transcript-tool-changes.test.ts "holds an Anthropic update past an assistant message that converts to no blocks" (#11091): a
+// mid-conversation system message is emitted directly before the next assistant message that is sent, or at the end, never before a user message.
+func TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks(t *testing.T) {
+	reply := func(text, provider string, api API, model string) AssistantMessage {
+		return AssistantMessage{API: api, Provider: provider, Model: model, Content: []AssistantContentBlock{TextContent{Text: text}}, StopReason: StopReasonStop, Timestamp: 3}
+	}
+	messages := []Message{
+		SystemMessage{Content: SystemText("base prompt"), Timestamp: 0},
+		UserMessage{Content: UserText("hi"), Timestamp: 1},
+		SystemMessage{Content: SystemText("updated guidance"), Timestamp: 2},
+		// Another model's empty reply: Anthropic rejects empty text blocks, so it is dropped.
+		reply("", "openai-codex", APIOpenAICodexResponses, "gpt-x"),
+		UserMessage{Content: UserText("again"), Timestamp: 4},
+	}
+	roles := func(request toolChangeRequest) []string {
+		var out []string
+		for _, message := range jsonItems(request.body["messages"]) {
+			out = append(out, message["role"].(string))
+		}
+		return out
+	}
+	// No later assistant: the update goes at the end.
+	atEnd := captureAnthropicToolChanges(t, "custom-claude", nativeAnthropicCompat, NormalizeContext(Context{Messages: messages}))
+	if got := roles(atEnd[0]); !slices.Equal(got, []string{"user", "user", "system"}) {
+		t.Errorf("roles without a later assistant = %v", got)
+	}
+	// A later assistant that is sent: the update goes directly before it.
+	withAnswer := append(slices.Clone(messages), reply("answer", "anthropic", APIAnthropicMessages, "custom-claude"), UserMessage{Content: UserText("third"), Timestamp: 5})
+	beforeAssistant := captureAnthropicToolChanges(t, "custom-claude", nativeAnthropicCompat, NormalizeContext(Context{Messages: withAnswer}))
+	if got := roles(beforeAssistant[0]); !slices.Equal(got, []string{"user", "user", "system", "assistant", "user"}) {
+		t.Errorf("roles before a sent assistant = %v", got)
+	}
+}
+
 // ─── OpenAI Responses ────────────────────────────────────────────────────────
 
 const responsesToolChangeDone = "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\"}}\n\n"

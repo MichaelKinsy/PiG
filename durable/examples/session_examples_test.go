@@ -1,4 +1,4 @@
-// Ports packages/durable/test/examples/00-conversation.ts through 05-watches.ts.
+// Ports packages/durable/test/examples/00-conversation.ts through 04-watches.ts.
 
 package examples_test
 
@@ -6,10 +6,8 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -184,56 +182,8 @@ func TestExample03OwnedConversations(t *testing.T) {
 	closeSession(t, session)
 }
 
-// 04-chord-state.ts: documentState() never creates a document; it returns a hydrated read-only Chord state.
-// Pi source: packages/chord/src/api.ts, packages/chord/src/services/state-internals.ts
-// mutation-checked: dropping the reads and writes of ReplicatedStateDelivery.Sequence fails it
-func TestExample04ChordState(t *testing.T) {
-	session := newSession(t)
-	chat := commit(t, session, func(tx durable.Tx) (durable.ConversationRecord, error) {
-		conversation, err := tx.CreateConversation(ownerless)
-		if err != nil {
-			return conversation, err
-		}
-		return conversation, setNotes(tx, conversation.Id, "first")
-	})
-	notesState, err := session.DocumentStateErased(background, notesDoc, chat.Id)
-	if err != nil || notesState == nil {
-		t.Fatalf("notes are absent: %v %v", notesState, err)
-	}
-	type frame struct {
-		kind     chord.DeliveryKind
-		sequence int
-		text     string
-	}
-	var mu sync.Mutex
-	var frames []frame
-	stopNotes := notesState.Subscribe(func(value durable.JsonObject, _ context.Context, delivery chord.ReplicatedStateDelivery) {
-		mu.Lock()
-		defer mu.Unlock()
-		text, _ := value.Value("text").(string)
-		frames = append(frames, frame{delivery.Kind, delivery.Sequence, text})
-	})
-	commit(t, session, func(tx durable.Tx) (struct{}, error) {
-		return struct{}{}, setNotes(tx, chat.Id, "published through Chord")
-	})
-	eventually(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return len(frames) == 2
-	})
-	stopNotes()
-	notesState.Dispose()
-	mu.Lock()
-	defer mu.Unlock()
-	want := []frame{{chord.DeliveryHydrate, 0, "first"}, {chord.DeliveryUpdate, 1, "published through Chord"}}
-	if !reflect.DeepEqual(frames, want) {
-		t.Fatalf("Chord notes: %+v, want %+v", frames, want)
-	}
-	closeSession(t, session)
-}
-
-// 05-watches.ts: a watch serializes asynchronous document work from one stable acquisition revision.
-func TestExample05Watches(t *testing.T) {
+// 04-watches.ts: a watch serializes asynchronous document work from one stable acquisition revision.
+func TestExample04Watches(t *testing.T) {
 	session := newSession(t)
 	chat := commit(t, session, func(tx durable.Tx) (durable.ConversationRecord, error) {
 		conversation, err := tx.CreateConversation(ownerless)

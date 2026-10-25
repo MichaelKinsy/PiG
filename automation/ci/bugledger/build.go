@@ -782,6 +782,15 @@ func (b *builder) divergenceEntries(divs map[string]divergence, path string) err
 		}
 		slices.Sort(e.Tests)
 	}
+	// A kept note still names the divergence it fixed ahead of Pi. Once Pi ships the fix the record is retired: it has no "## D<n>" heading, or none that says Pi has a defect. The note then has what the full history gives it, no divergence and the class its own wording implies, because the fix commits that classed it are not in this history.
+	for _, e := range b.entries {
+		if !b.kept[e] || e.Origin != "release note" || e.Divergence == "" {
+			continue
+		}
+		if d, ok := divs[e.Divergence]; !ok || !d.fixesPiDefect() {
+			e.Class, e.Divergence, e.PiIssue, e.RemoveWhen = classOf(e.Note, nil), "", "", ""
+		}
+	}
 	return nil
 }
 

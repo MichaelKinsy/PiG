@@ -1,5 +1,5 @@
 {
- "pin": "1.4.0",
+ "pin": "1.4.0+74f46864",
  "package": "pi-ai@1.4.0",
  "module": "pi-ai",
  "export": "isRetryableAssistantError",

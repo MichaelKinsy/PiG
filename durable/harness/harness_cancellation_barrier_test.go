@@ -25,7 +25,7 @@ type holdMarks struct {
 	release *deferredGate
 }
 
-func (store *holdMarks) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (store *holdMarks) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	store.mu.Lock()
 	target := store.target
 	store.mu.Unlock()
@@ -36,7 +36,7 @@ func (store *holdMarks) Commit(ctx context.Context, writes []durable.StorageWrit
 		store.held.resolve()
 		_ = store.release.wait(testContext)
 	}
-	return store.MemoryStorage.Commit(ctx, writes)
+	return store.MemoryStorage.Commit(ctx, writes, adopt)
 }
 
 // cbCreate creates tasks in a Harness that never resumes, closes it, and returns the store for a later Harness: the
@@ -168,7 +168,7 @@ func TestWorkBelowACancelledOwner(t *testing.T) {
 		owner.AbortRequested, owner.AbortReason = true, reason
 		owner.State = anyTaskState{Status: durable.TaskWaiting, Checkpoint: owner.State.Checkpoint, On: []durable.TaskId{failed, child}, Policy: durable.JoinFailFast}
 		failedRecord.State = anyTaskState{Status: durable.TaskTerminal, Outcome: &anyOutcome{Status: durable.OutcomeFailed, Error: &durable.TaskOutcomeError{Message: "failed"}}}
-		if _, err := store.Commit(testContext, []durable.StorageWrite{durable.TaskWrite{Value: owner}, durable.TaskWrite{Value: failedRecord}}); err != nil {
+		if _, err := store.Commit(testContext, []durable.StorageWrite{durable.TaskWrite{Value: owner}, durable.TaskWrite{Value: failedRecord}}, func(durable.Seq) {}); err != nil {
 			t.Fatal(err)
 		}
 		// The child's definition is missing: a restart mark would keep it waiting, a request orphans it.
@@ -241,7 +241,7 @@ func TestWorkBelowACancelledOwner(t *testing.T) {
 		})
 		record := cbRecord(t, store, holder)
 		record.State = anyTaskState{Status: durable.TaskCompleting, Outcome: &anyOutcome{Status: durable.OutcomeCompleted}}
-		if _, err := store.Commit(testContext, []durable.StorageWrite{durable.TaskWrite{Value: record}}); err != nil {
+		if _, err := store.Commit(testContext, []durable.StorageWrite{durable.TaskWrite{Value: record}}, func(durable.Seq) {}); err != nil {
 			t.Fatal(err)
 		}
 		harness, _, _ := openTasks(t, store, []durable.AnyTask{fixtures.hold.Erased()})
@@ -263,7 +263,7 @@ type markRecorder struct {
 	reasons []durable.TaskAbortReason
 }
 
-func (store *markRecorder) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (store *markRecorder) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	store.mu.Lock()
 	for _, write := range writes {
 		if task, ok := write.(durable.TaskWrite); ok && task.Value.Id == store.target && task.Value.AbortRequested {
@@ -271,7 +271,7 @@ func (store *markRecorder) Commit(ctx context.Context, writes []durable.StorageW
 		}
 	}
 	store.mu.Unlock()
-	return store.Storage.Commit(ctx, writes)
+	return store.Storage.Commit(ctx, writes, adopt)
 }
 
 // harness-scheduler-indexes.test.ts:82 it("takes a cascade's reason from the nearest cancelling owner")

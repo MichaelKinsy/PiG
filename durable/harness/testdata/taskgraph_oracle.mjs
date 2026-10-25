@@ -1,4 +1,4 @@
-// Run Pi's TaskGraphView (packages/durable/src/harness/task-graph.ts, imported as-is with types stripped) over programs from stdin: Session commits that create conversations and tasks and advance task states, with a long-lived graph state (advanced by commit publications) and a fresh view (built from storage) read after each step.
+// Run Pi's TaskGraphView (packages/durable/src/harness/task-graph.ts, imported as-is with types stripped) over programs from stdin: Session commits that create conversations and tasks and advance task states, with a long-lived graph watch (advanced by commit publications) and a fresh view (built from storage) read after each step.
 // usage: node taskgraph_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-ai and typebox)
 import module from "node:module";
 import { pathToFileURL } from "node:url";
@@ -63,11 +63,11 @@ async function stepOp(session, step, convs, tasks) {
 async function runProgram(program) {
 	const storage = new MemoryStorage();
 	const session = createSession(storage);
-	const live = await new TaskGraphView(session, storage, blocking).state(ctx);
-	// Each step reports the deliveries the long-lived state's subscriber received: a commit that changes nothing in the graph delivers nothing.
+	const live = await new TaskGraphView(session, storage, blocking).watch(ctx);
+	// Each step reports the operations of the frames the long-lived watch's listener received: a commit that changes nothing in the graph delivers nothing.
 	let deliveries = [];
-	live.subscribe((value, _context, delivery) => {
-		deliveries.push({ kind: delivery.kind, sequence: delivery.sequence });
+	live.start(async (_value, ops) => {
+		deliveries.push({ ops });
 	});
 	const convs = [];
 	const tasks = [];
@@ -83,12 +83,12 @@ async function runProgram(program) {
 			result = { err: error?.message ?? String(error) };
 		}
 		await flush();
-		const fresh = await new TaskGraphView(session, storage, blocking).state(ctx);
+		const fresh = await new TaskGraphView(session, storage, blocking).watch(ctx);
 		results.push({ index, ...result, live: live.value, fresh: fresh.value, deliveries });
 		deliveries = [];
-		fresh.dispose();
+		await fresh.stop();
 	}
-	live.dispose();
+	await live.stop();
 	await session.close(ctx);
 	return results;
 }

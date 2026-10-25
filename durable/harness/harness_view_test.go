@@ -61,9 +61,9 @@ func record(t *testing.T, conversation Conversation) *recording {
 // fresh returns a freshly built view of conversation, for comparing with an advanced one (harness-view.test.ts:36).
 func fresh(t *testing.T, conversation Conversation) ConversationView {
 	t.Helper()
-	state := must(conversation.ViewState(testContext))
-	value := state.Value()
-	state.Dispose()
+	watch := must(conversation.Watch(testContext))
+	value := watch.Value()
+	must(watch.Stop())
 	return value
 }
 
@@ -443,23 +443,24 @@ func TestConversationView(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	t.Run("keeps states and watches of one conversation independent and remounts after the last one detaches", func(t *testing.T) {
+	t.Run("keeps watches of one conversation independent and remounts after the last one detaches", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-view.test.ts:249
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
-		state := must(root.ViewState(testContext))
+		kept := record(t, root)
 		recorded := record(t, root)
 		noteEntry(t, root, "one")
 		drained(harness)
-		expectStrings(t, entryKinds(state.Value().Entries), []string{"one"})
+		keptFrames := func() []viewFrame { return kept.snapshot() }
+		expectStrings(t, entryKinds(keptFrames()[len(keptFrames())-1].value.Entries), []string{"one"})
 		recorded.stop(t)
 		if frames := recorded.snapshot(); len(frames) != 1 {
 			t.Fatalf("%d frames", len(frames))
 		}
 		noteEntry(t, root, "two")
 		drained(harness)
-		expectStrings(t, entryKinds(state.Value().Entries), []string{"one", "two"})
-		last := state.Value()
-		state.Dispose()
+		last := keptFrames()[len(keptFrames())-1].value
+		expectStrings(t, entryKinds(last.Entries), []string{"one", "two"})
+		kept.stop(t)
 		// No observer is left, so the mount was dropped: a new observer builds a new revision from committed state.
 		rebuilt := fresh(t, root)
 		expectSameJSON(t, rebuilt, last)
@@ -469,24 +470,20 @@ func TestConversationView(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	t.Run("ends states and watches at close and rejects later acquisition", func(t *testing.T) {
+	t.Run("ends watches at close and rejects later acquisition", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-view.test.ts:270
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		watch := must(root.Watch(testContext))
-		state := must(root.ViewState(testContext))
 		closeHarness(t, harness)
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchSessionClosed || end.Error != nil {
+		if end := watch.End(); end.Reason != durable.WatchEnded || end.Error != nil {
 			t.Fatalf("end %+v", end)
 		}
-		if entries := state.Value().Entries; len(entries) != 0 {
+		if entries := watch.Value().Entries; len(entries) != 0 {
 			t.Fatalf("entries %v", entries)
 		}
 		if _, err := root.Watch(testContext); err == nil {
 			t.Fatal("watch after close")
-		}
-		if _, err := root.ViewState(testContext); err == nil {
-			t.Fatal("viewState after close")
 		}
 	})
 
@@ -551,11 +548,11 @@ func TestConversationView(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		failing := must(root.Watch(testContext))
 		recorded := record(t, root)
-		shared := must(root.ViewState(testContext))
+		shared := must(root.Watch(testContext))
 		if !sameEntries(failing.Value().Entries, shared.Value().Entries) || failing.Value().Docs != shared.Value().Docs {
 			t.Fatal("observers do not share one mount revision")
 		}
-		shared.Dispose()
+		must(shared.Stop())
 		failing.Start(func(context.Context, ConversationView, []durable.Op) error { return errors.New("listener failed") })
 		noteEntry(t, root, "one")
 		noteEntry(t, root, "two")

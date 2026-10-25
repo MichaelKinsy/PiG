@@ -123,6 +123,7 @@ def calculate_cost(model: Mapping[str, Any], usage: dict[str, Any]) -> dict[str,
     cost["cacheRead"] = (rate("cacheRead") / 1000000) * _number(usage.get("cacheRead", _ABSENT))
     cost["cacheWrite"] = (rate("cacheWrite") * short_write + rate("input") * 2 * long_write) / 1000000
     cost["total"] = cost["input"] + cost["output"] + cost["cacheRead"] + cost["cacheWrite"]
+    cost["totalFromProvider"] = False
     return cost
 
 

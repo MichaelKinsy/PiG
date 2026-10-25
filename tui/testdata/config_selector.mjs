@@ -10,12 +10,15 @@ const { KeybindingsManager } = await load("dist/core/keybindings.js");
 const { SettingsManager } = await load("dist/core/settings-manager.js");
 const { initTheme } = await load("dist/modes/interactive/theme/theme.js");
 const { ConfigSelectorComponent } = await load("dist/modes/interactive/components/config-selector.js");
+const started = Date.now();
+const stage = (text) => process.stderr.write(`oracle: ${text} (${Date.now() - started} ms)\n`);
 let input = "";
 process.stdin.setEncoding("utf8"); // decode across chunk boundaries: `input += chunk` on Buffers splits a multi-byte character at a 64 KiB edge
 for await (const chunk of process.stdin) input += chunk;
-process.stderr.write(`oracle: read ${input.length} characters\n`);
+stage(`read ${input.length} characters`);
 const arrays = (r) => ({ extensions: r.extensions ?? [], skills: r.skills ?? [], prompts: r.prompts ?? [], themes: r.themes ?? [] });
-const results = JSON.parse(input).map((test) => {
+const results = JSON.parse(input).map((test, index) => {
+  if (index % 32 === 0) stage(`rendering probe ${index}`);
   test.resolved = { global: arrays(test.resolved.global), project: arrays(test.resolved.project) };
   setCapabilities({ images: null, trueColor: true, hyperlinks: false });
   initTheme("dark");
@@ -39,8 +42,8 @@ const results = JSON.parse(input).map((test) => {
   return { steps, frames, crash };
 });
 const text = JSON.stringify(results);
-process.stderr.write(`oracle: rendered ${results.length} probes, writing ${text.length} characters\n`);
+stage(`rendered ${results.length} probes, writing ${text.length} characters`);
 process.stdout.write(text, () => {
-  process.stderr.write("oracle: written\n");
+  stage("written");
   process.exit(0);
 });

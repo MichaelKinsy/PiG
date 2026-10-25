@@ -27,13 +27,22 @@ const (
 // child reads the console in raw mode, and each send asks this process to type
 // the keys into the pseudo console. index selects the calling subtest in the
 // child, which runs test again.
+//
+// The child enters raw mode on a terminal that discards its output. Raw mode
+// on the process terminal writes the keyboard protocol query to the console,
+// and the pseudo console answers the query's DA1 on the input the test reads,
+// ahead of the keys the test types and about half a millisecond after the
+// query. That reply is not the answer to any query a terminal under test
+// owes, so a test that types a DA1 reply of its own gets two, and the one the
+// terminal does not owe is forwarded as input, as Pi forwards it
+// (terminal.ts:262,313), whenever the reader takes it before Stop's cancellation.
 func withTerminalInput(t *testing.T, test string, index int, body func(*testing.T, interactiveTestInput)) {
 	t.Helper()
 	if keys := os.Getenv(terminalInputKeysEnv); keys != "" {
 		if os.Getenv(terminalInputCaseEnv) != strconv.Itoa(index) {
 			return
 		}
-		restore, err := EnterRawMode()
+		restore, err := NewProcessTerminalWithOutput(os.Stdin, os.Stdout, ioDiscard{}).EnterRawMode()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -53,8 +62,6 @@ func withTerminalInput(t *testing.T, test string, index int, body func(*testing.
 				}
 			},
 			release: func() {},
-			// EnterRawMode above wrote the keyboard protocol query; the console replies to it on stdin.
-			queryReplyOwed: true,
 		})
 		return
 	}

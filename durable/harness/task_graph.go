@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -75,18 +74,11 @@ type TaskGraph struct {
 // TaskGraphWatch is a serialized exact-frame watch of the task graph.
 type TaskGraphWatch = durable.WatchHandle[TaskGraph]
 
-// taskGraphObserver is a CommittedStateSource or a CommittedWatch of the graph.
+// taskGraphObserver is a CommittedWatch of the graph.
 type taskGraphObserver interface {
 	Advance(ctx context.Context, value TaskGraph, ops []durable.Op)
-	CloseSession(failure error)
+	SourceEnded(failure error)
 }
-
-// stateGraphObserver adapts a CommittedStateSource, which ends the same way whether the Session closed or failed.
-type stateGraphObserver struct {
-	*session.CommittedStateSource[TaskGraph]
-}
-
-func (observer stateGraphObserver) CloseSession(error) { observer.CommittedStateSource.CloseSession() }
 
 type taskGraphMount struct {
 	value     TaskGraph
@@ -145,28 +137,10 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage,
 		view.mount = nil
 		view.mu.Unlock()
 		for _, observer := range observers {
-			session.Contained(func() { observer.CloseSession(failure) }, view.session.Report)
+			session.Contained(func() { observer.SourceEnded(failure) }, view.session.Report)
 		}
 	})
 	return view
-}
-
-// State returns a disposable read-only Chord state of the graph.
-func (view *TaskGraphView) State(ctx context.Context) (durable.AttachedReplicatedState[TaskGraph], error) {
-	var source *session.CommittedStateSource[TaskGraph]
-	detach, err := view.attach(ctx, func(value TaskGraph, release func()) taskGraphObserver {
-		source = session.NewCommittedStateSource(view.session, value, release)
-		return stateGraphObserver{source}
-	})
-	if err != nil {
-		return nil, err
-	}
-	state, err := chord.AttachReplicatedStateSource[TaskGraph](source, chord.ReplicatedStateSourceOptions{OnError: view.session.Report})
-	if err != nil {
-		detach()
-		return nil, err
-	}
-	return state, nil
 }
 
 // Watch returns a serialized exact-frame watch of the graph; cancelling ctx stops it.
@@ -270,8 +244,6 @@ func (view *TaskGraphView) refreshBlocked() {
 		publishTaskGraph(context.Background(), mount, observers, changed, ops, view.session.Report)
 		return nil, nil
 	})
-	// The line is free: deliver what the refresh published, as the drain microtask of the publication does.
-	view.session.RunDeliveries()
 }
 
 func (view *TaskGraphView) build(ctx context.Context) (*taskGraphMount, error) {

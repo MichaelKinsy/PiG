@@ -56,7 +56,7 @@ func TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose(t *testing.T) {
 			Record:  durable.DocumentCreate{Id: documentId, Kind: "memory.family", Key: &key, Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
 			Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("v", 1)},
 		},
-	})
+	}, func(durable.Seq) {})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose(t *testing.T) {
 	if _, err := memory.Entry(ctx, entryId); err == nil {
 		t.Error("Entry after Close must fail")
 	}
-	if _, err := memory.Commit(ctx, nil); err == nil {
+	if _, err := memory.Commit(ctx, nil, func(durable.Seq) {}); err == nil {
 		t.Error("Commit after Close must fail")
 	}
 }
@@ -178,7 +178,7 @@ func TestMemoryStorageVisibleEntryFollowsConversationAncestry(t *testing.T) {
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: sibling, Parent: &durable.ConversationParent{ConversationId: root, At: afterFork}}},
 		entry(child, childOwn),
 		entry(sibling, siblingOwn),
-	}); err != nil {
+	}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {

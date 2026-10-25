@@ -52,4 +52,4 @@ var GeneratedProviders = []string{
 }
 
 // GeneratedModelDataGeneratedAt is the generation time shared by every built-in provider catalog, in Unix milliseconds (providers/all.ts getBuiltinModelDataGeneratedAt); nil when the data manifest carries no valid time.
-var GeneratedModelDataGeneratedAt = new(float64(1792622004994))
+var GeneratedModelDataGeneratedAt = new(float64(1792683247222))

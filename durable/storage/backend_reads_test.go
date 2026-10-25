@@ -44,7 +44,7 @@ func seedReadFixture(t *testing.T, target durable.Storage) {
 			Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("count", 1)},
 		},
 	}
-	if _, err := target.Commit(context.Background(), writes); err != nil {
+	if _, err := target.Commit(context.Background(), writes, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 }

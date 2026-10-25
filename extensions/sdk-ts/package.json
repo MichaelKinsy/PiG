@@ -1,6 +1,6 @@
 {
   "name": "@michaelkinsy/pig-extension-types",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "description": "TypeScript declarations for Pi-compatible extensions running on PiG",
   "type": "module",

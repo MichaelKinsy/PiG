@@ -27,7 +27,7 @@ func TestSqliteStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect(t *testin
 
 	expectRejected := func(name string, writes []durable.StorageWrite, message string, hasCause bool) {
 		t.Helper()
-		_, err := storage.Commit(testContext, writes)
+		_, err := storage.Commit(testContext, writes, func(durable.Seq) {})
 		if err == nil {
 			t.Fatalf("%s: no error, want a rejected document copy", name)
 		}

@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0",
+  "piVersion": "1.4.0+74f46864",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -184,7 +184,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -410,7 +411,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -1356,7 +1358,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -1552,7 +1555,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -1743,13 +1747,14 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2056,7 +2061,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -2247,7 +2253,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -2438,7 +2445,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -2634,7 +2642,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -2761,7 +2770,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -3120,7 +3130,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "length",
@@ -3432,7 +3443,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -3606,7 +3618,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "toolUse",
@@ -4011,7 +4024,8 @@
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0,
-            "total": 0
+            "total": 0,
+            "totalFromProvider": false
           }
         },
         "stopReason": "stop",

@@ -19,7 +19,7 @@ func TestJsonlClosedErrorWinsOverThePoison(t *testing.T) {
 	instrumented.fail(failure{operation: "append", call: 1, mode: "before"})
 	if _, err := storage.Commit(testContext, []durable.StorageWrite{
 		durable.DocumentCreateWrite{Record: sessionDocument(id, "first"), Content: base(chorddelta.JsonObjectOf("text", "a"))},
-	}); err == nil {
+	}, func(durable.Seq) {}); err == nil {
 		t.Fatal("the failing commit succeeded, so the storage was not poisoned")
 	}
 	if err := storage.Close(testContext); err != nil {

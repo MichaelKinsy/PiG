@@ -23,7 +23,7 @@ func TestMemorySubmissionReadsAreCopies(t *testing.T) {
 	if _, err := memory.Commit(ctx, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
 		durable.SubmissionWrite{Value: record},
-	}); err != nil {
+	}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 	reason = "edited after commit"

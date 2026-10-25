@@ -531,7 +531,7 @@ func WatchEvents(ctx context.Context, harness Harness, conversationId durable.Co
 					watch.Advance(commitCtx, events, nil)
 				}
 			},
-			CloseSession: watch.CloseSession,
+			End: watch.SourceEnded,
 		}, nil
 	})
 	if err != nil {

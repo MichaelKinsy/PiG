@@ -53,13 +53,46 @@ func mint[I durable.Id](storage durable.Storage) I {
 	return durable.IdFromNumber[I](must(storage.MintId()))
 }
 
+// adopt is the adoption callback of storage-level commits, which have no in-memory owner to adopt them.
+func adopt(durable.Seq) {}
+
 func commit(storage durable.Storage, writes ...durable.StorageWrite) durable.Seq {
-	return must(storage.Commit(conformanceContext, writes))
+	return must(storage.Commit(conformanceContext, writes, adopt))
 }
 
 func commitErr(storage durable.Storage, writes ...durable.StorageWrite) error {
-	_, err := storage.Commit(conformanceContext, writes)
+	_, err := storage.Commit(conformanceContext, writes, adopt)
 	return err
+}
+
+// adoptionChecked is storage with every commit checked against the adoption contract: adopt runs exactly once, with the
+// committed sequence, before the commit returns (so before the next commit starts), and never for a commit that fails.
+// The cases fail commits only before they are durable.
+type adoptionChecked struct {
+	durable.Storage
+	assertions StorageConformanceAssertions
+}
+
+func checkAdoption(storage durable.Storage, assertions StorageConformanceAssertions) durable.Storage {
+	return adoptionChecked{Storage: storage, assertions: assertions}
+}
+
+func (checked adoptionChecked) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+	var adopted []durable.Seq
+	settled := false
+	recording := func(seq durable.Seq) {
+		checked.assertions.Ok(!settled, "Storage.commit() adopted after it settled")
+		adopted = append(adopted, seq)
+		adopt(seq)
+	}
+	seq, err := checked.Storage.Commit(ctx, writes, recording)
+	settled = true
+	if err != nil {
+		checked.assertions.StrictEqual(len(adopted), 0)
+		return 0, err
+	}
+	checked.assertions.DeepEqual(adopted, []durable.Seq{seq})
+	return seq, nil
 }
 
 func createRoot(storage durable.Storage) durable.ConversationId {
@@ -221,7 +254,7 @@ func createCase(options StorageConformanceOptions, name string, test conformance
 			expect := func(actual any) expectation {
 				return expectation{assertions: options.Assertions, actual: actual}
 			}
-			test(storage, expect, options.Assertions.Rejects)
+			test(checkAdoption(storage, options.Assertions), expect, options.Assertions.Rejects)
 			return nil
 		})
 	}}
@@ -240,6 +273,59 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				commitErr(storage, durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}),
 				fmt.Sprintf("ID %d already belongs to conversation", durable.ROOT_CONVERSATION_ID),
 			)
+		}),
+
+		createCase(options, "adopts a durable commit once before resolving, and never a failed one", func(storage durable.Storage, expect func(any) expectation, rejects func(error, string)) {
+			rootId := createRoot(storage)
+			var events []any
+			entryId := mint[durable.EntryId](storage)
+			type entryRead struct {
+				found *durable.EntryAt
+				err   error
+			}
+			read := make(chan entryRead, 1)
+			seq := must(storage.Commit(ctx, []durable.StorageWrite{entryWrite(entry(entryId, rootId, "message"))}, func(adopted durable.Seq) {
+				events = append(events, fmt.Sprintf("adopt %d", adopted))
+				// The batch is durable when it is adopted: a read started now observes it. It runs on its own goroutine, as
+				// upstream's read is a promise started inside adopt, since adopt runs inside the commit.
+				//portlint:allow asyncorder upstream starts the read inside adopt without awaiting it (storage-conformance.ts:157, `read = storage.entry(entryId, context)`) and awaits it only after the commit resolved (:166); adopt runs inside Commit, so a synchronous read would deadlock on the storage lock, and the channel read below is the join
+				go func() {
+					found, err := storage.Entry(ctx, entryId)
+					read <- entryRead{found, err}
+				}()
+			}))
+			events = append(events, fmt.Sprintf("resolve %d", seq))
+			expect(events).toEqual([]any{fmt.Sprintf("adopt %d", seq), fmt.Sprintf("resolve %d", seq)})
+			// A storage that never adopted has failed the check above and started no read to wait for.
+			var started entryRead
+			select {
+			case started = <-read:
+			default:
+				if len(events) == 1 {
+					return
+				}
+				started = <-read
+			}
+			check(started.err)
+			expect(started.found.CommitSeq).toBe(seq)
+
+			events = nil
+			rejects(
+				func() error {
+					_, err := storage.Commit(ctx, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: rootId}}}, func(adopted durable.Seq) {
+						events = append(events, fmt.Sprintf("adopt %d", adopted))
+					})
+					return err
+				}(),
+				fmt.Sprintf("ID %d already belongs to conversation", rootId),
+			)
+			expect(len(events)).toBe(0)
+
+			next := must(storage.Commit(ctx, []durable.StorageWrite{entryWrite(entry(mint[durable.EntryId](storage), rootId, "message"))}, func(adopted durable.Seq) {
+				events = append(events, fmt.Sprintf("adopt %d", adopted))
+			}))
+			expect(events).toEqual([]any{fmt.Sprintf("adopt %d", next)})
+			expect(next).toBeGreaterThan(float64(seq))
 		}),
 
 		createCase(options, "commits mixed table writes atomically and rolls all of them back on failure", func(storage durable.Storage, expect func(any) expectation, rejects func(error, string)) {

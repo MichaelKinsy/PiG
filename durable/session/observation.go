@@ -8,7 +8,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/entered"
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
@@ -44,7 +43,6 @@ type pending struct {
 	mu         sync.Mutex
 	count      int
 	idle       *sync.Cond
-	drains     []func()
 	deliveries []*delivery
 }
 
@@ -85,57 +83,13 @@ func (tracker *pending) end() {
 	tracker.mu.Unlock()
 }
 
-// wait runs the queued state attachment drains, then blocks until no scheduled delivery is queued or running. A drain
-// another goroutine took off the queue counts until it finishes, as upstream's flush resolves only after the drain
-// microtask ran.
+// wait blocks until no scheduled delivery is queued or running.
 func (tracker *pending) wait() {
 	tracker.mu.Lock()
-	for {
-		if len(tracker.drains) > 0 {
-			drains := tracker.drains
-			tracker.drains = nil
-			tracker.mu.Unlock()
-			tracker.run(drains)
-			tracker.mu.Lock()
-			continue
-		}
-		if tracker.count == 0 {
-			break
-		}
+	for tracker.count != 0 {
 		tracker.idle.Wait()
 	}
 	tracker.mu.Unlock()
-}
-
-// queueDrain registers a state attachment drain that the publishing commit runs before it returns. The drain counts as
-// a scheduled delivery from now until it finishes.
-func (tracker *pending) queueDrain(drain func()) {
-	tracker.mu.Lock()
-	tracker.count++
-	tracker.drains = append(tracker.drains, drain)
-	tracker.idle.Broadcast()
-	tracker.mu.Unlock()
-}
-
-// runDrains runs the queued state attachment drains on the calling goroutine. Upstream's drain microtask enters the
-// subscribers after the publishing commit settled and before its caller resumes. The Session line is already free,
-// so a subscriber that commits queues behind and a reentrant call returns at once: the draining loop delivers the
-// frames the subscriber's commit published.
-func (tracker *pending) runDrains() {
-	tracker.mu.Lock()
-	drains := tracker.drains
-	tracker.drains = nil
-	tracker.mu.Unlock()
-	tracker.run(drains)
-}
-
-func (tracker *pending) run(drains []func()) {
-	for _, drain := range drains {
-		func() {
-			defer tracker.end()
-			drain()
-		}()
-	}
 }
 
 // schedule runs job off the caller's goroutine, as upstream's queueMicrotask
@@ -187,239 +141,18 @@ func (tracker *pending) awaitEntered(ctx context.Context) error {
 	return nil
 }
 
-// CommittedStateSource is the Session-to-Chord bridge owned one-to-one by one
-// attached state: a document, or a conversation view. A nil value retires it.
-type CommittedStateSource[T any] struct {
-	mu          sync.Mutex
-	scheduler   *pending
-	attachments map[*sessionSourceAttachment[T]]struct{}
-	release     func()
-	value       T
-	cursor      int
-	retired     bool
-	closed      bool
-}
-
-// NewCommittedStateSource returns a source holding value whose deliveries run on session's delivery scheduler; release
-// runs once when the source finishes disposal. Ports observation.ts:24 CommittedStateSource constructor (the Harness
-// builds conversation views on it, view.ts:90).
-func NewCommittedStateSource[T any](session *SessionImpl, value T, release func()) *CommittedStateSource[T] {
-	return newCommittedStateSource(value, release, session.scheduler)
-}
-
-func newCommittedStateSource[T any](value T, release func(), scheduler *pending) *CommittedStateSource[T] {
-	return &CommittedStateSource[T]{
-		scheduler:   scheduler,
-		attachments: map[*sessionSourceAttachment[T]]struct{}{},
-		release:     release,
-		value:       value,
-	}
-}
-
-// Attach implements chord.ReplicatedStateSource.
-func (source *CommittedStateSource[T]) Attach() (chord.ReplicatedStateSourceAttachment[T], error) {
-	source.mu.Lock()
-	defer source.mu.Unlock()
-	if source.closed {
-		return nil, errors.New("State source is closed")
-	}
-	attachment := &sessionSourceAttachment[T]{
-		snapshot:  chord.ReplicatedStateSnapshot[T]{Value: source.value, Cursor: source.cursor},
-		scheduler: source.scheduler,
-	}
-	attachment.release = func() {
-		source.mu.Lock()
-		delete(source.attachments, attachment)
-		empty := len(source.attachments) == 0
-		source.mu.Unlock()
-		if empty {
-			source.finishDisposal()
-		}
-	}
-	source.attachments[attachment] = struct{}{}
-	return attachment, nil
-}
-
-func (source *CommittedStateSource[T]) Advance(ctx context.Context, value T, ops []durable.Op) {
-	source.mu.Lock()
-	if source.closed || source.retired {
-		source.mu.Unlock()
-		return
-	}
-	source.value = value
-	source.cursor++
-	if isRetiredValue(value) {
-		source.retired = true
-	}
-	frame := chord.ReplicatedStateSourceFrame[T]{Cursor: source.cursor, Value: value, Ops: ops, Context: ctx}
-	attachments := source.snapshotAttachments()
-	source.mu.Unlock()
-	for _, attachment := range attachments {
-		attachment.publish(frame)
-	}
-}
-
-func (source *CommittedStateSource[T]) snapshotAttachments() []*sessionSourceAttachment[T] {
-	attachments := make([]*sessionSourceAttachment[T], 0, len(source.attachments))
-	for attachment := range source.attachments {
-		attachments = append(attachments, attachment)
-	}
-	return attachments
-}
-
-func (source *CommittedStateSource[T]) CloseSession() {
-	source.mu.Lock()
-	if source.closed {
-		source.mu.Unlock()
-		return
-	}
-	attachments := source.snapshotAttachments()
-	source.mu.Unlock()
-	for _, attachment := range attachments {
-		attachment.Dispose()
-	}
-	source.finishDisposal()
-}
-
-func (source *CommittedStateSource[T]) finishDisposal() {
-	source.mu.Lock()
-	if source.closed {
-		source.mu.Unlock()
-		return
-	}
-	source.closed = true
-	var zero T
-	source.value = zero
-	release := source.release
-	source.release = nil
-	source.mu.Unlock()
-	if release != nil {
-		release()
-	}
-}
-
-type sessionSourceAttachment[T any] struct {
-	mu         sync.Mutex
-	snapshot   chord.ReplicatedStateSnapshot[T]
-	scheduler  *pending
-	release    func()
-	frames     []chord.ReplicatedStateSourceFrame[T]
-	listener   func(chord.ReplicatedStateSourceFrame[T])
-	activated  bool
-	disposed   bool
-	scheduled  bool
-	delivering bool
-}
-
-func (attachment *sessionSourceAttachment[T]) Snapshot() chord.ReplicatedStateSnapshot[T] {
-	return attachment.snapshot
-}
-
-func (attachment *sessionSourceAttachment[T]) Activate(listener func(chord.ReplicatedStateSourceFrame[T])) error {
-	attachment.mu.Lock()
-	if attachment.activated {
-		attachment.mu.Unlock()
-		return errors.New("State attachment is already active")
-	}
-	if attachment.disposed {
-		attachment.mu.Unlock()
-		return errors.New("State attachment is disposed")
-	}
-	attachment.activated = true
-	attachment.listener = listener
-	attachment.mu.Unlock()
-	attachment.drain()
-	return nil
-}
-
-func (attachment *sessionSourceAttachment[T]) publish(frame chord.ReplicatedStateSourceFrame[T]) {
-	attachment.mu.Lock()
-	defer attachment.mu.Unlock()
-	if attachment.disposed {
-		return
-	}
-	attachment.frames = append(attachment.frames, frame)
-	if !attachment.activated || attachment.delivering || attachment.scheduled {
-		return
-	}
-	attachment.scheduled = true
-	attachment.scheduler.queueDrain(func() {
-		attachment.mu.Lock()
-		attachment.scheduled = false
-		disposed := attachment.disposed
-		attachment.mu.Unlock()
-		if !disposed {
-			attachment.drainIsolated()
-		}
-	})
-}
-
-// drainIsolated runs a scheduled drain. Chord's frame listener contains source-contract failures; an unexpected
-// direct listener failure disposes only this attachment, as upstream's microtask catches it and calls dispose().
-func (attachment *sessionSourceAttachment[T]) drainIsolated() {
-	defer func() {
-		// upstream: packages/durable/src/session/observation.ts:SessionSourceAttachment.publish
-		if recover() != nil {
-			attachment.Dispose()
-		}
-	}()
-	attachment.drain()
-}
-
-func (attachment *sessionSourceAttachment[T]) Dispose() {
-	attachment.mu.Lock()
-	if attachment.disposed {
-		attachment.mu.Unlock()
-		return
-	}
-	attachment.disposed = true
-	attachment.frames = nil
-	attachment.listener = nil
-	release := attachment.release
-	attachment.release = nil
-	attachment.mu.Unlock()
-	if release != nil {
-		release()
-	}
-}
-
-func (attachment *sessionSourceAttachment[T]) drain() {
-	attachment.mu.Lock()
-	if attachment.listener == nil || attachment.delivering || attachment.disposed {
-		attachment.mu.Unlock()
-		return
-	}
-	attachment.delivering = true
-	finished := false
-	defer func() {
-		// A listener panic leaves the lock released; reset delivering as upstream's finally does.
-		if !finished {
-			attachment.mu.Lock()
-			attachment.delivering = false
-			attachment.mu.Unlock()
-		}
-	}()
-	for !attachment.disposed && len(attachment.frames) > 0 {
-		frame := attachment.frames[0]
-		attachment.frames = attachment.frames[1:]
-		listener := attachment.listener
-		attachment.mu.Unlock()
-		listener(frame)
-		attachment.mu.Lock()
-	}
-	attachment.delivering = false
-	finished = true
-	attachment.mu.Unlock()
-}
-
 type watchFrame[T any] struct {
 	value T
 	ops   []durable.Op
 	ctx   context.Context
+	// retires marks the retirement frame: the watch ends retired once it is delivered.
+	retires bool
 }
 
-// CommittedWatch is a serialized exact-frame watch bound to one document
-// incarnation or conversation view. A nil value retires it.
+// CommittedWatch is a serialized exact-frame watch bound to one document incarnation or conversation view. Its source
+// ends it explicitly: Retire for a retired document, SourceEnded for a closed or failed Session. Termination drops every
+// reference the watch holds into its source, so a stopped watch that is still referenced keeps nothing but its last
+// value alive.
 type CommittedWatch[T any] struct {
 	mu        sync.Mutex
 	scheduler *pending
@@ -518,13 +251,13 @@ func (watch *CommittedWatch[T]) Cancel() {
 	watch.terminate(durable.WatchEnd{Reason: durable.WatchCancelled})
 }
 
-// CloseSession ends the watch with session_closed, or with session_failed and the error when the Session failed.
-func (watch *CommittedWatch[T]) CloseSession(failure error) {
+// SourceEnded is the source closing: the watch ends ended, or failed with the error when the Session failed.
+func (watch *CommittedWatch[T]) SourceEnded(failure error) {
 	if failure != nil {
-		watch.terminate(durable.WatchEnd{Reason: durable.WatchSessionFailed, Error: failure})
+		watch.terminate(durable.WatchEnd{Reason: durable.WatchFailed, Error: failure})
 		return
 	}
-	watch.terminate(durable.WatchEnd{Reason: durable.WatchSessionClosed})
+	watch.terminate(durable.WatchEnd{Reason: durable.WatchEnded})
 }
 
 func (watch *CommittedWatch[T]) Advance(ctx context.Context, value T, ops []durable.Op) {
@@ -532,9 +265,6 @@ func (watch *CommittedWatch[T]) Advance(ctx context.Context, value T, ops []dura
 	defer watch.mu.Unlock()
 	if watch.end != nil || watch.retired {
 		return
-	}
-	if isRetiredValue(value) {
-		watch.retired = true
 	}
 	if len(watch.pending) >= maxPendingWatchFrames {
 		watch.pending = watch.pending[:0]
@@ -558,6 +288,26 @@ func (watch *CommittedWatch[T]) Advance(ctx context.Context, value T, ops []dura
 	}
 }
 
+// Retire is the document incarnation retiring: it queues the last frame, a root replacement with nil ([["r", null]])
+// and the zero value, after which the watch ends retired. An overflowing backlog is dropped, since the frame replaces
+// the root anyway.
+func (watch *CommittedWatch[T]) Retire(ctx context.Context) {
+	watch.mu.Lock()
+	defer watch.mu.Unlock()
+	if watch.end != nil || watch.retired {
+		return
+	}
+	watch.retired = true
+	if len(watch.pending) >= maxPendingWatchFrames {
+		watch.pending = watch.pending[:0]
+	}
+	var retired T
+	watch.pending = append(watch.pending, watchFrame[T]{value: retired, ops: retirementOperations(), ctx: ctx, retires: true})
+	if watch.started {
+		watch.deliverLocked()
+	}
+}
+
 // deliverLocked starts delivery of the oldest pending frame when no callback is in flight. Upstream's commit publishes
 // before its promise resolves and the drain microtask that advance queues enters the listener before the commit's
 // caller resumes, so the frame is taken into delivery before Advance returns to the publishing commit; a later Stop
@@ -566,8 +316,8 @@ func (watch *CommittedWatch[T]) deliverLocked() {
 	if watch.running || watch.end != nil || len(watch.pending) == 0 {
 		return
 	}
-	frame := watch.takeLocked()
-	watch.scheduler.schedule(func() { watch.drain(frame) })
+	frame, listener := watch.takeLocked()
+	watch.scheduler.schedule(func() { watch.drain(frame, listener) })
 }
 
 // scheduleLocked queues a drain of the frames buffered before Start, as upstream's start queues a microtask.
@@ -584,34 +334,35 @@ func (watch *CommittedWatch[T]) scheduleLocked() {
 			watch.mu.Unlock()
 			return
 		}
-		frame := watch.takeLocked()
+		frame, listener := watch.takeLocked()
 		watch.mu.Unlock()
-		watch.drain(frame)
+		watch.drain(frame, listener)
 	})
 }
 
-// takeLocked marks a callback in flight and makes the oldest pending frame the watch value.
-func (watch *CommittedWatch[T]) takeLocked() watchFrame[T] {
+// takeLocked marks a callback in flight and makes the oldest pending frame the watch value. It also returns the
+// listener, which upstream's #drain captures in the same synchronous step that shifts the frame, so a Stop that
+// drops the watch's listener reference afterwards does not discard the frame already in delivery.
+func (watch *CommittedWatch[T]) takeLocked() (watchFrame[T], func(context.Context, T, []durable.Op) error) {
 	watch.running = true
 	frame := watch.pending[0]
 	watch.pending = watch.pending[1:]
 	watch.value = frame.value
-	return frame
+	return frame, watch.listener
 }
 
 // drain delivers frame, which takeLocked took, then every frame buffered behind it until the watch ends.
-func (watch *CommittedWatch[T]) drain(frame watchFrame[T]) {
+func (watch *CommittedWatch[T]) drain(frame watchFrame[T], listener func(context.Context, T, []durable.Op) error) {
 	watch.mu.Lock()
-	for {
-		listener := watch.listener
+	for listener != nil {
 		watch.mu.Unlock()
 		err := callWatchListener(listener, frame)
 		watch.mu.Lock()
 		if err != nil {
 			if watch.end == nil {
-				if watch.report != nil {
+				if report := watch.report; report != nil {
 					watch.mu.Unlock()
-					watch.report(err)
+					report(err)
 					watch.mu.Lock()
 				}
 				if watch.end == nil {
@@ -620,14 +371,14 @@ func (watch *CommittedWatch[T]) drain(frame watchFrame[T]) {
 			}
 			break
 		}
-		if isRetiredValue(frame.value) {
+		if frame.retires {
 			watch.terminateLocked(durable.WatchEnd{Reason: durable.WatchRetired})
 			break
 		}
 		if watch.end != nil || len(watch.pending) == 0 {
 			break
 		}
-		frame = watch.takeLocked()
+		frame, listener = watch.takeLocked()
 	}
 	watch.running = false
 	if watch.end == nil && len(watch.pending) > 0 {
@@ -663,14 +414,19 @@ func (watch *CommittedWatch[T]) terminateLocked(end durable.WatchEnd) {
 		return
 	}
 	watch.end = &end
-	if !watch.detached {
+	detach := watch.detach
+	watch.detach = nil
+	watch.report = nil
+	watch.replace = nil
+	watch.listener = nil
+	watch.scheduler = nil
+	watch.pending = nil
+	if detach != nil && !watch.detached {
 		watch.detached = true
-		detach := watch.detach
 		watch.mu.Unlock()
 		detach()
 		watch.mu.Lock()
 	}
-	watch.pending = nil
 	watch.finishIfReadyLocked()
 }
 
@@ -681,6 +437,7 @@ func (watch *CommittedWatch[T]) finishIfReadyLocked() {
 	watch.resolved = true
 	if watch.stopAfter != nil {
 		watch.stopAfter()
+		watch.stopAfter = nil
 	}
 	close(watch.closed)
 }
@@ -702,12 +459,3 @@ func NewCommittedWatchOn[T any](scheduler *DeliveryScheduler, value T, detach fu
 	watch.report = report
 	return watch
 }
-
-// NewCommittedStateSourceOn is NewCommittedStateSource for a host whose deliveries run on scheduler (the native Durable core driver).
-func NewCommittedStateSourceOn[T any](scheduler *DeliveryScheduler, value T, release func()) *CommittedStateSource[T] {
-	return newCommittedStateSource(value, release, scheduler.pending)
-}
-
-// RunDrains runs the queued state attachment drains on the calling goroutine: upstream's drain microtask, which the publishing
-// commit runs before its caller resumes.
-func (s *DeliveryScheduler) RunDrains() { s.pending.runDrains() }

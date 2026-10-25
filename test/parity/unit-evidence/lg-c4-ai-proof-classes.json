@@ -846,7 +846,7 @@
   "upstream": "packages/durable/src/types.ts",
   "package": "./durable/core/driver",
   "tests": [
-   "TestConversationWatchAndViewStateFollowCommits",
+   "TestConversationWatchFollowsCommits",
    "TestCoreARequestAfterAResetSendsTheContextBehindTheHeadMarker",
    "TestCoreOwnershipAbortsAConversationWithQueuedInputsWithdrawnWritesKeptForegroundAbortedBackgroundKept",
    "TestCoreOwnershipWithdrawsQueuedInputsBelowTheAbortedTaskButKeepsItsOwnConversationsQueueAndQueuedWrites",

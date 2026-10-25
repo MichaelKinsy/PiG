@@ -1857,9 +1857,9 @@ func TestCompactionInteractions(t *testing.T) {
 			t.Fatal("the parent was compacted")
 		}
 		// The fork's view keeps the parent entries the summary kept.
-		state := must(fork.ViewState(testContext))
-		expectEqualJSON(t, state.Value().Entries, jsonText(t, view.Entries))
-		state.Dispose()
+		watch := must(fork.Watch(testContext))
+		expectEqualJSON(t, watch.Value().Entries, jsonText(t, view.Entries))
+		must(watch.Stop())
 		chat.close(t)
 	})
 
@@ -2468,15 +2468,17 @@ func TestCompactionAndTheInbox(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:1799
 		chat := openCompaction(t)
 		chat.history(t)
-		state := must(chat.root.ViewState(testContext))
+		watch := must(chat.root.Watch(testContext))
+		// A started watch keeps its value current.
+		watch.Start(func(context.Context, ConversationView, []durable.Op) error { return nil })
 		chat.faux.pushSummary(scriptSummary())
 		chat.outcome(t, chat.compact(t, nil))
 		waitFor(t, func() bool {
-			entries := state.Value().Entries
+			entries := watch.Value().Entries
 			return len(entries) > 0 && entries[0].Kind == "pi.compaction"
 		})
-		expectEqualJSON(t, state.Value().Entries, jsonText(t, must(chat.root.Context(testContext, nil)).Entries))
-		state.Dispose()
+		expectEqualJSON(t, watch.Value().Entries, jsonText(t, must(chat.root.Context(testContext, nil)).Entries))
+		must(watch.Stop())
 		chat.close(t)
 	})
 }

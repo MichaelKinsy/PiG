@@ -1360,13 +1360,12 @@
    "TestDocumentDefinitions",
    "TestSessionAdmissionIsAtomicWithClose",
    "TestSessionConversationDocumentForks",
-   "TestSessionDocumentStates",
    "TestSessionDocumentTransactions",
    "TestSessionHistoricalDocumentSnapshots",
    "TestSessionTransactionTables"
   ],
   "upstream_reference": "packages/durable/src/session/transaction.ts",
-  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) CreateConversation(options durable.CreateConversationOptions) (durable.ConversationRecord, error) {' with 'func (tx *Transaction) CreateConversation(options durable.CreateConversationOptions) (durable.ConversationRecord, error) {\\n\\treturn *new(durable.ConversationRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestSessionAdmissionIsAtomicWithClose, TestSessionConversationDocumentForks, TestSessionDocumentStates, TestSessionDocumentTransactions, TestSessionHistoricalDocumentSnapshots, TestSessionTransactionTables."
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) CreateConversation(options durable.CreateConversationOptions) (durable.ConversationRecord, error) {' with 'func (tx *Transaction) CreateConversation(options durable.CreateConversationOptions) (durable.ConversationRecord, error) {\\n\\treturn *new(durable.ConversationRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestSessionAdmissionIsAtomicWithClose, TestSessionConversationDocumentForks, TestSessionDocumentTransactions, TestSessionHistoricalDocumentSnapshots, TestSessionTransactionTables."
  },
  {
   "upstream": "packages/durable/src/session/transaction.ts",
@@ -1402,18 +1401,16 @@
   "package": "./durable/session",
   "tests": [
    "TestDocumentDefinitions",
-   "TestDocumentStateOfDecodesRevisionsAndRetirement",
    "TestSessionConversationDocumentForks",
    "TestSessionDocumentCheckpoints",
    "TestSessionDocumentMigrations",
-   "TestSessionDocumentStates",
    "TestSessionDocumentTransactions",
    "TestSessionDocumentWatches",
    "TestSessionHistoricalDocumentSnapshots",
    "TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil"
   ],
   "upstream_reference": "packages/durable/src/session/transaction.ts",
-  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {' with 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestDocumentStateOfDecodesRevisionsAndRetirement, TestSessionConversationDocumentForks, TestSessionDocumentCheckpoints, TestSessionDocumentMigrations, TestSessionDocumentStates, TestSessionDocumentTransactions, TestSessionDocumentWatches, TestSessionHistoricalDocumentSnapshots, TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil."
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {' with 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestSessionConversationDocumentForks, TestSessionDocumentCheckpoints, TestSessionDocumentMigrations, TestSessionDocumentTransactions, TestSessionDocumentWatches, TestSessionHistoricalDocumentSnapshots, TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil."
  },
  {
   "upstream": "packages/durable/src/harness/scheduler.ts",

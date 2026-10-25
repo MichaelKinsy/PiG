@@ -92,7 +92,7 @@ func TestWatchDocDeliversExactFramesInCommitOrder(t *testing.T) {
 }
 
 // Cancelling the caller's context ends the watch with reason cancelled (session.ts watch.observeCancellation), and closing the
-// Session ends the others with session_closed.
+// Session ends the others as ended.
 func TestWatchDocEndsOnCancellationAndSessionClose(t *testing.T) {
 	s := openCore(t)
 	writeNotes(t, s, "a")
@@ -122,7 +122,7 @@ func TestWatchDocEndsOnCancellationAndSessionClose(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("closing the Session closes its watches")
 	}
-	if got := open.End().Reason; got != durable.WatchSessionClosed {
+	if got := open.End().Reason; got != durable.WatchEnded {
 		t.Fatalf("session closed: %v", got)
 	}
 }
@@ -168,8 +168,8 @@ func TestSubscribeCloseRunsListenersOnceInOrder(t *testing.T) {
 
 // Conversation.watch (view.ts) delivers the structural view as exact frames: the first revision holds the conversation and its
 // entries, a committed entry arrives as a frame whose value holds it (the driver applies the core's ops-only frame to the
-// view it holds), and the view state of the same conversation sees it too.
-func TestConversationWatchAndViewStateFollowCommits(t *testing.T) {
+// view it holds).
+func TestConversationWatchFollowsCommits(t *testing.T) {
 	s := openCore(t)
 	root, err := s.Root(t.Context(), nil)
 	if err != nil {
@@ -179,11 +179,6 @@ func TestConversationWatchAndViewStateFollowCommits(t *testing.T) {
 	if err != nil || watch == nil {
 		t.Fatalf("watch: %v %v", watch, err)
 	}
-	state, err := root.ViewState(t.Context())
-	if err != nil || state == nil {
-		t.Fatalf("view state: %v %v", state, err)
-	}
-	defer state.Dispose()
 	if watch.Value().Conversation.Id != root.Id() {
 		t.Fatalf("the view names its conversation: %+v", watch.Value().Conversation)
 	}
@@ -209,67 +204,57 @@ func TestConversationWatchAndViewStateFollowCommits(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("no view frame")
 	}
-	deadline := time.Now().Add(5 * time.Second)
-	for len(state.Value().Entries) != before+1 {
-		if time.Now().After(deadline) {
-			t.Fatalf("the view state follows the commit: %d entries", len(state.Value().Entries))
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 	if end, err := watch.Stop(); err != nil || end.Reason != durable.WatchStopped {
 		t.Fatalf("stop: %+v %v", end, err)
 	}
 }
 
-// Harness.watchTaskGraph and taskGraph (task-graph.ts) open over the core's graph target: an idle Session has no live task.
+// Harness.watchTaskGraph (task-graph.ts) opens over the core's graph target: an idle Session has no live task.
 func TestTaskGraphOpensEmptyOnAnIdleSession(t *testing.T) {
 	s := openCore(t)
-	state, err := s.TaskGraph(t.Context())
-	if err != nil || state == nil {
-		t.Fatalf("task graph: %v %v", state, err)
-	}
-	defer state.Dispose()
-	if n := len(state.Value().Tasks); n != 0 {
-		t.Fatalf("no live task: %d", n)
-	}
 	watch, err := s.WatchTaskGraph(t.Context())
 	if err != nil || watch == nil {
 		t.Fatalf("watch: %v %v", watch, err)
 	}
+	if n := len(watch.Value().Tasks); n != 0 {
+		t.Fatalf("no live task: %d", n)
+	}
 	if end, err := watch.Stop(); err != nil || end.Reason != durable.WatchStopped {
 		t.Fatalf("stop: %+v %v", end, err)
 	}
 }
 
-// Session.documentState (session.ts): an absent document is nil, a present one is a read-only state that follows each commit and
-// is released by Dispose.
-func TestDocumentStateFollowsCommitsUntilDisposed(t *testing.T) {
+// Session.watchDoc (session.ts): an absent document is nil, a present one is a watch whose started value follows each commit
+// and is released by Stop.
+func TestDocumentWatchValueFollowsCommitsUntilStopped(t *testing.T) {
 	s := openCore(t)
-	absent, err := s.DocumentStateErased(t.Context(), notesDoc)
+	absent, err := s.WatchDocErased(t.Context(), notesDoc)
 	if err != nil || absent != nil {
-		t.Fatalf("an absent document has no state: %v %v", absent, err)
+		t.Fatalf("an absent document has no watch: %v %v", absent, err)
 	}
 	writeNotes(t, s, "a")
-	state, err := s.DocumentStateErased(t.Context(), notesDoc)
-	if err != nil || state == nil {
-		t.Fatalf("state: %v %v", state, err)
+	watch, err := s.WatchDocErased(t.Context(), notesDoc)
+	if err != nil || watch == nil {
+		t.Fatalf("watch: %v %v", watch, err)
 	}
-	if got := state.Value().Value("text"); got != "a" {
+	if got := watch.Value().Value("text"); got != "a" {
 		t.Fatalf("hydrated value: %v", got)
 	}
+	// A started watch keeps its value current.
+	watch.Start(func(context.Context, durable.JsonObject, []durable.Op) error { return nil })
 	writeNotes(t, s, "b")
 	deadline := time.Now().Add(5 * time.Second)
-	for state.Value().Value("text") != "b" {
+	for watch.Value().Value("text") != "b" {
 		if time.Now().After(deadline) {
-			t.Fatalf("the state follows the commit: %v", state.Value())
+			t.Fatalf("the watch follows the commit: %v", watch.Value())
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	state.Dispose()
+	_, _ = watch.Stop()
 	writeNotes(t, s, "c")
 	time.Sleep(100 * time.Millisecond)
-	if got := state.Value().Value("text"); got != "b" {
-		t.Fatalf("a disposed state stays at its last value: %v", got)
+	if got := watch.Value().Value("text"); got != "b" {
+		t.Fatalf("a stopped watch stays at its last value: %v", got)
 	}
 }
 

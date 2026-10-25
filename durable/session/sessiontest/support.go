@@ -145,7 +145,7 @@ func (controlled *ControlledStorage) FailNextCommit(err error) {
 }
 
 // Commit records the batch, honors a held gate and an injected failure, then commits.
-func (controlled *ControlledStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (controlled *ControlledStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	controlled.mu.Lock()
 	controlled.admittedCommits = append(controlled.admittedCommits, writes)
 	controlled.commits = append(controlled.commits, slices.Clone(writes))
@@ -161,7 +161,7 @@ func (controlled *ControlledStorage) Commit(ctx context.Context, writes []durabl
 	if failure != nil {
 		return 0, failure
 	}
-	return controlled.MemoryStorage.Commit(ctx, writes)
+	return controlled.MemoryStorage.Commit(ctx, writes, adopt)
 }
 
 // MintId counts and mints.

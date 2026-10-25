@@ -24,7 +24,7 @@ func TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage(t *testin
 			instrumented.fail(failure{operation: "append", call: 1, mode: "before"})
 			if _, err := storage.Commit(testContext, []durable.StorageWrite{
 				durable.DocumentCreateWrite{Record: sessionDocument(documentId, "first"), Content: base(chorddelta.JsonObjectOf("text", "α"))},
-			}); err == nil {
+			}, func(durable.Seq) {}); err == nil {
 				t.Fatal("the failed publication did not fail the commit")
 			}
 		}
@@ -39,7 +39,7 @@ func TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage(t *testin
 		entryId := durable.IdFromNumber[durable.EntryId](1)
 		point := durable.CurrentPoint
 		_, mintErr := storage.MintId()
-		_, commitErr := storage.Commit(testContext, nil)
+		_, commitErr := storage.Commit(testContext, nil, func(durable.Seq) {})
 		_, conversationErr := storage.Conversation(testContext, root)
 		_, scanConversationsErr := storage.ScanConversations(testContext, durable.ConversationQuery{}, 1, nil)
 		_, entryErr := storage.Entry(testContext, entryId)

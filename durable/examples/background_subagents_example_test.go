@@ -1,4 +1,4 @@
-// Ports packages/durable/test/examples/23-subagent-background.ts: persistent background subagents. One tool starts
+// Ports packages/durable/test/examples/22-subagent-background.ts: persistent background subagents. One tool starts
 // named subagents, messages them, stops them mid-answer and lists them; each answer is reported back to the main
 // agent as a new message once it arrives; everything survives a restart. The script's colored printing of the main
 // conversation is the transcript this test reads.
@@ -51,7 +51,7 @@ type anchorState struct {
 }
 
 // Pi: packages/durable/src/harness/types.ts:124 (abort).
-func TestExample23SubagentBackground(t *testing.T) {
+func TestExample22SubagentBackground(t *testing.T) {
 	// Each subagent is its own conversation. The main conversation keeps a small document that maps subagent names
 	// to their conversations. A fork of the main conversation starts without subagents.
 	subagentsDoc := durable.DefineDoc(durable.DocDefinition[subagentsState]{

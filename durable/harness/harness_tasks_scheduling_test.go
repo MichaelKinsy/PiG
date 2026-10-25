@@ -1112,8 +1112,8 @@ func TestTaskClose(t *testing.T) {
 		}
 		mustClose(t, opened.harness)
 		tkContainsError(t, tkWaitErr(t, fromListener), "closed")
-		if end, _ := watchEnd.get(); end.Reason != durable.WatchSessionClosed {
-			t.Fatalf("watch ended %+v, want session_closed", end)
+		if end, _ := watchEnd.get(); end.Reason != durable.WatchEnded {
+			t.Fatalf("watch ended %+v, want ended", end)
 		}
 	})
 

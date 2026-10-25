@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -97,7 +96,7 @@ func seedRunningTask(t *testing.T, store durable.Storage) {
 	if _, err := store.Commit(testContext, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ConversationId(conversationId)}},
 		durable.TaskWrite{Value: task},
-	}); err != nil {
+	}, func(durable.Seq) {}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -368,7 +367,7 @@ func TestHarnessClose(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-lifecycle.test.ts:276 it("publishes no frame to states and watches from a commit that settles during close")
+	// harness-lifecycle.test.ts:276 it("publishes no frame to watches from a commit that settles during close")
 	t.Run("publishes no frame to states and watches from a commit that settles during close", func(t *testing.T) {
 		notes := durable.DefineDoc(durable.DocDefinition[noteState]{
 			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.close-frames", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false }},
@@ -386,23 +385,11 @@ func TestHarnessClose(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		docState, err := harness.DocumentStateErased(testContext, notes)
-		if err != nil || docState == nil {
-			t.Fatalf("doc state %v", err)
-		}
 		docWatch, err := harness.WatchDocErased(testContext, notes)
 		if err != nil || docWatch == nil {
 			t.Fatalf("doc watch %v", err)
 		}
-		viewState, err := root.ViewState(testContext)
-		if err != nil {
-			t.Fatal(err)
-		}
 		viewWatch, err := root.Watch(testContext)
-		if err != nil {
-			t.Fatal(err)
-		}
-		graphState, err := harness.TaskGraph(testContext)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -417,14 +404,11 @@ func TestHarnessClose(t *testing.T) {
 			defer mu.Unlock()
 			frames = append(frames, name)
 		}
-		subscribeUpdates(t, graphState, func() { frame("graphState") })
 		graphWatch.Start(func(context.Context, TaskGraph, []durable.Op) error { frame("graphWatch"); return nil })
-		subscribeUpdates(t, docState, func() { frame("docState") })
-		subscribeUpdates(t, viewState, func() { frame("viewState") })
 		docWatch.Start(func(context.Context, durable.JsonObject, []durable.Op) error { frame("docWatch"); return nil })
 		viewWatch.Start(func(context.Context, ConversationView, []durable.Op) error { frame("viewWatch"); return nil })
-		docValue := docState.Value()
-		viewValue := viewState.Value()
+		docValue := docWatch.Value()
+		viewValue := viewWatch.Value()
 
 		held := store.holdCommits()
 		committing := asyncErr(func() error {
@@ -463,15 +447,15 @@ func TestHarnessClose(t *testing.T) {
 			t.Fatalf("frames %v", frames)
 		}
 		mu.Unlock()
-		if !reflect.DeepEqual(docState.Value(), docValue) || !reflect.DeepEqual(viewState.Value(), viewValue) {
-			t.Fatal("a state advanced during close")
+		if !reflect.DeepEqual(docWatch.Value(), docValue) || !reflect.DeepEqual(viewWatch.Value(), viewValue) {
+			t.Fatal("a watch advanced during close")
 		}
-		expectEqualJSON(t, graphState.Value(), `{"tasks":{}}`)
+		expectEqualJSON(t, graphWatch.Value(), `{"tasks":{}}`)
 		<-graphWatch.Closed()
 		<-docWatch.Closed()
 		<-viewWatch.Closed()
 		for name, end := range map[string]durable.WatchEnd{"graph": graphWatch.End(), "doc": docWatch.End(), "view": viewWatch.End()} {
-			if end.Reason != durable.WatchSessionClosed {
+			if end.Reason != durable.WatchEnded {
 				t.Fatalf("%s watch ended %v", name, end.Reason)
 			}
 		}
@@ -535,20 +519,20 @@ func TestHarnessClose(t *testing.T) {
 		_, err = viewWatch.wait()
 		expectError(t, err, "cancelled")
 		// No observer kept the mount: the next observer builds a new one, and the one after that another.
-		first, err := root.ViewState(testContext)
+		first, err := root.Watch(testContext)
 		if err != nil {
 			t.Fatal(err)
 		}
 		firstValue := first.Value()
-		first.Dispose()
-		second, err := root.ViewState(testContext)
+		_, _ = first.Stop()
+		second, err := root.Watch(testContext)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if sameEntries(second.Value().Entries, firstValue.Entries) && second.Value().Docs == firstValue.Docs {
 			t.Fatal("a cancelled acquisition kept the mount")
 		}
-		second.Dispose()
+		_, _ = second.Stop()
 		mustClose(t, harness)
 	})
 
@@ -611,9 +595,7 @@ func TestHarnessClose(t *testing.T) {
 			{"reset", func() error { return root.Reset(testContext, nil) }},
 			{"abort", func() error { return root.Abort(testContext, nil) }},
 			{"conversationIdle", func() error { return root.WaitForIdle(testContext) }},
-			{"viewState", func() error { _, err := root.ViewState(testContext); return err }},
 			{"watch", func() error { _, err := root.Watch(testContext); return err }},
-			{"taskGraph", func() error { _, err := harness.TaskGraph(testContext); return err }},
 			{"watchTaskGraph", func() error { _, err := harness.WatchTaskGraph(testContext); return err }},
 			{"status", func() error { _, err := submission.Status(testContext); return err }},
 			{"wait", func() error { _, err := submission.Wait(testContext); return err }},
@@ -711,7 +693,7 @@ func TestHarnessClose(t *testing.T) {
 			})
 		}
 		// Queue each read in upstream's order: each one enters the line before the next is issued.
-		names := []string{"context", "snapshot", "settledWait", "absentWatch", "absentState", "waitForTask", "documentState", "watchDoc", "viewState", "watch", "taskGraph"}
+		names := []string{"context", "snapshot", "settledWait", "absentWatch", "waitForTask", "watchDoc", "watch", "watchTaskGraph"}
 		runs := map[string]func() (bool, error){
 			"context": func() (bool, error) { _, err := root.Context(testContext, nil); return true, err },
 			"snapshot": func() (bool, error) {
@@ -723,22 +705,13 @@ func TestHarnessClose(t *testing.T) {
 				watch, err := harness.WatchDocErased(testContext, absent)
 				return watch != nil, err
 			},
-			"absentState": func() (bool, error) {
-				state, err := harness.DocumentStateErased(testContext, absent)
-				return state != nil, err
-			},
 			"waitForTask": func() (bool, error) { _, err := harness.WaitForTask(testContext, taskId); return true, err },
-			"documentState": func() (bool, error) {
-				state, err := harness.DocumentStateErased(testContext, notes)
-				return state != nil, err
-			},
 			"watchDoc": func() (bool, error) {
 				watch, err := harness.WatchDocErased(testContext, notes)
 				return watch != nil, err
 			},
-			"viewState": func() (bool, error) { _, err := root.ViewState(testContext); return true, err },
-			"watch":     func() (bool, error) { _, err := root.Watch(testContext); return true, err },
-			"taskGraph": func() (bool, error) { _, err := harness.TaskGraph(testContext); return true, err },
+			"watch":          func() (bool, error) { _, err := root.Watch(testContext); return true, err },
+			"watchTaskGraph": func() (bool, error) { _, err := harness.WatchTaskGraph(testContext); return true, err },
 		}
 		queued := map[string]*future[string]{}
 		for _, name := range names {
@@ -762,17 +735,14 @@ func TestHarnessClose(t *testing.T) {
 			outcomes[name], _ = outcome.wait()
 		}
 		want := map[string]string{
-			"context":       "resolved",
-			"snapshot":      "resolved",
-			"settledWait":   "resolved",
-			"absentWatch":   "undefined",
-			"absentState":   "undefined",
-			"waitForTask":   "closed",
-			"documentState": "closed",
-			"watchDoc":      "closed",
-			"viewState":     "closed",
-			"watch":         "closed",
-			"taskGraph":     "closed",
+			"context":        "resolved",
+			"snapshot":       "resolved",
+			"settledWait":    "resolved",
+			"absentWatch":    "undefined",
+			"waitForTask":    "closed",
+			"watchDoc":       "closed",
+			"watch":          "closed",
+			"watchTaskGraph": "closed",
 		}
 		if !reflect.DeepEqual(outcomes, want) {
 			t.Fatalf("outcomes %v, want %v", outcomes, want)
@@ -849,9 +819,6 @@ func TestSchedulingOnAPausedHarness(t *testing.T) {
 		check(err)
 		_, err = harness.SnapshotErased(testContext, notes)
 		check(err)
-		docState, err := harness.DocumentStateErased(testContext, notes)
-		check(err)
-		docState.Dispose()
 		docWatch, err := harness.WatchDocErased(testContext, notes)
 		check(err)
 		_, err = docWatch.Stop()
@@ -866,16 +833,10 @@ func TestSchedulingOnAPausedHarness(t *testing.T) {
 		check(err)
 		_, err = root.Entries(testContext, durable.EntryQuery{}, 10, nil)
 		check(err)
-		viewState, err := root.ViewState(testContext)
-		check(err)
-		viewState.Dispose()
 		viewWatch, err := root.Watch(testContext)
 		check(err)
 		_, err = viewWatch.Stop()
 		check(err)
-		graphState, err := harness.TaskGraph(testContext)
-		check(err)
-		graphState.Dispose()
 		graphWatch, err := harness.WatchTaskGraph(testContext)
 		check(err)
 		_, err = graphWatch.Stop()
@@ -979,16 +940,6 @@ func TestRegistryChangesBeforeResume(t *testing.T) {
 
 func slicesContainsFunc(values []string, want string) bool {
 	return slices.Contains(values, want)
-}
-
-// subscribeUpdates calls onUpdate for every update delivery of state.
-func subscribeUpdates[T any](t *testing.T, state durable.AttachedReplicatedState[T], onUpdate func()) {
-	t.Helper()
-	state.Subscribe(func(_ T, _ context.Context, delivery chord.ReplicatedStateDelivery) {
-		if delivery.Kind == chord.DeliveryUpdate {
-			onUpdate()
-		}
-	})
 }
 
 var _ = session.CreateSession

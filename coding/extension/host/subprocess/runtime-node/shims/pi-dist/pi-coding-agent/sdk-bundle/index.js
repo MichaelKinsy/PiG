@@ -122,7 +122,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-3LCMRGFL.js";
+} from "./chunk-HYVDWVV7.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -163,13 +163,13 @@ import {
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-XIVHZPV4.js";
+} from "./chunk-ILH7WEUZ.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
   createUsageTotals,
   getUsageCostBreakdown
-} from "./chunk-UFSRWEFA.js";
+} from "./chunk-LKHC5YTL.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -20415,7 +20415,6 @@ async function runManagedNpmCi(stageDir) {
   const args = [
     "ci",
     "--ignore-scripts",
-    "--min-release-age=0",
     "--omit=dev",
     "--include=optional",
     "--no-fund",

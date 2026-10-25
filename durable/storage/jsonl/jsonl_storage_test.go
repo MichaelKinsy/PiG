@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
@@ -92,17 +93,22 @@ type reopeningStorage struct {
 	current   *jsonl.JsonlStorage
 	directory string
 	closed    bool
+	// mu is held for a whole commit, so the read the adoption case starts from inside adopt (on its own goroutine) waits
+	// out the reopen and then reads the recovered state.
+	mu sync.RWMutex
 }
 
 func openJsonl(directory string) (*jsonl.JsonlStorage, error) {
 	return jsonl.Open(testContext, directory, &node.NodeFileSystem{Cwd: directory}, jsonl.JsonlStorageOptions{})
 }
 
-func (storage *reopeningStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
+func (storage *reopeningStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+	storage.mu.Lock()
+	defer storage.mu.Unlock()
 	if storage.closed {
-		return storage.current.Commit(ctx, writes)
+		return storage.current.Commit(ctx, writes, adopt)
 	}
-	seq, err := storage.current.Commit(ctx, writes)
+	seq, err := storage.current.Commit(ctx, writes, adopt)
 	if closeErr := storage.current.Close(testContext); closeErr != nil && err == nil {
 		err = closeErr
 	}
@@ -125,6 +131,8 @@ func (storage *reopeningStorage) ScanConversations(ctx context.Context, query du
 }
 
 func (storage *reopeningStorage) Entry(ctx context.Context, id durable.EntryId) (*durable.EntryAt, error) {
+	storage.mu.RLock()
+	defer storage.mu.RUnlock()
 	return storage.current.Entry(ctx, id)
 }
 
@@ -231,7 +239,7 @@ func terminalTask(id durable.TaskId) storedTask {
 
 func commit(t *testing.T, storage durable.Storage, writes ...durable.StorageWrite) durable.Seq {
 	t.Helper()
-	return must(storage.Commit(testContext, writes))
+	return must(storage.Commit(testContext, writes, func(durable.Seq) {}))
 }
 
 func createRoot(t *testing.T, storage durable.Storage) {
@@ -524,7 +532,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		_, err := storage.Commit(testContext, []durable.StorageWrite{
 			durable.TaskWrite{Value: pendingTask(taskId, "first")},
 			durable.TaskWrite{Value: pendingTask(taskId, "second-"+strings.Repeat("x", 512))},
-		})
+		}, func(durable.Seq) {})
 		expectError(t, err, "poisoned")
 		partial := must(os.ReadFile(file(directory, "task", int64(taskId))))
 		if partial[len(partial)-1] == '\n' {
@@ -552,7 +560,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		// Go has no BigInt; a channel is the JSON-unencodable value standing in for upstream's 1n.
 		_, err := storage.Commit(testContext, []durable.StorageWrite{durable.EntryWrite{Value: durable.EntryRecord{
 			Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "bad", Data: make(chan int),
-		}}})
+		}}}, func(durable.Seq) {})
 		if err == nil {
 			t.Fatal("commit of unencodable data succeeded")
 		}
@@ -582,7 +590,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			_, err := storage.Commit(testContext, []durable.StorageWrite{
 				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "first"), Content: base(chorddelta.JsonObjectOf("text", "α"))},
 				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "second"), Content: base(chorddelta.JsonObjectOf("text", "β"))},
-			})
+			}, func(durable.Seq) {})
 			expectError(t, err, "poisoned")
 			_, err = storage.Document(testContext, firstId, durable.CurrentPoint)
 			expectError(t, err, "poisoned")
@@ -618,7 +626,7 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			_, err := storage.Commit(testContext, []durable.StorageWrite{
 				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "flush.first"), Content: base(chorddelta.NewJsonObject(0))},
 				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "flush.second"), Content: base(chorddelta.NewJsonObject(0))},
-			})
+			}, func(durable.Seq) {})
 			expectError(t, err, "poisoned")
 			reopened := open(t, directory)
 			for _, id := range []durable.DocumentId{firstId, secondId} {

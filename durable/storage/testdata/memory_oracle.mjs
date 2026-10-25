@@ -192,7 +192,7 @@ async function runProgram(program, storage, readsOnly) {
 		const result = await settle(async () => {
 			switch (step.op) {
 				case "commit":
-					return await storage.commit(step.writes, ctx);
+					return await storage.commit(step.writes, () => {}, ctx);
 				case "mintId":
 					return await storage.mintId();
 				case "conversation":

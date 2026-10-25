@@ -43,7 +43,7 @@ func TestNodeIssuePackageForms(t *testing.T) {
 	for _, isolation := range []string{"", "isolated"} {
 		t.Run("isolation="+isolation, func(t *testing.T) {
 			got := loadNodeCommandDescription(t, NewHostWithConfigRoot(t.TempDir(), t.TempDir()), entry, isolation, "issue-package")
-			want := `{"phase":"loaded","loader":"function","cost":{"input":2,"output":4,"cacheRead":0.19999999999999998,"cacheWrite":0.3,"total":6.5}}`
+			want := `{"phase":"loaded","loader":"function","cost":{"input":2,"output":4,"cacheRead":0.19999999999999998,"cacheWrite":0.3,"total":6.5,"totalFromProvider":false}}`
 			if got != want {
 				t.Fatalf("package factory = %s, want Pi's %s", got, want)
 			}

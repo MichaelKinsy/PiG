@@ -99,8 +99,8 @@ func guardedCall[T any](guard *guardedStorage, read context.Context, run func() 
 }
 
 // Commit is never exempt, whatever it fails with.
-func (guard *guardedStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
-	return guardedCall(guard, nil, func() (durable.Seq, error) { return guard.storage.Commit(ctx, writes) })
+func (guard *guardedStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+	return guardedCall(guard, nil, func() (durable.Seq, error) { return guard.storage.Commit(ctx, writes, adopt) })
 }
 
 func (guard *guardedStorage) MintId() (int64, error) {

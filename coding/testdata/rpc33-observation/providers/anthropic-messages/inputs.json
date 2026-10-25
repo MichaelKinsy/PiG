@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0",
+  "piVersion": "1.4.0+74f46864",
   "anthropicSdkVersion": "0.129.0",
   "nodeVersion": "v24.19.0",
   "axes": {

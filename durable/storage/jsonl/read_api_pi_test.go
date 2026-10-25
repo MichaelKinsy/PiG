@@ -158,7 +158,7 @@ func TestJsonlStorageReadApiMirrorsPisStorageContract(t *testing.T) {
 	if _, err := storage.Conversation(testContext, child); err == nil {
 		t.Fatal("a closed storage must fail")
 	}
-	if _, err := storage.Commit(testContext, nil); err == nil {
+	if _, err := storage.Commit(testContext, nil, func(durable.Seq) {}); err == nil {
 		t.Fatal("a closed storage must refuse commits")
 	}
 }
