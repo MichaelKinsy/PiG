@@ -23362,6 +23362,29 @@
       ]
     },
     {
+      "id": "BF-ad49f9f",
+      "title": "`pig status` no longer reports a shared extension name as an unhealthy duplicate",
+      "symptom": "`pig status` no longer reports a shared extension name as an unhealthy duplicate.",
+      "rootCause": "`pig status` built each resource identity from the public name alone, so two Packages that both expose `src/index.ts` resolved to the same \"src\" name and the second one became a fatal duplicate. The loader does not work that way: it identifies an extension by its path, and DisambiguateIdentities renames the later copies (\"src:2\", \"src:3\") and loads them all, as Pi loads every extension path. A shared extension name is therefore a supported condition, and `pig status` exited 1 while the session it described was healthy.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` no longer reports a shared extension name as an unhealthy duplicate. Two Packages that both expose `src/index.ts` resolve to the same `\"src\"` public name, and the loader identifies an extension by its path: it renames the later copies (`\"src:2\"`) and loads them all, as Pi loads every extension path. The report keeps them enabled and moves the finding to a new `warnings` list, so `pig status` exits 0 and `pig status --json` stays `\"healthy\": true`. Skills, prompts and themes key their runtime set by name, so their duplicates remain errors.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ad49f9f02e",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": [
+        "coding/cli/status_command_test.go::TestStatusStillFailsOnDuplicateNonExtensionResourceIdentity",
+        "coding/cli/status_command_test.go::TestStatusWarnsOnDuplicatePackageExtensionIdentity"
+      ]
+    },
+    {
       "id": "BF-ad9ed64",
       "title": "Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an…",
       "symptom": "Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an extension's details object) no longer parses the session record it has just written.",
@@ -24298,6 +24321,35 @@
       ],
       "tests": [
         "coding/session_bash_split_ansi_upstream_test.go::TestUpstreamBashEscapeSequencesSplitAcrossOutputChunks"
+      ]
+    },
+    {
+      "id": "BF-b6d8ab0",
+      "title": "Fix changelog fragment and bug ledger naming the pre-squash commit of #307 (#317)",
+      "symptom": "Fix changelog fragment and bug ledger naming the pre-squash commit of #307 (#317)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b6d8ab0bfa",
+          "date": "2026-10-24",
+          "pr": "317"
+        }
+      ],
+      "tests": [
+        "ai/socket_read_monitor_linux_norace_test.go::TestSocketWriterHelper",
+        "ai/socket_read_monitor_linux_norace_test.go::TestStreamingTransportReadDoesNotWakeTheRuntimeMonitor",
+        "coding/extension/host/subprocess/conn_close_test.go::TestCloseAfterThePeerClosedSucceeds",
+        "coding/extension/host/subprocess/conn_close_test.go::TestCloseReturnsARealTransportCloseFailure",
+        "coding/extension/host/subprocess/conn_close_test.go::TestTransportAlreadyClosedClasses",
+        "tui/config_selector_oracle_test.go::TestConfigSelectorMatchesPi",
+        "tui/terminal_negotiation_stop_test.go::TestTerminalInputCarriesOnlyWhatIsSent",
+        "tui/terminal_split_reply_test.go::TestForwardTerminalConsumesAnOwedReplySplitAcrossSlowReads"
       ]
     },
     {
