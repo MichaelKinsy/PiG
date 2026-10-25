@@ -1,6 +1,7 @@
 package runtimecell
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -98,8 +99,10 @@ func lispMembers(extensions []LispExtension) ([]lispMember, error) {
 	members := make([]lispMember, len(extensions))
 	for i, ext := range extensions {
 		members[i] = lispMember{Name: ext.Name, Root: filepath.ToSlash(ext.Root)}
+		//perf:ok once per member of an image build, which starts sbcl
 		if _, err := os.Stat(filepath.Join(ext.Root, ext.Package+".asd")); err == nil {
 			members[i].System = ext.Package
+			//perf:ok once per member of an image build, which starts sbcl
 		} else if _, err := os.Stat(filepath.Join(ext.Root, ext.Package+".lisp")); err == nil {
 			members[i].File = ext.Package + ".lisp"
 		} else {
@@ -169,6 +172,7 @@ func BuildLispBaseImage(ctx context.Context, cacheRoot string) (string, error) {
 }
 
 func buildLispImage(ctx context.Context, cacheRoot, key string, normalized []LispExtension) (*LispPackedCell, error) {
+	//perf:ok once per image build, which starts sbcl
 	lockCandidates := append([]string{os.Getenv("PIG_SDK_LISP_ROOT")}, stagedSDKRoots("lisp")...)
 	return pigsdklock.WithBuildCandidates(ctx, lockCandidates, func() (*LispPackedCell, error) {
 		sdkRoot, err := findLispSDKRoot()
@@ -185,12 +189,13 @@ func buildLispImage(ctx context.Context, cacheRoot, key string, normalized []Lis
 				return nil, fmt.Errorf("hash Lisp cell: %s", after)
 			}
 			cellDir := filepath.Join(cacheRoot, "cells", "lisp", hash)
+			//portlint:allow clock measures the build's elapsed time for the log (a duration, not a date)
 			start := time.Now()
 			artifactName := packedRunnerName(runtime.GOOS, "lisp")
 			entry, err := publishArtifactWithFailureCache(ctx, cellDir, artifactName, hash, "lisp", func(scratch string) (string, error) {
 				out := filepath.Join(scratch, artifactName)
 				sbcl := sbclExecutable()
-				memberJSON, err := json.Marshal(members)
+				memberJSON, err := lispJSON(members)
 				if err != nil {
 					return "", err
 				}
@@ -202,7 +207,7 @@ func buildLispImage(ctx context.Context, cacheRoot, key string, normalized []Lis
 				if err != nil {
 					return "", err
 				}
-				extraJSON, err := json.Marshal(append([]string{}, extraRoots...))
+				extraJSON, err := lispJSON(append([]string{}, extraRoots...))
 				if err != nil {
 					return "", err
 				}
@@ -253,12 +258,15 @@ func CurrentLispPackedCellEntry(cacheRoot, key string, extensions []LispExtensio
 	if err != nil {
 		return "", false, err
 	}
+	//perf:ok once per cache-entry lookup, not per request
 	lockCandidates := append([]string{os.Getenv("PIG_SDK_LISP_ROOT")}, stagedSDKRoots("lisp")...)
+	//portlint:allow ctxbackground a lookup of a published entry takes no context and starts no work to cancel
 	return pigsdklock.WithBuildEntryCandidates(context.Background(), lockCandidates, func() (string, bool, error) {
 		sdkRoot, err := findLispSDKRoot()
 		if err != nil {
 			return "", false, err
 		}
+		//portlint:allow ctxbackground a lookup of a published entry takes no context and starts no work to cancel
 		return pigsdklock.WithBuildEntryForRoot(context.Background(), sdkRoot, func() (string, bool, error) {
 			hash := lispCellHash(cacheRoot, key, normalized, sdkRoot)
 			if after, ok := strings.CutPrefix(hash, "error:"); ok {
@@ -274,6 +282,7 @@ func CurrentLispPackedCellEntry(cacheRoot, key string, extensions []LispExtensio
 }
 
 func findLispSDKRoot() (string, error) {
+	//perf:ok once per SDK root lookup on a build
 	if root := strings.TrimSpace(os.Getenv("PIG_SDK_LISP_ROOT")); root != "" {
 		if abs, err := filepath.Abs(root); err == nil && statHasFile(abs, "pig-sdk.asd") {
 			return abs, nil
@@ -319,6 +328,7 @@ func LispBuildFailure(cacheRoot, logKey, dir string, buildErr error, output []by
 		cause = "sbcl image build failed: " + oneLine(buildErr.Error())
 		summary = cause
 	}
+	//portlint:allow pathseparators every line is trimmed of whitespace, including a trailing carriage return, before it is read
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
 		if message, ok := strings.CutPrefix(strings.TrimSpace(line), "pig-lisp-build: "); ok {
@@ -339,6 +349,7 @@ func LispBuildFailure(cacheRoot, logKey, dir string, buildErr error, output []by
 	if run.Elapsed > 0 {
 		summary += " after " + run.Elapsed.Round(time.Millisecond).String()
 	}
+	//portlint:allow clock stamps the build failure log, a diagnostic file, not state read back
 	log := fmt.Sprintf("time: %s\ndirectory: %s\nerror: %v\nelapsed: %s\ncontext: %v\n\n--- sbcl output ---\n%s", time.Now().UTC().Format(time.RFC3339), dir, buildErr, run.Elapsed, run.ContextErr, output)
 	return &BuildFailure{Summary: summary, Cause: cause, Log: writeBuildLog(cacheRoot, logKey, []byte(log))}, recordable
 }
@@ -388,4 +399,15 @@ func resolveLispDependencies(ctx context.Context, cacheRoot, sbcl, sdkRoot, scra
 		roots[i] = filepath.ToSlash(roots[i])
 	}
 	return roots, nil
+}
+
+// lispJSON encodes v for the SDK's own JSON reader, which reads \u003c as readily as <, so no escaping of HTML characters is needed.
+func lispJSON(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(v); err != nil {
+		return nil, err
+	}
+	return bytes.TrimRight(buf.Bytes(), "\n"), nil
 }

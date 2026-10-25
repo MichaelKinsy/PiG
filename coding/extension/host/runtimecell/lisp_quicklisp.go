@@ -30,7 +30,9 @@ const (
 	quicklispDist    = "2026-01-01"
 	quicklispDistURL = "https://beta.quicklisp.org/dist/quicklisp/" + quicklispDist + "/"
 
-	quicklispMaxArchive  = 256 << 20
+	// pig additive (D19): the largest release archive PiG downloads, a safety cap on a response, not a protocol limit
+	quicklispMaxArchive = 256 << 20
+	// pig additive (D19): the most an archive may unpack to, a safety cap against an archive bomb
 	quicklispMaxUnpacked = 1 << 30
 )
 
@@ -75,6 +77,7 @@ func fetchQuicklispHTTP(ctx context.Context, url string, limit int64) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
+	// pig additive (D19): the network timeout of one dist download
 	client := &http.Client{Timeout: 5 * time.Minute}
 	response, err := client.Do(request)
 	if err != nil {
@@ -147,6 +150,7 @@ func writeFileAtomic(file string, data []byte) error {
 func parseQuicklispIndex(releases, systems []byte) (*quicklispIndex, error) {
 	index := &quicklispIndex{releases: map[string]quicklispRelease{}, systems: map[string]quicklispSystem{}}
 	scan := bufio.NewScanner(strings.NewReader(string(releases)))
+	// pig additive (D19): the longest line of the dist index the scanner reads
 	scan.Buffer(make([]byte, 1<<20), 1<<20)
 	for scan.Scan() {
 		line := strings.TrimSpace(scan.Text())
@@ -167,6 +171,7 @@ func parseQuicklispIndex(releases, systems []byte) (*quicklispIndex, error) {
 		return nil, err
 	}
 	scan = bufio.NewScanner(strings.NewReader(string(systems)))
+	// pig additive (D19): the longest line of the dist index the scanner reads
 	scan.Buffer(make([]byte, 1<<20), 1<<20)
 	for scan.Scan() {
 		line := strings.TrimSpace(scan.Text())
@@ -272,6 +277,7 @@ func ResolveQuicklisp(ctx context.Context, cacheRoot string, names []string) ([]
 		}
 		dir := filepath.Join(root, "src", project+"-"+release.MD5)
 		unpacked := filepath.Join(dir, release.Prefix)
+		//perf:ok once per build that has Quicklisp dependencies, after a network fetch decision
 		if _, err := os.Stat(filepath.Join(dir, ".verified")); err == nil {
 			roots = append(roots, unpacked)
 			continue
@@ -311,7 +317,8 @@ func ResolveQuicklisp(ctx context.Context, cacheRoot string, names []string) ([]
 		roots = append(roots, unpacked)
 	}
 	if changed {
-		data, err := json.MarshalIndent(record, "", "  ")
+		//portlint:allow mapkeyorder a private record keyed by release, whose order nothing reads
+		data, err := lispJSON(record)
 		if err != nil {
 			return nil, err
 		}
@@ -385,6 +392,7 @@ func extractQuicklisp(data []byte, dest, prefix string) error {
 			return errors.Join(copyErr, closeErr)
 		}
 	}
+	//perf:ok once per unpacked release
 	if _, err := os.Stat(filepath.Join(dest, prefix)); err != nil {
 		return fmt.Errorf("archive has no %q directory", prefix)
 	}
@@ -394,10 +402,12 @@ func extractQuicklisp(data []byte, dest, prefix string) error {
 // quicklispOffline reports the offline switch with the semantics of packagemanager.IsOfflineModeEnabled (PI_OFFLINE wins over PIG_OFFLINE),
 // which this package cannot import: packagemanager depends on it through the extension host.
 func quicklispOffline() bool {
+	//perf:ok once per build that needs the network
 	if value := os.Getenv("PI_OFFLINE"); value != "" {
 		lower := strings.ToLower(value)
 		return value == "1" || lower == "true" || lower == "yes"
 	}
+	//perf:ok once per build that needs the network
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("PIG_OFFLINE"))) {
 	case "1", "true", "yes":
 		return true
