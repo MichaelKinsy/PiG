@@ -71,6 +71,9 @@ type sdkBundle struct {
 	lang  string // "go" | "python" | "lisp" | "rust"
 	files []string
 	fsys  fs.FS
+
+	// stagedHash, when set, is the staging hash of files, computed when the bundle was generated: a compressed bundle needs no decoding to be named.
+	stagedHash string
 }
 
 type bundleHashCache struct {
@@ -164,6 +167,9 @@ func (b sdkBundle) hash() (string, error) {
 var hashBuffers = sync.Pool{New: func() any { buffer := make([]byte, 8<<10); return &buffer }}
 
 func (b sdkBundle) computeHash() (string, error) {
+	if b.stagedHash != "" {
+		return b.stagedHash, nil
+	}
 	h := sha256.New()
 	_, _ = h.Write([]byte("staging-v2\x00"))
 	buffer := hashBuffers.Get().(*[]byte)
