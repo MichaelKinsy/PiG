@@ -116933,6 +116933,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lispJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "lispJSON",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(v any) ([]byte, error)"
+      },
+      "shapeHash": "sha256:a7c5b2c103bd5f250ac0746a7a3cd000f91ab94686e6929d61ffdde5e476ce95"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lispMember",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "lispMember",

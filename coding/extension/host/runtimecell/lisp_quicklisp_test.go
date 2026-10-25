@@ -171,9 +171,17 @@ func TestResolveQuicklispRefusesARecordedDigestChange(t *testing.T) {
 	}
 	// the cache entry is lost; the archive now unpacks to different bytes with the same listed size and md5 is impossible, so corrupt the record instead
 	record := filepath.Join(cache, "quicklisp", quicklispDist, "resolved.json")
-	data, _ := os.ReadFile(record)
-	data = bytes.ReplaceAll(data, []byte(`": "`), []byte(`": "0000`))
-	_ = os.WriteFile(record, data, 0o644)
+	recorded := readQuicklispRecord(record)
+	for key := range recorded {
+		recorded[key] = "0000" + recorded[key]
+	}
+	data, err := lispJSON(recorded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(record, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	_ = os.RemoveAll(filepath.Join(cache, "quicklisp", quicklispDist, "src"))
 	if _, err := ResolveQuicklisp(context.Background(), cache, []string{"beta"}); err == nil || !strings.Contains(err.Error(), "was recorded for it") {
 		t.Fatalf("error = %v, want a recorded-digest failure", err)
