@@ -29,10 +29,19 @@
 
 (setf *compile-verbose* nil *compile-print* nil)
 (asdf:clear-configuration)
-;; the dependency scan compiles into a directory of its own: the build that follows compiles the SDK afresh, never loading a scan's fasls
-(asdf:initialize-output-translations
- `(:output-translations :ignore-inherited-configuration
-                        (t (,(concatenate 'string *scratch* (if (equal (env "PIG_LISP_MODE") "scan") "scan-fasl/" "fasl/")) :**/ :*.*.*))))
+;; Compiled files go to short paths of the scratch directory: under a directory per source root (r0, r1, ...) holding the
+;; root-relative layout, never under a copy of the source's absolute path. Windows refuses (and SBCL there crashes on) a
+;; compile output path past MAX_PATH, which the absolute path of a deep temporary or cache directory reaches. The scan compiles
+;; into a directory of its own: the build that follows compiles the SDK afresh, never loading a scan's fasls.
+(defvar *fasl-dir* (concatenate 'string *scratch* (if (equal (env "PIG_LISP_MODE") "scan") "scan-fasl/" "fasl/")))
+
+(defun configure-output-translations (roots)
+  (asdf:initialize-output-translations
+   `(:output-translations :ignore-inherited-configuration
+     ,@(loop for root in roots for i from 0
+             collect `(,root (,(format nil "~Ar~D/" *fasl-dir* i) :**/ :*.*.*)))
+     (t (,*fasl-dir* :**/ :*.*.*)))))
+(configure-output-translations (list *sdk-root*))
 ;; load the SDK from source so the image holds exactly the staged SDK
 (asdf:initialize-source-registry
  `(:source-registry :ignore-inherited-configuration (:directory ,*sdk-root*)))
@@ -111,6 +120,7 @@
 (let* ((members (coerce (pig:from-json *members-json*) 'list))
        (roots (mapcar (lambda (m) (slash (pig:jget m "root"))) members))
        (extra (mapcar #'slash (coerce (pig:from-json (or (env "PIG_LISP_EXTRA_ROOTS") "[]")) 'list))))
+  (configure-output-translations (list* *sdk-root* (append roots extra)))
   (asdf:initialize-source-registry
    `(:source-registry :ignore-inherited-configuration (:directory ,*sdk-root*)
                       ,@(mapcar (lambda (root) `(:tree ,root)) roots)

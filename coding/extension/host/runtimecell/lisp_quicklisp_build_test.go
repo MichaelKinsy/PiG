@@ -67,3 +67,42 @@ func TestBuildLispCellResolvesQuicklispDependencies(t *testing.T) {
 		t.Fatalf("offline build error = %v, want a PIG_OFFLINE failure", err)
 	}
 }
+
+// A member whose directory is deep builds: ASDF's compile output used to mirror the source's absolute path under the scratch
+// directory, which past MAX_PATH made SBCL on Windows exit with an access violation (0xc0000005) while loading the system.
+func TestBuildLispCellWithDeepSourceDirectory(t *testing.T) {
+	sbcl := toolchain.SBCLExecutable(runtime.GOOS, exec.LookPath)
+	if _, err := exec.LookPath(sbcl); err != nil {
+		t.Skipf("%s not found: %v", sbcl, err)
+	}
+	sdkRoot, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "extensions", "sdk-lisp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PIG_SDK_LISP_ROOT", sdkRoot)
+	root := filepath.Join(t.TempDir(), strings.Repeat("a", 60), strings.Repeat("b", 60))
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{
+		"deep.asd":  `(asdf:defsystem "deep" :components ((:file "deep")))`,
+		"deep.lisp": `(defpackage "DEEP" (:use "CL")) (in-package "DEEP") (defun new-extension () (pig:make-extension "deep"))`,
+	} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cache := filepath.Join(t.TempDir(), strings.Repeat("c", 40))
+	cell, err := BuildLispPackedCell(context.Background(), cache, "cell:deep", []LispExtension{{Name: "deep", Root: root, Package: "deep", Factory: "new-extension", Hash: "h1"}})
+	if err != nil {
+		if _, after, ok := strings.Cut(err.Error(), "details: "); ok {
+			if log, readErr := os.ReadFile(strings.TrimSuffix(after, ")")); readErr == nil {
+				t.Logf("build log:\n%s", log)
+			}
+		}
+		t.Fatal(err)
+	}
+	if cell.BinaryPath == "" {
+		t.Fatalf("cell = %+v", cell)
+	}
+}
