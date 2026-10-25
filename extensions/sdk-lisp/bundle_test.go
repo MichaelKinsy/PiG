@@ -34,7 +34,7 @@ func TestPackMatchesSource(t *testing.T) {
 		if err != nil || !bytes.Equal(got, want) {
 			t.Fatalf("%s differs from the pack (%v): run go generate ./extensions/sdk-lisp", name, err)
 		}
-		fmt.Fprintf(digest, "%s\x00%d\x00", name, len(want))
+		_, _ = fmt.Fprintf(digest, "%s\x00%d\x00", name, len(want))
 		digest.Write(want)
 	}
 	if want := hex.EncodeToString(digest.Sum(nil))[:16]; StagedHash() != want {
