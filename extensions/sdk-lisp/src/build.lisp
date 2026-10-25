@@ -29,8 +29,10 @@
 
 (setf *compile-verbose* nil *compile-print* nil)
 (asdf:clear-configuration)
+;; the dependency scan compiles into a directory of its own: the build that follows compiles the SDK afresh, never loading a scan's fasls
 (asdf:initialize-output-translations
- `(:output-translations :ignore-inherited-configuration (t (,(concatenate 'string *scratch* "fasl/") :**/ :*.*.*))))
+ `(:output-translations :ignore-inherited-configuration
+                        (t (,(concatenate 'string *scratch* (if (equal (env "PIG_LISP_MODE") "scan") "scan-fasl/" "fasl/")) :**/ :*.*.*))))
 ;; load the SDK from source so the image holds exactly the staged SDK
 (asdf:initialize-source-registry
  `(:source-registry :ignore-inherited-configuration (:directory ,*sdk-root*)))
