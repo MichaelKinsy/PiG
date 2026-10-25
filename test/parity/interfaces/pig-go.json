@@ -87893,6 +87893,39 @@
       "shapeHash": "sha256:8b3088cd9a7879652474b92f57fb13ce65fd40fc66b0d6df6eea50227b86574a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#lispFactoryTemplate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "lispFactoryTemplate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) string"
+      },
+      "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#lispStandaloneTemplate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "lispStandaloneTemplate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) string"
+      },
+      "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#lispSystemTemplate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "lispSystemTemplate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) string"
+      },
+      "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listAuthTargets",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "listAuthTargets",
@@ -94095,6 +94128,17 @@
         "type": "func(s string) string"
       },
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sbclName",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sbclName",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#scaffoldFile",
@@ -114590,6 +114634,28 @@
       "shapeHash": "sha256:a48c5d729f49afc3dcf5772c8a3ee92c683780d11cd789749ccff8da4021c40b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#BuildLispBaseImage",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "BuildLispBaseImage",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, cacheRoot string) (string, error)"
+      },
+      "shapeHash": "sha256:a0e49bafe7216bc7cb4e74b6881d990a3c70ca81a2f267e9f862f423d18ff145"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#BuildLispPackedCell",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "BuildLispPackedCell",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, cacheRoot string, key string, extensions []LispExtension) (*LispPackedCell, error)"
+      },
+      "shapeHash": "sha256:1cc2377cbd43d838832bda643da7ab6f4bafc6ea12da8bee7d2927086e28e70e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#BuildPythonPackedCell",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "BuildPythonPackedCell",
@@ -114766,6 +114832,17 @@
       "shapeHash": "sha256:310b906e48aedefac1332e3cd0252fb5cc757d84d549f67d21fa5fad03be875b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#CurrentLispPackedCellEntry",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "CurrentLispPackedCellEntry",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(cacheRoot string, key string, extensions []LispExtension) (string, bool, error)"
+      },
+      "shapeHash": "sha256:0bed2ce754594efb81dd5c62a3eb84f19893a8923ecd5cf1a0a42e140ba5ae98"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#CurrentPythonPackedCellEntry",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "CurrentPythonPackedCellEntry",
@@ -114931,6 +115008,39 @@
       "shapeHash": "sha256:317ba84aeff611be7e267f0a9979904b97a418e4d1adbb125db3102070469240"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#LispBuildFailure",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "LispBuildFailure",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(cacheRoot string, logKey string, dir string, buildErr error, output []byte, run BuildRun) (failure *BuildFailure, recordable bool)"
+      },
+      "shapeHash": "sha256:c2d1a506fa08802a366e7c656ca70365cee714cd34972209cce55112d856aabe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#LispExtension",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "LispExtension",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "LispExtension"
+      },
+      "shapeHash": "sha256:9505c57ef2d34c4c38195b22d42efad9bae46db1f2d78f62b12382e72c63baf0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#LispPackedCell",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "LispPackedCell",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "LispPackedCell"
+      },
+      "shapeHash": "sha256:d9366b01a42b09786ed873142fd91aa5cbf9d5ec403391e69d0172ca93c71c11"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#MarkArtifactUsed",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "MarkArtifactUsed",
@@ -115050,6 +115160,17 @@
         "type": "func(req PrebuiltRequest) (string, bool)"
       },
       "shapeHash": "sha256:03d9e42d52d4b1a4bde77c297494f230afafdd8754a38685b78821cceac00993"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#ResolveQuicklisp",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "ResolveQuicklisp",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, cacheRoot string, names []string) ([]string, error)"
+      },
+      "shapeHash": "sha256:1ad1f6f3b137ed05c9a8e60d15431eee7caeb7a595fc6b178a9c6f8d1b1cf9fc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#RetiredStagedSDK",
@@ -115468,6 +115589,17 @@
         "type": "func(ctx context.Context, cacheRoot string, key string, extensions []GoExtension, preferredSDKRoot string) (*GoPackedCell, error)"
       },
       "shapeHash": "sha256:a48c5d729f49afc3dcf5772c8a3ee92c683780d11cd789749ccff8da4021c40b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#buildLispImage",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "buildLispImage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, cacheRoot string, key string, normalized []LispExtension) (*LispPackedCell, error)"
+      },
+      "shapeHash": "sha256:5bd60c23138bdd344e50ca51cf241d6c3e80fe46f7b580377fe2bae0a4e4d71c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#buildLogDirectory",
@@ -116174,6 +116306,39 @@
       "shapeHash": "sha256:a4aa46921090a1582e6446b9b62d476c010350b40003905c14f48238684cedb9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#extractQuicklisp",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "extractQuicklisp",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte, dest string, prefix string) error"
+      },
+      "shapeHash": "sha256:76defcd4d2143e7d8bbd6650ada461d8d0a1020639f853f9c69ada4b57dafce8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#fetchQuicklispHTTP",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "fetchQuicklispHTTP",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, url string, limit int64) ([]byte, error)"
+      },
+      "shapeHash": "sha256:a35a098ecf94d25c3580e27b6507c3cc50ac3655aee2bb195b0aad8b974ccd76"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#findLispSDKRoot",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "findLispSDKRoot",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (string, error)"
+      },
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#findPythonSDKRoot",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "findPythonSDKRoot",
@@ -116735,6 +116900,61 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lispCellHash",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "lispCellHash",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cacheRoot string, key string, extensions []LispExtension, sdkRoot string) string"
+      },
+      "shapeHash": "sha256:d01a35cc5457ade2080385ec5442e5dd8a8fa17d7d032b260fcefce81f0eadce"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lispExtensionVerifiers",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "lispExtensionVerifiers",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(extensions []LispExtension) []func() error"
+      },
+      "shapeHash": "sha256:a8ae0aaad30710a8dc5e4c8cb9dd35edef1d760d993eb7c0125213dcc1304e36"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lispImageFormat",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "lispImageFormat",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lispMember",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "lispMember",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "lispMember"
+      },
+      "shapeHash": "sha256:e97e10d89603a48be86c2d7f0b44e69668b37efc63ed076d6924c64064c08aa8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lispMembers",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "lispMembers",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(extensions []LispExtension) ([]lispMember, error)"
+      },
+      "shapeHash": "sha256:97329971a639bd1350b77ca10f5d59add4fb77920990e588ee12b0f4b0ac1b68"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lockHeld",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "lockHeld",
@@ -116878,6 +117098,17 @@
       "shapeHash": "sha256:45470c982b1d711cdf718fcd2bedcd3a98703b1c32372ff792d6478df2546053"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#normalizeLispExtensions",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "normalizeLispExtensions",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(extensions []LispExtension) ([]LispExtension, error)"
+      },
+      "shapeHash": "sha256:132478d349b8200882e8dac033a42838a74e0279d2520ef60b9055bb4e6caef6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#normalizePythonExtensions",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "normalizePythonExtensions",
@@ -116931,6 +117162,17 @@
         "type": "func(goos string, language string) string"
       },
       "shapeHash": "sha256:3e38da3ee5c7d17c2855767aa3126e5f01e06651ec595bad9538df918817d4d3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#parseQuicklispIndex",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "parseQuicklispIndex",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(releases []byte, systems []byte) (*quicklispIndex, error)"
+      },
+      "shapeHash": "sha256:b2d9ae22f4dc9194081254b88e74d418192a8bdd971a5ee62316db53f6b589dc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#pathRevisions",
@@ -117109,6 +117351,204 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispArchiveURL",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispArchiveURL",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw string) string"
+      },
+      "shapeHash": "sha256:a2856e4c0ef415022755c5ce6d6a82e0e70d875af79084ea7c68a180a7c86c9c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispBuiltin",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispBuiltin",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) bool"
+      },
+      "shapeHash": "sha256:99b2f0daea2fa02fc914a648e106daded5256ebd450a525affbca76e1bb1f7d3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispDist",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispDist",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispDistFile",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispDistFile",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, root string, name string, want string) ([]byte, error)"
+      },
+      "shapeHash": "sha256:417f80c88d1cb43f8bf0c63bc1326050cc3227212c3c7bbcfc94f16f28e713d2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispDistURL",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispDistURL",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispFetch",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispFetch",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "quicklispFetcher"
+      },
+      "shapeHash": "sha256:a8d19bc13788605ec76ce3154e87216b5f672d9cba2d7961ba25120928c743b2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispFetcher",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispFetcher",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "quicklispFetcher"
+      },
+      "shapeHash": "sha256:a8d19bc13788605ec76ce3154e87216b5f672d9cba2d7961ba25120928c743b2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispHex",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispHex",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(h hash.Hash, data []byte) string"
+      },
+      "shapeHash": "sha256:e052d4c64495dfa0f00aaec91f0bc4a104a77175d46c0b645e495714e2e2657c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispIndex",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispIndex",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "quicklispIndex"
+      },
+      "shapeHash": "sha256:19026cfd09ebdf21dfc93ae0f68941c7d940ce335bd468962eef3933da4952c6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispIndex.closure",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispIndex.closure",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(names []string) ([]string, error)"
+      },
+      "shapeHash": "sha256:34232646fe2417b3d5b79e89d9f57ecb13e57a453657a882c49c2aeeab5d1cfa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispMaxArchive",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispMaxArchive",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispMaxUnpacked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispMaxUnpacked",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispOffline",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispOffline",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispRecord",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispRecord",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "quicklispRecord"
+      },
+      "shapeHash": "sha256:e405bcfd9497730998744b4ebbffee8a0d00ce7a88278fd35bd90213676043f3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispRelease",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispRelease",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "quicklispRelease"
+      },
+      "shapeHash": "sha256:eacc8fa1ec7e2e4dec2a62d1d8faaa073092b3634c346167445b6ec1923489e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispReleasesSHA256",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispReleasesSHA256",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "string"
+      },
+      "shapeHash": "sha256:00404e686415370f1711c4d7acfa2905444d3cf23cef2e10c47d445ebe690f96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispSystem",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispSystem",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "quicklispSystem"
+      },
+      "shapeHash": "sha256:a05d45ac144719b2a26ee107255fc563cfd9b0b93703310d3ee501afc119d04a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#quicklispSystemsSHA256",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "quicklispSystemsSHA256",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "string"
+      },
+      "shapeHash": "sha256:00404e686415370f1711c4d7acfa2905444d3cf23cef2e10c47d445ebe690f96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#readCellFailureMetadata",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "readCellFailureMetadata",
@@ -117129,6 +117569,17 @@
         "type": "func(path string) entryUse"
       },
       "shapeHash": "sha256:b20b00fbcc76c11f85e62c64ec6bd994cf34066515cb59a723a2a5b4d32b4338"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#readQuicklispRecord",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "readQuicklispRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(file string) quicklispRecord"
+      },
+      "shapeHash": "sha256:f25e337e05126798f6640de6c34696751b81fc9eba322f53b3072c9da80e0681"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#readReadyMetadata",
@@ -117659,6 +118110,17 @@
       "shapeHash": "sha256:07613990b5a4f11eec933d8f6cdcc71fcf871a0f87dd04e7c8c9b4fe6806a690"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#resolveLispDependencies",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "resolveLispDependencies",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, cacheRoot string, sbcl string, sdkRoot string, scratch string, memberJSON []byte, members []lispMember) ([]string, error)"
+      },
+      "shapeHash": "sha256:2155e9be84b579e5c81a24e077c439bbf23806bf72065febdaaf1c80b08179aa"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#resolvePrebuilt",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "resolvePrebuilt",
@@ -117778,6 +118240,17 @@
         "type": "func(value string) string"
       },
       "shapeHash": "sha256:f626edcbe0f29a2966d57b2a9cd75b432b6461dc4d207531d4bc74bdcce089b7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#sbclExecutable",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "sbclExecutable",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#sdkDriftOnly",
@@ -118658,6 +119131,17 @@
         "type": "func(cacheRoot string, name string, content []byte) string"
       },
       "shapeHash": "sha256:71b6b2ea00b43003f44a4c6e2a6ab40e6edbe829cb75ba1df6e1a2490cd74ba0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#writeFileAtomic",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "writeFileAtomic",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(file string, data []byte) error"
+      },
+      "shapeHash": "sha256:c5713c8ceae79aa6ddc16cebfee68efd174abe34c06aa3a252b2101ed2beb329"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#writeGoBuildDir",
@@ -119694,6 +120178,17 @@
       "shapeHash": "sha256:f0bf7a71f8fce0c2313170b3f8ceab7018e085b54e437bd03921a1768ca50ba5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CellSpec.LispExtensions",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "CellSpec.LispExtensions",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell.LispExtension, error)"
+      },
+      "shapeHash": "sha256:57797fed861f447685e6a9370d0c41ef9b68eb0828be2d00c94e4cc461b6f5d8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CellSpec.NodeExtensions",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "CellSpec.NodeExtensions",
@@ -119752,6 +120247,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CellStrategyPackedGo",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "CellStrategyPackedGo",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "CellStrategy"
+      },
+      "shapeHash": "sha256:bca01e17451fdd8a0a7ed29344c0e2d51bcdaed76b3a85b7211b97db1fb357b5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CellStrategyPackedLisp",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "CellStrategyPackedLisp",
       "kind": "constant",
       "exported": true,
       "shape": {
@@ -121958,6 +122464,17 @@
         "type": "func(ctx context.Context, cfg ExtConfig, serve func(net.Conn) error) (*github.com/MichaelKinsy/PiG/coding/extension.Extension, error)"
       },
       "shapeHash": "sha256:28e8c3509378c64e5216289ca9504c66565fed6bba6149865436f7f1c4ad2979"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.LoadLispPackedCell",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.LoadLispPackedCell",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, cell *github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell.LispPackedCell) ([]github.com/MichaelKinsy/PiG/coding/extension.Extension, error)"
+      },
+      "shapeHash": "sha256:819c0c96cdd02942fac6925f86229017ae44993a31908b1637ff18bbe830e7bc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.LoadNodePackedCell",
@@ -124754,6 +125271,17 @@
       "shapeHash": "sha256:abb0642cbb25dd2ffbc7c9fc5c6b532e08c094ead44170e4424a33b16a9233f0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.stageIsolatedLispFactory",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.stageIsolatedLispFactory",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, cfg ExtConfig, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error)"
+      },
+      "shapeHash": "sha256:abb0642cbb25dd2ffbc7c9fc5c6b532e08c094ead44170e4424a33b16a9233f0"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.stageIsolatedPythonFactory",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.stageIsolatedPythonFactory",
@@ -124779,6 +125307,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.stagePackedGo",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.stagePackedGo",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error)"
+      },
+      "shapeHash": "sha256:e65f6d2269b73ed468fb2bb1b419422191dbe93530f62baed54676691644ecf7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.stagePackedLisp",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.stagePackedLisp",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -124873,6 +125412,17 @@
         "type": "func(ctx context.Context, cell *github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell.GoPackedCell) ([]stagedManagedExt, []github.com/MichaelKinsy/PiG/coding/extension.Extension, error)"
       },
       "shapeHash": "sha256:b3336a8187557ebc96ae2601cfa6ddc94c137c58e0b892f94b231f5254af07d1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.startLispPackedCell",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.startLispPackedCell",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, cell *github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell.LispPackedCell) ([]stagedManagedExt, []github.com/MichaelKinsy/PiG/coding/extension.Extension, error)"
+      },
+      "shapeHash": "sha256:8edaad62fecffafd825956ef330734103f381f2f8435c9509cb7030e07da0f2d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.startManaged",
@@ -136491,6 +137041,17 @@
       "shapeHash": "sha256:5d77e3e69cb90e8e3a567c0bc562a3e4e5a5186c9f02b6304b4091a4f642ec44"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hasLispSource",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "hasLispSource",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string) bool"
+      },
+      "shapeHash": "sha256:451b0d543749447787c9a569018000fef5d03bb4235deb5a55dbf6b58d4ae8a5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hasNodeSource",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "hasNodeSource",
@@ -136843,6 +137404,17 @@
       "shapeHash": "sha256:521be66c5ef7722ed26da2e521ffa73e35dd4de4c1ef00d9dd2aabfc818850bd"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#isLispFactoryConfig",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "isLispFactoryConfig",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cfg ExtConfig) bool"
+      },
+      "shapeHash": "sha256:521be66c5ef7722ed26da2e521ffa73e35dd4de4c1ef00d9dd2aabfc818850bd"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#isNodeSourcePath",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "isNodeSourcePath",
@@ -136857,6 +137429,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#isPackableGoFactory",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "isPackableGoFactory",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cfg ExtConfig) bool"
+      },
+      "shapeHash": "sha256:521be66c5ef7722ed26da2e521ffa73e35dd4de4c1ef00d9dd2aabfc818850bd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#isPackableLispFactory",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "isPackableLispFactory",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -137083,6 +137666,28 @@
         "type": "func(ctx context.Context, n int, link func(int) error) error"
       },
       "shapeHash": "sha256:3efe0ed24f0ff8b59783f8e740acabf7bf3b0726fb0688dbd3e15d9d84da4eb7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#lispExtensionFromConfig",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "lispExtensionFromConfig",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cfg ExtConfig) (github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell.LispExtension, error)"
+      },
+      "shapeHash": "sha256:6162a226e67642945313becd2b08d74e87a423739633835f8b67149f22632451"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#lispStartCell",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "lispStartCell",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cell *github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell.LispPackedCell) (*github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell.GoPackedCell, error)"
+      },
+      "shapeHash": "sha256:f37250a232563aa63f6ef7fb5f089844a691f7e30da711f09fc3361b9d3e4a62"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#livenessClock",
@@ -151143,6 +151748,28 @@
       "shapeHash": "sha256:53a8f647265a50ecc86c0f56eeadddf72bcaf8d22180ab65cc709373343a2f12"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#lispBundle",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/pigsdk",
+      "name": "lispBundle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (sdkBundle, bool)"
+      },
+      "shapeHash": "sha256:2f18bb21ec973e4811acab2ee708f4d36f220244ee2e673ffe007e3be9d4442b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#lispBundleFiles",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/pigsdk",
+      "name": "lispBundleFiles",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() []string"
+      },
+      "shapeHash": "sha256:9f921b0d645d262778fe26bdf2928fddc34adea94eefae075778b323fc6302de"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#markerFile",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/pigsdk",
       "name": "markerFile",
@@ -151281,9 +151908,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[3]struct{lang string; base string}"
+        "type": "[4]struct{lang string; base string}"
       },
-      "shapeHash": "sha256:6da2a1b1e9920feff7cbcaf2e876408c1a75b78cbf0814d17317b6a8a44a1a1b"
+      "shapeHash": "sha256:be9d270b69d546f999425c09779b62cb8ead08eaf33d27818dcc4fd81429f447"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#sdkBundle",
@@ -151748,6 +152375,28 @@
       "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#lispFactory",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
+      "name": "lispFactory",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
+      },
+      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#lispSourceFiles",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
+      "name": "lispSourceFiles",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(root string, deep bool) ([]string, error)"
+      },
+      "shapeHash": "sha256:f7378e63d9af7397ad31743ebd34afded1e861449ae34de19d2cc6d065de4c6d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#nodeEntrypoints",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
       "name": "nodeEntrypoints",
@@ -151828,6 +152477,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#resolveGo",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
       "name": "resolveGo",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(root string) (Definition, error)"
+      },
+      "shapeHash": "sha256:5e2c387582b4d16c66c329fd39eea85fe8ad42fb52a6e36050b0efe30b3cfe53"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#resolveLisp",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
+      "name": "resolveLisp",
       "kind": "function",
       "exported": false,
       "shape": {
