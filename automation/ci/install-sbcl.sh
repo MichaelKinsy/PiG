@@ -15,10 +15,11 @@ row() { awk -F'\t' -v t="$1" -v o="$2" -v a="$3" '!/^#/ && $1==t && $3==o && $4=
 case "$(uname -s)" in Linux) os=linux ;; Darwin) os=darwin ;; *) echo "install-sbcl.sh: unsupported OS $(uname -s)" >&2; exit 1 ;; esac
 case "$(uname -m)" in x86_64|amd64) arch=amd64 ;; arm64|aarch64) arch=arm64 ;; *) echo "install-sbcl.sh: unsupported architecture $(uname -m)" >&2; exit 1 ;; esac
 
+sha256_stdin() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
 src_row=$(row sbcl-source any any); boot_row=$(row sbcl "$os" "$arch")
 [ -n "$src_row" ] && [ -n "$boot_row" ] || { echo "install-sbcl.sh: toolchains.lock has no sbcl row for $os/$arch" >&2; exit 1; }
 version=$(cut -f2 <<<"$src_row")
-pin=$(printf '%s\n%s\n' "$src_row" "$boot_row" | sha256sum 2>/dev/null | cut -c1-16 || printf '%s\n%s\n' "$src_row" "$boot_row" | shasum -a 256 | cut -c1-16)
+pin=$(printf '%s\n%s\n' "$src_row" "$boot_row" | sha256_stdin | cut -c1-16)
 prefix=${1:-${PIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}}/pig-sbcl/$version-$pin}
 
 if [ -x "$prefix/bin/sbcl" ] && [ -f "$prefix/.pin" ] && [ "$(cat "$prefix/.pin")" = "$pin" ]; then
