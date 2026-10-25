@@ -174,6 +174,7 @@ func collectStatus() statusOutput {
 			if !resource.Enabled {
 			} else if previous, exists := seenIdentities[identity]; exists {
 				if kind == packagecontent.Extensions {
+					//perf:ok one message per duplicate found, in a one-shot status command
 					status.Warnings = append(status.Warnings, fmt.Sprintf("duplicate extensions resource %q in %s scope: %s and %s", name, resource.Scope, previous, resource.Path))
 				} else {
 					status.Errors = append(status.Errors, fmt.Sprintf("duplicate %s resource %q in %s scope: %s and %s", kind, name, resource.Scope, previous, resource.Path))
