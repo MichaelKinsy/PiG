@@ -30,7 +30,7 @@ func TestRetiredStagedSDKRecognizesAnotherInstallation(t *testing.T) {
 		}
 	}
 	link := filepath.Join(t.TempDir(), "sdk-link")
-	testenv.Symlink(t, previous, link)
+	testenv.RequireDirectoryLink(t, previous, link)
 	for _, tc := range []struct {
 		dir       string
 		installed bool
