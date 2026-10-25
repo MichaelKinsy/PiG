@@ -66,7 +66,13 @@ func WriteStandaloneReceipt(exe, version, source string) error {
 		return fmt.Errorf("stage standalone receipt: %w", err)
 	}
 	tmpPath := tmp.Name()
-	defer func() { _ = os.Remove(tmpPath) }()
+	// Every return below, including a failed CA read, must release the handle
+	// before unlinking the name: Windows cannot remove an open file. The
+	// explicit Close further down reports its error; this one is a no-op then.
+	defer func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
+	}()
 	transportCA := ""
 	if data, err := readUpdateTransportCA(); err != nil {
 		return err
@@ -82,11 +88,9 @@ func WriteStandaloneReceipt(exe, version, source string) error {
 		content += "update-ca-sha256=" + transportCA + "\n"
 	}
 	if _, err := tmp.WriteString(content); err != nil {
-		_ = tmp.Close()
 		return fmt.Errorf("write standalone receipt: %w", err)
 	}
 	if err := tmp.Sync(); err != nil {
-		_ = tmp.Close()
 		return fmt.Errorf("sync standalone receipt: %w", err)
 	}
 	if err := tmp.Close(); err != nil {

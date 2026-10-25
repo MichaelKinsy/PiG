@@ -16955,6 +16955,26 @@
       "tests": []
     },
     {
+      "id": "BF-80b912a",
+      "title": "A failed install-receipt write during `pig update` or install, such as one rejected because the update CA…",
+      "symptom": "A failed install-receipt write during `pig update` or install, such as one rejected because the update CA file is not owner-only, no longer keeps its staged `.install-receipt-*` temp file open.",
+      "rootCause": "A failed install-receipt write during `pig update` or install, such as one rejected because the update CA file is not owner-only, no longer keeps its staged `.install-receipt-*` temp file open.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A failed install-receipt write during `pig update` or install, such as one rejected because the update CA file is not owner-only, no longer keeps its staged `.install-receipt-*` temp file open. The handle is closed before the temp file is removed, so no stray file is left on Windows.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "80b912a3e2",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-80bb522",
       "title": "Compacting a history longer than the model's context window no longer fails with the provider's \"prompt is…",
       "symptom": "Compacting a history longer than the model's context window no longer fails with the provider's \"prompt is too long\" error: the history is summarized in window-sized chunks, each chunk updating the summary of the one before, a split turn's over-window prefix joins those chunks, and a chunk the provider still refuses is halved (Pi 1.2.0 sends the whole history in one request and fails; D167).",

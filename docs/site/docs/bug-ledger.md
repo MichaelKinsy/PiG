@@ -579,6 +579,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8070fcc](#bf-8070fcc) | OpenAI Codex and Azure OpenAI requests parse their URL as fetch does again: an upper-case scheme, a space or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8085dc0](#bf-8085dc0) | A legacy `oauth.json` or `settings.json` that starts with a byte order mark migrates to `auth.json`, as in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-80970da](#bf-80970da) | The Go SDK page now says that leaving `AgentDir` empty in `CreateAgentSessionServicesOptions` makes a program… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-80b912a](#bf-80b912a) | A failed install-receipt write during `pig update` or install, such as one rejected because the update CA… | PiG's own defect | Windows | Unreleased |
 | [BF-80bb522](#bf-80bb522) | Compacting a history longer than the model's context window no longer fails with the provider's "prompt is… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-80bb522-2](#bf-80bb522-2) | Gemini 2.x models (Google Generative AI and Vertex) no longer reject a conversation in which a parallel tool… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-80bb522-3](#bf-80bb522-3) | Amazon Bedrock Converse requests merge adjacent messages that have the same role | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -8927,6 +8928,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `80970da292` (2026-10-11)
 - **Tests:** None recorded.
 - **Release note:** The Go SDK page now says that leaving `AgentDir` empty in `CreateAgentSessionServicesOptions` makes a program read `PIG_CODING_AGENT_DIR` the way the `pig` command does.
+
+### BF-80b912a
+
+**A failed install-receipt write during `pig update` or install, such as one rejected because the update CA…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A failed install-receipt write during `pig update` or install, such as one rejected because the update CA file is not owner-only, no longer keeps its staged `.install-receipt-*` temp file open.
+- **Root cause:** A failed install-receipt write during `pig update` or install, such as one rejected because the update CA file is not owner-only, no longer keeps its staged `.install-receipt-*` temp file open.
+- **User impact:** Credential or permission exposure
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `80b912a3e2` (2026-10-24)
+- **Tests:** None recorded.
+- **Release note:** A failed install-receipt write during `pig update` or install, such as one rejected because the update CA file is not owner-only, no longer keeps its staged `.install-receipt-*` temp file open. The handle is closed before the temp file is removed, so no stray file is left on Windows.
 
 ### BF-80bb522
 
