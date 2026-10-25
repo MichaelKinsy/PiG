@@ -728,7 +728,9 @@ func toolchainVersions(cells []subprocess.CellSpec) (map[string]string, error) {
 	}
 	versions := make(map[string]string, len(commands))
 	for name, command := range commands {
-		output, err := linkerexec.Command(command[0], command[1:]...).CombinedOutput()
+		cmd := linkerexec.Command(command[0], command[1:]...)
+		cmd.Env = toolchain.Environ(os.Environ())
+		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return nil, fmt.Errorf("resolve %s toolchain identity: %w: %s", name, err, strings.TrimSpace(string(output)))
 		}

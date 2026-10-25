@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -72,6 +73,10 @@ func TestEnvironPutsTheInstalledToolchainDirFirst(t *testing.T) {
 	if environ[1] != "PATH=/usr/bin:/bin" {
 		t.Fatal("Environ modified its argument")
 	}
+	// go.env sets GOTOOLCHAIN=auto, which would run another go release named by a go or toolchain directive.
+	if value, count := envValue(Environ(append(slices.Clone(environ), "GOTOOLCHAIN=go1.99.0+auto")), "GOTOOLCHAIN"); count != 1 || value != "local" {
+		t.Fatalf("GOTOOLCHAIN = %q (%d), want the installed go pinned with local", value, count)
+	}
 	if path, _ := envValue(Environ([]string{"HOME=/h"}), "PATH"); path != installed {
 		t.Fatalf("PATH without one inherited = %q, want %q", path, installed)
 	}
@@ -108,5 +113,35 @@ func TestResolveGoUsesTheInstalledToolchain(t *testing.T) {
 	defer SetInstalledToolchainDirForTest(empty)()
 	if tc, err := ResolveGo(); !errors.Is(err, exec.ErrNotFound) {
 		t.Fatalf("ResolveGo with an installation that supplies no go = %+v, %v; want not found", tc, err)
+	}
+}
+
+// An installation without Python names its own missing interpreter, so the launch reports it instead of running python3 from PATH.
+func TestPythonExecutableStaysInTheInstalledToolchainDir(t *testing.T) {
+	pathDir, installed := t.TempDir(), t.TempDir()
+	writeTool(t, pathDir, "python3")
+	t.Setenv("PATH", pathDir)
+	defer SetInstalledToolchainDirForTest(installed)()
+	if got := PythonExecutable("linux", LookPath); got != filepath.Join(installed, "python3") {
+		t.Fatalf("PythonExecutable = %q, want the installation's missing %s", got, filepath.Join(installed, "python3"))
+	}
+	want := writeTool(t, installed, "python3")
+	if got := PythonExecutable("linux", LookPath); got != want {
+		t.Fatalf("PythonExecutable = %q, want %q", got, want)
+	}
+}
+
+// GoToolchain.Environ returns a new environment and leaves its argument as it was, with or without an installed toolchain directory.
+func TestGoToolchainEnvironLeavesItsArgument(t *testing.T) {
+	for _, installed := range []string{"", t.TempDir()} {
+		restore := SetInstalledToolchainDirForTest(installed)
+		environ := []string{"A=1", "GOROOT=/old", "B=2"}
+		if got, _ := envValue(GoToolchain{Root: "/new"}.Environ(environ), "GOROOT"); got != "/new" {
+			t.Fatalf("installed=%q: GOROOT = %q, want /new", installed, got)
+		}
+		if !slices.Equal(environ, []string{"A=1", "GOROOT=/old", "B=2"}) {
+			t.Fatalf("installed=%q: Environ modified its argument to %v", installed, environ)
+		}
+		restore()
 	}
 }

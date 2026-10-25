@@ -8,11 +8,16 @@ TypeScript factory (packed Node cell):
 
 - registration (each extension's session_start status) and host calls (append an entry, read the entries back, notify);
 - reload (ctx.reload() from an extension command) restarts every extension, which then answers again;
-- a second start reuses every cached build and builds nothing;
+- a second start reuses every cached build and builds nothing: every build keeps the ready record its cold start published;
+- a Node standalone (an executable script whose shebang searches PATH) runs on the installation's node;
+- an isolated Go module whose toolchain directive names another release builds with the installation's go, not that release;
 - no SDK or runtime copy is written under the config root, and the installed SDK root is unchanged.
 
 With --broken it checks an installation whose Rust SDK is missing and whose Python SDK marker names another SDK: both faults are
 reported, the affected extensions fail to load with the installation named, and nothing is staged in their place.
+
+With --without-python it checks an installation built without Python: its Python extensions fail to load instead of running a python3
+or uv from PATH.
 """
 
 import argparse
@@ -28,7 +33,7 @@ import time
 from pathlib import Path
 
 LOADED = ["go-packed", "go-isolated", "rust-packed", "rust-isolated", "python-packed", "python-isolated", "typescript-packed"]
-CONFLICTING = ["go", "gofmt", "cargo", "rustc", "rustup", "python3", "python", "node", "npm", "uv", "cc", "gcc", "c++", "ld"]
+CONFLICTING = ["go", "go1.99.0", "gofmt", "cargo", "rustc", "rustup", "python3", "python", "node", "npm", "uv", "cc", "gcc", "c++", "ld"]
 COLD_BUDGET = 900
 WARM_BUDGET = 120
 
@@ -127,9 +132,15 @@ def tree_digest(root):
     return digest.hexdigest()
 
 
-def build_entries(cache):
-    """Every published build under the cache, by directory."""
-    return sorted(str(path.parent.relative_to(cache)) for path in Path(cache).rglob("ready.json") if path.is_file())
+def build_stamps(cache):
+    """Every published build under the cache, by directory, with the identity of its ready record. A rebuild under the same digest keeps
+    the directory name but publishes a new record, so equal stamps mean nothing was built again."""
+    stamps = {}
+    for path in sorted(Path(cache).rglob("ready.json")):
+        if path.is_file():
+            stat = path.stat()
+            stamps[str(path.parent.relative_to(cache))] = (stat.st_ino, stat.st_mtime_ns, path.read_bytes())
+    return stamps
 
 
 def check_placement(cache, entries):
@@ -148,7 +159,7 @@ def check_placement(cache, entries):
         if member not in text or outsider in text:
             fail(f"the packed {lang} cell does not host exactly its factory ({member})")
     if len(entries) != 6:
-        fail(f"want 4 packed cells and 2 isolated builds, found {entries}")
+        fail(f"want 4 packed cells and 2 isolated builds, found {sorted(entries)}")
 
 
 def environment(work, conflicts):
@@ -224,6 +235,39 @@ def check_conflicts(log):
         fail("a tool from PATH ran instead of the installation's toolchain:\n" + log.read_text())
 
 
+def node_standalone(pig, work, env, script, conflict_log):
+    """A Node standalone runs on the installation's node: the script records the interpreter that runs it and exits before it registers,
+    so pig reports its load failure."""
+    probe = work / "node-standalone.probe"
+    run = subprocess.run(
+        [pig, "--mode", "rpc", "--model", "test-faux/faux-1", "--no-session", "-e", str(script)],
+        cwd=work, env={**env, "PIG_NIX_NODE_PROBE": str(probe)}, input=b"", capture_output=True, timeout=WARM_BUDGET,
+    )
+    check_conflicts(conflict_log)
+    if not probe.exists():
+        print((run.stdout + run.stderr).decode(errors="replace")[-4000:], file=sys.stderr)
+        fail("the Node standalone did not run")
+    print(f"the Node standalone ran on {probe.read_text()}, not on a node from PATH")
+
+
+def without_python(args):
+    work = Path(args.work)
+    fixtures = work / "extensions"
+    shutil.copytree(args.fixtures, fixtures)
+    conflict_log = work / "conflicting-tools.log"
+    write_conflicts(work / "conflicting-tools", conflict_log)
+    env = environment(work, work / "conflicting-tools")
+    for name in ("python-packed", "python-isolated"):
+        run = subprocess.run(
+            [args.pig, "--mode", "rpc", "--model", "test-faux/faux-1", "--no-session", "-e", str(fixtures / name)],
+            cwd=work, env=env, input=b"", capture_output=True, timeout=COLD_BUDGET,
+        )
+        check_conflicts(conflict_log)
+        if run.returncode == 0:
+            fail(f"{name} loaded on an installation without Python")
+        print(f"{name}: refused without running a Python from PATH")
+
+
 def accept(args):
     work = Path(args.work)
     fixtures = work / "extensions"
@@ -239,7 +283,7 @@ def accept(args):
     run_session(args.pig, work, env, extensions, "cold", COLD_BUDGET, reload=True)
     check_conflicts(conflict_log)
     cache = Path(env["PIG_HOME"]) / "cache"
-    cold = build_entries(cache)
+    cold = build_stamps(cache)
     if not cold:
         fail(f"no build was published under {cache}")
     check_placement(cache, cold)
@@ -248,10 +292,13 @@ def accept(args):
     started = time.monotonic()
     run_session(args.pig, work, env, extensions, "warm", WARM_BUDGET, reload=False)
     check_conflicts(conflict_log)
-    warm = build_entries(cache)
+    warm = build_stamps(cache)
     if warm != cold:
-        fail(f"a warm start built again:\n cold {cold}\n warm {warm}")
+        rebuilt = sorted(entry for entry in cold.keys() | warm.keys() if cold.get(entry) != warm.get(entry))
+        fail(f"a warm start built again: {rebuilt}")
     print(f"warm start reused all {len(warm)} builds in {time.monotonic() - started:.1f}s")
+
+    node_standalone(args.pig, work, env, fixtures / "node-standalone" / "standalone.mjs", conflict_log)
 
     check_no_copies(work)
     if tree_digest(args.installed) != installed_before:
@@ -306,9 +353,11 @@ def main():
     parser.add_argument("--installed", required=True, help="the package's installed SDK root")
     parser.add_argument("--fixtures", required=True)
     parser.add_argument("--work", required=True)
-    parser.add_argument("--broken", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--broken", action="store_true")
+    mode.add_argument("--without-python", action="store_true")
     args = parser.parse_args()
-    (broken if args.broken else accept)(args)
+    (broken if args.broken else without_python if args.without_python else accept)(args)
 
 
 if __name__ == "__main__":

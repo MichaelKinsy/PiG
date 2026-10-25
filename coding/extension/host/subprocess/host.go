@@ -5148,10 +5148,11 @@ func buildExtCommandSelected(
 	}
 	// Windows cannot execute a script, so a Node script standalone runs through
 	// node there; elsewhere its shebang selects the interpreter.
-	if runtimeLanguage == "node" && goos == "windows" {
+	// pig additive (D195): an installation that supplies node runs every Node script standalone on it, since a shebang searches PATH.
+	if runtimeLanguage == "node" && (goos == "windows" || toolchain.InstalledToolchainDir() != "") {
 		node, err := lookPath("node")
 		if err != nil {
-			node = "node"
+			node = toolchain.Command("node")
 		}
 		return linkerexec.CommandContext(ctx, node, binPath)
 	}

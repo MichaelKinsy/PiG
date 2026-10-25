@@ -144477,6 +144477,17 @@
       "shapeHash": "sha256:07917e018279930198431d4d89b3b10aec4fac03bb64796499d4ee5c1d661f7e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#typeScriptRuntimeStart",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "typeScriptRuntimeStart",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, sel github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Selection, runtimeDir string, script string, loaderLabel string, args []string) *os/exec.Cmd"
+      },
+      "shapeHash": "sha256:0ff398a99e5193a8ebec390a6a03504cef7cd9bcc7e677cb68aefc8e033b9105"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#typeScriptRuntimeVerifier",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "typeScriptRuntimeVerifier",

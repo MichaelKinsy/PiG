@@ -97,6 +97,18 @@ func TestNodeExtensionsRunOnTheInstalledRuntime(t *testing.T) {
 	if err := materializeNodeRuntime(t.Context(), t.TempDir(), t.TempDir()); err == nil {
 		t.Fatal("a launcher built against a mismatched installed runtime")
 	}
+	// The launchers built above are cached, so a new start builds nothing and must verify the runtime it runs in place.
+	cached := NewHostWithConfigRoot(root, configRoot)
+	t.Cleanup(func() { cached.Shutdown("test done") })
+	loaded, errs = cached.LoadAll(t.Context(), configs)
+	if len(loaded) != 0 || len(errs) != len(configs) {
+		t.Fatalf("cached launchers over a mismatched installed runtime loaded %d extensions, errors %v", len(loaded), errs)
+	}
+	for _, err := range errs {
+		if !strings.Contains(err.Error(), "reinstall pig") {
+			t.Fatalf("cached launch over a mismatched installed runtime reports %v, want the installation's fault", err)
+		}
+	}
 }
 
 // treeDigest lists every file under root with its mode, size, and contents.

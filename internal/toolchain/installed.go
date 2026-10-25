@@ -64,14 +64,15 @@ func Command(name string) string {
 }
 
 // Environ returns environ with the installed toolchain directory first on PATH, so a toolchain command finds the tools it runs by name
-// (cargo runs rustc and the linker, cgo runs the C compiler) in the same installation. It returns environ unchanged when no toolchain
-// directory is configured.
+// (cargo runs rustc and the linker, cgo runs the C compiler) in the same installation, and with GOTOOLCHAIN=local, so the installed go
+// never switches to another release that a go or toolchain directive names (go.env sets GOTOOLCHAIN=auto, which runs a versioned go
+// from PATH or downloads one). It returns environ unchanged when no toolchain directory is configured.
 func Environ(environ []string) []string {
 	dir := installedToolchainDir
 	if dir == "" {
 		return environ
 	}
-	out := slices.Clone(environ)
+	out := append(slices.DeleteFunc(slices.Clone(environ), func(kv string) bool { return envKey(kv, "GOTOOLCHAIN") }), "GOTOOLCHAIN=local")
 	for i, kv := range out {
 		if envKey(kv, "PATH") {
 			name, value, _ := strings.Cut(kv, "=")

@@ -17,10 +17,15 @@ on:
       - 'go.sum'
       - 'go.work'
       - 'go.work.sum'
+      - '.go-version'
+      - 'internal/coding/pigversion/**'
       - 'internal/pigsdklock/**'
       - 'internal/toolchain/**'
       - 'coding/extension/pigsdk/**'
-      - 'coding/extension/host/subprocess/node_runtime*.go'
+      - 'coding/extension/host/**'
+      - 'extensions/sdk/**'
+      - 'extensions/sdk-py/**'
+      - 'extensions/sdk-rs/**'
   schedule:
     - cron: '17 4 * * 2'
   workflow_dispatch:

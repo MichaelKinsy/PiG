@@ -42,7 +42,7 @@ type GoToolchain struct {
 // ([InstalledToolchainDir]) also leads PATH, so cgo runs that installation's C
 // compiler.
 func (t GoToolchain) Environ(environ []string) []string {
-	out := slices.DeleteFunc(Environ(environ), func(kv string) bool { return envKey(kv, "GOROOT") })
+	out := slices.DeleteFunc(slices.Clone(Environ(environ)), func(kv string) bool { return envKey(kv, "GOROOT") })
 	if t.Root == "" {
 		return out
 	}

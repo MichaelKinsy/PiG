@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 func TestBuildExtCommand_GoBinary(t *testing.T) {
@@ -83,6 +85,19 @@ func TestBuildExtCommand_NodeScriptStandalone(t *testing.T) {
 	cmd = buildExtCommandForGOOS(context.Background(), script, "node", "linux", lookPath)
 	if cmd.Path != script || len(cmd.Args) != 1 {
 		t.Fatalf("linux node standalone: Path=%q Args=%q, want the script itself", cmd.Path, cmd.Args)
+	}
+
+	// An installation that supplies node runs the script on it everywhere: a shebang would search PATH.
+	installed := t.TempDir()
+	defer toolchain.SetInstalledToolchainDirForTest(installed)()
+	cmd = buildExtCommandForGOOS(context.Background(), script, "node", "linux", lookPath)
+	if cmd.Path != node || !slices.Equal(cmd.Args[1:], []string{script}) {
+		t.Fatalf("installed linux node standalone: Path=%q Args=%q, want %q %q", cmd.Path, cmd.Args, node, script)
+	}
+	missing := func(string) (string, error) { return "", exec.ErrNotFound }
+	cmd = buildExtCommandForGOOS(context.Background(), script, "node", "linux", missing)
+	if want := toolchain.Command("node"); cmd.Path != want || filepath.Dir(want) != installed {
+		t.Fatalf("installed linux node standalone without node: Path=%q, want the installation's missing %q", cmd.Path, want)
 	}
 }
 

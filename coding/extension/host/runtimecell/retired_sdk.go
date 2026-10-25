@@ -13,9 +13,10 @@ import (
 // staged or installed rather than the one this host reads now. stagedDir is the current SDK directory for the language
 // ([pigsdklock.StagedSDKDir]). A link an author made to such a copy keeps resolving after an update (staging never deletes an older
 // directory, and a package store keeps an older installation until it is collected) and would build the extension against an SDK the running
-// host no longer speaks. After resolving symlinks, dir is retired when it lies outside stagedDir and either lies inside the config root's
-// staging area (<config root>/state/pigsdk, the parent of a staged stagedDir) or holds an SDK version marker, which only staging and
-// installation write. An empty stagedDir disables the check.
+// host no longer speaks. After resolving symlinks, dir is retired when it lies outside stagedDir and lies inside the config root's staging
+// area (<config root>/state/pigsdk, the parent of a staged stagedDir). A binary whose SDKs are installed ([pigsdklock.InstalledSDKRoot])
+// also retires any dir that holds an SDK version marker, which only staging and installation write, wherever it lives. An empty stagedDir
+// disables the check.
 func RetiredStagedSDK(dir, stagedDir string) bool {
 	if dir == "" || stagedDir == "" {
 		return false
@@ -31,10 +32,13 @@ func RetiredStagedSDK(dir, stagedDir string) bool {
 	if pathWithin(current, canonicalDir) {
 		return false
 	}
-	// pig additive (D195): a marked copy outside the current SDK directory is another build's staged or installed SDK, wherever it lives.
-	//perf:ok once per extension SDK resolution, which also reads the extension's go.mod or Cargo.toml
-	if _, err := os.Stat(filepath.Join(canonicalDir, pigsdklock.MarkerFile)); err == nil {
-		return true
+	// pig additive (D195): for an installed binary, a marked copy outside the current SDK directory is another build's staged or installed
+	// SDK, wherever it lives.
+	if pigsdklock.InstalledSDKRoot() != "" {
+		//perf:ok once per extension SDK resolution, which also reads the extension's go.mod or Cargo.toml
+		if _, err := os.Stat(filepath.Join(canonicalDir, pigsdklock.MarkerFile)); err == nil {
+			return true
+		}
 	}
 	area := filepath.Dir(filepath.Clean(stagedDir))
 	if filepath.Base(area) != "pigsdk" || filepath.Base(filepath.Dir(area)) != "state" {

@@ -125,6 +125,16 @@ func (h *Host) TypeScriptRuntimeSelections() map[string]tsruntime.Selection {
 // (Pi builds its Bun binaries with --no-compile-autoload-bunfig --no-compile-autoload-dotenv, scripts/build-binaries.sh:129-135) and
 // installs nothing; a host executable built from the tree takes the script's name as its first argument.
 func typeScriptRuntimeCommand(ctx context.Context, sel tsruntime.Selection, runtimeDir, script, loaderLabel string, args []string) *exec.Cmd {
+	cmd := typeScriptRuntimeStart(ctx, sel, runtimeDir, script, loaderLabel, args)
+	// pig additive (D195): a cached launcher runs the installed runtime tree in place, so every start verifies that tree as a build does.
+	if _, err := installedNodeRuntime(); err != nil && cmd.Err == nil {
+		cmd.Err = err
+	}
+	return cmd
+}
+
+// typeScriptRuntimeStart is typeScriptRuntimeCommand without the installed runtime check.
+func typeScriptRuntimeStart(ctx context.Context, sel tsruntime.Selection, runtimeDir, script, loaderLabel string, args []string) *exec.Cmd {
 	loaderPath := filepath.Join(runtimeDir, "register-loader.mjs")
 	switch sel.Kind {
 	case tsruntime.KindBun:

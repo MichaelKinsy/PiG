@@ -57,12 +57,17 @@ let
   });
 in
 {
-  # Go, Rust and Python factories and standalones and a TypeScript factory register, answer host calls, reload, and load cached, with
-  # conflicting tools leading PATH; nothing is staged or written outside the cache.
+  # Go, Rust and Python factories and standalones and a TypeScript factory register, answer host calls, reload, and load cached, and a
+  # Node standalone runs on the installation's node, with conflicting tools leading PATH; nothing is staged or written outside the cache.
   acceptance = acceptance "pig-acceptance" pig "";
 
   # A missing and a mismatched installed SDK are reported and nothing is staged in their place.
   broken-installation = acceptance "pig-broken-installation" broken "--broken";
+
+  # An installation built without Python refuses its Python extensions instead of running a python3 or uv from PATH.
+  without-python = acceptance "pig-without-python" (pig.override {
+    withPythonExtensions = false;
+  }) "--without-python";
 
   # The libraries the Node runtime's native helper links stay in the package closure, so garbage collection cannot remove them.
   closure = runCommand "pig-closure" { closure = closureInfo { rootPaths = [ pig ]; }; } (
