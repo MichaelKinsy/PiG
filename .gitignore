@@ -179,3 +179,5 @@ internal/evals/.eval/
 /durable/core/contracttest/cmd/*/replayhost
 /durable/core/contracttest/cmd/*/countgate
 /durable/core/contracttest/cmd/*/scprovider
+/result
+/result-*

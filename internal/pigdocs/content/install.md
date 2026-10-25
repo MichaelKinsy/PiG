@@ -62,6 +62,20 @@ matching installation receipt.
 Each release tags the root module (`v0.2.0`) and the nested Go extension SDK
 module (`extensions/sdk/v0.2.0`) on the same commit; `go install` needs both.
 
+Install or run the command with Nix:
+
+```bash
+nix run github:MichaelKinsy/PiG -- --version
+nix profile add github:MichaelKinsy/PiG
+```
+
+The Nix package installs the extension SDKs and the TypeScript extension
+runtime read-only in the Nix store and builds and runs extensions with its own
+Go, Rust, Python and Node.js toolchains from the store (D195). It stages no SDK
+under `~/.pig`, and a tool on `PATH` never replaces those toolchains; commands
+the bash tool runs keep the user's `PATH`. `pig diagnose` shows the installed
+SDKs and the toolchain directory. Update the flake input to update it.
+
 After the project publishes a release, you can also download an artifact from
 its release page. Verify the published checksum before you place `pig` on
 `PATH`.
@@ -210,6 +224,9 @@ node --version
 Prefer a version manager already present on the machine. Otherwise use the OS
 package manager or the language's official per-user installer, with the user's
 consent. Do not remove or replace an existing system toolchain without asking.
+
+A Nix installation already supplies its toolchains: check `pig diagnose`
+instead of `PATH`, and do not install another toolchain for it (D195).
 
 For a Go extension, the required version is the `go` directive in the staged SDK
 module. `pig extension init` stages an offline-resolvable project and

@@ -54,6 +54,7 @@ var sampleChecks = map[string]sampleCheck{
 	"powershell": nil,
 	"ini":        nil, // a llama.cpp router preset (nvidia-rtx-llama-cpp.md); no INI parser in the docs job, and llama-server owns the format
 	"rust":       nil, // no Rust parser in the docs job; the SDK's own tests compile the SDK
+	"nix":        nil, // no Nix evaluator in the docs job; the Nix workflow (nix.yml) evaluates and builds the package these samples install and override
 	"ts":         checkTypeScript,
 	"typescript": checkTypeScript,
 }

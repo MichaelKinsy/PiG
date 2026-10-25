@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // pig additive (D19): the runtime that runs the TypeScript extension host is Node unless the process requests a runtime from the
@@ -57,12 +58,12 @@ func nodeLauncherSet(binPath, name string) (tsruntime.Set, bool) {
 	var tree string
 	if entry, ok := nodeLauncherEntry(binPath); ok {
 		members = []tsruntime.Member{{Name: name, Entry: entry}}
-		tree = binPath + ".runtime"
+		tree = nodeRuntimeTree(binPath + ".runtime")
 	} else if manifest, ok := nodePackedLauncherManifest(binPath); ok {
 		for _, member := range manifest {
 			members = append(members, tsruntime.Member{Name: member.Name, Entry: member.Entry})
 		}
-		tree = filepath.Join(filepath.Dir(binPath), "runtime")
+		tree = nodeRuntimeTree(filepath.Join(filepath.Dir(binPath), "runtime"))
 	} else {
 		return tsruntime.Set{}, false
 	}
@@ -133,7 +134,7 @@ func typeScriptRuntimeCommand(ctx context.Context, sel tsruntime.Selection, runt
 		return linkerexec.CommandContext(ctx, sel.Executable, append([]string{strings.TrimSuffix(script, ".mjs")}, args...)...)
 	}
 	loaderURL, urlErr := nodeFileURL(loaderPath)
-	cmd := linkerexec.CommandContext(ctx, "node", append([]string{"--import", loaderURL, filepath.Join(runtimeDir, script)}, args...)...)
+	cmd := linkerexec.CommandContext(ctx, toolchain.Command("node"), append([]string{"--import", loaderURL, filepath.Join(runtimeDir, script)}, args...)...)
 	if urlErr != nil && cmd.Err == nil {
 		cmd.Err = fmt.Errorf("%s %s: %w", loaderLabel, loaderPath, urlErr)
 	}

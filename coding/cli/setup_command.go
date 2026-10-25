@@ -67,6 +67,14 @@ func onPath(name string) func() (string, bool) {
 	}
 }
 
+// inToolchain finds a toolchain where extension builds and launches find it: the installation's toolchain directory when it supplies one.
+func inToolchain(name string) func() (string, bool) {
+	return func() (string, bool) {
+		path, err := toolchain.LookPath(name)
+		return path, err == nil
+	}
+}
+
 func setupTools() []setupTool {
 	return []setupTool{
 		{name: "go", purpose: "Go extension cells and native Piglet builds", remedy: goRemedy(runtime.GOOS), find: func() (string, bool) {
@@ -82,9 +90,9 @@ func setupTools() []setupTool {
 			name, path, ok := toolchain.ContainerRuntime()
 			return name + " (" + path + ")", ok
 		}},
-		{name: "cargo", purpose: "Rust extension cells", remedy: "install Rust from https://rustup.rs", find: onPath("cargo")},
-		{name: "node", purpose: "Node and TypeScript extensions", remedy: "install Node.js 22.13 or newer from https://nodejs.org", find: onPath("node")},
-		{name: python3Name(), purpose: "Python extensions", remedy: "install Python 3 from https://www.python.org/downloads/", find: onPath(python3Name())},
+		{name: "cargo", purpose: "Rust extension cells", remedy: "install Rust from https://rustup.rs", find: inToolchain("cargo")},
+		{name: "node", purpose: "Node and TypeScript extensions", remedy: "install Node.js 22.13 or newer from https://nodejs.org", find: inToolchain("node")},
+		{name: python3Name(), purpose: "Python extensions", remedy: "install Python 3 from https://www.python.org/downloads/", find: inToolchain(python3Name())},
 		{name: "git", purpose: "git: Package sources", remedy: "install Git from https://git-scm.com/downloads", find: onPath("git")},
 	}
 }
@@ -135,6 +143,11 @@ func setupStatus(stdout io.Writer) int {
 }
 
 func setupGo(args []string, stdout, stderr io.Writer) int {
+	// pig additive (D195): an installation that supplies its toolchains builds with its own Go, never a PiG-managed one.
+	if dir := toolchain.InstalledToolchainDir(); dir != "" {
+		_, _ = fmt.Fprintf(stderr, "pig setup go: this installation supplies its toolchains in %s and builds extensions with that Go; a PiG-managed Go would not be used\n", dir)
+		return 1
+	}
 	version := runtime.Version()
 	for i := 0; i < len(args); i++ {
 		switch arg := args[i]; {

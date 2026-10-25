@@ -3183,7 +3183,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		cancel()
 		return nil, newLoadError(me.config.Name, "spawn", "socket_dir_failed", fmt.Errorf("write harness arguments: %w", err))
 	}
-	var cmd = buildExtCommandSelected(extCtx, binPath, me.config.RuntimeLanguage, runtime.GOOS, exec.LookPath, tsSelection)
+	var cmd = buildExtCommandSelected(extCtx, binPath, me.config.RuntimeLanguage, runtime.GOOS, toolchain.LookPath, tsSelection)
 	nodeOutput := usesNodeRuntime(binPath, me.config.RuntimeLanguage)
 	cmd.Env = append(append(os.Environ(), harnessEnv...),
 		fmt.Sprintf("PIG_EXT_SOCKET=%s", address),
@@ -3201,6 +3201,11 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		cmd.Env = h.withNodeRuntimeEnv(cmd.Env)
 	}
 	if me.config.RuntimeLanguage == "python" || strings.HasSuffix(binPath, ".py") {
+		// pig additive (D195): a missing or mismatched installed Python SDK fails the launch rather than importing whatever pig_sdk the path finds.
+		if err := pigsdklock.CheckInstalledSDK("python"); err != nil {
+			cancel()
+			return nil, newLoadError(me.config.Name, "spawn", "sdk_unavailable", err)
+		}
 		// A binary that embeds no Python SDK stages none, so there is nothing to put first.
 		if pythonSDK, err := pigsdklock.StagedSDKDir(h.builder.configRoot, "python"); err == nil {
 			pythonPath := prependUniquePath(pythonSDK, os.Getenv("PYTHONPATH"))
@@ -5114,7 +5119,7 @@ func (c extensionConsole) Write(p []byte) (int, error) {
 // Go and Rust extensions are
 // compiled binaries and run directly.
 func buildExtCommand(ctx context.Context, binPath, runtimeLanguage string) *exec.Cmd {
-	return buildExtCommandSelected(ctx, binPath, runtimeLanguage, runtime.GOOS, exec.LookPath, nodeSelection)
+	return buildExtCommandSelected(ctx, binPath, runtimeLanguage, runtime.GOOS, toolchain.LookPath, nodeSelection)
 }
 
 func buildExtCommandForGOOS(

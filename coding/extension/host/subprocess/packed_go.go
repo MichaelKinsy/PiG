@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 	"github.com/MichaelKinsy/PiG/internal/installchange"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 type packedProcessState struct {
@@ -627,7 +628,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 
 // spawnPackedProcess starts the runner process of a packed cell. Its stdin stays open for the life of the process: it carries the admission of each further factory generation.
 func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.CancelFunc, cell *runtimecell.GoPackedCell, processState *packedProcessState, pendingExts []packedPendingExt, env []string, nodeRuntime bool, tsSelection tsruntime.Selection) error {
-	cmd := buildExtCommandSelected(extCtx, cell.BinaryPath, "", runtime.GOOS, exec.LookPath, tsSelection)
+	cmd := buildExtCommandSelected(extCtx, cell.BinaryPath, "", runtime.GOOS, toolchain.LookPath, tsSelection)
 	admissionWriter, err := cmd.StdinPipe()
 	if err != nil {
 		processState.releaseUsageLease()

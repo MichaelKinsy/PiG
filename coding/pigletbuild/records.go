@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -719,12 +718,12 @@ func toolchainVersions(cells []subprocess.CellSpec) (map[string]string, error) {
 	for _, cell := range cells {
 		switch cell.Language {
 		case "rust":
-			commands["rust"] = []string{"cargo", "--version"}
+			commands["rust"] = []string{toolchain.Command("cargo"), "--version"}
 		case "python":
 			// The interpreter the cell runs with: python or python3 on Windows (python3.exe there is often the Store alias).
-			commands["python"] = []string{toolchain.PythonExecutable(runtime.GOOS, exec.LookPath), "--version"}
+			commands["python"] = []string{toolchain.PythonExecutable(runtime.GOOS, toolchain.LookPath), "--version"}
 		case "node":
-			commands["node"] = []string{"node", "--version"}
+			commands["node"] = []string{toolchain.Command("node"), "--version"}
 		}
 	}
 	versions := make(map[string]string, len(commands))

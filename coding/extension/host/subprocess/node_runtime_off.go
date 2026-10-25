@@ -13,6 +13,9 @@ func init() { pigstrip.Strip(pigstrip.ListFeatures, pigstrip.NodeExtensions) }
 
 func extractNodeRuntime(string) error { return errNodeExtensionsStripped() }
 
+// InstallNodeRuntime installs nothing: this binary carries no runtime to install.
+func InstallNodeRuntime(string) (string, error) { return "", nil }
+
 func nodeRuntimeUnavailable() error { return errNodeExtensionsStripped() }
 
 func ensureNodeRuntime(context.Context) (string, error) { return "", errNodeExtensionsStripped() }

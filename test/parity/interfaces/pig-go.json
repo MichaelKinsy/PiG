@@ -87563,6 +87563,17 @@
       "shapeHash": "sha256:c434028eb05a908c8b15ce965ffa45090a9c2cee81169635e984d6ab5ad711c4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#inToolchain",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "inToolchain",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) func() (string, bool)"
+      },
+      "shapeHash": "sha256:0ccc7378cc543ad1e3fe116e1e2c605f231aea995ae40c67d1a66e4e2fc9c1df"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#initLanguages",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "initLanguages",
@@ -116779,6 +116790,17 @@
       "shapeHash": "sha256:9f921b0d645d262778fe26bdf2928fddc34adea94eefae075778b323fc6302de"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#installedSDK",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "installedSDK",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(lang string) (dir string, installed bool, err error)"
+      },
+      "shapeHash": "sha256:0e8084ef44e99bc75b41cfb592b3fc586c38f866e7348966b50941721c636050"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#invalidateCommandVersion",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "invalidateCommandVersion",
@@ -125489,6 +125511,17 @@
         "type": "ImageResult"
       },
       "shapeHash": "sha256:eeaa59502b4239b33e2903ad726b8066af9c77730c09ca8500630a6de56ddd1c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#InstallNodeRuntime",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "InstallNodeRuntime",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(dir string) (string, error)"
+      },
+      "shapeHash": "sha256:8fa3685ec155db5e57500e639baca73c59e7bfc405d1f2ecaea04eceb8d9671d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#InvalidateArgs",
@@ -136942,6 +136975,17 @@
       "shapeHash": "sha256:794e2ef8626de6293b21361c59deea66b94bcdccba81dcd5e083dfe7a70e4a65"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#installedNodeRuntime",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "installedNodeRuntime",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (string, error)"
+      },
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#intOr",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "intOr",
@@ -139417,6 +139461,17 @@
       "shapeHash": "sha256:6d55d0c9770af7ada1cf392843d5abf369b412ff1cfc3fd6ee539f4d68a3d9ed"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nodeRuntimeDirName",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "nodeRuntimeDirName",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nodeRuntimeHash",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "nodeRuntimeHash",
@@ -139426,6 +139481,50 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nodeRuntimeIdentity",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "nodeRuntimeIdentity",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nodeRuntimeKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "nodeRuntimeKey",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []byte"
+      },
+      "shapeHash": "sha256:6d55d0c9770af7ada1cf392843d5abf369b412ff1cfc3fd6ee539f4d68a3d9ed"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nodeRuntimeMarker",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "nodeRuntimeMarker",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nodeRuntimeTree",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "nodeRuntimeTree",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(published string) string"
+      },
+      "shapeHash": "sha256:7bf66aad0a1e0bc98c8d3418a7199537f7ec5f44602ee2377ca3dfaf5d511939"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nodeRuntimeUnavailable",
@@ -151209,6 +151308,17 @@
       "shapeHash": "sha256:03bf2247394fb18fc312d57f787f9bdafb69058c2e0889a7189f78174f180f8f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#checkInstalled",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/pigsdk",
+      "name": "checkInstalled",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#evictAndPrune",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/pigsdk",
       "name": "evictAndPrune",
@@ -151328,6 +151438,28 @@
         "type": "func(h io.Writer, b sdkBundle, name string, buffer []byte) error"
       },
       "shapeHash": "sha256:53a8f647265a50ecc86c0f56eeadddf72bcaf8d22180ab65cc709373343a2f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#install",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/pigsdk",
+      "name": "install",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string) ([]string, error)"
+      },
+      "shapeHash": "sha256:c6acae1cc24a61636fcbaad005ae51cf73736508537abbdf7df6e4d3f500f9f1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#installFlag",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/pigsdk",
+      "name": "installFlag",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(args []string) (string, bool, error)"
+      },
+      "shapeHash": "sha256:c4af7d2c63196552e14fada0acfdc2ec637996b13f1d1068ee63bc46208033d4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#markerFile",
@@ -151548,6 +151680,17 @@
         "type": "func(configRoot string) ([]string, error)"
       },
       "shapeHash": "sha256:b9b2e7a5c44db2bb98cdfc761a6384f899d75492c3506e67fe6f985011b2019d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#sdkBundle.syncInto",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/pigsdk",
+      "name": "sdkBundle.syncInto",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string) ([]string, error)"
+      },
+      "shapeHash": "sha256:c6acae1cc24a61636fcbaad005ae51cf73736508537abbdf7df6e4d3f500f9f1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/pigsdk#settleStaging",

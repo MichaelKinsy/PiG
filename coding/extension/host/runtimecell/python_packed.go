@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -129,7 +128,7 @@ func pythonPackedCellHash(cacheRoot, key string, extensions []PythonExtension, s
 	_, _ = h.Write([]byte(key))
 	_, _ = h.Write([]byte("\x00"))
 	hashBuildInput(h, "sdk", sdkHash)
-	hashBuildInput(h, "runtime", commandVersion(cacheRoot, toolchain.PythonExecutable(runtime.GOOS, exec.LookPath), "--version"))
+	hashBuildInput(h, "runtime", commandVersion(cacheRoot, toolchain.PythonExecutable(runtime.GOOS, toolchain.LookPath), "--version"))
 	hashBuildInput(h, "template", renderPythonRunner(extensions, sdkRoot))
 	for _, ext := range extensions {
 		for _, part := range []string{ext.Name, ext.Package, ext.Factory, ext.Hash} {
@@ -149,6 +148,9 @@ func findPythonSDKRoot() (string, error) {
 	// pig additive (D92): only PIG_SDK_PY_ROOT serves a Python SDK the active Piglet strips; this binary staged none.
 	if err := StrippedSDKError("python"); err != nil {
 		return "", err
+	}
+	if dir, installed, err := installedSDK("python"); installed {
+		return dir, err
 	}
 	for _, root := range stagedSDKRoots("python") {
 		if _, err := os.Stat(filepath.Join(root, "pig_sdk", "__init__.py")); err == nil {

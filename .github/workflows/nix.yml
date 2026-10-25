@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: MIT
+
+name: Nix
+
+# Builds the flake's package and runs its checks (nix/checks.nix) in the Nix sandbox: extensions in every language load from the
+# installed SDKs and toolchains, a broken installation is reported, and the native helper's libraries stay in the closure. Every
+# system is evaluated; each runner builds its own. A weekly run catches drift from changes that do not touch these paths, such as
+# a new module that changes the fixed-output module cache.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/nix.yml'
+      - 'flake.lock'
+      - 'flake.nix'
+      - 'nix/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'go.work'
+      - 'go.work.sum'
+      - 'internal/pigsdklock/**'
+      - 'internal/toolchain/**'
+      - 'coding/extension/pigsdk/**'
+      - 'coding/extension/host/subprocess/node_runtime*.go'
+  schedule:
+    - cron: '17 4 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+          - runner: macos-latest
+            system: aarch64-darwin
+    name: Nix ${{ matrix.system }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          github_access_token: ${{ github.token }}
+          # A build that cannot be sandboxed fails instead of running impure.
+          extra_nix_config: |
+            sandbox = true
+            sandbox-fallback = false
+
+      - name: Evaluate every system
+        if: ${{ matrix.system == 'x86_64-linux' }}
+        run: nix flake check --all-systems --no-build
+
+      - name: Build
+        run: nix build -L .#pig
+
+      - name: Smoke-test
+        run: |
+          ./result/bin/pig --version
+          ./result/bin/pig reload --dry-run
+          ./result/bin/pig diagnose | sed -n '/extension SDKs/,/^paths/p'
+
+      - name: Checks
+        run: nix flake check -L

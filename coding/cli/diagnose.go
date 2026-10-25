@@ -14,6 +14,8 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // runDiagnose writes a human-readable diagnostic report covering
@@ -38,17 +40,33 @@ func runDiagnose(w io.Writer, binaryPath string) {
 	// detail it promises has to exist. This build reads only its own staged
 	// directory per language, so each is either current or not staged yet. A
 	// run stages them before it loads its first extension.
-	_, _ = fmt.Fprintf(w, "\nextension SDKs (staged for out-of-tree builds)\n%s\n", hr)
+	sdkHeading := "staged for out-of-tree builds"
+	if pigsdklock.InstalledSDKRoot() != "" {
+		sdkHeading = "installed read-only with this binary"
+	}
+	_, _ = fmt.Fprintf(w, "\nextension SDKs (%s)\n%s\n", sdkHeading, hr)
 	if stages, err := pigsdk.Status(codingagent.ConfigRoot()); err != nil {
 		_, _ = fmt.Fprintf(w, "unavailable:       %v\n", err)
 	} else {
 		for _, st := range stages {
 			state := "current"
-			if !st.Current {
+			switch {
+			// pig additive (D195): an installed SDK is never staged; a missing or mismatched one is an installation fault.
+			case st.Installed:
+				state = "installed"
+				if err := pigsdklock.CheckInstalledSDK(st.Lang); err != nil {
+					_, _ = fmt.Fprintf(w, "%-18s %v\n", st.Lang+":", err)
+					continue
+				}
+			case !st.Current:
 				state = "not staged: stages when an extension loads"
 			}
 			_, _ = fmt.Fprintf(w, "%-18s %s at %s\n", st.Lang+":", state, st.Dir)
 		}
+	}
+	// pig additive (D195): extension builds and launches read this installation's toolchains, never PATH.
+	if dir := toolchain.InstalledToolchainDir(); dir != "" {
+		_, _ = fmt.Fprintf(w, "%-18s %s (this installation's; extension builds do not use PATH)\n", "toolchains:", dir)
 	}
 
 	// ─── Paths ────────────────────────────────────────────

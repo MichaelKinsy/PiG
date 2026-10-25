@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -340,7 +339,7 @@ func hashSourceDirStamped(src, buildType string) (digest, stamp string, err erro
 		// The embedded runtime's digest: changes to runtime.mjs, cli.mjs,
 		// the loader, or any shim invalidate cached launchers without
 		// requiring a manual nodeRuntimeVersion bump.
-		mix(nodeRuntimeDigest())
+		mix(nodeRuntimeKey())
 	}
 
 	var exts []string
@@ -615,6 +614,10 @@ func (b *Builder) resolveStagedSDK(srcDir, buildType string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// pig additive (D195): an installed SDK's fault names the installation; `pig reload` cannot restage it.
+	if err := pigsdklock.CheckInstalledSDK(buildType); err != nil {
+		return "", err
+	}
 	if info, err := os.Stat(stagedDir); err != nil || !info.IsDir() {
 		return "", fmt.Errorf("staged %s SDK is missing at %s; run `pig reload` with the active config root", label, stagedDir)
 	}
@@ -844,7 +847,7 @@ func ensureBuildToolchain(ctx context.Context, buildType string) error {
 	if tool == "" {
 		return nil
 	}
-	if _, err := exec.LookPath(tool); err != nil {
+	if _, err := toolchain.LookPath(tool); err != nil {
 		return fmt.Errorf("cannot build %s extension: the %q toolchain is not installed; install it, or run this extension from a Piglet Binary or prebuilt package (which need no toolchain)", buildType, tool)
 	}
 	return nil
@@ -975,9 +978,9 @@ func buildRust(ctx context.Context, cacheRoot, srcDir, outPath, stagedSDK string
 	}
 	args = append(args, "build", "--release", "--quiet")
 	buildprogress.Phase(ctx, "Compiling Rust member", srcDir+" (dependency resolution, compile, link)")
-	cmd := linkerexec.CommandContext(ctx, "cargo", buildprogress.ToolArgs(ctx, "rust", args)...)
+	cmd := linkerexec.CommandContext(ctx, toolchain.Command("cargo"), buildprogress.ToolArgs(ctx, "rust", args)...)
 	cmd.Dir = buildDir
-	cmd.Env = withoutGitEnvironmentOverrides(os.Environ())
+	cmd.Env = toolchain.Environ(withoutGitEnvironmentOverrides(os.Environ()))
 	cargoStarted := time.Now()
 	out, err := buildprogress.CombinedOutput(ctx, cmd)
 	if err != nil {

@@ -2,8 +2,6 @@ package subprocess
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"io/fs"
 	"os"
@@ -23,8 +21,11 @@ func materializeNodeRuntime(ctx context.Context, cacheDir, destination string) (
 	if err := nodeRuntimeUnavailable(); err != nil {
 		return err
 	}
-	digest := sha256.Sum256(append([]byte(nodeRuntimeVersion), nodeRuntimeDigest()...))
-	hash := hex.EncodeToString(digest[:])
+	// pig additive (D195): an installed runtime tree runs in place (nodeRuntimeTree), so the launcher publishes no copy of it.
+	if tree, err := installedNodeRuntime(); err != nil || tree != "" {
+		return err
+	}
+	hash := nodeRuntimeIdentity()
 	root := filepath.Join(cacheDir, "node-runtime-"+hash)
 	// pig additive (D20): content-addressed runtime materialization shares the governed cell cache.
 	entry, err := runtimecell.PublishArtifact(ctx, root, "content.sha256", hash, "node", func(scratch string) (string, error) {

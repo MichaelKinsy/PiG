@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // RustExtension describes one factory-style Rust SDK extension that can be
@@ -111,9 +112,9 @@ func BuildRustPackedCell(ctx context.Context, cacheRoot, key string, extensions 
 					names[i] = ext.Name
 				}
 				buildprogress.Phase(ctx, "Compiling Rust members", strings.Join(names, ", ")+" (dependency resolution, compile, link)")
-				cmd := linkerexec.CommandContext(ctx, "cargo", buildprogress.ToolArgs(ctx, "rust", []string{"build", "--release", "--quiet"})...)
+				cmd := linkerexec.CommandContext(ctx, toolchain.Command("cargo"), buildprogress.ToolArgs(ctx, "rust", []string{"build", "--release", "--quiet"})...)
 				cmd.Dir = scratch
-				cmd.Env = cacheBuildEnvironment(scratch)
+				cmd.Env = toolchain.Environ(cacheBuildEnvironment(scratch))
 				if os.Getenv("CARGO_BUILD_JOBS") == "" {
 					cmd.Env = append(cmd.Env, "CARGO_BUILD_JOBS=1")
 				}
@@ -225,8 +226,8 @@ func rustPackedCellHash(cacheRoot, key string, extensions []RustExtension, sdkRo
 	_, _ = h.Write([]byte(key))
 	_, _ = h.Write([]byte("\x00"))
 	hashBuildInput(h, "sdk", sdkHash)
-	hashBuildInput(h, "runtime", commandVersion(cacheRoot, "rustc", "--version"))
-	hashBuildInput(h, "cargo", commandVersion(cacheRoot, "cargo", "--version"))
+	hashBuildInput(h, "runtime", commandVersion(cacheRoot, toolchain.Command("rustc"), "--version"))
+	hashBuildInput(h, "cargo", commandVersion(cacheRoot, toolchain.Command("cargo"), "--version"))
 	hashBuildInput(h, "template", renderRustRunner(extensions))
 	for _, ext := range extensions {
 		for _, part := range []string{ext.Name, ext.Package, ext.Crate, ext.Factory, ext.Hash} {
@@ -251,6 +252,9 @@ func findRustSDKRoot(extensions []RustExtension) (string, error) {
 	// pig additive (D92): only an author override serves a Rust SDK the active Piglet strips; this binary staged none.
 	if err := StrippedSDKError("rust"); err != nil {
 		return "", err
+	}
+	if dir, installed, err := installedSDK("rust"); installed {
+		return dir, err
 	}
 	for _, root := range stagedSDKRoots("rust") {
 		if _, err := os.Stat(filepath.Join(root, "Cargo.toml")); err == nil {

@@ -54,6 +54,12 @@ With Go:
 go install github.com/MichaelKinsy/PiG/cmd/pig@latest
 ```
 
+With Nix:
+
+```bash
+nix run github:MichaelKinsy/PiG
+```
+
 You can also download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases) or [build from source](#build-from-source). [pi-in-go.dev/install](https://pi-in-go.dev/install) covers every method, including updates and uninstalling.
 
 ## Quick start
@@ -212,6 +218,25 @@ Use an exact release such as `@v0.2.0` when reproducibility matters. Update a Go
 installation by running `go install` again. Each release tags the root module
 (`v0.2.0`) and the Go extension SDK module (`extensions/sdk/v0.2.0`) on the same
 commit; `go install` needs both.
+
+## Install with Nix
+
+The flake builds PiG from source in the Nix sandbox, with every input pinned by `flake.lock`:
+
+```bash
+nix run github:MichaelKinsy/PiG -- --version
+nix profile add github:MichaelKinsy/PiG
+```
+
+On NixOS or with Home Manager, add the flake as an input and install `inputs.pig.packages.${system}.default`, or apply `inputs.pig.overlays.default` and install `pkgs.pig`.
+
+The package installs the extension SDKs and the TypeScript extension runtime read-only in the Nix store, and it builds and runs extensions with its own Go, Rust, Python, and Node.js toolchains from the store (D195). PiG stages no SDK copies under `~/.pig`, and a different `go`, `cargo`, `python3`, `node`, or `uv` on `PATH` does not change what an extension builds or runs with. The bash tool and other commands keep your `PATH`. As in Pi's flake, `fd`, `ripgrep`, and the clipboard commands come first on PATH, and Node.js comes last so that `npm` is available for package installs. Extension dependencies, such as Go modules and Rust crates, still download into your usual caches when an extension builds. To leave out a language and its toolchain, override the package:
+
+```nix
+pig.override { withRustExtensions = false; }
+```
+
+`pig diagnose` shows the installed SDKs and the toolchain directory. `pig update` does not replace a Nix installation; update the flake input instead. The flake is verified on x86_64-linux; the other systems evaluate but are not yet verified natively.
 
 ## Build from source
 

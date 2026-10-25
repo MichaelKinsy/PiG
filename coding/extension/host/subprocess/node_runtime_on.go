@@ -7,7 +7,6 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // pig additive (D92): the embedded Node runtime and the Node preflight that run TypeScript and JavaScript extensions; a Piglet Binary built with pig_strip_node_extensions links node_runtime_off.go instead.
@@ -35,6 +35,36 @@ func extractNodeRuntime(dst string) error {
 	})
 }
 
+// InstallNodeRuntime writes the runtime tree into dir under the content-addressed name an installed binary reads it from
+// ([installedNodeRuntime]), with a marker that records the runtime's identity, and returns the tree's directory. dir must not hold the tree
+// already.
+// pig additive (D195): the packaging step for a read-only TypeScript extension runtime.
+func InstallNodeRuntime(dir string) (string, error) {
+	target := filepath.Join(dir, nodeRuntimeDirName())
+	//perf:ok packaging step, run once when a package is built
+	if _, err := os.Lstat(target); err == nil {
+		return "", fmt.Errorf("%s already exists; install into an empty directory", target)
+	}
+	staging, err := os.MkdirTemp(dir, ".stage-"+filepath.Base(target)+"-")
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = os.RemoveAll(staging) }()
+	if err := os.Chmod(staging, 0o755); err != nil {
+		return "", err
+	}
+	if err := extractNodeRuntime(staging); err != nil {
+		return "", fmt.Errorf("install TypeScript extension runtime: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(staging, nodeRuntimeMarker), []byte(nodeRuntimeIdentity()+"\n"), 0o644); err != nil {
+		return "", err
+	}
+	if err := os.Rename(staging, target); err != nil {
+		return "", err
+	}
+	return target, nil
+}
+
 // nodeRuntimeUnavailable reports why this process cannot run a Node extension, or nil when it can. Stock PiG never strips the runtime.
 func nodeRuntimeUnavailable() error {
 	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.NodeExtensions) {
@@ -48,7 +78,7 @@ func ensureNodeRuntime(ctx context.Context) (string, error) {
 		return "", err
 	}
 	requirement := fmt.Sprintf("TypeScript extensions need Node.js %s or newer", minimumNodeRuntimeDisplay())
-	nodePath, err := exec.LookPath("node")
+	nodePath, err := toolchain.LookPath("node")
 	if err != nil {
 		return "", fmt.Errorf("%s; node was not found on PATH", requirement)
 	}
