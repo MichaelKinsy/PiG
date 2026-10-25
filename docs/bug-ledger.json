@@ -22075,6 +22075,53 @@
       ]
     },
     {
+      "id": "BF-D195",
+      "title": "An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request…",
+      "symptom": "the failure is an AWS JavaScript SDK side effect that Pi's own `getProviderEnvValue` does not intend. Pi decides \"no token\" and the SDK decides \"bearer\".",
+      "rootCause": "an empty variable names no credential. Failing every request because an unset secret was exported as an empty string breaks a working IAM or profile setup for no reason a user can act on, and PiG's own lookup, like Pi's, already treats the value as absent. The Go SDK PiG uses agrees: `resolveEnvBearerToken` returns on an empty value (`third_party/awssdk/service/bedrockruntime/api_client.go:980-984`).",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D195",
+      "removeWhen": "Pi or its AWS SDK treats an empty `AWS_BEARER_TOKEN_BEDROCK` as unset (Pi passes `authSchemePreference` itself, or the SDK tests for a non-empty value), or an owner decision reverses this one; then the marker, the D195 cases of the test and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "cca788e454",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "ai/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi",
+        "ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-D196",
+      "title": "Under skip-auth a bearer token from the process environment is not sent over an http:// endpoint, where Pi's…",
+      "symptom": "Pi sends a credential over plain HTTP because the JavaScript SDK has no HTTPS check for bearer tokens, and its skip-auth option does not stop the SDK from picking up the token.",
+      "rootCause": "the refusal keeps a bearer token off an unencrypted connection. Pi's behavior sends it in clear text to a host the user chose; PiG does not override the Go SDK's guard to repeat that.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D196",
+      "removeWhen": "Pi refuses to send a bearer token over HTTP (its SDK adds an HTTPS check, or Pi installs a signer that does), or PiG installs `bedrockBearerSigner` under skip-auth and the owner approves sending the token over HTTP there; then the markers, the D196 case of the test and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "cca788e454",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "ai/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi"
+      ]
+    },
+    {
       "id": "BF-D200",
       "title": "With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and…",
       "symptom": "none claimed; Pi's behaviour is a crash at load rather than a reported error, and is kept for the paths that need a home directory.",
@@ -36220,6 +36267,16 @@
       "id": "D190",
       "title": "The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a…",
       "entry": "BF-648ff3e-13"
+    },
+    {
+      "id": "D195",
+      "title": "An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request…",
+      "entry": "BF-D195"
+    },
+    {
+      "id": "D196",
+      "title": "Under skip-auth a bearer token from the process environment is not sent over an http:// endpoint, where Pi's…",
+      "entry": "BF-D196"
     },
     {
       "id": "D200",

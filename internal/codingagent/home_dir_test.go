@@ -31,11 +31,11 @@ func TestPackageManagerHomeDirThrowsWhereNodesHomedirDoes(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{"nonempty HOME wins over everything", ptr("/h"), func() (string, error) { return "", &nodehome.Error{} }, "/h", false},
+		{"nonempty HOME wins over everything", new("/h"), func() (string, error) { return "", &nodehome.Error{} }, "/h", false},
 		{"HOME absent, the user database's home", nil, func() (string, error) { return "/db", nil }, "/db", false},
-		{"HOME empty, os.homedir's answer", ptr(""), func() (string, error) { return "", nil }, "", false},
+		{"HOME empty, os.homedir's answer", new(""), func() (string, error) { return "", nil }, "", false},
 		{"HOME absent, no home directory", nil, func() (string, error) { return "", &nodehome.Error{} }, "", true},
-		{"HOME empty, no home directory", ptr(""), func() (string, error) { return "", &nodehome.Error{} }, "", true},
+		{"HOME empty, no home directory", new(""), func() (string, error) { return "", &nodehome.Error{} }, "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("HOME", "")
@@ -59,7 +59,8 @@ func TestPackageManagerHomeDirThrowsWhereNodesHomedirDoes(t *testing.T) {
 	}
 }
 
-func ptr(s string) *string { return &s }
+//go:fix inline
+func ptr(s string) *string { return new(s) }
 
 // package-manager.ts:2464 computes the user's ~/.agents/skills before addAutoDiscoveredResources checks any directory, so resolve() rejects with getHomeDir's error
 // whatever the settings and the directories hold.
@@ -74,8 +75,7 @@ func TestValidateAutoDiscoveredOverridesRejectsWhereNoHomeDirectoryExists(t *tes
 	}
 	for _, trusted := range []bool{true, false} {
 		err := ValidateAutoDiscoveredOverrides(cwd, agentDir, NewSettingsManagerWithProjectTrust(cwd, agentDir, trusted), trusted)
-		var thrown *nodehome.Error
-		if !errors.As(err, &thrown) {
+		if _, ok := errors.AsType[*nodehome.Error](err); !ok {
 			t.Fatalf("trusted=%v: error = %v, want *nodehome.Error", trusted, err)
 		}
 	}

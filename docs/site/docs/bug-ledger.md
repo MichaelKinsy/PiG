@@ -759,6 +759,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D153](#bf-d153) | The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D155](#bf-d155) | Selection lists page with PageUp and PageDown (Pi #7629) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D156](#bf-d156) | MCP server `url` expands environment references (Pi #10654) | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D195](#bf-d195) | An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D196](#bf-d196) | Under skip-auth a bearer token from the process environment is not sent over an http:// endpoint, where Pi's… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D200](#bf-d200) | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
@@ -11445,6 +11447,36 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b06ad928d7` (2026-10-09), `0c8e8b07be` (2026-10-10), `922bd78903` (2026-10-10)
 - **Tests:** `coding/extension/mcp_url_expansion_test.go::TestExpandMcpURL`, `coding/extension/mcp_url_expansion_test.go::TestValidateMcpServerConfigChecksTheExpandedURL`, `coding/mcpext/connection_test.go::TestMCPConnectionsExpandTheServerURLReferences`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuShowsTheExpandedURL`
 
+### BF-D195
+
+**An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D195)
+- **Symptom:** the failure is an AWS JavaScript SDK side effect that Pi's own `getProviderEnvValue` does not intend. Pi decides "no token" and the SDK decides "bearer".
+- **Root cause:** an empty variable names no credential. Failing every request because an unset secret was exported as an empty string breaks a working IAM or profile setup for no reason a user can act on, and PiG's own lookup, like Pi's, already treats the value as absent. The Go SDK PiG uses agrees: `resolveEnvBearerToken` returns on an empty value (`third_party/awssdk/service/bedrockruntime/api_client.go:980-984`).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi or its AWS SDK treats an empty `AWS_BEARER_TOKEN_BEDROCK` as unset (Pi passes `authSchemePreference` itself, or the SDK tests for a non-empty value), or an owner decision reverses this one; then the marker, the D195 cases of the test and this record go.
+- **Fix commits:** `cca788e454` (2026-10-24)
+- **Tests:** `ai/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi`, `ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi`
+
+### BF-D196
+
+**Under skip-auth a bearer token from the process environment is not sent over an http:// endpoint, where Pi's…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D196)
+- **Symptom:** Pi sends a credential over plain HTTP because the JavaScript SDK has no HTTPS check for bearer tokens, and its skip-auth option does not stop the SDK from picking up the token.
+- **Root cause:** the refusal keeps a bearer token off an unencrypted connection. Pi's behavior sends it in clear text to a host the user chose; PiG does not override the Go SDK's guard to repeat that.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi refuses to send a bearer token over HTTP (its SDK adds an HTTPS check, or Pi installs a signer that does), or PiG installs `bedrockBearerSigner` under skip-auth and the owner approves sending the token over HTTP there; then the markers, the D196 case of the test and this record go.
+- **Fix commits:** `cca788e454` (2026-10-24)
+- **Tests:** `ai/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi`
+
 ### BF-D200
 
 **With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and…**
@@ -17114,6 +17146,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D187 | A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single… | deliberate difference |
 | D188 | Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place | deliberate difference |
 | D190 | The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a… | [BF-648ff3e-13](#bf-648ff3e-13) |
+| D195 | An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request… | [BF-D195](#bf-d195) |
+| D196 | Under skip-auth a bearer token from the process environment is not sent over an http:// endpoint, where Pi's… | [BF-D196](#bf-d196) |
 | D200 | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | [BF-D200](#bf-d200) |
 
 ## Fix-titled commits that are not bugs in a release

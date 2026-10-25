@@ -5,6 +5,7 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -83,12 +84,8 @@ func TestBedrockBearerTokenDivergencesFromPi(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			env := map[string]string{}
-			for k, v := range hermetic {
-				env[k] = v
-			}
-			for k, v := range tc.env {
-				env[k] = v
-			}
+			maps.Copy(env, hermetic)
+			maps.Copy(env, tc.env)
 
 			cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), modelID)
 			for _, entry := range os.Environ() {

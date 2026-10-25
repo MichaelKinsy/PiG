@@ -2531,25 +2531,6 @@ Remove when: Pi orders hard-link aliases (and, on a case-insensitive filesystem 
 
 SCRUTINIZED:approved
 
-## D200 With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and fails with Pi's error where Pi's home lookup would run
-
-What: on a host where Node's `os.homedir()` throws (no `HOME`, and no entry for the process's user in the system's user database: a container run as a uid its passwd file does not list), the pinned Pi 1.4.0 fails to load in every mode, `--version` and `list` included. It exits 1 with Node's uncaught `SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)`: `tools-manager.ts:11` evaluates `getBinDir()` at import, `getAgentDir()` expands even an explicit `PI_CODING_AGENT_DIR` through `normalizePath`, and `normalizePath` calls `homedir()` before it looks at its input (`utils/paths.ts:89`). PiG runs `--version`, `list` and every other command that loads no resources, and fails with the same message (exit 1, nothing on stdout) only where Pi's `resolve()` would look the home directory up, `getHomeDir()` at `package-manager.ts:2464`: startup in print, RPC and interactive mode, a reload and `pig config`.
-
-Why: PiG's config root (`PIG_HOME`, else `XDG_CONFIG_HOME/pig`, else `~/.pig`, internal/configroot) is meant to run without a home directory, as containers and CI jobs do; refusing `--version` and `list` there would remove the one thing `PIG_HOME` is for, and nothing in those commands needs a home directory.
-
-Pi bug: none claimed; Pi's behaviour is a crash at load rather than a reported error, and is kept for the paths that need a home directory.
-
-Scope: `PackageManagerHomeDir` (`internal/codingagent/resource_paths.go`) is Pi's `getHomeDir` and returns Node's error where Node's call throws (`internal/nodehome`); `ValidateAutoDiscoveredOverrides` returns it first, at the position of `package-manager.ts:2464`, so startup, a reload and the config command fail there with exit status 1 and nothing on stdout. The collectors (`AgentsSkillScan`, `AmbientSkillResources`) list no user `~/.agents/skills` when asked without a home directory. PiG's other lenient home lookups (`resolvepath`'s `~` expansion, `configroot.ExpandTilde`) are not part of this record and unchanged. The record's condition is the host's, not an option: with a home directory PiG and Pi behave alike.
-
-Owner decision: approved by owner Michael Kinsy on 2026-10-24 (keep `--version`, `list` and resource-free modes running where Pi crashes at import; fail with Pi's error where Pi's home lookup runs).
-
-Call-site markers: `internal/codingagent/resource_paths.go` (`PackageManagerHomeDir`, `ValidateAutoDiscoveredOverrides`).
-
-Evidence: `TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands` (`coding/cli/no_home_directory_test.go`) runs the pinned Pi (`pi-coding-agent/dist/cli.js` with `os.homedir()` made to throw Node's error, so it runs on any host) and requires exit status 1, Node's message on stderr and an empty stdout for `--version` and `list`, then runs PiG's `--version` and `list` with no home directory and requires them to succeed. `TestStartupFailsWhereNoHomeDirectoryExists` requires print and RPC startup to exit 1 with that message and an empty stdout; `TestStartupFollowsNodeWhenThereIsNoHomeDirectory` runs the binary against `node -p "require('os').homedir()"` with `HOME` removed on the host itself, and on a host with no passwd entry for the uid (checked on xd670: Pi `--version`, `--mode rpc` and `-p` all exit 1 with the SystemError, PiG `--version` and `list` exit 0 with `PIG_HOME` set).
-
-Parity allowance: `TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands` is the allowance: the Pi half pins the crash, the PiG half pins the run. No paired corpus runs without a home directory, so none changes.
-
-Remove when: Pi stops resolving the home directory at import (so `--version` and `list` run there without one), or an owner decision reverses this one; then PiG's startup fails at the same point as Pi's, the markers, the allowance test and this record go.
 ## D195 An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request fails before it is sent
 
 What: with `AWS_BEARER_TOKEN_BEDROCK` exported but empty, PiG's Bedrock provider ignores it and signs the request with SigV4 and the credentials it finds (static keys, a profile, the default chain, or the dummy keys of `AWS_BEDROCK_SKIP_AUTH=1`). Pi 1.4.0 sends nothing: its own lookup treats an empty value as unset (`getProviderEnvValue`, `packages/ai/src/utils/provider-env.ts:45-51`; `packages/ai/src/api/bedrock-converse-stream.ts:185-191`, so `skipAuth` stays on and no `config.token` is set at `:242-245`), but the AWS JavaScript SDK chooses bearer auth for a variable that is merely present (`@aws-sdk/core` `NODE_AUTH_SCHEME_PREFERENCE_OPTIONS.environmentVariableSelector`: `if (bearerTokenKey in env) return ["httpBearerAuth"]`, and `@aws-sdk/token-providers` `fromEnvSigningName`: `bearerTokenKey in process.env`, reading the empty value), so the stream ends with "request could not be signed with `token` since the `token` is not defined". The difference shows with a workflow or a shell profile that maps an unset secret to an empty variable.
@@ -2595,5 +2576,27 @@ Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/bedrock_bearer_divergen
 Parity allowance: none needed beyond that test. The paired Bedrock oracles scrub every `AWS_*` variable before they run Pi.
 
 Remove when: Pi refuses to send a bearer token over HTTP (its SDK adds an HTTPS check, or Pi installs a signer that does), or PiG installs `bedrockBearerSigner` under skip-auth and the owner approves sending the token over HTTP there; then the markers, the D196 case of the test and this record go.
+
+SCRUTINIZED:approved
+
+## D200 With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and fails with Pi's error where Pi's home lookup would run
+
+What: on a host where Node's `os.homedir()` throws (no `HOME`, and no entry for the process's user in the system's user database: a container run as a uid its passwd file does not list), the pinned Pi 1.4.0 fails to load in every mode, `--version` and `list` included. It exits 1 with Node's uncaught `SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)`: `tools-manager.ts:11` evaluates `getBinDir()` at import, `getAgentDir()` expands even an explicit `PI_CODING_AGENT_DIR` through `normalizePath`, and `normalizePath` calls `homedir()` before it looks at its input (`utils/paths.ts:89`). PiG runs `--version`, `list` and every other command that loads no resources, and fails with the same message (exit 1, nothing on stdout) only where Pi's `resolve()` would look the home directory up, `getHomeDir()` at `package-manager.ts:2464`: startup in print, RPC and interactive mode, a reload and `pig config`.
+
+Why: PiG's config root (`PIG_HOME`, else `XDG_CONFIG_HOME/pig`, else `~/.pig`, internal/configroot) is meant to run without a home directory, as containers and CI jobs do; refusing `--version` and `list` there would remove the one thing `PIG_HOME` is for, and nothing in those commands needs a home directory.
+
+Pi bug: none claimed; Pi's behaviour is a crash at load rather than a reported error, and is kept for the paths that need a home directory.
+
+Scope: `PackageManagerHomeDir` (`internal/codingagent/resource_paths.go`) is Pi's `getHomeDir` and returns Node's error where Node's call throws (`internal/nodehome`); `ValidateAutoDiscoveredOverrides` returns it first, at the position of `package-manager.ts:2464`, so startup, a reload and the config command fail there with exit status 1 and nothing on stdout. The collectors (`AgentsSkillScan`, `AmbientSkillResources`) list no user `~/.agents/skills` when asked without a home directory. PiG's other lenient home lookups (`resolvepath`'s `~` expansion, `configroot.ExpandTilde`) are not part of this record and unchanged. The record's condition is the host's, not an option: with a home directory PiG and Pi behave alike.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-24 (keep `--version`, `list` and resource-free modes running where Pi crashes at import; fail with Pi's error where Pi's home lookup runs).
+
+Call-site markers: `internal/codingagent/resource_paths.go` (`PackageManagerHomeDir`, `ValidateAutoDiscoveredOverrides`).
+
+Evidence: `TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands` (`coding/cli/no_home_directory_test.go`) runs the pinned Pi (`pi-coding-agent/dist/cli.js` with `os.homedir()` made to throw Node's error, so it runs on any host) and requires exit status 1, Node's message on stderr and an empty stdout for `--version` and `list`, then runs PiG's `--version` and `list` with no home directory and requires them to succeed. `TestStartupFailsWhereNoHomeDirectoryExists` requires print and RPC startup to exit 1 with that message and an empty stdout; `TestStartupFollowsNodeWhenThereIsNoHomeDirectory` runs the binary against `node -p "require('os').homedir()"` with `HOME` removed on the host itself, and on a host with no passwd entry for the uid (checked on xd670: Pi `--version`, `--mode rpc` and `-p` all exit 1 with the SystemError, PiG `--version` and `list` exit 0 with `PIG_HOME` set).
+
+Parity allowance: `TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands` is the allowance: the Pi half pins the crash, the PiG half pins the run. No paired corpus runs without a home directory, so none changes.
+
+Remove when: Pi stops resolving the home directory at import (so `--version` and `list` run there without one), or an owner decision reverses this one; then PiG's startup fails at the same point as Pi's, the markers, the allowance test and this record go.
 
 SCRUTINIZED:approved
