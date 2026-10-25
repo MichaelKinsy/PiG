@@ -111945,9 +111945,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(path string, data []byte, mode os.FileMode) error"
+        "type": "func(path string, content io.Reader, mode os.FileMode) error"
       },
-      "shapeHash": "sha256:8abb5b7e501be7b1cbcbd38e8b4753645c5657ed048b517340108b1e12cc1318"
+      "shapeHash": "sha256:4ec874a3527888cc04e2db53c7d720f748d8f396bf3e006f8476444beaf4b843"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#cells",
@@ -133420,6 +133420,17 @@
         "type": "func(new *ConversationRenderers) (old *ConversationRenderers)"
       },
       "shapeHash": "sha256:8dd08a52423cb7886cf111ddc9a62629f64c0e701f81b2b2e6f1068712caefd2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#copyBuiltBinary",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "copyBuiltBinary",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(src string, dst string) error"
+      },
+      "shapeHash": "sha256:5a46417a427ab57cdda1518f9583785abaa19dade7a3b00db13aea016aaf9948"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#copyChild",

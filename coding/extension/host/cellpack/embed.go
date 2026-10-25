@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/execfile"
 	"github.com/MichaelKinsy/PiG/internal/fsretry"
 )
 
@@ -167,7 +169,7 @@ func writeCellBinary(path string, data []byte, mode os.FileMode) error {
 	if holdsExactly(path, data, mode) {
 		return nil
 	}
-	err := atomicWriteFile(path, data, mode)
+	err := atomicWriteFile(path, execfile.Bytes(data), mode)
 	if err != nil && holdsExactly(path, data, mode) {
 		// A peer published the same bytes while this write was refused.
 		return nil
@@ -205,30 +207,30 @@ func holdsExactly(path string, data []byte, mode os.FileMode) bool {
 	return true
 }
 
-// atomicWriteFile publishes data at path via a temp file in the same directory
-// followed by a rename, so a reader never sees a partial file and concurrent
-// writers of identical content resolve to one complete file. A POSIX rename
-// replaces a file that a process is executing; Windows refuses it, which is why
-// writeCellBinary does not call this for a file that is already right.
-func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".extract-*")
+// atomicWriteFile publishes content at path via a staged file in a fresh
+// directory beside it followed by a rename, so a reader never sees a partial
+// file and concurrent writers of identical content resolve to one complete
+// file. A POSIX rename replaces a file that a process is executing; Windows
+// refuses it, which is why writeCellBinary does not call this for a file that
+// is already right. The host executes the published file, so execfile writes
+// the staged copy: a concurrent fork must not leave a child that holds its
+// write descriptor, which makes the exec fail with ETXTBSY. The stage is a
+// directory because execfile creates the file itself, and a directory gives it
+// a name no peer shares without opening a descriptor.
+func atomicWriteFile(path string, content io.Reader, mode os.FileMode) error {
+	stage, err := os.MkdirTemp(filepath.Dir(path), ".extract-*")
 	if err != nil {
 		return err
 	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }() // no-op once the rename succeeds
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
+	defer func() { _ = os.RemoveAll(stage) }() // removes the staged file only when the rename failed
+	staged := filepath.Join(stage, filepath.Base(path))
+	if err := execfile.Write(staged, os.O_CREATE|os.O_EXCL, 0o600, content); err != nil {
 		return err
 	}
-	if err := tmp.Chmod(mode); err != nil {
-		_ = tmp.Close()
+	if err := os.Chmod(staged, mode); err != nil {
 		return err
 	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return renameFile(tmpName, path)
+	return renameFile(staged, path)
 }
 
 // extractDir is the absolute piglet-binary-cells directory under the PiG configuration root ($PIG_HOME, else $XDG_CONFIG_HOME/pig, else ~/.pig). It is absolute because the host starts a cell binary in the session's working directory, which a relative path would be resolved against.

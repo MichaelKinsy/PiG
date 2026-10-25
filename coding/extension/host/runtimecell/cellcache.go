@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
+	"github.com/MichaelKinsy/PiG/internal/execfile"
 	"github.com/MichaelKinsy/PiG/internal/filelock"
 )
 
@@ -437,20 +438,14 @@ func stageArtifact(scratch, source, destination string) error {
 	return copyArtifact(source, destination)
 }
 
+// copyArtifact copies a compiler's output, which sits outside the scratch directory when CARGO_TARGET_DIR names one. The copy is the runner the host executes once the entry is published, so execfile writes it: a concurrent fork must not leave a child that holds the copy's write descriptor.
 func copyArtifact(source, destination string) (err error) {
 	input, err := os.Open(source)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, input.Close()) }()
-
-	output, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, output.Close()) }()
-	_, err = io.Copy(output, input)
-	return err
+	return execfile.Write(destination, os.O_CREATE|os.O_EXCL, 0o600, input)
 }
 
 // pruneExcept removes every top-level entry of dir except keep and any name in

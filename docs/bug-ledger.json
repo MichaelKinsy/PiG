@@ -9325,6 +9325,36 @@
       ]
     },
     {
+      "id": "BF-5ab2304",
+      "title": "Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts…",
+      "symptom": "Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts other extensions at the same moment (seen as a `ci-test-conformance` failure in `TestModelTypesVirtualModelsAcrossSDKs/rust-isolated`).",
+      "rootCause": "the host copies a compiled binary into the cache with an in-process write (copyArtifact for a cell runner when CARGO_TARGET_DIR puts the compiler output outside the build scratch; copyBuiltBinary, formerly inline in buildRust, for a standalone Rust extension; atomicWriteFile for an embedded cell of a Piglet Binary) and executes the copy as soon as it is published. A child that another goroutine forks while the copy is open holds a copy of the write descriptor until it calls exec. Close-on-exec closes it at exec, not at fork, so the host's exec of the binary fails while that child is still between fork and exec. Renaming the file into place does not help: ETXTBSY follows the open file, not…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts other extensions at the same moment (seen as a `ci-test-conformance` failure in `TestModelTypesVirtualModelsAcrossSDKs/rust-isolated`). The host copies a compiled extension binary into its cache and starts the copy as soon as it is published: a Rust cell runner when `CARGO_TARGET_DIR` puts the compiler output outside the build directory, a standalone Rust extension, and the embedded cells of a Piglet Binary. A process that another goroutine started while the copy was open still held the copy's write descriptor, and Linux refuses to start a file that any process holds open for writing. The host now starts no process from before the copy is opened until after it is closed, so a start waits for at most one 256 KiB chunk of a copy (about 0.2 ms), not the whole copy. A standalone Rust extension build also no longer reads the whole binary into memory to copy it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5ab230421c",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/cellpack/extract_fork_test.go::TestAtomicWriteFileStartsNoChildWhileWriting",
+        "coding/extension/host/runtimecell/cellcache_exec_test.go::TestPublishArtifactStartsNoChildWhileCopyingAnExternalArtifact",
+        "coding/extension/host/subprocess/builder_rust_copy_test.go::TestCopyBuiltBinaryStartsNoChildWhileCopying",
+        "internal/execfile/execfile_test.go::TestWriteReleasesTheForkLockWhenItFails",
+        "internal/execfile/execfile_test.go::TestWriteStartsNoChildWhileTheFileIsOpen",
+        "internal/execfile/execfile_test.go::TestWriteTruncatesWhenAsked",
+        "internal/execfile/execfile_unix_test.go::TestStartAfterWriteIsNeverBusy",
+        "internal/execfile/execfile_unix_test.go::TestWriteLeavesNoDescriptorOpen",
+        "test/extension-conformance/model_types_test.go::TestModelTypesVirtualModelsAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-5b0e909",
       "title": "/scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model…",
       "symptom": "/scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model from an all-enabled list now leaves none enabled (not all), and the save key is checked after the navigation keys like Pi.",

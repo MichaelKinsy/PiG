@@ -306,6 +306,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-59fb623](#bf-59fb623) | fix(requestvalidity): one Responses assistant turn holds all its items, in any order | PiG's own defect | All platforms | Unreleased |
 | [BF-5a093cd](#bf-5a093cd) | In print and JSON mode, Node extensions that share one process now keep Pi's order at disposal | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5aab94c](#bf-5aab94c) | The color level check reads `TERM` with JavaScript's case-insensitive matching, as Pi's chalk does: a name… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5ab2304](#bf-5ab2304) | Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts… | PiG's own defect | Linux | Unreleased |
 | [BF-5b0e909](#bf-5b0e909) | /scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b15407](#bf-5b15407) | In-process extensions that call `pi.getCommands()` now receive the extension commands, prompt templates and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b1d5b1](#bf-5b1d5b1) | A resource pattern that starts with `~` (`!~/claude-backup/skills/pdf`, `+~/…`, `-~/…`, wildcards) now… | PiG's own defect | All platforms | 0.5.0 |
@@ -5130,6 +5131,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5aab94c69d` (2026-10-10)
 - **Tests:** `coding/cli/chalk_color_oracle_test.go::TestCLIChalkColorLevelMatchesChalk`
 - **Release note:** The color level check reads `TERM` with JavaScript's case-insensitive matching, as Pi's chalk does: a name such as `ſcreen` (long s) no longer counts as `screen`. Ten regular expressions that were compiled on every call are now compiled once.
+
+### BF-5ab2304
+
+**Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts other extensions at the same moment (seen as a `ci-test-conformance` failure in `TestModelTypesVirtualModelsAcrossSDKs/rust-isolated`).
+- **Root cause:** the host copies a compiled binary into the cache with an in-process write (copyArtifact for a cell runner when CARGO_TARGET_DIR puts the compiler output outside the build scratch; copyBuiltBinary, formerly inline in buildRust, for a standalone Rust extension; atomicWriteFile for an embedded cell of a Piglet Binary) and executes the copy as soon as it is published. A child that another goroutine forks while the copy is open holds a copy of the write descriptor until it calls exec. Close-on-exec closes it at exec, not at fork, so the host's exec of the binary fails while that child is still between fork and exec. Renaming the file into place does not help: ETXTBSY follows the open file, not…
+- **User impact:** An operation failed or was rejected
+- **Platform:** Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `5ab230421c` (2026-10-24)
+- **Tests:** `coding/extension/host/cellpack/extract_fork_test.go::TestAtomicWriteFileStartsNoChildWhileWriting`, `coding/extension/host/runtimecell/cellcache_exec_test.go::TestPublishArtifactStartsNoChildWhileCopyingAnExternalArtifact`, `coding/extension/host/subprocess/builder_rust_copy_test.go::TestCopyBuiltBinaryStartsNoChildWhileCopying`, `internal/execfile/execfile_test.go::TestWriteReleasesTheForkLockWhenItFails`, `internal/execfile/execfile_test.go::TestWriteStartsNoChildWhileTheFileIsOpen`, `internal/execfile/execfile_test.go::TestWriteTruncatesWhenAsked`, `internal/execfile/execfile_unix_test.go::TestStartAfterWriteIsNeverBusy`, `internal/execfile/execfile_unix_test.go::TestWriteLeavesNoDescriptorOpen` and 1 more in docs/bug-ledger.json
+- **Release note:** Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts other extensions at the same moment (seen as a `ci-test-conformance` failure in `TestModelTypesVirtualModelsAcrossSDKs/rust-isolated`). The host copies a compiled extension binary into its cache and starts the copy as soon as it is published: a Rust cell runner when `CARGO_TARGET_DIR` puts the compiler output outside the build directory, a standalone Rust extension, and the embedded cells of a Piglet Binary. A process that another goroutine started while the copy was open still held the copy's write descriptor, and Linux refuses to start a file that any process holds open for writing. The host now starts no process from before the copy is opened until after it is closed, so a start waits for at most one 256 KiB chunk of a copy (about 0.2 ms), not the whole copy. A standalone Rust extension build also no longer reads the whole binary into memory to copy it.
 
 ### BF-5b0e909
 
