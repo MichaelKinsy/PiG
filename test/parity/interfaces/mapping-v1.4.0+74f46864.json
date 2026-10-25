@@ -185243,8 +185243,8 @@
       ],
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:coding/session_manager_setup_test.go#TestNewSessionSetupReceivesTheNewSessionsSessionManager",
-        "test:internal/codingagent/session_branch_preview_test.go#TestBranchSessionLeavesTheSourceUntouched"
+        "test:coding/session_custom_entries_test.go#TestAppendExtensionEntryRejectsWithoutChangingTheLog",
+        "test:coding/session_custom_entries_test.go#TestAppendExtensionEntrySharesTheNativeAppendLock"
       ]
     },
     {
@@ -185265,8 +185265,8 @@
       ],
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:coding/session_manager_setup_test.go#TestNewSessionSetupReceivesTheNewSessionsSessionManager",
-        "test:internal/codingagent/session_branch_preview_test.go#TestBranchSessionLeavesTheSourceUntouched"
+        "test:coding/session_custom_entries_test.go#TestAppendExtensionEntryRejectsWithoutChangingTheLog",
+        "test:coding/session_custom_entries_test.go#TestAppendExtensionEntrySharesTheNativeAppendLock"
       ]
     },
     {

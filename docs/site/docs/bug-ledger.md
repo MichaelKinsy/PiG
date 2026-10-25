@@ -849,6 +849,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-bf45320](#bf-bf45320) | Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1055c4](#bf-c1055c4) | Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as… | PiG's own defect | Windows, macOS | 0.5.0 |
 | [BF-c10ae73](#bf-c10ae73) | In RPC mode, runs that an extension command's handler sends with `sendMessage` or `sendUserMessage` start in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c122088](#bf-c122088) | A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored… | PiG's own defect | All platforms | 0.5.0 |
@@ -858,6 +859,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c225c97](#bf-c225c97) | fix(rpc): compaction_start precedes a refused replacement's error; D148 names the extra compaction_end; D141… | PiG's own defect | All platforms | Unreleased |
 | [BF-c229e1c](#bf-c229e1c) | A Pi Durable SQLite file written by PiG can be read by Pi, and the reverse, when a task kind, request ID, or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c2b2b8b](#bf-c2b2b8b) | fix(tui): the inline memo is used only with tui's own style functions | PiG's own defect | All platforms | Unreleased |
+| [BF-c350117](#bf-c350117) | Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup | PiG's own defect | All platforms | Unreleased |
 | [BF-c3a6eca](#bf-c3a6eca) | Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c416945](#bf-c416945) | fix(ai): tool-argument member order keeps a key with an escaped lone surrogate | PiG's own defect | All platforms | Unreleased |
 | [BF-c47bafd](#bf-c47bafd) | A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id… | PiG's own defect | All platforms | 0.5.3 |
@@ -12691,6 +12693,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB`, `ai/sse_long_line_test.go::TestSSEDecoderBoundsALine`, `ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength`
 - **Release note:** A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder. A line is now bounded where Pi's runtime bounds it, at Node's maximum string length (512 MiB), so a server that never ends a line cannot exhaust memory (D134).
 
+### BF-bf45320
+
+**Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.
+- **Root cause:** Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bf453203b6` (2026-10-23)
+- **Tests:** `coding/session_custom_entries_test.go::TestAppendExtensionEntryPreservesIdentityAndEventSemantics`, `coding/session_custom_entries_test.go::TestAppendExtensionEntryRejectsWithoutChangingTheLog`, `coding/session_custom_entries_test.go::TestAppendExtensionEntrySharesTheNativeAppendLock`, `coding/session_custom_entries_test.go::TestAppendExtensionEntryThroughNodeHost`
+- **Release note:** Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining subprocess IDs and timestamps through the native Session writer and preserving `entry_appended` semantics. Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.
+
 ### BF-c1055c4
 
 **Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as…**
@@ -12813,6 +12829,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `c2b2b8b860` (2026-10-10)
 - **Tests:** `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownEqualsAFreshRender`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownFollowsTheDefaultStyle`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownRendersOnlyChangedInlineText`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWithAForeignTextColorCallsItAgain`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWithAForeignThemeCallsItsStylesAgain`
+
+### BF-c350117
+
+**Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup**
+
+- **Source:** PiG's own defect
+- **Symptom:** Previously, reconnect still started a replacement connection after the caller had canceled.
+- **Root cause:** Reconnect did not check caller cancellation after closing the previous client, so it could still start a replacement connection.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c3501172ab` (2026-10-23)
+- **Tests:** `coding/mcpext/reconnect_cancel_test.go::TestMCPReconnectDoesNotOpenAfterCancellationDuringCleanup`
+- **Release note:** Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup. Previously, reconnect still started a replacement connection after the caller had canceled. Reconnect did not check caller cancellation after closing the previous client, so it could still start a replacement connection. Reconnect now completes cleanup and returns the original cancellation cause before starting a replacement.
 
 ### BF-c3a6eca
 

@@ -106,6 +106,9 @@ func run(t *testing.T, path string, unawaited, hold bool) *session {
 		out.afterHello = transientReads(t, opened)
 		if held != nil {
 			close(held)
+			// Releasing the gate does not settle the job. Join it after the transient read, before later document
+			// creation can overtake its commits: DocumentRecord.createdAt is a Seq (Pi durable/src/types.ts:715).
+			waitTasks(t, opened)
 		}
 	}
 	hooks.beforeClose = func(t *testing.T, opened harness.Harness) { out.settled = settledReads(t, opened) }

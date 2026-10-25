@@ -71712,6 +71712,17 @@
       "shapeHash": "sha256:cec5db9da5af46bce6483c341ee148056fb3d9e5d654b8e4f2f452dab663a786"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.AppendExtensionEntry",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.AppendExtensionEntry",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(customType string, data any, direct *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.DirectEntryAppend) (string, error)"
+      },
+      "shapeHash": "sha256:298391d1cb4a19f78a3e7a670dc554a61edba5851598a18214560c5f77401d36"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.AutoCompactionEnabled",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.AutoCompactionEnabled",

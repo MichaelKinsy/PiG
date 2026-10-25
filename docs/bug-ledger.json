@@ -24995,6 +24995,31 @@
       ]
     },
     {
+      "id": "BF-bf45320",
+      "title": "Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining…",
+      "symptom": "Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.",
+      "rootCause": "Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining subprocess IDs and timestamps through the native Session writer and preserving `entry_appended` semantics. Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bf453203b6",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": [
+        "coding/session_custom_entries_test.go::TestAppendExtensionEntryPreservesIdentityAndEventSemantics",
+        "coding/session_custom_entries_test.go::TestAppendExtensionEntryRejectsWithoutChangingTheLog",
+        "coding/session_custom_entries_test.go::TestAppendExtensionEntrySharesTheNativeAppendLock",
+        "coding/session_custom_entries_test.go::TestAppendExtensionEntryThroughNodeHost"
+      ]
+    },
+    {
       "id": "BF-c1055c4",
       "title": "Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as…",
       "symptom": "Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as `*.@(md|txt)`, POSIX classes, `.` and empty path segments, and case-insensitive wildcard segments on Windows and macOS.",
@@ -25315,6 +25340,28 @@
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownRendersOnlyChangedInlineText",
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWithAForeignTextColorCallsItAgain",
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWithAForeignThemeCallsItsStylesAgain"
+      ]
+    },
+    {
+      "id": "BF-c350117",
+      "title": "Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup",
+      "symptom": "Previously, reconnect still started a replacement connection after the caller had canceled.",
+      "rootCause": "Reconnect did not check caller cancellation after closing the previous client, so it could still start a replacement connection.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup. Previously, reconnect still started a replacement connection after the caller had canceled. Reconnect did not check caller cancellation after closing the previous client, so it could still start a replacement connection. Reconnect now completes cleanup and returns the original cancellation cause before starting a replacement.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c3501172ab",
+          "date": "2026-10-23"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/reconnect_cancel_test.go::TestMCPReconnectDoesNotOpenAfterCancellationDuringCleanup"
       ]
     },
     {

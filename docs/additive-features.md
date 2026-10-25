@@ -118,6 +118,8 @@ SCRUTINIZED:approved
 
 Stock disposition: required substrate. PiG Standard selects extensions but does not own the cross-language SDK or wire contract.
 
+Embedding hosts bind `HostCallbacks.AppendEntry` through `coding.Session.AppendExtensionEntry`. It preserves the subprocess-assigned ID and timestamp, validates the identity and appends under the native Session mutation lock, and emits `entry_appended` only for `pi.appendEntry`. `TestAppendExtensionEntryThroughNodeHost` exercises isolated and packed Node extensions through the public host API; rejection and concurrent native appends are covered in `coding/session_custom_entries_test.go`.
+
 What: pig ships SDKs in four languages: Go (`extensions/sdk`), Rust
 (`extensions/sdk-rs`), Python (`extensions/sdk-py`), and Common Lisp on SBCL
 (`extensions/sdk-lisp`): that all author
