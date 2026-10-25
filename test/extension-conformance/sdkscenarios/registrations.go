@@ -184,11 +184,6 @@ func registrations() []Scenario {
 				"command add-flag registered",
 				`command read-late-flag "late"`,
 			},
-			Red: map[SDK]Red{Rust: {Lane: "SdkRustLateFlagDefault", Why: "the Rust SDK snapshots flag defaults when the extension loads, so a flag registered later answers null until the host holds a value", Got: []string{
-				`command read-late-flag null`,
-				"command add-flag registered",
-				`command read-late-flag null`,
-			}}},
 		},
 		{
 			ID: "command-arguments-survive-the-wire-byte-for-byte", Group: group,

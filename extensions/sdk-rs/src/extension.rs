@@ -355,6 +355,7 @@ pub(crate) struct LateDeclarations {
     shortcuts: Mutex<HashMap<String, Arc<ShortcutHandler>>>,
     message_renderers: Mutex<HashMap<String, Arc<MessageRenderFn>>>,
     entry_renderers: Mutex<HashMap<String, Arc<EntryRenderFn>>>,
+    flag_defaults: Mutex<HashMap<String, Value>>,
 }
 
 impl LateDeclarations {
@@ -381,6 +382,13 @@ impl LateDeclarations {
     }
     pub(crate) fn entry_renderer(&self, custom_type: &str) -> Option<Arc<EntryRenderFn>> {
         self.entry_renderers.lock().unwrap().get(custom_type).cloned()
+    }
+    /// Keeps the default of a flag registered after load; the first default registered for a name stays, as Pi's registerFlag keeps the first.
+    pub(crate) fn set_flag_default(&self, name: String, default: Value) {
+        self.flag_defaults.lock().unwrap().entry(name).or_insert(default);
+    }
+    pub(crate) fn flag_default(&self, name: &str) -> Option<Value> {
+        self.flag_defaults.lock().unwrap().get(name).cloned()
     }
 }
 
