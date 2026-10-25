@@ -3,8 +3,10 @@ package codingagent
 // Ports packages/coding-agent/src/core/provider-composer.ts.
 
 import (
+	"encoding/json"
 	"maps"
 	"slices"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -44,6 +46,30 @@ func anyModelFromDefinition(providerID string, prov providerConfig, md modelDefi
 		return model
 	}
 	return nativeModelFromEntry(modelDefinitionEntry(providerID, prov, md))
+}
+
+// registeredDefinition is the definition an extension registered and the catalog record built from it. Every copy of a modelDefinition shares one, so
+// a registry change that rebuilds the entry of each model (a namespace switch, a provider registration, a /model listing) encodes the record of a
+// definition once, not once per rebuild: the record is a function of the definition and the three members taken from the provider. The cache holds the
+// record of the last members it was asked for, one record per registered model, which the definition already costs.
+type registeredDefinition struct {
+	raw json.RawMessage
+
+	mu     sync.Mutex
+	api    ai.API
+	id     string
+	base   string
+	record string
+	cached bool
+}
+
+func (d *registeredDefinition) catalogRecord(api ai.API, providerID, baseURL string) string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !d.cached || d.api != api || d.id != providerID || d.base != baseURL {
+		d.record, d.api, d.id, d.base, d.cached = ai.ExtensionModelRecord(d.raw, api, providerID, baseURL), api, providerID, baseURL, true
+	}
+	return d.record
 }
 
 // modelDefinitionEntry resolves a provider's model definition. A registered definition (one an extension registered) is Pi's spread
@@ -91,7 +117,7 @@ func modelDefinitionEntry(providerID string, prov providerConfig, md modelDefini
 	}
 	var record string
 	if registered && (md.Type == "" || md.Type == ai.ModelTypeChat) {
-		record = ai.ExtensionModelRecord(md.registration, ai.API(api), providerID, baseURL)
+		record = md.registration.catalogRecord(ai.API(api), providerID, baseURL)
 	}
 	var inputCost, outputCost, cacheReadCost, cacheWriteCost float64
 	var costTiers []ai.CostTier

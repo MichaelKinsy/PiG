@@ -493,6 +493,20 @@ func writeStoredModelsObject(object *bytes.Buffer, entries []storedModels) error
 	return nil
 }
 
+// appendStoreString appends the JSON encoding of s as marshalStoreJSON writes it. A string of printable ASCII without a quote or a backslash is its own
+// body, which is every catalog key and nearly every provider id, API and base URL; any other string takes the encoder.
+func appendStoreString(dst []byte, s string) ([]byte, error) {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c < 0x20 || c > 0x7e || c == '"' || c == '\\' {
+			encoded, err := marshalStoreJSON(s)
+			return append(dst, encoded...), err
+		}
+	}
+	dst = append(dst, '"')
+	dst = append(dst, s...)
+	return append(dst, '"'), nil
+}
+
 func marshalStoreJSON(value any) ([]byte, error) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)

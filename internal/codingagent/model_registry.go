@@ -152,7 +152,7 @@ type modelDefinition struct {
 	// registration is the definition as the registering extension wrote it (extension.ProviderModelConfig.Definition); nil for a
 	// models.json model. Pi's model object is that definition spread (provider-composer.ts extensionModelFromDefinition), not the
 	// member-by-member object modelFromJson builds, so the definition fixes its members and their order.
-	registration json.RawMessage
+	registration *registeredDefinition
 }
 
 type modelCostJSON struct {
@@ -945,7 +945,9 @@ func providerConfigFromRegistration(configMap extension.ProviderConfig) (provide
 		if err != nil {
 			return providerConfig{}, false
 		}
-		provider.Models[i].registration = definition
+		if definition != nil {
+			provider.Models[i].registration = &registeredDefinition{raw: definition}
+		}
 	}
 	if configMap.Headers != nil && provider.Headers == nil {
 		provider.Headers = map[string]*string{}

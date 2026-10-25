@@ -28867,6 +28867,17 @@
       "shapeHash": "sha256:d171abf4799d8cf031c984bff11fed2d3fc66730d3c95ad5c26b978fb31956c7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#appendStoreString",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "appendStoreString",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dst []byte, s string) ([]byte, error)"
+      },
+      "shapeHash": "sha256:d929ceb4b4df4ac8c3b354a1fa906283fe2c9b64d93194fa3b19c62df686c577"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#applyAnthropicCacheControl",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "applyAnthropicCacheControl",
@@ -272724,6 +272735,28 @@
         "type": "func(providerID string, catalogBaseURL string, localGeneratedAt *float64, overlay *remoteCatalogOverlay, refresh github.com/MichaelKinsy/PiG/ai.RefreshModelsContext) error"
       },
       "shapeHash": "sha256:4b370a2d2664195e7663195e368ab52551d3cd96bc5dbe7ab047089be85c72b1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#registeredDefinition",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "registeredDefinition",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "registeredDefinition"
+      },
+      "shapeHash": "sha256:8d5cdf32de9cffc12989db103e3fa3bcaad15dfa9a19c23b9554cb6acc69c638"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#registeredDefinition.catalogRecord",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "registeredDefinition.catalogRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(api github.com/MichaelKinsy/PiG/ai.API, providerID string, baseURL string) string"
+      },
+      "shapeHash": "sha256:e9f96fa48d250180342f699dc4cc495dd142948f66f0a42f965a1a1eac50fc2c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#registeredNativeProvider",

@@ -234,7 +234,7 @@ func selectReference(text string, pool []RuntimeModel, fuzzy bool, usable func(s
 	lowerText := jsstring.ToLower(text)
 	var raw []RuntimeModel
 	for _, model := range pool {
-		if jsstring.ToLower(model.ID) == lowerText {
+		if jsstring.LowerEquals(model.ID, lowerText) {
 			raw = append(raw, model)
 		}
 	}
@@ -248,7 +248,7 @@ func selectReference(text string, pool []RuntimeModel, fuzzy bool, usable func(s
 		}
 		lowerModelText := jsstring.ToLower(modelText)
 		// The provider's own literal id (OpenRouter's `openrouter/free`) beats its fuzzy matches
-		if i := slices.IndexFunc(providerModels, func(model RuntimeModel) bool { return jsstring.ToLower(model.ID) == lowerModelText }); i >= 0 {
+		if i := slices.IndexFunc(providerModels, func(model RuntimeModel) bool { return jsstring.LowerEquals(model.ID, lowerModelText) }); i >= 0 {
 			named = &providerModels[i]
 		} else if i := slices.IndexFunc(raw, func(model RuntimeModel) bool { return model.Provider == provider }); i >= 0 {
 			named = &raw[i]
@@ -303,7 +303,7 @@ func fuzzyMatches(text string, models []RuntimeModel) []RuntimeModel {
 	lower := jsstring.ToLower(text)
 	var matches []RuntimeModel
 	for _, model := range models {
-		if strings.Contains(jsstring.ToLower(model.ID), lower) || strings.Contains(jsstring.ToLower(model.Name), lower) {
+		if jsstring.LowerContains(model.ID, lower) || jsstring.LowerContains(model.Name, lower) {
 			matches = append(matches, model)
 		}
 	}
