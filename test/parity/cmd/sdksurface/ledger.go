@@ -37,7 +37,7 @@ var ledgerModules = []string{"pi-coding-agent", "pi-tui", "pi-ai", "pi-ai/compat
 
 // nativeSDKs are the ledger columns the author fills in; the Node column is
 // derived from the runtime probe.
-var nativeSDKs = []string{"go", "rust", "python"}
+var nativeSDKs = []string{"go", "rust", "python", "lisp"}
 
 // Cell kinds. A cell is "<kind>" or "<kind>:<value>"; nothing else parses, so
 // there is no spelling for n/a, deferred or pending.
@@ -82,6 +82,9 @@ func (c ledgerCell) String() string {
 	return c.Kind + ":" + c.Value
 }
 
+// exemptIn reports whether the lane's high-use gaps pass the release gate of train.
+func (l ledgerLane) exemptIn(train string) bool { return l.FirstTrainExempt && l.Opened == train }
+
 // ledgerPolicy is the release policy the checks apply.
 type ledgerPolicy struct {
 	// ReleaseTrain is the train being built; Trains lists every train a lane
@@ -105,6 +108,9 @@ type ledgerLane struct {
 	Owner   string `toml:"owner"`
 	Opened  string `toml:"opened"`
 	Closing string `toml:"closing"`
+	// FirstTrainExempt lets the lane's gaps on high-use exports pass the release gate in the train that opened the lane. It is for a
+	// new SDK's phased delivery: each gap stays a named cell, fails loudly when called, and is listed by make sdk-exports-release.
+	FirstTrainExempt bool `toml:"first_train_exempt"`
 }
 
 // unreachedSpec is a reviewed hole: a realized cell no conformance fixture or
@@ -240,7 +246,7 @@ type ledgerInput struct {
 }
 
 // kitPrefix qualifies a component kit view in an SDK's symbols.
-var kitPrefix = map[string]string{"go": "kit.", "rust": "kit::", "python": "kit."}
+var kitPrefix = map[string]string{"go": "kit.", "rust": "kit::", "python": "kit.", "lisp": "kit."}
 
 var lastIdent = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*$`)
 
@@ -248,6 +254,10 @@ var lastIdent = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*$`)
 // cell: its final identifier behind a member access, or, for a function or
 // view, called or constructed. A kit view must be named through the kit.
 func reachPatterns(c ledgerCell) []*regexp.Regexp {
+	// A Lisp cell names a symbol of the pig package as pig:<symbol>; a fixture reaches it by that qualified name.
+	if symbol, ok := strings.CutPrefix(c.Value, "pig:"); ok && c.Kind != cellKit {
+		return []*regexp.Regexp{regexp.MustCompile(`(?i)\bpig:` + regexp.QuoteMeta(symbol) + `(?:[\s)]|$)`)}
+	}
 	name := lastIdent.FindString(c.Value)
 	if name == "" {
 		return nil
@@ -388,7 +398,7 @@ func checkLedger(in ledgerInput) []string {
 					break
 				}
 				referenced[c.Value] = true
-				if in.Release && p.HighUse > 0 && in.Usage.uses(r) >= p.HighUse {
+				if in.Release && p.HighUse > 0 && in.Usage.uses(r) >= p.HighUse && !f.Lane[c.Value].exemptIn(p.ReleaseTrain) {
 					add("release: %s %s is a gap (lane %s) on an export %d scanned packages import (threshold %d)", r.Key, sdk, c.Value, in.Usage.uses(r), p.HighUse)
 				}
 			case cellNative, cellHost, cellKit:
@@ -545,6 +555,9 @@ func renderLedger(f ledgerFile, rows []ledgerRow) []byte {
 	for _, n := range names {
 		l := f.Lane[n]
 		w("\n[lane.%s]\nowner = %s\nopened = %s\nclosing = %s\n", n, tomlString(l.Owner), tomlString(l.Opened), tomlString(l.Closing))
+		if l.FirstTrainExempt {
+			w("first_train_exempt = true\n")
+		}
 	}
 	holes := slices.Clone(f.Unreached)
 	sort.Slice(holes, func(i, j int) bool { return holes[i].Key < holes[j].Key })
@@ -609,7 +622,7 @@ func renderExportsDoc(in ledgerInput, typeOnly map[string]int) []byte {
 	for _, r := range in.Rows {
 		byModule[r.Module] = append(byModule[r.Module], r)
 	}
-	w("## Summary\n\n| Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |\n|---|---|---|---|---|---|---|\n")
+	w("## Summary\n\n| Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |\n|---|---|---|---|---|---|---|---|\n")
 	for _, m := range ledgerModules {
 		rows := byModule[m]
 		served := 0
@@ -670,6 +683,27 @@ func renderExportsDoc(in ledgerInput, typeOnly map[string]int) []byte {
 			w("| `%s` | %d | %s |\n", escapeCell(g.row.Key), g.uses, strings.Join(g.sdks, "; "))
 		}
 	}
+	w("\n## Exempt gaps (the first train of a new SDK)\n\n")
+	var exempt []gapRow
+	for _, g := range high {
+		var listed []string
+		for _, s := range g.sdks {
+			if lane := s[strings.LastIndex(s, " ")+1:]; in.File.Lane[lane].exemptIn(in.File.Policy.ReleaseTrain) {
+				listed = append(listed, s)
+			}
+		}
+		if len(listed) > 0 {
+			exempt = append(exempt, gapRow{g.row, g.uses, listed})
+		}
+	}
+	if len(exempt) == 0 {
+		w("None.\n")
+	} else {
+		w("These gaps are on exports %d or more scanned packages import. Their lanes are exempt from the release gate until the train after the one that opened them; each is a named cell, fails loudly when called, and the lane's closing row names the work that ends it.\n\n| Export | uses | Exempt gaps |\n|---|---|---|\n", in.File.Policy.HighUse)
+		for _, g := range exempt {
+			w("| `%s` | %d | %s |\n", escapeCell(g.row.Key), g.uses, strings.Join(g.sdks, "; "))
+		}
+	}
 	w("\n## Realized cells no fixture reaches\n\n")
 	if len(in.File.Unreached) == 0 {
 		w("None.\n")
@@ -682,7 +716,7 @@ func renderExportsDoc(in ledgerInput, typeOnly map[string]int) []byte {
 		}
 	}
 	for _, m := range ledgerModules {
-		w("\n## %s\n\n| Export | uses | Node | Go | Rust | Python |\n|---|---|---|---|---|---|\n", m)
+		w("\n## %s\n\n| Export | uses | Node | Go | Rust | Python | Lisp |\n|---|---|---|---|---|---|---|\n", m)
 		for _, r := range byModule[m] {
 			w("| `%s` | %d |", escapeCell(r.Name), in.Usage.uses(r))
 			for _, sdk := range append([]string{"node"}, nativeSDKs...) {

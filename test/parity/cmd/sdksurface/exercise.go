@@ -38,6 +38,8 @@ var conformanceCorpus = map[string]struct {
 	"go":     {dirs: []string{"test/extension-conformance"}, exts: []string{".go"}},
 	"rust":   {dirs: []string{"test/extension-conformance"}, exts: []string{".rs", "_test.go"}},
 	"python": {dirs: []string{"test/extension-conformance"}, exts: []string{".py", "_test.go"}},
+	// The Lisp corpus is its scenario driver and the SDK's own wire tests: a Lisp cell is reached by pig:<symbol> in either.
+	"lisp": {dirs: []string{"test/extension-conformance/testdata/scenario-driver-lisp", "extensions/sdk-lisp/tests"}, exts: []string{".lisp"}},
 }
 
 // gapSpec is one reviewed conformance hole: a surface an SDK implements that no
@@ -248,6 +250,16 @@ func loadCorpora(root string) (map[string]string, error) {
 	}
 	corpora[testsCorpus] = tests.String()
 	for _, sdk := range sdks {
+		text, err := loadCorpus(root, sdk)
+		if err != nil {
+			return nil, fmt.Errorf("%s conformance corpus: %w", sdk, err)
+		}
+		corpora[sdk] = text
+	}
+	for _, sdk := range nativeSDKs {
+		if _, ok := corpora[sdk]; ok {
+			continue
+		}
 		text, err := loadCorpus(root, sdk)
 		if err != nil {
 			return nil, fmt.Errorf("%s conformance corpus: %w", sdk, err)

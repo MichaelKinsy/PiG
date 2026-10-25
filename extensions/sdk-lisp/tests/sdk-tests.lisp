@@ -201,3 +201,59 @@ Returns the host and the register envelope."
     (check-equal "declared" (pig:extension-name ext))
     (check-equal 1 (length (pig::extension-tools ext)))
     (check-equal "session_start" (pig:jget (first (pig::extension-handlers ext)) "event"))))
+
+(defvar *thunk* nil)
+
+(defun probe-extension ()
+  (let ((ext (pig:make-extension "probe")))
+    (pig:command ext "c" "C" (lambda (ctx args) (declare (ignore args)) (setf *thunk-result* (funcall *thunk* ctx))))
+    ext))
+
+(defvar *thunk-result* nil)
+
+(defun probe-call (host thunk result &optional (id "r"))
+  "Run THUNK, (lambda (ctx)), in a command, answer its one host call with RESULT, and return the call frame's call member."
+  (setf *thunk* thunk)
+  (request host id "command" "tool" "c" "args" "")
+  (let ((call (hread-type host "call")))
+    (hsend host "type" "call_result" "id" (pig:jget call "id") "call_result" (pig:obj "result" result))
+    (hread-type host "response")
+    (pig:jget call "call")))
+
+(deftest session-manager-reads-are-sessionRead-calls
+  (with-host (host (probe-extension))
+    (flet ((check-read (thunk method &optional (args (pig:obj)))
+             (let ((call (probe-call host thunk "x")))
+               (check-equal "sessionRead" (pig:jget call "method") method)
+               (check-equal method (pig:jget (pig:jget call "args") "method"))
+               (check-equal (pig:to-json args) (pig:to-json (pig:jget (pig:jget call "args") "args")) method))))
+      (check-read (lambda (c) (pig:session-get-cwd (pig:ctx-session-manager c))) "getCwd")
+      (check-read (lambda (c) (pig:session-get-session-dir (pig:ctx-session-manager c))) "getSessionDir")
+      (check-read (lambda (c) (pig:session-get-session-id (pig:ctx-session-manager c))) "getSessionId")
+      (check-read (lambda (c) (pig:session-get-session-file (pig:ctx-session-manager c))) "getSessionFile")
+      (check-read (lambda (c) (pig:session-get-session-name (pig:ctx-session-manager c))) "getSessionName")
+      (check-read (lambda (c) (pig:session-get-leaf-id (pig:ctx-session-manager c))) "getLeafId")
+      (check-read (lambda (c) (pig:session-get-header (pig:ctx-session-manager c))) "getHeader")
+      (check-read (lambda (c) (pig:session-get-leaf-entry (pig:ctx-session-manager c))) "getLeafEntry")
+      (check-read (lambda (c) (pig:session-get-entry (pig:ctx-session-manager c) "e1")) "getEntry" (pig:obj "id" "e1"))
+      (check-read (lambda (c) (pig:session-get-label (pig:ctx-session-manager c) "e1")) "getLabel" (pig:obj "id" "e1"))
+      (check-read (lambda (c) (pig:session-get-entries (pig:ctx-session-manager c))) "getEntries")
+      (check-read (lambda (c) (pig:session-get-branch (pig:ctx-session-manager c) "b")) "getBranch" (pig:obj "fromId" "b"))
+      (check-read (lambda (c) (pig:session-get-children (pig:ctx-session-manager c) "p")) "getChildren" (pig:obj "parentId" "p"))
+      (check-read (lambda (c) (pig:session-get-tree (pig:ctx-session-manager c))) "getTree"))))
+
+(deftest registry-reads-the-providers-state
+  (with-host (host (probe-extension))
+    (let ((state (pig:from-json "{\"providers\":{\"configured\":{\"configured\":true,\"usingOAuth\":true},\"plain\":{\"configured\":false}}}")))
+      (probe-call host (lambda (c) (pig:registry-has-configured-auth (pig:ctx-model-registry c) (pig:obj "provider" "configured" "id" "m"))) state)
+      (check-equal t *thunk-result*)
+      (probe-call host (lambda (c) (pig:registry-has-configured-auth (pig:ctx-model-registry c) (pig:obj "provider" "plain" "id" "m"))) state "r2")
+      (check-equal nil *thunk-result*)
+      (probe-call host (lambda (c) (pig:registry-is-using-oauth (pig:ctx-model-registry c) (pig:obj "provider" "configured" "id" "m"))) state "r3")
+      (check-equal t *thunk-result*)
+      (probe-call host (lambda (c) (pig:registry-is-using-oauth (pig:ctx-model-registry c) (pig:obj "provider" "nobody" "id" "m"))) state "r4")
+      (check-equal nil *thunk-result*))))
+
+(deftest unserved-members-signal-unsupported-capability
+  (check-error pig:unsupported-capability (pig:registry-get-provider-name nil "x"))
+  (check-error pig:unsupported-capability (pig:registry-get-registered-native-provider nil "x")))

@@ -265,6 +265,24 @@ jobs:
           set -euo pipefail
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
+      # The pinned SBCL (automation/dev/toolchains.lock) builds and runs Lisp extension images; the conformance rows and make test-sdk-lisp
+      # fail without it. install-sbcl.sh builds it from the checksummed release source once, and the cache keeps the prefix for the pin.
+      - name: Restore the pinned SBCL
+        if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-apt-packages.sh libzstd-dev
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Install pinned npm
         shell: bash
         run: |
@@ -291,6 +309,7 @@ jobs:
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
+          if [ -n "${PIG_SBCL:-}" ]; then test "$("$PIG_SBCL" --version)" = "SBCL $(awk -F'\t' '!/^#/ && $1=="sbcl-source" {print $2}' automation/dev/toolchains.lock)"; fi
           python3 automation/pin/pin.py check-oracle
       # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile.
       - name: Restore the Cargo registry and test targets
@@ -842,6 +861,21 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
+      - name: Restore the pinned SBCL
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        # SBCL publishes no 2.6.9 binary for arm64 macOS: the script builds the checksummed release source with the 2.4.0 binary.
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install zstd
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Restore the Pi oracle build
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
