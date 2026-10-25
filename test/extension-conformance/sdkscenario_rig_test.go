@@ -38,6 +38,8 @@ type scenarioRig struct {
 	footer footerData
 	// signal is the active run's cancellation the host reports as ctx.signal.
 	signal runSignalState
+	// wire holds the results the extension sent the host, as written.
+	wire wireLog
 }
 
 // peerConfig loads the Node driver as the scenario's second extension. It is
@@ -134,6 +136,7 @@ func newScenarioRig(t *testing.T, sdk sdkscenarios.SDK, scenario sdkscenarios.Sc
 			rig.bridge.SetUIContext(rigUI{UIContext: extension.NoopUIContext})
 		}
 	}
+	host.SetInboundObserver(rig.wire.observe)
 	rig.configs = []subprocess.ExtConfig{scenarioDriverConfig(t, root, sdk, "scenario-driver-"+string(sdk))}
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return slices.Clone(rig.configs), nil })
 	loaded, errs := host.LoadAll(t.Context(), slices.Clone(rig.configs))

@@ -83,6 +83,8 @@ func (r *scenarioRig) runStep(step sdkscenarios.Step, lines *[]string) {
 		r.observeRegistrations(lines)
 	case "tool":
 		r.runTool(ctx, step, lines)
+	case "tool-wire":
+		r.runToolWire(ctx, step, lines)
 	case "tool-call-event":
 		r.runToolCallEvent(ctx, step, lines)
 	case "footer-state":

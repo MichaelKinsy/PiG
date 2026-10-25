@@ -287,7 +287,7 @@ type Step struct {
 	// "login", "authjson", "setcredential", "resolve" (providers and auth);
 	// "host-calls" (the fire-and-forget host actions an extension triggered);
 	// "host-provider", "load-peer", "command", "reload", "end-input" (host events); "abort-tool"
-	// (the abort rule); "registrations", "tool", "tool-result", "tool-call-event", "tool-result-event", "input-event", "before-agent-start-event", "run-signal", "abort-run-in-command", "emit-event" (the runner emits the event Name with the JSON payload Args and the step records the lines EventRecord handlers wrote), "shortcut" (tools, commands,
+	// (the abort rule); "registrations", "tool", "tool-wire" (a tool step that also records how its result was written on the wire: the escape \ud83d or raw surrogate bytes), "tool-result", "tool-call-event", "tool-result-event", "input-event", "before-agent-start-event", "run-signal", "abort-run-in-command", "emit-event" (the runner emits the event Name with the JSON payload Args and the step records the lines EventRecord handlers wrote), "shortcut" (tools, commands,
 	// shortcuts and flags), "footer-state" (the host's footer data).
 	Op       string
 	Provider string
