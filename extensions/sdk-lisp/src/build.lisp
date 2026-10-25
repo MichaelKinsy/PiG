@@ -35,11 +35,18 @@
 ;; into a directory of its own: the build that follows compiles the SDK afresh, never loading a scan's fasls.
 (defvar *fasl-dir* (concatenate 'string *scratch* (if (equal (env "PIG_LISP_MODE") "scan") "scan-fasl/" "fasl/")))
 
+(defun root-spellings (root)
+  "ROOT as given and as the file system names it: ASDF finds a source by its truename (a Windows 8.3 short name, a symbolic link or a
+junction spelled out), so the translation must match both."
+  (let ((true (ignore-errors (probe-file root))))
+    (if true (remove-duplicates (list root (namestring true)) :test #'string=) (list root))))
+
 (defun configure-output-translations (roots)
   (asdf:initialize-output-translations
    `(:output-translations :ignore-inherited-configuration
      ,@(loop for root in roots for i from 0
-             collect `(,root (,(format nil "~Ar~D/" *fasl-dir* i) :**/ :*.*.*)))
+             append (loop for spelling in (root-spellings root)
+                          collect `(,spelling (,(format nil "~Ar~D/" *fasl-dir* i) :**/ :*.*.*))))
      (t (,*fasl-dir* :**/ :*.*.*)))))
 (configure-output-translations (list *sdk-root*))
 ;; load the SDK from source so the image holds exactly the staged SDK
