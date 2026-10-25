@@ -42,6 +42,11 @@ func TestBuildLispCellResolvesQuicklispDependencies(t *testing.T) {
 	cache := t.TempDir()
 	cell, err := BuildLispPackedCell(context.Background(), cache, "cell:ql", extensions)
 	if err != nil {
+		if _, after, ok := strings.Cut(err.Error(), "details: "); ok {
+			if log, readErr := os.ReadFile(strings.TrimSuffix(after, ")")); readErr == nil {
+				t.Logf("build log:\n%s", log)
+			}
+		}
 		t.Fatal(err)
 	}
 	if cell.BinaryPath == "" || len(d.fetched) != 3 {
