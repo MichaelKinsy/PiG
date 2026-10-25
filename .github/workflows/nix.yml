@@ -23,6 +23,8 @@ on:
       - 'internal/toolchain/**'
       - 'coding/extension/pigsdk/**'
       - 'coding/extension/host/**'
+      - 'coding/cli/**'
+      - 'internal/linkerexec/**'
       - 'extensions/sdk/**'
       - 'extensions/sdk-py/**'
       - 'extensions/sdk-rs/**'

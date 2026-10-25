@@ -235,7 +235,7 @@ def check_conflicts(log):
         fail("a tool from PATH ran instead of the installation's toolchain:\n" + log.read_text())
 
 
-def node_standalone(pig, work, env, script, conflict_log):
+def node_standalone(pig, work, env, script, conflict_log, expected_node):
     """A Node standalone runs on the installation's node: the script records the interpreter that runs it and exits before it registers,
     so pig reports its load failure."""
     probe = work / "node-standalone.probe"
@@ -247,7 +247,10 @@ def node_standalone(pig, work, env, script, conflict_log):
     if not probe.exists():
         print((run.stdout + run.stderr).decode(errors="replace")[-4000:], file=sys.stderr)
         fail("the Node standalone did not run")
-    print(f"the Node standalone ran on {probe.read_text()}, not on a node from PATH")
+    actual_node = Path(probe.read_text().strip()).resolve()
+    if actual_node != Path(expected_node).resolve(strict=True):
+        fail(f"the Node standalone ran on {actual_node}, expected {expected_node}")
+    print(f"the Node standalone ran on {actual_node}")
 
 
 def without_python(args):
@@ -263,8 +266,11 @@ def without_python(args):
             cwd=work, env=env, input=b"", capture_output=True, timeout=COLD_BUDGET,
         )
         check_conflicts(conflict_log)
-        if run.returncode == 0:
-            fail(f"{name} loaded on an installation without Python")
+        output = (run.stdout + run.stderr).decode(errors="replace")
+        missing_python = str(Path(args.toolchains) / "python3")
+        if run.returncode == 0 or missing_python not in output or "no such file or directory" not in output:
+            print(output[-4000:], file=sys.stderr)
+            fail(f"{name} did not report the installation's missing interpreter {missing_python}")
         print(f"{name}: refused without running a Python from PATH")
 
 
@@ -298,7 +304,7 @@ def accept(args):
         fail(f"a warm start built again: {rebuilt}")
     print(f"warm start reused all {len(warm)} builds in {time.monotonic() - started:.1f}s")
 
-    node_standalone(args.pig, work, env, fixtures / "node-standalone" / "standalone.mjs", conflict_log)
+    node_standalone(args.pig, work, env, fixtures / "node-standalone" / "standalone.mjs", conflict_log, Path(args.toolchains) / "node")
 
     check_no_copies(work)
     if tree_digest(args.installed) != installed_before:
@@ -351,6 +357,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--pig", required=True)
     parser.add_argument("--installed", required=True, help="the package's installed SDK root")
+    parser.add_argument("--toolchains", required=True, help="the installation's toolchain bin directory")
     parser.add_argument("--fixtures", required=True)
     parser.add_argument("--work", required=True)
     mode = parser.add_mutually_exclusive_group()

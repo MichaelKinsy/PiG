@@ -43,7 +43,7 @@ let
       ''
         mkdir -p "$TMPDIR/work"
         python3 ${driver} --pig ${lib.getExe package} --installed ${package}/share/pig/sdk \
-          --fixtures ${fixtures} --work "$TMPDIR/work" ${flags}
+          --toolchains ${package.toolchain}/bin --fixtures ${fixtures} --work "$TMPDIR/work" ${flags}
         touch $out
       '';
 
