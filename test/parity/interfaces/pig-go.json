@@ -56796,6 +56796,17 @@
       "shapeHash": "sha256:aa06950bbdc8b43cc9ba28d5085c2813f1ed880b6dc03ffd6089e574bdcde4c7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#pull",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "pull",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func[V any](seq iter.Seq[V]) (next func() (V, bool), stop func())"
+      },
+      "shapeHash": "sha256:363e38bb3e6a67332502c4986aa67f6c31297d461b8bd07627b9acabc2ab88b8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#pushModelsSetupError",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "pushModelsSetupError",

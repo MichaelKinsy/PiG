@@ -231,6 +231,12 @@ func (p *BedrockProvider) runBedrockPipeline(ctx context.Context, turn *continua
 
 	state := newBedrockStreamState(p, builder)
 	chain := &bedrockSmithyChain{turn: turn, readable: readable}
+	// Pi's Readable iterator, left suspended once the Smithy chain has read its last event, is collected with it; here it holds a coroutine until it is disposed.
+	defer func() {
+		if chain.reader != nil {
+			chain.reader.dispose()
+		}
+	}()
 	fail := func(err error) {
 		state.finalizeBlocks()
 		if ctx.Err() != nil {

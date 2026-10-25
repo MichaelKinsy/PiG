@@ -44,7 +44,7 @@ func readableReplays() map[string]func() []string {
 		readable := readableTestStream(script, flavor)
 		readable.push([]byte{1, 2}, false)
 		pushEOF(readable)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		scriptStep(script, "next1", iterator)
 		scriptStep(script, "next2", iterator)
@@ -57,7 +57,7 @@ func readableReplays() map[string]func() []string {
 		readable.push([]byte{1}, false)
 		readable.push([]byte{2, 3}, false)
 		pushEOF(readable)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		scriptStep(script, "next1", iterator)
 		scriptStep(script, "next2", iterator)
@@ -66,7 +66,7 @@ func readableReplays() map[string]func() []string {
 	add("buffered-open-then-end/FLAVOR", func(script *microtaskScript, flavor string) {
 		readable := readableTestStream(script, flavor)
 		readable.push([]byte{1}, false)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		scriptStep(script, "next1", iterator)
 		second := iterator.next()
@@ -78,7 +78,7 @@ func readableReplays() map[string]func() []string {
 
 	add("pending-data-end/FLAVOR", func(script *microtaskScript, flavor string) {
 		readable := readableTestStream(script, flavor)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		first := iterator.next()
 		script.logf("next1 called")
@@ -92,7 +92,7 @@ func readableReplays() map[string]func() []string {
 
 	add("pending-two-chunks/FLAVOR", func(script *microtaskScript, flavor string) {
 		readable := readableTestStream(script, flavor)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		first := iterator.next()
 		script.logf("next1 called")
@@ -106,7 +106,7 @@ func readableReplays() map[string]func() []string {
 
 	add("pending-coalesced-pushes/FLAVOR", func(script *microtaskScript, flavor string) {
 		readable := readableTestStream(script, flavor)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		first := iterator.next()
 		script.logf("next1 called")
@@ -122,7 +122,7 @@ func readableReplays() map[string]func() []string {
 	add("concurrent-next/FLAVOR", func(script *microtaskScript, flavor string) {
 		readable := readableTestStream(script, flavor)
 		readable.push([]byte{1}, false)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 14)
 		a := iterator.next()
 		b := iterator.next()
@@ -137,7 +137,7 @@ func readableReplays() map[string]func() []string {
 	add("return-after-first/FLAVOR", func(script *microtaskScript, flavor string) {
 		readable := readableTestStream(script, flavor)
 		readable.push([]byte{1}, false)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 14)
 		scriptStep(script, "next1", iterator)
 		script.logf("return called")
@@ -152,7 +152,7 @@ func readableReplays() map[string]func() []string {
 	add("return-before-next/FLAVOR", func(script *microtaskScript, flavor string) {
 		readable := readableTestStream(script, flavor)
 		readable.push([]byte{1}, false)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		returned := iterator.returnWith(jsValue[[]byte](nil))
 		returned.react(func(jsIterResult[[]byte]) { script.logf("return settled") }, func(error) {})
@@ -163,7 +163,7 @@ func readableReplays() map[string]func() []string {
 
 	add("return-while-pending/FLAVOR", func(script *microtaskScript, flavor string) {
 		readable := readableTestStream(script, flavor)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		pending := iterator.next()
 		returned := iterator.returnWith(jsValue[[]byte](nil))
@@ -178,7 +178,7 @@ func readableReplays() map[string]func() []string {
 
 	add("error-while-pending/FLAVOR", func(script *microtaskScript, flavor string) {
 		readable := readableTestStream(script, flavor)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		pending := iterator.next()
 		script.logf("next1 called")
@@ -191,7 +191,7 @@ func readableReplays() map[string]func() []string {
 		readable := readableTestStream(script, flavor)
 		readable.push([]byte{1}, false)
 		readable.destroy(nil)
-		iterator := readable.asyncIterator()
+		iterator := script.keep(readable.asyncIterator())
 		script.ticker("t", 10)
 		scriptStep(script, "next1", iterator)
 		scriptStep(script, "next2", iterator)
@@ -203,7 +203,7 @@ func readableReplays() map[string]func() []string {
 			readable := newNodeReadable(script.executor, nodeReadableOptions{incomingMessage: true})
 			readable.push([]byte{1, 2}, false)
 			readable.push(nil, true)
-			iterator := readable.asyncIterator()
+			iterator := script.keep(readable.asyncIterator())
 			script.ticker("t", 10)
 			scriptStep(script, "next1", iterator)
 			scriptStep(script, "next2", iterator)

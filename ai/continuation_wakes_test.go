@@ -1,3 +1,7 @@
+//go:build !race
+
+// The wake count below measures runtime coroutine switches. Under the race detector `pull` is a goroutine pair (pull_race.go: the Go runtime never ends a coroutine's race context, so iter.Pull
+// leaks the detector's state for every coroutine), and its hand-offs wake a goroutine by design, so this property is enforced by the builds without -race.
 package ai
 
 import (

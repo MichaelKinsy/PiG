@@ -2,7 +2,6 @@ package ai
 
 import (
 	"errors"
-	"iter"
 )
 
 // This file models the ECMAScript Promise, async function and await constructs that Pi's provider, stream and agent code awaits. A provider or stream loop written on it spends the microtask reactions V8 spends at every await.
@@ -275,7 +274,7 @@ type jsCoroutine struct {
 
 func newJSCoroutine(executor *continuationExecutor, body func(*jsCoroutine), finish func()) *jsCoroutine {
 	co := &jsCoroutine{executor: executor, finish: finish}
-	co.next, co.stop = iter.Pull(func(yield func(func() bool) bool) {
+	co.next, co.stop = pull(func(yield func(func() bool) bool) {
 		co.yield = yield
 		defer func() {
 			if r := recover(); r != nil {

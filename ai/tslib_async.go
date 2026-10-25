@@ -2,7 +2,6 @@ package ai
 
 import (
 	"errors"
-	"iter"
 )
 
 // The types and functions here reproduce tslib's __await, __asyncGenerator and __asyncValues exactly as compiled into @google/genai 2.21.0 (dist/node/index.mjs:7430-7452). Their microtask counts differ from native async generators: a plain `yield` resolves the consumer's promise without awaiting the value, and `yield __await(x)` awaits x with Promise.resolve(x).then(fulfill, reject).
@@ -185,7 +184,7 @@ func (g *tslibAsyncGenerator) call(resume tslibResume) (tslibIterResult, error) 
 			return tslibIterResult{}, resume.err
 		}
 		g.y = &tslibYield{}
-		g.pull, g.stop = iter.Pull(g.run)
+		g.pull, g.stop = pull(g.run)
 	}
 	g.y.in = resume
 	out, suspended := g.pull()

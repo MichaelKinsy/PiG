@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"iter"
 	"net"
 	"sync"
 
@@ -81,7 +80,7 @@ type observedBodyReadiness struct {
 
 func newObservedBodyReadiness(body *observedResponseBody) *observedBodyReadiness {
 	readiness := &observedBodyReadiness{body: body, waits: make(chan func(bodyReadSignal), 1), joined: make(chan struct{})}
-	readiness.next, readiness.stop = iter.Pull(readiness.reads)
+	readiness.next, readiness.stop = pull(readiness.reads)
 	//portlint:allow golifetime waitBody ends when Close closes waits, and Close waits on joined
 	go readiness.waitBody()
 	return readiness

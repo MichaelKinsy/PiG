@@ -120,6 +120,14 @@ type microtaskScript struct {
 	executor *continuationExecutor
 	turn     *continuationTurn
 	log      []string
+	// disposers end the readable iterators a replay left suspended: Pi collects them, here each holds a coroutine until it is disposed.
+	disposers []func()
+}
+
+// keep registers an iterator the script created, so runMicrotaskScript disposes it when the script ends.
+func (script *microtaskScript) keep(iterator *jsAsyncGenerator[[]byte]) *jsAsyncGenerator[[]byte] {
+	script.disposers = append(script.disposers, iterator.dispose)
+	return iterator
 }
 
 func runMicrotaskScript(body func(*microtaskScript)) []string {
@@ -128,6 +136,9 @@ func runMicrotaskScript(body func(*microtaskScript)) []string {
 		script.turn = turn
 		body(script)
 	})
+	for _, dispose := range script.disposers {
+		dispose()
+	}
 	return script.log
 }
 

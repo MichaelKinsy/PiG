@@ -495,6 +495,7 @@ var tslibScenarios = map[string]func(*tslibTrace, *continuationTurn){
 			return iterator.throw(errors.New("injected")), nil
 		}, nil).then(func(value any) (any, error) {
 			trace.log("throw -> " + tslibFmtr(value))
+			iterator.close() // the generator is left suspended at its second yield; Pi collects it, here it holds a coroutine until closed
 			return nil, nil
 		}, nil)
 	},

@@ -2,7 +2,6 @@ package ai
 
 import (
 	"context"
-	"iter"
 	"slices"
 	"sync"
 
@@ -411,7 +410,7 @@ func (executor *continuationExecutor) run(body func(*continuationTurn)) {
 // run runs body as a coroutine turn and returns when it has returned, or at once when the turn was abandoned before it ran. Any serving goroutine resumes the body at its grants; the calling goroutine serves the executor meanwhile and runs the body's detached segments. A panic in body is rethrown here.
 func (turn *continuationTurn) run(body func(*continuationTurn)) {
 	executor := turn.executor
-	next, stop := iter.Pull(func(yield func(turnStep) bool) {
+	next, stop := pull(func(yield func(turnStep) bool) {
 		turn.yield = yield
 		stackprime.Prime()
 		defer func() {

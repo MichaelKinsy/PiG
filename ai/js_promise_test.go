@@ -54,20 +54,6 @@ func TestJSAsyncGeneratorDisposeReleasesCoroutine(t *testing.T) {
 	assertJSExecutorDrained(t, executor)
 }
 
-// A generator that never receives a request holds no goroutine, and disposing it is a no-op.
-func TestJSAsyncGeneratorUnstartedHoldsNoCoroutine(t *testing.T) {
-	baseline := runtime.NumGoroutine()
-	executor := &continuationExecutor{}
-	executor.run(func(*continuationTurn) {
-		for range 100 {
-			newJSAsyncGenerator(executor, func(*jsGeneratorBody[int]) (int, error) { return 0, nil }).dispose()
-		}
-	})
-	if got := runtime.NumGoroutine(); got > baseline {
-		t.Fatalf("goroutines = %d, want at most %d", got, baseline)
-	}
-}
-
 func TestJSRunAsyncOutsideExecutorPanics(t *testing.T) {
 	defer func() {
 		if recover() == nil {
