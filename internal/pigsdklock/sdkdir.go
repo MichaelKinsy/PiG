@@ -44,7 +44,7 @@ func StagedSDKDir(configRoot, lang string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%s extension SDK: %w", lang, err)
 	}
-	// pig additive (D195): an installed SDK is read in place; nothing stages under the config root.
+	// pig additive (D201): an installed SDK is read in place; nothing stages under the config root.
 	if installedSDKRoot != "" {
 		return filepath.Join(installedSDKRoot, name), nil
 	}

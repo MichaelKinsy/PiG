@@ -38,7 +38,7 @@ func extractNodeRuntime(dst string) error {
 // InstallNodeRuntime writes the runtime tree into dir under the content-addressed name an installed binary reads it from
 // ([installedNodeRuntime]), with a marker that records the runtime's identity, and returns the tree's directory. dir must not hold the tree
 // already.
-// pig additive (D195): the packaging step for a read-only TypeScript extension runtime.
+// pig additive (D201): the packaging step for a read-only TypeScript extension runtime.
 func InstallNodeRuntime(dir string) (string, error) {
 	target := filepath.Join(dir, nodeRuntimeDirName())
 	//perf:ok packaging step, run once when a package is built

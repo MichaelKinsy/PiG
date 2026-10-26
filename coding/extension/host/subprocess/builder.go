@@ -614,7 +614,7 @@ func (b *Builder) resolveStagedSDK(srcDir, buildType string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// pig additive (D195): an installed SDK's fault names the installation; `pig reload` cannot restage it.
+	// pig additive (D201): an installed SDK's fault names the installation; `pig reload` cannot restage it.
 	if err := pigsdklock.CheckInstalledSDK(buildType); err != nil {
 		return "", err
 	}

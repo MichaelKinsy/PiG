@@ -1590,7 +1590,7 @@ Remove when: Pi installs Packages with lifecycle scripts disabled, or Pi gives i
 Approval: owner, Piglet builder port decision D8 (`PIGLETS-BUILDER-PORT-REQUESTS.md`, section 5.3, approved as recommended 2026-10-22).
 SCRUTINIZED:approved
 
-## D195 A packager installs the extension SDKs, the TypeScript extension runtime and the extension toolchains read-only beside the binary
+## D201 A packager installs the extension SDKs, the TypeScript extension runtime and the extension toolchains read-only beside the binary
 
 Stock disposition: inert capability. It is off unless a packager links the binary against an installed SDK root and an installed toolchain directory with `-ldflags -X`; no setting, environment variable, Package, Piglet or extension can turn it on, and PiG Standard does not select it. In this repository the Nix package (`flake.nix`, `nix/package.nix`) is its only selector.
 

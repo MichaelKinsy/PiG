@@ -567,7 +567,7 @@ func reportExtensionSDKStageFailure(stderr io.Writer, err error) {
 		return
 	}
 	what := "extension SDK staging failed"
-	// pig additive (D195): an installed binary stages nothing; its startup check verifies the installed SDKs.
+	// pig additive (D201): an installed binary stages nothing; its startup check verifies the installed SDKs.
 	if pigsdklock.InstalledSDKRoot() != "" {
 		what = "installed extension SDK check failed"
 	}

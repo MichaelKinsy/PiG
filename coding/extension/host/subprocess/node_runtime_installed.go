@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 )
 
-// pig additive (D195): a binary whose SDKs are installed runs its TypeScript extensions on the runtime tree installed beside them instead of materializing a copy per launcher.
+// pig additive (D201): a binary whose SDKs are installed runs its TypeScript extensions on the runtime tree installed beside them instead of materializing a copy per launcher.
 
 // nodeRuntimeMarker records, in an installed runtime tree, the identity of the runtime the tree holds ([nodeRuntimeIdentity]).
 const nodeRuntimeMarker = ".pig-node-runtime"

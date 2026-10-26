@@ -3201,7 +3201,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		cmd.Env = h.withNodeRuntimeEnv(cmd.Env)
 	}
 	if me.config.RuntimeLanguage == "python" || strings.HasSuffix(binPath, ".py") {
-		// pig additive (D195): a missing or mismatched installed Python SDK fails the launch rather than importing whatever pig_sdk the path finds.
+		// pig additive (D201): a missing or mismatched installed Python SDK fails the launch rather than importing whatever pig_sdk the path finds.
 		if err := pigsdklock.CheckInstalledSDK("python"); err != nil {
 			cancel()
 			return nil, newLoadError(me.config.Name, "spawn", "sdk_unavailable", err)
@@ -5148,7 +5148,7 @@ func buildExtCommandSelected(
 	}
 	// Windows cannot execute a script, so a Node script standalone runs through
 	// node there; elsewhere its shebang selects the interpreter.
-	// pig additive (D195): an installation that supplies node runs every Node script standalone on it, since a shebang searches PATH.
+	// pig additive (D201): an installation that supplies node runs every Node script standalone on it, since a shebang searches PATH.
 	if runtimeLanguage == "node" && (goos == "windows" || toolchain.InstalledToolchainDir() != "") {
 		node, err := lookPath("node")
 		if err != nil {

@@ -431,7 +431,7 @@ func VerifyStaged(configRoot string) func(stagedDir, buildType string) error {
 		if err != nil {
 			return err
 		}
-		// pig additive (D195): an installed SDK cannot be restaged, so its report names the installation instead of `pig reload`.
+		// pig additive (D201): an installed SDK cannot be restaged, so its report names the installation instead of `pig reload`.
 		if pigsdklock.InstalledSDKRoot() != "" {
 			return pigsdklock.CheckInstalledSDK(lang)
 		}
@@ -455,7 +455,7 @@ type stagedSDK struct{ lang, dir string }
 func stagedSDKs(configRoot string) ([]stagedSDK, error) {
 	parent := filepath.Join(configRoot, "state", "pigsdk")
 	var out []stagedSDK
-	// pig additive (D195): builds against an installed SDK stay reachable while this build reads it.
+	// pig additive (D201): builds against an installed SDK stay reachable while this build reads it.
 	if pigsdklock.InstalledSDKRoot() != "" {
 		for _, b := range bundles() {
 			dir, err := b.stagedDir(configRoot)
@@ -573,7 +573,7 @@ func EnsureSynced(configRoot string) error {
 
 // EnsureSyncedContext is EnsureSynced with a caller-owned lock-wait lifetime.
 func EnsureSyncedContext(ctx context.Context, configRoot string) error {
-	// pig additive (D195): an installed build verifies its SDKs and stages nothing, so it takes no lock and prunes nothing.
+	// pig additive (D201): an installed build verifies its SDKs and stages nothing, so it takes no lock and prunes nothing.
 	if pigsdklock.InstalledSDKRoot() != "" {
 		return checkInstalled()
 	}
@@ -818,7 +818,7 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	// pig additive (D195): the packaging step that writes the read-only SDK root a packager links the binary against.
+	// pig additive (D201): the packaging step that writes the read-only SDK root a packager links the binary against.
 	if dir, ok, err := installFlag(rest); ok || err != nil {
 		if err == nil {
 			var written []string

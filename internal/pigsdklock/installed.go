@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// pig additive (D195): a packager installs the extension SDKs read-only beside the binary instead of staging them under the config root.
+// pig additive (D201): a packager installs the extension SDKs read-only beside the binary instead of staging them under the config root.
 
 // MarkerFile records, in each staged or installed SDK directory, the content hash of the SDK the directory holds.
 const MarkerFile = ".pig-sdk-version"

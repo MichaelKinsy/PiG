@@ -29,7 +29,7 @@ func PythonExecutable(goos string, lookPath func(string) (string, error)) string
 	if alias != "" {
 		return alias
 	}
-	// pig additive (D195): an installation without Python reports the missing interpreter instead of running one from PATH.
+	// pig additive (D201): an installation without Python reports the missing interpreter instead of running one from PATH.
 	return Command(candidates[0])
 }
 

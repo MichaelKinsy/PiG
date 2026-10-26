@@ -165,7 +165,7 @@ func goCommand() (string, GoToolchain, error) {
 	if err == nil {
 		return path, GoToolchain{}, nil
 	}
-	// pig additive (D195): an installation that supplies its toolchains never falls back to a PiG-managed Go.
+	// pig additive (D201): an installation that supplies its toolchains never falls back to a PiG-managed Go.
 	if installedToolchainDir != "" {
 		return "", GoToolchain{}, fmt.Errorf("go: %w", err)
 	}

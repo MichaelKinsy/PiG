@@ -51,7 +51,7 @@ func runDiagnose(w io.Writer, binaryPath string) {
 		for _, st := range stages {
 			state := "current"
 			switch {
-			// pig additive (D195): an installed SDK is never staged; a missing or mismatched one is an installation fault.
+			// pig additive (D201): an installed SDK is never staged; a missing or mismatched one is an installation fault.
 			case st.Installed:
 				state = "installed"
 				if err := pigsdklock.CheckInstalledSDK(st.Lang); err != nil {
@@ -64,7 +64,7 @@ func runDiagnose(w io.Writer, binaryPath string) {
 			_, _ = fmt.Fprintf(w, "%-18s %s at %s\n", st.Lang+":", state, st.Dir)
 		}
 	}
-	// pig additive (D195): extension builds and launches read this installation's toolchains, never PATH.
+	// pig additive (D201): extension builds and launches read this installation's toolchains, never PATH.
 	if dir := toolchain.InstalledToolchainDir(); dir != "" {
 		_, _ = fmt.Fprintf(w, "%-18s %s (this installation's; extension builds do not use PATH)\n", "toolchains:", dir)
 	}

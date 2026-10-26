@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// pig additive (D195): a packager supplies the toolchains PiG builds and launches extensions with in one directory, which PATH cannot override.
+// pig additive (D201): a packager supplies the toolchains PiG builds and launches extensions with in one directory, which PATH cannot override.
 
 // installedToolchainDir is the directory of executables a packager installed for PiG's extension builds and launches: go, cargo, rustc,
 // python3, node, and the C compiler and linker they run. A packager sets it at link time:

@@ -21,7 +21,7 @@ func materializeNodeRuntime(ctx context.Context, cacheDir, destination string) (
 	if err := nodeRuntimeUnavailable(); err != nil {
 		return err
 	}
-	// pig additive (D195): an installed runtime tree runs in place (nodeRuntimeTree), so the launcher publishes no copy of it.
+	// pig additive (D201): an installed runtime tree runs in place (nodeRuntimeTree), so the launcher publishes no copy of it.
 	if tree, err := installedNodeRuntime(); err != nil || tree != "" {
 		return err
 	}

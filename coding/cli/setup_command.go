@@ -143,7 +143,7 @@ func setupStatus(stdout io.Writer) int {
 }
 
 func setupGo(args []string, stdout, stderr io.Writer) int {
-	// pig additive (D195): an installation that supplies its toolchains builds with its own Go, never a PiG-managed one.
+	// pig additive (D201): an installation that supplies its toolchains builds with its own Go, never a PiG-managed one.
 	if dir := toolchain.InstalledToolchainDir(); dir != "" {
 		_, _ = fmt.Fprintf(stderr, "pig setup go: this installation supplies its toolchains in %s and builds extensions with that Go; a PiG-managed Go would not be used\n", dir)
 		return 1

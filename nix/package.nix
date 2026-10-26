@@ -73,7 +73,7 @@ let
   ];
 
   # The toolchains PiG builds and launches extensions with. The binary reads them from this one directory and never from PATH
-  # (internal/toolchain, D195): cargo runs rustc and the C linker by name, and cgo runs the C compiler, from the same directory.
+  # (internal/toolchain, D201): cargo runs rustc and the C linker by name, and cgo runs the C compiler, from the same directory.
   toolchain = buildEnv {
     name = "pig-extension-toolchain-${version}";
     paths =

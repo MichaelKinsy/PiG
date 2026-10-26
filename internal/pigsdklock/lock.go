@@ -81,7 +81,7 @@ func stagedConfigRoot(sdkRoot string) (string, bool) {
 // WithBuild holds a shared lease while fn consumes this binary's SDKs staged under one config root. A binary whose SDKs are installed
 // ([InstalledSDKRoot]) consumes the installed SDKs instead, which never change, so fn runs without a lease.
 func WithBuild[T any](ctx context.Context, configRoot string, fn func() (T, error)) (result T, err error) {
-	// pig additive (D195): installed SDKs are immutable and need no reader lease.
+	// pig additive (D201): installed SDKs are immutable and need no reader lease.
 	if installedSDKRoot != "" {
 		return fn()
 	}

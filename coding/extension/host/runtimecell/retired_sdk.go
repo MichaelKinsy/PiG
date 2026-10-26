@@ -32,7 +32,7 @@ func RetiredStagedSDK(dir, stagedDir string) bool {
 	if pathWithin(current, canonicalDir) {
 		return false
 	}
-	// pig additive (D195): for an installed binary, a marked copy outside the current SDK directory is another build's staged or installed
+	// pig additive (D201): for an installed binary, a marked copy outside the current SDK directory is another build's staged or installed
 	// SDK, wherever it lives.
 	if pigsdklock.InstalledSDKRoot() != "" {
 		//perf:ok once per extension SDK resolution, which also reads the extension's go.mod or Cargo.toml
@@ -54,7 +54,7 @@ func RetiredStagedSDK(dir, stagedDir string) bool {
 // installedSDK returns lang's installed SDK directory when this binary's SDKs are installed ([pigsdklock.InstalledSDKRoot]), with the
 // installation's fault when that SDK is missing or mismatched. installed is false when the SDKs stage under the config root; a resolver
 // then looks further. An installed binary never falls back to another copy of an SDK it cannot verify.
-// pig additive (D195): see pigsdklock.InstalledSDKRoot.
+// pig additive (D201): see pigsdklock.InstalledSDKRoot.
 func installedSDK(lang string) (dir string, installed bool, err error) {
 	if pigsdklock.InstalledSDKRoot() == "" {
 		return "", false, nil
