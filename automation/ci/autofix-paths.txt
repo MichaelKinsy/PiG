@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MIT
+#
+# The only paths the autofix workflow may write: the files the generators in autofix-gates.txt produce. A path is exact, or has
+# one * in its last element. The privileged workflow reads this file from the default branch, never from the pull request.
+# A new generated file must land here, in its own reviewed change, before the bot may regenerate it.
+.github/badges/parity-coverage.svg
+AGENTS.md
+coding/piglet/piglet.schema.json
+docs/bug-ledger.json
+docs/knowledge-graph/pig-knowledge-graph.jsonld
+docs/knowledge-graph/pig.mmd
+docs/parity/DIVERGENCES.md
+docs/parity/KNOWN-GAPS-0.3.x.md
+docs/performance/scoreboard.md
+docs/site/docs/bug-ledger.md
+docs/site/docs/knowledge-graph.md
+internal/pigdocs/content/knowledge-graph.md
+internal/pigdocs/content/troubleshooting.md
+internal/pigstrip/ids_generated.go
+test/parity/coverage.md
+test/parity/interfaces/custom-factory-call-surface-draft-v*.json

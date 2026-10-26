@@ -362,7 +362,7 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 
 	// The gates the light run keeps: compile and vet (the preflight job), lint of the changed files, the drift and contract gates,
 	// the sharded unit tests and one parity shard. The gates it leaves to the queue are the expensive suites.
-	lightGates := leaves("ci-preflight")
+	lightGates := append(leaves("ci-preflight"), leaves("ci-bookkeeping")...)
 	for _, entry := range light.Matrix["linux"] {
 		lightGates = append(lightGates, leaves(entry.Target)...)
 	}
@@ -377,7 +377,7 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 		}
 	}
 	// Whatever the light run leaves out, the full run runs: nothing is dropped from what runs before a change lands.
-	fullGates := leaves("ci-preflight")
+	fullGates := append(leaves("ci-preflight"), leaves("ci-bookkeeping")...)
 	for _, entry := range full.Matrix["linux"] {
 		fullGates = append(fullGates, leaves(entry.Target)...)
 	}
@@ -486,10 +486,10 @@ func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, 
 		t.Fatal("the CI result job has no aggregation step")
 	}
 	values := map[string]string{
-		"EVENT": "merge_group", "PR_AUTHOR": "", "PRODUCT": "true", "FULL": "true", "FULL_REQUIRED": "false",
+		"EVENT": "merge_group", "PRODUCT": "true", "FULL": "true", "FULL_REQUIRED": "false",
 		"PR_NUMBER": "", "PR_HEAD_SHA": "", "REPO": "MichaelKinsy/PiG", "GH_TOKEN": "token",
 		"RUN_NODE_RUNTIME": "true", "RUN_NODE_LOADER": "true", "RUN_ANDROID": "true", "RUN_DURABLE_CF_HOST": "true",
-		"CHANGES": "success", "DOCS": "skipped", "DCO": "skipped", "VERIFY": "success", "NODE_RUNTIME": "success",
+		"CHANGES": "success", "DOCS": "skipped", "BOOKKEEPING": "success", "VERIFY": "success", "NODE_RUNTIME": "success",
 		"WINDOWS": "success", "MACOS": "success", "ANDROID": "success", "NODE_LOADER": "success",
 		"DURABLE_CF_HOST": "success", "PREFLIGHT": "success",
 	}
@@ -525,7 +525,7 @@ func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, 
 }
 
 func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
-	pullRequest := map[string]string{"EVENT": "pull_request", "DCO": "success"}
+	pullRequest := map[string]string{"EVENT": "pull_request"}
 	for _, tc := range []struct {
 		name string
 		set  map[string]string
@@ -543,7 +543,9 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		{"full pull request skipped queue-only job", merge(pullRequest, map[string]string{"NODE_RUNTIME": "skipped"}), false},
 		{"light pull request behind a merge queue", merge(pullRequest, lightPlanResults), true},
 		{"light pull request skipped fast job", merge(pullRequest, lightPlanResults, map[string]string{"ANDROID": "skipped"}), false},
-		{"light pull request without DCO", merge(pullRequest, lightPlanResults, map[string]string{"DCO": "skipped"}), false},
+		{"light pull request whose bookkeeping failed", merge(pullRequest, lightPlanResults, map[string]string{"BOOKKEEPING": "failure"}), false},
+		{"full pull request whose bookkeeping failed and stopped the jobs behind it", merge(pullRequest, map[string]string{"BOOKKEEPING": "failure", "PREFLIGHT": "skipped", "VERIFY": "failure", "WINDOWS": "skipped", "MACOS": "skipped"}), false},
+		{"merge group whose bookkeeping was skipped", map[string]string{"BOOKKEEPING": "skipped"}, false},
 		{"docs-only merge group", map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "NODE_RUNTIME": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped"}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -558,7 +560,7 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 // Without a merge queue (PIG_PR_CI_LIGHT=label) a pull request is mergeable only on a head whose full run was green, so the
 // light run's CI result fails however green its own jobs are, and says what to do.
 func TestLightRunCannotSatisfyCIResultWithoutAMergeQueue(t *testing.T) {
-	labelPR := map[string]string{"EVENT": "pull_request", "DCO": "success", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "aaaa"}
+	labelPR := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "aaaa"}
 	output, err := ciResultRun(t, merge(labelPR, lightPlanResults), "aaaa")
 	if err == nil {
 		t.Fatalf("a light run with every job green satisfied CI result\n%s", output)
@@ -593,7 +595,7 @@ func TestLightRunCannotSatisfyCIResultWithoutAMergeQueue(t *testing.T) {
 // A full run counts only for the head it ran on: a result computed for an older head fails once the pull request has moved on,
 // and a run that cannot learn the head fails closed.
 func TestFullRunOnAnOlderHeadDoesNotCountForANewerHead(t *testing.T) {
-	fullOnOld := map[string]string{"EVENT": "pull_request", "DCO": "success", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "oldhead"}
+	fullOnOld := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "oldhead"}
 	if output, err := ciResultRun(t, fullOnOld, "oldhead"); err != nil {
 		t.Fatalf("the full run on the current head failed CI result: %v\n%s", err, output)
 	}
@@ -608,7 +610,7 @@ func TestFullRunOnAnOlderHeadDoesNotCountForANewerHead(t *testing.T) {
 		t.Errorf("a run that could not read the pull request's head satisfied CI result\n%s", output)
 	}
 	// The run for the newer head is its own run: without the full plan it fails, whatever ran on the older head.
-	lightOnNew := map[string]string{"EVENT": "pull_request", "DCO": "success", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "newhead", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped"}
+	lightOnNew := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "newhead", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped"}
 	if output, err := ciResultRun(t, lightOnNew, "newhead"); err == nil {
 		t.Fatalf("a light run on newhead satisfied CI result\n%s", output)
 	}

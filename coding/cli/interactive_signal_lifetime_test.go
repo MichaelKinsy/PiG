@@ -211,8 +211,11 @@ func TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain(t *testing.T) {
 			if err := os.WriteFile(release, []byte("release"), 0o600); err != nil {
 				t.Fatal(err)
 			}
+			// The drain cannot end before 50 ms after the completion file appears (it waits for the terminal to be idle that long), so a HUP
+			// sent as soon as the file is seen lands inside the retained-handler window whatever the machine is doing. Waiting any fixed time
+			// first made the test the loser of a race: a writer or this process starved for that long let the drain end and the process exit
+			// before the signal ("process left before drain signal").
 			waitFile(complete)
-			time.Sleep(100 * time.Millisecond)
 			if err := cmd.Process.Signal(syscall.SIGHUP); err != nil {
 				t.Fatalf("process left before drain signal: %v", err)
 			}

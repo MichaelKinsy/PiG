@@ -237,7 +237,7 @@ func TestCIBaseSeederRejectsUnknownImage(t *testing.T) {
 	if err == nil {
 		t.Fatal("unknown image was accepted")
 	}
-	if !strings.Contains(string(output), "usage: automation/ci/seed-ci-image-bases.sh <go|parity>") {
+	if !strings.Contains(string(output), "usage: automation/ci/seed-ci-image-bases.sh <go|parity|sbom>") {
 		t.Fatalf("unexpected failure: %v\n%s", err, output)
 	}
 }

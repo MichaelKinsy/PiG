@@ -5,7 +5,9 @@ set -euo pipefail
 case "${1:-}" in
   go) bases=(go buildkit syft grype) ;;
   parity) bases=(go-builder wolfi buildkit syft grype) ;;
-  *) echo "usage: automation/ci/seed-ci-image-bases.sh <go|parity>" >&2; exit 2 ;;
+  # The published-image check builds nothing and scans nothing: it needs only the SBOM generator.
+  sbom) bases=(syft) ;;
+  *) echo "usage: automation/ci/seed-ci-image-bases.sh <go|parity|sbom>" >&2; exit 2 ;;
 esac
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

@@ -22,6 +22,18 @@ RUN case "${TARGETARCH}" in \
     && tar -C /out -xzf /tmp/go.tar.gz \
     && test "$(/out/go/bin/go env GOVERSION)" = "go${GO_VERSION}"
 
+# The package index's current versions of the locked packages. Only the scheduled refresh builds this stage
+# (RESOLVE_APK_LOCK=1 automation/ci/build-ci-image.sh); it is not part of the image, and the build below installs the lock exactly.
+FROM ${WOLFI_BASE} AS apk-resolve
+USER root
+COPY automation/images/ci-parity/packages.lock /tmp/packages.lock
+RUN apk update \
+  && cut -d= -f1 /tmp/packages.lock | xargs apk add --no-cache --upgrade \
+  && awk 'BEGIN { RS=""; FS="\n" } { p=""; v=""; for (i=1; i<=NF; i++) { if ($i ~ /^P:/) p=substr($i,3); if ($i ~ /^V:/) v=substr($i,3) } if (p != "") print p "=" v }' /lib/apk/db/installed | LC_ALL=C sort > /tmp/resolved.lock
+
+FROM scratch AS apk-resolved
+COPY --from=apk-resolve /tmp/resolved.lock /packages.lock
+
 FROM ${WOLFI_BASE} AS toolchain-base
 COPY automation/images/ci-parity/packages.lock /tmp/packages.lock
 RUN apk update \

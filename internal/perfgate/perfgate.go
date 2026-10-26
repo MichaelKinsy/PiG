@@ -69,6 +69,12 @@ func Check(t testing.TB, id string, got float64) {
 	}
 }
 
+// Report logs got for id without a ceiling: `make perf-scoreboard-measure` records it, nothing fails on it. Use it for a figure that depends on the machine (page-cache state, kernel version) and is worth showing beside the gated ones.
+func Report(t testing.TB, id string, got float64) {
+	t.Helper()
+	t.Logf("perfgate: %s=%s ceiling=none", id, format(got))
+}
+
 func format(value float64) string {
 	if value == math.Trunc(value) && math.Abs(value) < 1e15 {
 		return fmt.Sprintf("%d", int64(value))

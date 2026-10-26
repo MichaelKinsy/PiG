@@ -149,6 +149,26 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		t.Fatal("the preflight job does not run make ci-preflight")
 	}
 	got = append(got, leaves("ci-preflight")...)
+	// The bookkeeping job runs the fail-fast gates every spending job waits for; they count once, there.
+	bookkeeping, ok := jobs["bookkeeping"]
+	if !ok {
+		t.Fatal("ci.yml has no bookkeeping job")
+	}
+	runsBookkeeping := false
+	for _, step := range bookkeeping.Steps {
+		if strings.Contains(step.Run, "ci-bookkeeping") {
+			runsBookkeeping = true
+		}
+	}
+	if !runsBookkeeping {
+		t.Fatal("the bookkeeping job does not run make ci-bookkeeping")
+	}
+	got = append(got, leaves("ci-bookkeeping")...)
+	for _, waiting := range []string{"preflight", "linux", "node-runtime", "durable-cf-host", "android"} {
+		if !slices.Contains(jobs[waiting].Needs, "bookkeeping") {
+			t.Errorf("%s does not wait for the bookkeeping job, so a bookkeeping failure would not stop it", waiting)
+		}
+	}
 	for _, gated := range []string{"windows", "macos", "node-loader"} {
 		if !slices.Contains(jobs[gated].Needs, "preflight") {
 			t.Errorf("%s does not wait for the preflight job", gated)

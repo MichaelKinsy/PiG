@@ -69,6 +69,10 @@ func TestCIImagePublicationIsEnvironmentProtected(t *testing.T) {
 			continue
 		}
 		for scope, permission := range config.Permissions {
+			// The proposal jobs write a branch and a pull request, never a package: only publish owns packages: write.
+			if (job == "propose-lock" || job == "propose-pin") && (scope == "contents" || scope == "pull-requests") && permission == "write" {
+				continue
+			}
 			if permission != "read" && permission != "none" {
 				t.Errorf("%s has %s: %s outside publication", job, scope, permission)
 			}

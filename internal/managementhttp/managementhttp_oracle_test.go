@@ -29,9 +29,23 @@ type fetchOutcome struct {
 	Requests int  `json:"requests"`
 }
 
+// probeConcurrency is how many probes each side runs at once. The stretched timeouts make a probe with a hung attempt take seconds, so running all of
+// them one after another would take about a minute; this many in flight keeps that to a few seconds while a loaded machine still answers each
+// request within a small fraction of the shortest timeout (a hundred and fifty requests at once did not).
+const probeConcurrency = 6
+
+// timeScale stretches every wall-clock quantity of the probes below. A probe is decided by which side of a timeout an event falls on: a hung
+// attempt against the attempt timeout, an immediate answer against it. The answer takes a few milliseconds when the machine is idle and
+// tens of milliseconds when its CPU quota is shared with other test processes, in Pi's process as much as in this one, so a 40 ms attempt
+// timeout turned an immediate 200 into a timeout on the loaded side and the comparison reported a difference between two correct
+// implementations. At this scale the shortest timeout is 320 ms against an answer that needs milliseconds, and the ratios between the
+// hang, the attempt timeouts and the overall timeouts are the ones the comparison was designed with.
+const timeScale = 8
+
 // fetchWithRetry against Pi's (utils/management-http.js) over a local server. Each probe scripts one status per attempt (0 hangs for 250 ms, -1 drops the
-// connection, the last entry repeats): which statuses retry, maxRetries and retryOnStatus, the overall timeout (terminal) and the attempt timeout (retried).
-// The compared outcome is the final status or failure and how many requests the server saw.
+// connection, the last entry repeats; every duration is stretched by timeScale): which statuses retry, maxRetries and retryOnStatus, the overall timeout
+// (terminal) and the attempt timeout (retried). The compared outcome is the final status or failure and how many requests the server saw. The probes are
+// independent (each has its own path on the server), so both sides run probeConcurrency of them at once.
 func TestFetchWithRetryMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewSource(17))
 	statuses := []int{200, 200, 204, 301, 404, 408, 425, 429, 500, 501, 502, 503, 504, 0, -1}
@@ -50,21 +64,21 @@ func TestFetchWithRetryMatchesPi(t *testing.T) {
 			p.RetryOnStatus = &v
 		}
 		if rng.Intn(4) == 0 {
-			p.TimeoutMs = []int{60, 120, 600}[rng.Intn(3)]
+			p.TimeoutMs = timeScale * []int{60, 120, 600}[rng.Intn(3)]
 		}
 		if rng.Intn(4) == 0 {
-			p.AttemptTimeout = []int{40, 100, 600}[rng.Intn(3)]
+			p.AttemptTimeout = timeScale * []int{40, 100, 600}[rng.Intn(3)]
 		}
 		probes = append(probes, p)
 	}
 	// A hung attempt is retried only with an attempt timeout, and the overall timeout stays terminal.
 	one, two := 1, 2
 	probes = append(probes,
-		fetchProbe{Statuses: []int{0, 200}, AttemptTimeout: 40},
-		fetchProbe{Statuses: []int{0, 0, 200}, AttemptTimeout: 40, MaxRetries: &two},
-		fetchProbe{Statuses: []int{0, 200}, AttemptTimeout: 40, MaxRetries: &one, TimeoutMs: 600},
-		fetchProbe{Statuses: []int{0, 200}, AttemptTimeout: 40, TimeoutMs: 30},
-		fetchProbe{Statuses: []int{0, 200}, TimeoutMs: 60},
+		fetchProbe{Statuses: []int{0, 200}, AttemptTimeout: timeScale * 40},
+		fetchProbe{Statuses: []int{0, 0, 200}, AttemptTimeout: timeScale * 40, MaxRetries: &two},
+		fetchProbe{Statuses: []int{0, 200}, AttemptTimeout: timeScale * 40, MaxRetries: &one, TimeoutMs: timeScale * 600},
+		fetchProbe{Statuses: []int{0, 200}, AttemptTimeout: timeScale * 40, TimeoutMs: timeScale * 30},
+		fetchProbe{Statuses: []int{0, 200}, TimeoutMs: timeScale * 60},
 		fetchProbe{Statuses: []int{0, 200}},
 	)
 	var mu sync.Mutex
@@ -80,7 +94,7 @@ func TestFetchWithRetryMatchesPi(t *testing.T) {
 		switch status {
 		case 0:
 			select {
-			case <-time.After(250 * time.Millisecond):
+			case <-time.After(timeScale * 250 * time.Millisecond):
 			case <-r.Context().Done():
 				return
 			}
@@ -100,15 +114,16 @@ func TestFetchWithRetryMatchesPi(t *testing.T) {
 	}))
 	defer server.Close()
 	type input struct {
-		URL    string       `json:"url"`
-		Probes []fetchProbe `json:"probes"`
+		URL         string       `json:"url"`
+		Probes      []fetchProbe `json:"probes"`
+		Concurrency int          `json:"concurrency"`
 	}
 	var want []fetchOutcome
 	pioracle.Run(t, `
 const { fetchWithRetry } = await load("pi-coding-agent/utils/management-http.js");
-const out = [];
-for (let i = 0; i < input.probes.length; i++) {
-	const p = input.probes[i];
+const out = new Array(input.probes.length);
+let next = 0;
+const probe = async (p, i) => {
 	const options = {};
 	if (p.maxRetries !== undefined) options.maxRetries = p.maxRetries;
 	if (p.retryOnStatus !== undefined) options.retryOnStatus = p.retryOnStatus;
@@ -117,13 +132,19 @@ for (let i = 0; i < input.probes.length; i++) {
 	try {
 		const response = await fetchWithRetry(input.url + "/p" + i, { redirect: "manual" }, options);
 		await response.body?.cancel();
-		out.push({ status: response.status, failed: false });
+		return { status: response.status, failed: false };
 	} catch {
-		out.push({ status: 0, failed: true });
+		return { status: 0, failed: true };
 	}
-}
+};
+await Promise.all(Array.from({ length: input.concurrency }, async () => {
+	while (next < input.probes.length) {
+		const i = next++;
+		out[i] = await probe(input.probes[i], i);
+	}
+}));
 emit(out);
-`, input{URL: server.URL, Probes: probes}, &want)
+`, input{URL: server.URL, Probes: probes, Concurrency: probeConcurrency}, &want)
 	mu.Lock()
 	for i := range want {
 		want[i].Requests = counts[i]
@@ -131,29 +152,41 @@ emit(out);
 	}
 	mu.Unlock()
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	bad := 0
+	got := make([]fetchOutcome, len(probes))
+	var wg sync.WaitGroup
+	slots := make(chan struct{}, probeConcurrency)
 	for i, p := range probes {
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/p"+strconv.Itoa(i), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		options := FetchRetryOptions{MaxRetries: p.MaxRetries, RetryOnStatus: p.RetryOnStatus,
-			Timeout: time.Duration(p.TimeoutMs) * time.Millisecond, AttemptTimeout: time.Duration(p.AttemptTimeout) * time.Millisecond}
-		got := fetchOutcome{}
-		response, err := FetchWithRetry(client, req, options)
-		if err != nil {
-			got.Failed = true
-		} else {
-			got.Status = response.StatusCode
+		wg.Add(1)
+		slots <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-slots }()
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/p"+strconv.Itoa(i), nil)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			options := FetchRetryOptions{MaxRetries: p.MaxRetries, RetryOnStatus: p.RetryOnStatus,
+				Timeout: time.Duration(p.TimeoutMs) * time.Millisecond, AttemptTimeout: time.Duration(p.AttemptTimeout) * time.Millisecond}
+			response, err := FetchWithRetry(client, req, options)
+			if err != nil {
+				got[i].Failed = true
+				return
+			}
+			got[i].Status = response.StatusCode
 			_, _ = io.Copy(io.Discard, response.Body)
 			_ = response.Body.Close()
-		}
+		}()
+	}
+	wg.Wait()
+	bad := 0
+	for i, p := range probes {
 		mu.Lock()
-		got.Requests = counts[i]
+		got[i].Requests = counts[i]
 		mu.Unlock()
-		if got != want[i] {
+		if got[i] != want[i] {
 			if bad++; bad <= 8 {
-				t.Errorf("probe %d %+v (max=%v retryOnStatus=%v): got %+v, want %+v", i, p, deref(p.MaxRetries), p.RetryOnStatus != nil && *p.RetryOnStatus, got, want[i])
+				t.Errorf("probe %d %+v (max=%v retryOnStatus=%v): got %+v, want %+v", i, p, deref(p.MaxRetries), p.RetryOnStatus != nil && *p.RetryOnStatus, got[i], want[i])
 			}
 		}
 	}

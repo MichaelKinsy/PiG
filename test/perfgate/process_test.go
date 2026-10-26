@@ -50,6 +50,11 @@ var pigBinary = sync.OnceValues(func() (string, error) {
 })
 
 func TestMain(m *testing.M) {
+	// Every ceiling here was derived with the kernel's transparent huge pages not backing pig's heap; the CI runners' policy is "always", which would make the anonymous-memory gates measure 2 MiB page alignment (see perfgate.DisableTransparentHugePages). The setting is inherited by every pig the tests start.
+	if err := perfgate.DisableTransparentHugePages(); err != nil {
+		fmt.Fprintln(os.Stderr, "perfgate:", err)
+		os.Exit(2)
+	}
 	code := m.Run()
 	if path, err := pigBinary(); err == nil {
 		_ = os.RemoveAll(filepath.Dir(path))
@@ -307,12 +312,16 @@ func TestRPCTurnProcessGate(t *testing.T) {
 	checkExitState(t, "process.rpc_turn", large, tempLeft, true)
 }
 
-// RSS and PSS at ready, the memory metric the Rust port rpi publishes: RPC mode is ready when it has answered its first command (get_state). Peak RSS over the run is gated beside it.
+// Memory at ready, the metric the Rust port rpi publishes (its "RSS at ready"): RPC mode is ready when it has answered its first command (get_state). The gate is the anonymous memory of the process, ceiling 4.5 MB (process.rpc_ready.anon_bytes); RSS, PSS and the run's peak RSS are reported beside it, not gated.
+//
+// RSS and PSS include every page of the pig binary and of the libraries it maps that the kernel has in its page cache, and how many of them are resident when the process is sampled depends on readahead and on what else read the file, not on pig: 24 runs of one binary on one idle host measured an RSS of 42.5 to 47.4 MB (peak 44.3 to 49.1 MB), and 5 of the 24 failed the former 46 MB RSS ceiling with no change to pig. The anonymous memory (smaps_rollup Anonymous: heap, stacks, written data) is what pig itself allocates and keeps: 80 runs, idle and beside 12 busy loops, measured 3.88 to 4.03 MB, and the 4.5 MB ceiling is the largest of them plus 12%. The owner chose it as the gated figure over RSS.
+//
+// Anonymous memory is only comparable across hosts when the kernel backs it with 4 KiB pages. On a host whose THP policy is "always" (GitHub's ubuntu-24.04 runners) the Go heap's 3 MB sits in two or three 2 MiB pages, so the same binary measured 5.65 to 7.82 MB there (AnonHugePages 4 to 6 MB) depending on page alignment; TestMain therefore turns THP off for every pig these tests start, and perfgate.CheckAnonymous fails a measured process that still has AnonHugePages. With it, 50 runs on such a runner measured 3.95 to 4.03 MB, the lab host's figure.
 func TestRPCReadyMemoryGate(t *testing.T) {
 	home := newPigHome(t)
 	args := []string{"-ne", "--no-session", "--mode", "rpc", "--model", "test-faux/faux-1"}
 	home.run(args, nil)
-	var rss, pss float64
+	var memory perfgate.Memory
 	record := home.run(args, func(pid int, stdin io.Writer, stdout *bufio.Reader) {
 		if _, err := io.WriteString(stdin, `{"id":"ready","type":"get_state"}`+"\n"); err != nil {
 			t.Fatal(err)
@@ -330,10 +339,11 @@ func TestRPCReadyMemoryGate(t *testing.T) {
 				break
 			}
 		}
-		rss, pss = perfgate.ProcessMemory(t, pid)
+		memory = perfgate.ProcessMemory(t, pid)
 	})
-	t.Logf("perfgate: process.rpc_ready rss %.0f pss %.0f peak %d", rss, pss, record.MaxRSSBytes)
-	perfgate.Check(t, "process.rpc_ready.rss_bytes", rss)
-	perfgate.Check(t, "process.rpc_ready.pss_bytes", pss)
-	perfgate.Check(t, "process.rpc_ready.max_rss_bytes", float64(record.MaxRSSBytes))
+	t.Logf("perfgate: process.rpc_ready %+v peak %d", memory, record.MaxRSSBytes)
+	perfgate.Report(t, "process.rpc_ready.rss_bytes", memory.Rss)
+	perfgate.Report(t, "process.rpc_ready.pss_bytes", memory.Pss)
+	perfgate.Report(t, "process.rpc_ready.max_rss_bytes", float64(record.MaxRSSBytes))
+	perfgate.CheckAnonymous(t, "process.rpc_ready.anon_bytes", memory)
 }

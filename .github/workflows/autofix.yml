@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: MIT
+
+name: Autofix derived files
+
+# CI's Bookkeeping job (ci.yml) regenerates committed derived files that a pull request left stale, checks that the failed gates
+# pass on the result, and uploads the files as the "autofix" artifact. This workflow turns that artifact into one commit on the
+# pull request's branch, created through GitHub's API as github-actions[bot] so GitHub signs it (Verified) and it carries a
+# Signed-off-by trailer, then dispatches CI on the new head. Owner decision 2026-10-25: such a commit satisfies the signed-commit and
+# DCO rules (.github/AGENTS.md, "Derived-file autofix").
+#
+# Trust boundary: this workflow runs from the default branch with a write token and runs no code from the pull request. The artifact
+# is untrusted input that automation/ci/autofix.py (the default branch's copy) validates: only plain files at the paths of the default
+# branch's automation/ci/autofix-paths.txt, within size limits, matching their digests, generated for the branch's current head.
+# A pull request from a fork gets a comment with the commands instead of a commit. Everything else comes from the API, never from the
+# event payload or the artifact. workflow_dispatch applies the artifact of a named failed CI run, for a re-run.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run-id:
+        description: ID of the failed CI run whose autofix artifact to apply
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: autofix-${{ github.event.workflow_run.head_sha || inputs.run-id }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Apply regenerated files
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'failure' && (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'workflow_dispatch'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      # contents: the commit on the pull request's branch. pull-requests: the comment. actions: the artifact download and the CI dispatch.
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.event.workflow_run.id || inputs.run-id }}
+    steps:
+      # The default branch's copy of the tooling: github.sha is the default branch's head for a workflow_run event.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            automation/ci
+      - name: Read the run from the API
+        id: run
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "::error::run id is not a number"; exit 1; }
+          run=$(gh api "repos/$REPO/actions/runs/$RUN_ID")
+          field() { jq -r "$1 // empty" <<<"$run"; }
+          [ "$(field .conclusion)" = failure ] || { echo "run $RUN_ID did not fail; nothing to fix"; echo "apply=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          [[ "$(field .path)" == .github/workflows/ci.yml* ]] || { echo "::error::run $RUN_ID is not a CI run"; exit 1; }
+          event=$(field .event); sha=$(field .head_sha); branch=$(field .head_branch); head_repo=$(field .head_repository.full_name)
+          [[ "$event" = pull_request || "$event" = workflow_dispatch ]] || { echo "::error::unexpected event $event"; exit 1; }
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::bad head sha"; exit 1; }
+          # A ref name cannot hold a newline or control character; this also keeps it from carrying shell or workflow syntax.
+          [[ "$branch" =~ ^[A-Za-z0-9._/+-]+$ ]] || { echo "::error::unexpected branch name"; exit 1; }
+          default=$(gh api "repos/$REPO" --jq .default_branch)
+          [ "$branch" != "$default" ] || { echo "::error::refusing to write to $default"; exit 1; }
+          fork=false
+          [ "$head_repo" = "$REPO" ] || fork=true
+          # A pull request from a fork has an empty pull_requests list on the run; find it by its head commit.
+          pr=$(gh api "repos/$REPO/commits/$sha/pulls" --jq '[.[] | select(.state == "open")][0].number // empty' || true)
+          { echo "apply=true"; echo "sha=$sha"; echo "branch=$branch"; echo "fork=$fork"; echo "pr=$pr"; } >> "$GITHUB_OUTPUT"
+      - name: Download the autofix artifact
+        id: artifact
+        if: steps.run.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh run download "$RUN_ID" --repo "$REPO" --name autofix --dir "$RUNNER_TEMP/autofix"; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run $RUN_ID has no autofix artifact: the failure is not stale derived files, or the artifact expired"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Comment the commands on a fork's pull request
+        if: steps.artifact.outputs.found == 'true' && steps.run.outputs.fork == 'true' && steps.run.outputs.pr != ''
+        env:
+          PR: ${{ steps.run.outputs.pr }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 automation/ci/autofix.py comment --artifact "$RUNNER_TEMP/autofix" > "$RUNNER_TEMP/comment.md"
+          gh pr comment "$PR" --repo "$REPO" --body-file "$RUNNER_TEMP/comment.md"
+      - name: Commit the regenerated files
+        id: commit
+        if: steps.artifact.outputs.found == 'true' && steps.run.outputs.fork == 'false'
+        env:
+          SHA: ${{ steps.run.outputs.sha }}
+          BRANCH: ${{ steps.run.outputs.branch }}
+          PR: ${{ steps.run.outputs.pr }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # One autofix commit per failure: when the head already is the bot's, report instead of pushing again.
+          message=$(gh api "repos/$REPO/commits/$SHA" --jq .commit.message)
+          if grep -qx 'Autofix: derived files' <<<"$message"; then
+            echo "head $SHA is already an autofix commit; not pushing another"
+            if [ -n "$PR" ]; then
+              gh pr comment "$PR" --repo "$REPO" --body "The autofix commit did not make CI's bookkeeping gates pass. Run \`make generate\` locally and look at the failing gate; autofix will not push a second commit for this head."
+            fi
+            exit 0
+          fi
+          live=$(gh api "repos/$REPO/branches/$BRANCH" --jq .commit.sha)
+          if [ "$live" != "$SHA" ]; then
+            echo "branch $BRANCH is at $live, the run tested $SHA; not pushing"
+            exit 0
+          fi
+          python3 automation/ci/autofix.py validate --artifact "$RUNNER_TEMP/autofix" --paths automation/ci/autofix-paths.txt \
+            --repo "$REPO" --branch "$BRANCH" --expected-head "$SHA" --out "$RUNNER_TEMP/request.json"
+          oid=$(gh api graphql --input "$RUNNER_TEMP/request.json" --jq .data.createCommitOnBranch.commit.oid)
+          [[ "$oid" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::no commit created"; exit 1; }
+          echo "oid=$oid" >> "$GITHUB_OUTPUT"
+          echo "created $oid on $BRANCH"
+      # A push made with the workflow token does not start the pull request's workflows; a dispatch does, and its checks report on the new head.
+      - name: Run CI on the new head
+        if: steps.commit.outputs.oid != ''
+        env:
+          BRANCH: ${{ steps.run.outputs.branch }}
+          OID: ${{ steps.commit.outputs.oid }}
+          PR: ${{ steps.run.outputs.pr }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run ci.yml --repo "$REPO" --ref "$BRANCH"
+          if [ -n "$PR" ]; then
+            gh pr comment "$PR" --repo "$REPO" --body "CI found committed derived files out of date. Autofix pushed $OID with the regenerated files and started CI on it; the bookkeeping gates passed on the regenerated tree before the push. Pull this commit before you push more."
+          fi

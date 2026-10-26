@@ -535,14 +535,16 @@ title = "Memory at ready (RSS and PSS, rpi's metric) beside peak RSS: interactiv
 impact = 4
 owner = "go-native-perf"
 target = "RSS at ready under 15 MB interactive and under 12 MB RPC; peak at most a fifth above ready"
-basis = "rpi, a Rust port of Pi, self-reports 12.0 MiB RSS at ready (Windows 11, its author's benchmark): a different machine and OS, so the target stands until the same-machine run of the comparison protocol replaces it."
+basis = "rpi, a Rust port of Pi, self-reports 12.0 MiB RSS at ready (Windows 11, its author's benchmark): a different machine and OS, so the target stands until the same-machine run of the comparison protocol replaces it. The ratchet gates anonymous memory at ready (the heap, stacks and written data pig itself holds), by the owner's decision: RSS and PSS also count every page of the pig binary the kernel has in its page cache, which varied from 38 to 42 MB of an RPC start's 42-48 MB RSS on one idle machine while the anonymous 3.8-3.9 MB did not, so a ceiling on them failed with no change to pig. RSS, PSS and the peak RSS are recorded beside it, not gated."
 gates = [
-  { ratchet = "process.interactive_first_frame.rss_bytes_at_ready" },
-  { ratchet = "process.interactive_first_frame.pss_bytes_at_ready" },
-  { ratchet = "process.interactive_first_frame.max_rss_bytes" },
-  { ratchet = "process.rpc_ready.rss_bytes" },
-  { ratchet = "process.rpc_ready.pss_bytes" },
-  { ratchet = "process.rpc_ready.max_rss_bytes" },
+  { ratchet = "process.interactive_first_frame.anon_bytes_at_ready" },
+  { measured = "process.interactive_first_frame.rss_bytes_at_ready" },
+  { measured = "process.interactive_first_frame.pss_bytes_at_ready" },
+  { measured = "process.interactive_first_frame.max_rss_bytes" },
+  { ratchet = "process.rpc_ready.anon_bytes" },
+  { measured = "process.rpc_ready.rss_bytes" },
+  { measured = "process.rpc_ready.pss_bytes" },
+  { measured = "process.rpc_ready.max_rss_bytes" },
   { ratchet = "process.print.max_rss_bytes" },
   { ratchet = "process.rpc_turn.max_rss_bytes_at_22_turns" },
   { missing = "steady RSS after a long idle interactive session (scavenger returns memory)", route = "go-native-perf" },
@@ -601,7 +603,7 @@ owner = "xlang-bench (requested)"
 target = "per-session memory (PSS at ready plus growth per turn) under 16 MB, at least 60 idle RPC sessions per GB"
 basis = "Sessions per GB follow from per-session PSS; rpi's self-reported 12 MiB RSS at ready plus a turn's growth gives the 16 MB figure, and the same-machine sweep replaces it."
 gates = [
-  { ratchet = "process.rpc_ready.pss_bytes" },
+  { measured = "process.rpc_ready.pss_bytes" },
   { missing = "sessions-per-host sweep with cgroup accounting", route = "xlang-bench (requested)" },
 ]
 

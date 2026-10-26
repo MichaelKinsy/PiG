@@ -2,6 +2,13 @@
 
 name: CI images
 
+# Pull requests never touch a moving package index or vulnerability database. The images' apk locks name versions that the Alpine
+# and Wolfi indexes drop within weeks, and a vulnerability database changes daily, so a build or scan in pull request CI fails when
+# the outside world moves, not when the change is wrong. Pull requests therefore verify the published image their tree pins by
+# digest (automation/images/<image>/published.env): its tool versions, its SBOM, and that the digest was built from the inputs in
+# the tree. The refresh below is the only place the index and the database are read: it runs weekly and on dispatch, resolves the
+# locks, builds, validates and scans, and proposes the new lock on a branch. Publication stays a dispatch from main behind the
+# release environment; the pin proposal that follows it records the published digest.
 on:
   pull_request:
     paths:
@@ -13,6 +20,8 @@ on:
       - .dockerignore
       - automation/images/**
       - automation/ci/build-ci-image.sh
+      - automation/ci/ci-image-inputs.sh
+      - automation/ci/propose-ci-image-change.py
       - automation/ci/check-npm-lock-integrity.py
       - automation/ci/seed-ci-image-bases.sh
       - .github/workflows/ci-images.yml
@@ -27,9 +36,13 @@ on:
       - .dockerignore
       - automation/images/**
       - automation/ci/build-ci-image.sh
+      - automation/ci/ci-image-inputs.sh
+      - automation/ci/propose-ci-image-change.py
       - automation/ci/check-npm-lock-integrity.py
       - automation/ci/seed-ci-image-bases.sh
       - .github/workflows/ci-images.yml
+  schedule:
+    - cron: '23 5 * * 3'
   workflow_dispatch:
     inputs:
       publish:
@@ -51,8 +64,163 @@ env:
   GRYPE_IMAGE: pig-ci-base-grype:0.114.0
 
 jobs:
+  verify:
+    name: Verify ${{ matrix.image }} image
+    # A pull request or a push to main checks the published image its tree pins by digest. Nothing here reads a package index or a
+    # vulnerability database, so only a change to the inputs or to the published image can turn it red.
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [go, parity]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: ci-image-${{ matrix.image }}
+          persist-credentials: false
+      - name: Skip the parity image for a commit pin
+        id: pin
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          # The parity image installs the published Pi release; a commit pin has no published package, so its oracle is
+          # built from source in the Linux parity job instead (automation/pin/oracle.py, pin.py check-oracle).
+          ref=$(sed -n 's/^ref=//p' .upstream/pin)
+          commit=$(sed -n 's/^commit=//p' .upstream/pin)
+          if [ "$IMAGE" = parity ] && [ "$ref" = "$commit" ]; then
+            echo "::notice::Parity image skipped: the pin is commit $commit, not a release tag; the Linux parity job runs against the source-built oracle."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify locked dependencies
+        if: steps.pin.outputs.skip != 'true'
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        run: |
+          ./automation/ci/check-npm-lock-integrity.py \
+            automation/images/ci-parity/package-lock.json \
+            automation/images/npm-runtime/package-lock.json
+      # BuildKit's offline lint of the Dockerfile: it runs no instruction and reads no package index.
+      - name: Check the Dockerfile
+        if: steps.pin.outputs.skip != 'true'
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          case "$IMAGE" in
+            go) image_dir=ci-go ;;
+            parity) image_dir=ci-parity ;;
+            *) echo "unknown CI image: $IMAGE" >&2; exit 1 ;;
+          esac
+          docker buildx build --check -f "automation/images/$image_dir/Dockerfile" .
+      - name: Read the published image pin
+        id: published
+        if: steps.pin.outputs.skip != 'true'
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          case "$IMAGE" in
+            go) image_dir=ci-go ;;
+            parity) image_dir=ci-parity ;;
+            *) echo "unknown CI image: $IMAGE" >&2; exit 1 ;;
+          esac
+          pin="automation/images/$image_dir/published.env"
+          if [ ! -f "$pin" ]; then
+            echo "::notice::No published $IMAGE image is pinned ($pin is absent): dispatch CI images from main with publish enabled, then merge the pin pull request it proposes."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          IMAGE_REF=$(sed -n 's/^IMAGE_REF=//p' "$pin")
+          PINNED_INPUTS=$(sed -n 's/^INPUTS_SHA256=//p' "$pin")
+          [[ "$IMAGE_REF" =~ ^ghcr\.io/michaelkinsy/pig-ci-[a-z]+@sha256:[0-9a-f]{64}$ ]] || { echo "$pin: IMAGE_REF must be a ghcr.io/michaelkinsy/pig-ci-* reference pinned by digest, got '$IMAGE_REF'" >&2; exit 1; }
+          [[ "$PINNED_INPUTS" =~ ^[0-9a-f]{64}$ ]] || { echo "$pin: INPUTS_SHA256 is not a SHA-256" >&2; exit 1; }
+          current=$(./automation/ci/ci-image-inputs.sh "$IMAGE")
+          {
+            echo "present=true"
+            echo "image-ref=$IMAGE_REF"
+            if [ "$current" = "$PINNED_INPUTS" ]; then echo "stale=false"; else echo "stale=true"; fi
+          } >> "$GITHUB_OUTPUT"
+          if [ "$current" != "$PINNED_INPUTS" ]; then
+            echo "::notice::The inputs of the $IMAGE image changed since the pinned image was built. The scheduled refresh (or a publish dispatch from main) builds a new one and proposes its pin; until then this check verifies the pinned digest only for its own integrity."
+          fi
+      - name: Pull the published image by digest
+        if: steps.published.outputs.present == 'true'
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.published.outputs.image-ref }}
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          docker pull --platform linux/amd64 "$IMAGE_REF"
+          docker logout ghcr.io
+      # The image carries the toolchain the inputs name. When the inputs moved on, the pinned image is an older build and its
+      # versions are not the tree's, so the check waits for the refresh.
+      - name: Check the published image
+        if: steps.published.outputs.present == 'true' && steps.published.outputs.stale == 'false'
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE: ${{ matrix.image }}
+          VERIFY_IMAGE_REF: ${{ steps.published.outputs.image-ref }}
+        run: ./automation/ci/build-ci-image.sh "$IMAGE"
+      - name: Seed the SBOM generator
+        if: steps.published.outputs.present == 'true'
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          CI_BASE_DIR: ${{ runner.temp }}/pig-ci-bases-sbom-${{ matrix.image }}
+        run: ./automation/ci/seed-ci-image-bases.sh sbom
+      - name: Generate SBOM
+        if: steps.published.outputs.present == 'true'
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE_REF: ${{ steps.published.outputs.image-ref }}
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          mkdir -p "out/ci-images/$IMAGE"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            "$SYFT_IMAGE" "docker:$IMAGE_REF" -o spdx-json \
+            > "out/ci-images/$IMAGE/sbom.spdx.json"
+          python3 - "out/ci-images/$IMAGE/sbom.spdx.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              packages = json.load(stream).get("packages")
+          if not isinstance(packages, list) or not packages:
+              raise SystemExit("SBOM contains no packages")
+          PY
+      - name: Upload image evidence
+        if: always() && steps.published.outputs.present == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pig-ci-${{ matrix.image }}-verification
+          path: ${{ github.workspace }}/ci-image-${{ matrix.image }}/out/ci-images/${{ matrix.image }}/
+          retention-days: 14
+
   build:
     name: Build ${{ matrix.image }} image
+    # The refresh: the one place the package index and the vulnerability database are read.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -111,6 +279,26 @@ jobs:
           IMAGE: ${{ matrix.image }}
           CI_BASE_DIR: ${{ runner.temp }}/pig-ci-bases-${{ matrix.image }}
         run: ./automation/ci/seed-ci-image-bases.sh "$IMAGE"
+      # The locks name the versions the package index had when they were written; the index drops old versions within weeks.
+      # Resolve them again here, then build with the exact lock (the Dockerfile's cmp proves the install matches it).
+      - name: Resolve the apk lock from the current index
+        if: steps.pin.outputs.skip != 'true'
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE: ${{ matrix.image }}
+          CI_BASE_DIR: ${{ runner.temp }}/pig-ci-bases-${{ matrix.image }}
+          RESOLVE_APK_LOCK: '1'
+        run: |
+          set -euo pipefail
+          ./automation/ci/build-ci-image.sh "$IMAGE"
+          case "$IMAGE" in
+            go) image_dir=ci-go ;;
+            parity) image_dir=ci-parity ;;
+          esac
+          mkdir -p "out/ci-images/$IMAGE"
+          cp "automation/images/$image_dir/packages.lock" "out/ci-images/$IMAGE/packages.lock"
+          git diff --stat -- "automation/images/$image_dir/packages.lock" || true
       - name: Build and validate
         if: steps.pin.outputs.skip != 'true'
         id: build
@@ -304,3 +492,60 @@ jobs:
           if [ -n "$IMAGE_REF" ]; then
             docker image rm "$IMAGE_REF" >/dev/null 2>&1 || true
           fi
+
+  # The two proposal jobs run from main with a write token and no pull request code. They create a branch and one GitHub-signed
+  # commit (automation/ci/propose-ci-image-change.py); they publish nothing.
+  propose-lock:
+    name: Propose refreshed apk locks
+    needs: build
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the refresh evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: pig-ci-*-evidence
+          path: ${{ runner.temp }}/evidence
+      - name: Propose the locks that changed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          EVIDENCE: ${{ runner.temp }}/evidence
+        run: ./automation/ci/propose-ci-image-change.py lock --evidence "$EVIDENCE"
+
+  propose-pin:
+    name: Propose the published image pins
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the publication records
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: pig-ci-*-publication
+          path: ${{ runner.temp }}/publication
+      - name: Propose the pins
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          PUBLICATION: ${{ runner.temp }}/publication
+        run: ./automation/ci/propose-ci-image-change.py pin --publication "$PUBLICATION"

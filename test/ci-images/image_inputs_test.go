@@ -139,13 +139,18 @@ func TestCIImageWorkflowWatchesAuthoritativePins(t *testing.T) {
 		t.Fatal(err)
 	}
 	var workflow struct {
-		On map[string]struct{ Paths []string }
+		On map[string]yaml.Node
 	}
 	if err := yaml.Unmarshal(data, &workflow); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range []string{"push", "pull_request"} {
-		paths := "\n" + strings.Join(workflow.On[event].Paths, "\n") + "\n"
+		var trigger struct{ Paths []string }
+		node := workflow.On[event]
+		if err := node.Decode(&trigger); err != nil {
+			t.Fatalf("%s trigger: %v", event, err)
+		}
+		paths := "\n" + strings.Join(trigger.Paths, "\n") + "\n"
 		for _, input := range []string{".go-version", ".node-version", ".upstream/pin", ".github/workflows/ci.yml"} {
 			if !strings.Contains(paths, "\n"+input+"\n") {
 				t.Errorf("%s ignores authoritative image input %s", event, input)

@@ -62,6 +62,8 @@ git rebase --exec 'git commit --amend -S --no-edit' <base>
 
 A default rebase drops merge commits, including any conflict resolution they contain, so rebase onto the current `main` first to make the branch linear. These commands rewrite commit IDs. Coordinate with a maintainer before replacing commits already pushed. Keep each DCO sign-off in the commit message.
 
+One commit is not yours: when CI's bookkeeping job finds committed derived files out of date on a pull request from this repository, the autofix workflow adds a single `Regenerate stale derived files` commit as `github-actions[bot]`. GitHub signs it (Verified) and it carries the bot's `Signed-off-by` and an `Autofix: derived files` trailer. Pull it (`git pull --ff-only`) before you push more; from a fork, CI comments the `make` commands to run instead. See `.github/AGENTS.md`.
+
 If you cannot set up signing, say so in the pull request. A maintainer can land your change in a maintainer-signed commit that credits you with a `Co-authored-by:` trailer, which GitHub shows as Verified. Re-signing a commit that keeps you as its author is not enough if your account uses vigilant mode, because GitHub then marks it only Partially verified.
 
 ## Agent-assisted contributions

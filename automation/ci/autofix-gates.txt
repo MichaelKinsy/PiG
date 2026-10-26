@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+#
+# The bookkeeping gates whose only remedy is regenerating committed files, and the command that regenerates what the gate
+# checks. automation/ci/autofix.py runs the commands of the failed gates in this order (the order of make generate), re-runs
+# the failed gates, and offers the result to the autofix workflow. A bookkeeping failure of any gate not listed here is a
+# human's to fix, and stops autofix for the whole run.
+#
+# gate | command (run from the repository root, split on spaces, no shell)
+divergences-drift | make divergences
+piglet-strip-ids-drift | make piglet-strip-ids
+docs-drift | make knowledge-graph
+perf-scoreboard-check | make perf-scoreboard
+known-gaps-drift | make known-gaps
+custom-factory-ledger-drift | make custom-factory-ledger
+bug-ledger-check | make bug-ledger
+coverage-drift | make coverage RESULTS=

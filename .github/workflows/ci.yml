@@ -108,37 +108,118 @@ jobs:
           go test ./test/ci-images/ ./test/docs-drift/
           python3 automation/ci/check-public-claims.py
 
-  dco:
-    name: DCO
-    # Dependabot commits carry no Signed-off-by trailer; the maintainer's
-    # signed-off squash merge records the DCO for them.
-    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+  bookkeeping:
+    name: Bookkeeping
+    # The fail-fast gate: every job that spends real minutes waits for it, so a stale generated file, a stale ledger, a missing
+    # sign-off or a broken policy gate stops the run in minutes. It runs only what needs Go, Python and the Pi source mirror
+    # (make ci-bookkeeping): no oracle build, no npm install, no test binaries. Gates that need those stay in their shards.
+    # A failure whose only cause is a committed file that make generate rewrites feeds the autofix workflow (item below).
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The bug ledger and the DCO check read the history.
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          # The job restores its own Go build cache below; setup-go's copy would download a second, older one.
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      # Dependabot commits carry no Signed-off-by trailer; the maintainer's signed-off squash merge records the DCO for them.
       - name: Check commit sign-offs
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: ./automation/ci/check-dco.sh "$BASE_SHA" "$HEAD_SHA"
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: .go-version
-          cache: true
       - name: Check test expectations edited with their code
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: go run ./test/parity/cmd/testprune lint -base "$BASE_SHA" -head "$HEAD_SHA"
+      # port-map-drift, coverage-drift and divergence-guard read Pi's source mirror, and a commit pin's mirror takes its generated
+      # provider data from the oracle build, so this prepares the oracle as the Linux shards do (the build is cached by pin).
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            extensions/sdk-ts/package-lock.json
+            test/parity/interface-extractor/package-lock.json
+            automation/images/ci-parity/package-lock.json
+            automation/images/npm-runtime/package-lock.json
+      - name: Install pinned npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$NPM_VERSION"
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Prepare pinned Pi oracle
+        run: make upstream-mirror
+      - name: Run the bookkeeping gates
+        id: gates
+        # The step's failure is reported by the last step, after the autofix step has looked at the log.
+        continue-on-error: true
+        env:
+          CI: '1'
+        shell: bash
+        run: |
+          set -o pipefail
+          make -k -j4 -O ci-bookkeeping 2>&1 | tee "$RUNNER_TEMP/bookkeeping.log"
+      # When every failed gate is one whose remedy is regenerating committed files (automation/ci/autofix-gates.txt), regenerate
+      # them here, check the failed gates pass on the result, and keep the changed files as an artifact. This job holds a read-only
+      # token and runs the pull request's own code; the autofix workflow, which holds the write token, runs none of it. It reads
+      # the artifact, checks every path against the default branch's allowlist, and creates the commit.
+      - name: Regenerate stale derived files
+        id: autofix
+        if: steps.gates.outcome == 'failure' && (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref_name != github.event.repository.default_branch))
+        env:
+          LOG: ${{ runner.temp }}/bookkeeping.log
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          ARTIFACT: ${{ runner.temp }}/autofix
+        run: python3 automation/ci/autofix.py prepare --log "$LOG" --out "$ARTIFACT" --head-sha "$HEAD_SHA"
+      - name: Keep the regenerated files for the autofix workflow
+        if: steps.autofix.outputs.eligible == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: autofix
+          path: ${{ runner.temp }}/autofix/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Fail the job when a gate failed
+        if: steps.gates.outcome == 'failure'
+        run: |
+          echo "::error::bookkeeping gates failed; see the Run the bookkeeping gates step"
+          exit 1
 
   preflight:
     name: Linux / preflight
     # The compile gate: every package builds, vets for each shipped platform, and needs no go fix. Windows, macOS and the Node
     # loader wait for it, so a change that cannot pass them does not spend their minutes; the Linux shards start at once.
-    needs: [changes]
+    needs: [changes, bookkeeping]
     if: needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -174,7 +255,7 @@ jobs:
 
   linux:
     name: Linux / ${{ matrix.shard }}
-    needs: [changes]
+    needs: [changes, bookkeeping]
     if: needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -374,7 +455,7 @@ jobs:
 
   node-runtime:
     name: Node extensions
-    needs: [changes]
+    needs: [changes, bookkeeping]
     if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -483,7 +564,7 @@ jobs:
 
   durable-cf-host:
     name: Durable Cloudflare host
-    needs: [changes]
+    needs: [changes, bookkeeping]
     if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -916,7 +997,7 @@ jobs:
 
   android:
     name: Android build
-    needs: [changes]
+    needs: [changes, bookkeeping]
     if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-android == 'true'
     # Termux runs this binary. The runner image provides the NDK; no hosted
     # runner executes the result, so this builds it with cgo and checks its ELF
@@ -982,7 +1063,7 @@ jobs:
     # is label) a pull request's result fails unless this run is the full run
     # on the pull request's current head, so a head that only the light run
     # tested can never satisfy the required check.
-    needs: [changes, docs, dco, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host]
+    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -993,7 +1074,6 @@ jobs:
       - name: Require every job this change needs
         env:
           EVENT: ${{ github.event_name }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PRODUCT: ${{ needs.changes.outputs.product }}
           FULL: ${{ needs.changes.outputs.full }}
           FULL_REQUIRED: ${{ needs.changes.outputs.full-required }}
@@ -1007,7 +1087,7 @@ jobs:
           RUN_DURABLE_CF_HOST: ${{ needs.changes.outputs.run-durable-cf-host }}
           CHANGES: ${{ needs.changes.result }}
           DOCS: ${{ needs.docs.result }}
-          DCO: ${{ needs.dco.result }}
+          BOOKKEEPING: ${{ needs.bookkeeping.result }}
           VERIFY: ${{ needs.verify.result }}
           NODE_RUNTIME: ${{ needs.node-runtime.result }}
           WINDOWS: ${{ needs.windows.result }}
@@ -1028,10 +1108,14 @@ jobs:
               status=1
             fi
           }
-          product_skip=false; docs_skip=false; dco_skip=false
+          # Every job that spends real minutes waits for bookkeeping, so when it fails they were skipped, not run.
+          if [ "$BOOKKEEPING" != success ]; then
+            echo "::error::Bookkeeping: $BOOKKEEPING; the jobs that wait for it did not run (see the Bookkeeping job's log)"
+            exit 1
+          fi
+          product_skip=false; docs_skip=false
           [ "$PRODUCT" = false ] && product_skip=true
           [ "$PRODUCT" = true ] && docs_skip=true
-          { [ "$EVENT" != pull_request ] || [ "$PR_AUTHOR" = 'dependabot[bot]' ]; } && dco_skip=true
           skip_unless_planned() { # run-output of a job the light run may leave out
             if [ "$product_skip" = true ] || [ "$1" = false ]; then echo true; else echo false; fi
           }
@@ -1055,7 +1139,7 @@ jobs:
           fi
           expect "Changed paths" "$CHANGES" false
           expect "Project documents" "$DOCS" "$docs_skip"
-          expect "DCO" "$DCO" "$dco_skip"
+          expect "Bookkeeping" "$BOOKKEEPING" false
           expect "Linux verification" "$VERIFY" false
           expect "Linux preflight" "$PREFLIGHT" "$product_skip"
           expect "Node extensions" "$NODE_RUNTIME" "$(skip_unless_planned "$RUN_NODE_RUNTIME")"

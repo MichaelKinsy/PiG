@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/perfgate"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -43,6 +44,11 @@ func runIntegrationTests(m *testing.M) int {
 		}
 	}()
 	tmuxHomeRoot = tmp
+	// The anonymous-memory gate (TestInteractiveFirstFrameProcessGate) measures a pig under the private tmux server started below, which inherits this setting: without it the runners' THP policy ("always") makes the figure depend on 2 MiB page alignment.
+	if err := perfgate.DisableTransparentHugePages(); err != nil {
+		fmt.Fprintln(os.Stderr, "integration:", err)
+		return 2
+	}
 	// Keep the private server alive between tests. Otherwise killing the last session races the next new-session while the server exits under load.
 	// Without tmux (native Windows), the tmux tests skip and the rest run.
 	if _, err := exec.LookPath("tmux"); err == nil {

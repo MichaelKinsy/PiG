@@ -57,17 +57,11 @@ func TestExitRecordChild(t *testing.T) {
 		group.Go(func() { panic("boom without a handler") })
 		select {}
 	case "fatal-error":
-		// A real runtime fatal error, which no recover can intercept: concurrent map writes.
-		shared := map[int]int{}
-		var wg sync.WaitGroup
-		for range 8 {
-			wg.Go(func() {
-				for i := range 1 << 24 {
-					shared[i%64] = i
-				}
-			})
-		}
-		wg.Wait()
+		// A real runtime fatal error, which no recover can intercept, on every run. Concurrent map writes were one only
+		// when two threads happened to be inside the map's write at the same instant: a child that the host ran on one
+		// CPU at a time (a full-package run on a loaded machine) finished its 8 x 16M writes and exited 0.
+		var mu sync.Mutex
+		mu.Unlock()
 	case "wait":
 		fmt.Println("ready")
 		select {}
@@ -216,7 +210,7 @@ func TestUnrecoveredGoroutinePanicBecomesACrashRecordAtTheNextStart(t *testing.T
 func TestRuntimeFatalErrorBecomesAFatalCrashRecord(t *testing.T) {
 	agentDir := t.TempDir()
 	output, code := runExitRecordChild(t, "fatal-error", agentDir)
-	if code != 2 || !strings.Contains(output, "fatal error: concurrent map") {
+	if code != 2 || !strings.Contains(output, "fatal error: sync: unlock of unlocked mutex") {
 		t.Fatalf("the child did not die of a runtime fatal error (exit %d)\n%s", code, output)
 	}
 	ReconcileSessionMarkers(agentDir, time.Now())
