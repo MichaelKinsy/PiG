@@ -43,7 +43,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
-	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 
 	"golang.org/x/term"
 
@@ -566,12 +565,7 @@ func reportExtensionSDKStageFailure(stderr io.Writer, err error) {
 	if err == nil {
 		return
 	}
-	what := "extension SDK staging failed"
-	// pig additive (D201): an installed binary stages nothing; its startup check verifies the installed SDKs.
-	if pigsdklock.InstalledSDKRoot() != "" {
-		what = "installed extension SDK check failed"
-	}
-	_, _ = fmt.Fprintf(stderr, "pig: warning: %s: %v\n", what, err)
+	_, _ = fmt.Fprintf(stderr, "pig: warning: extension SDK staging failed: %v\n", err)
 	_, _ = fmt.Fprintln(stderr, "pig: startup will continue; extensions that need the SDK may fail to build; run 'pig diagnose' for detail")
 }
 

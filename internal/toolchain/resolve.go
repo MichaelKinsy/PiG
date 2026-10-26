@@ -38,11 +38,9 @@ type GoToolchain struct {
 // inherited value. An inherited GOROOT that names another installation is the
 // source of the release mismatch above: version managers such as mise export
 // GOROOT for the project directory a shell is in, while the go command found
-// on PATH can belong to another version. An installed toolchain directory
-// ([InstalledToolchainDir]) also leads PATH, so cgo runs that installation's C
-// compiler.
+// on PATH can belong to another version.
 func (t GoToolchain) Environ(environ []string) []string {
-	out := slices.DeleteFunc(slices.Clone(Environ(environ)), func(kv string) bool { return envKey(kv, "GOROOT") })
+	out := slices.DeleteFunc(slices.Clone(environ), func(kv string) bool { return envKey(kv, "GOROOT") })
 	if t.Root == "" {
 		return out
 	}
@@ -121,8 +119,7 @@ func (t GoToolchain) FloorRemedy() string {
 }
 
 // ResolveGo selects the Go installation for builds: the go command on PATH, else
-// the PiG-managed toolchain; or only the go of the installed toolchain directory
-// when one is configured ([LookPath]). A go on PATH older than MinGoVersion gives way to a
+// the PiG-managed toolchain. A go on PATH older than MinGoVersion gives way to a
 // PiG-managed toolchain that meets it. It resolves once per selection and process, so
 // concurrent extension builds cannot pick different installations. Nothing is
 // run when the command lives inside its own installation, which is the case for
@@ -148,7 +145,7 @@ func ResolveGo() (GoToolchain, error) {
 		if t, err = resolveGoCommand(command); err != nil {
 			return GoToolchain{}, err
 		}
-		if t.BelowFloor() && installedToolchainDir == "" {
+		if t.BelowFloor() {
 			if managed, ok := managedGo(); ok && !managed.BelowFloor() {
 				t = managed
 			}
@@ -161,13 +158,8 @@ func ResolveGo() (GoToolchain, error) {
 // goCommand finds the go command. The PiG-managed toolchain is a complete
 // installation at a known root, so it is returned already resolved.
 func goCommand() (string, GoToolchain, error) {
-	path, err := LookPath("go")
-	if err == nil {
+	if path, err := exec.LookPath("go"); err == nil {
 		return path, GoToolchain{}, nil
-	}
-	// pig additive (D201): an installation that supplies its toolchains never falls back to a PiG-managed Go.
-	if installedToolchainDir != "" {
-		return "", GoToolchain{}, fmt.Errorf("go: %w", err)
 	}
 	if managed, ok := managedGo(); ok {
 		return managed.Command, managed, nil

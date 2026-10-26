@@ -8,8 +8,7 @@ import "strings"
 // elsewhere, that lookPath finds. On Windows a clean profile resolves python.exe to the Microsoft Store app-execution
 // alias, a shim that opens the Store instead of running Python, so a real interpreter later in the candidate list wins.
 // The alias is the last resort because, once the Store package is installed, the same path is a working Python. When
-// no candidate is found it returns the first candidate's [Command], so the launch reports the missing interpreter; with an
-// installed toolchain directory that command names the directory's interpreter, never one on PATH.
+// no candidate is found it returns the bare first candidate name, so the launch reports the missing interpreter.
 func PythonExecutable(goos string, lookPath func(string) (string, error)) string {
 	candidates := pythonExecutableCandidates(goos)
 	var alias string
@@ -29,8 +28,7 @@ func PythonExecutable(goos string, lookPath func(string) (string, error)) string
 	if alias != "" {
 		return alias
 	}
-	// pig additive (D201): an installation without Python reports the missing interpreter instead of running one from PATH.
-	return Command(candidates[0])
+	return candidates[0]
 }
 
 func pythonExecutableCandidates(goos string) []string {

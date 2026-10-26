@@ -55,16 +55,9 @@
         pig = packageFor final;
       };
 
-      checks = forAllSystems (
-        system:
-        import ./nix/checks.nix {
-          pkgs = pkgsFor system;
-          inherit (self.packages.${system}) pig;
-        }
-        // {
-          inherit (self.packages.${system}) pig;
-        }
-      );
+      checks = forAllSystems (system: {
+        inherit (self.packages.${system}) pig;
+      });
 
       formatter = forAllSystems (system: (pkgsFor system).nixfmt);
     };

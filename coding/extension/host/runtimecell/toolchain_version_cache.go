@@ -20,7 +20,6 @@ import (
 	"github.com/gofrs/flock"
 
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
-	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 type toolchainVersionRecord struct {
@@ -84,7 +83,6 @@ func commandVersion(cacheRoot, name string, args ...string) string {
 		//perf:ok once per probe of an uncached toolchain, which spawns a process
 		probeCtx, cancelProbe := context.WithTimeout(context.Background(), toolchainProbeTimeout) //portlint:allow ctxbackground commandVersion has no caller context: it runs under hashing a cell's inputs, and toolchainProbeTimeout bounds the probe
 		cmd := linkerexec.CommandContext(probeCtx, resolved, args...)
-		cmd.Env = toolchain.Environ(os.Environ())
 		cmd.WaitDelay = toolchainProbeKillDelay
 		out, err := cmd.CombinedOutput()
 		timedOut := probeCtx.Err() != nil

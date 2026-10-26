@@ -93,7 +93,7 @@ func nodePackedLauncherCommand(ctx context.Context, binPath string, sel tsruntim
 	for _, member := range manifest {
 		args = append(args, member.Entry)
 	}
-	return typeScriptRuntimeCommand(ctx, sel, nodeRuntimeTree(filepath.Join(dir, "runtime")), "cell.mjs", "node cell loader", args), true
+	return typeScriptRuntimeCommand(ctx, sel, filepath.Join(dir, "runtime"), "cell.mjs", "node cell loader", args), true
 }
 
 // nodePackedCellHash derives the deterministic cache key for a Node cell from
@@ -105,7 +105,7 @@ func nodePackedCellHash(cellKey string, exts []nodeExtension) (string, []nodeCel
 	// The cell publishes a copy of the embedded runtime, so its key covers
 	// the runtime's content: a cell an earlier PiG cached keeps that PiG's
 	// loader and shims, and must not be reused by a PiG whose runtime differs.
-	_, _ = digest.Write(nodeRuntimeKey())
+	_, _ = digest.Write(nodeRuntimeDigest())
 	_, _ = digest.Write([]byte(nodeRuntimeVersion + "\x00" + nodeLauncherFormat + "\x00" + cellKey + "\x00"))
 	manifest := make([]nodeCellManifestEntry, 0, len(exts))
 	for _, ext := range exts {

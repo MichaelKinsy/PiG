@@ -14,7 +14,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
-	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // pig additive (D19): the runtime that runs the TypeScript extension host is Node unless the process requests a runtime from the
@@ -58,12 +57,12 @@ func nodeLauncherSet(binPath, name string) (tsruntime.Set, bool) {
 	var tree string
 	if entry, ok := nodeLauncherEntry(binPath); ok {
 		members = []tsruntime.Member{{Name: name, Entry: entry}}
-		tree = nodeRuntimeTree(binPath + ".runtime")
+		tree = binPath + ".runtime"
 	} else if manifest, ok := nodePackedLauncherManifest(binPath); ok {
 		for _, member := range manifest {
 			members = append(members, tsruntime.Member{Name: member.Name, Entry: member.Entry})
 		}
-		tree = nodeRuntimeTree(filepath.Join(filepath.Dir(binPath), "runtime"))
+		tree = filepath.Join(filepath.Dir(binPath), "runtime")
 	} else {
 		return tsruntime.Set{}, false
 	}
@@ -125,16 +124,6 @@ func (h *Host) TypeScriptRuntimeSelections() map[string]tsruntime.Selection {
 // (Pi builds its Bun binaries with --no-compile-autoload-bunfig --no-compile-autoload-dotenv, scripts/build-binaries.sh:129-135) and
 // installs nothing; a host executable built from the tree takes the script's name as its first argument.
 func typeScriptRuntimeCommand(ctx context.Context, sel tsruntime.Selection, runtimeDir, script, loaderLabel string, args []string) *exec.Cmd {
-	cmd := typeScriptRuntimeStart(ctx, sel, runtimeDir, script, loaderLabel, args)
-	// pig additive (D201): a cached launcher runs the installed runtime tree in place, so every start verifies that tree as a build does.
-	if _, err := installedNodeRuntime(); err != nil && cmd.Err == nil {
-		cmd.Err = err
-	}
-	return cmd
-}
-
-// typeScriptRuntimeStart is typeScriptRuntimeCommand without the installed runtime check.
-func typeScriptRuntimeStart(ctx context.Context, sel tsruntime.Selection, runtimeDir, script, loaderLabel string, args []string) *exec.Cmd {
 	loaderPath := filepath.Join(runtimeDir, "register-loader.mjs")
 	switch sel.Kind {
 	case tsruntime.KindBun:
@@ -144,7 +133,7 @@ func typeScriptRuntimeStart(ctx context.Context, sel tsruntime.Selection, runtim
 		return linkerexec.CommandContext(ctx, sel.Executable, append([]string{strings.TrimSuffix(script, ".mjs")}, args...)...)
 	}
 	loaderURL, urlErr := nodeFileURL(loaderPath)
-	cmd := linkerexec.CommandContext(ctx, toolchain.Command("node"), append([]string{"--import", loaderURL, filepath.Join(runtimeDir, script)}, args...)...)
+	cmd := linkerexec.CommandContext(ctx, "node", append([]string{"--import", loaderURL, filepath.Join(runtimeDir, script)}, args...)...)
 	if urlErr != nil && cmd.Err == nil {
 		cmd.Err = fmt.Errorf("%s %s: %w", loaderLabel, loaderPath, urlErr)
 	}

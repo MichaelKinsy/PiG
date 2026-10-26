@@ -376,9 +376,6 @@ func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (strin
 	if err := StrippedSDKError("go"); err != nil {
 		return "", err
 	}
-	if dir, installed, err := installedSDK("go"); installed {
-		return dir, err
-	}
 	for _, sdk := range stagedGoSDKRoots() {
 		if _, err := os.Stat(filepath.Join(sdk, "go.mod")); err == nil {
 			return sdk, nil

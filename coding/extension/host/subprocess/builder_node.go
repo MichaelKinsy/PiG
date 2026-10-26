@@ -156,7 +156,7 @@ func nodeLauncherCommand(ctx context.Context, binPath string, sel tsruntime.Sele
 	if !ok {
 		return nodePackedLauncherCommand(ctx, binPath, sel)
 	}
-	return typeScriptRuntimeCommand(ctx, sel, nodeRuntimeTree(binPath+".runtime"), "cli.mjs", "node extension loader", []string{entry}), true
+	return typeScriptRuntimeCommand(ctx, sel, binPath+".runtime", "cli.mjs", "node extension loader", []string{entry}), true
 }
 
 func buildNode(ctx context.Context, cacheRoot, srcPath, outPath string) error {

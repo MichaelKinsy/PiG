@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -718,19 +719,17 @@ func toolchainVersions(cells []subprocess.CellSpec) (map[string]string, error) {
 	for _, cell := range cells {
 		switch cell.Language {
 		case "rust":
-			commands["rust"] = []string{toolchain.Command("cargo"), "--version"}
+			commands["rust"] = []string{"cargo", "--version"}
 		case "python":
 			// The interpreter the cell runs with: python or python3 on Windows (python3.exe there is often the Store alias).
-			commands["python"] = []string{toolchain.PythonExecutable(runtime.GOOS, toolchain.LookPath), "--version"}
+			commands["python"] = []string{toolchain.PythonExecutable(runtime.GOOS, exec.LookPath), "--version"}
 		case "node":
-			commands["node"] = []string{toolchain.Command("node"), "--version"}
+			commands["node"] = []string{"node", "--version"}
 		}
 	}
 	versions := make(map[string]string, len(commands))
 	for name, command := range commands {
-		cmd := linkerexec.Command(command[0], command[1:]...)
-		cmd.Env = toolchain.Environ(os.Environ())
-		output, err := cmd.CombinedOutput()
+		output, err := linkerexec.Command(command[0], command[1:]...).CombinedOutput()
 		if err != nil {
 			return nil, fmt.Errorf("resolve %s toolchain identity: %w: %s", name, err, strings.TrimSpace(string(output)))
 		}

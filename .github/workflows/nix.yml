@@ -2,10 +2,9 @@
 
 name: Nix
 
-# Builds the flake's package and runs its checks (nix/checks.nix) in the Nix sandbox: extensions in every language load from the
-# installed SDKs and toolchains, a broken installation is reported, and the native helper's libraries stay in the closure. Every
-# system is evaluated; each runner builds its own. A weekly run catches drift from changes that do not touch these paths, such as
-# a new module that changes the fixed-output module cache.
+# Builds the flake's package in the Nix sandbox and smoke-tests the binary. Every system is evaluated; each runner builds its own.
+# A weekly run catches drift from changes that do not touch these paths, such as a new module that changes the fixed-output module
+# cache.
 on:
   pull_request:
     paths:
@@ -19,15 +18,7 @@ on:
       - 'go.work.sum'
       - '.go-version'
       - 'internal/coding/pigversion/**'
-      - 'internal/pigsdklock/**'
-      - 'internal/toolchain/**'
-      - 'coding/extension/pigsdk/**'
-      - 'coding/extension/host/**'
-      - 'coding/cli/**'
-      - 'internal/linkerexec/**'
       - 'extensions/sdk/**'
-      - 'extensions/sdk-py/**'
-      - 'extensions/sdk-rs/**'
   schedule:
     - cron: '17 4 * * 2'
   workflow_dispatch:
@@ -78,7 +69,6 @@ jobs:
         run: |
           ./result/bin/pig --version
           ./result/bin/pig reload --dry-run
-          ./result/bin/pig diagnose | sed -n '/extension SDKs/,/^paths/p'
 
       - name: Checks
         run: nix flake check -L

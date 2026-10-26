@@ -69,14 +69,9 @@ nix run github:MichaelKinsy/PiG -- --version
 nix profile add github:MichaelKinsy/PiG
 ```
 
-The Nix package installs the extension SDKs and the TypeScript extension
-runtime read-only in the Nix store and builds and runs extensions with its own
-Go, Rust, Python and Node.js toolchains from the store (D201). It stages no SDK
-under `~/.pig`, and a tool on `PATH` never replaces those toolchains; commands
-the bash tool runs keep the user's `PATH`. A TypeScript runtime installed in
-the runtime slot still replaces Node when `extensionsTypescriptRuntime` or
-`PIG_TS_RUNTIME` requests it (D19). `pig diagnose` shows the installed SDKs and
-the toolchain directory. Update the flake input to update it.
+The Nix package wraps the command with `fd`, `ripgrep` and the clipboard
+commands. Extensions build and run with the toolchains on `PATH`, as in any
+other installation. Update the flake input to update it.
 
 After the project publishes a release, you can also download an artifact from
 its release page. Verify the published checksum before you place `pig` on
@@ -226,9 +221,6 @@ node --version
 Prefer a version manager already present on the machine. Otherwise use the OS
 package manager or the language's official per-user installer, with the user's
 consent. Do not remove or replace an existing system toolchain without asking.
-
-A Nix installation already supplies its toolchains: check `pig diagnose`
-instead of `PATH`, and do not install another toolchain for it (D201).
 
 For a Go extension, the required version is the `go` directive in the staged SDK
 module. `pig extension init` stages an offline-resolvable project and
