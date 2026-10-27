@@ -150,7 +150,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	if h.loop == nil && strOf(req, "op") == "watch.open" && (h.holder != 0 || len(h.queue) != 0) {
 		// Opening a watch is a job on the Session line (session.ts watchDoc, readOnLine): it waits behind the transactions queued
 		// before it, so a commit queued before the attachment is in its value.
-		h.queue = append(h.queue, lineWait{job: func() { _ = h.answerDirect(ev.ID, req) }})
+		h.queue = append(h.queue, lineWait{api: ev.ID, req: req})
 		return nil
 	}
 	return h.answerDirect(ev.ID, req)

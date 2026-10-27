@@ -20,7 +20,8 @@ import (
 // behind the transactions queued before it (session.ts #enqueue is one FIFO).
 type lineWait struct {
 	tx  uint32
-	job func()
+	api uint32 // the request ID of a queued api request (read job), 0 for a transaction
+	req *jv.Object
 }
 
 type hostTx struct {
@@ -310,8 +311,8 @@ func (h *handler) release(t *hostTx) {
 	for h.holder == 0 && len(h.queue) != 0 {
 		next := h.queue[0]
 		h.queue = h.queue[1:]
-		if next.job != nil {
-			next.job()
+		if next.req != nil {
+			_ = h.answerDirect(next.api, next.req)
 		} else if t := h.txs[next.tx]; t != nil {
 			_ = h.grant(t)
 		}
