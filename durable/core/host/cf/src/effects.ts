@@ -44,7 +44,7 @@ export interface EffectRuntime {
   /** `HarnessOptions.env`; absent means tools and sections see `env: undefined`. */
   env?: (target: { conversationId: number; cwd?: string; read: unknown }, context: Context) => unknown | Promise<unknown>
   /** `HarnessOptions.onReport`: extension failures that do not fail the calling operation. */
-  report(error: unknown, info: { type: string }): void
+  report(error: unknown, info: { type: string }, context?: Context): void
   /** `HarnessOptions.now`, the Harness clock a tool's `api.now()` reads; `Date.now` when absent. */
   now?: () => number
   /** Credentials for a wire-plane request (`model_http`'s `auth`): headers to add. */

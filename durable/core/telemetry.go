@@ -61,6 +61,8 @@ func telNumber(buf []byte, key string, value float64) []byte {
 
 // publishEvents records the entry and settlement events of a stored commit on the span of its Context (session.ts #publish: its
 // telemetry events come first, then the commit's listeners).
+//
+//go:noinline
 func (h *handler) publishEvents(pub *session.Publication) {
 	for _, c := range pub.Changes {
 		if c.Kind != session.ChangeTable {
@@ -168,4 +170,16 @@ func withSpan(payload []byte, span uint32) []byte {
 	}
 	payload = append(payload[:len(payload)-1], `,"span":`...)
 	return append(jv.AppendNumber(payload, float64(span)), '}')
+}
+
+// appendPublishedSpan names the span of the commit's Context in a published notice: where the host's commit listeners' reports go
+// (session.ts #notifyHosts). Kept out of publish, which every commit runs.
+//
+//go:noinline
+func appendPublishedSpan(item []byte, pub *session.Publication) []byte {
+	if pub.Span == 0 {
+		return item
+	}
+	item = append(item, `,"span":`...)
+	return jv.AppendNumber(item, float64(pub.Span))
 }

@@ -406,13 +406,7 @@ func (h *handler) publish(pub *session.Publication) {
 	}
 	var out abi.Chunks
 	item := append(make([]byte, 0, 128), `{"seq":`...)
-	item = jv.AppendNumber(item, float64(pub.Seq))
-	if pub.Span != 0 {
-		// The span of the commit's Context: where the host's commit listeners' reports go (session.ts #notifyHosts).
-		item = append(item, `,"span":`...)
-		item = jv.AppendNumber(item, float64(pub.Span))
-	}
-	out.Append(item)
+	out.Append(appendPublishedSpan(jv.AppendNumber(item, float64(pub.Seq)), pub))
 	for _, kind := range [...]session.WriteKind{session.WriteSubmission, session.WriteEntry, session.WriteTask} {
 		item = append(item[:0], `,"`...)
 		switch kind {
