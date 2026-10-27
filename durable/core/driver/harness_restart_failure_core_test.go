@@ -41,6 +41,8 @@ type restartRig struct {
 	models *ai.Models
 	now    atomic.Pointer[func() float64]
 	infos  *infoLog
+	// last is the Harness opened most recently: a crash stops it once the store is copied.
+	last harness.Harness
 }
 
 func newRestartRigWith(t *testing.T, core bool, faux *ai.FauxProviderHandle, models *ai.Models) *restartRig {
@@ -97,12 +99,26 @@ func (rig *restartRig) open() (harness.Harness, harness.Conversation) {
 			options.Now = *now
 		}
 		options.OnReport = infos.add
+		// The Harness arms its own timers, as in the Pi test.
+		options.OnWake = nil
 	})
+	rig.last = opened.h
 	root, err := opened.h.Root(rig.t.Context(), &harness.RootOptions{Agent: &harness.AgentChange{Model: harness.SetTo(durable.ModelRef{Provider: "faux", ModelId: "faux-1"})}})
 	if err != nil {
 		rig.t.Fatal(err)
 	}
 	return opened.h, root
+}
+
+// crash is Pi's kill(): the next open reads the store as it stood, and the dead Harness does no more work: it is closed against
+// the file the rig left behind, so what it still ran, such as a tool or a model request, ends and takes no response of the model.
+func (rig *restartRig) crash() {
+	rig.t.Helper()
+	dead := rig.last
+	rig.kill()
+	if dead != nil {
+		go func() { _ = dead.Close(context.Background()) }()
+	}
 }
 
 // setRestarts stores restarts as the count of task id in the store file, as if the task had been cut off that often.
@@ -297,7 +313,7 @@ func (rig *restartRig) crashWhileStreaming() (durable.SubmissionId, durable.Task
 		return live.Generation != nil && live.Generation.Message != nil
 	})
 	taskId := restartLive(t, h, root).Run.TaskId
-	rig.kill()
+	rig.crash()
 	return id, taskId
 }
 
@@ -320,7 +336,7 @@ func (rig *restartRig) crashAgain(taskId durable.TaskId) {
 		live := restartLive(t, h, root)
 		return live.Generation != nil && live.Generation.Message != nil
 	})
-	rig.kill()
+	rig.crash()
 }
 
 func TestCoreAGenerationInterruptedWhileTheModelAnswers(t *testing.T) {
@@ -511,7 +527,7 @@ func TestCoreAGenerationInterruptedWhileTheModelAnswers(t *testing.T) {
 			pollUntil(t, "the run", func() bool { return restartLive(t, h, root).Run != nil })
 			taskId := restartLive(t, h, root).Run.TaskId
 			pollUntil(t, "the generation to sleep", func() bool { return taskOf(t, h, taskId).State.Status == durable.TaskSleeping })
-			rig.kill()
+			rig.crash()
 
 			// Asleep in its retry: not running, so not cut off.
 			rig.setNow(func() float64 { return float64(time.Now().UnixMilli()) + 120_000 })
@@ -530,7 +546,7 @@ func TestCoreAGenerationInterruptedWhileTheModelAnswers(t *testing.T) {
 			if phase := restartCheckpoint(t, taskOf(t, reopened, taskId)).Phase; phase != "tools" {
 				t.Fatalf("phase = %s, want tools", phase)
 			}
-			rig.kill()
+			rig.crash()
 
 			again, _ := rig.open()
 			if record := taskOf(t, again, taskId); record.Restarts != 0 {
@@ -559,7 +575,7 @@ func TestCoreAGenerationInterruptedWhileTheModelAnswers(t *testing.T) {
 			id := submitInput(t, root, "hi").Id()
 			receiveWithin(t, reached.done, "the section to render")
 			taskId := restartLive(t, h, root).Run.TaskId
-			rig.kill()
+			rig.crash()
 
 			reopened, reopenedRoot := rig.open()
 			reopened.Resume()
@@ -640,7 +656,7 @@ func TestCoreOtherTasksCutOffRestartLimitTimesInARow(t *testing.T) {
 					live := restartLive(t, h, root)
 					return len(live.Tools) > 0 && live.Tools[0].Output != nil && strings.Contains(*live.Tools[0].Output, "partial")
 				})
-				rig.kill()
+				rig.crash()
 				h, root = rig.open()
 				h.Resume()
 			}
@@ -710,7 +726,7 @@ func TestCoreOtherTasksCutOffRestartLimitTimesInARow(t *testing.T) {
 			rig.faux.SetResponses([]ai.FauxResponseStep{hanging.step})
 			compaction := restartOk(root.Compact(t.Context(), nil))
 			receiveWithin(t, hanging.reached, "the summary request")
-			rig.kill()
+			rig.crash()
 
 			reopened, reopenedRoot := rig.open()
 			reopened.Resume()
@@ -780,7 +796,7 @@ func (rig *restartRig) crashWhilePolling(fetching *latch) (durable.SubmissionId,
 	if record.State.Status != durable.TaskRunning || restartCheckpoint(t, record).Phase != "poll" {
 		t.Fatalf("task state = %s, want running in poll", restartJSON(t, record.State))
 	}
-	rig.kill()
+	rig.crash()
 	return id, taskId
 }
 
@@ -870,7 +886,7 @@ func TestCoreCrashEdges(t *testing.T) {
 			setNow(1010)
 			first.Resume()
 			receiveWithin(t, fetching.done, "the first fetch")
-			rig.kill()
+			rig.crash()
 			// A replacement host whose clock is behind: the poll looks not due yet, but its fetch was cut off.
 			setNow(1000)
 			h, _ := rig.open()
@@ -987,7 +1003,7 @@ func TestCoreCrashEdges(t *testing.T) {
 			go func() { _ = root.Abort(context.Background(), nil) }()
 			for crashes := 1; crashes <= 2; crashes++ {
 				pollUntil(t, "the abort handler to cancel", func() bool { return int(cancels.Load()) == crashes })
-				rig.kill()
+				rig.crash()
 				h, root = rig.open()
 				if record := taskOf(t, h, taskId); record.Restarts != crashes {
 					t.Fatalf("restarts = %d, want %d", record.Restarts, crashes)
@@ -1061,7 +1077,7 @@ func TestCoreDeferredGenerationPartialsAfterACrash(t *testing.T) {
 			stored = messageTextOf(*live.Generation.Message)
 			return len(stored) > 40
 		})
-		rig.kill()
+		rig.crash()
 
 		rig.faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("answer")})
 		reopened, reopenedRoot := rig.open()
@@ -1118,7 +1134,7 @@ func TestCoreDeferredToolOutputIsNotProgress(t *testing.T) {
 				live := restartLive(t, h, root)
 				return len(live.Tools) > 0 && live.Tools[0].Output != nil && strings.HasPrefix(*live.Tools[0].Output, prefix)
 			})
-			rig.kill()
+			rig.crash()
 			h, root = rig.open()
 			h.Resume()
 			kind := "pi.tool"
