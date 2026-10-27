@@ -151,7 +151,6 @@ var apiRows = []apiRow{
 	{"agent", "conversationId", "the resolved agent", "at once"},
 	{"sleepUntil", "taskId, until, checkpoint", "null", "once the sleep is committed; the task then holds no invocation"},
 	{"wake", "", "{active, at?}", "at once"},
-	{"retryTask", "taskId", "null", "once a parked task's restart count is cleared and scheduling is enabled; an error for an unknown task"},
 	{"usage", "", "the UsageState of the Session", "at once"},
 	{"taskGraph", "", "the TaskGraph", "at once"},
 }

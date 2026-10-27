@@ -39,7 +39,8 @@ const (
 //   - request: Attempt, Compacted, Model, ThinkingLevel, StreamOptions (the settings' request options when
 //     preparation committed; a resend after recovery uses them unchanged), and Cutoff, the newest entry included in
 //     the request.
-//   - retry: Attempt, Compacted, Until.
+//   - retry: Attempt, Compacted, Until, and Poll, the deferred response a poll was fetching when the host died: the next
+//     attempt polls it again instead of sending another request, so the provider's job is neither lost nor paid twice.
 //   - poll: Attempt, Compacted, Model, ThinkingLevel (absent in checkpoints of earlier versions), Cutoff, Handle, PollAt.
 //   - tools: Assistant (the tool-calling answer), Tools (tool tasks created so far, in call order) and Pending (calls of
 //     a sequential round not started yet, in call order). The generation owns the tool tasks (spec §8.5).
@@ -54,11 +55,20 @@ type GenerationCheckpoint struct {
 	StreamOptions *durable.ConversationStreamOptions `json:"streamOptions,omitempty"`
 	Cutoff        *durable.EntryId                   `json:"cutoff,omitempty"`
 	Until         *float64                           `json:"until,omitempty"`
+	Poll          *GenerationPoll                    `json:"poll,omitempty"`
 	Handle        *ai.DeferredHandle                 `json:"handle,omitempty"`
 	PollAt        *float64                           `json:"pollAt,omitempty"`
 	Assistant     *durable.EntryId                   `json:"assistant,omitempty"`
 	Tools         []durable.TaskId                   `json:"tools,omitempty"`
 	Pending       []string                           `json:"pending,omitempty"`
+}
+
+// GenerationPoll is the deferred response a retry polls again: what the poll checkpoint it came from held.
+type GenerationPoll struct {
+	Model         durable.ModelRef      `json:"model"`
+	ThinkingLevel ai.ModelThinkingLevel `json:"thinkingLevel,omitempty"`
+	Cutoff        durable.EntryId       `json:"cutoff"`
+	Handle        ai.DeferredHandle     `json:"handle"`
 }
 
 // MarshalJSON keeps the tools phase's tools and pending arrays when they are empty.
@@ -167,6 +177,9 @@ func abortedState[S, R any]() *durable.NextTaskState[S, R] {
 // they need, then moves to request (generation.ts:113-172). The agent and settings resolved here are fixed for this
 // request. Only the Harness writes to a busy conversation, so the transcript read here is still the tail at the commit.
 func generationPrepareHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
+	if CutOffTooOften(task.Restarts, runtime) {
+		return generationEndCutOff(ctx, runtime, task)
+	}
 	conversationId := runtime.ConversationId()
 	agent, err := runtime.Agent(ctx)
 	if err != nil {
@@ -302,7 +315,15 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 }
 
 func generationRequestHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
+	// Charging the attempt may itself be what keeps failing, such as converting a huge partial: the limit ends it.
+	if CutOffTooOften(task.Restarts, runtime) {
+		return generationEndCutOff(ctx, runtime, task)
+	}
 	checkpoint := checkpointOf(task)
+	// The host stopped while this request was in flight: a failed attempt, not a resend (spec section 8.3).
+	if task.Restarts > 0 {
+		return generationInterrupted(ctx, runtime, checkpoint)
+	}
 	conversationId := runtime.ConversationId()
 	if err := runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
 		live, err := docDraft(tx, LiveDoc, conversationId)
@@ -365,6 +386,9 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 
 func generationRetryHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
 	checkpoint := checkpointOf(task)
+	if CutOffTooOften(task.Restarts, runtime) {
+		return generationEndCutOff(ctx, runtime, task)
+	}
 	// After the backoff's sleep; a run before Until (an early wake, or a record of an earlier version) sleeps again.
 	if *checkpoint.Until > runtime.Now() {
 		return runtime.SleepUntil(ctx, *checkpoint.Until, checkpoint)
@@ -373,6 +397,15 @@ func generationRetryHandler(ctx context.Context, task durable.RunningTask[Genera
 		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 		if err != nil {
 			return nil, err
+		}
+		// A poll the host died during polls its response again, as the next attempt.
+		if poll := checkpoint.Poll; poll != nil {
+			pollAt := runtime.Now()
+			if err := live.Set("generation", delta.JsonObjectOf("attempt", float64(checkpoint.Attempt+1), "deferred", delta.JsonObjectOf("pollAt", pollAt))); err != nil {
+				return nil, err
+			}
+			next := GenerationCheckpoint{Phase: generationPoll, Attempt: checkpoint.Attempt + 1, Compacted: checkpoint.Compacted, Model: &poll.Model, ThinkingLevel: poll.ThinkingLevel, Cutoff: &poll.Cutoff, Handle: &poll.Handle, PollAt: &pollAt}
+			return runningState[GenerationCheckpoint, GenerationResult](next), nil
 		}
 		if err := live.Set("generation", delta.JsonObjectOf("attempt", float64(checkpoint.Attempt+1))); err != nil {
 			return nil, err
@@ -385,6 +418,14 @@ func generationRetryHandler(ctx context.Context, task durable.RunningTask[Genera
 func generationPollHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
 	checkpoint := checkpointOf(task)
 	ref := *checkpoint.Model
+	if CutOffTooOften(task.Restarts, runtime) {
+		return generationEndCutOff(ctx, runtime, task)
+	}
+	// The host stopped while the poll's fetch was in flight: a failed attempt, as for a request. Checked before the time,
+	// which may have moved backwards on a replacement host; a sleeping poll is never cut off.
+	if task.Restarts > 0 {
+		return generationInterrupted(ctx, runtime, checkpoint)
+	}
 	// After the sleep until PollAt; a run before it (an early wake, or a record of an earlier version) sleeps again.
 	if *checkpoint.PollAt > runtime.Now() {
 		return runtime.SleepUntil(ctx, *checkpoint.PollAt, checkpoint)
@@ -404,6 +445,9 @@ func generationPollHandler(ctx context.Context, task durable.RunningTask[Generat
 
 // generationToolsHandler waits on the round's tool tasks; a sequential round starts its next call and waits for it.
 func generationToolsHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
+	if CutOffTooOften(task.Restarts, runtime) {
+		return generationEndCutOff(ctx, runtime, task)
+	}
 	checkpoint := checkpointOf(task)
 	assistant := *checkpoint.Assistant
 	if len(checkpoint.Pending) == 0 {
@@ -440,13 +484,8 @@ func generationToolsHandler(ctx context.Context, task durable.RunningTask[Genera
 // (spec §8.5, generation.ts:236-272).
 func generationAbortHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
 	checkpoint := checkpointOf(task)
-	if checkpoint.Phase == generationPoll && checkpoint.Model != nil && checkpoint.Handle != nil {
-		if model := runtime.Models().GetModel(checkpoint.Model.Provider, checkpoint.Model.ModelId); model != nil {
-			signal := runtime.Signal()
-			if err := runtime.Models().CancelDeferred(signal, model, *checkpoint.Handle, ai.DeferredCancelOptions{Signal: signal, Telemetry: chordctx.Telemetry(ctx)}); err != nil {
-				runtime.Report(err, durable.ReportFrom{Type: durable.ReportFromHost, Callback: durable.HostCallbackModels})
-			}
-		}
+	if polled := deferredOf(checkpoint); polled != nil {
+		cancelDeferred(ctx, runtime, *polled)
 	}
 	conversationId := runtime.ConversationId()
 	var unstarted []ai.ToolCall
@@ -476,6 +515,119 @@ func generationAbortHandler(ctx context.Context, task durable.RunningTask[Genera
 		}
 		return abortedState[GenerationCheckpoint, GenerationResult](), nil
 	})
+}
+
+// generationInterrupted handles an attempt whose request or poll was in flight when the host died (TaskRecord.Restarts): a
+// failed attempt under settings.retry (spec section 8.3). The committed partial becomes an aborted entry; the next attempt
+// follows the backoff, a poll's by polling its deferred response again, or, with no retry left, the run ends interrupted.
+func generationInterrupted(ctx context.Context, runtime generationRuntime, checkpoint GenerationCheckpoint) error {
+	attempt, compacted := checkpoint.Attempt, checkpoint.Compacted
+	policy := runtime.Settings().Retry
+	retry := policy.Enabled && attempt <= policy.MaxRetries
+	until := 0.0
+	if retry {
+		until = runtime.Now() + float64(ai.RetryDelayMs(ai.RetryPolicy{BaseDelayMs: policy.BaseDelayMs, MaxAgentDelayMs: policy.MaxAgentDelayMs}, attempt))
+	}
+	polled := checkpoint.Phase == generationPoll
+	text := fmt.Sprintf("The host stopped while the model was answering, on attempt %d", attempt)
+	if polled {
+		text = fmt.Sprintf("The host stopped while the deferred answer was fetched, on attempt %d", attempt)
+	}
+	// A run that ends does not leave the provider's job running.
+	if !retry && polled {
+		cancelDeferred(ctx, runtime, deferredRef{Model: *checkpoint.Model, Handle: *checkpoint.Handle})
+	}
+	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
+		// Read before the first table write; only a failure uses it.
+		var failed failure
+		if !retry {
+			var err error
+			if failed, err = prepareFailure(tx, runtime); err != nil {
+				return nil, err
+			}
+		}
+		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
+		if err != nil {
+			return nil, err
+		}
+		if err := ConvertPartial(tx, live, runtime.ConversationId()); err != nil {
+			return nil, err
+		}
+		if retry {
+			if err := live.Set("generation", delta.JsonObjectOf("attempt", float64(attempt), "retry", delta.JsonObjectOf("at", until, "error", text))); err != nil {
+				return nil, err
+			}
+			next := GenerationCheckpoint{Phase: generationRetry, Attempt: attempt, Compacted: compacted, Until: &until}
+			if polled {
+				next.Poll = &GenerationPoll{Model: *checkpoint.Model, ThinkingLevel: checkpoint.ThinkingLevel, Cutoff: *checkpoint.Cutoff, Handle: *checkpoint.Handle}
+			}
+			return sleepingState[GenerationCheckpoint, GenerationResult](next, until), nil
+		}
+		if err := endFailedRun(tx, runtime, live, failed, runUnanswered(RunInterrupted, &text)); err != nil {
+			return nil, err
+		}
+		return failedState[GenerationCheckpoint, GenerationResult](text, durable.ReasonInterrupted), nil
+	})
+}
+
+// generationEndCutOff ends a run whose generation was cut off settings.restartLimit times in a row (spec section 5.4). At
+// the limit it still keeps a committed partial as an aborted entry and cancels a deferred response it polled; past the
+// limit that cleanup may be what cut it off, so it ends without it.
+func generationEndCutOff(ctx context.Context, runtime generationRuntime, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) error {
+	checkpoint := checkpointOf(task)
+	text := fmt.Sprintf("The generation was interrupted %s in its %s phase", CutOffCount(task.Restarts), checkpoint.Phase)
+	salvage := Salvageable(task.Restarts, runtime)
+	if polled := deferredOf(checkpoint); salvage && polled != nil {
+		cancelDeferred(ctx, runtime, *polled)
+	}
+	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
+		failed, err := prepareFailure(tx, runtime)
+		if err != nil {
+			return nil, err
+		}
+		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
+		if err != nil {
+			return nil, err
+		}
+		if salvage {
+			if err := ConvertPartial(tx, live, runtime.ConversationId()); err != nil {
+				return nil, err
+			}
+		}
+		if err := endFailedRun(tx, runtime, live, failed, runUnanswered(RunRestartLimit, &text)); err != nil {
+			return nil, err
+		}
+		return failedState[GenerationCheckpoint, GenerationResult](text, durable.ReasonRestartLimit), nil
+	})
+}
+
+// deferredRef is a deferred response and the model that holds it.
+type deferredRef struct {
+	Model  durable.ModelRef
+	Handle ai.DeferredHandle
+}
+
+// deferredOf is the deferred response a checkpoint polls, or will poll again after a retry's backoff; nil when none.
+func deferredOf(checkpoint GenerationCheckpoint) *deferredRef {
+	switch {
+	case checkpoint.Phase == generationPoll && checkpoint.Model != nil && checkpoint.Handle != nil:
+		return &deferredRef{Model: *checkpoint.Model, Handle: *checkpoint.Handle}
+	case checkpoint.Phase == generationRetry && checkpoint.Poll != nil:
+		return &deferredRef{Model: checkpoint.Poll.Model, Handle: checkpoint.Poll.Handle}
+	}
+	return nil
+}
+
+// cancelDeferred cancels a deferred response no attempt will poll again; a failure is reported, never returned.
+func cancelDeferred(ctx context.Context, runtime generationRuntime, polled deferredRef) {
+	model := runtime.Models().GetModel(polled.Model.Provider, polled.Model.ModelId)
+	if model == nil {
+		return
+	}
+	signal := runtime.Signal()
+	if err := runtime.Models().CancelDeferred(signal, model, polled.Handle, ai.DeferredCancelOptions{Signal: signal, Telemetry: chordctx.Telemetry(ctx)}); err != nil {
+		runtime.Report(err, durable.ReportFrom{Type: durable.ReportFromHost, Callback: durable.HostCallbackModels})
+	}
 }
 
 // readCalls returns the calls callIds of the assistant entry, in the given order.

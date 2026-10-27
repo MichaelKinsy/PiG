@@ -175,8 +175,7 @@ type HarnessOptions struct {
 	OnWake func(wake Wake)
 	// OnReport receives failures that do not fail the calling operation, such as a panicking hook or listener, a task
 	// that faulted, and the error that fails the Session, once. info says what happened: a host can tell a failed
-	// Session (ReportSessionFailed, often a platform reset) from a faulted task (ReportTaskFaulted) or a parked one
-	// (ReportTaskParked). A panic of its own is dropped.
+	// Session (ReportSessionFailed, often a platform reset) from a faulted task (ReportTaskFaulted). A panic of its own is dropped.
 	OnReport func(err error, info durable.ReportInfo)
 	// ReadOnly opens for reading only, as a viewer of a session that another process drives, for example a synced copy on a
 	// device that only shows it. Open recovers nothing: a running task stays as committed. Every commit with writes fails
@@ -209,7 +208,7 @@ const (
 	TaskInspectionBlocked    TaskInspectionKind = "blocked"
 )
 
-// TaskInspectionState is what the scheduler would do with a live task: running (an invocation is active); ready (the next scheduling pass reserves it; Migrates when its definition is newer and has a migration); waiting (on these live tasks: the live part of its on, or, when abort-marked, its live ordinary owned work); sleeping (until the Harness clock reaches Until); completing (outcome held until its ordinary owned work drains); blocked (no registered definition can take it, or the restart limit parked it, with Reason missing_task, task_too_old, migration_failed, or restart_limit and an optional Error).
+// TaskInspectionState is what the scheduler would do with a live task: running (an invocation is active); ready (the next scheduling pass reserves it; Migrates when its definition is newer and has a migration); waiting (on these live tasks: the live part of its on, or, when abort-marked, its live ordinary owned work); sleeping (until the Harness clock reaches Until); completing (outcome held until its ordinary owned work drains); blocked (no registered definition can take it, with Reason missing_task, task_too_old, or migration_failed and an optional Error).
 type TaskInspectionState struct {
 	Kind     TaskInspectionKind
 	Migrates bool
@@ -290,9 +289,6 @@ type Harness interface {
 	Submission(ctx context.Context, id durable.SubmissionId) (durable.Submission, error)
 	// AbortSubmission returns not_found for an unknown submission or one of another conversation than conversationId, when given.
 	AbortSubmission(ctx context.Context, id durable.SubmissionId, conversationId *durable.ConversationId) (durable.SubmissionAbortResult, error)
-	// RetryTask runs a task parked by settings.restartLimit again: it clears its restart count and enables scheduling. It
-	// does nothing for a task that is not parked, and fails for an unknown one.
-	RetryTask(ctx context.Context, id durable.TaskId) error
 	// AbortTask commits the abort mark, signals and joins an active run invocation, and schedules the abort invocation. A task whose definition cannot take it settles as orphaned instead. It returns marked or terminal.
 	AbortTask(ctx context.Context, id durable.TaskId) (string, error)
 	// WaitForTask returns the terminal receipt; cancelling ctx cancels only this wait. A conversation-owned task nothing waits for commits in

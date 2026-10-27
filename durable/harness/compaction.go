@@ -143,6 +143,9 @@ func init() {
 }
 
 func compactionSelectHandler(ctx context.Context, task compactionTask, runtime compactionRuntime) error {
+	if CutOffTooOften(task.Restarts, runtime) {
+		return failCompactionCutOff(ctx, runtime, task)
+	}
 	conversationId := runtime.ConversationId()
 	agent, err := runtime.Agent(ctx)
 	if err != nil {
@@ -219,6 +222,9 @@ func compactionSelectHandler(ctx context.Context, task compactionTask, runtime c
 }
 
 func compactionSummarizeHandler(ctx context.Context, task compactionTask, runtime compactionRuntime) error {
+	if CutOffTooOften(task.Restarts, runtime) {
+		return failCompactionCutOff(ctx, runtime, task)
+	}
 	request := *task.State.Checkpoint.SummaryRequest
 	ref := request.Model
 	model := runtime.Models().GetModel(ref.Provider, ref.ModelId)
@@ -298,6 +304,9 @@ func compactionSummarizeHandler(ctx context.Context, task compactionTask, runtim
 
 func compactionRetryHandler(ctx context.Context, task compactionTask, runtime compactionRuntime) error {
 	checkpoint := *task.State.Checkpoint
+	if CutOffTooOften(task.Restarts, runtime) {
+		return failCompactionCutOff(ctx, runtime, task)
+	}
 	// After the backoff's sleep; a run before Until (an early wake, or a record of an earlier version) sleeps again.
 	if *checkpoint.Until > runtime.Now() {
 		return runtime.SleepUntil(ctx, *checkpoint.Until, checkpoint)
@@ -738,6 +747,22 @@ func completeCompaction(ctx context.Context, runtime compactionRuntime) error {
 			return nil, err
 		}
 		return completedState[CompactionCheckpoint, CompactionResult](CompactionResult{}), nil
+	})
+}
+
+// failCompactionCutOff fails a compaction cut off settings.restartLimit times in a row (spec section 5.4) instead of
+// running it again.
+func failCompactionCutOff(ctx context.Context, runtime compactionRuntime, task compactionTask) error {
+	message := fmt.Sprintf("Compaction was interrupted %s", CutOffCount(task.Restarts))
+	return runtime.Commit(ctx, func(tx durable.Tx, _ compactionTask) (*compactionNext, error) {
+		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
+		if err != nil {
+			return nil, err
+		}
+		if err := FailCompactionStatus(live, runtime.TaskId(), message); err != nil {
+			return nil, err
+		}
+		return failedState[CompactionCheckpoint, CompactionResult](message, durable.ReasonRestartLimit), nil
 	})
 }
 

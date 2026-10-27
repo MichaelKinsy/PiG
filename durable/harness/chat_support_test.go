@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -33,8 +32,6 @@ type chatState struct {
 	Models   *ai.Models
 	Registry Registry
 	Reports  *reportLog
-	// settingsReads counts the resolutions of the host settings.
-	settingsReads atomic.Int64
 	// mu guards Settings and Now, which tests change between decisions.
 	mu       sync.Mutex
 	settings HarnessSettings
@@ -107,7 +104,6 @@ func openChat(t *testing.T, storage durable.Storage, setup *chatState, options .
 		Models:   setup.Models,
 		Registry: setup.Registry,
 		Settings: func() *HarnessSettings {
-			setup.settingsReads.Add(1)
 			setup.mu.Lock()
 			defer setup.mu.Unlock()
 			settings := setup.settings

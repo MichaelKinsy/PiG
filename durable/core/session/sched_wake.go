@@ -84,9 +84,6 @@ func (s *Scheduler) anyRunnable(now float64) bool {
 				continue
 			}
 		}
-		if s.parked(rec) {
-			continue
-		}
 		// An abort invocation waits for the live work below it, which counts itself.
 		if aborted && len(s.waitingOn(rec, true)) > 0 {
 			continue

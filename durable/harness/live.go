@@ -3,6 +3,7 @@
 package harness
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -102,11 +103,15 @@ type CompactionFailure struct {
 // RunFailureReason is why a run ended without an answer:
 //   - RunModelError: the model's response failed, after any retries, or the compaction a request needed failed;
 //   - RunNoModel: no model is configured, or the configured one is not available;
-//   - RunAborted: the run was aborted (Conversation.Abort, Harness.AbortTask);
+//   - RunAborted: the run was aborted (Conversation.Abort, Harness.AbortTask); Detail says when its abort handler was cut
+//     off settings.restartLimit times and did not finish;
 //   - RunReset: a queued reset started a new context at the post-tools boundary, before an answer (a tool's handoff
 //     continues the run);
 //   - RunFaulted: the run's task threw where it cannot recover, or storage rejected its commit;
-//   - RunOrphaned: the run's task was aborted while no registered definition could take it.
+//   - RunOrphaned: the run's task was aborted while no registered definition could take it;
+//   - RunInterrupted: the host stopped while the model was answering, more often than settings.retry retries;
+//   - RunRestartLimit: the run's generation was cut off settings.restartLimit times in a row; a request or poll it was cut
+//     off during counts as a failed attempt first, so this ends one whose charge itself keeps failing.
 type RunFailureReason string
 
 const (
@@ -116,6 +121,9 @@ const (
 	RunReset      RunFailureReason = "reset"
 	RunFaulted    RunFailureReason = "faulted"
 	RunOrphaned   RunFailureReason = "orphaned"
+	// RunInterrupted and RunRestartLimit end a run the host's crashes cut off.
+	RunInterrupted  RunFailureReason = "interrupted"
+	RunRestartLimit RunFailureReason = "restart_limit"
 )
 
 // RunFailure is the newest run that ended without an answer (spec §8.2).
@@ -126,7 +134,8 @@ type RunFailure struct {
 	Inputs []durable.SubmissionId `json:"inputs"`
 	Reason RunFailureReason       `json:"reason"`
 	// Detail is, for model_error, the error text; no_model, which model is missing; faulted, the error message; orphaned, why
-	// the task could not run (missing_task, task_too_old, migration_failed).
+	// the task could not run (missing_task, task_too_old, migration_failed); interrupted and restart_limit: what was cut off,
+	// and how often.
 	Detail *string `json:"detail,omitempty"`
 }
 
@@ -217,6 +226,33 @@ const (
 	toolTaskKind       = "pi.tool"
 	compactionTaskKind = "pi.compaction"
 )
+
+// limitsRestarts holds the built-in task kinds that end themselves once cut off settings.restartLimit times
+// (TaskRecord.Restarts); the scheduler faults a task of any other kind instead (spec section 5.4).
+var limitsRestarts = map[string]bool{generationKind: true, toolTaskKind: true, compactionTaskKind: true}
+
+// settingsOf is what the restart-limit helpers read of a task runtime.
+type settingsOf interface{ Settings() durable.Settings }
+
+// CutOffTooOften reports whether a task was cut off settings.restartLimit times in a row, so its phase ends it instead of
+// running. The settings are read only for a task that was cut off at all, so the normal path resolves nothing more.
+func CutOffTooOften(restarts int, runtime settingsOf) bool {
+	return restarts > 0 && float64(restarts) >= runtime.Settings().RestartLimit
+}
+
+// Salvageable reports whether a task at the limit may still do the cleanup it does when it ends, such as converting a
+// partial: only at the limit. Past it, that cleanup may be what cut the task off, so the task ends without it.
+func Salvageable(restarts int, runtime settingsOf) bool {
+	return float64(restarts) <= runtime.Settings().RestartLimit
+}
+
+// CutOffCount says how often a task was cut off, for a message: "once", or "3 times in a row".
+func CutOffCount(restarts int) string {
+	if restarts == 1 {
+		return "once"
+	}
+	return fmt.Sprintf("%d times in a row", restarts)
+}
 
 // liveRunOf returns the run control of a pi.live draft; nil while idle.
 func liveRunOf(live *delta.Object) (*LiveRun, error) {
@@ -440,6 +476,9 @@ func ClearProgress(slot *delta.Object) {
 // generation partial becomes an aborted assistant entry, exactly as in the generation abort handler, so the
 // transcript keeps what the model produced and pi.usage counts its spend.
 func SettleSchedulerOutcome(tx durable.Tx, record durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], outcome durable.TaskOutcome[durable.JsonValue]) error {
+	// Only an abort handler is faulted for the limit here (the built-in phases end themselves): the task was aborted, and
+	// keeps that meaning. Its run ends aborted, with the limit as detail, and an aborted compaction is no failure.
+	cutOff := outcome.Status == durable.OutcomeFaulted && outcome.Error != nil && interruptionOf(outcome.Error) == durable.ReasonRestartLimit
 	switch {
 	case record.Kind == toolTaskKind:
 		live, err := docDraft(tx, LiveDoc, record.ConversationId)
@@ -456,6 +495,9 @@ func SettleSchedulerOutcome(tx durable.Tx, record durable.TaskRecord[durable.Jso
 		live, err := docDraft(tx, LiveDoc, record.ConversationId)
 		if err != nil {
 			return err
+		}
+		if cutOff {
+			return RemoveCompactionStatus(live, record.Id)
 		}
 		message := ""
 		if outcome.Status == durable.OutcomeFaulted {
@@ -476,11 +518,17 @@ func SettleSchedulerOutcome(tx durable.Tx, record durable.TaskRecord[durable.Jso
 	if owner, ok := runTaskOf(live); !ok || owner != record.Id {
 		return nil
 	}
-	if err := ConvertPartial(tx, live, record.ConversationId); err != nil {
-		return err
+	// Cut off, the abort handler may have died converting the partial: the run ends without it.
+	if !cutOff {
+		if err := ConvertPartial(tx, live, record.ConversationId); err != nil {
+			return err
+		}
 	}
 	end := runUnanswered(RunFaulted, nil)
 	if outcome.Status == durable.OutcomeFaulted {
+		if cutOff {
+			end.Reason = RunAborted
+		}
 		if outcome.Error != nil {
 			end.Detail = &outcome.Error.Message
 		}

@@ -52,13 +52,13 @@ func telemetryReport(onReport func(err error, info durable.ReportInfo), adapter 
 			}
 		}
 		switch info.Type {
-		case durable.ReportTaskFaulted, durable.ReportTaskOutdated:
+		case durable.ReportTaskFaulted, durable.ReportTaskInterrupted, durable.ReportTaskOutdated:
 			if info.Reason != "" {
 				attributes = attributes.Set("reason", info.Reason)
 			}
 			extension()
 			taskId()
-		case durable.ReportTaskParked, durable.ReportMigrationFailed, durable.ReportTaskError, durable.ReportExtensionError:
+		case durable.ReportMigrationFailed, durable.ReportTaskError, durable.ReportExtensionError:
 			extension()
 			taskId()
 		case durable.ReportHostError:
@@ -111,9 +111,9 @@ var durableEntryEvent = telemetry.TelemetryEventDefinition{
 
 var durableReportAttributes = map[string]telemetry.TelemetryStartAttributeDefinition{
 	"type": attribute(attrString, true, "ReportInfo type.",
-		"session_failed", "task_faulted", "task_parked", "migration_failed", "task_outdated", "task_error",
+		"session_failed", "task_faulted", "task_interrupted", "migration_failed", "task_outdated", "task_error",
 		"extension_error", "host_error", "listener_error"),
-	"reason":    attribute(attrString, false, "Fixed report reason, when present.", "threw", "restart_limit", "missing_task", "incompatible_task"),
+	"reason":    attribute(attrString, false, "Fixed report reason, when present.", "threw", "restart_limit", "interrupted", "missing_task", "incompatible_task"),
 	"extension": attribute(attrString, false, "Registered extension name, when present."),
 	"task.id":   highCardinality(attribute(attrNumber, false, "Task ID, when present.")),
 }

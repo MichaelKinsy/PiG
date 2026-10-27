@@ -133,9 +133,6 @@ type Scheduler struct {
 		cancel func()
 	}
 	wakeScheduled bool
-	// parkedTasks holds the tasks a pass left out as parked; each pass checks them again, as settings.restartLimit may
-	// have risen.
-	parkedTasks *orderedSet[ID]
 	// reconcilingWork counts the reconcile passes underway with work: their commits finalize held outcomes and mark
 	// cascades.
 	reconcilingWork int
@@ -160,7 +157,7 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 		live: newTaskMap(), invocations: map[ID]*invocation{},
 		taskWaiters: map[ID][]*taskWaiter{}, idleWaiters: map[ID][]*idleWaiter{},
 		contexts: map[ID]*keptContext{}, failedMigrations: map[ID]failedMigration{}, migrations: map[ID]*migration{}, edges: map[ID]ID{}, settled: map[ID]taskNode{},
-		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](), parkedTasks: newOrderedSet[ID](),
+		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](),
 	}
 	sess.OnFail = func(err error) { s.report(err, obj("type", "session_failed")) }
 	return s
@@ -199,11 +196,6 @@ func (s *Scheduler) restartLimit() float64 {
 
 // defaultRestartLimit is the default of settings.restartLimit.
 const defaultRestartLimit = 5
-
-// parked is a task cut off restartLimit times in a row; an abort mark still runs its abort handler (scheduler.ts #parked).
-func (s *Scheduler) parked(rec *jv.Object) bool {
-	return !getBool(rec, "abortRequested") && restartsOf(rec) > 0 && restartsOf(rec) >= s.restartLimit()
-}
 
 // notifyBlocked tells the host that blocked reasons may have changed without a commit.
 func (s *Scheduler) notifyBlocked() {
@@ -297,10 +289,7 @@ func (s *Scheduler) scanAllTasks(tx *Tx, q TaskQuery) ([]*jv.Object, error) {
 func (s *Scheduler) Open(done func(error)) {
 	s.sess.SubscribeCommits(s.observe)
 	s.sess.SubscribeClose(s.Seal)
-	limit := s.restartLimit()
-	var parked []*jv.Object
 	s.commit(func(tx *Tx) error {
-		parked = nil
 		var scans [][]*jv.Object
 		for _, st := range liveStatuses {
 			recs, err := s.scanAllTasks(tx, TaskQuery{Status: st})
@@ -323,9 +312,6 @@ func (s *Scheduler) Open(done func(error)) {
 					if err := tx.stageTask(pending); err != nil {
 						return err
 					}
-					if restarts >= limit && !getBool(rec, "abortRequested") {
-						parked = append(parked, rec)
-					}
 				}
 				if taskStatus(rec) == StatusWaiting {
 					if pol, _ := getStr(state, "policy"); pol == "failFast" {
@@ -337,39 +323,11 @@ func (s *Scheduler) Open(done func(error)) {
 		return nil
 	}, TxScope{}, func(err error) {
 		if err == nil {
-			for _, rec := range parked {
-				kind, _ := getStr(rec, "kind")
-				restarts := restartsOf(rec) + 1
-				s.report(errorf("Task %d (%s) was cut off %d times without progress; it is parked until retryTask()", mustInt(rec, "id"), kind, restarts), s.aboutRecord("task_parked", rec))
-			}
 			s.cascadePending = true
 			s.scheduleReconcile()
 			s.scheduleWake()
 		}
 		done(err)
-	})
-}
-
-// Retry runs a task parked by the restart limit again: it clears its restart count and enables scheduling. It does nothing
-// for a task that is not parked, and fails for an unknown one (scheduler.ts retry).
-func (s *Scheduler) Retry(id ID, cancel *Cancel, then func(error)) {
-	s.commitWith(cancel, func(tx *Tx) error {
-		current, err := tx.Task(id)
-		if err != nil {
-			return err
-		}
-		if current == nil {
-			return errorf("Task %d does not exist", id)
-		}
-		if st := taskStatus(current); st == StatusTerminal || st == StatusCompleting || !s.parked(current) {
-			return nil
-		}
-		return tx.stageTask(progressed(current))
-	}, TxScope{}, func(err error) {
-		if err == nil {
-			s.Resume()
-		}
-		then(err)
 	})
 }
 

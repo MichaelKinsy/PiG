@@ -62,7 +62,7 @@ type TaskGraphNode struct {
 	// Conversations are the conversations this task owns, in ID order.
 	Conversations []durable.ConversationId `json:"conversations"`
 	// Blocked is why it cannot run here, when it cannot: no registered definition takes it (missing_task, task_too_old,
-	// migration_failed), or the restart limit parked it (restart_limit). Follows registry changes. Empty when it can.
+	// migration_failed). Follows registry changes. Empty when it can.
 	Blocked durable.BlockedReason `json:"blocked,omitempty"`
 }
 

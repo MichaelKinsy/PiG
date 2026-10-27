@@ -660,10 +660,12 @@ const (
 	// ReportSessionFailed: the error failed the Session, which closes: a Storage error, often a platform reset.
 	ReportSessionFailed ReportType = "session_failed"
 	// ReportTaskFaulted: the task ended faulted: its phase threw (ReasonThrew), or its abort handler was cut off
-	// settings.restartLimit times (ReasonRestartLimit).
+	// settings.restartLimit times (ReasonRestartLimit), as was a phase of a task of an extension's kind.
 	ReportTaskFaulted ReportType = "task_faulted"
-	// ReportTaskParked: the restart limit parked the task until Harness.RetryTask.
-	ReportTaskParked ReportType = "task_parked"
+	// ReportTaskInterrupted: crashes ended the task: it ended itself after being cut off settings.restartLimit times in a
+	// row (ReasonRestartLimit; a tool call, a compaction, a generation), or a generation's run ended because the host
+	// kept stopping while the model answered (ReasonInterrupted). ReportInfo.Restarts is the task's count when it ended.
+	ReportTaskInterrupted ReportType = "task_interrupted"
 	// ReportMigrationFailed: the task's stored state could not be migrated; it is blocked until the registry changes.
 	ReportMigrationFailed ReportType = "migration_failed"
 	// ReportTaskOutdated: a running task keeps running under its old definition, which was uninstalled (missing_task)
@@ -684,31 +686,33 @@ const (
 const (
 	ReasonThrew            = "threw"
 	ReasonRestartLimit     = "restart_limit"
+	ReasonInterrupted      = "interrupted"
 	ReasonMissingTask      = "missing_task"
 	ReasonIncompatibleTask = "incompatible_task"
 )
 
 // BlockedReason is why a pending task cannot run here (Pi scheduler.ts BlockedReason): no registered definition takes
-// it (missing_task, task_too_old), its state could not be migrated (migration_failed), or the restart limit parked it
-// (restart_limit). Derived, never persisted; TaskGraph nodes carry it as Blocked.
+// it (missing_task, task_too_old) or its state could not be migrated (migration_failed). Derived, never persisted;
+// TaskGraph nodes carry it as Blocked.
 type BlockedReason string
 
 const (
 	BlockedMissingTask     BlockedReason = "missing_task"
 	BlockedTaskTooOld      BlockedReason = "task_too_old"
 	BlockedMigrationFailed BlockedReason = "migration_failed"
-	BlockedRestartLimit    BlockedReason = "restart_limit"
 )
 
 // ReportInfo says what a report to HarnessOptions.OnReport is about. Extension, where set, names the extension whose
 // code failed, when known; for a task's own code, the one that installed the definition the task ran. Task is set for
 // the task types, and for an extension_error or host_error that a task caused. ConversationId is set for an
-// extension_error outside a task. Reason is set for task_faulted and task_outdated; Callback for host_error.
+// extension_error outside a task. Reason is set for task_faulted, task_interrupted, and task_outdated, Restarts for
+// task_interrupted; Callback for host_error.
 type ReportInfo struct {
 	Type           ReportType
 	Task           *ReportTask
 	Extension      string
 	Reason         string
+	Restarts       int
 	Callback       HostCallback
 	ConversationId *ConversationId
 }
@@ -773,8 +777,9 @@ type TaskRecord[I, S, R any] struct {
 	// EndedAt is the wall-clock time in milliseconds of the change to terminal, stamped by the Session; nil while live.
 	EndedAt *float64 `json:"endedAt,omitempty"`
 	// Restarts is how many times in a row a crash, eviction, or reset cut the task off while it ran, without the task
-	// changing its state since; open counts them, and a close does not. At HarnessSettings.RestartLimit the task is
-	// parked as blocked until Harness.RetryTask. Zero when absent.
+	// changing its state since; open counts them, and a close does not. At HarnessSettings.RestartLimit the task ends (the
+	// built-in tasks end themselves, visibly; the scheduler faults any other kind), and a generation reads it to charge an
+	// interrupted model request as a failed attempt. Zero when absent.
 	Restarts int `json:"restarts,omitempty"`
 }
 

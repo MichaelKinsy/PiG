@@ -283,7 +283,7 @@ func TestBlockedTasks(t *testing.T) {
 					inspected = task.State
 				}
 			}
-			if inspected != (harness.TaskInspectionState{Kind: harness.TaskInspectionReady}) {
+			if inspected.Kind != harness.TaskInspectionReady || inspected.Migrates {
 				t.Fatalf("inspection %+v, want ready", inspected)
 			}
 			if !h.Wake().Active {

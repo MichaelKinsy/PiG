@@ -274,11 +274,6 @@ func (harness *harnessImpl) AbortSubmission(ctx context.Context, id durable.Subm
 	return harness.submissions.Abort(ctx, id, conversationId)
 }
 
-func (harness *harnessImpl) RetryTask(ctx context.Context, id durable.TaskId) error {
-	harness.assertOpen()
-	return harness.tasks.Retry(ctx, id)
-}
-
 func (harness *harnessImpl) AbortTask(ctx context.Context, id durable.TaskId) (string, error) {
 	return harness.tasks.Abort(ctx, id, false)
 }
@@ -642,6 +637,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 			return harness.WriteAtClose(context.WithoutCancel(ctx), writes)
 		},
 		Report:         harness.report,
+		LimitsRestarts: func(kind string) bool { return limitsRestarts[kind] },
 		SettleOutcome:  SettleSchedulerOutcome,
 		WithdrawInputs: WithdrawQueuedInputs,
 		Conversation: func(callCtx context.Context, id durable.ConversationId, binding InvocationBinding) (durable.ConversationHandle, error) {
