@@ -12,7 +12,7 @@
    #:extension #:make-extension #:define-extension #:extension-name
    #:tool #:command #:shortcut #:flag #:on #:on-loaded #:run-extension #:tool-result
    ;; cancellation signal
-   #:abort-signal #:abort-signal-set-p #:abort-signal-wait
+   #:abort-signal #:abort-signal-set-p #:abort-signal-wait #:make-abort-signal #:signal-abort #:abort-signal-subscribe
    ;; context
    #:ctx-extension #:ctx-cwd #:ctx-mode #:ctx-has-ui-p #:ctx-cancelled-p #:ctx-cancellation-reason
    #:ctx-wait-cancelled #:ctx-signal #:ctx-tool-call-id #:ctx-request-id #:ctx-on-update
@@ -34,6 +34,14 @@
    #:session-get-branch #:session-get-children #:session-get-tree
    #:ctx-model-registry #:registry-has-configured-auth #:registry-is-using-oauth
    #:registry-get-registered-native-provider #:registry-get-provider-name
+   #:ctx-model #:ctx-model-provider #:ctx-model-qualified #:ctx-session-name #:ctx-get-session-name #:ctx-get-session-file
+   #:ctx-extension-source-info #:ctx-get-settings #:ctx-config-home #:ctx-tool-call-index #:ctx-tool-input #:ctx-tool-params
+   #:ctx-tools #:ctx-execute-tool #:ctx-set-editor-text #:ctx-paste-to-editor #:ctx-refresh-tools #:ctx-get-entries #:ctx-get-branch
+   #:register-tool #:ctx-register-tool #:tool-loadout #:tool-loadout-declared #:tool-loadout-callable #:tool-loadout-registered #:tool-loadout-exposures
+   #:tool-loadout-namespaces #:tool-loadout-prompt-guidelines
+   #:tool-loadout-get-exposure #:tool-loadout-get-namespace #:tool-loadout-get-prompt-guidelines #:on-project-trust
+   #:bash-operations #:make-bash-operations #:bash-operations-exec #:bash-exec-options #:make-bash-exec-options
+   #:bash-exec-options-on-data #:bash-exec-options-signal #:bash-exec-options-timeout #:bash-exec-options-env
    #:ctx-footer-data #:footer-get-git-branch #:footer-get-extension-statuses
    #:footer-get-available-provider-count #:footer-on-branch-change
    ;; ==== lane T: type engine, tool schema, pi-ai ====
@@ -43,6 +51,13 @@
    ;; ==== lane C: pi-coding-agent pure helpers ====
    ;; ==== end lane C ====
    ;; ==== lane M: model calls and streams, model types ====
+   #:ctx-complete #:registry-stream #:registry-stream-simple #:registry-complete #:registry-classify #:registry-generate-images
+   #:registry-get-all #:registry-get-available #:registry-get-error #:registry-get-models-of-type #:registry-get-model-of-type
+   #:registry-find-of-type #:registry-get-api-key-and-headers #:registry-get-api-key-for-provider #:registry-get-provider-auth-status
+   #:registry-get-provider-display-name #:registry-get-registered-provider-ids #:registry-get-registered-provider-config
+   #:registry-register-provider #:registry-unregister-provider #:registry-register-virtual-model #:registry-unregister-virtual-model
+   #:model-event-stream #:make-model-event-stream #:create-assistant-message-event-stream
+   #:model-stream-push #:model-stream-end #:model-stream-result #:model-stream-events #:model-stream-next
    ;; ==== end lane M ====
    ;; ==== lane S2: session manager, settings manager, resource loader, package manager, project trust ====
    ;; ==== end lane S2 ====

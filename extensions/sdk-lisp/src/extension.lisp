@@ -11,32 +11,30 @@
   (queue (sb-thread:make-waitqueue))
   (flag nil)
   (reason nil)
-  (listeners '()))
+  (callbacks '()))
 
 (defun abort-signal-set-p (signal)
   (abort-signal-flag signal))
 
 (defun signal-abort (signal &optional reason)
-  "Set SIGNAL; the listeners subscribed so far run once, on this thread, after it is set."
-  (let ((listeners '()))
+  "Set SIGNAL and run its subscribers once, outside its lock."
+  (let ((callbacks '()))
     (sb-thread:with-mutex ((abort-signal-lock signal))
       (unless (abort-signal-flag signal)
         (setf (abort-signal-flag signal) t (abort-signal-reason signal) reason
-              listeners (reverse (abort-signal-listeners signal))
-              (abort-signal-listeners signal) '()))
+              callbacks (reverse (shiftf (abort-signal-callbacks signal) '()))))
       (sb-thread:condition-broadcast (abort-signal-queue signal)))
-    (dolist (listener listeners) (funcall listener)))
+    (dolist (callback callbacks) (funcall callback)))
   signal)
 
-(defun abort-signal-subscribe (signal listener)
-  "Call LISTENER, with no arguments, when SIGNAL is set (at once when it already is). Returns the function that unsubscribes."
-  (let ((now (sb-thread:with-mutex ((abort-signal-lock signal))
-               (or (abort-signal-flag signal)
-                   (progn (push listener (abort-signal-listeners signal)) nil)))))
-    (when now (funcall listener))
+(defun abort-signal-subscribe (signal callback)
+  "Call CALLBACK, with no arguments, when SIGNAL is set: at once when it already is. Returns the function that unsubscribes."
+  (let ((set (sb-thread:with-mutex ((abort-signal-lock signal))
+               (or (abort-signal-flag signal) (progn (push callback (abort-signal-callbacks signal)) nil)))))
+    (when set (funcall callback))
     (lambda ()
       (sb-thread:with-mutex ((abort-signal-lock signal))
-        (setf (abort-signal-listeners signal) (remove listener (abort-signal-listeners signal)))))))
+        (setf (abort-signal-callbacks signal) (delete callback (abort-signal-callbacks signal)))))))
 
 (defun abort-signal-wait (signal &optional timeout)
   "Block until SIGNAL is set. With TIMEOUT (seconds), return NIL if it was not set by then; otherwise T."
@@ -81,6 +79,7 @@
   (name "" :type string)
   (reg-lock (sb-thread:make-mutex :name "pig registration"))
   (tools '()) (tool-handlers (make-hash-table :test 'equal))
+  (tool-hooks (make-hash-table :test 'equal)) ; name -> plist of :prepare :loadout :reaches handlers
   (commands '()) (command-handlers (make-hash-table :test 'equal))
   (shortcuts '()) (shortcut-handlers (make-hash-table :test 'equal))
   (flags '()) (flag-defaults (make-hash-table :test 'equal))
@@ -147,17 +146,9 @@
   (when (extension-live ext)
     (host-call ext "registerDeclaration" declarations)))
 
-(defun tool (ext name description schema handler
-             &key prompt-snippet prompt-guidelines source)
-  "Register a tool. HANDLER is (lambda (ctx params)) and returns a string, a hash-table in the tool-result shape,
-or (tool-result ...). SCHEMA is the parameter JSON Schema: a hash-table whose \"type\" is \"object\"."
-  (unless (hash-table-p schema)
-    (error "Tool ~S registered by extension ~S must define an object parameter schema." name (extension-name ext)))
-  (ensure-jsonable schema (format nil "tool schema for ~A" name))
-  (let ((decl (obj "name" name "description" description "parameters" schema)))
-    (when prompt-snippet (setf (gethash "prompt_snippet" decl) prompt-snippet))
-    (when prompt-guidelines (setf (gethash "prompt_guidelines" decl) (coerce prompt-guidelines 'simple-vector)))
-    (when source (setf (gethash "source" decl) source))
+(defun install-tool (ext decl handler &optional hooks)
+  "Install the tool declaration DECL with HANDLER and HOOKS (a plist of :prepare :loadout :reaches handlers), replacing a tool of the same name."
+  (let ((name (gethash "name" decl)))
     (sb-thread:with-mutex ((extension-reg-lock ext))
       (let ((existing (position name (extension-tools ext)
                                 :key (lambda (d) (gethash "name" d)) :test #'string=)))
@@ -165,17 +156,42 @@ or (tool-result ...). SCHEMA is the parameter JSON Schema: a hash-table whose \"
             (setf (nth existing (extension-tools ext)) decl)
             (setf (extension-tools ext) (append (extension-tools ext) (list decl)))))
       (setf (gethash name (extension-tool-handlers ext)) handler)
+      (if hooks
+          (setf (gethash name (extension-tool-hooks ext)) hooks)
+          (remhash name (extension-tool-hooks ext)))
       (when (extension-live ext)
-        (host-call ext "registerTool" decl))))
-  name)
+        (host-call ext "registerTool" decl)))
+    name))
 
-(defun command (ext name description handler)
-  "Register a slash command. HANDLER is (lambda (ctx args)) with the argument text."
+(defun tool (ext name description schema handler
+             &key prompt-snippet prompt-guidelines source constrained-sampling prepare-arguments)
+  "Register a tool. HANDLER is (lambda (ctx params)) and returns a string, a hash-table in the tool-result shape,
+or (tool-result ...). SCHEMA is the parameter JSON Schema: a hash-table whose \"type\" is \"object\".
+CONSTRAINED-SAMPLING is a config hash-table or :false; PREPARE-ARGUMENTS is (lambda (args)) returning the prepared arguments."
+  (unless (hash-table-p schema)
+    (error "Tool ~S registered by extension ~S must define an object parameter schema." name (extension-name ext)))
+  (ensure-jsonable schema (format nil "tool schema for ~A" name))
+  (let ((decl (obj "name" name "description" description "parameters" schema)))
+    (when constrained-sampling
+      (ensure-jsonable constrained-sampling (format nil "constrained_sampling for ~A" name))
+      (setf (gethash "constrained_sampling" decl) constrained-sampling))
+    (when prompt-snippet (setf (gethash "prompt_snippet" decl) prompt-snippet))
+    (when prompt-guidelines (setf (gethash "prompt_guidelines" decl) (coerce prompt-guidelines 'simple-vector)))
+    (when source (setf (gethash "source" decl) source))
+    (when prepare-arguments (setf (gethash "prepares_arguments" decl) t))
+    (install-tool ext decl handler (and prepare-arguments (list :prepare prepare-arguments)))))
+
+(defun command (ext name description handler &key get-argument-completions)
+  "Register a slash command. HANDLER is (lambda (ctx args)) with the argument text. GET-ARGUMENT-COMPLETIONS is
+(lambda (prefix)) returning the completion items (a sequence) or NIL."
   (unless (and (stringp name) (plusp (length name)))
     (error "Command registered by extension ~S must have a non-empty string name." (extension-name ext)))
   (unless (functionp handler)
     (error "Command \"/~A\" registered by extension ~S must define a handler." name (extension-name ext)))
   (let ((decl (obj "name" name "description" description)))
+    (when get-argument-completions
+      (setf (gethash "argument_completions" decl) t
+            (gethash (list :completions name) (extension-command-handlers ext)) get-argument-completions))
     (sb-thread:with-mutex ((extension-reg-lock ext))
       (setf (extension-commands ext) (append (extension-commands ext) (list decl)))
       (setf (gethash name (extension-command-handlers ext)) handler)
@@ -266,8 +282,8 @@ Returns an idempotent function that unsubscribes."
 
 (defmacro define-extension (name &body clauses)
   "Define the standard factory NEW-EXTENSION, which returns an extension named NAME with CLAUSES installed in order:
-  (:tool name description schema handler &key prompt-snippet prompt-guidelines source)
-  (:command name description handler)
+  (:tool name description schema handler &key prompt-snippet prompt-guidelines source constrained-sampling prepare-arguments)
+  (:command name description handler &key get-argument-completions)
   (:shortcut key description handler)
   (:flag name &key description type default)
   (:on event handler)

@@ -4,6 +4,9 @@
 
 (defstruct host listener conn thread ext path)
 
+(defvar *ready-state* (pig:obj "hasUI" t) "The state member of the ready frame the fake host sends.")
+(defvar *ready-extra* '() "Further members of the ready payload, as alternating keys and values.")
+
 (defun start-host (ext)
   "Listen on a fresh socket, serve EXT against it in a thread, accept it and complete the register handshake.
 Returns the host and the register envelope."
@@ -17,8 +20,9 @@ Returns the host and the register envelope."
            (host (make-host :listener listener :conn conn :thread thread :ext ext :path path))
            (register (pig::read-frame conn)))
       (pig::send-frame conn (pig:obj "type" "ready"
-                                     "ready" (pig:obj "cwd" "/work" "mode" "tui" "width" 80
-                                                      "state" (pig:obj "hasUI" t))))
+                                     "ready" (let ((ready (pig:obj "cwd" "/work" "mode" "tui" "width" 80 "state" *ready-state*)))
+                                               (loop for (key value) on *ready-extra* by #'cddr do (setf (gethash key ready) value))
+                                               ready)))
       (values host register))))
 
 (defun stop-host (host)
@@ -265,13 +269,13 @@ Returns the host and the register envelope."
         (check-call (lambda (c) (pig:ctx-get-commands c)) "getCommands" (pig:obj) (pig:obj "commands" (pig:arr)))
         (check-call (lambda (c) (pig:ctx-get-context-usage c)) "getContextUsage" (pig:obj))
         (check-equal nil *thunk-result*)
-        (check-call (lambda (c) (pig:ctx-get-system-prompt-options c)) "getSystemPromptOptions" (pig:obj) (pig:obj "result" (pig:obj "cwd" "/x")))
+        (check-call (lambda (c) (pig:ctx-get-system-prompt-options c)) "getSystemPromptOptions" (pig:obj) (pig:obj "cwd" "/x"))
         (check-equal "/x" (pig:jget *thunk-result* "cwd"))
-        (check-call (lambda (c) (pig:ctx-get-model-info c)) "getModelInfo" (pig:obj) (pig:obj "result" (pig:obj "id" "m")))
+        (check-call (lambda (c) (pig:ctx-get-model-info c)) "getModelInfo" (pig:obj) (pig:obj "id" "m"))
         (check-equal "m" (pig:jget *thunk-result* "id"))
         (check-call (lambda (c) (pig:ctx-get-model-auth c "p" "m")) "getModelAuth" (pig:obj "provider" "p" "modelId" "m"))
         (check-call (lambda (c) (pig:ctx-get-scoped-models c)) "getScopedModels" (pig:obj))
-        (check-call (lambda (c) (pig:ctx-set-model c "p/m")) "setModel" (pig:obj "model" "p/m") (pig:obj "result" (pig:obj "success" t)))
+        (check-call (lambda (c) (pig:ctx-set-model c "p/m")) "setModel" (pig:obj "model" "p/m") (pig:obj "success" t))
         (check-equal t *thunk-result*)
         (check-call (lambda (c) (pig:ctx-set-thinking-level c "high")) "setThinkingLevel" (pig:obj "level" "high"))
         (check-call (lambda (c) (pig:ctx-set-label c "e1" "L")) "setLabel" (pig:obj "entryId" "e1" "label" "L"))

@@ -422,7 +422,7 @@ and SIGNAL, once set, cancels the call (the cancel is sent after the call, so th
   (let ((ps (prov-of ext)) (unsubscribe nil))
     (with-prov (ps) (setf (gethash callback-id (ps-callbacks ps)) callbacks))
     (unwind-protect
-         (let ((*host-call-sent* (lambda ()
+         (let ((*after-call-sent* (lambda ()
                                    (when signal
                                      (setf unsubscribe (abort-signal-subscribe signal (lambda () (prov-cancel-remote ext callback-id))))))))
            (host-call ext "provider.object" (obj "handle" handle "method" method "params" params
