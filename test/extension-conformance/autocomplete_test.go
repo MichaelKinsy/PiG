@@ -124,8 +124,8 @@ func autocompleteReferenceCommand(ctx context.Context, _ string) error {
 // Pi interactive-mode.ts:779-794,2562-2565 rebuilds factories immediately, retains each resulting provider across queries, and shares its full get/apply/trigger behavior with both editors.
 func TestAutocompleteFactoriesAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	cases := allHarnessCases()
-	for _, language := range []string{"go", "python", "rust"} {
+	cases := append(allHarnessCases(), lispHarnessCase())
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	for _, tc := range cases {
