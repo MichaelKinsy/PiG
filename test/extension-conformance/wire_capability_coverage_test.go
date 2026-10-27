@@ -84,18 +84,6 @@ var hostOnlyCapabilities = map[string]string{
 // deleting its entry here, which the gate enforces by failing when a listed SDK
 // has since gained the call.
 var knownCapabilityGaps = map[string]map[string]string{
-	"cancelModelStream": {
-		"lisp": "the Lisp SDK does not serve model streams yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"modelStream": {
-		"lisp": "the Lisp SDK does not serve model streams yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"classify": {
-		"lisp": "the Lisp SDK does not serve host model calls yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"generateImages": {
-		"lisp": "the Lisp SDK does not serve host model calls yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
 	"fork": {
 		"lisp": "the Lisp SDK does not serve session replacement yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
 	},
@@ -113,7 +101,6 @@ var knownCapabilityGaps = map[string]map[string]string{
 	},
 	"complete": {
 		"node": "host-backed completion is unavailable to Node extensions",
-		"lisp": "the Lisp SDK does not serve host model calls yet (gap lane SdkLispPhase2)",
 	},
 	"ui.editor.base": {
 		"node": "a Node editor component runs Pi's own pi-tui Editor in the extension process, so its super needs no host call",
