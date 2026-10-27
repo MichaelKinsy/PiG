@@ -13,6 +13,7 @@ var bundledFiles = []string{
 	"src/child-session.lisp",
 	"src/coding-helpers.lisp",
 	"src/compaction.lisp",
+	"src/context-extra.lisp",
 	"src/context.lisp",
 	"src/conversation.lisp",
 	"src/create-provider.lisp",
@@ -25,8 +26,11 @@ var bundledFiles = []string{
 	"src/extension-runner.lisp",
 	"src/extension.lisp",
 	"src/hooks.lisp",
+	"src/host-helper.lisp",
+	"src/host-info.lisp",
 	"src/json.lisp",
 	"src/kit.lisp",
+	"src/mcp-options.lisp",
 	"src/mcp.lisp",
 	"src/model-runtime.lisp",
 	"src/model-stream.lisp",
@@ -46,13 +50,21 @@ var bundledFiles = []string{
 	"src/settings-manager.lisp",
 	"src/terminal-input.lisp",
 	"src/theme.lisp",
+	"src/tool-order.lisp",
 	"src/tool-schema.lisp",
 	"src/truncate.lisp",
+	"src/tui-colors.lisp",
+	"src/tui-fuzzy.lisp",
+	"src/tui-keybindings.lisp",
 	"src/tui-keys.lisp",
+	"src/tui-state.lisp",
+	"src/tui-tables.lisp",
+	"src/tui-terminal.lisp",
 	"src/tui-text.lisp",
 	"src/tui-theme.lisp",
 	"src/tui-width.lisp",
 	"src/type-engine.lisp",
+	"src/type-schema.lisp",
 	"src/ui-custom.lisp",
 	"src/virtual-model.lisp",
 	"src/widgets.lisp",
@@ -60,4 +72,4 @@ var bundledFiles = []string{
 }
 
 // stagedHash is the staging hash of the files, as pigsdk computes it from them: the first 16 hex digits.
-const stagedHash = "e744b3916c14f1a5"
+const stagedHash = "8da4fae3b3f975dd"
