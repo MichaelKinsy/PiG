@@ -412,3 +412,17 @@ commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
 class = "CITE"
 cite = "packages/durable/src/harness/harness.ts:193"
 reason = "Pi adc5fa9f80 and 04a93bad8f give the Harness a view of the host's Models that adds the Harness identity, withClientIdentity (harness.ts:193-197 currentModels; identity.ts:154), shared by the tools and the hooks (harness-tools.test.ts: seen[0] is seen[1]): the models a tool reads are no longer the host's own value, so the test expects a view that lists the same models and returns the same model for faux/faux-1."
+
+[[entry]]
+path = "durable/core/turn/live_test.go"
+commit = "42fc4e620ef0b4ccf6a3c4a7b1a1818a98955298"
+class = "CITE"
+cite = "packages/durable/src/harness/live.ts:179"
+reason = "Pi f3255de7 makes endRun record `runFailure` in pi.live when a run ends without an answer (live.ts:179-212) and keeps it until a later run starts: the core's EndRun, and the run ends of its generation, now leave `{runFailure: {taskId, inputs, reason, detail?}}` where pi.live was empty, so the turn tests expect that document after an aborted, faulted, orphaned or model-error run and after the compactions of a failed run end."
+
+[[entry]]
+path = "durable/core/view_test.go"
+commit = "42fc4e620ef0b4ccf6a3c4a7b1a1818a98955298"
+class = "CITE"
+cite = "packages/durable/src/harness/view.ts:358"
+reason = "Pi f3255de7 makes ConversationView.entries a window over the transcript (view.ts advance, :358-396): an entry is appended wherever it was written, a head marker included, and past the window's max the oldest leave in one splice with a set of `before`, so the core's view frames carry those ops where a head marker used to replace the entries before its head."
