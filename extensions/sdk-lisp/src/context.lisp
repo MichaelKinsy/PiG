@@ -11,10 +11,12 @@
         (if (stringp message) message "host call failed"))
       "host call failed"))
 
-(defun host-call (ext method &optional args parent (request-id "") after-send)
+(defvar *after-call-sent* nil
+  "When a function, HOST-CALL calls it once the call's frame is written, before it waits (the caller's order point).")
+
+(defun host-call (ext method &optional args parent (request-id ""))
   "Call METHOD on the host and wait for the answer; the result value (NIL for null).
-PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host answers with an error.
-AFTER-SEND, a function of no arguments, runs once the call frame is out and before the wait."
+PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host answers with an error."
   (let* ((conn (extension-conn ext)) (slot nil) (id nil) (frame nil))
     (unless conn (error 'host-call-error :message "extension connection is not connected"))
     (sb-thread:with-mutex ((conn-write-lock conn))
@@ -39,7 +41,7 @@ AFTER-SEND, a function of no arguments, runs once the call frame is out and befo
         (error (e)
           (sb-thread:with-mutex ((extension-state-lock ext)) (remhash id (extension-pending ext)))
           (error e))))
-    (when after-send (funcall after-send))
+    (when *after-call-sent* (funcall *after-call-sent*))
     (wait-call ext id slot)))
 
 (defun wait-call (ext id slot)

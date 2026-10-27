@@ -225,8 +225,8 @@ ask for a render, and is called with NIL when it unmounts. DISPOSE runs after un
       (setf (gethash key (kit-state-overlays kit)) ov))
     (setf (gethash "key" args) key)
     (handler-case
-        (setf response (host-call ext "ui.custom" args (ctx-request ctx) (ctx-request-id ctx)
-                                  (lambda () (setf start-error (uc-start ext key ov)))))
+        (setf response (let ((*after-call-sent* (lambda () (let ((*after-call-sent* nil)) (setf start-error (uc-start ext key ov))))))
+                         (host-call ext "ui.custom" args (ctx-request ctx) (ctx-request-id ctx))))
       (error (e) (setf failure e)))
     (sb-thread:with-mutex ((kit-state-lock kit)) (remhash key (kit-state-overlays kit)))
     (uc-stop ov)
