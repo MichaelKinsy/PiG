@@ -7,7 +7,7 @@
 
 (in-package #:pig)
 
-(declaim (ftype function call-nested running-extension helper-call bash-ops-register bash-ops-release register-tool ctx-register-tool))
+(declaim (ftype function running-extension helper-call))
 
 ;;; ---------------------------------------------------------------- options
 
@@ -73,7 +73,7 @@
   (if (stringp value) (sb-ext:string-to-octets value :external-format :utf-8) value))
 
 (defun bt-read-spec (cwd options)
-  (let ((spec (make-bt-spec "read" cwd)) (table (bt-spec-options spec)))
+  (let* ((spec (make-bt-spec "read" cwd)) (table (bt-spec-options spec)))
     (when options
       (let ((resize (read-tool-options-resize-options options)) (ops (read-tool-options-operations options)))
         (when (read-tool-options-auto-resize-images options)
@@ -219,39 +219,29 @@
              (if (hash-table-p result) result (obj)))
     copy))
 
-(defun bt-watch-signal (signal function)
-  "Call FUNCTION once SIGNAL is set; returns the function that ends the watch."
-  (let* ((done nil)
-         (thread (sb-thread:make-thread (lambda () (loop until done do (when (abort-signal-wait signal 0.01) (unless done (funcall function)) (return))))
-                                        :name "pig-builtin-cancel")))
-    (lambda () (setf done t) (sb-thread:join-thread thread :default nil))))
-
-(defun bt-cancel (ext execute-id)
-  (handler-case (host-call ext "executeTool.cancel" (obj "executeId" execute-id))
-    (error () nil)))
-
-(defun bt-execute (ext ctx spec tool-call-id params signal forward-signal on-update)
-  "execute(toolCallId, params, signal, onUpdate, ctx) of a built-in tool's definition. CTX NIL is an undefined context."
+(defun bt-execute (ctx has-context spec tool-call-id params signal forward-signal on-update)
+  "execute(toolCallId, params, signal, onUpdate, ctx) of a built-in tool's definition. HAS-CONTEXT is false for an undefined context (CTX is then the running
+extension's bare context); FORWARD-SIGNAL ties the call to CTX's request, otherwise only SIGNAL (or the call itself) ends it."
   (ensure-jsonable params (format nil "arguments of tool ~A" (bt-spec-name spec)))
-  (let* ((handle (and (plusp (hash-table-count (bt-spec-callbacks spec))) (bt-next-id "builtin-")))
-         (execute-id nil)
+  (let* ((handle (and (or (plusp (hash-table-count (bt-spec-callbacks spec))) (bt-spec-bash-operations spec)) (bt-next-id "builtin-")))
+         (execute-id (bt-next-id "e"))
          (payload (obj "name" (bt-spec-name spec) "cwd" (bt-spec-cwd spec) "toolCallId" tool-call-id "params" params)))
     (when (plusp (hash-table-count (bt-spec-options spec))) (setf (gethash "options" payload) (bt-spec-options spec)))
-    (when ctx (setf (gethash "context" payload) t))
+    (when has-context (setf (gethash "context" payload) t))
     (when handle
       (sb-thread:with-mutex (*bt-lock*) (setf (gethash handle *bt-callbacks*) (bt-spec-callbacks spec)))
       (setf (gethash "callbacks" payload) handle))
     (when (bt-spec-bash-operations spec)
       ;; the shell tool's exec rides the user_bash exec request under the same handle
-      (setf handle (or handle (bt-next-id "builtin-")) (gethash "callbacks" payload) handle)
       (bash-ops-register (bt-spec-bash-operations spec) handle))
     (when (and signal (abort-signal-set-p signal)) (setf (gethash "aborted" payload) t))
-    (setf execute-id (bt-next-id "e"))
     (unwind-protect
-         (bt-wire-result (call-nested ext (and forward-signal ctx) "builtinTool.execute" payload execute-id on-update signal))
+         (bt-wire-result (call-nested ctx "builtinTool.execute" payload execute-id on-update
+                                      :signal (or signal (and (not forward-signal) (make-abort-signal)))
+                                      :cancel-method "executeTool.cancel" :cancel-args (obj "executeId" execute-id)))
       (when handle
         (sb-thread:with-mutex (*bt-lock*) (remhash handle *bt-callbacks*))
-        (when (bt-spec-bash-operations spec) (bash-ops-release handle))))))
+        (when (bt-spec-bash-operations spec) (remhash handle *bash-ops*))))))
 
 ;;; ---------------------------------------------------------------- definitions and tools
 
@@ -273,7 +263,7 @@ execute wraps it to override the built-in. The host draws the built-in tool's ca
     (when (plusp (hash-table-count (bt-spec-options spec))) (setf (gethash "options" args) (bt-spec-options spec)))
     (helper-call "builtinTool.prepareArguments" args)))
 
-(defun bt-present (value) (and value (not (eq value :null)) (not (eq value :false)) value))
+(defun bt-present (value) (and value (not (eq value :null)) value))
 
 (defun bt-create-definition (spec)
   (let ((reply (bt-definition-reply spec)))
@@ -281,7 +271,7 @@ execute wraps it to override the built-in. The host draws the built-in tool's ca
      :name (jget reply "name") :label (jget reply "label") :description (jget reply "description") :parameters (jget reply "parameters")
      :spec spec
      :execute (lambda (ctx params)
-                (bt-execute (ctx-extension ctx) ctx spec (ctx-tool-call-id ctx) params nil t
+                (bt-execute ctx t spec (ctx-tool-call-id ctx) params nil t
                             (and (ctx-tool-call-id ctx) (plusp (length (ctx-request-id ctx))) (lambda (partial) (ctx-on-update ctx partial)))))
      :prompt-snippet (let ((v (jget reply "promptSnippet"))) (and (stringp v) (plusp (length v)) v))
      :prompt-guidelines (let ((v (jget reply "promptGuidelines"))) (and (vectorp v) (plusp (length v)) (coerce v 'list)))
@@ -294,7 +284,7 @@ execute wraps it to override the built-in. The host draws the built-in tool's ca
 (defun builtin-tool-definition-execute-with (definition ctx tool-call-id params &key signal on-update)
   "Pi's definition.execute(toolCallId, params, signal, onUpdate, ctx). A NIL signal is Pi's undefined: only the call itself ends it. The tool reads the
 session's working directory, model and identity from CTX; the cwd given to the factory applies only to a tool without a context (BUILTIN-TOOL)."
-  (bt-execute (ctx-extension ctx) ctx (builtin-tool-definition-spec definition) tool-call-id params signal nil on-update))
+  (bt-execute ctx t (builtin-tool-definition-spec definition) tool-call-id params signal nil on-update))
 
 (defstruct (builtin-tool)
   "The AgentTool Pi's create<Tool>Tool returns: the built-in tool without an extension context, working in the directory given to the factory."
@@ -302,7 +292,7 @@ session's working directory, model and identity from CTX; the cwd given to the f
 
 (defun builtin-tool-execute (tool tool-call-id params &key signal on-update)
   "Pi's tool.execute(toolCallId, params, signal, onUpdate). It runs over the connection of the running extension."
-  (bt-execute (running-extension) nil (builtin-tool-spec tool) tool-call-id params signal nil on-update))
+  (bt-execute (make-ctx (running-extension)) nil (builtin-tool-spec tool) tool-call-id params signal nil on-update))
 
 (defun bt-create-tool (spec)
   (let ((reply (bt-definition-reply spec)) (shell (member (bt-spec-name spec) '("bash" "powershell") :test #'equal)))
@@ -316,7 +306,7 @@ session's working directory, model and identity from CTX; the cwd given to the f
 (defmacro def-builtin-factories (&rest specs)
   `(progn ,@(loop for (tool name) in specs
                   collect `(defun ,(intern (format nil "CREATE-~A-TOOL-DEFINITION" name)) (cwd &optional options)
-                             ,(format nil "Pi's create~ToolDefinition(cwd, options): asks the host for the built-in tool's definition, so it may be called while the factory runs." name)
+                             ,(format nil "Pi's create~:(~A~)ToolDefinition(cwd, options): asks the host for the built-in tool's definition, so it may be called while the factory runs." name)
                              (bt-create-definition (bt-spec-of ,tool cwd options)))
                   collect `(defun ,(intern (format nil "CREATE-~A-TOOL" name)) (cwd &optional options)
                              (bt-create-tool (bt-spec-of ,tool cwd options))))))
@@ -365,9 +355,13 @@ session's working directory, model and identity from CTX; the cwd given to the f
                   (error (e) (setf failure e) (error e)))))))
     (unwind-protect
          (progn
-           (when signal (setf stop (bt-watch-signal signal (lambda () (bt-cancel ext execute-id)))))
-           (let ((reply (handler-case (host-call ext "builtinTool.localExec" payload)
-                          (error (e) (error (or failure e))))))
+           ;; the cancel follows the call's frame: the host applies it only after the call it names started
+           (let* ((*after-call-sent* (lambda ()
+                                       (when signal
+                                         (setf stop (abort-signal-subscribe
+                                                     signal (lambda () (core-cancel-later ext "executeTool.cancel" (obj "executeId" execute-id))))))))
+                  (reply (handler-case (host-call ext "builtinTool.localExec" payload)
+                           (error (e) (error (or failure e))))))
              (when failure (error failure))
              (obj "exitCode" (and (hash-table-p reply) (jget reply "exitCode")))))
       (when stop (funcall stop))
@@ -377,8 +371,8 @@ session's working directory, model and identity from CTX; the cwd given to the f
   "Pi's createLocalBashOperations(options): the bash-operations that run a command in the local shell, which an extension wraps to rewrite commands while it keeps Pi's
 local shell behavior. The command runs on the host; (funcall (bash-operations-exec ops) command cwd options) streams its output to the options' on-data in order and
 returns {\"exitCode\": ...}, or signals what Pi's exec rejects with (\"aborted\" when the signal was set, \"timeout:<seconds>\" when the timeout elapsed)."
-  (make-bash-operations :exec (lambda (command cwd options) (bt-local-exec "bash" (or shell-path "") command cwd options))))
+  (make-bash-operations (lambda (command cwd options) (bt-local-exec "bash" (or shell-path "") command cwd options))))
 
 (defun create-local-powershell-operations ()
   "Pi's createLocalPowerShellOperations(): CREATE-LOCAL-BASH-OPERATIONS for PowerShell."
-  (make-bash-operations :exec (lambda (command cwd options) (bt-local-exec "powershell" "" command cwd options))))
+  (make-bash-operations (lambda (command cwd options) (bt-local-exec "powershell" "" command cwd options))))
