@@ -115,7 +115,7 @@ var orderingRows = []orderingRow{
 }
 
 func orderingCases() []harnessCase {
-	return append(sdkHarnessCases(), packedSDKHarnessCases()...)
+	return append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...)
 }
 
 // runOrderingRound runs one batch of order_probe calls through a Session over the harness's runner and returns what the round did.
