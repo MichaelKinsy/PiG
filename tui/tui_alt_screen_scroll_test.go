@@ -338,6 +338,7 @@ func TestAltScreenDoesNotScrollAnImageRowThatStays(t *testing.T) {
 			{Component: &scrollTestLines{lines: []string{pinned}}},
 			{Component: dock},
 		}, StackOptions{})
+		t.Setenv("TERM", "xterm-256color")
 		SetCapabilities(TerminalCapabilities{TrueColor: true})
 		t.Cleanup(ResetCapabilitiesCache)
 		var out strings.Builder
@@ -370,6 +371,7 @@ func BenchmarkAltScreenFrameWhileTheTranscriptGrows(b *testing.B) {
 	}
 	for _, mode := range []struct{ name, env string }{{"scroll-rows", ""}, {"draw-every-row", "0"}} {
 		b.Run(mode.name, func(b *testing.B) {
+			b.Setenv("TERM", "xterm-256color")
 			b.Setenv("PIG_TUI_SCROLL_ROWS", mode.env)
 			lines := &scrollTestLines{}
 			for i := range 200 {

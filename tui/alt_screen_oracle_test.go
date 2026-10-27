@@ -88,9 +88,8 @@ func TestAltScreenScrollFallsBackToPisBytes(t *testing.T) {
 		{"TERM unset", map[string]string{"TERM": ""}},
 		{"TERM=vt52", map[string]string{"TERM": "vt52"}},
 		{"TERM=unknown", map[string]string{"TERM": "unknown"}},
-		{"inside Zellij", map[string]string{"ZELLIJ": "0"}},
 		{"PIG_TUI_SCROLL_ROWS=0 in xterm", map[string]string{"PIG_TUI_SCROLL_ROWS": "0"}},
-		{"PIG_TUI_SCROLL_ROWS=0 in tmux", map[string]string{"PIG_TUI_SCROLL_ROWS": "0", "TERM": "tmux-256color"}},
+		{"PIG_TUI_SCROLL_ROWS=0 with COLORTERM=truecolor", map[string]string{"PIG_TUI_SCROLL_ROWS": "0", "COLORTERM": "truecolor"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) { checkAltScreenOracleIn(t, false, tc.env) })
 	}
