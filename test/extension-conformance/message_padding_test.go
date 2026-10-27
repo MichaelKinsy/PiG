@@ -12,7 +12,7 @@ import (
 // missing property or SDK default. Both settings differ from an absent field.
 func TestMessageOutputPadAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	for _, tc := range allHarnessCases() {
+	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

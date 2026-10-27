@@ -27,7 +27,7 @@ func (u *dialogTimeoutUI) Select(ctx context.Context, title string, options []st
 // and values beyond int32 and int64 are meaningful, so every SDK must send them intact. Each value
 // differs from an integer carrier's truncation or overflow.
 func TestTimeoutNumbersAcrossSDKs(t *testing.T) {
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

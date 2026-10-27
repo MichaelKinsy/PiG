@@ -20,7 +20,7 @@ func TestConformance_DeeplyNestedToolArgumentsAgreeAcrossSDKs(t *testing.T) {
 	nested := func(depth int) string {
 		return `{"v":` + strings.Repeat("[", depth) + `{"leaf":1}` + strings.Repeat("]", depth) + `}`
 	}
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

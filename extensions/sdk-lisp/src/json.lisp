@@ -32,17 +32,25 @@
   "A JSON array."
   (coerce items 'simple-vector))
 
+(defstruct (lazy-value (:constructor make-lazy-value (thunk)))
+  "A member whose value is computed when read through JGET, JREF or the JSON writer (a before_agent_start event's systemPrompt)."
+  thunk)
+
+(declaim (inline force-lazy))
+(defun force-lazy (value)
+  (if (lazy-value-p value) (funcall (lazy-value-thunk value)) value))
+
 (defun jget (object key &optional default)
   "Member KEY of a JSON object, or DEFAULT when absent. A JSON null reads as :NULL."
   (if (hash-table-p object)
-      (gethash key object default)
+      (force-lazy (gethash key object default))
       default))
 
 (defun jref (value &rest path)
   "Follow PATH (string keys and integer indexes) into VALUE; NIL when a step is missing."
   (dolist (step path value)
     (setf value
-          (cond ((and (stringp step) (hash-table-p value)) (gethash step value))
+          (cond ((and (stringp step) (hash-table-p value)) (force-lazy (gethash step value)))
                 ((and (integerp step) (vectorp value) (not (stringp value)) (< -1 step (length value)))
                  (aref value step))
                 (t (return nil))))))
@@ -399,6 +407,7 @@ SBCL's FLONUM-TO-DIGITS is shortest for normal doubles; for denormals it is not,
 
 (defun write-json-value (b value)
   (cond
+    ((lazy-value-p value) (write-json-value b (force-lazy value)))
     ((eq value t) (obuf-ascii b "true"))
     ((eq value :false) (obuf-ascii b "false"))
     ((or (null value) (eq value :null)) (obuf-ascii b "null"))

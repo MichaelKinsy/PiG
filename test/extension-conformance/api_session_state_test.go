@@ -40,7 +40,7 @@ func TestConformance_ExtensionAPIThinkingLevel(t *testing.T) {
 	}
 	t.Parallel()
 
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -112,7 +112,7 @@ func TestConformance_ExtensionAPISetModel(t *testing.T) {
 	// The Session refuses a model without credentials; t.Setenv forbids t.Parallel.
 	t.Setenv("ANTHROPIC_API_KEY", "conformance-key")
 
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -177,7 +177,7 @@ func TestConformance_ExtensionAPIGetSessionName(t *testing.T) {
 	}
 	t.Parallel()
 
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -252,7 +252,7 @@ func TestConformance_ExtensionAPIGetSettings(t *testing.T) {
 	}
 	t.Parallel()
 
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

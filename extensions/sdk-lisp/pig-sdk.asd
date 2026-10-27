@@ -16,6 +16,7 @@
                (:file "context")
                (:file "hooks")
                (:file "dispatch")
+               (:file "context-extra")
                ;; ==== lane T ====
                (:file "type-engine")
                (:file "tool-schema")
@@ -40,9 +41,9 @@
                (:file "coding-helpers")
                ;; ==== end lane C ====
                ;; ==== lane M ====
+               (:file "event-stream")
                (:file "model-stream")
                (:file "model-types")
-               (:file "event-stream")
                ;; ==== end lane M ====
                ;; ==== lane S2 ====
                (:file "session-manager")
@@ -94,6 +95,7 @@
   :components ((:file "harness")
                (:file "json-tests")
                (:file "sdk-tests")
+               (:file "core-tests")
                 ;; ==== lane T ====
                 (:file "type-tests")
                 ;; ==== end lane T ====
