@@ -334,7 +334,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		type attached struct {
 			observations []any
 			detachAll    func()
-			view, graph  weak.Pointer[observerFuncs[ConversationView]]
+			view         weak.Pointer[observerFuncs[ConversationView]]
 			graphObs     weak.Pointer[observerFuncs[TaskGraph]]
 		}
 		// attach attaches observers only the Harness references; detach says whether to detach them before returning.

@@ -5,10 +5,10 @@ package examples_test
 import (
 	"context"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/chord"
 	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 

@@ -5,7 +5,6 @@ package examples_test
 
 import (
 	"context"
-	"github.com/MichaelKinsy/PiG/chord"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -16,6 +15,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/storage"
