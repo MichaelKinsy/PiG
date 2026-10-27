@@ -61,6 +61,8 @@
      (setf *ct-calls* '())
      (with-host (host (pig:make-extension "coding"))
        (ct-answer-calls host ,function)
+       ;; the ready frame is handled on the extension's own thread: wait until it serves
+       (loop repeat 500 until (pig::helper-running-for nil) do (sleep 0.01))
        ,@body)))
 
 (defun ct-calls (method) (reverse (loop for (m . args) in *ct-calls* when (string= m method) collect args)))

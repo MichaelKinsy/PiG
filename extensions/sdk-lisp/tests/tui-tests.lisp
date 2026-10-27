@@ -30,7 +30,7 @@
 
 (defun tv-near (got want)
   "WANT (from Pi) against GOT: numbers within 1e-9 relative, objects member by member (a neutral color has no hue), arrays element by element."
-  (cond ((eq want :false) (null got))
+  (cond ((eq want :false) (or (null got) (eq got :false)))
         ((eq want t) (eq got t))
         ((realp want)
          (and (realp got) (or (= got want) (<= (abs (- got want)) (* 1d-9 (max 1 (abs want)))))))
