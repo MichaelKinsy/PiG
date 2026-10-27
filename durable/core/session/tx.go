@@ -131,7 +131,7 @@ type Tx struct {
 	settled []Write // the writes of a commit a *NeedGate held
 	// taken is the holds whose changes this commit stores with its own (held.go takeHeld); settledTaken marks the settled writes
 	// as already carrying them.
-	taken        []*heldDocument
+	taken        []*loadedDoc
 	settledTaken bool
 	// The maps below are made by their first write: most transactions of a step write none of them, and a nil map reads as empty.
 	createdConvs      map[ID]bool

@@ -2,7 +2,6 @@ package session
 
 import (
 	"math"
-	"slices"
 
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
@@ -31,15 +30,17 @@ const DefaultPersistWithinMs = 1_000
 const infiniteWithinMs = 1e300
 
 // heldDocument is the changes of a cached incarnation that deferred commits adopted in memory and the Session has not stored
-// yet (transaction.ts HeldDocument, session.ts Hold): folded, and pinned in the cache until they are stored.
+// yet (transaction.ts HeldDocument, session.ts Hold): folded, and pinned in the cache until they are stored. It lives in the
+// incarnation's loadedDoc (held, valid while isHeld), which the cache already allocates.
 type heldDocument struct {
-	loaded  *loadedDoc
 	pending delta.PendingOps
 	// base is set when a held commit selected a base (checkpointWhen): their store writes the whole value.
 	base bool
 	// deadline is when the earliest of its held commits must be stored, on the Session clock.
 	deadline float64
 	unpin    func()
+	// replace is the operations of a root replacement, which an overflowed or base store publishes (storeHeld).
+	replace [1]delta.Op
 }
 
 // holdTimer is the armed store of held documents (Session.holdTimer, valid while Session.holdArmed): a foreground timer for the
@@ -62,7 +63,7 @@ func (s *Session) persistWithin() float64 {
 }
 
 // HeldDocuments is the number of incarnations with held changes (session.ts documentCacheSizes.held).
-func (s *Session) HeldDocuments() int { return len(s.holds) }
+func (s *Session) HeldDocuments() int { return len(s.holdOrder) }
 
 // holdable is Transaction.holdable: whether a deferred commit is held in memory instead of stored. It may be held only when every
 // write changes an existing latest, initial-fork conversation document at its stored version. Its changes are those plans with
@@ -129,7 +130,7 @@ type heldPlan struct {
 // so a stored document never misses an operation its later ones build on. Called right before Storage admission, after every
 // fallible step. The queues stay until release: a Storage that holds the commit (*NeedGate) runs the job again.
 func (tx *Tx) takeHeld(writes []Write) []Write {
-	if len(tx.s.holds) == 0 {
+	if len(tx.s.holdOrder) == 0 {
 		return writes
 	}
 	for _, p := range tx.plans {
@@ -138,8 +139,8 @@ func (tx *Tx) takeHeld(writes []Write) []Write {
 			continue
 		}
 		recordID := mustInt(p.record, "id")
-		hold := tx.s.holds[recordID]
-		if hold == nil {
+		hold := tx.s.docs[p.addressID]
+		if hold == nil || !hold.isHeld || mustInt(hold.record, "id") != recordID {
 			continue
 		}
 		tx.taken = append(tx.taken, hold)
@@ -155,11 +156,11 @@ func (tx *Tx) takeHeld(writes []Write) []Write {
 				ownOps = p.change.prepared.Ops()
 			}
 		}
-		value := hold.loaded.tracker.Value()
+		value := hold.tracker.Value()
 		if p.change != nil {
 			value = p.change.prepared.Value()
 		}
-		content, ops := storeHeld(hold, ownOps, value, hold.loaded.valueVersion, recordID)
+		content, ops := storeHeld(hold, ownOps, value, hold.valueVersion, recordID)
 		// A base this commit selected or must write covers what was held.
 		if own >= 0 && writes[own].Base {
 			content = writes[own]
@@ -185,21 +186,26 @@ func (tx *Tx) takeHeld(writes []Write) []Write {
 
 // insertBeforeRetirement stages a content write for an incarnation, before its retirement when it retires.
 func insertBeforeRetirement(writes []Write, write Write) []Write {
-	for i := range writes {
+	writes = append(writes, write)
+	for i := len(writes) - 2; i >= 0; i-- {
 		if writes[i].Kind == WriteDocRetire && writes[i].ID == write.ID {
-			return slices.Insert(writes, i, write)
+			copy(writes[i+1:], writes[i:])
+			writes[i] = write
+			break
 		}
 	}
-	return append(writes, write)
+	return writes
 }
 
 // storeHeld is transaction.ts storeHeld: a hold's changes after ops, a commit's own on top of them, as one stored content for an
 // incarnation now at value, and the operations a reader of the stored state applies to reach it: the folded ones, or a root
 // replacement after the queue overflowed, which stores a base, as does a hold whose commits selected one.
-func storeHeld(hold *heldDocument, ops []delta.Op, value *jv.Object, version int, id ID) (Write, []delta.Op) {
+func storeHeld(l *loadedDoc, ops []delta.Op, value *jv.Object, version int, id ID) (Write, []delta.Op) {
+	hold := &l.held
 	taken := hold.pending.Peek(ops)
 	if taken.Replace {
-		return Write{Kind: WriteDocChange, ID: id, Version: version, Base: true, Value: value}, []delta.Op{{Verb: delta.Replace, Value: value}}
+		hold.replace[0] = delta.Op{Verb: delta.Replace, Value: value}
+		return Write{Kind: WriteDocChange, ID: id, Version: version, Base: true, Value: value}, hold.replace[:]
 	}
 	if hold.base {
 		return Write{Kind: WriteDocChange, ID: id, Version: version, Base: true, Value: value}, taken.Ops
@@ -223,15 +229,11 @@ func (s *Session) hold(tx *Tx) (*Publication, error) {
 			continue
 		}
 		loaded := p.change.loaded
-		id := mustInt(loaded.record, "id")
-		hold := s.holds[id]
-		if hold == nil {
-			hold = &heldDocument{loaded: loaded, deadline: deadline, unpin: s.pinDocument(loaded.addressID, id)}
-			if s.holds == nil {
-				s.holds = map[ID]*heldDocument{}
-			}
-			s.holds[id] = hold
-			s.holdOrder = append(s.holdOrder, hold)
+		hold := &loaded.held
+		if !loaded.isHeld {
+			loaded.isHeld = true
+			*hold = heldDocument{deadline: deadline, unpin: s.pinDocument(loaded.addressID, mustInt(loaded.record, "id"))}
+			s.holdOrder = append(s.holdOrder, loaded)
 		}
 		hold.pending.Push(p.change.prepared.Ops())
 		if p.content.Base {
@@ -248,7 +250,7 @@ func (s *Session) hold(tx *Tx) (*Publication, error) {
 		return nil, err
 	}
 	s.armHoldTimer()
-	pub := &Publication{Memory: true, Changes: docs}
+	pub := s.newPublication(Publication{Memory: true, Changes: docs})
 	if s.holdPubs {
 		s.heldPubs = append(s.heldPubs, pub)
 	} else {
@@ -266,17 +268,16 @@ func (s *Session) StoreHolds() error {
 	return s.storeHolds(append(s.scratchHolds[:0], s.holdOrder...))
 }
 
-func (s *Session) storeHolds(holds []*heldDocument) error {
+func (s *Session) storeHolds(holds []*loadedDoc) error {
 	if len(holds) == 0 {
 		return nil
 	}
 	var writes []Write
 	var changes []Change
-	for _, hold := range holds {
-		loaded := hold.loaded
+	for _, loaded := range holds {
 		record := loaded.record
 		value := loaded.tracker.Value()
-		content, ops := storeHeld(hold, nil, value, loaded.valueVersion, mustInt(record, "id"))
+		content, ops := storeHeld(loaded, nil, value, loaded.valueVersion, mustInt(record, "id"))
 		writes = append(writes, content)
 		// Held documents are conversation documents.
 		changes = append(changes, Change{Kind: ChangeDocument, Record: record, ConversationID: mustInt(getObj(record, "scope"), "conversationId"), Version: loaded.valueVersion, Value: value, Ops: ops})
@@ -289,15 +290,15 @@ func (s *Session) storeHolds(holds []*heldDocument) error {
 		s.fail(err)
 		return err
 	}
-	for i, hold := range holds {
+	for i, loaded := range holds {
 		if writes[i].Base {
-			hold.loaded.deltasSinceBase = 0
+			loaded.deltasSinceBase = 0
 		} else {
-			hold.loaded.deltasSinceBase++
+			loaded.deltasSinceBase++
 		}
 	}
 	s.release(holds)
-	pub := &Publication{Seq: seq, Stored: changes}
+	pub := s.newPublication(Publication{Seq: seq, Stored: changes})
 	if s.holdPubs {
 		s.heldPubs = append(s.heldPubs, pub)
 	} else {
@@ -307,16 +308,19 @@ func (s *Session) storeHolds(holds []*heldDocument) error {
 }
 
 // release runs after the store of holds: forget them, unpin their documents, and move the timer to the next deadline.
-func (s *Session) release(holds []*heldDocument) {
-	for _, hold := range holds {
-		delete(s.holds, mustInt(hold.loaded.record, "id"))
-		if i := slices.Index(s.holdOrder, hold); i >= 0 {
-			s.holdOrder = slices.Delete(s.holdOrder, i, i+1)
+func (s *Session) release(holds []*loadedDoc) {
+	for _, loaded := range holds {
+		loaded.isHeld = false
+		loaded.held.pending = delta.PendingOps{}
+		for i, other := range s.holdOrder {
+			if other == loaded {
+				s.holdOrder = append(s.holdOrder[:i], s.holdOrder[i+1:]...)
+				break
+			}
 		}
-		hold.pending = delta.PendingOps{}
 	}
-	for _, hold := range holds {
-		hold.unpin()
+	for _, loaded := range holds {
+		loaded.held.unpin()
 	}
 	s.armHoldTimer()
 }
@@ -329,8 +333,8 @@ func (s *Session) armHoldTimer() {
 		return
 	}
 	at := math.Inf(1)
-	for _, hold := range s.holdOrder {
-		at = math.Min(at, hold.deadline)
+	for _, loaded := range s.holdOrder {
+		at = math.Min(at, loaded.held.deadline)
 	}
 	if s.holdArmed && (s.holdTimer.fired || s.holdTimer.at == at) {
 		return
@@ -370,9 +374,9 @@ func (s *Session) holdJob() error {
 
 // dropHeld is the part of a drop of a tracker that holds changes: they are stored first (session.ts loadDocument, unloadDocuments),
 // so the reload finds what memory holds.
-func (s *Session) dropHeld(recordID ID) error {
-	if hold := s.holds[recordID]; hold != nil {
-		return s.storeHolds(append(s.scratchHolds[:0], hold))
+func (s *Session) dropHeld(cached *loadedDoc) error {
+	if cached.isHeld {
+		return s.storeHolds(append(s.scratchHolds[:0], cached))
 	}
 	return nil
 }
@@ -380,7 +384,7 @@ func (s *Session) dropHeld(recordID ID) error {
 // closeHolds is Session close's last step: it forgets the holds once they were stored, the timer with them.
 func (s *Session) closeHolds() {
 	s.cancelHoldTimer()
-	s.holds, s.holdOrder = nil, nil
+	s.holdOrder = nil
 }
 
 // cancelHoldTimer disarms the deadline timer (session.ts #notifyClose).

@@ -69,16 +69,15 @@ type Session struct {
 	// PersistWithin is the default window of a deferred commit in milliseconds, read at each use (settings.progress.persistWithinMs);
 	// false means the default.
 	PersistWithin func() (float64, bool)
-	// holds is the documents with held changes, by incarnation (record ID), in the order they were first held; each is pinned in
+	// holdOrder is the documents with held changes, in the order they were first held; each is pinned in
 	// the cache until its changes are stored (held.go).
-	holds     map[ID]*heldDocument
-	holdOrder []*heldDocument
+	holdOrder []*loadedDoc
 	holdTimer holdTimer
 	holdArmed bool
 	// holdFiredFn and holdJobFn are the timer's callbacks, made once; scratchHolds is reused by each store of held changes.
 	holdFiredFn  func()
 	holdJobFn    func() error
-	scratchHolds []*heldDocument
+	scratchHolds []*loadedDoc
 	// DocumentRetention is the document retention in milliseconds read at each use (HarnessSettings.documentRetentionMs); nil or
 	// a nil result means the default.
 	DocumentRetention func() *float64
@@ -344,7 +343,7 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	}
 	tables := len(changes)
 	changes = append(changes, docs...)
-	pub := &Publication{Seq: seq, Changes: changes}
+	pub := s.newPublication(Publication{Seq: seq, Changes: changes})
 	if storedDocs != nil {
 		pub.Stored = append(append([]Change(nil), changes[:tables]...), storedDocs...)
 		docs = storedDocs
@@ -360,6 +359,9 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	s.sweepDocuments()
 	return pub, nil
 }
+
+// newPublication is the one place a Publication is allocated.
+func (s *Session) newPublication(p Publication) *Publication { return &p }
 
 // InJob reports whether a Loop line job body is running.
 func (s *Session) InJob() bool { return s.inJob }
@@ -406,7 +408,7 @@ func (s *Session) loadDocument(def *DocDef, id string, addr Address) (*loadedDoc
 			return cached, nil
 		}
 		// The reload must find what memory holds: held changes are stored before their tracker goes.
-		if err := s.dropHeld(mustInt(cached.record, "id")); err != nil {
+		if err := s.dropHeld(cached); err != nil {
 			return nil, err
 		}
 		s.dropDocument(id)

@@ -150,8 +150,8 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	}
 	if session.IsNeedGate(err) && h.loop == nil {
 		// A read that stores held changes first (session/held.go): the host's Storage holds that commit, so the read runs again
-		// as a Session-mode job once it answered.
-		h.sweeps = append(h.sweeps, func() error { return h.answerAPIAgain(ev.ID, req) })
+		// once it answered.
+		h.cg.retry, h.cg.retryID, h.cg.retryReq = retryAPI, ev.ID, req
 		return nil
 	}
 	h.answerAfterReads(func() {
@@ -165,17 +165,17 @@ func (h *handler) onAPI(ev *abi.Event) error {
 }
 
 // answerAPIAgain runs an api read again after the host's Storage answered the commit it held, and answers it.
-func (h *handler) answerAPIAgain(id uint32, req *jv.Object) error {
+func (h *handler) answerAPIAgain(id uint32, req *jv.Object) {
 	value, err := h.api(strOf(req, "op"), req)
 	if session.IsNeedGate(err) {
-		return err
+		h.cg.retry, h.cg.retryID, h.cg.retryReq = retryAPI, id, req
+		return
 	}
 	if err != nil {
 		h.apiError(id, err)
-		return nil
+		return
 	}
 	h.apiOK(id, value)
-	return nil
 }
 
 // onLine reports whether an api read is a job on the Session line in Pi: readOnLine reads, snapshotAsOf, and a

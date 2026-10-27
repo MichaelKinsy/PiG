@@ -131,7 +131,7 @@ func (h *handler) txRun(t *hostTx, name string, op *jv.Object) {
 	if session.IsNeedGate(err) {
 		// The operation stored held changes (session/held.go) and the host's Storage holds that commit: it runs again, from the
 		// start, once the Storage answered.
-		h.cg.resume = func() { h.txRun(t, name, op) }
+		h.cg.retry, h.cg.retryTx, h.cg.retryName, h.cg.retryOp = retryTx, t, name, op
 		return
 	}
 	if err != nil {

@@ -20,7 +20,7 @@ func (h *handler) sweepMicrotask(fn func()) {
 		h.loop.Defer(fn)
 		return
 	}
-	h.sweeps = append(h.sweeps, func() error { fn(); return nil })
+	h.microtasks = append(h.microtasks, fn)
 }
 
 // enqueueSweep queues job on the Session line. A job that returns a *session.NeedGate (the store of held changes, while the
@@ -36,10 +36,16 @@ func (h *handler) enqueueSweep(job func() error) {
 
 // runSessionSweeps runs the sweeps a Session-mode core queued, unless a host transaction holds the line.
 func (h *handler) runSessionSweeps() {
-	for len(h.sweeps) > 0 && h.holder == 0 {
+	for (len(h.microtasks) > 0 || len(h.sweeps) > 0) && h.holder == 0 {
+		if len(h.microtasks) > 0 {
+			fn := h.microtasks[0]
+			h.microtasks = h.microtasks[1:]
+			fn()
+			continue
+		}
 		if err := h.sweeps[0](); session.IsNeedGate(err) {
 			// The host's Storage holds the commit the job made: it runs again, first, once the Storage answered.
-			h.cg.resume = h.runSessionSweeps
+			h.cg.retry = retrySweeps
 			return
 		}
 		h.sweeps = h.sweeps[1:]
