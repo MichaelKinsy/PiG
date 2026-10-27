@@ -57,7 +57,7 @@
   "Pi's getLanguageFromPath: the highlight language for the text after the last \".\" of FILE-PATH, lower-cased (a path without a dot is its own extension, so \"Dockerfile\" is dockerfile), or NIL."
   (let* ((dot (position #\. file-path :from-end t))
          (extension (if dot (subseq file-path (1+ dot)) file-path)))
-    (and (plusp (length extension)) (values (gethash (string-downcase extension) *cx-languages*)))))
+    (and (plusp (length extension)) (values (gethash (sb-unicode:lowercase extension) *cx-languages*)))))
 
 ;;; ---------------------------------------------------------------- session and skill helpers
 
