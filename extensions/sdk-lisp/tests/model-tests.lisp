@@ -393,3 +393,53 @@
                           (pig::ctx-unregister-provider :ctx "ops") (pig::ctx-register-provider :ctx "ops" ,(pig:obj "baseUrl" "u")))
                         calls))
       (loop for (name . function) in saved do (if function (setf (fdefinition name) function) (fmakunbound name))))))
+
+;;; ---------------------------------------------------------------- the fetch transport on its own (test_model_fetch.py)
+
+(defun mt-fetch-args (id) (pig:obj "id" id "url" "https://f.invalid/" "method" "GET"))
+
+(deftest fetch-read-size-is-bounded
+  (let ((transport (pig::make-ms-transport (lambda (call) (declare (ignore call)) (pig:obj "status" 200 "body" "abc")))))
+    (pig::ms-transport-serve transport "fetch" (mt-fetch-args 1) nil)
+    (dolist (size (list 0 -1 65537 nil "x" t))
+      (check-error error (pig::ms-transport-serve transport "fetchRead" (pig:obj "id" 1 "size" size) nil)))
+    (let ((chunk (pig::ms-transport-serve transport "fetchRead" (pig:obj "id" 1 "size" 65536) nil)))
+      (check-equal "YWJj" (pig:jget chunk "data"))
+      (check-equal :false (pig:jget chunk "done")))
+    (check-equal t (pig:jget (pig::ms-transport-serve transport "fetchRead" (pig:obj "id" 1 "size" 65536) nil) "done"))))
+
+(deftest host-cancellation-of-a-fetch-sets-its-signal-and-fails-the-fetch
+  (let* ((seen nil)
+         (transport (pig::make-ms-transport (lambda (call) (setf seen (pig:jget call "signal")) (pig:abort-signal-wait seen)
+                                              (pig:obj "status" 200 "body" "x"))))
+         (cancelled (pig::make-abort-signal))
+         (thread (sb-thread:make-thread (lambda () (handler-case (pig::ms-transport-serve transport "fetch" (mt-fetch-args 1) cancelled)
+                                                      (error (e) (princ-to-string e)))))))
+    (sleep 0.05)
+    (pig::signal-abort cancelled)
+    (check-equal "model fetch was cancelled" (sb-thread:join-thread thread :default :hung :timeout 5))
+    (check (pig:abort-signal-set-p seen))))
+
+(deftest host-cancellation-of-a-read-sets-the-fetch-signal
+  (let* ((seen nil)
+         (transport (pig::make-ms-transport (lambda (call) (setf seen (pig:jget call "signal"))
+                                              (pig:obj "status" 200 "body" (lambda () (pig:abort-signal-wait seen) nil)))))
+         (cancelled (pig::make-abort-signal)))
+    (pig::ms-transport-serve transport "fetch" (mt-fetch-args 1) nil)
+    (let ((thread (sb-thread:make-thread (lambda () (pig::ms-transport-serve transport "fetchRead" (pig:obj "id" 1 "size" 10) cancelled)))))
+      (sleep 0.05)
+      (pig::signal-abort cancelled)
+      (check-equal t (pig:jget (sb-thread:join-thread thread :default (pig:obj) :timeout 5) "done"))
+      (check (pig:abort-signal-set-p seen)))))
+
+(deftest ending-the-stream-cancels-a-fetch-in-flight-and-refuses-its-late-response
+  (let* ((seen nil)
+         (transport (pig::make-ms-transport (lambda (call) (setf seen (pig:jget call "signal")) (pig:abort-signal-wait seen)
+                                              (pig:obj "status" 200 "body" "late"))))
+         (thread (sb-thread:make-thread (lambda () (handler-case (pig::ms-transport-serve transport "fetch" (mt-fetch-args 1) nil)
+                                                      (error (e) (princ-to-string e)))))))
+    (sleep 0.05)
+    (pig::ms-transport-dispose transport)
+    (check-equal "model fetch transport is closed" (sb-thread:join-thread thread :default :hung :timeout 5))
+    (check-error error (pig::ms-transport-serve transport "fetch" (mt-fetch-args 2) nil))
+    (check-error error (pig::ms-transport-serve transport "fetchRead" (pig:obj "id" 1 "size" 10) nil))))
