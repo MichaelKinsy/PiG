@@ -182,6 +182,28 @@ whose value is the call's result (or :DEFER to answer later with EDH-REPLY)."
       (check-equal "k" (edstock-text stock))
       (check-equal '("base:k") (ed-render-lines (ed-wait edh (ed-notify "ui.editor.render") 1))))))
 
+(deftest every-default-component-method-calls-the-stock-editor
+  (let ((stock (make-edstock)) (component nil))
+    (with-edh (edh (ed-editor-extension (lambda (base) (setf component (pig:make-editor-component base :embed-working-status t)))) (edstock-handler stock))
+      (ed-command edh "r1" "install")
+      (check (typep (pig:editor-component-base component) 'pig:editor-base))
+      (check (eq t (pig:editor-component-embed-working-status component)))
+      (let ((base (pig:editor-component-base component)))
+        (pig:editor-component-set-text component "ab")
+        (pig:editor-component-insert-text-at-cursor component "cd")
+        (pig:editor-component-add-to-history component "hist")
+        (pig:editor-component-handle-input component "e")
+        (pig:editor-component-handle-mouse component (pig:obj "x" 2))
+        (check-equal "abcde" (pig:editor-base-get-text base))
+        (check-equal '("base:abcde") (pig:editor-component-render component 40))
+        (check-equal '("abcde" "second") (pig:editor-base-get-lines base))
+        (pig:editor-base-add-to-history base "direct")
+        (pig:editor-base-handle-mouse base (pig:obj "x" 3))
+        (check-equal nil (pig:editor-component-set-working-status-indicator component nil))
+        (check-equal nil (pig:editor-component-invalidate component))
+        (check-equal '("hist" "direct") (mapcar (lambda (call) (pig:jget (cdr call) "text")) (ed-ops-of edh "addToHistory")))
+        (check-equal '(2 3) (mapcar (lambda (call) (pig:jget (pig:jget (cdr call) "event") "x")) (ed-ops-of edh "handleMouse")))))))
+
 (deftest the-editor-reports-its-factory-until-the-host-restores-its-own
   (let ((n 0) (factory (lambda (base) (pig:make-editor-component base))))
     (with-edh (edh (ed-editor-extension factory) (edstock-handler (make-edstock)))
