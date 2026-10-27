@@ -10,4 +10,4 @@
 
 - `harness.ConversationTranscript` (`NewConversationTranscript`) keeps what a client has of one conversation over any `ConversationView`: `Merge` returns the view with `Items`, the client's whole transcript (entries, a gap where a later window did not continue it, and an earlier marker until the start is loaded), `LoadEarlier` and `FillGap` page entries through a loader such as `Conversation.Entries`, and `Resume` is the window that continues it after a drop. Ports Pi's `ConversationTranscript`.
 - `pi.live.runFailure` (`harness.RunFailure`, `RunFailureReason`) records why the newest run ended without an answer: `model_error`, `no_model`, `aborted`, `reset`, `faulted` or `orphaned`, with the run's task and inputs and a detail where one exists. The Durable core writes it too.
-
+- `harness.TranscriptItem` has `Kind()` (`entry`, `gap` or `earlier`, Pi's `kind` discriminator), and the three variants write it as their JSON `kind` (`{kind: "gap", after, upTo}`), so a `TranscriptView` marshals to Pi's wire form.
