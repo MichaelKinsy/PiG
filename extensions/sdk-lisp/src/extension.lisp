@@ -115,7 +115,7 @@
 
 ;;; ---------------------------------------------------------------- registration
 
-(declaim (ftype function host-call))
+(declaim (ftype function host-call tool-schema-guard tool-schema-declare))
 
 (defun ensure-jsonable (value what)
   (handler-case (encode-json value)
@@ -132,16 +132,22 @@
     (host-call ext "registerDeclaration" declarations)))
 
 (defun tool (ext name description schema handler
-             &key prompt-snippet prompt-guidelines source)
+             &key prompt-snippet prompt-guidelines source constrained-sampling prepare-arguments)
   "Register a tool. HANDLER is (lambda (ctx params)) and returns a string, a hash-table in the tool-result shape,
-or (tool-result ...). SCHEMA is the parameter JSON Schema: a hash-table whose \"type\" is \"object\"."
+or (tool-result ...). SCHEMA is the parameter JSON Schema: a hash-table, such as one built with TYPE-OBJECT.
+CONSTRAINED-SAMPLING is :false or a configuration. PREPARE-ARGUMENTS, (lambda (args)), returns the arguments the host validates."
   (unless (hash-table-p schema)
     (error "Tool ~S registered by extension ~S must define an object parameter schema." name (extension-name ext)))
+  (tool-schema-guard schema)
   (ensure-jsonable schema (format nil "tool schema for ~A" name))
   (let ((decl (obj "name" name "description" description "parameters" schema)))
+    (when constrained-sampling
+      (ensure-jsonable constrained-sampling (format nil "constrained_sampling for ~A" name))
+      (setf (gethash "constrained_sampling" decl) constrained-sampling))
     (when prompt-snippet (setf (gethash "prompt_snippet" decl) prompt-snippet))
     (when prompt-guidelines (setf (gethash "prompt_guidelines" decl) (coerce prompt-guidelines 'simple-vector)))
     (when source (setf (gethash "source" decl) source))
+    (tool-schema-declare ext name decl schema prepare-arguments)
     (sb-thread:with-mutex ((extension-reg-lock ext))
       (let ((existing (position name (extension-tools ext)
                                 :key (lambda (d) (gethash "name" d)) :test #'string=)))
@@ -250,7 +256,7 @@ Returns an idempotent function that unsubscribes."
 
 (defmacro define-extension (name &body clauses)
   "Define the standard factory NEW-EXTENSION, which returns an extension named NAME with CLAUSES installed in order:
-  (:tool name description schema handler &key prompt-snippet prompt-guidelines source)
+  (:tool name description schema handler &key prompt-snippet prompt-guidelines source constrained-sampling prepare-arguments)
   (:command name description handler)
   (:shortcut key description handler)
   (:flag name &key description type default)

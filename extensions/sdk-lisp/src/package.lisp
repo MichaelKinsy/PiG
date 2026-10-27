@@ -37,6 +37,31 @@
    #:ctx-footer-data #:footer-get-git-branch #:footer-get-extension-statuses
    #:footer-get-available-provider-count #:footer-on-branch-change
    ;; ==== lane T: type engine, tool schema, pi-ai ====
+   #:type-schema-error #:type-schema-error-message #:big-int #:make-big-int #:big-int-p #:big-int-value #:type-to-json
+   #:type-refinement #:make-type-refinement #:type-refinement-p #:type-refinement-check #:type-refinement-message
+   #:type-schema-p #:type-kind-p #:type-optional-p #:type-readonly-p #:type-immutable-p #:type-unsafe-p #:type-enum-value-p #:type-refine-p
+   #:type-any-p #:type-array-p #:type-big-int-p #:type-boolean-p #:type-enum-p #:type-integer-p #:type-intersect-p #:type-literal-p
+   #:type-never-p #:type-null-p #:type-number-p #:type-object-p #:type-record-p #:type-ref-p #:type-string-p #:type-symbol-p
+   #:type-undefined-p #:type-union-p #:type-unknown-p #:type-void-p #:type-call-p #:type-constructor-p #:type-cyclic-p #:type-dependent-p
+   #:type-function-p #:type-generic-p #:type-identifier-p #:type-infer-p #:type-parameter-p #:type-rest-p #:type-template-literal-p
+   #:type-this-p #:type-tuple-p
+   #:type-any #:type-unknown #:type-string #:type-number #:type-integer #:type-boolean #:type-null #:type-never #:type-undefined #:type-void
+   #:type-symbol #:type-big-int #:type-ref #:type-array #:type-union #:type-intersect #:type-object #:type-optional #:type-readonly
+   #:type-immutable #:type-unsafe #:type-refine #:type-with #:type-literal #:type-enum #:type-record
+   #:type-call #:type-capitalize #:type-lowercase #:type-uncapitalize #:type-uppercase #:type-conditional #:type-constructor
+   #:type-constructor-parameters #:type-parameters #:type-instance-type #:type-return-type #:type-cyclic #:type-dependent #:type-evaluate
+   #:type-exclude #:type-extract #:type-extends #:type-function #:type-generic #:type-identifier #:type-index #:type-infer #:type-instantiate
+   #:type-interface #:type-key-of #:type-mapped #:type-module #:type-non-nullable #:type-omit #:type-pick #:type-parameter #:type-partial
+   #:type-required #:type-readonly-object #:type-readonly-type #:type-record-key #:type-record-pattern #:type-record-value #:type-rest
+   #:type-script #:type-template-literal #:type-this #:type-tuple
+   #:type-extends-true #:type-extends-union #:type-extends-false #:type-extends-true-p #:type-extends-union-p #:type-extends-false-p
+   #:type-extends-true-like-p #:type-extends-match #:running-extension
+   #:+default-max-agent-retry-delay-ms+ #:string-enum #:get-supported-thinking-levels #:clamp-thinking-level #:calculate-cost #:content-text
+   #:get-current-tools #:get-current-system-message #:get-system-message-text #:get-current-system-prompt #:render-system-message-update
+   #:create-initial-system-message #:normalize-context #:get-initial-system-message #:without-initial-system-message
+   #:collapse-system-messages #:resolve-transcript #:get-declared-tools #:has-non-additive-tool-changes-p #:resolve-transcript-tools
+   #:retry-delay-ms #:retryable-assistant-error-p #:context-overflow-p #:recoverable-length-p #:env-api-key-auth #:get-model-type
+   #:model-type-p #:has-api-p #:models-are-equal-p
    ;; ==== end lane T ====
    ;; ==== lane H: pi-tui helpers ====
    ;; ==== end lane H ====

@@ -17,6 +17,8 @@
                (:file "hooks")
                (:file "dispatch")
                ;; ==== lane T ====
+               (:file "host-helper")
+               (:file "type-schema")
                (:file "type-engine")
                (:file "tool-schema")
                (:file "pi-ai")
