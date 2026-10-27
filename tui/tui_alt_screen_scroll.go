@@ -6,6 +6,7 @@
 package tui
 
 import (
+	"os"
 	"strconv"
 	"strings"
 
@@ -18,6 +19,29 @@ import (
 // minRowsSavedByScrolling is how many row writes a move must save before a frame scrolls rows instead of drawing them.
 // pig divergence (D205): Pi draws every row that changed.
 const minRowsSavedByScrolling = 3
+
+// scrollRegionsUsable reports whether the terminal PiG runs in is trusted with scroll regions (DECSTBM). A frame that scrolls
+// writes other bytes than Pi's, so it needs a terminal that implements CSI top;bottom r, line feed at the region's bottom and
+// reverse index at its top. PIG_TUI_SCROLL_ROWS=0 turns it off. So does a missing or "dumb"/"unknown" TERM (no terminfo
+// entry to say the terminal has a change-scroll-region capability), the terminals whose terminfo entries (vt52, adm3a, tvi912
+// and the like) have no such capability, and Zellij, whose scroll-region handling is its own (ZELLIJ is set inside it). Every
+// such terminal gets Pi's bytes, every changed row drawn.
+// pig divergence (D205): Pi never scrolls a region.
+func scrollRegionsUsable() bool {
+	return scrollRegionsUsableIn(os.Getenv)
+}
+
+// scrollRegionsUsableIn is scrollRegionsUsable on the environment getenv reads.
+func scrollRegionsUsableIn(getenv func(string) string) bool {
+	if getenv("PIG_TUI_SCROLL_ROWS") == "0" || getenv("ZELLIJ") != "" {
+		return false
+	}
+	switch term := strings.ToLower(getenv("TERM")); term {
+	case "", "dumb", "unknown", "vt52", "adm3a", "tvi912", "tvi920", "tvi950", "lpr", "network", "ansi.sys":
+		return false
+	}
+	return true
+}
 
 // movedRows is the part of the screen whose rows moved since the last frame: rows top..bottom moved up by up rows, or down
 // when up is negative.

@@ -76,9 +76,62 @@ func TestAltScreenScrolledFramesShowPisScreens(t *testing.T) {
 	checkAltScreenOracle(t, true)
 }
 
+// A terminal that D205 does not trust with scroll regions gets Pi's bytes: with scrolling left on (PIG_TUI_SCROLL_ROWS unset), every
+// step of every scenario of the pinned Pi's fixture writes exactly the bytes Pi's step wrote, as escaped_output_equal compares them.
+// PIG_TUI_SCROLL_ROWS=0 in a terminal that would scroll does the same.
+func TestAltScreenScrollFallsBackToPisBytes(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		env  map[string]string
+	}{
+		{"TERM=dumb", map[string]string{"TERM": "dumb"}},
+		{"TERM unset", map[string]string{"TERM": ""}},
+		{"TERM=vt52", map[string]string{"TERM": "vt52"}},
+		{"TERM=unknown", map[string]string{"TERM": "unknown"}},
+		{"inside Zellij", map[string]string{"ZELLIJ": "0"}},
+		{"PIG_TUI_SCROLL_ROWS=0 in xterm", map[string]string{"PIG_TUI_SCROLL_ROWS": "0"}},
+		{"PIG_TUI_SCROLL_ROWS=0 in tmux", map[string]string{"PIG_TUI_SCROLL_ROWS": "0", "TERM": "tmux-256color"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) { checkAltScreenOracleIn(t, false, tc.env) })
+	}
+}
+
+// scrollRegionsUsableIn trusts the common terminals and multiplexers and no other.
+func TestScrollRegionsUsableIn(t *testing.T) {
+	for _, tc := range []struct {
+		env  map[string]string
+		want bool
+	}{
+		{map[string]string{"TERM": "xterm-256color"}, true},
+		{map[string]string{"TERM": "tmux-256color", "TMUX": "/tmp/tmux-1/default,1,0"}, true},
+		{map[string]string{"TERM": "screen-256color", "STY": "1.pts-0"}, true},
+		{map[string]string{"TERM": "xterm-256color", "WT_SESSION": "1"}, true},
+		{map[string]string{"TERM": "xterm-kitty"}, true},
+		{map[string]string{"TERM": "linux"}, true},
+		{map[string]string{"TERM": "xterm-256color", "PIG_TUI_SCROLL_ROWS": "1"}, true},
+		{map[string]string{"TERM": "xterm-256color", "PIG_TUI_SCROLL_ROWS": "0"}, false},
+		{map[string]string{"TERM": "xterm-256color", "ZELLIJ": "0"}, false},
+		{map[string]string{"TERM": "dumb"}, false},
+		{map[string]string{"TERM": "DUMB"}, false},
+		{map[string]string{"TERM": "unknown"}, false},
+		{map[string]string{"TERM": "vt52"}, false},
+		{map[string]string{}, false},
+	} {
+		if got := scrollRegionsUsableIn(func(k string) string { return tc.env[k] }); got != tc.want {
+			t.Errorf("scrollRegionsUsableIn(%v) = %v, want %v", tc.env, got, tc.want)
+		}
+	}
+}
+
 // checkAltScreenOracle runs the fixture's scenarios and compares each step's bytes with Pi's, or with screens set, the rows
 // they show.
 func checkAltScreenOracle(t *testing.T, screens bool) {
+	checkAltScreenOracleIn(t, screens, nil)
+}
+
+// checkAltScreenOracleIn is checkAltScreenOracle in a terminal whose environment sets env over the oracle's (TERM=xterm-256color
+// and no multiplexer variables).
+func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string) {
 	file, err := os.Open("testdata/alt-screen-oracle.json.gz")
 	if err != nil {
 		t.Fatal(err)
@@ -134,6 +187,9 @@ func checkAltScreenOracle(t *testing.T, screens bool) {
 		_ = os.Unsetenv(name)
 	}
 	t.Setenv("TERM", "xterm-256color")
+	for name, value := range env {
+		t.Setenv(name, value)
+	}
 	t.Cleanup(ResetCapabilitiesCache)
 	// The generator runs every scenario in one fresh Node process: Pi's module-level Kitty image registry starts empty and carries over from
 	// scenario to scenario, deciding whether a frame re-transmits an image line or re-places it. Start from that empty registry, not from

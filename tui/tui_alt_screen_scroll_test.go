@@ -130,6 +130,7 @@ func (*scrollTestLines) Invalidate()           {}
 // newScrollTestScreen is an alternate screen of cols x rows writing to out, whose frames are drawn only by Render.
 func newScrollTestScreen(t testing.TB, out *strings.Builder, cols, rows int, components ...Component) *TuiAltScreen {
 	t.Helper()
+	t.Setenv("TERM", "xterm-256color")
 	SetCapabilities(TerminalCapabilities{TrueColor: true})
 	t.Cleanup(ResetCapabilitiesCache)
 	ui := NewTuiAltScreenWithOutput(out, cols, rows, TuiAltScreenOptions{})

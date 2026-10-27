@@ -91,7 +91,7 @@ type TuiAltScreen struct {
 	// wezTerm is isWezTermSession as Start read it. Upstream reads process.env each frame, a property read; a Windows
 	// environment read allocates its UTF-16 key and value, so the alt screen reads it once per start, with the capabilities.
 	wezTerm bool
-	// scrollRows is whether a frame scrolls the rows that only moved (findMovedRows): PIG_TUI_SCROLL_ROWS=0 turns it off.
+	// scrollRows is whether a frame scrolls the rows that only moved (findMovedRows): PIG_TUI_SCROLL_ROWS=0 or a terminal not trusted with scroll regions (scrollRegionsUsable) turns it off.
 	// Start reads it, as it reads wezTerm.
 	scrollRows bool
 
@@ -429,7 +429,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 	caps := GetCapabilities()
 	t.imageProtocol = caps.Images
 	t.wezTerm = t.imageProtocol == "kitty" && isWezTermSession()
-	t.scrollRows = os.Getenv("PIG_TUI_SCROLL_ROWS") != "0"
+	t.scrollRows = scrollRegionsUsable()
 	clear(t.uploadedKittyImages)
 	t.uploadedKittyImagesOrder = nil
 	t.lastDocument = nil
