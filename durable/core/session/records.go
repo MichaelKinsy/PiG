@@ -128,6 +128,16 @@ var (
 	// ErrSessionFailed is Pi's SessionFailed: the Session failed after a storage error, so nothing runs or commits any more.
 	// Read-only: assigned once at initialization.
 	ErrSessionFailed = errors.New("Session failed after a storage error; close and reopen it")
+	// ErrReadOnlySession is Pi's ReadOnlySession: the Harness was opened read-only, and a commit with writes or a call that would run
+	// tasks was refused.
+	// Read-only: assigned once at initialization.
+	ErrReadOnlySession = errors.New("ReadOnlySession")
+	// errReadOnlyCommit and errReadOnlyRunning are the refusals a read-only Harness returns for a commit with writes and for a call
+	// that would run tasks; they are built once, so a refusal allocates nothing.
+	// Read-only: assigned once at initialization.
+	errReadOnlyCommit = &ReadOnlyError{What: "a commit with writes"}
+	// Read-only: assigned once at initialization.
+	errReadOnlyRunning = &ReadOnlyError{What: "running tasks"}
 	// ErrTypeError marks an error Pi throws as a TypeError.
 	// Read-only: assigned once at initialization.
 	ErrTypeError = errors.New("TypeError")
@@ -206,6 +216,14 @@ func restartsOf(rec *jv.Object) float64 {
 	n, _ := getNum(rec, "restarts")
 	return n
 }
+
+// ReadOnlyError is Pi's ReadOnlySession (errors.ts): the refusal of what, such as "a commit with writes" or "running tasks".
+type ReadOnlyError struct{ What string }
+
+func (e *ReadOnlyError) Error() string { return "Read-only Harness: " + e.What + " refused" }
+
+// Is matches ErrReadOnlySession.
+func (e *ReadOnlyError) Is(target error) bool { return target == ErrReadOnlySession }
 
 // FailedError is what a call on a failed Session returns: Pi's SessionFailed, with the Storage error that failed the
 // Session as its cause. Its message is fixed; the cause does not cross the host wire.

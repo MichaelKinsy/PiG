@@ -43,8 +43,47 @@ type commitGate struct {
 	// resume continues a host transaction that issued the gate, when the Storage adopted or refused the batch; nil for a line job, which
 	// the Loop runs again.
 	resume func()
+	// retry names what a Session-mode core runs again when the gate is answered and resume is nil: a job that stored held changes
+	// (session/held.go) outside a transaction's end. retryTx, retryName and retryOp are the operation, retryID and retryReq the
+	// api read; the other kinds need no data.
+	retry     uint8
+	retryTx   *hostTx
+	retryName string
+	retryOp   *jv.Object
+	retryID   uint32
+	retryReq  *jv.Object
 	// applied is the host transaction whose commit the Storage adopted and applied: its end is answered when the Storage answers.
 	applied *hostTx
+}
+
+// The retries of a Session-mode gate (commitGate.retry).
+const (
+	retryNone uint8 = iota
+	retryTx
+	retrySweeps
+	retryAPI
+	retryClose
+)
+
+// regate runs again what a Session-mode core was doing when its Storage held a commit.
+func (h *handler) regate() {
+	cg := &h.cg
+	kind := cg.retry
+	cg.retry = retryNone
+	switch kind {
+	case retryTx:
+		t, name, op := cg.retryTx, cg.retryName, cg.retryOp
+		cg.retryTx, cg.retryOp = nil, nil
+		h.txRun(t, name, op)
+	case retrySweeps:
+		h.runSessionSweeps()
+	case retryAPI:
+		id, req := cg.retryID, cg.retryReq
+		cg.retryReq = nil
+		_ = h.answerDirect(id, req)
+	case retryClose:
+		h.closeSession()
+	}
 }
 
 // gated reports whether the host's Storage overrides the Pi Storage method.
@@ -131,6 +170,13 @@ func (h *handler) gateAnswered(outcome uint8, payload []byte) {
 			h.txAnswered(t, err)
 			return
 		}
+		if h.loop == nil {
+			// A Session-mode job (the store of held changes, session/held.go) ran again at the adoption: a failure after it fails the Session.
+			if err != nil {
+				h.sess.Fail(err)
+			}
+			return
+		}
 		h.answerJob(err)
 		return
 	}
@@ -143,7 +189,11 @@ func (h *handler) gateAnswered(outcome uint8, payload []byte) {
 		resume()
 		return
 	}
-	h.loop.Ungate()
+	if h.loop != nil {
+		h.loop.Ungate()
+		return
+	}
+	h.regate()
 }
 
 // gateAdopt is the host's report that the Storage adopted the batch (api op "adopt"): the commit applies and is published in this
@@ -161,7 +211,11 @@ func (h *handler) gateAdopt(seq session.Seq) error {
 		resume()
 		return nil
 	}
-	h.loop.Ungate()
+	if h.loop != nil {
+		h.loop.Ungate()
+		return nil
+	}
+	h.regate()
 	return nil
 }
 

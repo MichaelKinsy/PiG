@@ -67,13 +67,17 @@ type Session struct {
 	ArmTimer      func(at float64, fire func()) (cancel func())
 	ArmForeground func(at float64, fire func()) (cancel func())
 	// PersistWithin is the default window of a deferred commit in milliseconds, read at each use (settings.progress.persistWithinMs);
-	// nil or a nil result means the default.
-	PersistWithin func() *float64
-	// holds is the documents with held changes, by incarnation (record ID), in the order they were first held; each is pinned in
+	// false means the default.
+	PersistWithin func() (float64, bool)
+	// holdOrder is the documents with held changes, in the order they were first held; each is pinned in
 	// the cache until its changes are stored (held.go).
-	holds     map[ID]*heldDocument
-	holdOrder []*heldDocument
-	holdTimer *holdTimer
+	holdOrder []*loadedDoc
+	holdTimer holdTimer
+	holdArmed bool
+	// holdFiredFn and holdJobFn are the timer's callbacks, made once; scratchHolds is reused by each store of held changes.
+	holdFiredFn  func()
+	holdJobFn    func() error
+	scratchHolds []*loadedDoc
 	// DocumentRetention is the document retention in milliseconds read at each use (HarnessSettings.documentRetentionMs); nil or
 	// a nil result means the default.
 	DocumentRetention func() *float64
@@ -97,6 +101,9 @@ type Session struct {
 	// HostAdmits: the host admits calls itself, so the seal does not reject a call it admitted before the seal (assertUsable).
 	HostAdmits bool
 	heldPubs   []*Publication
+	// ReadOnly refuses every commit with writes and every scheduling call (HarnessOptions.readOnly): ReadOnlyError, before the store,
+	// so the Session stays healthy.
+	ReadOnly bool
 
 	// ConversationCreated runs inside every transaction that creates or forks a
 	// conversation, after the conversation record is staged. A plain Session
@@ -175,10 +182,7 @@ func (s *Session) Seal() {
 		return
 	}
 	s.closed = true
-	if s.holdTimer != nil && s.holdTimer.cancel != nil {
-		s.holdTimer.cancel()
-		s.holdTimer.cancel = nil
-	}
+	s.cancelHoldTimer()
 	listeners := s.closeListeners
 	s.closeListeners = nil
 	for _, l := range listeners {
@@ -307,9 +311,15 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 		s.sweepDocuments()
 		return nil, nil
 	}
+	if s.ReadOnly {
+		// Refused before the store: the Session stays healthy, and the caller sees why (session.ts #runCommit).
+		tx.abortChanges()
+		s.sweepDocuments()
+		return nil, errReadOnlyCommit
+	}
 	if tx.scope.Deferred {
-		if held := tx.holdable(writes); held != nil {
-			return s.hold(tx, held)
+		if tx.holdable(writes) {
+			return s.hold(tx)
 		}
 	}
 	if !tx.settledTaken {
@@ -346,10 +356,9 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	}
 	tables := len(changes)
 	changes = append(changes, docs...)
-	pub := &Publication{Seq: seq, Changes: changes}
+	pub := s.newPublication(Publication{Seq: seq, Changes: changes})
 	if storedDocs != nil {
-		stored := make([]Change, 0, tables+len(storedDocs))
-		pub.Stored = append(append(stored, changes[:tables]...), storedDocs...)
+		pub.Stored = append(append([]Change(nil), changes[:tables]...), storedDocs...)
 		docs = storedDocs
 	}
 	for _, change := range docs {
@@ -363,6 +372,9 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	s.sweepDocuments()
 	return pub, nil
 }
+
+// newPublication is the one place a Publication is allocated.
+func (s *Session) newPublication(p Publication) *Publication { return &p }
 
 // InJob reports whether a Loop line job body is running.
 func (s *Session) InJob() bool { return s.inJob }
@@ -409,7 +421,7 @@ func (s *Session) loadDocument(def *DocDef, id string, addr Address) (*loadedDoc
 			return cached, nil
 		}
 		// The reload must find what memory holds: held changes are stored before their tracker goes.
-		if err := s.dropHeld(mustInt(cached.record, "id")); err != nil {
+		if err := s.dropHeld(cached); err != nil {
 			return nil, err
 		}
 		s.dropDocument(id)

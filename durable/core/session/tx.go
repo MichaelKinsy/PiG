@@ -112,8 +112,10 @@ type docPlan struct {
 	content   *Write
 	change    *planChange
 	convID    ID
-	// held is set when this commit also stores held changes of the incarnation (held.go takeHeld).
-	held *heldPlan
+	// held is set (hasHeld) when this commit also stores held changes of the incarnation (held.go takeHeld), whose content is stored.
+	held    heldPlan
+	hasHeld bool
+	stored  Write
 }
 
 // Tx stages one atomic commit. Every method must run inside the callback that
@@ -129,7 +131,7 @@ type Tx struct {
 	settled []Write // the writes of a commit a *NeedGate held
 	// taken is the holds whose changes this commit stores with its own (held.go takeHeld); settledTaken marks the settled writes
 	// as already carrying them.
-	taken        []*heldDocument
+	taken        []*loadedDoc
 	settledTaken bool
 	// The maps below are made by their first write: most transactions of a step write none of them, and a nil map reads as empty.
 	createdConvs      map[ID]bool

@@ -4,6 +4,7 @@
 // HostSession discards the handle (ADR D16).
 import { errorMessage } from "./errors.ts"
 import { expandRecipe } from "./recipe.ts"
+import { PartialPatcher } from "./partial.ts"
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context"
 import { copyJson, type Context, type JsonValue } from "@earendil-works/chord"
 import { EFFECT } from "./abi.ts"
@@ -45,6 +46,8 @@ export interface EffectRuntime {
   env?: (target: { conversationId: number; cwd?: string; read: unknown }, context: Context) => unknown | Promise<unknown>
   /** `HarnessOptions.onReport`: extension failures that do not fail the calling operation. */
   report(error: unknown, info: { type: string }): void
+  /** `HarnessOptions.now`, the Harness clock a tool's `api.now()` reads; `Date.now` when absent. */
+  now?: () => number
   /** Credentials for a wire-plane request (`model_http`'s `auth`): headers to add. */
   authorize?: (auth: unknown) => Record<string, string> | Promise<Record<string, string>>
   fetch?: typeof fetch
@@ -68,10 +71,12 @@ const MAX_BATCH = 64
 
 class EventBatch {
   private readonly events: any[] = []
+  private readonly patcher = new PartialPatcher()
   private armed = false
   private readonly deliver: (json: string) => void
   constructor(deliver: (json: string) => void) { this.deliver = deliver }
   push(event: any) {
+    this.patcher.observe(event)
     const terminal = event.type === "done" || event.type === "error"
     const partial = event.partial
     const slim = partial === undefined ? event : partial.content?.length === 0 ? { ...event, partial: { ...partial, content: [] } } : { ...event, partial: null, __partial: partial }
@@ -86,7 +91,7 @@ class EventBatch {
     const json = JSON.stringify(this.events.map((event, i) => {
       if (event.__partial === undefined) return event
       const { __partial, ...rest } = event
-      return i === last ? { ...rest, partial: __partial } : rest
+      return i === last ? { ...rest, partial: this.patcher.patch(__partial) } : rest
     }))
     this.events.length = 0
     this.deliver(json)
@@ -216,6 +221,8 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
       get models() { return rt.models },
       registry: rt.snapshot?.(),
       env: envs.get(p.taskId),
+      // tool.ts now: the Harness clock, which throws once the invocation has ended (scheduler.ts runtime).
+      now: () => { invocation.binding.check(); return (rt.now ?? Date.now)() },
       outputWindow: p.outputWindow ?? undefined,
       output: (chunk: string | Uint8Array, skipped?: { bytes: number; newlines: number; endsWithNewline: boolean }) => {
         live()

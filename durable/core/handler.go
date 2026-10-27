@@ -43,8 +43,12 @@ type handler struct {
 	payloadFree, payloadUsed [][]byte
 
 	b *abi.Builder
+	// sent is the documents whose value the host holds (tx.go sentValues).
+	sent idSet
 	// closeErr is the error of the store of held changes at close, which close() rejects with.
 	closeErr error
+	// closeStage is 1 once the close job wrote the stopped tasks back (closeJob).
+	closeStage uint8
 	// refs counts what holds each origin of a host call; pinned are the holds a parked Loop's queue has taken; bareOrigin is the
 	// current origin of a core without a Loop (origin.go).
 	refs       originRefs
@@ -68,7 +72,8 @@ type handler struct {
 	mode    string // "harness" or "session"
 	// sweeps are the Session-mode sweep jobs waiting for the end of the step (sweep.go); cacheSent and cacheSizes are the last
 	// document cache sizes published.
-	sweeps []func()
+	sweeps     []func() error
+	microtasks []func()
 	// stepNo numbers the steps the handler ran; hops chains carry the number of the step that opened them.
 	stepNo     uint64
 	cacheSent  bool
@@ -198,67 +203,15 @@ func (h *handler) handle(ev *abi.Event) error {
 		// Close writes the tasks it stopped back as pending, on the line after the commits admitted before the seal (session.ts
 		// writeAtClose, read when its job runs); a Storage that holds the commit holds the job, which runs again after the answer.
 		// The close follows the job's completion: its statements are on a hops chain until then.
-		writeBack := func() error {
-			if h.sched == nil || h.sess.Failure() != nil {
-				return nil
-			}
-			if err := h.sched.WriteBack(h.sched.CloseWrites()); err != nil && session.IsNeedGate(err) {
-				return err
-			}
-			return nil
-		}
-		// Last, after the writes at close and while the trackers are still here, the held changes of deferred commits are stored: a
-		// failed Session writes nothing, a failing store fails it, and the close still ends (session.ts close, #storeHolds).
-		storeHolds := func() error {
-			if h.sess.Failure() != nil {
-				return nil
-			}
-			err := h.sess.StoreHolds()
-			if err != nil && !session.IsNeedGate(err) {
-				h.closeErr = err
-				return nil
-			}
-			return err
-		}
-		finish := func() {
-			if h.loop != nil && h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
-				h.loop.LineBare(func() error {
-					if err := storeHolds(); err != nil {
-						return err
-					}
-					h.flushHeld()
-					h.closeWhenQuiet()
-					return nil
-				})
-				return
-			}
-			if h.loop == nil && h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
-				var again func()
-				again = func() {
-					if err := storeHolds(); err != nil {
-						h.cg.resume = again
-						return
-					}
-					h.closeWhenQuiet()
-				}
-				again()
-				return
-			}
+		switch {
+		case h.loop == nil && h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil:
+			h.closeSession()
+		case h.loop != nil && (h.loop.Busy() || (h.sched != nil && len(h.sched.CloseWrites()) > 0) || (h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil)):
+			// A bare job: the write-back takes no job duration of its own, and its statements go out with the close.
+			h.loop.LineBare(h.closeJob)
+		default:
 			h.closeWhenQuiet()
 		}
-		if h.loop != nil && (h.loop.Busy() || (h.sched != nil && len(h.sched.CloseWrites()) > 0)) {
-			// A bare job: the write-back takes no job duration of its own, and its statements go out with the close.
-			h.loop.LineBare(func() error {
-				if err := writeBack(); err != nil {
-					return err
-				}
-				h.flushHeld()
-				finish()
-				return nil
-			})
-			return nil
-		}
-		finish()
 		return nil
 	case abi.EventTx:
 		return h.onTx(ev)
@@ -285,6 +238,41 @@ func (h *handler) handle(ev *abi.Event) error {
 		return h.onHopped(ev)
 	}
 	return ErrNotImplemented
+}
+
+// closeJob is the close's line job: the write-back of the tasks it stopped, then the held changes of deferred commits, which Pi
+// stores last, after the writes at close and while the trackers are still here (session.ts close, #storeHolds). Each is a Storage
+// commit the host's Storage may hold (a *NeedGate runs the job again from the start), so closeStage remembers what was done. A
+// failed Session writes nothing; a failing store fails it and still ends the close, which then rejects with that error.
+func (h *handler) closeJob() error {
+	if h.closeStage == 0 {
+		if h.sched != nil && h.sess.Failure() == nil {
+			if err := h.sched.WriteBack(h.sched.CloseWrites()); err != nil && session.IsNeedGate(err) {
+				return err
+			}
+		}
+		h.closeStage = 1
+		h.flushHeld()
+	}
+	if h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
+		err := h.sess.StoreHolds()
+		if session.IsNeedGate(err) {
+			return err
+		}
+		if err != nil {
+			h.closeErr = err
+		}
+		h.flushHeld()
+	}
+	h.closeWhenQuiet()
+	return nil
+}
+
+// closeSession is closeJob for a core with no Loop (Session mode), run again when the host's Storage answered the commit it held.
+func (h *handler) closeSession() {
+	if err := h.closeJob(); session.IsNeedGate(err) {
+		h.cg.retry = retryClose
+	}
 }
 
 // closeWhenQuiet closes once every hops chain the core parked has run: a line job's statements (and its completion) wait on one
@@ -360,6 +348,8 @@ func (h *handler) onOpen(ev *abi.Event) error {
 	// The host admits calls itself (the native driver's Close seals ahead of events its admitted callers have not posted yet): a
 	// call it admitted runs after the seal, as a call that entered Pi's line before close() does.
 	h.sess.HostAdmits, _ = boolOf(h.open, "hostAdmission")
+	// HarnessOptions.readOnly: the Session refuses commits with writes, and the scheduler loads live tasks as committed and runs nothing.
+	h.sess.ReadOnly, _ = boolOf(h.open, "readOnly")
 	h.sess.SubscribeCommits(h.publish)
 	h.opened = true
 	h.mintNext = live.NextID
@@ -504,6 +494,8 @@ func errorName(err error) string {
 	// First: a SessionFailed carries the Storage error that failed the Session as its cause, which may be a thrown error.
 	case errors.Is(err, session.ErrSessionFailed):
 		return "SessionFailed"
+	case errors.Is(err, session.ErrReadOnlySession):
+		return "ReadOnlySession"
 	case errors.As(err, &rej):
 		return rej.Name
 	case errors.As(err, &thrown):

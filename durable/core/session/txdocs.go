@@ -716,7 +716,7 @@ func (tx *Tx) adopt(seq Seq) (observed, stored []Change, err error) {
 		default:
 			continue
 		}
-		if p.held == nil {
+		if !p.hasHeld {
 			pubs = append(pubs, change)
 			if storedSet {
 				storedPubs = append(storedPubs, change)
