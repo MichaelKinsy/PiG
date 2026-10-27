@@ -4,6 +4,7 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -14,8 +15,12 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// TranscriptItem is one row of a client's transcript: a TranscriptEntry, a TranscriptGap, or a TranscriptEarlier.
-type TranscriptItem interface{ transcriptItem() }
+// TranscriptItem is one row of a client's transcript: a TranscriptEntry, a TranscriptGap, or a TranscriptEarlier. Kind is the
+// discriminator of Pi's TranscriptItem union ("entry", "gap" or "earlier"), which each variant also writes as its JSON "kind".
+type TranscriptItem interface {
+	transcriptItem()
+	Kind() string
+}
 
 // TranscriptEntry is an entry the client has.
 type TranscriptEntry struct{ Entry durable.EntryRecord }
@@ -30,6 +35,39 @@ type TranscriptEarlier struct{}
 func (TranscriptEntry) transcriptItem()   {}
 func (TranscriptGap) transcriptItem()     {}
 func (TranscriptEarlier) transcriptItem() {}
+
+// Kind is "entry".
+func (TranscriptEntry) Kind() string { return "entry" }
+
+// Kind is "gap".
+func (TranscriptGap) Kind() string { return "gap" }
+
+// Kind is "earlier".
+func (TranscriptEarlier) Kind() string { return "earlier" }
+
+// MarshalJSON writes Pi's { kind: "entry", entry }.
+func (item TranscriptEntry) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Kind  string              `json:"kind"`
+		Entry durable.EntryRecord `json:"entry"`
+	}{item.Kind(), item.Entry})
+}
+
+// MarshalJSON writes Pi's { kind: "gap", after, upTo }.
+func (item TranscriptGap) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Kind  string          `json:"kind"`
+		After durable.EntryId `json:"after"`
+		UpTo  durable.EntryId `json:"upTo"`
+	}{item.Kind(), item.After, item.UpTo})
+}
+
+// MarshalJSON writes Pi's { kind: "earlier" }.
+func (item TranscriptEarlier) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Kind string `json:"kind"`
+	}{item.Kind()})
+}
 
 // TranscriptView is the conversation view as a renderer sees it: Items, the client's whole transcript, instead of the window.
 type TranscriptView struct {

@@ -9,10 +9,12 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -595,4 +597,38 @@ func transcriptEntriesIn(view *TranscriptView) []durable.EntryRecord {
 		}
 	}
 	return entries
+}
+
+// Pi's TranscriptItem is a union discriminated by kind: each Go variant reports it and writes it as its JSON kind, so a
+// TranscriptView has Pi's wire form.
+func TestTranscriptItemsAreWrittenWithPisKind(t *testing.T) {
+	items := []TranscriptItem{
+		TranscriptEarlier{},
+		TranscriptEntry{Entry: durable.EntryRecord{Id: 3, ConversationId: 1, Kind: "note"}},
+		TranscriptGap{After: 3, UpTo: 7},
+	}
+	var wire []string
+	for _, item := range items {
+		raw, err := json.Marshal(item)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wire = append(wire, string(raw))
+	}
+	want := []string{`{"kind":"earlier"}`, `{"kind":"entry","entry":{"id":3,"conversationId":1,"kind":"note"}}`, `{"kind":"gap","after":3,"upTo":7}`}
+	if !slices.Equal(wire, want) {
+		t.Fatalf("items written as %v, want %v", wire, want)
+	}
+	for index, kind := range []string{"earlier", "entry", "gap"} {
+		if items[index].Kind() != kind {
+			t.Fatalf("item %d has kind %q, want %q", index, items[index].Kind(), kind)
+		}
+	}
+	view, err := json.Marshal(TranscriptView{Items: items[2:]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(view); !strings.Contains(got, `"items":[{"kind":"gap","after":3,"upTo":7}]`) {
+		t.Fatalf("a TranscriptView writes its items as %s", got)
+	}
 }
