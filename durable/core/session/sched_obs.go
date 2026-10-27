@@ -8,7 +8,8 @@ import (
 )
 
 func (s *Scheduler) scheduleReconcile() {
-	if s.reconcileScheduled || s.closing {
+	// A read-only reconcile could only fail: what it writes is refused.
+	if s.reconcileScheduled || s.closing || s.sess.ReadOnly {
 		return
 	}
 	s.reconcileScheduled = true
@@ -28,7 +29,7 @@ func (s *Scheduler) abortLater(inv *invocation) {
 // scheduleReconcileAfterRead is scheduleReconcile for a chain load: Pi's #loadChain schedules it after its Storage read
 // resolved, so the microtask runs once the job's reads so far have taken their ticks, not at the job's start.
 func (s *Scheduler) scheduleReconcileAfterRead() {
-	if s.reconcileScheduled || s.closing {
+	if s.reconcileScheduled || s.closing || s.sess.ReadOnly {
 		return
 	}
 	if s.env.ReadTicks == nil || s.env.After == nil {
@@ -416,7 +417,6 @@ func (s *Scheduler) drain() {
 func (s *Scheduler) reserve(then func([]*reservation, error)) {
 	var reservations []*reservation
 	var abandoned []ID
-	var checked, idle bool
 	var faulted []faultedTask
 	cleanup := func() {
 		for _, r := range reservations {
@@ -432,10 +432,13 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		faulted = nil
 		// The job runs again from its start when a Storage gate or a read answers; Pi's callback runs once and decides at its start
 		// (scheduler.ts #reserve), so a close that sealed meanwhile does not undo a reservation the first run made.
-		if !checked {
-			checked, idle = true, !s.enabled || s.closing
+		if s.reserveSkip == pinUnset {
+			s.reserveSkip = pinRun
+			if !s.enabled || s.closing {
+				s.reserveSkip = pinSkip
+			}
 		}
-		if idle {
+		if s.reserveSkip == pinSkip {
 			return nil
 		}
 		for _, id := range s.abandoned.Values() {
@@ -544,6 +547,7 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		}
 		return nil
 	}, TxScope{}, func(err error) {
+		s.reserveSkip = pinUnset
 		if err != nil {
 			cleanup()
 			then(nil, err)

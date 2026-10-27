@@ -11,8 +11,9 @@ type Session = {
 }
 
 export class SessionImpl {
-  constructor(storage: Storage, now?: () => number, documentRetentionMs?: () => number | undefined) {
-    const session = createLazySession(storage, { now, documentRetentionMs }) as Session
+  // `setTimer` (the fourth argument of session.ts) is the deferred-commit lane's: it is accepted here and not yet used.
+  constructor(storage: Storage, now?: () => number, documentRetentionMs?: () => number | undefined, _setTimer?: unknown, readOnly = false) {
+    const session = createLazySession(storage, { now, documentRetentionMs, readOnly }) as Session
     // The descriptors, not the values: documentCacheSizes is a getter.
     return Object.defineProperties(this, { ...Object.getOwnPropertyDescriptors(session), commitWith: { value: session.commit, writable: true, configurable: true, enumerable: true } })
   }

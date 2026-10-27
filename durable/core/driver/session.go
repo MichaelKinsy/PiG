@@ -24,9 +24,6 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
-// ErrUnsupported is the error of a public operation the native session does not serve yet (PROTOCOL.md, "Not supported").
-var ErrUnsupported = errors.New("not supported by the Durable core session yet")
-
 // RootConversationID is the reserved ID of the root conversation.
 const RootConversationID durable.ConversationId = 1
 
@@ -118,10 +115,6 @@ func Open(ctx context.Context, cfg SessionConfig) (harness.Harness, error) {
 func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 	if cfg.Core == nil || cfg.DB == nil || (cfg.Harness.Models == nil && cfg.Harness.ModelsFunc == nil) || cfg.Harness.Registry == nil {
 		return nil, errors.New("driver.Open needs Core, DB, Harness.Models and Harness.Registry")
-	}
-	if cfg.Harness.ReadOnly {
-		// HarnessOptions.readOnly (Pi be14d9732) is served by the Go Harness only; ignoring it would open a writer.
-		return nil, fmt.Errorf("HarnessOptions.ReadOnly: %w", ErrUnsupported)
 	}
 	// Pi harness.ts:178-179: `const report = safeReport(options.onReport); const now = safeNow(options.now, report)`.
 	cfg.Harness.OnReport = harness.SafeReport(cfg.Harness.OnReport)
@@ -285,7 +278,7 @@ func (s *coreSession) openPayload() ([]byte, error) {
 	//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads its members by name and stores none of this object
 	return json.Marshal(map[string]any{
 		"mode": mode, "settings": s.settingsJSON(), "models": s.catalogue(), "registry": snapshot, "sidecar": sidecar, "delta": true, "hostAdmission": true,
-		"hasEnv": s.cfg.Harness.Env != nil, "onWake": s.cfg.Harness.OnWake != nil,
+		"hasEnv": s.cfg.Harness.Env != nil, "onWake": s.cfg.Harness.OnWake != nil, "readOnly": s.cfg.Harness.ReadOnly,
 	})
 }
 
@@ -337,6 +330,10 @@ func (s *coreSession) Resume() {
 		s.mu.Unlock()
 		panic(harness.ErrClosed)
 	}
+	if s.cfg.Harness.ReadOnly {
+		s.mu.Unlock()
+		panic(durable.NewReadOnlySession("running tasks")) // scheduler.ts resume throws ReadOnlySession
+	}
 	s.resumed = true
 	s.mu.Unlock()
 	//portlint:allow ctxbackground Harness.resume() takes no context (harness.ts resume): the event is a notification, not cancellable work
@@ -344,9 +341,15 @@ func (s *coreSession) Resume() {
 }
 
 // kick is the scheduler's own resume, which the calls that ask for progress make (scheduler.ts resume: it enables scheduling and
-// never fails). Only Harness.resume asserts that the Harness is open (harness.ts :238), so a call that races Close is rejected
-// as closed by the call itself and must not panic here.
-func (s *coreSession) kick() { s.resume() }
+// fails only on a read-only Harness, with ReadOnlySession). Only Harness.resume asserts that the Harness is open (harness.ts :238), so
+// a call that races Close is rejected as closed by the call itself and must not fail here.
+func (s *coreSession) kick() error {
+	if s.cfg.Harness.ReadOnly {
+		return durable.NewReadOnlySession("running tasks")
+	}
+	s.resume()
+	return nil
+}
 
 // resume enables scheduling and reports false when the Session is closed.
 func (s *coreSession) resume() bool {

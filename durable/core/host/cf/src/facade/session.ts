@@ -12,17 +12,17 @@ const NO_MODELS = {
 }
 const NO_REGISTRY = { snapshot: () => ({ installed: () => [], extension: () => undefined, tools: () => [], sections: () => [], task: () => undefined, tasks: () => [] }), subscribe: () => () => {} }
 
-export function createLazySession(storage: Storage, options: { now?: () => number; documentRetentionMs?: () => number | undefined } = {}): unknown {
+export function createLazySession(storage: Storage, options: { now?: () => number; documentRetentionMs?: () => number | undefined; readOnly?: boolean } = {}): unknown {
   let opened: Promise<Harness> | undefined
   // types.ts Session.closed: why the Session ended. A Session nobody used closes without opening the core.
   const ended = Promise.withResolvers<unknown>()
   let harness: Harness | undefined
   const open = () => {
     if (opened === undefined) {
-      const { now, documentRetentionMs } = options
+      const { now, documentRetentionMs, readOnly } = options
       // The retention is read live at each use, as Session reads its callback.
       const settings = documentRetentionMs === undefined ? undefined : { get documentRetentionMs() { return documentRetentionMs() } }
-      opened = Harness.open(storage, { models: NO_MODELS, registry: NO_REGISTRY as never, mode: "session", ...(now === undefined ? {} : { now }), ...(settings === undefined ? {} : { settings }) }, BACKGROUND_CONTEXT)
+      opened = Harness.open(storage, { models: NO_MODELS, registry: NO_REGISTRY as never, mode: "session", ...(readOnly === true ? { readOnly } : {}), ...(now === undefined ? {} : { now }), ...(settings === undefined ? {} : { settings }) }, BACKGROUND_CONTEXT)
       void opened.then(h => { harness = h })
       void opened.then(h => h.closed).then(r => ended.resolve(r), () => {})
     }

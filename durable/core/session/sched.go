@@ -201,6 +201,7 @@ type Scheduler struct {
 	closing            bool
 	dirty              bool
 	draining           bool
+	reserveSkip        uint8 // the decision of the reservation job's first run, which a later run of the same job keeps (reserve)
 
 	// observing is set while the commit observer runs (it runs inside the Storage's adopt).
 	observing bool
@@ -218,6 +219,13 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 	sess.OnFail = func(err error) { s.report(err, obj("type", "session_failed")) }
 	return s
 }
+
+// reserveSkip values: not decided yet, decided to reserve, decided to reserve nothing.
+const (
+	pinUnset uint8 = iota
+	pinRun
+	pinSkip
+)
 
 // failSession fails the Session, which reports it, for a failure in one of the scheduler's own commits: no extension code runs
 // in them, so a failure is a storage failure, a host callback, or a bug, and running the pass again fixes none. Ignored once
@@ -368,6 +376,10 @@ func (s *Scheduler) Open(done func(error)) {
 		for _, recs := range scans {
 			for _, rec := range recs {
 				s.track(nil, rec)
+				// Read-only, open only loads them: a running task stays as committed, running in another process.
+				if s.sess.ReadOnly {
+					continue
+				}
 				if getBool(rec, "abandonOnRestart") {
 					s.abandoned.Add(mustInt(rec, "id"))
 				}
@@ -392,7 +404,7 @@ func (s *Scheduler) Open(done func(error)) {
 		}
 		return nil
 	}, TxScope{}, func(err error) {
-		if err == nil {
+		if err == nil && !s.sess.ReadOnly {
 			for _, rec := range parked {
 				kind, _ := getStr(rec, "kind")
 				restarts := restartsOf(rec) + 1
@@ -422,7 +434,9 @@ func (s *Scheduler) Retry(id ID, cancel *Cancel, then func(error)) {
 		}
 		return tx.stageTask(progressed(current))
 	}, TxScope{}, func(err error) {
-		if err == nil {
+		if err == nil && s.sess.ReadOnly {
+			err = errReadOnlyRunning
+		} else if err == nil {
 			s.Resume()
 		}
 		then(err)
@@ -438,6 +452,10 @@ func (s *Scheduler) addFailFast(id ID) {
 // Resume enables scheduling, makes sleeping tasks that are due runnable (a host wakeup, such as an alarm, calls this), and
 // starts any reservable task.
 func (s *Scheduler) Resume() {
+	// A read-only Harness runs nothing; the host refuses the call before it reaches here (scheduler.ts resume throws ReadOnlySession).
+	if s.sess.ReadOnly {
+		return
+	}
 	s.enabled = true
 	s.wakeDue()
 	s.kick()
@@ -828,6 +846,11 @@ func (s *Scheduler) Seal() {
 // running task back as pending: its invocation was stopped by the close, or its reservation settled while the close began. It
 // reads the records as they stand now, so the write keeps what commits admitted before the seal wrote, such as an abort mark.
 func (s *Scheduler) CloseWrites() []*jv.Object {
+	// A read-only Harness reserved nothing: the running tasks it loaded run in another process (scheduler.ts join writes back only the tasks
+	// its own invocations ran).
+	if s.sess.ReadOnly {
+		return nil
+	}
 	var records []*jv.Object
 	for _, rec := range s.live.values() {
 		if taskStatus(rec) != StatusRunning {
