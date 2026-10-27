@@ -110,7 +110,7 @@ func TestConformance_FileMutationQueueAgreesAcrossSDKs(t *testing.T) {
 		return got.Log, got.Errors
 	}
 
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
