@@ -113,27 +113,8 @@ func TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned(t *te
 
 	h, root = open()
 	t.Cleanup(func() { _ = h.Close(context.Background()) })
-	var endsMu sync.Mutex
-	ends := map[string]*durable.NestedToolExecutionResult{}
-	runEnded := false
-	stream, err := harness.WatchEvents(t.Context(), h, root.Id())
-	if err != nil {
-		t.Fatal(err)
-	}
-	stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
-		batch := change.Value
-		endsMu.Lock()
-		defer endsMu.Unlock()
-		for _, event := range batch {
-			if end, ok := event.(harness.ToolExecutionEndEvent); ok {
-				ends[end.ToolCallId] = end.Result
-			}
-			if _, ok := event.(harness.RunEndEvent); ok {
-				runEnded = true
-			}
-		}
-		return nil
-	})
+	history := viewHistory(t, h, root.Id())
+	nested := nestedResults(t, h)
 	h.Resume()
 	reopened, err := h.Submission(t.Context(), sub.Id())
 	if err != nil {
@@ -143,29 +124,24 @@ func TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned(t *te
 	if err := h.WaitForIdle(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	// The stream delivers on its own goroutine, so idle does not mean delivered: wait for the run's end before stopping,
-	// which drops undelivered batches.
-	pollUntil(t, "the run's end event", func() bool {
-		endsMu.Lock()
-		defer endsMu.Unlock()
-		return runEnded
-	})
-	_, _ = stream.Stop()
 	mu.Lock()
 	if runs["started"] != 1 || runs["gated"] != 0 {
 		t.Fatalf("runs %v, want started 1 and gated 0", runs)
 	}
 	mu.Unlock()
-	endsMu.Lock()
-	defer endsMu.Unlock()
-	started, gate := ends["c1/1"], ends["c1/2"]
-	if started == nil || gate == nil {
-		t.Fatalf("end results c1/1 %v, c1/2 %v, want both", started, gate)
-	}
-	if codes := coreCodes(*started); !slices.Equal(codes, []string{"interrupted"}) || !started.IsError || started.HasStructuredOutput || !started.HasDetails {
+	// The core delivers on its own goroutine, so idle does not mean the nested results were delivered.
+	pollUntil(t, "the nested results", func() bool {
+		_, startedFound := nested.nestedResultOf(history.Live(), "c1/1")
+		_, gateFound := nested.nestedResultOf(history.Live(), "c1/2")
+		return startedFound && gateFound
+	})
+	history.Detach()
+	started, _ := nested.nestedResultOf(history.Live(), "c1/1")
+	gate, _ := nested.nestedResultOf(history.Live(), "c1/2")
+	if codes := coreCodes(started); !slices.Equal(codes, []string{"interrupted"}) || !started.IsError || started.HasStructuredOutput || !started.HasDetails {
 		t.Fatalf("c1/1 end result = %+v, want an interrupted error that keeps its details and no structured output", started)
 	}
-	if codes := coreCodes(*gate); !slices.Equal(codes, []string{"abandoned"}) {
+	if codes := coreCodes(gate); !slices.Equal(codes, []string{"abandoned"}) {
 		t.Fatalf("c1/2 codes = %v, want abandoned", codes)
 	}
 }

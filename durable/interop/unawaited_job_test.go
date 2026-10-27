@@ -23,6 +23,7 @@ package interop
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -31,6 +32,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
@@ -75,7 +77,7 @@ func onlySeqDifferences(t *testing.T, piDump, goDump any) (seqDifferences int) {
 type session struct {
 	afterHello map[string]any // the reads the moment the first turn's Submission.Wait returned
 	settled    map[string]any // the reads once every task settled, before the Harness closed
-	events     []string       // the WatchEvents sequence of the root conversation, in delivery order
+	views      []string       // the root conversation's views in order: its pi.live value and its entry kinds, a view that repeats the last one dropped
 }
 
 // run runs scenario 2 over path with the job unawaited or awaited, its terminal commit held back or not, and records the
@@ -88,20 +90,14 @@ func run(t *testing.T, path string, unawaited, hold bool) *session {
 		held = make(chan struct{})
 	}
 	holdJobTerminal = held
-	var stream *harness.AgentEventStream
+	var recording *viewsRecording
 	out := &session{}
-	var mu sync.Mutex
 	hooks.afterOpen = func(t *testing.T, opened harness.Harness) {
-		stream = must(harness.WatchEvents(background, opened, rootOf(t, opened).Id()))
-		stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
-			batch := change.Value
-			mu.Lock()
-			defer mu.Unlock()
-			for _, event := range batch {
-				out.events = append(out.events, event.EventType())
-			}
-			return nil
-		})
+		recording = &viewsRecording{ended: make(chan struct{})}
+		observation := must(opened.ObserveConversation(background, rootOf(t, opened).Id(), recording, nil))
+		if err := recording.add(observation.Value()); err != nil {
+			t.Fatal(err)
+		}
 	}
 	hooks.afterHello = func(t *testing.T, opened harness.Harness) {
 		out.afterHello = transientReads(t, opened)
@@ -118,13 +114,54 @@ func run(t *testing.T, path string, unawaited, hold bool) *session {
 		hooks.afterOpen, hooks.afterHello, hooks.beforeClose = nil, nil, nil
 	})
 	runScenario2(t, path)
-	// Closing the Harness ends the watch after the deliveries queued before it.
-	<-stream.Closed()
-	mu.Lock()
-	defer mu.Unlock()
-	out.events = slices.Clone(out.events)
+	// Closing the Harness ends the observation after the views queued before it.
+	<-recording.ended
+	recording.mu.Lock()
+	defer recording.mu.Unlock()
+	if recording.failed != nil {
+		t.Fatal(recording.failed)
+	}
+	out.views = recording.views
 	return out
 }
+
+// viewsRecording is the observer of the root conversation's views.
+type viewsRecording struct {
+	mu     sync.Mutex
+	views  []string
+	ended  chan struct{}
+	failed error
+}
+
+// add records a view as its pi.live value and its entry kinds: a view that repeats the last one (a commit of another
+// document) adds nothing.
+func (recording *viewsRecording) add(view harness.ConversationView) error {
+	kinds := make([]string, len(view.Entries))
+	for index, entry := range view.Entries {
+		kinds[index] = entry.Kind
+	}
+	live, _ := view.Docs.Get(harness.LiveDoc.AnyDefinition().Kind)
+	encoded, err := json.Marshal(map[string]any{"live": live, "entries": kinds})
+	if err != nil {
+		return err
+	}
+	recording.mu.Lock()
+	defer recording.mu.Unlock()
+	if len(recording.views) == 0 || recording.views[len(recording.views)-1] != string(encoded) {
+		recording.views = append(recording.views, string(encoded))
+	}
+	return nil
+}
+
+func (recording *viewsRecording) Advance(_ context.Context, change chord.WatchChange[harness.ConversationView]) {
+	if err := recording.add(change.Value); err != nil {
+		recording.mu.Lock()
+		recording.failed = err
+		recording.mu.Unlock()
+	}
+}
+
+func (recording *viewsRecording) End(error) { close(recording.ended) }
 
 // transientReads are the reads of a user whose Submission.Wait just returned: the live tasks and the job's record.
 func transientReads(t *testing.T, opened harness.Harness) map[string]any {
@@ -216,8 +253,8 @@ func TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder(t *testing.T) {
 
 	// Settled reads: the same in both orders.
 	expectSame(t, "settled reads, job awaited (first) and job after the answer (second)", viaJSON(t, control.settled), viaJSON(t, forced.settled))
-	if !slices.Equal(control.events, forced.events) {
-		t.Errorf("WatchEvents sequence, job awaited %v, job after the answer %v", control.events, forced.events)
+	if !slices.Equal(control.views, forced.views) {
+		t.Errorf("view sequence, job awaited %v, job after the answer %v", control.views, forced.views)
 	}
 
 	// Pi's content: the raw tables differ from Pi Durable's in commit sequence numbers only, and the API view not at all.
