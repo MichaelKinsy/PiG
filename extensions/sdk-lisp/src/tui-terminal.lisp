@@ -28,13 +28,13 @@
     (error () nil)))
 
 (defun tt-detect-from-environment (env platform tmux-forwards-hyperlink)
-  (flet ((get (key) (let ((v (gethash key env))) (if (stringp v) v ""))))
-    (let* ((term-program (tui-js-lower (get "TERM_PROGRAM"))) (terminal-emulator (tui-js-lower (get "TERMINAL_EMULATOR")))
-           (term (tui-js-lower (get "TERM"))) (color-term (tui-js-lower (get "COLORTERM")))
+  (flet ((env-get (key) (let ((v (gethash key env))) (if (stringp v) v ""))))
+    (let* ((term-program (tui-js-lower (env-get "TERM_PROGRAM"))) (terminal-emulator (tui-js-lower (env-get "TERMINAL_EMULATOR")))
+           (term (tui-js-lower (env-get "TERM"))) (color-term (tui-js-lower (env-get "COLORTERM")))
            (true-color-hint (or (member color-term '("truecolor" "24bit") :test #'string=)
                                 (and (>= (length term) 7) (string= "-direct" term :start2 (- (length term) 7))))))
       (flet ((starts (prefix text) (and (>= (length text) (length prefix)) (string= prefix text :end2 (length prefix))))
-             (set-p (key) (plusp (length (get key)))))
+             (set-p (key) (plusp (length (env-get key)))))
         (cond
           ((or (set-p "TMUX") (starts "tmux" term)) (make-tui-capabilities nil (and true-color-hint t) (and (funcall tmux-forwards-hyperlink) t)))
           ((starts "screen" term) (make-tui-capabilities nil (and true-color-hint t) nil))
