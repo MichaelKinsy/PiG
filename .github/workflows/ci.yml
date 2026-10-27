@@ -346,16 +346,16 @@ jobs:
           set -euo pipefail
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
-      # The pinned SBCL (automation/dev/toolchains.lock) builds and runs Lisp extension images; the conformance rows and make test-sdk-lisp
+      # The pinned SBCL (automation/dev/toolchains.lock) builds and runs Lisp extension images; the conformance rows, make test-sdk-lisp and the portmap shards (portmap-check requires it through test-prereqs)
       # fail without it. install-sbcl.sh installs the checksummed official binary, and the cache keeps the prefix for the pin.
       - name: Restore the pinned SBCL
-        if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
+        if: startsWith(matrix.shard, 'test-') || startsWith(matrix.shard, 'portmap-') || matrix.shard == 'toolchains'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-sbcl
           key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
       - name: Install the pinned SBCL
-        if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
+        if: startsWith(matrix.shard, 'test-') || startsWith(matrix.shard, 'portmap-') || matrix.shard == 'toolchains'
         shell: bash
         run: |
           set -euo pipefail

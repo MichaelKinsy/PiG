@@ -3516,6 +3516,28 @@
       ]
     },
     {
+      "id": "BF-228dbea",
+      "title": "fix(durable/core): follow the microtask schedule of Pi",
+      "symptom": "fix(durable/core): follow the microtask schedule of Pi",
+      "rootCause": "Submit returns two hops later (span of pi.durable.submit), a phase's decision commit continues three hops later (span of pi.durable.phase), runtime.commit returns one hop later, waitForIdle and waitForTask return as Pi's async methods, and a host-driven commit is published at Storage adoption. ticks.test.ts: submit 102, running 408 (F-ticks-gate, F-ticks-tools-gate on Pi).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "228dbea36a",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/hops_host_commit_test.go::TestAHostCommitIsAnsweredEarlyEnoughForItsCallerToResumeAtThePiJobEnd",
+        "durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit"
+      ]
+    },
+    {
       "id": "BF-2309604",
       "title": "Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in…",
       "symptom": "Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in the order the tool declares them.",
@@ -24853,6 +24875,27 @@
       ]
     },
     {
+      "id": "BF-abe0137",
+      "title": "fix(durable/core): deliver the extra hops of Pi without closures",
+      "symptom": "fix(durable/core): deliver the extra hops of Pi without closures",
+      "rootCause": "The submit span, the phase span, runtime.commit's return and the async client methods (waitForIdle, waitForTask) each added closures and captured variables, which put the TinyGo heap sites over the budget (\".\" 685 \u003e 679, session 531 \u003e 522).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "abe0137281",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit"
+      ]
+    },
+    {
       "id": "BF-ac0dc3b",
       "title": "An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation…",
       "symptom": "An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation, and spaces ending a list's last line render the empty row Pi's space token gives.",
@@ -27331,6 +27374,25 @@
         {
           "hash": "c416945cd5",
           "date": "2026-10-10"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-c4734ed",
+      "title": "fix(durable/core): the span's resume stage is one if, not a one-case switch",
+      "symptom": "fix(durable/core): the span's resume stage is one if, not a one-case switch",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c4734ed750",
+          "date": "2026-10-27"
         }
       ],
       "tests": []
