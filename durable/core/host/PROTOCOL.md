@@ -158,6 +158,8 @@ Known gap. The `published` notice of a commit follows the commit by a hops chain
 
 Recycle at a quiet point. `HostSession.quiet` is true when no event is queued, no effect or chain is running and no reopen is pending; the facade adds that no request, transaction or wait is unanswered (`Harness.quiet`). When the instance's linear memory is over `PoolOptions.highWater` (it never shrinks), the pool asks the idle object to give up its session (`Tenant.unload`; a Harness: `HostSession.recycle`, a Durable Object: its cache drop): the instance goes and the next event cold-opens a fresh one. The facade checks at the first quiet point after an event once the instance is over the mark, one microtask later so a caller's next request keeps the host busy.
 
+`test/examples-types.test.ts` type-checks the upstream examples against the follow pin's source mirror (`.upstream/current`, installed by `make durable-core-host-deps`), the Pi the facade's types come from, not against the corpus pin's checkout.
+
 Counters: `HostCounters.traps` (core traps caught) and `recycles` (handles replaced). Tests: `test/do-recovery.test.ts` (the Durable Object path), `test/host-recycle.test.ts` (the host loop against scripted cores), `test/recycle.test.ts` (a trap, before and after, at every event of a tool turn on the real core; a poison event; quiet recycling; a transaction at every trap point; a watch at every event of a commit), and `durable/contract` `robust recycle` (the crash scenario with a trap after each of its commits, wasm builds only).
 
 ## Not supported by the CF host yet

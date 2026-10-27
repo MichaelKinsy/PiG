@@ -1,4 +1,4 @@
-// The 32 upstream examples run unmodified against the candidate API (CONTRACT section 6), so each export they use must have
+// The upstream examples (at the follow pin) run unmodified against the candidate API (CONTRACT section 6), so each export they use must have
 // pi-durable's declaration. tools/check-examples-types.mjs type-checks them against the facade; any error in an example fails.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"

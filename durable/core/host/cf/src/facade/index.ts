@@ -3,7 +3,7 @@
 //
 // Every export has the declaration of @earendil-works/pi-durable: the implementations below are structurally looser (they take
 // ids as numbers and documents as plain definitions), so each is cast to its upstream type here and nowhere else. A caller sees
-// exactly pi-durable's types; `test/examples-types` compiles the 32 upstream examples against this module to prove it.
+// exactly pi-durable's types; `test/examples-types` compiles the upstream examples (at the follow pin) against this module to prove it.
 import type * as P from "@earendil-works/pi-durable"
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import * as agent from "./agent.ts"
