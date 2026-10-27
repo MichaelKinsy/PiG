@@ -2545,9 +2545,9 @@ rationale = "Missing cases: PORT_MAP records native Windows validation of the fi
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/tools_search_port_test.go#TestToolsGrepPort", "test:internal/codingagent/tools/spawn_arguments_test.go#TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes", "test:internal/codingagent/tools/grep_context_memory_test.go#TestGrepLineWindowMatchesTheWholeFileSplit"]
+rationale = "Pi 8c4e8738 passes --no-config first in ripgrep's argument list so RIPGREP_CONFIG_PATH cannot change the tool contract (#11203). Ported in internal/codingagent/tools/grep.go with the same argument order; TestToolsGrepPort sets a config of --fixed-strings and requires the regex a.b to match aXb, and the spawn-argument test compares the exact argv with Node's spawn. Delta at Pi fecc19e4 (#11398): getFileLines splits the context file at LF only after normalizing CRLF, because ripgrep counts lines at LF; a lone CR stays in its line and is removed when the line is displayed, so a context line after it is no longer off by one. Ported in internal/codingagent/tools/grep_line_window.go (a CR neither ends nor counts toward a stored line); TestToolsGrepPort ports the lone-CR case (before\\rprogress\\nneedle\\nafter, context 1) and TestGrepLineWindowMatchesTheWholeFileSplit compares the window with the LF-only whole-file split for every chunking and context."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/index.ts"

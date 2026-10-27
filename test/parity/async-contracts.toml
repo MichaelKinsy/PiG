@@ -1083,7 +1083,7 @@ path = "packages/coding-agent/src/core/tools/grep.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/grep.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/grep.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi fecc19e4: the changed line is the LF-only line split of the content that the awaited ops.readFile returned; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/ls.ts"

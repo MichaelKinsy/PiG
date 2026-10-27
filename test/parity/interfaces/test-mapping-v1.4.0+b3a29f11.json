@@ -6617,8 +6617,30 @@
     },
     {
       "path": "packages/coding-agent/test/tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:17e66b272e460f541a68320907bb801b28954dfc4396d3381860e1ebe6a27622"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:17e66b272e460f541a68320907bb801b28954dfc4396d3381860e1ebe6a27622",
+      "evidence": [
+        "internal/codingagent/tools/tools_read_port_test.go#TestToolsReadPort",
+        "internal/codingagent/tools/tools_edit_port_test.go#TestToolsWritePort",
+        "internal/codingagent/tools/tools_edit_port_test.go#TestToolsEditPort",
+        "internal/codingagent/tools/tools_edit_port_test.go#TestToolsEditCRLFPort",
+        "internal/codingagent/tools/edit_fuzzy_test.go#TestEditFuzzyMatchingUpstreamCases",
+        "internal/codingagent/tools/tools_cwd_port_test.go#TestToolsContextCWDPort",
+        "internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort",
+        "internal/codingagent/tools/tools_bash_port_unix_test.go#TestToolsBashSignalsPort",
+        "internal/codingagent/tools/tools_bash_port_unix_test.go#TestToolsLegacyWSLTransportPort",
+        "internal/codingagent/tools/tools_bash_port_test.go#TestToolsLsPort",
+        "internal/codingagent/tools/tools_search_port_test.go#TestToolsGrepPort",
+        "internal/codingagent/tools/tools_search_port_test.go#TestToolsFindPort",
+        "test/parity/scenarios/tools/16-tool-context-cwd.toml",
+        "test/parity/scenarios/tools/17-shell-operations.toml",
+        "internal/codingagent/tools/tools_test.go",
+        "internal/codingagent/tools/failure_details_test.go#TestBuiltinFailureDetails",
+        "coding/cli/rpc_tool_persistence_test.go#TestRPCEmptyReadTextPersistsAndReplays",
+        "internal/codingagent/tools/read_structured_upstream_test.go#TestReadStructuredContent",
+        "internal/codingagent/tools/grep_context_memory_test.go#TestGrepLineWindowMatchesTheWholeFileSplit"
+      ],
+      "rationale": "All 85 case sites. The 84 sites of the 0.87.1 review keep their evidence. Changed in 0.99.1 (TestToolsBashPort, TestToolsBashSignalsPort): :493 non-zero exit returns an error result with text \"out\\n\\n\\nCommand exited with code 3\" and structuredContent {output, truncated, exit_code, wall_time_seconds} plus the success and empty-output variants, replacing \"should handle command errors\"; :513 structured content returns up to 1 MiB of output (3000 lines whole, 300000 lines head and tail around an omission marker with full_output_path); :553 signal-killed commands are error results with partial output and exit code 137 or 143 instead of rejections. The recorded-oracle replay TestBashStructuredResultMatchesRecordedUpstream expects an oracle recorded at 0.99.2; its testdata is 0.99.1 and belongs to the oracle-golden lane, so it is not claimed here. Pi 1.0.4 asserts read structuredContent for text and images, ported in read_structured_upstream_test.go. Pi 02726086's parent 8c4e8738 adds one case, \"should ignore RIPGREP_CONFIG_PATH\" (tools.test.ts:912): TestToolsGrepPort runs it against a ripgrep config that sets --fixed-strings and requires the regex a.b to match aXb, and TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes compares the --no-config argument list with Node's spawn. Pi fecc19e4 (#11398) adds 'should keep context line numbers aligned with ripgrep when a file contains a lone CR' (:911): a file \"before\\\\rprogress\\\\nneedle\\\\nafter\" searched for needle with context 1 prints \"lone-cr.txt-1- beforeprogress\", \"lone-cr.txt:2: needle\" and \"lone-cr.txt-3- after\". Ported as the same-named subtest of TestToolsGrepPort (tools_search_port_test.go) with the same input and expected lines; the window reference in TestGrepLineWindowMatchesTheWholeFileSplit now splits at LF only, so every lone-CR and CR-LF input is checked at every chunking."
     },
     {
       "path": "packages/coding-agent/test/tree-selector.test.ts",
