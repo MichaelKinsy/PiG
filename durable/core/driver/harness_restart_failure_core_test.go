@@ -60,7 +60,9 @@ func streamingRig(t *testing.T, core bool) *restartRig {
 	one := 1
 	rig := newRestartRig(t, core, ai.FauxConfig{TokensPerSecond: 20, TokenSize: &ai.FauxTokenSize{Min: &one, Max: &one}})
 	rig.faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(strings.Repeat("z", 400))})
-	rig.configure(func(settings *harness.HarnessSettings) { settings.Progress = &harness.ProgressPolicyPatch{PersistWithinMs: new(0.0)} })
+	rig.configure(func(settings *harness.HarnessSettings) {
+		settings.Progress = &harness.ProgressPolicyPatch{PersistWithinMs: new(0.0)}
+	})
 	return rig
 }
 
@@ -1036,7 +1038,9 @@ func TestCoreDeferredGenerationPartialsAfterACrash(t *testing.T) {
 	eachEngine(t, func(t *testing.T, core bool) {
 		four := 4
 		rig := newRestartRig(t, core, ai.FauxConfig{TokensPerSecond: 80, TokenSize: &ai.FauxTokenSize{Min: &four, Max: &four}})
-		rig.configure(func(settings *harness.HarnessSettings) { settings.Progress = &harness.ProgressPolicyPatch{PersistWithinMs: new(150.0)} })
+		rig.configure(func(settings *harness.HarnessSettings) {
+			settings.Progress = &harness.ProgressPolicyPatch{PersistWithinMs: new(150.0)}
+		})
 		// A request a crash interrupted is a failed attempt (#11139): retry at once.
 		rig.retryPolicy(true, 5, 1)
 		rig.faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(strings.Repeat("0123456789", 100))})
@@ -1081,7 +1085,9 @@ func TestCoreDeferredToolOutputIsNotProgress(t *testing.T) {
 	eachEngine(t, func(t *testing.T, core bool) {
 		four := 4
 		rig := newRestartRig(t, core, ai.FauxConfig{TokensPerSecond: 80, TokenSize: &ai.FauxTokenSize{Min: &four, Max: &four}})
-		rig.configure(func(settings *harness.HarnessSettings) { settings.Progress = &harness.ProgressPolicyPatch{PersistWithinMs: new(50.0)} })
+		rig.configure(func(settings *harness.HarnessSettings) {
+			settings.Progress = &harness.ProgressPolicyPatch{PersistWithinMs: new(50.0)}
+		})
 		rig.retryPolicy(true, 5, 1)
 		var runs atomic.Int32
 		installTools(t, rig.registry, harness.DefineTool(durable.ToolRegistration{
