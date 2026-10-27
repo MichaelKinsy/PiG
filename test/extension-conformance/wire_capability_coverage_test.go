@@ -106,14 +106,14 @@ var hostNotifyCapabilities = map[string]struct {
 		"go":   "case notifyUIViewEvent:",
 		"rust": `"ui.view.event" => {`,
 		"py":   `if method == "ui.view.event":`,
-		"lisp": `(string= method "ui.view.event")`,
+		"lisp": `def-notify "ui.view.event"`,
 	}},
 	"ui.view.evicted": {hostConst: "NotifyUIViewEvicted", symbols: map[string]string{
 		"go":   "case notifyUIViewEvicted:",
 		"rust": `"ui.view.evicted" => {`,
 		"py":   `if method == "ui.view.evicted":`,
 		"node": `case "ui.view.evicted": {`,
-		"lisp": `(string= method "ui.view.evicted")`,
+		"lisp": `def-notify "ui.view.evicted"`,
 	}},
 	// Fullscreen mouse events for a ui.custom component that takes the
 	// mouse, as Pi's renderer calls handleMouse.
@@ -122,7 +122,7 @@ var hostNotifyCapabilities = map[string]struct {
 		"rust": `"ui.custom.mouse" => {`,
 		"py":   `if method == "ui.custom.mouse":`,
 		"node": `case "ui.custom.mouse": {`,
-		"lisp": `(string= method "ui.custom.mouse")`,
+		"lisp": `def-notify "ui.custom.mouse"`,
 	}},
 }
 
@@ -136,11 +136,7 @@ var undeliveredNotifies = map[string]map[string]string{
 
 // knownNotifyGaps records SDKs that do not receive a host notify yet, each
 // naming the lane that lands it. An entry fails once its SDK has the symbol.
-var knownNotifyGaps = map[string]map[string]string{
-	"ui.view.event":   {"lisp": "the Lisp SDK has no component kit yet (gap lane SdkLispPhase2)"},
-	"ui.view.evicted": {"lisp": "the Lisp SDK has no component kit yet (gap lane SdkLispPhase2)"},
-	"ui.custom.mouse": {"lisp": "the Lisp SDK has no ui.custom components yet (gap lane SdkLispPhase2)"},
-}
+var knownNotifyGaps = map[string]map[string]string{}
 
 // TestEverySDKReceivesEveryHostNotifyCapability is the notify counterpart of
 // TestEverySDKCanReachEveryWireCapability: the host sends each notify, and

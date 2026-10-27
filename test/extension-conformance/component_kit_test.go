@@ -76,6 +76,8 @@ func componentKitCells() []kitCell {
 		{name: "packed-rust", make: func(t *testing.T) *harness { return makePackedUIHarness(t, "rust") }, extName: "rust-sdk-fixture"},
 		{name: "subprocess-python", make: makeSubprocessPythonHarness, extName: "python-sdk-fixture"},
 		{name: "packed-python", make: func(t *testing.T) *harness { return makePackedUIHarness(t, "python") }, extName: "python-sdk-fixture"},
+		{name: "subprocess-lisp", make: makeSubprocessLispHarness, extName: lispFixtureName},
+		{name: "packed-lisp", make: func(t *testing.T) *harness { return makePackedUIHarness(t, "lisp") }, extName: lispFixtureName},
 		{name: "subprocess-node", make: makeSubprocessNodeHarness, extName: "node-sdk-fixture", frontend: true},
 		{name: "subprocess-node-packed", make: makeSubprocessNodePackedHarness, extName: "node-sdk-fixture", frontend: true},
 	}
