@@ -4,6 +4,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import pathlib
+import re
 import struct
 import sys
 import threading
@@ -2880,6 +2881,7 @@ def new_extension() -> pig_sdk.Extension:
     _register_conformance_oauth_large(ext)
     _register_state_push_probe(ext)
     _register_signal_abort(ext)
+    _register_tui_alt_screen_probe(ext)
     return ext
 
 
@@ -3039,6 +3041,192 @@ def _register_signal_abort(ext: pig_sdk.Extension) -> None:
         ctx.notify("abort:" + state(held) + ":" + state(ctx.signal), "info")
 
     ext.command("signal-abort", "Abort the run and report ctx.signal", signal_abort)
+
+
+class _AltTerminal:
+    """A recording pig_sdk.Terminal: 20x6, no kitty protocol; start keeps the callbacks, write appends to the log."""
+
+    columns = 20
+    rows = 6
+    kitty_protocol_active = False
+
+    def __init__(self) -> None:
+        self.log: list[str] = []
+        self.on_input = None
+        self.on_resize = None
+        self.started = False
+
+    def start(self, on_input, on_resize) -> None:
+        self.on_input, self.on_resize, self.started = on_input, on_resize, True
+        self.log.append("start")
+
+    def stop(self) -> None:
+        self.started = False
+        self.log.append("stop")
+
+    def drain_input(self, max_ms=None, idle_ms=None) -> None:
+        pass
+
+    def write(self, data: str) -> None:
+        self.log.append(data)
+
+    def move_by(self, lines: int) -> None:
+        pass
+
+    def hide_cursor(self) -> None:
+        pass
+
+    def show_cursor(self) -> None:
+        pass
+
+    def clear_line(self) -> None:
+        pass
+
+    def clear_from_cursor(self) -> None:
+        pass
+
+    def clear_screen(self) -> None:
+        pass
+
+    def set_title(self, title: str) -> None:
+        pass
+
+    def set_progress(self, active: bool) -> None:
+        pass
+
+    def set_program_status(self, status) -> None:
+        pass
+
+
+class _AltLines:
+    """A plain component: render(width) returns fn(width)."""
+
+    def __init__(self, fn) -> None:
+        self.fn = fn
+
+    def render(self, width: int) -> list[str]:
+        return self.fn(width)
+
+    def invalidate(self) -> None:
+        pass
+
+
+class _AltFocusable(_AltLines):
+    """A Focusable component that records its input."""
+
+    def __init__(self, inputs: list[str]) -> None:
+        super().__init__(lambda _w: ["foc"])
+        self.focused = False
+        self.inputs = inputs
+
+    def handle_input(self, data: str) -> None:
+        self.inputs.append(data)
+
+
+_ALT_ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)?")
+
+
+def _register_tui_alt_screen_probe(ext: pig_sdk.Extension) -> None:
+    """Drive the 46 members of pig_sdk.TuiAltScreen over a recording terminal and report one line of facts. Every SDK fixture runs the same steps
+    as the Pi oracle probe (Pi's own TuiAltScreen) and must print its exact text."""
+
+    def b(value: bool) -> str:
+        return "true" if value else "false"
+
+    def tui_alt_screen_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False, wheel_scroll_lines=3, copy_on_select=True))
+        doc = _AltLines(lambda w: [f"row {i + 1} w={w}" for i in range(12)])
+        screen.add_child(doc)
+        if screen.viewport_tui is not True:
+            raise AssertionError("TuiAltScreen.viewport_tui must be True")
+        facts = [f"mode={screen.mode}", f"children={len(screen.children)}", f"terminal={b(screen.terminal is term)}"]
+        screen.start()
+        screen.render_now()
+
+        def sl() -> list[str]:
+            return [_ALT_ANSI.sub("", line).rstrip() for line in screen.get_screen_lines()]
+
+        facts += [
+            f"viewport={screen.viewport_top}/{b(screen.is_following_output)}", f"first={sl()[0]}", f"last={sl()[5]}", f"redraws={b(screen.full_redraws > 0)}",
+            f"entered={b(any(chunk.find(chr(27) + '[?1049h') >= 0 for chunk in term.log))}",
+        ]
+        screen.scroll_by(-2)
+        screen.render_now()
+        facts.append(f"up={screen.viewport_top}/{b(screen.is_following_output)}")
+        screen.scroll_to_top()
+        screen.render_now()
+        facts += [f"top={screen.viewport_top}/{b(screen.is_following_output)}", f"topfirst={sl()[0]}"]
+        screen.scroll_to_bottom()
+        screen.render_now()
+        facts.append(f"bottom={screen.viewport_top}/{b(screen.is_following_output)}")
+        screen.flash("hello", 500)
+        screen.render_now()
+        facts.append(f"flash={b(any('hello' in line for line in sl()))}")
+        over = _AltLines(lambda _w: ["OVER"])
+        handle = screen.show_overlay(over, {"width": 8, "anchor": "center"})
+        screen.render_now()
+        bounds = handle.get_bounds()
+        facts.append(f"overlay={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}/{b(handle.is_focused())}/{bounds['width'] if bounds else 'undefined'}")
+        handle.set_hidden(True)
+        facts.append(f"hidden={b(handle.is_hidden())}")
+        handle.set_hidden(False)
+        screen.hide_overlay()
+        facts.append(f"afterHide={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}")
+        inputs: list[str] = []
+        foc = _AltFocusable(inputs)
+        screen.set_focus(foc)
+        facts.append(f"focus={b(screen.get_focused_component() is foc)}/{b(foc.focused)}")
+        term.on_input("k")
+
+        def listener(data: str):
+            return {"consume": True} if data == "c" else None
+
+        remove = screen.add_input_listener(listener)
+        term.on_input("c")
+        remove()
+        term.on_input("c")
+        screen.add_input_listener(listener)
+        screen.remove_input_listener(listener)
+        facts.append("inputs=" + ",".join(inputs))
+        debug: list[int] = []
+        screen.on_debug = lambda: debug.append(1)
+        term.on_input("\x1b[100;6u")
+        facts.append(f"debug={len(debug)}")
+        screen.set_show_hardware_cursor(True)
+        screen.set_clear_on_shrink(True)
+        facts.append(f"flags={b(screen.get_show_hardware_cursor())}/{b(screen.get_clear_on_shrink())}")
+        screen.set_wheel_scroll_lines(2)
+        screen.set_copy_on_select(False)
+        facts.append(f"copy={b(screen.get_copy_on_select())}/{b(screen.has_active_selection())}/{b(screen.copy_active_selection_to_clipboard())}")
+        screen.reset_text_selection()
+        schemes: list[str] = []
+        screen.on_terminal_color_scheme_change(schemes.append)
+        screen.set_terminal_color_scheme_notifications(True)
+        term.on_input("\x1b[?997;1n")
+        term.on_input("\x1b[?997;2n")
+        facts.append("schemes=" + ",".join(schemes))
+        facts.append("colors=" + json.dumps(screen.query_terminal_colors(20), separators=(",", ":")))
+        mouse = screen.handle_mouse(pig_sdk.MouseEvent(type="wheel", button="none", width=20, height=6, wheel_delta=1))
+        facts.append("mouse=" + json.dumps(mouse, separators=(",", ":")))
+        facts.append("render=" + "|".join(screen.render(10)[:2]))
+        screen.invalidate()
+        screen.request_render()
+        root = _AltLines(lambda _w: ["ROOT"])
+        screen.set_layout_root(root)
+        screen.render_now()
+        facts.append(f"root={b(sl()[0].startswith('ROOT'))}")
+        screen.set_layout_root(None)
+        screen.remove_child(doc)
+        facts.append(f"removed={len(screen.children)}")
+        screen.add_child(doc)
+        screen.clear()
+        facts.append(f"cleared={len(screen.children)}")
+        screen.stop()
+        facts.append(f"stopped={b(not term.started)}")
+        ctx.notify("tui-alt: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-screen-probe", "Drive every TuiAltScreen member over a recording terminal", tui_alt_screen_probe)
 
 
 if __name__ == "__main__":

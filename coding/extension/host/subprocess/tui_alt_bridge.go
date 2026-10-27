@@ -52,6 +52,7 @@ type tuiAltCall struct {
 	ListenerID         string          `json:"listenerId"`
 	TimeoutMs          float64         `json:"timeoutMs"`
 	OnLateReply        bool            `json:"onLateReply"`
+	QueryID            string          `json:"queryId"`
 	Action             string          `json:"action"`
 	Hidden             bool            `json:"hidden"`
 	Target             json.RawMessage `json:"target"`

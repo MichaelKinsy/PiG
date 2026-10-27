@@ -66,6 +66,21 @@ from .branch_summary import (
     prepare_branch_entries as prepare_branch_entries,
 )
 from .child_session import AgentSession as AgentSession, CreateAgentSessionOptions as CreateAgentSessionOptions, ResourceOptions as ResourceOptions, SessionStartEvent as SessionStartEvent, _ChildSessions, create_agent_session as _create_agent_session
+from .tui_alt_screen import (
+    OverlayBounds as OverlayBounds,
+    ProgramStatus as ProgramStatus,
+    RgbColor as RgbColor,
+    Terminal as Terminal,
+    TerminalColors as TerminalColors,
+    TuiAltOverlayHandle as TuiAltOverlayHandle,
+    TuiAltScreen as TuiAltScreen,
+    TuiAltScreenOptions as TuiAltScreenOptions,
+    TuiInputListenerResult as TuiInputListenerResult,
+    TuiMouseEventResult as TuiMouseEventResult,
+    TuiOverlayOptions as TuiOverlayOptions,
+    _TuiAltScreens,
+)
+from .tui_alt_screen import Component as TuiAltComponent
 from .agent_session_services import (
     AgentSessionServices as AgentSessionServices,
     CreateAgentSessionFromServicesOptions as CreateAgentSessionFromServicesOptions,
@@ -4124,6 +4139,7 @@ class Extension:
         # The nodes of each tool's parameter schema that carry refinements (Type.refine), which the host asks for with tool_refine_arguments.
         self._tool_refine_sites: dict[str, dict[str, list[Refinement]]] = {}
         self._children = _ChildSessions()
+        self._tui_alt = _TuiAltScreens()
         self._tool_batches = _ToolBatches()
         self._request_starts = _RequestStartOrder()
         self._command_handlers: dict[str, CommandHandler] = {}
@@ -5078,6 +5094,7 @@ class Extension:
         self._shutdown.set()
         # The sessions end with the connection, as the host disposes them: no listener runs after it.
         self._children.close_all()
+        self._tui_alt.close_all()
         with self._state_lock:
             pending = list(self._pending.values())
             active = list(self._active.values())
@@ -5165,7 +5182,8 @@ class Extension:
 
     def _handle_request_thread(self, env: dict[str, Any], ctx: Context) -> None:
         try:
-            if (env.get("request") or {}).get("method") != "events.dispatch":
+            # A tui.alt.cb request answers a screen the extension created, which can be an on_loaded handler's: it must not wait for that handler to return.
+            if (env.get("request") or {}).get("method") not in ("events.dispatch", "tui.alt.cb"):
                 self._loaded.wait()
             self._handle_request(env, ctx)
         finally:
@@ -5477,6 +5495,8 @@ class Extension:
             method = req.get("method")
             if method in {"autocomplete.sync", "autocomplete.suggest"}:
                 self._respond(req_id, self._autocomplete.dispatch(ctx, req.get("args") or {}), None)
+            elif method == "tui.alt.cb":
+                self._respond(req_id, self._tui_alt.dispatch(req.get("args") or {}), None)
             elif method in {"provider_call", "provider_stream", "provider_sync"}:
                 self._respond(req_id, _dispatch_provider(self, ctx, req), None)
             elif method in {"provider_object_callback", "provider_object_callback_sync"}:
