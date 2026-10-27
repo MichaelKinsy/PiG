@@ -157,6 +157,18 @@ func (statement *StatementSync) Run(params ...any) error {
 	return err
 }
 
+// RunCounted executes the statement and returns the rows it changed.
+func (statement *StatementSync) RunCounted(params ...any) (int64, error) {
+	if err := statement.open(); err != nil {
+		return 0, err
+	}
+	result, err := statement.statement.ExecContext(context.Background(), params...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // EachText passes the first column of every result row to fn as it is read; the bytes are valid until fn returns.
 func (statement *StatementSync) EachText(params []any, fn func(text []byte) error) (err error) {
 	if err := statement.open(); err != nil {
@@ -311,6 +323,19 @@ func (executor *nodeSqliteExecutor) Run(sqlText string, params ...chordsqlite.Sq
 		}
 		return statement.Run(params...)
 	})
+}
+
+// RunCounted executes one statement and returns the rows it changed.
+func (executor *nodeSqliteExecutor) RunCounted(sqlText string, params ...chordsqlite.SqliteValue) (changed int64, err error) {
+	err = executor.runOperation(func() error {
+		statement, prepareErr := executor.statement(sqlText)
+		if prepareErr != nil {
+			return prepareErr
+		}
+		changed, prepareErr = statement.RunCounted(params...)
+		return prepareErr
+	})
+	return changed, err
 }
 
 // EachText runs a query whose first column is text and passes each value to fn without building result rows.

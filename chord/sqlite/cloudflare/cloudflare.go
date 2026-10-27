@@ -177,6 +177,23 @@ func (executor *durableObjectExecutor) Run(sql string, params ...chordsqlite.Sql
 	return err
 }
 
+// RunCounted reads SQLite's own changes() after the statement: the cursor's rows written is a billing count that also
+// includes index writes.
+func (executor *durableObjectExecutor) RunCounted(sql string, params ...chordsqlite.SqliteValue) (int64, error) {
+	if err := executor.Run(sql, params...); err != nil {
+		return 0, err
+	}
+	cursor, err := executor.storage.Sql().Exec("SELECT changes() AS changes")
+	if err != nil {
+		return 0, err
+	}
+	row, ok, err := cursor.Next()
+	if err != nil || !ok {
+		return 0, err
+	}
+	return toInt64(row["changes"]), nil
+}
+
 // Get reads only the cursor's first row.
 func (executor *durableObjectExecutor) Get(sql string, params ...chordsqlite.SqliteValue) (chordsqlite.SqliteRow, error) {
 	if err := executor.check(); err != nil {
@@ -246,6 +263,15 @@ func (database *DurableObjectSqliteDatabase) Run(sql string, params ...chordsqli
 	return database.queue.run(func() error { return database.durableObjectExecutor.Run(sql, params...) })
 }
 
+// RunCounted executes one statement behind every earlier operation and returns the rows it changed.
+func (database *DurableObjectSqliteDatabase) RunCounted(sql string, params ...chordsqlite.SqliteValue) (changed int64, err error) {
+	err = database.queue.run(func() (err error) {
+		changed, err = database.durableObjectExecutor.RunCounted(sql, params...)
+		return err
+	})
+	return changed, err
+}
+
 // Get returns the first result row, or nil when there is none.
 func (database *DurableObjectSqliteDatabase) Get(sql string, params ...chordsqlite.SqliteValue) (row chordsqlite.SqliteRow, err error) {
 	err = database.queue.run(func() (err error) {
@@ -292,4 +318,17 @@ func (database *DurableObjectSqliteDatabase) Transaction(callback func(transacti
 // Close waits for queued work. The Durable Object owns its storage, so nothing else closes.
 func (database *DurableObjectSqliteDatabase) Close() error {
 	return database.queue.run(func() error { return nil })
+}
+
+// toInt64 is JavaScript's Number(value) for a changes() count.
+func toInt64(value DurableObjectSqlValue) int64 {
+	switch typed := value.(type) {
+	case int64:
+		return typed
+	case int:
+		return int64(typed)
+	case float64:
+		return int64(typed)
+	}
+	return 0
 }
