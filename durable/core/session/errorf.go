@@ -30,7 +30,7 @@ func sprintf(format string, args ...any) string {
 			out = appendArg(out, args[next])
 			next++
 		default:
-			panic("session: unsupported verb %" + string(format[i]))
+			panic("session: unsupported verb")
 		}
 	}
 	return string(out)

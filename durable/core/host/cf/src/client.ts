@@ -234,7 +234,7 @@ export class CoreClient {
   }
 
   /** Open a transaction on the Session line. Resolves at `ready`; `waiting` only means the line is held and `ready` follows. */
-  begin(options: { invocation?: number; conversationId?: number; persistence?: { kind: "deferred"; withinMs?: number } } = {}): Promise<TxChannel> {
+  begin(options: { invocation?: number; conversationId?: number; span?: number; trace?: unknown; persistence?: { kind: "deferred"; withinMs?: number } } = {}): Promise<TxChannel> {
     const id = this.nextTx++
     const channel = new TxChannel(this, id)
     this.txs.set(id, channel)
@@ -388,7 +388,7 @@ export class TxChannel {
     })
   }
 
-  begin(options: { invocation?: number; conversationId?: number; persistence?: { kind: "deferred"; withinMs?: number } }) {
+  begin(options: { invocation?: number; conversationId?: number; span?: number; trace?: unknown; persistence?: { kind: "deferred"; withinMs?: number } }) {
     return this.send({ op: "begin", ...options }, "ready")
   }
 

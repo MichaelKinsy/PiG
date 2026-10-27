@@ -234,6 +234,9 @@ func (h *handler) txBegin(id uint32, op *jv.Object) error {
 	}
 	t := &hostTx{id: id, docs: map[string]*hostDoc{}}
 	t.scope.ConversationID = session.ID(numOf(op, "conversationId"))
+	// The Context of the commit: the span its entry and settlement events go to, and its carrier, which a task it creates inherits.
+	t.scope.Span = uint32(numOf(op, "span"))
+	t.scope.Trace, _ = op.Get("trace")
 	if persistence := objOf(op, "persistence"); persistence != nil && strOf(persistence, "kind") == "deferred" {
 		// CommitOptions.persistence (spec section 4.1): the host checked withinMs; absent means the Session's default window.
 		t.scope.Deferred, t.scope.WithinMs = true, -1
@@ -273,7 +276,7 @@ func (h *handler) grant(t *hostTx) error {
 	var tx *session.Tx
 	var err error
 	if t.rt != nil {
-		tx, t.current, err = t.rt.BeginHost()
+		tx, t.current, err = t.rt.BeginHost(t.scope.Span, t.scope.Trace)
 	} else {
 		tx, err = h.sess.Begin(t.scope)
 	}
@@ -460,6 +463,9 @@ const hostAnswerTicks = 3
 // publish emits the published notice of one commit (durable/core/host/PROTOCOL.md, Notices). The notice is written an
 // item at a time into abi.Chunks, so a 20,000-task commit's (megabytes) needs no block of its size.
 func (h *handler) publish(pub *session.Publication) {
+	if pub.Span != 0 && !pub.Memory {
+		h.publishEvents(pub)
+	}
 	var out abi.Chunks
 	item := make([]byte, 0, 128)
 	if pub.Memory {
@@ -473,7 +479,7 @@ func (h *handler) publish(pub *session.Publication) {
 		h.publishWatches(pub)
 		return
 	}
-	out.Append(jv.AppendNumber(append(item, `{"seq":`...), float64(pub.Seq)))
+	out.Append(appendPublishedSpan(jv.AppendNumber(append(item, `{"seq":`...), float64(pub.Seq)), pub))
 	for _, kind := range [...]session.WriteKind{session.WriteSubmission, session.WriteEntry, session.WriteTask} {
 		item = append(item[:0], `,"`...)
 		switch kind {
@@ -809,6 +815,17 @@ func (h *handler) createTaskWith(tx *session.Tx, def *session.TaskDef, op *jv.Ob
 	to.ConversationID = session.ID(numOf(opts, "conversationId"))
 	to.Background, _ = boolOf(opts, "background")
 	to.AbandonOnRestart, _ = boolOf(opts, "abandonOnRestart")
+	// TaskOptions.trace: `"root"` stores no carrier; an omitted one is the transaction's own, and a carrier is the host's.
+	if trace, ok := opts.Get("trace"); ok {
+		if s, isString := trace.(string); isString && s == "root" {
+			to.NoTrace = true
+		} else {
+			to.Trace = trace
+		}
+	}
+	if links, ok := opts.Get("links"); ok {
+		to.Links, _ = links.([]any)
+	}
 	input, _ := op.Get("input")
 	id, err := tx.CreateTask(def, input, to)
 	if err != nil {

@@ -37,6 +37,25 @@ type invocation struct {
 	next  func()
 	stage spanStage
 	tick  bool
+
+	// span is the host's handle of the span of the phase running, and carrier its carrier, which the tasks the phase creates
+	// inherit; span is zero outside a phase (invocation.context). record is the latest committed record of the task (#track),
+	// and fault the outcome the scheduler's own step gave a task that threw. info and start are a phase's span start waiting for
+	// the host.
+	span    uint32
+	carrier any
+	record  *jv.Object
+	fault   *jv.Object
+	info    PhaseInfo
+	start   func()
+	// spanFirst makes the next afterSpan continuation start with the host's span for the phase (ask), which then runs the phase.
+	spanFirst bool
+	// spanAsk makes the phase continuation ask the host for the span first (start is that continuation, run again when the host answered).
+	spanAsk bool
+	s       *Scheduler
+	abort   abortRun
+	// links are the record's creation-time carriers, kept for the invocation that finds the task unstarted (invocation.links).
+	links any
 }
 
 type spanStage uint8
@@ -69,6 +88,10 @@ func (inv *invocation) Resume() {
 	}
 	then := inv.next
 	inv.next, inv.stage = nil, 0
+	if inv.spanFirst {
+		inv.spanFirst = false
+		inv.start, inv.spanAsk = then, true
+	}
 	if inv.tick {
 		inv.loop.NextTick(then)
 		return
@@ -186,6 +209,13 @@ type Scheduler struct {
 	// parkedTasks holds the tasks a pass left out as parked; each pass checks them again, as settings.restartLimit may
 	// have risen.
 	parkedTasks *orderedSet[ID]
+	// resumed holds the tasks found live at open that have not run a phase since: the span of the first invocation is
+	// `resumed` (scheduler.ts #resumed).
+	resumed []ID
+	// idScratch is the list takeIDs lends.
+	idScratch []ID
+	// reportSpan is the span of the report being delivered (ReportSpan).
+	reportSpan uint32
 	// reconcilingWork counts the reconcile passes underway with work: their commits finalize held outcomes and mark
 	// cascades.
 	reconcilingWork int
@@ -249,6 +279,10 @@ func (s *Scheduler) report(err error, info *jv.Object) {
 		s.env.Report(err, info)
 	}
 }
+
+// ReportSpan is the span of the Context the report being delivered is made under (scheduler.ts #report's context), 0 for none: the
+// host records the report event there. It is set only while Env.Report runs.
+func (s *Scheduler) ReportSpan() uint32 { return s.reportSpan }
 
 // restartLimit is settings.restartLimit, 5 unless the host set another.
 func (s *Scheduler) restartLimit() float64 {
@@ -376,6 +410,7 @@ func (s *Scheduler) Open(done func(error)) {
 		for _, recs := range scans {
 			for _, rec := range recs {
 				s.track(nil, rec)
+				s.addResumed(mustInt(rec, "id"))
 				// Read-only, open only loads them: a running task stays as committed, running in another process.
 				if s.sess.ReadOnly {
 					continue
@@ -816,6 +851,7 @@ func (s *Scheduler) Bound(taskID ID) *Cancel {
 
 // Seal stops scheduling: waiters reject, and the invocation signals abort in a microtask (signalInvocations).
 func (s *Scheduler) Seal() {
+	s.sealActive()
 	s.closing = true
 	// session.ts close queues `Promise.resolve().then(beforeClose)` before it runs the close listeners, and beforeClose is join(),
 	// which signals every invocation: one microtask on, ahead of the reactions of the waits this seal rejects, not inside it.
@@ -873,7 +909,7 @@ func (s *Scheduler) WriteBack(records []*jv.Object) error { return s.sess.WriteT
 
 // signalInvocations aborts the signal of every running invocation, in task order (scheduler.ts join).
 func (s *Scheduler) signalInvocations() {
-	ids := make([]ID, 0, len(s.invocations))
+	ids := s.takeIDs()
 	for id := range s.invocations {
 		ids = append(ids, id)
 	}
@@ -881,6 +917,15 @@ func (s *Scheduler) signalInvocations() {
 	for _, id := range ids {
 		s.invocations[id].signal.Abort()
 	}
+	s.idScratch = ids
+}
+
+// takeIDs hands out the scheduler's scratch ID list, empty; the caller gives it back by setting s.idScratch, so a pass over the
+// IDs of a map allocates once for the life of the scheduler. A pass that runs inside another finds none and starts its own.
+func (s *Scheduler) takeIDs() []ID {
+	ids := s.idScratch[:0]
+	s.idScratch = nil
+	return ids
 }
 
 func (s *Scheduler) idle(conversationID ID) bool {
