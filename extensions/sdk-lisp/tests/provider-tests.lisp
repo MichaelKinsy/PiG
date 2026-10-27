@@ -264,7 +264,7 @@ once the response arrives. A responder that returns (values nil message) answers
                           "r2")
       (declare (ignore message))
       (check-equal "from-env" (pig:jref result "auth" "apiKey"))
-      (check-equal key (pig:jget (first (pt-calls frames "provider.callback")) "args" "provider")))
+      (check-equal key (pig:jref (first (pt-calls frames "provider.callback")) "args" "provider")))
     (let ((check-result (pt-provider-call host key "auth.apiKey.check" (pig:obj) #'pt-none "r3")))
       (check-equal "api_key" (pig:jget check-result "type"))
       (check-equal "src" (pig:jget check-result "source")))))
@@ -477,7 +477,8 @@ once the response arrives. A responder that returns (values nil message) answers
                                       (pig:auth-result-source resolve) login)))))))
     (with-host (host ext)
       (let ((seen '()))
-        (pt-run host "r" "command"
+        (multiple-value-bind (r message)
+         (pt-run host "r" "command"
                 (lambda (method args)
                   (cond ((equal method "getModelRegistryState")
                          (pig:obj "registered" (vector (pig:obj "name" "tp" "native" (pt-remote-declaration)))))
@@ -498,6 +499,8 @@ once the response arrives. A responder that returns (values nil message) answers
                                  (t nil))))
                         (t nil)))
                 "tool" "c" "args" "")
+          (declare (ignore r))
+          (check-equal nil message))
         (check-equal '("m1") (first result))
         (check-equal '("y") (second result))
         (check-equal "remote-source" (third result))
