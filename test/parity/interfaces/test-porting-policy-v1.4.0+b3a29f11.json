@@ -5534,6 +5534,15 @@
       "rationale": "Production-path review at Pi 1.2.0: Durable code mode (scripts, model calls, journal and output), the tool a durable turn runs scripts and model calls through (PiG durable/codemode, durable/toolsearch); hot-path with the sibling packages/durable/test/ rows."
     },
     {
+      "path": "packages/durable/test/conversation-transcript.test.ts",
+      "upstreamTestHash": "sha256:9a0beb7dc2de99cf01a9f2370ee96b6a976a73f7bd806e99336d3301934b8090",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in 1.4.0+f3255de7; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
       "path": "packages/durable/test/env-line-scan.test.ts",
       "upstreamTestHash": "sha256:177b8fd52d5392bb4de4a81fe54e49c583a34d3e25a4b7d57b2a31a063fdb5e8",
       "area": "cli",
@@ -5813,6 +5822,24 @@
       "rationale": "Production-path review at Pi 1.3.0+482c1381: onReport receives a typed ReportInfo naming the source and reason of each report (types.ts ReportInfo, harness.ts); reached by every durable session that reports a failure."
     },
     {
+      "path": "packages/durable/test/harness-restart-failure.test.ts",
+      "upstreamTestHash": "sha256:91a5324a0a55e0a14d5e7258857b81c64d6e944d1b6037afb0b871590bdb2a96",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in 1.4.0+b3a29f11; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
+      "path": "packages/durable/test/harness-run-failure.test.ts",
+      "upstreamTestHash": "sha256:fd86b0188ff79a1ecb484b0095f79c67b9ac1b003e6356698ffdcc4ad707757e",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in 1.4.0+f3255de7; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
       "path": "packages/durable/test/harness-scheduler-indexes.test.ts",
       "upstreamTestHash": "sha256:da92cb862c59ed56f1dda264625321b89ea030d4d111d1497c57c4c134c2571a",
       "area": "cli",
@@ -5940,6 +5967,15 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
+      "path": "packages/durable/test/harness-view-run.test.ts",
+      "upstreamTestHash": "sha256:40a3f92f16b365ecc302287d62f6d55f67c289fcf14e7b772d32dd0aa2b05922",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in 1.4.0+f3255de7; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
     },
     {
       "path": "packages/durable/test/harness-view.test.ts",

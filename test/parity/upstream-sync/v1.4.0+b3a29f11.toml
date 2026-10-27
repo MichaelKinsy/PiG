@@ -3749,23 +3749,23 @@ rationale = "Pi be14d9732 adds ReadOnlySession(what), message `Read-only Harness
 [[files]]
 path = "packages/durable/src/harness/agent.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_generation_test.go#TestGeneration"]
+rationale = "Pi b3a29f11 rewrites one doc comment of the restart-limit resolution (`Infinity` now means no task ends for restarts, not that none parks). The behavior is the one TestGeneration already asserts for durable/harness/agent.go restartLimit: a limit that is not 1 or more means the default and Infinity stays unlimited."
 
 [[files]]
 path = "packages/durable/src/harness/compaction.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreOtherTasksCutOffRestartLimitTimesInARow", "test:durable/harness/harness_compaction_test.go#TestCompactionRecovery"]
+rationale = "Pi b3a29f11 adds failCutOff: a compaction cut off settings.restartLimit times in a row records its failure in pi.live (failCompactionStatus, so it stays visible until a summary is produced) and ends terminal instead of parking. durable/harness/compaction.go failCompactionCutOff and the core's durable/core/turn/compaction.go failCutOff do the same; TestCoreOtherTasksCutOffRestartLimitTimesInARow cuts a compaction off at the limit on both engines and asserts the compactionFailure and the task's ending, and the compaction failure case shows the failure until a summary lands."
 
 [[files]]
 path = "packages/durable/src/harness/context.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_view_test.go#TestConversationViewWindow", "test:durable/harness/harness_context_ranges_test.go#TestTaskContextRanges"]
+rationale = "Pi f3255de7 deletes the exported activeEntries (the raw active entries within captured bounds), which only the old conversation view used: the windowed view scans entries by ID (loadWindow). Go has no ActiveEntries; durable/harness/context.go keeps deriveContext and the range cache, which TestTaskContextRanges pins, and the view scans the window in view.go (TestConversationViewWindow)."
 
 [[files]]
 path = "packages/durable/src/harness/define.ts"
@@ -3777,16 +3777,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/define.go). coverage.md
 [[files]]
 path = "packages/durable/src/harness/generation.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreAGenerationInterruptedWhileTheModelAnswers", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreOtherTasksCutOffRestartLimitTimesInARow", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreCrashEdges", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreDeferredGenerationPartialsAfterACrash", "test:durable/harness/harness_run_failure_test.go#TestRunFailure", "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials"]
+rationale = "Pi f3255de7 records why a run ended unanswered (runFailure: model_error, no_model, aborted, reset, faulted, orphaned) and keeps it when a later run starts with keepFailure; durable/harness/generation.go endFailedRun and startRun do the same (TestRunFailure ports harness-run-failure.test.ts case by case). Pi b3a29f11 charges a generation whose request or poll fetch was in flight at a host death one failed attempt of settings.retry (the partial kept as an aborted entry, the backoff in pi.live.generation.retry, the same deferred handle polled again; a run that ends cancels it), ends the run with runFailure interrupted once no retry is left, and ends a generation cut off settings.restartLimit times with runFailure restart_limit instead of parking it. Go has the same in generation.go (generationEndCutOff, the interrupted ending) and in the core in durable/core/turn/generation_cutoff.go; TestCoreAGenerationInterruptedWhileTheModelAnswers, TestCoreOtherTasksCutOffRestartLimitTimesInARow, TestCoreCrashEdges and TestCoreDeferredGenerationPartialsAfterACrash run harness-restart-failure.test.ts and the changed harness-deferred-progress.test.ts cases over both engines."
 
 [[files]]
 path = "packages/durable/src/harness/harness.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_view_test.go#TestConversationViewWindow", "test:durable/core/driver/view_window_core_test.go#TestCoreViewWindowGivesEachObserverItsOwnWindow", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreReportsOfWorkCrashesEnded"]
+rationale = "Pi f3255de7 passes a window through Conversation.watch and Harness.observeConversation; Pi b3a29f11 removes Harness.retryTask and maps the report task_interrupted instead of task_parked, and gives the scheduler a limitsRestarts predicate (LIMITS_RESTARTS). Go: Conversation.Watch(ctx, window) and Harness.ObserveConversation(ctx, id, observer, window) take a *ConversationWindow (each observer its own window, TestCoreViewWindowGivesEachObserverItsOwnWindow); Harness.RetryTask is removed, and a harness report of type task_interrupted reaches OnReport (TestCoreReportsOfWorkCrashesEnded)."
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
@@ -3805,9 +3805,9 @@ rationale = "Pi 89c921d8 stops assignJson reading a missing __proto__ member thr
 [[files]]
 path = "packages/durable/src/harness/live.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_run_failure_test.go#TestRunFailure", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreAGenerationInterruptedWhileTheModelAnswers", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreDeferredToolOutputIsNotProgress"]
+rationale = "Pi f3255de7 adds RunFailure and RunFailureReason (model_error, no_model, aborted, reset, faulted, orphaned) to LiveState (runFailure), kept after a run ends without an answer until a later run starts; Pi b3a29f11 adds the reasons interrupted and restart_limit, the LIMITS_RESTARTS kinds and the cut-off settle helpers. durable/harness/live.go has RunFailure, RunFailureReason (RunInterrupted, RunRestartLimit among them), the runFailure field of LiveState and the same helpers; TestRunFailure ports harness-run-failure.test.ts and the restart-failure core cases assert the interrupted and restart_limit failures."
 
 [[files]]
 path = "packages/durable/src/harness/partial-changes.ts"
@@ -3840,9 +3840,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/registry.go). coverage.
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreOtherTasksCutOffRestartLimitTimesInARow", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreReportsOfWorkCrashesEnded", "test:durable/harness/harness_restart_failure_test.go#TestTheRestartLimitOnTheNormalPath"]
+rationale = "Pi b3a29f11 stops parking: a task cut off settings.restartLimit times in a row ends visibly (the built-in kinds end themselves, the scheduler faults an extension's kind with detail {reason: restart_limit} and reports task_faulted), the scheduler reports task_interrupted for the built-in kinds, and retry(), #parked, the restart_limit blocked reason and the task_parked report are removed. durable/harness/scheduler.go and the core's durable/core/session/sched*.go follow: no parked set, Scheduler.Retry or Harness.RetryTask, and durable.BlockedReason has no restart_limit (TestBlockedTasks over both engines, with Pi's changed cases). TestCoreOtherTasksCutOffRestartLimitTimesInARow asserts the endings per kind. Difference: the core's Runtime.Commit has no generic hook, so task_interrupted comes from the built-in tasks' terminal commits and extension tasks end faulted with task_faulted reason restart_limit. TestTheRestartLimitOnTheNormalPath replaces Pi's counted settings reads with a deterministic check that only a task cut off before reads the limit."
 
 [[files]]
 path = "packages/durable/src/harness/submissions.ts"
@@ -3854,37 +3854,37 @@ rationale = "Pi 6c2fd73b0 makes submissions observe ObservedCommit and skip a co
 [[files]]
 path = "packages/durable/src/harness/task-graph.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"]
+rationale = "Pi b3a29f11 drops restart_limit from the reasons a task can be blocked (doc comment of TaskGraph blocked) and Pi f3255de7 renumbers the spec section in two doc comments. durable.BlockedReason has missing_task, task_too_old and migration_failed only; TestBlockedTasks (both engines) asserts that a task at the restart limit is no longer shown blocked."
 
 [[files]]
 path = "packages/durable/src/harness/telemetry.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/telemetry_schema_oracle_test.go#TestDurableTelemetrySchemaMatchesPi", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreReportsOfWorkCrashesEnded"]
+rationale = "Pi b3a29f11 replaces the telemetry report type task_parked with task_interrupted and adds the report reason interrupted. durable/harness/telemetry.go lists both in DurableTelemetrySchema, and the Pi oracle test compares the whole schema with the pinned telemetry.ts."
 
 [[files]]
 path = "packages/durable/src/harness/tool.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreOtherTasksCutOffRestartLimitTimesInARow", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreCrashEdges", "test:durable/harness/tool_nested_test.go#TestARunningNestedCallIsAbortedWhenItsCallerThrows"]
+rationale = "Pi b3a29f11 adds endCutOff to the tool task: a call cut off settings.restartLimit times in a row settles with an error result (diagnostic code restart_limit) and its task fails with detail {reason: restart_limit}, instead of parking. durable/harness/tool.go toolEndCutOff and the core's durable/core/turn/tool_machine.go endCutOff do the same with the owned work aborted; TestCoreOtherTasksCutOffRestartLimitTimesInARow and TestCoreCrashEdges assert the result and the task's ending on both engines."
 
 [[files]]
 path = "packages/durable/src/harness/transcript.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/conversation_transcript_test.go#TestConversationTranscript", "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads", "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptOverAHarness", "test:durable/examples/transcript_example_test.go#TestExample31Transcript"]
+rationale = "New in Pi f3255de7: ConversationTranscript, TranscriptItem (entry, gap, earlier), TranscriptView, EntryLoader and ConversationTranscriptOptions. durable/harness/transcript.go ports them (NewConversationTranscript, Merge, LoadEarlier, FillGap, Newest, Resume; TranscriptEntry, TranscriptGap and TranscriptEarlier as the sealed variants of TranscriptItem, so Pi's kind literal is the Go type). The three Test functions port the 16 cases of conversation-transcript.test.ts, including the shared loads and the retry of a failed load, and the walkthrough runs over a Harness; example 31 renders a transcript."
 
 [[files]]
 path = "packages/durable/src/harness/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_view_test.go#TestConversationViewWindow", "test:durable/harness/harness_run_failure_test.go#TestRunFailure", "test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreReportsOfWorkCrashesEnded"]
+rationale = "Pi f3255de7 gives Conversation.watch and Harness.observeConversation the window parameter, and Pi b3a29f11 removes Harness.retryTask and the restart_limit blocked reason. durable/harness/types.go Conversation.Watch(ctx, window) and the harness types follow; RetryTask is gone from the Harness and the core's session API."
 
 [[files]]
 path = "packages/durable/src/harness/usage.ts"
@@ -3903,9 +3903,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/util.go). coverage.md r
 [[files]]
 path = "packages/durable/src/harness/view.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_view_test.go#TestConversationViewWindow", "test:durable/harness/harness_view_run_test.go#TestARunAsTheConversationViewShowsIt", "test:durable/harness/streamed_partials_memory_test.go#TestStreamedPartialsCommitAtACostThatFollowsTheNewText", "test:durable/core/driver/view_window_core_test.go#TestCoreViewWindowDropsItsOldestPastMaxInOneSplice", "test:durable/core/view_differential_test.go", "test:durable/harness/conversation_view_bench_test.go"]
+rationale = "Pi f3255de7 turns ConversationView.entries into a window over the transcript (entries by ID, head markers appended in place, newest 50 on open, a splice of the oldest past 100) with ConversationView.before, the ConversationWindow {from, min, max}, and runs the view over the live document as well as the entries. durable/harness/view.go has ConversationWindow, resolveWindow, loadWindow/scanUpTo and the windowed observers; TestConversationViewWindow, TestARunAsTheConversationViewShowsIt (harness-view-run.test.ts) and TestCoreViewWindow* check the window, the splice, a from that fits, the bounds and the per-observer windows on both engines, the core's view tests (view_test.go, view_differential_test.go) cover its windowed view, and the streamed-partials and view benchmarks port the cost cases."
 
 [[files]]
 path = "packages/durable/src/ids.ts"
@@ -3959,9 +3959,9 @@ rationale = "Declares Photon's WebAssembly import for TypeScript. The Go process
 [[files]]
 path = "packages/durable/src/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/conversation_transcript_test.go#TestConversationTranscript", "test:durable/harness/harness_run_failure_test.go#TestRunFailure"]
+rationale = "Pi f3255de7 drops the harness/events.ts exports (AgentEvent, AgentEventStream, MessageChange, SnapshotEvent, ToolEventCall, watchEvents) and exports RunFailure, RunFailureReason, ConversationWindow and the transcript types (ConversationTranscript, ConversationTranscriptOptions, EntryLoader, TranscriptItem, TranscriptView). Go has no barrel: the exported identifiers of package harness are the same set, with WatchEvents and the agent event types removed (no caller remains) and ConversationTranscript, RunFailure and ConversationWindow declared in transcript.go, live.go and view.go."
 
 [[files]]
 path = "packages/durable/src/search.ts"
@@ -4246,9 +4246,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/truncate.go). coverage.md repor
 [[files]]
 path = "packages/durable/src/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/core/driver/harness_restart_failure_core_test.go#TestCoreReportsOfWorkCrashesEnded", "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"]
+rationale = "Pi b3a29f11 replaces the report type task_parked with task_interrupted, with reason restart_limit or interrupted and restarts, and documents that the restart limit ends a task. durable.ReportTaskInterrupted, ReasonRestartLimit, ReasonInterrupted and ReportInfo.Restarts are in durable/types.go; ReportTaskParked is removed. TestCoreReportsOfWorkCrashesEnded asserts the reports of the built-in kinds."
 
 [[files]]
 path = "packages/env/src/connection.ts"
