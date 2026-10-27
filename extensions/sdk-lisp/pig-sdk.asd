@@ -17,6 +17,7 @@
                (:file "hooks")
                (:file "dispatch")
                (:file "context-extra")
+               (:file "tool-order")
                ;; ==== lane T ====
                (:file "type-engine")
                (:file "tool-schema")
