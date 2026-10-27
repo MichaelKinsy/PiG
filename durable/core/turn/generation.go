@@ -120,12 +120,8 @@ type run struct {
 	hookIndex int
 	// task is the task record of the invocation, which carries the restart count the phases check.
 	task *jv.Object
-	// ending is how a generation attempt that crashes cut off ends; endReason, endMessage and endRestarts are what the commit
-	// that ended the task for crashes reports (markEnded).
-	ending      attemptEnding
-	endReason   string
-	endMessage  string
-	endRestarts any
+	// ending is how a generation attempt that crashes cut off ends.
+	ending attemptEnding
 }
 
 func (g *Generation) newRun(rt *session.Runtime, done func(error)) *run {

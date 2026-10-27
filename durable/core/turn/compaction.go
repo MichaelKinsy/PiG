@@ -94,9 +94,8 @@ func (r *compactionRun) failCutOff() {
 		if err := FailCompactionStatus(live, r.rt.TaskID(), message); err != nil {
 			return nil, err
 		}
-		r.markEnded(current, "restart_limit", message)
 		return failedTerminal(message, "restart_limit"), nil
-	}, r.reportEnded)
+	}, r.finished)
 }
 
 func (r *compactionRun) failNoModel(ref *ModelRef) {
