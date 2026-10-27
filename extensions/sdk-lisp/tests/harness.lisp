@@ -2,10 +2,23 @@
 ;;;; A dependency-free test harness: DEFTEST registers, CHECK counts.
 (defpackage #:pig-tests
   (:use #:cl)
-  (:export #:run-all #:deftest #:check #:check-equal #:check-error))
+  (:export #:run-all #:deftest #:check #:check-equal #:check-error #:repo-path #:read-text-file))
 (in-package #:pig-tests)
 
 (defvar *tests* '())
+
+(defparameter *repo-root*
+  (merge-pathnames "../../../" (make-pathname :name nil :type nil :defaults (or *load-truename* *default-pathname-defaults*)))
+  "The repository root: this file is extensions/sdk-lisp/tests/harness.lisp.")
+
+(defun repo-path (relative)
+  "RELATIVE (a slash-separated string such as \"test/parity/sdk-vectors/pi-ai/x.json\") under the repository root."
+  (merge-pathnames relative *repo-root*))
+
+(defun read-text-file (path)
+  "The whole file as a UTF-8 string."
+  (with-open-file (in path :external-format :utf-8)
+    (let* ((text (make-string (file-length in))) (n (read-sequence text in))) (subseq text 0 n))))
 (defvar *failures* 0)
 (defvar *checks* 0)
 

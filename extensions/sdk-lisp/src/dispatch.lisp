@@ -41,12 +41,14 @@
 
 (defun register-payload (ext)
   (flet ((vec (list) (coerce list 'simple-vector)))
-    (obj "name" (extension-name ext)
-         "tools" (vec (extension-tools ext))
-         "commands" (vec (extension-commands ext))
-         "shortcuts" (vec (extension-shortcuts ext))
-         "handlers" (vec (extension-handlers ext))
-         "flags" (vec (extension-flags ext)))))
+    (let ((payload (obj "name" (extension-name ext)
+                        "tools" (vec (extension-tools ext))
+                        "commands" (vec (extension-commands ext))
+                        "shortcuts" (vec (extension-shortcuts ext))
+                        "handlers" (vec (extension-handlers ext))
+                        "flags" (vec (extension-flags ext)))))
+      (dolist (entry *register-contributors*) (funcall (cdr entry) ext payload))
+      payload)))
 
 ;;; ---------------------------------------------------------------- state from the host
 
@@ -100,6 +102,7 @@
            (apply-ui-state ext state)
            (when (and footer-changed branch-changed)
              (setf callbacks (mapcar #'cdr (extension-branch-subscribers ext)))))
+         (run-hooks '*state-hooks* ext state)
          (dolist (callback callbacks)
            (handler-case (funcall callback)
              (error (e) (ignore-errors (notify-host ext "ui.notify"
@@ -112,7 +115,10 @@
            (dispatch-width-change ext w))))
       ((equal method "height_change")
        (let ((h (jget args "height"))) (when (and (integerp h) (plusp h)) (sb-thread:with-mutex ((extension-state-lock ext)) (setf (extension-height ext) h)))))
-      (t nil))))
+      (t (let ((handler (gethash method *notify-handlers*)))
+           (when handler
+             (handler-case (funcall handler ext args)
+               (error (e) (format *error-output* "~A: notify ~A failed: ~A~%" (extension-name ext) method e)))))))))
 
 ;;; ---------------------------------------------------------------- event stream replicas
 
@@ -315,6 +321,9 @@
           ((equal method "event")
            (multiple-value-bind (result error-message) (run-event-handler ext ctx req)
              (respond ext id result error-message)))
+          ((gethash method *request-handlers*)
+           (ticket-begin (request-ticket request))
+           (respond ext id (funcall (gethash method *request-handlers*) ext ctx req) nil))
           (t (respond ext id nil (format nil "unknown method: ~A" method))))
       (serious-condition (c)
         (handler-case (respond ext id nil (condition-message c))
@@ -366,6 +375,7 @@
 (defun stop-runtime (ext)
   "End every pending call and request; wait up to two seconds for handler threads. True when they all stopped."
   (let (pending signals threads)
+    (run-hooks '*stop-hooks* ext)
     (sb-thread:with-mutex ((extension-state-lock ext))
       (setf (extension-shutdown ext) t)
       (maphash (lambda (k v) (declare (ignore k)) (push v pending)) (extension-pending ext))
@@ -432,7 +442,8 @@ True when every handler thread stopped in time."
                        (extension-height ext) (let ((h (jget data "height"))) (if (integerp h) h 0)))
                  (let ((state (or (jget data "state") (obj))))
                    (apply-footer-data ext (jget state "footerData"))
-                   (apply-ui-state ext state)))))
+                   (apply-ui-state ext state)))
+               (run-hooks '*ready-hooks* ext data)))
            (run-loaded-handlers ext)
            (loop
              (let ((env (handler-case (read-frame conn) (error () :eof))))

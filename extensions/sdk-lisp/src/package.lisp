@@ -35,4 +35,25 @@
    #:ctx-model-registry #:registry-has-configured-auth #:registry-is-using-oauth
    #:registry-get-registered-native-provider #:registry-get-provider-name
    #:ctx-footer-data #:footer-get-git-branch #:footer-get-extension-statuses
-   #:footer-get-available-provider-count #:footer-on-branch-change))
+   #:footer-get-available-provider-count #:footer-on-branch-change
+   ;; ==== lane T: type engine, tool schema, pi-ai ====
+   ;; ==== end lane T ====
+   ;; ==== lane H: pi-tui helpers ====
+   ;; ==== end lane H ====
+   ;; ==== lane C: pi-coding-agent pure helpers ====
+   ;; ==== end lane C ====
+   ;; ==== lane M: model calls and streams, model types ====
+   ;; ==== end lane M ====
+   ;; ==== lane S2: session manager, settings manager, resource loader, package manager, project trust ====
+   ;; ==== end lane S2 ====
+   ;; ==== lane S3: model runtime and registry, create-provider, extension runner and factories, MCP options, event bus, builtin tools ====
+   ;; ==== end lane S3 ====
+   ;; ==== lane S1: session operations, child sessions, agent session runtime and services ====
+   ;; ==== end lane S1 ====
+   ;; ==== lane P: providers, OAuth, renderers, virtual models, MCP registration ====
+   ;; ==== end lane P ====
+   ;; ==== lane U1: component kit, ui.custom, overlays, widgets, theme ====
+   ;; ==== end lane U1 ====
+   ;; ==== lane U2: editor components, autocomplete providers, terminal input ====
+   ;; ==== end lane U2 ====
+   ))

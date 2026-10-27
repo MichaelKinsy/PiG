@@ -90,6 +90,9 @@
   (stale-message nil)
   (run-signal nil)               ; (run . abort-signal) while a run is active
   (replicas (make-hash-table :test 'equal))
+  ;; state of the feature files, by keyword (hooks.lisp)
+  (extras (make-hash-table :test 'eq))
+  (extras-lock (sb-thread:make-mutex :name "pig extras"))
   ;; handlers wait for on-loaded handlers before serving
   (loaded-lock (sb-thread:make-mutex :name "pig loaded"))
   (loaded-queue (sb-thread:make-waitqueue))
