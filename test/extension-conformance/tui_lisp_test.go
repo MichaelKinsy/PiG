@@ -8,7 +8,7 @@ import (
 )
 
 // The Lisp SDK serves the pi-tui and pi-coding-agent theme helpers of tui_probe_test.go and tui_theme_test.go through the shared Lisp SDK fixture
-// (testdata/lisp-sdk-fixture/probes-tui.lisp), which carries the tui_probe and tui_theme_probe tools of the Python fixture. Only these rows run a
+// (testdata/lisp-sdk-fixture/probes-tui.lisp, in its surface extension), which carries the tui_probe and tui_theme_probe tools of the Python fixture. Only these rows run a
 // Lisp placement on the model types rig: the fixture carries no other family's tools.
 
 func loadTuiLisp(t *testing.T, r *modelTypesRig) {

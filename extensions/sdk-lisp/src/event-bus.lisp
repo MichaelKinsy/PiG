@@ -35,7 +35,8 @@
   (let ((ctx (event-bus-ctx bus)) (ext (event-bus-extension bus)))
     (cond (ctx (ctx-call-host ctx method args))
           ((extension-conn ext) (host-call ext method args))
-          (t (helper-loading-call (helper-socket-path) method args ext)))))
+          ((helper-socket-path) (helper-loading-call (helper-socket-path) method args ext))
+          (t (error "~A: not connected to the host: the extension is not running yet" method)))))
 
 (defun events-on (bus channel handler)
   "Subscribe HANDLER, (lambda (ctx data)), to CHANNEL and return the idempotent unsubscribe function. A handler runs in a request of its own, so it may call
