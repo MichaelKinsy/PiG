@@ -69,7 +69,6 @@ func firstTranscriptGap(view *harness.TranscriptView) (harness.TranscriptGap, bo
 
 // 31-transcript.ts
 // Pi source: packages/durable/src/harness/transcript.ts, packages/durable/src/harness/view.ts
-// mutation-checked: dropping the gap `before` leaves of ConversationTranscript.Merge fails it
 func TestExample31Transcript(t *testing.T) {
 	opened, err := harness.OpenHarness(background, storage.NewMemoryStorage(), harness.HarnessOptions{Models: ai.CreateModels(), Registry: harness.CreateRegistry()})
 	if err != nil {
@@ -88,7 +87,9 @@ func TestExample31Transcript(t *testing.T) {
 		}
 	}
 	var printed []string
-	say := func(label string, view *harness.TranscriptView) { printed = append(printed, renderTranscript(label, view)) }
+	say := func(label string, view *harness.TranscriptView) {
+		printed = append(printed, renderTranscript(label, view))
+	}
 
 	chat(200)
 
@@ -102,7 +103,6 @@ func TestExample31Transcript(t *testing.T) {
 	window := harness.ConversationWindow{Min: new(10), Max: new(20)}
 	var mu sync.Mutex
 	var view *harness.TranscriptView
-	var newest durable.EntryId
 	current := func() *harness.TranscriptView {
 		mu.Lock()
 		defer mu.Unlock()
@@ -113,16 +113,13 @@ func TestExample31Transcript(t *testing.T) {
 		defer mu.Unlock()
 		view = next
 	}
-	// follow starts the watch's merging; `newest` is the last entry its latest value holds.
+	// follow starts the watch's merging.
 	follow := func(watch harness.ConversationWatch) {
 		watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
 			merged := transcript.Merge(change.Value)
 			mu.Lock()
 			defer mu.Unlock()
 			view = merged
-			if entries := change.Value.Entries; len(entries) > 0 {
-				newest = entries[len(entries)-1].Id
-			}
 			return nil
 		})
 	}
@@ -187,7 +184,6 @@ func TestExample31Transcript(t *testing.T) {
 
 	must(watch.Stop())
 	closeSession(t, opened)
-	_ = newest
 
 	expectEqual(t, "printed lines", printed, []string{
 		"attach                       [load earlier] 191..200",
