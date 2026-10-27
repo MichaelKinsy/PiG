@@ -366,7 +366,28 @@ func (h *handler) txEndSettled(t *hostTx) {
 		h.txRejected(t.id, err)
 		return
 	}
+	if h.cg.state == gateApplied {
+		// The Storage adopted the batch: the commit is published inside the adoption, and the end is answered when the call settles.
+		for _, pub := range pubs {
+			h.sess.Publish(pub)
+		}
+		h.cg.applied = t
+		return
+	}
 	h.txCommitted(t, pubs)
+}
+
+// txAnswered ends the transaction whose adopted commit the Storage's call has now settled; a call that failed after adopting fails the
+// Session, and the transaction with it.
+func (h *handler) txAnswered(t *hostTx, err error) {
+	if err != nil {
+		h.sess.Fail(err)
+		h.sess.TakeTicks()
+		h.release(t)
+		h.txRejected(t.id, err)
+		return
+	}
+	h.txCommitted(t, nil)
 }
 
 // txCommitted ends a committed transaction. The commit resolves at the end of Pi's job (the change's awaits, settle,

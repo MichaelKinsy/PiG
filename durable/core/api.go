@@ -47,6 +47,14 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	if !ok {
 		return &Rejection{"TypeError", "api: the request is not an object"}
 	}
+	if strOf(req, "op") == "adopt" {
+		// The host's Storage adopted the batch of the commit the gate asked it to take (gate.go).
+		if err := h.gateAdopt(session.Seq(numOf(req, "seq"))); err != nil {
+			return err
+		}
+		h.apiOK(ev.ID, nil)
+		return nil
+	}
 	if strOf(req, "op") == "opened" {
 		// Harness.open completes when the scheduler's open commit did: it waits for the host's Storage when it gates commits.
 		if h.openDone {

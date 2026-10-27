@@ -57,6 +57,7 @@ func (h *handler) startScheduler() error {
 		Session: h.sess,
 		Started: func() { h.job = jobStats{mintStart: h.sess.NextID()}; h.sess.TakeTicks() },
 		Hold:    h.holdJob,
+		Adopted: h.adoptedRun,
 		Tail: func(release func()) bool {
 			if h.loop.Answered {
 				return h.holdFor(2, release)
@@ -86,6 +87,7 @@ func (h *handler) startScheduler() error {
 		ReadTicks:          func() int { return h.job.change },
 		GateRead:           func(method string, id session.ID) { _ = h.gateRead(method, float64(id)) },
 		After:              h.hopsThen,
+		CommitListeners:    &h.changes,
 	})
 	if onWake, _ := boolOf(h.open, "onWake"); onWake {
 		// The host wakes its process itself: the core arms no timer for sleeping tasks and publishes each change of the wake.

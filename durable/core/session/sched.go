@@ -193,6 +193,9 @@ type Scheduler struct {
 	closing            bool
 	dirty              bool
 	draining           bool
+
+	// observing is set while the commit observer runs (it runs inside the Storage's adopt).
+	observing bool
 }
 
 // NewScheduler returns a scheduler over the Session, on the Loop.
