@@ -89,7 +89,7 @@
                                                    got))
                                     "null")
                                 (pig:jget case "name"))
-                   (check-equal (pig:to-json (pig:jget (pig:jget case "result") "seen")) (pig:to-json (reverse seen)) (pig:jget case "name"))))))
+                   (check-equal (pig:to-json (pig:jget (pig:jget case "result") "seen")) (pig:to-json (coerce (reverse seen) 'simple-vector)) (pig:jget case "name"))))))
     (let* ((prompts '())
            (auth (pig:env-api-key-auth "Name" (vector "FIRST" "SECOND")))
            (login-case (find-if (lambda (case) (equal (aref (pig:jget case "args") 2) "$login")) (tt-vectors "envApiKeyAuth")))
