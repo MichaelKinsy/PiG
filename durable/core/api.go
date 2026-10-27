@@ -47,24 +47,29 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	if !ok {
 		return &Rejection{"TypeError", "api: the request is not an object"}
 	}
+	return h.apiRequest(ev.ID, req, false)
+}
+
+// apiRequest serves one api request. queued is set when the request waited for the Session line (Session mode) and runs at its turn.
+func (h *handler) apiRequest(id uint32, req *jv.Object, queued bool) error {
 	if strOf(req, "op") == "adopt" {
 		// The host's Storage adopted the batch of the commit the gate asked it to take (gate.go).
 		if err := h.gateAdopt(session.Seq(numOf(req, "seq"))); err != nil {
 			return err
 		}
-		h.apiOK(ev.ID, nil)
+		h.apiOK(id, nil)
 		return nil
 	}
 	if strOf(req, "op") == "opened" {
 		// Harness.open completes when the scheduler's open commit did: it waits for the host's Storage when it gates commits.
 		if h.openDone {
-			h.answerOpened(ev.ID)
+			h.answerOpened(id)
 		} else {
-			h.openWaiters = append(h.openWaiters, ev.ID)
+			h.openWaiters = append(h.openWaiters, id)
 		}
 		return nil
 	}
-	if h.apiTasks(ev.ID, strOf(req, "op"), req) {
+	if h.apiTasks(id, strOf(req, "op"), req) {
 		return nil
 	}
 	if strOf(req, "op") == "agent" {
@@ -77,15 +82,15 @@ func (h *handler) onAPI(ev *abi.Event) error {
 			return err
 		}, func(err error) {
 			if err != nil {
-				h.apiError(ev.ID, err)
+				h.apiError(id, err)
 				return
 			}
 			h.requestAgentRaw(state, conv, nil, func(agent any, err error) {
 				if err != nil {
-					h.apiError(ev.ID, err)
+					h.apiError(id, err)
 					return
 				}
-				h.apiOK(ev.ID, agent)
+				h.apiOK(id, agent)
 			})
 		})
 		return nil
@@ -106,10 +111,10 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		}
 		done := func(err error) {
 			if err != nil {
-				h.apiError(ev.ID, err)
+				h.apiError(id, err)
 				return
 			}
-			h.apiOK(ev.ID, value)
+			h.apiOK(id, value)
 		}
 		if strOf(objOf(req, "target"), "kind") == "view" {
 			h.loop.ClientReadLine(run, done)
@@ -120,10 +125,10 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	}
 	if strOf(req, "op") == "unloadDocuments" && h.sess.HeldDocuments() > 0 {
 		// Storing held changes is a Storage commit: a job on the Session line (session.ts unloadDocuments).
-		h.unloadHeld(ev.ID)
+		h.unloadHeld(id)
 		return nil
 	}
-	if strOf(req, "op") == "context" && h.runtimeContext(ev.ID, req) {
+	if strOf(req, "op") == "context" && h.runtimeContext(id, req) {
 		return nil
 	}
 	if op := strOf(req, "op"); h.loop != nil && h.onLine(op, req) {
@@ -145,24 +150,19 @@ func (h *handler) onAPI(ev *abi.Event) error {
 			return err
 		}, func(err error) {
 			if err != nil {
-				h.apiError(ev.ID, err)
+				h.apiError(id, err)
 				return
 			}
-			h.apiOK(ev.ID, value)
+			h.apiOK(id, value)
 		})
 		return nil
 	}
-	if h.loop == nil && strOf(req, "op") == "watch.open" && (h.holder != 0 || len(h.queue) != 0) {
+	if !queued && h.loop == nil && strOf(req, "op") == "watch.open" && (h.holder != 0 || len(h.queue) != 0) {
 		// Opening a watch is a job on the Session line (session.ts watchDoc, readOnLine): it waits behind the transactions queued
 		// before it, so a commit queued before the attachment is in its value.
-		h.queue = append(h.queue, lineWait{job: func() { _ = h.answerDirect(ev.ID, req) }})
+		h.queue = append(h.queue, lineWait{api: id, req: req})
 		return nil
 	}
-	return h.answerDirect(ev.ID, req)
-}
-
-// answerDirect serves an api request on the spot: its value, or its error, as the api_result of id.
-func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 	value, err := h.api(strOf(req, "op"), req)
 	if errors.Is(err, ErrNotImplemented) {
 		return err
