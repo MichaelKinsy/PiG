@@ -625,7 +625,7 @@ once the response arrives. A responder that returns (values nil message) answers
                         ext (pig:make-virtual-model :provider "v" :id "m" :name "M"
                                                     :route (lambda (ctx request)
                                                              (declare (ignore ctx))
-                                                             (check (pig:abort-signal-p (pig:jget request "signal")))
+                                                             (check (typep (pig:jget request "signal") (quote pig:abort-signal)))
                                                              (pig:obj "model" (pig:jget request "model") "thinkingLevel" "low" "state" :null))))))))
     (with-host (host ext)
       (let ((routed (pt-run host "r" "virtual_model_route" #'pt-none
