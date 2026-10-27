@@ -44,6 +44,7 @@
                (:file "resource-loader")
                (:file "package-manager")
                (:file "project-trust")
+               (:file "host-info")
                ;; ==== end lane S2 ====
                ;; ==== lane S3 ====
                (:file "model-runtime")
