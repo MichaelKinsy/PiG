@@ -153,7 +153,8 @@ func delegatedEditorCases() []harnessCase {
 			cases = append(cases, tc)
 		}
 	}
-	for _, language := range []string{"go", "python", "rust"} {
+	cases = append(cases, lispHarnessCase())
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	return cases
