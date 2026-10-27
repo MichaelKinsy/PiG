@@ -466,7 +466,7 @@ func TestDeferredToolOutput(t *testing.T) {
 		runs := 0
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema: ai.ToolSchema{Name: "work", Description: "work", Parameters: emptyObjectSchema()},
-			Replay:     durable.ToolReplaySafe,
+			Replay:     durable.ToolReplay("safe"),
 			Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				mu.Lock()
 				runs++
