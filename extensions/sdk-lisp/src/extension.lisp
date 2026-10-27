@@ -10,17 +10,30 @@
   (lock (sb-thread:make-mutex :name "pig signal"))
   (queue (sb-thread:make-waitqueue))
   (flag nil)
-  (reason nil))
+  (reason nil)
+  (listeners '()))
 
 (defun abort-signal-set-p (signal)
   (abort-signal-flag signal))
 
 (defun signal-abort (signal &optional reason)
-  (sb-thread:with-mutex ((abort-signal-lock signal))
-    (unless (abort-signal-flag signal)
-      (setf (abort-signal-flag signal) t (abort-signal-reason signal) reason))
-    (sb-thread:condition-broadcast (abort-signal-queue signal)))
+  (let ((listeners '()))
+    (sb-thread:with-mutex ((abort-signal-lock signal))
+      (unless (abort-signal-flag signal)
+        (setf (abort-signal-flag signal) t (abort-signal-reason signal) reason
+              listeners (shiftf (abort-signal-listeners signal) '())))
+      (sb-thread:condition-broadcast (abort-signal-queue signal)))
+    (dolist (listener listeners) (funcall listener)))
   signal)
+
+(defun abort-signal-subscribe (signal listener)
+  "Call LISTENER, with no arguments, when SIGNAL is set (at once when it already is). Returns the function that unsubscribes."
+  (let ((set (sb-thread:with-mutex ((abort-signal-lock signal))
+               (or (abort-signal-flag signal) (progn (push listener (abort-signal-listeners signal)) nil)))))
+    (when set (funcall listener))
+    (lambda ()
+      (sb-thread:with-mutex ((abort-signal-lock signal))
+        (setf (abort-signal-listeners signal) (remove listener (abort-signal-listeners signal)))))))
 
 (defun abort-signal-wait (signal &optional timeout)
   "Block until SIGNAL is set. With TIMEOUT (seconds), return NIL if it was not set by then; otherwise T."

@@ -34,9 +34,9 @@
                (:file "coding-helpers")
                ;; ==== end lane C ====
                ;; ==== lane M ====
+               (:file "event-stream")
                (:file "model-stream")
                (:file "model-types")
-               (:file "event-stream")
                ;; ==== end lane M ====
                ;; ==== lane S2 ====
                (:file "session-manager")

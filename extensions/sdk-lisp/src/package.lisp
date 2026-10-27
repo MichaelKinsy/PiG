@@ -43,6 +43,13 @@
    ;; ==== lane C: pi-coding-agent pure helpers ====
    ;; ==== end lane C ====
    ;; ==== lane M: model calls and streams, model types ====
+   #:ctx-complete #:registry-stream #:registry-stream-simple #:registry-complete #:registry-classify #:registry-generate-images
+   #:registry-get-all #:registry-get-available #:registry-get-error #:registry-get-models-of-type #:registry-get-model-of-type
+   #:registry-find-of-type #:registry-get-api-key-and-headers #:registry-get-api-key-for-provider #:registry-get-provider-auth-status
+   #:registry-get-provider-display-name #:registry-get-registered-provider-ids #:registry-get-registered-provider-config
+   #:registry-register-provider #:registry-unregister-provider #:registry-register-virtual-model #:registry-unregister-virtual-model
+   #:model-event-stream #:make-model-event-stream #:create-assistant-message-event-stream
+   #:model-stream-push #:model-stream-end #:model-stream-result #:model-stream-events #:model-stream-next
    ;; ==== end lane M ====
    ;; ==== lane S2: session manager, settings manager, resource loader, package manager, project trust ====
    ;; ==== end lane S2 ====
