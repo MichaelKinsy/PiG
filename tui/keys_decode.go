@@ -27,6 +27,12 @@ const kittyPrintableAllowedModifiers = kittyModifierShift | kittyLockMask
 var kittyCSIURegex = lazyregexp.New(`^\x1b\[(\d+)(?::(\d*))?(?::(\d+))?(?:;(\d+))?(?::(\d+))?u$`)
 var modifyOtherKeysRegex = lazyregexp.New(`^\x1b\[27;(\d+);(\d+)~$`)
 
+// Kitty reserves this Private Use Area range for functional keys (F13-F35, media keys, modifier keys, ...). CSI-u codepoints in it are never text.
+const (
+	kittyFunctionalPUAStart = 57344
+	kittyFunctionalPUAEnd   = 63743
+)
+
 var kittyFunctionalKeyEquivalents = map[int]int{
 	57399: 48, // KP_0 -> 0
 	57400: 49, // KP_1 -> 1
@@ -99,6 +105,10 @@ func DecodeKittyPrintable(data string) (string, bool) {
 		}
 	}
 	effectiveCodepoint = normalizeKittyFunctionalCodepoint(effectiveCodepoint)
+	// Drop unmapped Kitty functional keys (F13-F35, media keys, ...).
+	if effectiveCodepoint >= kittyFunctionalPUAStart && effectiveCodepoint <= kittyFunctionalPUAEnd {
+		return "", false
+	}
 	return printableCodepoint(effectiveCodepoint)
 }
 
@@ -190,7 +200,10 @@ func IsKeyRelease(data string) bool {
 		strings.Contains(data, ":3C") ||
 		strings.Contains(data, ":3D") ||
 		strings.Contains(data, ":3H") ||
-		strings.Contains(data, ":3F")
+		strings.Contains(data, ":3F") ||
+		strings.Contains(data, ":3P") ||
+		strings.Contains(data, ":3Q") ||
+		strings.Contains(data, ":3S")
 }
 
 // KeyID is upstream's KeyId (keys.ts:152): a key name such as "enter", "ctrl+c" or "ctrl+shift+f5". Upstream's template-literal union is
@@ -220,5 +233,8 @@ func IsKeyRepeat(data string) bool {
 		strings.Contains(data, ":2C") ||
 		strings.Contains(data, ":2D") ||
 		strings.Contains(data, ":2H") ||
-		strings.Contains(data, ":2F")
+		strings.Contains(data, ":2F") ||
+		strings.Contains(data, ":2P") ||
+		strings.Contains(data, ":2Q") ||
+		strings.Contains(data, ":2S")
 }

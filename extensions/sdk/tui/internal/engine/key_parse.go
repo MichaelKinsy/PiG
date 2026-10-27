@@ -4,6 +4,7 @@ package engine
 
 import (
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -118,6 +119,9 @@ func parsedKeyName(codepoint int) (string, bool) {
 	case cpArrowRight:
 		return "right", true
 	}
+	if codepoint <= cpF1 && codepoint >= cpF12 {
+		return "f" + strconv.Itoa(cpF1-codepoint+1), true
+	}
 	if codepoint >= '0' && codepoint <= 'z' && (codepoint <= '9' || codepoint >= 'a') {
 		return string(rune(codepoint)), true
 	}
@@ -172,6 +176,9 @@ func ParseKey(data string) (string, bool) {
 		return formatParsedKey(modified.codepoint, modified.modifier, 0, false)
 	}
 	if modified := parseModifiedFunc(data); modified != nil {
+		return formatParsedKey(modified.codepoint, modified.modifier, 0, false)
+	}
+	if modified := parseModifiedFKey(data); modified != nil {
 		return formatParsedKey(modified.codepoint, modified.modifier, 0, false)
 	}
 
