@@ -211,12 +211,16 @@ func renderBlockLatex(tok latexToken, width int) string {
 
 // hasRowWiderThan reports whether a line of text has a visible width above width.
 func hasRowWiderThan(text string, width int) bool {
-	for line := range strings.SplitSeq(text, "\n") {
+	for {
+		line, rest, more := strings.Cut(text, "\n")
 		if widthx.VisibleWidth(line) > width {
 			return true
 		}
+		if !more {
+			return false
+		}
+		text = rest
 	}
-	return false
 }
 
 // blockLatexStart reports whether a line begins a block latex token

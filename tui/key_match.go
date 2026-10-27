@@ -88,33 +88,25 @@ var homeEndFinals = map[byte]int{
 	'F': cpEnd,
 }
 
-// funcKeyCodes maps the CSI parameter to sentinel codepoints.
-var funcKeyCodes = map[int]int{
-	2:  cpInsert,
-	3:  cpDelete,
-	5:  cpPageUp,
-	6:  cpPageDown,
-	7:  cpHome,
-	8:  cpEnd,
-	11: cpF1,
-	12: cpF2,
-	13: cpF3,
-	14: cpF4,
-	15: cpF5,
-	17: cpF6,
-	18: cpF7,
-	19: cpF8,
-	20: cpF9,
-	21: cpF10,
-	23: cpF11,
-	24: cpF12,
+// funcKeyCodes maps a CSI <n>;<mod>~ parameter (the index) to its sentinel codepoint; zero marks a parameter that names no key.
+var funcKeyCodes = [...]int16{
+	2: cpInsert, 3: cpDelete, 5: cpPageUp, 6: cpPageDown, 7: cpHome, 8: cpEnd,
+	11: cpF1, 12: cpF2, 13: cpF3, 14: cpF4, 15: cpF5,
+	17: cpF6, 18: cpF7, 19: cpF8, 20: cpF9, 21: cpF10,
+	23: cpF11, 24: cpF12,
 }
 
-// fKeyFinals maps the finals of the F1, F2 and F4 forms (\x1b[P, \x1b[Q, \x1b[S) to sentinel codepoints. F3 is left out: \x1b[1;<mod>R collides with cursor position reports, so Kitty sends F3 as \x1b[13~.
-var fKeyFinals = map[byte]int{
-	'P': cpF1,
-	'Q': cpF2,
-	'S': cpF4,
+// fKeyFinal maps the finals of the F1, F2 and F4 forms (\x1b[P, \x1b[Q, \x1b[S) to sentinel codepoints. F3 is left out: \x1b[1;<mod>R collides with cursor position reports, so Kitty sends F3 as \x1b[13~.
+func fKeyFinal(final byte) (int, bool) {
+	switch final {
+	case 'P':
+		return cpF1, true
+	case 'Q':
+		return cpF2, true
+	case 'S':
+		return cpF4, true
+	}
+	return 0, false
 }
 
 // keyNameCodepoints maps KeyID base key names to (codepoint, isArrow) pairs.
@@ -136,20 +128,6 @@ var keyNameCodepoints = map[string]struct {
 	"pagedown": {cpPageDown, false},
 	"home":     {cpHome, false},
 	"end":      {cpEnd, false},
-
-	// Function keys (CSI <n>;<mod>~ format, and \x1b[1;<mod>P/Q/S for F1, F2 and F4)
-	"f1":  {cpF1, false},
-	"f2":  {cpF2, false},
-	"f3":  {cpF3, false},
-	"f4":  {cpF4, false},
-	"f5":  {cpF5, false},
-	"f6":  {cpF6, false},
-	"f7":  {cpF7, false},
-	"f8":  {cpF8, false},
-	"f9":  {cpF9, false},
-	"f10": {cpF10, false},
-	"f11": {cpF11, false},
-	"f12": {cpF12, false},
 
 	// Special named keys
 	"escape":    {cpEscape, false},
@@ -386,7 +364,7 @@ func cutEventType(s string) (string, bool) {
 	return rest, event != ""
 }
 
-// parseModifiedArrow parses a modified arrow, Home or End key, keys.ts's /^\x1b\[1;(\d+)(?::(\d+))?([ABCD])$/ and its [HF] twin.
+// parseModifiedArrow parses a modified arrow, Home, End, F1, F2 or F4 key, keys.ts's /^\x1b\[1;(\d+)(?::(\d+))?([ABCD])$/ and its [HF] and [PQS] twins.
 func parseModifiedArrow(data string) *parsedKey {
 	rest, ok := strings.CutPrefix(data, "\x1b[1;")
 	if !ok {
@@ -402,7 +380,9 @@ func parseModifiedArrow(data string) *parsedKey {
 	cp, ok := arrowFinals[rest[0]]
 	if !ok {
 		if cp, ok = homeEndFinals[rest[0]]; !ok {
-			return nil
+			if cp, ok = fKeyFinal(rest[0]); !ok {
+				return nil
+			}
 		}
 	}
 	return &parsedKey{codepoint: cp, modifier: jsInt32(keyNumber(modText)-1) &^ lockMask}
@@ -430,41 +410,20 @@ func parseModifiedFunc(data string) *parsedKey {
 		return nil
 	}
 	num := keyNumber(numText)
-	if num > 24 {
+	if num >= float64(len(funcKeyCodes)) || funcKeyCodes[int(num)] == 0 {
 		return nil
 	}
-	cp, ok := funcKeyCodes[int(num)]
-	if !ok {
-		return nil
-	}
-	return &parsedKey{codepoint: cp, modifier: jsInt32(modValue-1) &^ lockMask}
+	return &parsedKey{codepoint: int(funcKeyCodes[int(num)]), modifier: jsInt32(modValue-1) &^ lockMask}
 }
 
-// parseModifiedFKey parses the F1, F2 and F4 forms, keys.ts's /^\x1b\[(?:1;(\d+)(?::(\d+))?)?([PQS])$/: \x1b[P, \x1b[1;<mod>P and \x1b[1;<mod>:<event>P.
-func parseModifiedFKey(data string) *parsedKey {
-	rest, ok := strings.CutPrefix(data, "\x1b[")
-	if !ok {
-		return nil
-	}
-	modValue := 1.0
-	if strings.HasPrefix(rest, "1;") {
-		var modText string
-		if modText, rest = cutDigits(rest[2:]); modText == "" {
-			return nil
+// parseBareFKey parses the unmodified F1, F2 and F4 forms \x1b[P, \x1b[Q and \x1b[S; keys.ts's [PQS] pattern takes the modified forms through parseModifiedArrow.
+func parseBareFKey(data string) *parsedKey {
+	if len(data) == 3 && data[:2] == "\x1b[" {
+		if cp, ok := fKeyFinal(data[2]); ok {
+			return &parsedKey{codepoint: cp}
 		}
-		if rest, ok = cutEventType(rest); !ok {
-			return nil
-		}
-		modValue = keyNumber(modText)
 	}
-	if len(rest) != 1 {
-		return nil
-	}
-	cp, ok := fKeyFinals[rest[0]]
-	if !ok {
-		return nil
-	}
-	return &parsedKey{codepoint: cp, modifier: jsInt32(modValue-1) &^ lockMask}
+	return nil
 }
 
 // parseTerminalInput attempts to parse raw terminal data into a (codepoint, modifier) pair
@@ -483,7 +442,7 @@ func parseTerminalInput(data string) *parsedKey {
 	if pk := parseModifiedFunc(data); pk != nil {
 		return pk
 	}
-	return parseModifiedFKey(data)
+	return parseBareFKey(data)
 }
 
 // parseKeyID parses a key identifier string like "ctrl+shift+left" into
@@ -539,6 +498,12 @@ func resolveKeyCodepoint(baseKey string) (cp int, ok bool) {
 	// Check named keys first.
 	if entry, found := keyNameCodepoints[baseKey]; found {
 		return entry.cp, true
+	}
+	// Function keys: f1 to f12.
+	if n, isNum := strings.CutPrefix(baseKey, "f"); isNum && len(n) <= 2 && n != "" && n[0] >= '1' && n[0] <= '9' {
+		if num, err := strconv.Atoi(n); err == nil && num >= 1 && num <= 12 {
+			return cpF1 - (num - 1), true
+		}
 	}
 	// Single printable character → its codepoint.
 	if len(baseKey) == 1 {
