@@ -878,7 +878,7 @@ jobs:
     needs: [changes, preflight]
     if: needs.changes.outputs.product == 'true'
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 40
     env:
       # brew install would otherwise update every tap first and clean up afterwards.
       HOMEBREW_NO_AUTO_UPDATE: '1'
