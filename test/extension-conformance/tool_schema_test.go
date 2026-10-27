@@ -6,7 +6,7 @@ import (
 
 // Pi loader.ts:273-285 throws before inserting an invalid schema, so a factory may catch the error and continue registering other capabilities.
 func TestToolSchemaRejectionAcrossSDKs(t *testing.T) {
-	for _, tc := range allHarnessCases() {
+	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

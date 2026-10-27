@@ -275,21 +275,23 @@ the request execute_tool_update; ON-UPDATE, (lambda (partial)), runs for each on
 signalled is signalled from here once the call ended. With SIGNAL (an abort-signal) the call is not tied to the calling request, and
 setting the signal sends CANCEL-METHOD with CANCEL-ARGS."
   (let* ((ext (ctx-extension ctx)) (cs (core-state ext)) (nested (make-nested)) (result nil) (call-failure nil) (unsubscribe nil)
-         (parent (ctx-request ctx)) (request-id (ctx-request-id ctx)))
+         (parent (ctx-request ctx)) (request-id (ctx-request-id ctx)) (start (ctx-tool-start ctx)))
     (sb-thread:with-mutex ((cs-lock cs)) (setf (gethash execute-id (cs-nested cs)) nested))
     (core-reporting-blocked (ctx)
       (unwind-protect
            (progn
+             (when start (tool-start-before-call start))
              (core-spawn ext "pig-nested-call"
                          (lambda ()
                            (unwind-protect
                                 (handler-case
                                     (let ((*after-call-sent*
-                                            (and signal cancel-method
-                                                 (lambda ()
-                                                   (setf unsubscribe
-                                                         (abort-signal-subscribe
-                                                          signal (lambda () (core-cancel-later ext cancel-method cancel-args))))))))
+                                            (lambda ()
+                                              (when start (tool-start-after-call start))
+                                              (when (and signal cancel-method)
+                                                (setf unsubscribe
+                                                      (abort-signal-subscribe
+                                                       signal (lambda () (core-cancel-later ext cancel-method cancel-args))))))))
                                       (setf result (if signal
                                                        (host-call ext method payload)
                                                        (host-call ext method payload parent request-id))))

@@ -58,6 +58,7 @@
   (queue (sb-thread:make-waitqueue))
   (done nil)
   (cancelled nil)
+  (settle nil)                  ; a tool-order slot the reader settles when it reads this dialog's answer
   (result nil))
 
 (defstruct (request (:constructor make-request (id signal)))
@@ -130,9 +131,10 @@
 
 ;;; ---------------------------------------------------------------- registration
 
-(declaim (ftype function host-call))
+(declaim (ftype function host-call tool-schema-guard tool-schema-declare))
 
 (defun ensure-jsonable (value what)
+  (tool-schema-guard value)
   (handler-case (encode-json value)
     (json-error (e) (error "~A is not JSON: ~A" what e))))
 
@@ -149,6 +151,7 @@
 (defun install-tool (ext decl handler &optional hooks)
   "Install the tool declaration DECL with HANDLER and HOOKS (a plist of :prepare :loadout :reaches handlers), replacing a tool of the same name."
   (let ((name (gethash "name" decl)))
+    (tool-schema-declare ext name decl (gethash "parameters" decl))
     (sb-thread:with-mutex ((extension-reg-lock ext))
       (let ((existing (position name (extension-tools ext)
                                 :key (lambda (d) (gethash "name" d)) :test #'string=)))
