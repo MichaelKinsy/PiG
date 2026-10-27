@@ -17,6 +17,7 @@ package tui
 import (
 	"errors"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -53,6 +54,19 @@ const (
 	cpHome     = -14
 	cpEnd      = -15
 
+	cpF1  = -21
+	cpF2  = -22
+	cpF3  = -23
+	cpF4  = -24
+	cpF5  = -25
+	cpF6  = -26
+	cpF7  = -27
+	cpF8  = -28
+	cpF9  = -29
+	cpF10 = -30
+	cpF11 = -31
+	cpF12 = -32
+
 	cpEscape    = 27
 	cpTab       = 9
 	cpEnter     = 13
@@ -76,12 +90,31 @@ var homeEndFinals = map[byte]int{
 
 // funcKeyCodes maps the CSI parameter to sentinel codepoints.
 var funcKeyCodes = map[int]int{
-	2: cpInsert,
-	3: cpDelete,
-	5: cpPageUp,
-	6: cpPageDown,
-	7: cpHome,
-	8: cpEnd,
+	2:  cpInsert,
+	3:  cpDelete,
+	5:  cpPageUp,
+	6:  cpPageDown,
+	7:  cpHome,
+	8:  cpEnd,
+	11: cpF1,
+	12: cpF2,
+	13: cpF3,
+	14: cpF4,
+	15: cpF5,
+	17: cpF6,
+	18: cpF7,
+	19: cpF8,
+	20: cpF9,
+	21: cpF10,
+	23: cpF11,
+	24: cpF12,
+}
+
+// fKeyFinals maps the finals of the F1, F2 and F4 forms (\x1b[P, \x1b[Q, \x1b[S) to sentinel codepoints. F3 is left out: \x1b[1;<mod>R collides with cursor position reports, so Kitty sends F3 as \x1b[13~.
+var fKeyFinals = map[byte]int{
+	'P': cpF1,
+	'Q': cpF2,
+	'S': cpF4,
 }
 
 // keyNameCodepoints maps KeyID base key names to (codepoint, isArrow) pairs.
@@ -103,6 +136,20 @@ var keyNameCodepoints = map[string]struct {
 	"pagedown": {cpPageDown, false},
 	"home":     {cpHome, false},
 	"end":      {cpEnd, false},
+
+	// Function keys (CSI <n>;<mod>~ format, and \x1b[1;<mod>P/Q/S for F1, F2 and F4)
+	"f1":  {cpF1, false},
+	"f2":  {cpF2, false},
+	"f3":  {cpF3, false},
+	"f4":  {cpF4, false},
+	"f5":  {cpF5, false},
+	"f6":  {cpF6, false},
+	"f7":  {cpF7, false},
+	"f8":  {cpF8, false},
+	"f9":  {cpF9, false},
+	"f10": {cpF10, false},
+	"f11": {cpF11, false},
+	"f12": {cpF12, false},
 
 	// Special named keys
 	"escape":    {cpEscape, false},
@@ -383,10 +430,37 @@ func parseModifiedFunc(data string) *parsedKey {
 		return nil
 	}
 	num := keyNumber(numText)
-	if num > 8 {
+	if num > 24 {
 		return nil
 	}
 	cp, ok := funcKeyCodes[int(num)]
+	if !ok {
+		return nil
+	}
+	return &parsedKey{codepoint: cp, modifier: jsInt32(modValue-1) &^ lockMask}
+}
+
+// parseModifiedFKey parses the F1, F2 and F4 forms, keys.ts's /^\x1b\[(?:1;(\d+)(?::(\d+))?)?([PQS])$/: \x1b[P, \x1b[1;<mod>P and \x1b[1;<mod>:<event>P.
+func parseModifiedFKey(data string) *parsedKey {
+	rest, ok := strings.CutPrefix(data, "\x1b[")
+	if !ok {
+		return nil
+	}
+	modValue := 1.0
+	if strings.HasPrefix(rest, "1;") {
+		var modText string
+		if modText, rest = cutDigits(rest[2:]); modText == "" {
+			return nil
+		}
+		if rest, ok = cutEventType(rest); !ok {
+			return nil
+		}
+		modValue = keyNumber(modText)
+	}
+	if len(rest) != 1 {
+		return nil
+	}
+	cp, ok := fKeyFinals[rest[0]]
 	if !ok {
 		return nil
 	}
@@ -409,7 +483,7 @@ func parseTerminalInput(data string) *parsedKey {
 	if pk := parseModifiedFunc(data); pk != nil {
 		return pk
 	}
-	return nil
+	return parseModifiedFKey(data)
 }
 
 // parseKeyID parses a key identifier string like "ctrl+shift+left" into
@@ -480,7 +554,6 @@ func resolveKeyCodepoint(baseKey string) (cp int, ok bool) {
 			return int(ch), true
 		}
 	}
-	// Function keys f1-f12: not CSI-u, legacy-only. Not handled dynamically.
 	return 0, false
 }
 
@@ -562,7 +635,7 @@ func lookupKeyID(keyID string) *keyIDInfo {
 	info.baseKey, info.modifier, info.parsed = parseKeyID(keyID)
 	if info.parsed {
 		if info.codepoint, info.dynamic = resolveKeyCodepoint(info.baseKey); !info.dynamic {
-			// keys.ts matchesKey: a function key matches only without a modifier, and clear also with exactly shift or ctrl.
+			// keys.ts matchesKey: clear matches without a modifier and with exactly shift or ctrl.
 			info.legacyKey, info.legacyOK = info.baseKey, true
 			switch info.modifier {
 			case 0:
@@ -631,6 +704,9 @@ func matchesKeyInfo(data string, info *keyIDInfo) bool {
 	}
 
 	keystroke := parseKeystroke(data)
+	if expectedCP <= cpF1 && expectedCP >= cpF12 {
+		return matchesFunctionKey(keystroke, info)
+	}
 	// Kitty CSI-u, including flag-4 alternate keys. Enter also answers to
 	// the keypad Enter codepoint (keys.ts matchesKey "enter").
 	if pk := keystroke.csiu; pk != nil {
@@ -659,6 +735,17 @@ func matchesKeyInfo(data string, info *keyIDInfo) bool {
 
 	// Fallback: legacy single-byte / short-sequence matching.
 	return matchesLegacy(data, baseKey, expectedCP, expectedMod)
+}
+
+// matchesFunctionKey mirrors keys.ts matchesKey "f1".."f12": without a modifier a legacy sequence of the key matches, and otherwise, or failing that, a Kitty sequence does.
+func matchesFunctionKey(keystroke *keystrokeParse, info *keyIDInfo) bool {
+	if info.modifier == 0 && slices.Contains(tuiKeyIDInputs()[info.baseKey], keystroke.data) {
+		return true
+	}
+	if pk := keystroke.csiu; pk != nil {
+		return matchesKittySequence(pk, info.codepoint, info.modifier)
+	}
+	return keystroke.terminal != nil && matchesKittySequence(keystroke.terminal, info.codepoint, info.modifier)
 }
 
 // matchesLegacy handles pre-CSI-u terminal sequences.

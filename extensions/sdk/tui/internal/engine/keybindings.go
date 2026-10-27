@@ -650,7 +650,7 @@ func MatchesKeyID(data, keyID string) bool {
 // like "ctrl+c", "alt+backspace", "ctrl+shift+left", etc.
 //
 // Dynamically representable keys use the protocol- and mode-aware matcher.
-// Function keys and clear fall back to their legacy sequence tables.
+// clear falls back to its legacy sequence table.
 func matchesKeyID(data, keyID string) bool {
 	info := lookupKeyID(keyID)
 	if !info.parsed {
@@ -660,12 +660,12 @@ func matchesKeyID(data, keyID string) bool {
 		return matchesKeyInfo(data, info)
 	}
 
-	// Function keys and clear have no CSI-u codepoint in Pi's key vocabulary,
-	// so they retain their legacy lookup. Every dynamically representable key
-	// goes through the mode-aware matcher above; consulting this table first
-	// would make ambiguous legacy bytes match the wrong key while Kitty mode is
-	// active. keys.ts matchesKey: a function key matches only without a
-	// modifier, and clear also with exactly shift or ctrl (lookupKeyID).
+	// clear has no Kitty codepoint in Pi's key vocabulary, so it keeps its
+	// legacy lookup. Every dynamically representable key goes through the
+	// mode-aware matcher above; consulting this table first would make
+	// ambiguous legacy bytes match the wrong key while Kitty mode is active.
+	// keys.ts matchesKey: clear matches without a modifier and with exactly
+	// shift or ctrl (lookupKeyID).
 	if !info.legacyOK {
 		return false
 	}
