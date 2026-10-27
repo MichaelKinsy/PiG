@@ -134,3 +134,128 @@
                    (when (equal (pig:jget credentials "access") "boom") (error "getApiKey exploded"))
                    (concatenate 'string "key:" (pig:jget credentials "access")))
     :credential-store (pv-oauth-store))))
+
+;;; the login and sprite definitions every SDK submits (conformance_test.go: login-probe, sprite-probe)
+
+(defun pv-grid (rows width) (loop repeat rows collect (make-string width :initial-element #\A)))
+
+(defun pv-login-definition ()
+  (pig:make-login-definition :brand (pv-grid 5 41) :hero (pv-grid 14 32) :mascot (pv-grid 14 16) :palette (pig:obj "A" "#123ABC")
+                             :name "Conformance Pig" :description "Cross-language login fixture" :tagline "One canonical definition across every SDK"))
+
+(defun pv-sprite-definition ()
+  (pig:make-sprite-definition :id "conformance-pig" :name "Conformance Pig" :tagline "One canonical sprite across every SDK"
+                              :mascot (pv-grid 14 16) :palette (pig:obj "A" "#123ABC")))
+
+(def-fixture "provider-login-sprite" (ext)
+  (pig:command ext "login-probe" "Exercise semantic login submission and host errors"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (block probe
+                 (let ((definition (pv-login-definition)))
+                   (pig:ctx-set-login ctx definition)
+                   (setf (first (pig:login-definition-brand definition)) (subseq (first (pig:login-definition-brand definition)) 0 40))
+                   (handler-case (pig:ctx-set-login ctx definition)
+                     (pig:host-call-error (e) (pig:ctx-notify ctx (pig:host-call-error-message e) "error") (return-from probe nil)))
+                   (error "invalid login definition was accepted")))))
+  (pig:command ext "sprite-probe" "Exercise sprite registration and host errors"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (block probe
+                 (let ((definition (pv-sprite-definition)))
+                   (pig:ctx-register-sprite ctx definition)
+                   (setf (first (pig:sprite-definition-mascot definition)) (subseq (first (pig:sprite-definition-mascot definition)) 0 15))
+                   (handler-case (pig:ctx-register-sprite ctx definition)
+                     (pig:host-call-error (e) (pig:ctx-notify ctx (pig:host-call-error-message e) "error") (return-from probe nil)))
+                   (error "invalid sprite definition was accepted"))))))
+
+;;; an OAuth login that asks the host for every kind of interaction (lisp_provider_api_test.go: TestLispOAuthLoginCallbacksReachTheHost)
+
+(def-fixture "provider-oauth-callbacks" (ext)
+  (pig:register-oauth-provider
+   ext "conformance-oauth-callbacks" (pig:obj "name" "Conformance OAuth Callbacks")
+   (pig:make-oauth-provider
+    :name "Conformance OAuth Callbacks"
+    :login (lambda (callbacks)
+             (pig:oauth-on-auth callbacks (pig:make-oauth-auth-info :url "https://auth.example/start" :instructions "Open the link"))
+             (pig:oauth-on-device-code callbacks (pig:make-oauth-device-code-info :user-code "ABCD" :verification-uri "https://auth.example/device"
+                                                                                  :open-browser-on-confirm :false :copy-code-on-confirm t
+                                                                                  :interval-seconds 5 :expires-in-seconds 600))
+             (pig:oauth-on-progress callbacks "Waiting")
+             (let* ((typed (pig:oauth-on-prompt callbacks (pig:make-oauth-prompt :message "Account:" :placeholder "acme" :allow-empty t)))
+                    (picked (pig:oauth-on-select callbacks (pig:make-oauth-select-prompt
+                                                            :message "Team:" :options (list (pig:make-oauth-select-option :id "red" :label "Red team")
+                                                                                            (pig:make-oauth-select-option :id "blue" :label "Blue team")))))
+                    (manual (pig:oauth-on-manual-code-input callbacks)))
+               (pig:oauth-credentials :access (format nil "~A/~A/~A" typed picked manual) :refresh "r" :expires 1)))
+    :refresh-token #'identity :get-api-key (lambda (credentials) (pig:jget credentials "access")))))
+
+;;; the value types of providers and renderers, built and read back in the extension (lisp_provider_api_test.go: TestLispProviderValueTypes)
+
+(defun pv-describe (&rest parts) (format nil "~{~A~^|~}" parts))
+
+(def-fixture "provider-surface" (ext)
+  (pig:command
+   ext "provider_surface" "Build the provider value types and report what they hold"
+   (lambda (ctx args)
+     (declare (ignore args))
+     (let* ((signal (pig:make-abort-signal))
+            (auth-context (pig:make-auth-context :env (lambda (name) (concatenate 'string "env:" name)) :file-exists (lambda (path) (equal path "/there"))))
+            (input (pig:make-api-key-auth-input :ctx auth-context :credential (pig:obj "key" "k") :signal signal))
+            (result (pig:make-auth-result :auth (pig:obj "apiKey" "a") :env (pig:obj "E" "1") :source "from-result"))
+            (check (pig:make-auth-check :type "api_key" :source "from-check"))
+            (interaction (pig:make-auth-interaction :prompt (lambda (prompt) (pig:jget prompt "message")) :notify (lambda (event) (declare (ignore event)) nil) :signal signal))
+            (options (pig:make-login-options :get-device-id (lambda () "device-7") :agent-name "agent-7"))
+            (api-key (pig:make-api-key-auth :name "Key name" :resolve (lambda (input) (declare (ignore input)) result)
+                                            :check (lambda (input) (declare (ignore input)) check)
+                                            :login (lambda (interaction) (declare (ignore interaction)) (pig:obj))))
+            (oauth (pig:make-oauth-auth :name "OAuth name" :login (lambda (interaction options) (declare (ignore interaction options)) (pig:obj))
+                                        :refresh (lambda (credential signal) (declare (ignore signal)) credential) :to-auth (lambda (credential) credential)
+                                        :is-subscription t :login-label "Sign in"))
+            (auth (pig:make-provider-auth :api-key api-key :oauth oauth))
+            (stream-options (pig:make-provider-stream-options :values (pig:obj "v" 1) :signal signal :on-payload #'identity :on-response #'identity
+                                                              :on-provider-stream-event #'identity))
+            (operation-options (pig:make-provider-operation-options :values (pig:obj "o" 2) :signal signal))
+            (publication (pig:make-models-publication :persist :null :update #'identity))
+            (refresh (pig:make-refresh-models-context :publish #'identity :credential (pig:obj "c" 1) :stored (pig:obj "s" 2) :allow-network t :force t
+                                                      :signal signal :base-url "https://base"))
+            (provider (pig:make-provider :id "surface" :name "Surface" :auth auth :get-models (lambda () nil) :stream #'identity :stream-simple #'identity
+                                         :base-url "https://provider" :headers (pig:obj "X" "1") :filter-models #'identity :get-all-models #'identity
+                                         :filter-all-models #'identity :refresh-models #'identity :fetch-deferred #'identity :cancel-deferred #'identity
+                                         :generate-images #'identity :classify #'identity))
+            (renderers (pig:make-tool-renderers :render-call #'identity :render-result #'identity :render-shell "self" :call-view #'identity :result-view #'identity))
+            (render-context (pig:make-tool-render-context :args (pig:obj "a" 1) :tool-call-id "call-1" :cwd "/cwd" :execution-started t :args-complete t
+                                                          :is-partial t :expanded t :show-images t :is-error t :output-pad 3 :duration-ms 12
+                                                          :state (pig:obj "s" 1) :invalidate (lambda () "invalidated")))
+            (device (pig:make-oauth-device-code-info :user-code "U" :verification-uri "V"))
+            (status (pig:make-oauth-credential-status :present t :auth-type "oauth" :source "src"))
+            (store (pig:make-oauth-credential-store :credential-status (lambda () status) :store-credentials #'identity :delete-credentials (lambda () t)))
+            (oauth-provider (pig:make-oauth-provider :name "OP" :is-subscription t :credential-store store))
+            (cancelled (handler-case (error 'pig:oauth-cancelled) (pig:oauth-cancelled (c) (princ-to-string c)))))
+       (pig:ctx-notify
+        ctx
+        (pv-describe
+         "surface"
+         (typep input 'pig:api-key-auth-input) (typep auth-context 'pig:auth-context) (typep result 'pig:auth-result) (typep check 'pig:auth-check)
+         (typep interaction 'pig:auth-interaction) (typep options 'pig:login-options) (typep api-key 'pig:api-key-auth) (typep oauth 'pig:oauth-auth)
+         (typep stream-options 'pig:provider-stream-options) (typep operation-options 'pig:provider-operation-options)
+         (typep publication 'pig:models-publication) (typep refresh 'pig:refresh-models-context) (typep provider 'pig:provider) (pig:provider-p provider)
+         (typep renderers 'pig:tool-renderers) (typep render-context 'pig:tool-render-context) (typep device 'pig:oauth-device-code-info)
+         (typep store 'pig:oauth-credential-store) (typep oauth-provider 'pig:oauth-provider) (typep status 'pig:oauth-credential-status)
+         (funcall (pig:auth-context-env (pig:api-key-auth-input-ctx input)) "X") (funcall (pig:auth-context-file-exists (pig:api-key-auth-input-ctx input)) "/there")
+         (eq signal (pig:api-key-auth-input-signal input)) (eq signal (pig:auth-interaction-signal interaction))
+         (pig:api-key-auth-name api-key) (pig:oauth-auth-name oauth) (pig:oauth-auth-is-subscription oauth) (pig:oauth-auth-login-label oauth)
+         (funcall (pig:login-options-get-device-id options)) (pig:login-options-agent-name options)
+         (pig:provider-base-url provider) (pig:provider-handle provider) (null (pig:provider-get-all-models provider)) (null (pig:provider-filter-all-models provider))
+         (null (pig:provider-generate-images provider)) (null (pig:provider-classify provider))
+         (pig:jget (pig:provider-operation-options-values operation-options) "o") (eq signal (pig:provider-operation-options-signal operation-options))
+         (pig:jget (pig:refresh-models-context-credential refresh) "c") (pig:jget (pig:refresh-models-context-stored refresh) "s")
+         (pig:refresh-models-context-allow-network refresh) (eq signal (pig:refresh-models-context-signal refresh))
+         (pig:tool-renderers-render-shell renderers) (and (pig:tool-renderers-render-result renderers) (pig:tool-renderers-call-view renderers)
+                                                         (pig:tool-renderers-result-view renderers) t)
+         (pig:tool-render-context-tool-call-id render-context) (pig:tool-render-context-cwd render-context)
+         (pig:tool-render-context-execution-started render-context) (pig:tool-render-context-args-complete render-context)
+         (pig:tool-render-context-expanded render-context) (pig:tool-render-context-show-images render-context) (pig:tool-render-context-is-error render-context)
+         (pig:tool-render-context-output-pad render-context) (pig:jget (pig:tool-render-context-args render-context) "a")
+         (funcall (pig:tool-render-context-invalidate render-context))
+         cancelled))))))

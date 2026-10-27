@@ -2,6 +2,8 @@ package extensionconformance
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -232,5 +234,81 @@ func TestLispSDKProviderConfigWithImageAndClassifierModels(t *testing.T) {
 		if classifier.ID != "cls-1" || classifier.Type != ai.ModelTypeClassifier || string(classifier.API) != "llama-cpp-classify" || classifier.ContextWindow != 512 {
 			t.Fatalf("classifier entry = %+v", classifier)
 		}
+	})
+}
+
+// oauth.cb.onAuth, onDeviceCode, onProgress, onPrompt, onSelect and onManualCodeInput: a login flow of the extension asks the host's login UI for each interaction and
+// carries the answers into the credentials it returns, which no SDK can produce without making the calls.
+func TestLispOAuthLoginCallbacksReachTheHost(t *testing.T) {
+	h := makeSubprocessLispHarness(t)
+	t.Cleanup(func() { h.host.Shutdown("test done") })
+	provider, ok := ai.GetOAuthProvider("conformance-oauth-callbacks")
+	if !ok {
+		t.Fatal("conformance-oauth-callbacks provider not registered by the fixture")
+	}
+	var seen []string
+	callbacks := ai.OAuthLoginCallbacks{
+		OnAuth: func(info ai.OAuthAuthInfo) { seen = append(seen, "auth "+info.URL+" "+info.Instructions) },
+		OnDeviceCode: func(info ai.OAuthDeviceCodeInfo) {
+			seen = append(seen, fmt.Sprintf("device %s %s browser=%v copy=%v interval=%v expires=%v", info.UserCode, info.VerificationURI, *info.OpenBrowserOnConfirm, *info.CopyCodeOnConfirm, info.IntervalSeconds, info.ExpiresInSeconds))
+		},
+		OnProgress: func(message string) { seen = append(seen, "progress "+message) },
+		OnPrompt: func(prompt ai.OAuthPrompt) (string, error) {
+			seen = append(seen, fmt.Sprintf("prompt %s %s %v", prompt.Message, prompt.Placeholder, prompt.AllowEmpty))
+			return "typed", nil
+		},
+		OnSelect: func(prompt ai.OAuthSelectPrompt) (string, error) {
+			seen = append(seen, fmt.Sprintf("select %s %v", prompt.Message, prompt.Options))
+			return "blue", nil
+		},
+		OnManualCodeInput: func() (string, error) {
+			seen = append(seen, "manual")
+			return "pasted", nil
+		},
+	}
+	credentials, err := provider.Login(callbacks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"auth https://auth.example/start Open the link",
+		"device ABCD https://auth.example/device browser=false copy=true interval=5 expires=600",
+		"progress Waiting",
+		"prompt Account: acme true",
+		"select Team: [{red Red team} {blue Blue team}]",
+		"manual",
+	}
+	if !slices.Equal(seen, want) {
+		t.Fatalf("interactions = %q, want %q", seen, want)
+	}
+	if credentials.Access != "typed/blue/pasted" {
+		t.Fatalf("credentials.Access = %q", credentials.Access)
+	}
+	cancelled := callbacks
+	cancelled.OnSelect = func(ai.OAuthSelectPrompt) (string, error) { return "", errors.New("Login cancelled") }
+	if _, err := provider.Login(cancelled); err == nil || err.Error() != "Login cancelled" {
+		t.Fatalf("a login whose select the user cancelled failed with %v, want Login cancelled", err)
+	}
+}
+
+// The provider value types the Lisp SDK offers (provider objects, auth methods, stream and operation options, render contexts) hold what they were built with.
+func TestLispProviderValueTypes(t *testing.T) {
+	h := makeSubprocessLispHarness(t)
+	t.Cleanup(func() { h.host.Shutdown("test done") })
+	command, ok := findCommand(h.runner, "provider_surface")
+	if !ok {
+		t.Fatal("provider_surface command not found")
+	}
+	if err := command.Handler(t.Context(), ""); err != nil {
+		t.Fatal(err)
+	}
+	want := "surface|" + strings.Repeat("T|", 20) + "env:X|T|T|T|Key name|OAuth name|T|Sign in|device-7|agent-7|https://provider|NIL|NIL|NIL|NIL|NIL|2|T|1|2|T|T|self|T|call-1|/cwd|T|T|T|T|T|3|1|invalidated|Login cancelled"
+	waitFor(t, func() bool {
+		for _, line := range h.ui.Recorded() {
+			if strings.TrimSuffix(strings.TrimSuffix(line, ":info"), ":") == want {
+				return true
+			}
+		}
+		return false
 	})
 }
