@@ -320,6 +320,52 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
     tools))
 
 (defun ctx-get-active-tools (ctx) (reply-field ctx "getActiveTools" "tools"))
+;;; thin host calls: one wire method each, the member names Pi's API gives them -------
+
+(defun call-result (ctx method &optional args)
+  "The \"result\" member of METHOD's reply (NIL for an absent or null member)."
+  (let* ((reply (ctx-call-host ctx method args))
+         (value (and (hash-table-p reply) (jget reply "result"))))
+    (if (eq value :null) nil value)))
+
+(defun nonempty-object (value) (and (hash-table-p value) (plusp (hash-table-count value)) value))
+
+(defun success-and-error (ctx method args)
+  "The (values success error-message) of a reply that carries success and an optional error."
+  (let ((result (or (call-result ctx method args) (obj))))
+    (values (eq (or (jget result "success") (jget result "ok")) t)
+            (let ((e (jget result "error"))) (if (stringp e) e "")))))
+
+(defun ctx-set-active-tools (ctx tool-names)
+  (ctx-call-host ctx "setActiveTools" (obj "tools" (coerce tool-names 'vector))) nil)
+(defun ctx-get-commands (ctx) (reply-field ctx "getCommands" "commands"))
+(defun ctx-get-context-usage (ctx) (nonempty-object (call-result ctx "getContextUsage")))
+(defun ctx-get-system-prompt-options (ctx)
+  (let ((result (call-result ctx "getSystemPromptOptions")))
+    (unless (hash-table-p result)
+      (error 'host-call-error :message "host reply to getSystemPromptOptions is not an object" :code "invalid_reply"))
+    result))
+(defun ctx-get-model-info (ctx)
+  (let ((result (call-result ctx "getModelInfo")))
+    (and (hash-table-p result) (let ((id (jget result "id"))) (and (stringp id) (plusp (length id)))) result)))
+(defun ctx-get-model-auth (ctx provider-id model-id)
+  (call-result ctx "getModelAuth" (obj "provider" provider-id "modelId" model-id)))
+(defun ctx-get-scoped-models (ctx) (or (call-result ctx "getScopedModels" (obj)) (vector)))
+(defun ctx-set-model (ctx model)
+  "(values success error-message) for the model named MODEL."
+  (success-and-error ctx "setModel" (obj "model" model)))
+(defun ctx-set-thinking-level (ctx level) (ctx-call-host ctx "setThinkingLevel" (obj "level" level)) nil)
+(defun ctx-set-label (ctx entry-id label) (ctx-call-host ctx "setLabel" (obj "entryId" entry-id "label" label)) nil)
+(defun ctx-wait-for-idle (ctx) (ctx-call-host ctx "waitForIdle") nil)
+(defun ctx-project-trusted-p (ctx) (eq (reply-field ctx "isProjectTrusted" "trusted") t))
+(defun ctx-get-session-id (ctx) (reply-field ctx "getSessionID" "sessionId"))
+(defun ctx-get-leaf-id (ctx) (optional-string-field ctx "getLeafID" "leafId"))
+(defun ctx-get-all-themes (ctx) (reply-field ctx "ui.getAllThemes" "themes"))
+(defun ctx-get-theme (ctx name) (let ((r (call-result ctx "ui.getTheme" (obj "name" name)))) (and (hash-table-p r) (jget r "theme"))))
+(defun ctx-set-theme (ctx name) (success-and-error ctx "ui.setTheme" (obj "theme" name)))
+(defun ctx-get-editor-text (ctx) (reply-field ctx "ui.getEditorText" "text"))
+(defun ctx-tools-expanded-p (ctx) (eq (reply-field ctx "ui.getToolsExpanded" "expanded") t))
+
 
 (defun ctx-send-message (ctx custom-type content &key (display t) trigger-turn deliver-as details)
   (let ((options (obj))
@@ -393,6 +439,26 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defun registry-get-provider-name (registry provider)
   (declare (ignore registry provider))
   (error 'unsupported-capability :member "registry-get-provider-name (Provider objects)"))
+
+;;; model registry host calls
+
+(defun registry-find (registry provider-id model-id)
+  "The model PROVIDER-ID/MODEL-ID, or NIL when the registry has none."
+  (let ((model (call-result (model-registry-ctx registry) "getModel" (obj "provider" provider-id "modelId" model-id))))
+    (and (hash-table-p model) model)))
+
+(defun registry-get-provider-auth (registry provider-id)
+  (call-result (model-registry-ctx registry) "getProviderAuth" (obj "provider" provider-id)))
+
+(defun registry-refresh (registry &optional options)
+  "Refresh the registry; the result carries aborted and errors."
+  (call-result (model-registry-ctx registry) "refreshModelRegistry" (or options (obj))))
+
+(defun registry-get-available-of-type (registry model-type &optional provider)
+  "The models of MODEL-TYPE whose provider has working credentials."
+  (let ((args (obj "type" model-type)))
+    (when provider (setf (gethash "provider" args) provider))
+    (call-result (model-registry-ctx registry) "getAvailableOfType" args)))
 
 ;;; footer data -------------------------------------------------------------------
 

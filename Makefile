@@ -354,7 +354,7 @@ test-sdk-lisp: ## Run the Lisp extension SDK's own tests with the pinned SBCL
 
 .PHONY: test-sdk-lisp
 
-# The SDK scenario table (test/extension-conformance/sdkscenarios) runs once per SDK through the real host, with the Go, Node, Python and Rust scenario drivers, and each SDK must produce the observation the table gives. A row in a scenario's Red map must still produce exactly its recorded Got, so the lane that fixes it deletes the entry and a regression inside a red row still fails. CI runs it in the test-conformance shard and in the Windows and macOS extension-conformance shards, because it is a test of ./test/extension-conformance; this target runs it alone, with the wiring checks that tie the table to the wire methods the code derives.
+# The SDK scenario table (test/extension-conformance/sdkscenarios) runs once per SDK through the real host, with the Go, Node, Python, Rust and Lisp scenario drivers, and each SDK must produce the observation the table gives. A row in a scenario's Red map must still produce exactly its recorded Got, so the lane that fixes it deletes the entry and a regression inside a red row still fails. CI runs it in the test-conformance shard and in the Windows and macOS extension-conformance shards, because it is a test of ./test/extension-conformance; this target runs it alone, with the wiring checks that tie the table to the wire methods the code derives.
 test-sdk-conformance: ## Run the SDK conformance scenario table against every extension SDK through the real host
 	@go test ./test/extension-conformance -run '^TestSDKScenarios$$' $(GO_TEST_CI_COUNT)
 	@go test ./test/wiring -run 'TestScenarioCoversNameRealWireMethods|TestEveryAuthObjectMethodIsExercisedByAScenario' $(GO_TEST_CI_COUNT)
