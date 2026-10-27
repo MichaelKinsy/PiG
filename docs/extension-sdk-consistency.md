@@ -22,311 +22,312 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`.
 | Go | 224 | 224 | 0 |
 | Rust | 224 | 224 | 0 |
 | Python | 224 | 224 | 0 |
+| Lisp | 198 | 83 | 115 |
 
 ## pi (ExtensionAPI)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `pi.registerTool` | exercised | exercised | exercised | exercised |
-| `pi.registerCommand` | exercised | exercised | exercised | exercised |
-| `pi.registerShortcut` | exercised | exercised | exercised | exercised |
-| `pi.registerFlag` | exercised | exercised | exercised | exercised |
-| `pi.getFlag` | exercised | exercised | exercised | exercised |
-| `pi.registerMessageRenderer` | exercised | exercised | exercised | exercised |
-| `pi.registerMarkdownTransformer` | exercised | exercised | exercised | exercised |
-| `pi.registerEntryRenderer` | exercised | exercised | exercised | exercised |
-| `pi.registerToolRenderer` | exercised | exercised | exercised | exercised |
-| `pi.sendMessage` | exercised | exercised | exercised | exercised |
-| `pi.sendUserMessage` | exercised | exercised | exercised | exercised |
-| `pi.appendEntry` | exercised | exercised | exercised | exercised |
-| `pi.setSessionName` | exercised | exercised | exercised | exercised |
-| `pi.getSessionName` | exercised | exercised | exercised | exercised |
-| `pi.setLabel` | exercised | exercised | exercised | exercised |
-| `pi.exec` | exercised | exercised | exercised | exercised |
-| `pi.getActiveTools` | exercised | exercised | exercised | exercised |
-| `pi.getAllTools` | exercised | exercised | exercised | exercised |
-| `pi.getSettings` | exercised | exercised | exercised | exercised |
-| `pi.setActiveTools` | exercised | exercised | exercised | exercised |
-| `pi.getCommands` | exercised | exercised | exercised | exercised |
-| `pi.setModel` | exercised | exercised | exercised | exercised |
-| `pi.getThinkingLevel` | exercised | exercised | exercised | exercised |
-| `pi.setThinkingLevel` | exercised | exercised | exercised | exercised |
-| `pi.registerProvider` | exercised | exercised | exercised | exercised |
-| `pi.unregisterProvider` | exercised | exercised | exercised | exercised |
-| `pi.registerMcpServer` | exercised | exercised | exercised | exercised |
-| `pi.unregisterMcpServer` | exercised | exercised | exercised | exercised |
-| `pi.getMcpServers` | exercised | exercised | exercised | exercised |
-| `pi.registerVirtualModel` | exercised | exercised | exercised | exercised |
-| `pi.unregisterVirtualModel` | exercised | exercised | exercised | exercised |
+| `pi.registerTool` | exercised | exercised | exercised | exercised | exercised |
+| `pi.registerCommand` | exercised | exercised | exercised | exercised | present |
+| `pi.registerShortcut` | exercised | exercised | exercised | exercised | exercised |
+| `pi.registerFlag` | exercised | exercised | exercised | exercised | present |
+| `pi.getFlag` | exercised | exercised | exercised | exercised | present |
+| `pi.registerMessageRenderer` | exercised | exercised | exercised | exercised | present |
+| `pi.registerMarkdownTransformer` | exercised | exercised | exercised | exercised | present |
+| `pi.registerEntryRenderer` | exercised | exercised | exercised | exercised | present |
+| `pi.registerToolRenderer` | exercised | exercised | exercised | exercised | present |
+| `pi.sendMessage` | exercised | exercised | exercised | exercised | exercised |
+| `pi.sendUserMessage` | exercised | exercised | exercised | exercised | exercised |
+| `pi.appendEntry` | exercised | exercised | exercised | exercised | exercised |
+| `pi.setSessionName` | exercised | exercised | exercised | exercised | present |
+| `pi.getSessionName` | exercised | exercised | exercised | exercised | present |
+| `pi.setLabel` | exercised | exercised | exercised | exercised | present |
+| `pi.exec` | exercised | exercised | exercised | exercised | present |
+| `pi.getActiveTools` | exercised | exercised | exercised | exercised | present |
+| `pi.getAllTools` | exercised | exercised | exercised | exercised | present |
+| `pi.getSettings` | exercised | exercised | exercised | exercised | exercised |
+| `pi.setActiveTools` | exercised | exercised | exercised | exercised | present |
+| `pi.getCommands` | exercised | exercised | exercised | exercised | present |
+| `pi.setModel` | exercised | exercised | exercised | exercised | exercised |
+| `pi.getThinkingLevel` | exercised | exercised | exercised | exercised | present |
+| `pi.setThinkingLevel` | exercised | exercised | exercised | exercised | present |
+| `pi.registerProvider` | exercised | exercised | exercised | exercised | present |
+| `pi.unregisterProvider` | exercised | exercised | exercised | exercised | present |
+| `pi.registerMcpServer` | exercised | exercised | exercised | exercised | present |
+| `pi.unregisterMcpServer` | exercised | exercised | exercised | exercised | present |
+| `pi.getMcpServers` | exercised | exercised | exercised | exercised | present |
+| `pi.registerVirtualModel` | exercised | exercised | exercised | exercised | exercised |
+| `pi.unregisterVirtualModel` | exercised | exercised | exercised | exercised | exercised |
 
 ## pi.events (EventBus)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `pi.events.emit` | exercised | exercised | exercised | exercised |
-| `pi.events.on` | exercised | exercised | exercised | exercised |
+| `pi.events.emit` | exercised | exercised | exercised | exercised | exercised |
+| `pi.events.on` | exercised | exercised | exercised | exercised | exercised |
 
 ## Events
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `pi.on("project_trust")` | exercised | exercised | exercised | exercised |
-| `pi.on("resources_discover")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_start")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_info_changed")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_before_switch")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_before_fork")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_before_compact")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_compact")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_compact_failed")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_shutdown")` | exercised | exercised | exercised | exercised |
-| `pi.on("mcp_servers_change")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_before_tree")` | exercised | exercised | exercised | exercised |
-| `pi.on("session_tree")` | exercised | exercised | exercised | exercised |
-| `pi.on("context")` | exercised | exercised | exercised | exercised |
-| `pi.on("context_with_system")` | exercised | exercised | exercised | exercised |
-| `pi.on("cache_warming_decision")` | exercised | exercised | exercised | exercised |
-| `pi.on("before_provider_request")` | exercised | exercised | exercised | exercised |
-| `pi.on("before_provider_headers")` | exercised | exercised | exercised | exercised |
-| `pi.on("after_provider_response")` | exercised | exercised | exercised | exercised |
-| `pi.on("provider_stream_event")` | exercised | exercised | exercised | exercised |
-| `pi.on("before_agent_start")` | exercised | exercised | exercised | exercised |
-| `pi.on("agent_start")` | exercised | exercised | exercised | exercised |
-| `pi.on("agent_end")` | exercised | exercised | exercised | exercised |
-| `pi.on("agent_before_settle")` | exercised | exercised | exercised | exercised |
-| `pi.on("agent_settled")` | exercised | exercised | exercised | exercised |
-| `pi.on("ui_prompt_start")` | exercised | exercised | exercised | exercised |
-| `pi.on("ui_prompt_end")` | exercised | exercised | exercised | exercised |
-| `pi.on("turn_start")` | exercised | exercised | exercised | exercised |
-| `pi.on("turn_end")` | exercised | exercised | exercised | exercised |
-| `pi.on("message_start")` | exercised | exercised | exercised | exercised |
-| `pi.on("message_update")` | exercised | exercised | exercised | exercised |
-| `pi.on("message_end")` | exercised | exercised | exercised | exercised |
-| `pi.on("tool_execution_start")` | exercised | exercised | exercised | exercised |
-| `pi.on("tool_execution_update")` | exercised | exercised | exercised | exercised |
-| `pi.on("tool_execution_end")` | exercised | exercised | exercised | exercised |
-| `pi.on("model_select")` | exercised | exercised | exercised | exercised |
-| `pi.on("thinking_level_select")` | exercised | exercised | exercised | exercised |
-| `pi.on("tool_call")` | exercised | exercised | exercised | exercised |
-| `pi.on("tool_result")` | exercised | exercised | exercised | exercised |
-| `pi.on("user_bash")` | exercised | exercised | exercised | exercised |
-| `pi.on("input")` | exercised | exercised | exercised | exercised |
+| `pi.on("project_trust")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("resources_discover")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_start")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_info_changed")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_before_switch")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_before_fork")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_before_compact")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_compact")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_compact_failed")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_shutdown")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("mcp_servers_change")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_before_tree")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("session_tree")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("context")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("context_with_system")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("cache_warming_decision")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("before_provider_request")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("before_provider_headers")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("after_provider_response")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("provider_stream_event")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("before_agent_start")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("agent_start")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("agent_end")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("agent_before_settle")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("agent_settled")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("ui_prompt_start")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("ui_prompt_end")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("turn_start")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("turn_end")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("message_start")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("message_update")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("message_end")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("tool_execution_start")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("tool_execution_update")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("tool_execution_end")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("model_select")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("thinking_level_select")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("tool_call")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("tool_result")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("user_bash")` | exercised | exercised | exercised | exercised | exercised |
+| `pi.on("input")` | exercised | exercised | exercised | exercised | exercised |
 
 ## ctx (ExtensionContext)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.mode` | exercised | exercised | exercised | exercised |
-| `ctx.hasUI` | exercised | exercised | exercised | exercised |
-| `ctx.cwd` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager` | exercised | exercised | exercised | exercised |
+| `ctx.mode` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.hasUI` | exercised | exercised | exercised | exercised | present |
+| `ctx.cwd` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager` | exercised | exercised | exercised | exercised | present |
 
 ## ctx.sessionManager (ReadonlySessionManager)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.sessionManager.getCwd` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getSessionDir` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getSessionId` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getSessionFile` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getSessionName` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getLeafId` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getLeafEntry` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getEntry` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getLabel` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getBranch` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.buildContextEntries` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.buildSessionProjection` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getHeader` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getEntries` | exercised | exercised | exercised | exercised |
-| `ctx.sessionManager.getTree` | exercised | exercised | exercised | exercised |
+| `ctx.sessionManager.getCwd` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager.getSessionDir` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager.getSessionId` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager.getSessionFile` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager.getSessionName` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager.getLeafId` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager.getLeafEntry` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.sessionManager.getEntry` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.sessionManager.getLabel` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager.getBranch` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.sessionManager.buildContextEntries` | exercised | exercised | exercised | exercised | - |
+| `ctx.sessionManager.buildSessionProjection` | exercised | exercised | exercised | exercised | - |
+| `ctx.sessionManager.getHeader` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager.getEntries` | exercised | exercised | exercised | exercised | present |
+| `ctx.sessionManager.getTree` | exercised | exercised | exercised | exercised | present |
 
 ## ctx (ExtensionContext)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.modelRegistry` | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry` | exercised | exercised | exercised | exercised | present |
 
 ## ctx.modelRegistry (ModelRegistry)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.modelRegistry.refresh` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getError` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getAll` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getAvailable` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.find` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.findOfType` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.hasConfiguredAuth` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getApiKeyAndHeaders` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getProviderAuthStatus` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getProvider` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.stream` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.streamSimple` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.complete` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getModelsOfType` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getAvailableOfType` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getModelOfType` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.classify` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.generateImages` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getProviderDisplayName` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getProviderAuth` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getApiKeyForProvider` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.isUsingOAuth` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.registerProvider` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.unregisterProvider` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.registerVirtualModel` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.unregisterVirtualModel` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getRegisteredProviderConfig` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getRegisteredNativeProvider` | exercised | exercised | exercised | exercised |
-| `ctx.modelRegistry.getRegisteredProviderIds` | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.refresh` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.getError` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getAll` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getAvailable` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.find` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.findOfType` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.hasConfiguredAuth` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.getApiKeyAndHeaders` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getProviderAuthStatus` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getProvider` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.stream` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.streamSimple` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.complete` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.getModelsOfType` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getAvailableOfType` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getModelOfType` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.classify` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.generateImages` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getProviderDisplayName` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getProviderAuth` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.getApiKeyForProvider` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.isUsingOAuth` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.registerProvider` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.unregisterProvider` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.registerVirtualModel` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.unregisterVirtualModel` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.modelRegistry.getRegisteredProviderConfig` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getRegisteredNativeProvider` | exercised | exercised | exercised | exercised | present |
+| `ctx.modelRegistry.getRegisteredProviderIds` | exercised | exercised | exercised | exercised | present |
 
 ## ctx (ExtensionContext)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.model` | exercised | exercised | exercised | exercised |
-| `ctx.scopedModels` | exercised | exercised | exercised | exercised |
-| `ctx.thinkingLevel` | exercised | exercised | exercised | exercised |
-| `ctx.isIdle` | exercised | exercised | exercised | exercised |
-| `ctx.isProjectTrusted` | exercised | exercised | exercised | exercised |
-| `ctx.signal` | exercised | exercised | exercised | exercised |
-| `ctx.abort` | exercised | exercised | exercised | exercised |
-| `ctx.hasPendingMessages` | exercised | exercised | exercised | exercised |
-| `ctx.shutdown` | exercised | exercised | exercised | exercised |
-| `ctx.getContextUsage` | exercised | exercised | exercised | exercised |
-| `ctx.compact` | exercised | exercised | exercised | exercised |
-| `ctx.getSystemPrompt` | exercised | exercised | exercised | exercised |
+| `ctx.model` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.scopedModels` | exercised | exercised | exercised | exercised | present |
+| `ctx.thinkingLevel` | exercised | exercised | exercised | exercised | present |
+| `ctx.isIdle` | exercised | exercised | exercised | exercised | present |
+| `ctx.isProjectTrusted` | exercised | exercised | exercised | exercised | present |
+| `ctx.signal` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.abort` | exercised | exercised | exercised | exercised | present |
+| `ctx.hasPendingMessages` | exercised | exercised | exercised | exercised | present |
+| `ctx.shutdown` | exercised | exercised | exercised | exercised | present |
+| `ctx.getContextUsage` | exercised | exercised | exercised | exercised | present |
+| `ctx.compact` | exercised | exercised | exercised | exercised | present |
+| `ctx.getSystemPrompt` | exercised | exercised | exercised | exercised | exercised |
 
 ## ctx (ExtensionCommandContext, command handlers)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.getSystemPromptOptions` | exercised | exercised | exercised | exercised |
-| `ctx.waitForIdle` | exercised | exercised | exercised | exercised |
-| `ctx.newSession` | exercised | exercised | exercised | exercised |
-| `ctx.fork` | exercised | exercised | exercised | exercised |
-| `ctx.navigateTree` | exercised | exercised | exercised | exercised |
-| `ctx.switchSession` | exercised | exercised | exercised | exercised |
-| `ctx.reload` | exercised | exercised | exercised | exercised |
+| `ctx.getSystemPromptOptions` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.waitForIdle` | exercised | exercised | exercised | exercised | present |
+| `ctx.newSession` | exercised | exercised | exercised | exercised | present |
+| `ctx.fork` | exercised | exercised | exercised | exercised | present |
+| `ctx.navigateTree` | exercised | exercised | exercised | exercised | present |
+| `ctx.switchSession` | exercised | exercised | exercised | exercised | present |
+| `ctx.reload` | exercised | exercised | exercised | exercised | present |
 
 ## ctx (ReplacedSessionContext, withSession callbacks)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `withSession ctx.sendMessage` | exercised | exercised | exercised | exercised |
-| `withSession ctx.sendUserMessage` | exercised | exercised | exercised | exercised |
+| `withSession ctx.sendMessage` | exercised | exercised | exercised | exercised | exercised |
+| `withSession ctx.sendUserMessage` | exercised | exercised | exercised | exercised | exercised |
 
 ## ctx.ui (ExtensionUIContext)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.ui.select` | exercised | exercised | exercised | exercised |
-| `ctx.ui.confirm` | exercised | exercised | exercised | exercised |
-| `ctx.ui.input` | exercised | exercised | exercised | exercised |
-| `ctx.ui.notify` | exercised | exercised | exercised | exercised |
-| `ctx.ui.onTerminalInput` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setStatus` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setWorkingMessage` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setWorkingVisible` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setWorkingIndicator` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setHiddenThinkingLabel` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setWidget` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setFooter` | exercised | exercised | exercised | exercised |
+| `ctx.ui.select` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.confirm` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.input` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.notify` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.ui.onTerminalInput` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setStatus` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setWorkingMessage` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.ui.setWorkingVisible` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setWorkingIndicator` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setHiddenThinkingLabel` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setWidget` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setFooter` | exercised | exercised | exercised | exercised | present |
 
 ## callback parameters
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ReadonlyFooterDataProvider.getGitBranch` | exercised | exercised | exercised | exercised |
-| `ReadonlyFooterDataProvider.getExtensionStatuses` | exercised | exercised | exercised | exercised |
-| `ReadonlyFooterDataProvider.onBranchChange` | exercised | exercised | exercised | exercised |
-| `ReadonlyFooterDataProvider.getAvailableProviderCount` | exercised | exercised | exercised | exercised |
+| `ReadonlyFooterDataProvider.getGitBranch` | exercised | exercised | exercised | exercised | exercised |
+| `ReadonlyFooterDataProvider.getExtensionStatuses` | exercised | exercised | exercised | exercised | present |
+| `ReadonlyFooterDataProvider.onBranchChange` | exercised | exercised | exercised | exercised | present |
+| `ReadonlyFooterDataProvider.getAvailableProviderCount` | exercised | exercised | exercised | exercised | present |
 
 ## ctx.ui (ExtensionUIContext)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.ui.setHeader` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setTitle` | exercised | exercised | exercised | exercised |
-| `ctx.ui.custom` | exercised | exercised | exercised | exercised |
-| `ctx.ui.pasteToEditor` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setEditorText` | exercised | exercised | exercised | exercised |
-| `ctx.ui.getEditorText` | exercised | exercised | exercised | exercised |
-| `ctx.ui.editor` | exercised | exercised | exercised | exercised |
-| `ctx.ui.addAutocompleteProvider` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setEditorComponent` | exercised | exercised | exercised | exercised |
-| `ctx.ui.getEditorComponent` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme` | exercised | exercised | exercised | exercised |
+| `ctx.ui.setHeader` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setTitle` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.custom` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.ui.pasteToEditor` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.ui.setEditorText` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.ui.getEditorText` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.ui.editor` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.ui.addAutocompleteProvider` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setEditorComponent` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.getEditorComponent` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme` | exercised | exercised | exercised | exercised | present |
 
 ## ctx.ui.theme (Theme)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.ui.theme.name` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.sourcePath` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.sourceInfo` | - | - | - | - |
-| `ctx.ui.theme.appearance` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.colors` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.style` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.fg` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.bg` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.bold` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.italic` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.underline` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.inverse` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.strikethrough` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.getFgAnsi` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.getBgAnsi` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.getColorMode` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.getThinkingBorderColor` | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.getBashModeBorderColor` | exercised | exercised | exercised | exercised |
+| `ctx.ui.theme.name` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.sourcePath` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.ui.theme.sourceInfo` | - | - | - | - | - |
+| `ctx.ui.theme.appearance` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.colors` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.style` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.fg` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.bg` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.bold` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.italic` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.underline` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.inverse` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.strikethrough` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.getFgAnsi` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.getBgAnsi` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.getColorMode` | exercised | exercised | exercised | exercised | exercised |
+| `ctx.ui.theme.getThinkingBorderColor` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.theme.getBashModeBorderColor` | exercised | exercised | exercised | exercised | present |
 
 ## ctx.ui (ExtensionUIContext)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `ctx.ui.getAllThemes` | exercised | exercised | exercised | exercised |
-| `ctx.ui.getTheme` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setTheme` | exercised | exercised | exercised | exercised |
-| `ctx.ui.getToolsExpanded` | exercised | exercised | exercised | exercised |
-| `ctx.ui.setToolsExpanded` | exercised | exercised | exercised | exercised |
+| `ctx.ui.getAllThemes` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.getTheme` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setTheme` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.getToolsExpanded` | exercised | exercised | exercised | exercised | present |
+| `ctx.ui.setToolsExpanded` | exercised | exercised | exercised | exercised | present |
 
 ## PiG additive: component kit (D107)
 
 | Surface | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|
-| `kit node Container` | exercised | exercised | exercised | exercised |
-| `kit node Box` | exercised | exercised | exercised | exercised |
-| `kit node Text` | exercised | exercised | exercised | exercised |
-| `kit node TruncatedText` | exercised | exercised | exercised | exercised |
-| `kit node Markdown` | exercised | exercised | exercised | exercised |
-| `kit node Spacer` | exercised | exercised | exercised | exercised |
-| `kit node DynamicBorder` | exercised | exercised | exercised | exercised |
-| `kit node SelectList` | exercised | exercised | exercised | exercised |
-| `kit node SettingsList` | exercised | exercised | exercised | exercised |
-| `kit node Image` | exercised | exercised | exercised | exercised |
-| `kit node Loader` | exercised | exercised | exercised | exercised |
-| `kit node HStack` | exercised | exercised | exercised | exercised |
-| `kit node VStack` | exercised | exercised | exercised | exercised |
-| `kit node Lines` | exercised | exercised | exercised | exercised |
-| `kit node UserMessage` | exercised | exercised | exercised | exercised |
-| `kit node AssistantMessage` | exercised | exercised | exercised | exercised |
-| `kit node ToolExecution` | exercised | exercised | exercised | exercised |
-| `kit node BashExecution` | exercised | exercised | exercised | exercised |
-| `kit node Diff` | exercised | exercised | exercised | exercised |
-| `kit view` | exercised | exercised | exercised | exercised |
-| `kit ctx.ui.custom(view)` | exercised | exercised | exercised | exercised |
-| `kit view events` | - | exercised | exercised | exercised |
-| `kit event` | - | exercised | exercised | exercised |
-| `kit ctx.ui.setWidget(view)` | exercised | exercised | exercised | exercised |
-| `kit ctx.ui.setHeader(view)` | exercised | exercised | exercised | exercised |
-| `kit ctx.ui.setFooter(view)` | exercised | exercised | exercised | exercised |
-| `kit tool renderCall(view)` | exercised | exercised | exercised | exercised |
-| `kit tool renderResult(view)` | exercised | exercised | exercised | exercised |
-| `kit message renderer(view)` | exercised | exercised | exercised | exercised |
-| `kit entry renderer(view)` | exercised | exercised | exercised | exercised |
-| `kit lines list annotation` | exercised | exercised | exercised | exercised |
+| `kit node Container` | exercised | exercised | exercised | exercised | - |
+| `kit node Box` | exercised | exercised | exercised | exercised | - |
+| `kit node Text` | exercised | exercised | exercised | exercised | - |
+| `kit node TruncatedText` | exercised | exercised | exercised | exercised | - |
+| `kit node Markdown` | exercised | exercised | exercised | exercised | - |
+| `kit node Spacer` | exercised | exercised | exercised | exercised | - |
+| `kit node DynamicBorder` | exercised | exercised | exercised | exercised | - |
+| `kit node SelectList` | exercised | exercised | exercised | exercised | - |
+| `kit node SettingsList` | exercised | exercised | exercised | exercised | - |
+| `kit node Image` | exercised | exercised | exercised | exercised | - |
+| `kit node Loader` | exercised | exercised | exercised | exercised | - |
+| `kit node HStack` | exercised | exercised | exercised | exercised | - |
+| `kit node VStack` | exercised | exercised | exercised | exercised | - |
+| `kit node Lines` | exercised | exercised | exercised | exercised | - |
+| `kit node UserMessage` | exercised | exercised | exercised | exercised | - |
+| `kit node AssistantMessage` | exercised | exercised | exercised | exercised | - |
+| `kit node ToolExecution` | exercised | exercised | exercised | exercised | - |
+| `kit node BashExecution` | exercised | exercised | exercised | exercised | - |
+| `kit node Diff` | exercised | exercised | exercised | exercised | - |
+| `kit view` | exercised | exercised | exercised | exercised | - |
+| `kit ctx.ui.custom(view)` | exercised | exercised | exercised | exercised | - |
+| `kit view events` | - | exercised | exercised | exercised | - |
+| `kit event` | - | exercised | exercised | exercised | - |
+| `kit ctx.ui.setWidget(view)` | exercised | exercised | exercised | exercised | present |
+| `kit ctx.ui.setHeader(view)` | exercised | exercised | exercised | exercised | exercised |
+| `kit ctx.ui.setFooter(view)` | exercised | exercised | exercised | exercised | exercised |
+| `kit tool renderCall(view)` | exercised | exercised | exercised | exercised | present |
+| `kit tool renderResult(view)` | exercised | exercised | exercised | exercised | present |
+| `kit message renderer(view)` | exercised | exercised | exercised | exercised | present |
+| `kit entry renderer(view)` | exercised | exercised | exercised | exercised | present |
+| `kit lines list annotation` | exercised | exercised | exercised | exercised | - |
 
 ## Holes
 
