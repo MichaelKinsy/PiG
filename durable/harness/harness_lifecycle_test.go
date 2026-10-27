@@ -512,7 +512,7 @@ func TestHarnessClose(t *testing.T) {
 		find = store.holdFindDocument()
 		cancelled, cancel = cancelledContext(errors.New("cancelled"))
 		viewWatch := asyncErr(func() error {
-			_, err := root.Watch(cancelled)
+			_, err := root.Watch(cancelled, nil)
 			return err
 		})
 		_ = find.entered.wait(testContext)

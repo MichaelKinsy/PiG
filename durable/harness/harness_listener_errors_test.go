@@ -109,7 +109,7 @@ func TestListenerAndReportErrors(t *testing.T) {
 		log := &signalLog{}
 		harness, root, reports := sfStarted(t, newControlledStorage(), log)
 		graph := harness.(*harnessImpl).taskGraph
-		watch := must(graph.Watch(testContext, nil))
+		watch := must(graph.Watch(testContext))
 		failure := errors.New("graph observer broke")
 		graph.mu.Lock()
 		graph.mount.observers = append([]taskGraphObserver{throwingGraphObserver{failure}}, graph.mount.observers...)
