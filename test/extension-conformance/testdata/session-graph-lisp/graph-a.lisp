@@ -164,6 +164,15 @@
                 (pig:obj "badId" (failure (lambda () (pig:sm-create ctx cwd directory (pig:obj "id" "bad id!"))) "Session id must be")
                          "notSession" (failure (lambda () (pig:sm-open ctx junk)) "not a valid")
                          "noFork" (failure (lambda () (pig:sm-fork-from ctx (join directory "missing.jsonl") cwd fork-dir)) "Cannot fork"))))))
+    ;; members the report does not carry: a fresh in-memory log, read and reset
+    (let ((x (pig:sm-in-memory ctx cwd)))
+      (unless (typep x 'pig:sm) (error "sm-in-memory did not return a pig:sm"))
+      (pig:sm-append-message x (user-message "probe" 1))
+      (unless (and (equal (pig:jget (pig:sm-get-leaf-entry x) "type") "message") (= (length (pig:sm-build-context-entries x)) 1)
+                   (hash-table-p (pig:sm-build-session-projection x)))
+        (error "the leaf entry, context entries or projection of a one-message log are wrong"))
+      (pig:sm-new-session x)
+      (unless (and (null (pig:sm-get-leaf-entry x)) (zerop (pig:sm-get-entry-count x))) (error "new-session did not reset the log")))
     r))
 
 (defun settings-read-all (s)
@@ -288,6 +297,7 @@
 (def-script "settings_manager" (ctx args)
   (let* ((cwd (arg args "cwd")) (agent-dir (arg args "agentDir")) (config-dir (arg args "configDir")) (broken-cwd (arg args "brokenCwd"))
          (r (pig:obj)) (s (pig:settings-create ctx cwd agent-dir)))
+    (unless (typep s 'pig:settings-manager) (error "settings-create did not return a pig:settings-manager"))
     (setf (gethash "initial" r) (settings-read-all s))
     (setf (gethash "modelBudget" r)
           (pig:obj "reserve" (pig:settings-get-compaction-reserve-tokens s (pig:obj "provider" "p" "id" "m")) "reserveNone" (pig:settings-get-compaction-reserve-tokens s)
