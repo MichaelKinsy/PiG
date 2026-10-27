@@ -334,8 +334,8 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		type attached struct {
 			observations []any
 			detachAll    func()
-			view, graph  weak.Pointer[observerFuncs[ConversationView]]
-			graphObs     weak.Pointer[observerFuncs[TaskGraph]]
+			view         weak.Pointer[observerFuncs[ConversationView]]
+			graph        weak.Pointer[observerFuncs[TaskGraph]]
 		}
 		// attach attaches observers only the Harness references; detach says whether to detach them before returning.
 		attach := func(detach bool) attached {
@@ -347,12 +347,12 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 			if detach {
 				detachAll()
 			}
-			return attached{observations: []any{viewObservation, graphObservation}, detachAll: detachAll, view: weak.Make(view), graphObs: weak.Make(graph)}
+			return attached{observations: []any{viewObservation, graphObservation}, detachAll: detachAll, view: weak.Make(view), graph: weak.Make(graph)}
 		}
 		// Control: attached observers stay, so the collection below is real.
 		control := attach(false)
 		collectGarbage()
-		if control.view.Value() == nil || control.graphObs.Value() == nil {
+		if control.view.Value() == nil || control.graph.Value() == nil {
 			t.Fatal("an attached observer was collected")
 		}
 		control.detachAll()
@@ -360,7 +360,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 
 		detached := attach(true)
 		collectGarbage()
-		if detached.view.Value() != nil || detached.graphObs.Value() != nil {
+		if detached.view.Value() != nil || detached.graph.Value() != nil {
 			t.Fatal("a detached observer is still alive")
 		}
 		runtime.KeepAlive(detached.observations)
