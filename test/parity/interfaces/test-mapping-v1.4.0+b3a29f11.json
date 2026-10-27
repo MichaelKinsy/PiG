@@ -2655,8 +2655,12 @@
     },
     {
       "path": "packages/chord/test/sqlite/cloudflare.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:19377a4869e9bfb5b275364dc20c3f7ce523498259a2e6ebe729ab8ba5faeeb4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:19377a4869e9bfb5b275364dc20c3f7ce523498259a2e6ebe729ab8ba5faeeb4",
+      "evidence": [
+        "chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "rationale": "Pi c268154c moved the Durable Object driver cases of durable/test/sqlite-cloudflare.test.ts here. The eight cases (BLOB bytes, the cursor's first row for get, the safe-integer bigint bound, close after a transaction, an uncontended statement run before returning, rollback and handle rejection, another adapter's operations outside the rollback, direct underlying calls inside a transaction) are subtests of TestDurableObjectSqliteDriver over the native-connection stand-in. Delta at Pi 8025c414: the new case 'reports the rows a statement changed, without index writes' is a subtest of TestDurableObjectSqliteDriver over sqlitetest.RunChanges (the port of helpers.ts runChanges and RUN_CHANGES) and a RunCounted inside a transaction."
     },
     {
       "path": "packages/chord/test/sqlite/migrations.test.ts",
@@ -2669,8 +2673,15 @@
     },
     {
       "path": "packages/chord/test/sqlite/node.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3fbc7b8a8a830484b43b31b8df361b74e5d4cf890dc95ee48637454f93f46916"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3fbc7b8a8a830484b43b31b8df361b74e5d4cf890dc95ee48637454f93f46916",
+      "evidence": [
+        "chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently",
+        "chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
+        "chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver",
+        "chord/sqlite/node/statement_cache_test.go#TestNodeSqliteStatementCache"
+      ],
+      "rationale": "Pi c268154c moved the Node driver cases of durable/test/sqlite-facade.test.ts here. The eight cases (connection defaults, commit and idempotent close, serialized transactions, call order, queueing behind a transaction, synchronous calls from a transaction, a settled handle rejected, rollback failure not preserving the callback error) are subtests of TestNodeSqliteDriver and the two contract tests, moved with the driver to chord/sqlite/node. Pi 89e30958 removed the exclusive() cases with the method; the Go exclusive tests went with Exclusive. Delta at Pi 8025c414: the case 'reports the rows a statement changed, without index writes' is a subtest of TestNodeSqliteDriver over sqlitetest.RunChanges. Delta at Pi db14038b: the case 'keeps the most recently used prepared statements and prepares evicted ones again' is TestNodeSqliteStatementCache (the DatabaseSync.prepare spy is ObservePrepare); the 300-statement count is the Pi input."
     },
     {
       "path": "packages/chord/test/state-diff.test.ts",
@@ -2743,8 +2754,16 @@
     },
     {
       "path": "packages/chord/test/telemetry-sqlite-store.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:27b7a989b1a4f0450f2db936805f27bd23f89e444cd0d784d01c94120a472b4b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:27b7a989b1a4f0450f2db936805f27bd23f89e444cd0d784d01c94120a472b4b",
+      "evidence": [
+        "chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestUsesTwoSpanQueriesForAPageNotOnePerTrace",
+        "chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose",
+        "chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
+        "chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestSqliteTelemetryStoreConformance",
+        "chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestDurableObjectSqliteTelemetryStoreConformance"
+      ],
+      "rationale": "All 3 cases plus the store conformance suite the file runs over the node SQLite adapter and over a Durable Object storage adapter (TestSqliteTelemetryStoreConformance and TestDurableObjectSqliteTelemetryStoreConformance run telemetrytest.CreateTelemetryStoreConformance over chord/sqlite/node, which is modernc, and over durable_object_storage_test.go, the port of the test's durableObjectStorage helper). Red-green: an aliasing bug in findMetrics (the unit pointer aimed at a variable that was later overwritten) failed the conformance case 'queries metric names, kinds, units, boundaries and attributes' before it was fixed. Delta at Pi 8025c414: the test's counting SqliteExecutor wrapper gains a runCounted forward; Go's telemetry store tests use the database's executors directly and the interface gains no case, so the cases and their Go tests are unchanged."
     },
     {
       "path": "packages/chord/test/telemetry-sqlite.test.ts",
@@ -6741,8 +6760,14 @@
     },
     {
       "path": "packages/durable/test-workers/storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5db861cef8bedf21f5c2fcad8b4a6ea742e8700f97c4445a2d49c4402a66b66c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5db861cef8bedf21f5c2fcad8b4a6ea742e8700f97c4445a2d49c4402a66b66c",
+      "evidence": [
+        "durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectStorageConformance",
+        "durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter",
+        "chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "rationale": "New in Pi f75b3240ab (workerd, Durable Object SQLite). Its two parts run on Go's fake Durable Object storage over a native SQLite connection (the stand-in sqlite-cloudflare.test.ts already uses): the storage conformance suite on a prefixed object (TestDurableObjectStorageConformance, which now includes 'stores and scans sleeping tasks by status') and the case 'migrates a version 1 schema to admit sleeping tasks, keeping tasks and indexes' (TestDurableObjectSqliteAdapter subtest of the same name). The workerd runtime itself has no Go form. Delta at Pi 8025c414 and 973b74c5: the workerd case 'reports the rows a statement changed, without index writes' (it checks the real cursor's rowsWritten counts index writes, 3 for the insert and 20 for the bulk update, while runCounted reports 1 and 10, with the probe row outside the bulk range) has no Go form; Go's fake Durable Object storage over a native SQLite connection runs the same runChanges probe (chord/sqlite/cloudflare TestDurableObjectSqliteDriver) and checks the SELECT changes() path."
     },
     {
       "path": "packages/durable/test-workers/wake.test.ts",
@@ -7501,8 +7526,13 @@
     },
     {
       "path": "packages/durable/test/sqlite-facade.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:aea843644cd12db31404534a7dd7adfe1977b3751a37b16b2226f449505ad762"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:aea843644cd12db31404534a7dd7adfe1977b3751a37b16b2226f449505ad762",
+      "evidence": [
+        "durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement",
+        "durable/storage/sqlite/node/sqlite_facade_test.go#TestDurableReExportsTheChordDriver"
+      ],
+      "rationale": "At Pi c268154c the file keeps the storage cases (statements prepared once per connection, storage commits read in call order, admitted reads finishing before close, async settlement adopting IDs only after success, a document read from one committed state) as subtests of TestPortableSQLiteFacadeSettlement, and adds the re-export identity case as TestDurableReExportsTheChordDriver; its driver cases moved to chord/test/sqlite/node.test.ts. Re-reviewed at Pi 92ab5360 (Durable storage adopt callback): this file changes only the Storage commit signature, commit(writes, adopt, context); the Go tests pass the adopt callback at every Storage.Commit with the same inputs and expected results. Delta at Pi 8025c414: ControlledSettlementDatabase forwards runCounted to its delegate; the Go facade test embeds the node database, which already implements RunCounted, so its cases and expected results are unchanged."
     },
     {
       "path": "packages/durable/test/sqlite-migrations.test.ts",
@@ -7651,8 +7681,13 @@
     },
     {
       "path": "packages/env/test/connection.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6e62c374797c9a7956a396c9b05af2c80a33991327f9c2ea62b19d781db5fe2a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6e62c374797c9a7956a396c9b05af2c80a33991327f9c2ea62b19d781db5fe2a",
+      "evidence": [
+        "env/connection_start_stderr_test.go#TestConnectionStartFailures",
+        "env/connection_start_stderr_test.go#TestConnectionOfAReadyDaemonFailsPendingRequestsWhenItExitsWhilePipesStayOpen"
+      ],
+      "rationale": "New at Pi 479d6e5e (#10716). The 14 cases (the 3 UTF-8 characters of it.each are one subtest each) are subtests of TestConnectionStartFailures and TestConnectionOfAReadyDaemonFailsPendingRequestsWhenItExitsWhilePipesStayOpen with the same inputs and expected texts; the Node-script daemons are sh scripts (printf to stderr, printf octal bytes for the split UTF-8 characters, scriptedConnection's sync line and frames, mustFrame for the refused hello). Red against the previous env/connection.go: every stderr message case failed with the bare exit-code message, and the incomplete UTF-8 case logged the raw bytes instead of U+FFFD."
     },
     {
       "path": "packages/env/test/differential.test.ts",
