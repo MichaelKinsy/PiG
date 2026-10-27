@@ -90,7 +90,7 @@ path = "packages/ai/src/api/bedrock-converse-stream.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:ai/providers/bedrock/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments", "test:ai/providers/bedrock/bedrock_streaming_tool_arguments_norace_test.go#TestBedrockStreamingToolArgumentsAllocateLinearlyInTheArgumentText", "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream", "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockConvertToolsPreferredStrictTools"]
-rationale = "Pi f715a15c1 keeps the open blocks (content index, ToolCallArgumentsStream, encrypted reasoning bytes) in an OpenBlocks Map and finalizes them from it, so the content blocks carry no index, partialJson or reasoning bytes. Ported in ai/bedrock.go and ai/bedrock_stream_state.go (activeBlock holds the reasoning bytes and the builder holds the argument stream); the ported bedrock-stream-state tests check no partial block carries stream state, the redacted reasoning signature and the exact tool arguments, and linear allocation. Delta at Pi 842c7317 (#11416): stream builds the request in a loop and, when Bedrock rejects it with a ValidationException whose message is a strict tool limit (isStrictToolLimitErrorMessage) and a strict: \"prefer\" tool was sent strict (convertToolConfig now returns {toolConfig, hasPreferredStrictTools}), appends a bedrock_strict_tools_fallback diagnostic ({error: {message}, details: {reason: strict_tool_limits_exceeded}}) and sends the request once more with every preferred tool non-strict and the \"require\" and ordinary tools unchanged; the request is built again, so onPayload runs for each attempt; an aborted signal, a second rejection, a rejection without a preferred strict tool and any other ValidationException are thrown as before. Ported in ai/providers/bedrock/bedrock.go (convertBedrockTools returns hasPreferredStrictTools and takes disablePreferredStrictTools; Stream's buildInput builds one pass and streamResponse retries once on bedrockStrictToolLimitMessage, with ctx.Err() as the abort signal). TestBedrockPreferredStrictToolFallbackUpstream ports the four cases of bedrock-strict-tool-fallback.test.ts against an httptest Bedrock endpoint and checks each serialized request body, and TestBedrockConvertToolsPreferredStrictTools covers the converter."
+rationale = "Pi f715a15c1 keeps the open blocks (content index, ToolCallArgumentsStream, encrypted reasoning bytes) in an OpenBlocks Map and finalizes them from it, so the content blocks carry no index, partialJson or reasoning bytes. Ported in ai/providers/bedrock/bedrock.go and ai/providers/bedrock/bedrock_stream_state.go (activeBlock holds the reasoning bytes and the builder holds the argument stream); the ported bedrock-stream-state tests check no partial block carries stream state, the redacted reasoning signature and the exact tool arguments, and linear allocation. Delta at Pi 842c7317 (#11416): stream builds the request in a loop and, when Bedrock rejects it with a ValidationException whose message is a strict tool limit (isStrictToolLimitErrorMessage) and a strict: \"prefer\" tool was sent strict (convertToolConfig now returns {toolConfig, hasPreferredStrictTools}), appends a bedrock_strict_tools_fallback diagnostic ({error: {message}, details: {reason: strict_tool_limits_exceeded}}) and sends the request once more with every preferred tool non-strict and the \"require\" and ordinary tools unchanged; the request is built again, so onPayload runs for each attempt; an aborted signal, a second rejection, a rejection without a preferred strict tool and any other ValidationException are thrown as before. Ported in ai/providers/bedrock/bedrock.go (convertBedrockTools returns hasPreferredStrictTools and takes disablePreferredStrictTools; Stream's buildInput builds one pass and streamResponse retries once on bedrockStrictToolLimitMessage, with ctx.Err() as the abort signal). TestBedrockPreferredStrictToolFallbackUpstream ports the four cases of bedrock-strict-tool-fallback.test.ts against an httptest Bedrock endpoint and checks each serialized request body, and TestBedrockConvertToolsPreferredStrictTools covers the converter."
 
 [[files]]
 path = "packages/ai/src/api/classifier-shared.ts"
@@ -482,7 +482,7 @@ path = "packages/ai/src/bedrock-provider.ts"
 change = "added"
 disposition = "ported"
 evidence = ["scenario:test/parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
-rationale = "PORT_MAP row is ✅ ported (ai/bedrock.go). coverage.md reports 1 behavioral verifications for this file (1 scenarios whose covers list it, 0 named unit tests); the first of each are cited."
+rationale = "PORT_MAP row is ✅ ported (ai/providers/bedrock/bedrock.go). coverage.md reports 1 behavioral verifications for this file (1 scenarios whose covers list it, 0 named unit tests); the first of each are cited."
 
 [[files]]
 path = "packages/ai/src/bun-oauth.ts"
@@ -608,7 +608,7 @@ path = "packages/ai/src/providers/amazon-bedrock.ts"
 change = "added"
 disposition = "ported"
 evidence = ["scenario:test/parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml", "scenario:test/parity/scenarios/providers-registry/04-provider-wire-payloads.toml", "scenario:test/parity/scenarios/print/07-print-bedrock-without-aws-auth.toml"]
-rationale = "PORT_MAP row is ✅ ported (ai/auth_providers.go + ai/bedrock.go + ai/provider_login.go, ai/provider_constructors.go). coverage.md reports 4 behavioral verifications for this file (4 scenarios whose covers list it, 0 named unit tests); the first of each are cited."
+rationale = "PORT_MAP row is ✅ ported (ai/auth_providers.go + ai/providers/bedrock/bedrock.go + ai/provider_login.go, ai/provider_constructors.go). coverage.md reports 4 behavioral verifications for this file (4 scenarios whose covers list it, 0 named unit tests); the first of each are cited."
 
 [[files]]
 path = "packages/ai/src/providers/ant-ling.models.ts"
@@ -1364,7 +1364,7 @@ path = "packages/ai/src/utils/node-http-proxy.ts"
 change = "added"
 disposition = "ported"
 evidence = ["scenario:test/parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
-rationale = "PORT_MAP row is ✅ ported (ai/node_http_proxy.go + ai/bedrock.go). coverage.md reports 1 behavioral verifications for this file (1 scenarios whose covers list it, 0 named unit tests); the first of each are cited."
+rationale = "PORT_MAP row is ✅ ported (ai/node_http_proxy.go + ai/providers/bedrock/bedrock.go). coverage.md reports 1 behavioral verifications for this file (1 scenarios whose covers list it, 0 named unit tests); the first of each are cited."
 
 [[files]]
 path = "packages/ai/src/utils/oauth-page.ts"
@@ -1391,7 +1391,7 @@ rationale = "Pi 73f8de80 adds the provider-independent HTTP 413 pattern /^(?:[\\
 path = "packages/ai/src/utils/provider-env.ts"
 change = "added"
 disposition = "ported"
-evidence = ["scenario:test/parity/scenarios/providers-registry/04-provider-wire-payloads.toml", "test:ai/anthropic_cache_environment_test.go#TestAnthropicCacheRetentionEnvironmentDefaults", "test:ai/anthropic_federation_auth_test.go#TestAnthropicFederationEnv", "test:ai/bedrock_cache_scope_test.go#TestBedrockForcedCacheUsesProviderEnvironment"]
+evidence = ["scenario:test/parity/scenarios/providers-registry/04-provider-wire-payloads.toml", "test:ai/anthropic_cache_environment_test.go#TestAnthropicCacheRetentionEnvironmentDefaults", "test:ai/anthropic_federation_auth_test.go#TestAnthropicFederationEnv", "test:ai/providers/bedrock/bedrock_cache_scope_test.go#TestBedrockForcedCacheUsesProviderEnvironment"]
 rationale = "PORT_MAP row is ✅ ported (ai/provider_env.go (Bun empty process.env /proc fallback n/a in Go)). coverage.md reports 5 behavioral verifications for this file (1 scenarios whose covers list it, 4 named unit tests); the first of each are cited."
 
 [[files]]
@@ -1412,7 +1412,7 @@ rationale = "Pi cedefc53 adds subscription_sharing_workplace_individual_usage_li
 path = "packages/ai/src/utils/sanitize-unicode.ts"
 change = "added"
 disposition = "ported"
-evidence = ["scenario:test/parity/scenarios/providers-faux-streaming/14-unicode-tool-results.toml", "test:ai/bedrock_whitespace_test.go#TestBedrockSanitizesBeforeCheckingAssistantEmptiness", "test:ai/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars", "test:ai/sanitize_unicode_test.go#TestSanitizeSurrogatesPairsTheWholeHighSurrogateRange"]
+evidence = ["scenario:test/parity/scenarios/providers-faux-streaming/14-unicode-tool-results.toml", "test:ai/providers/bedrock/bedrock_whitespace_test.go#TestBedrockSanitizesBeforeCheckingAssistantEmptiness", "test:ai/providers/bedrock/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars", "test:ai/sanitize_unicode_test.go#TestSanitizeSurrogatesPairsTheWholeHighSurrogateRange"]
 rationale = "PORT_MAP row is ✅ ported (ai/sanitize_unicode.go). coverage.md reports 4 behavioral verifications for this file (1 scenarios whose covers list it, 3 named unit tests); the first of each are cited."
 
 [[files]]

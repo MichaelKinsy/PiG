@@ -2031,8 +2031,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -2186,7 +2186,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -2205,7 +2205,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -2408,7 +2408,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
       ]
     },
@@ -3519,7 +3519,7 @@
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -5478,8 +5478,8 @@
       ],
       "evidence": [
         "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap"
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding",
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap"
       ]
     },
     {
@@ -6157,8 +6157,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -6179,7 +6179,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/anthropic_oauth_test.go#TestAnthropicBetaHeaderMergeRules"
       ]
     },
@@ -6312,7 +6312,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -6331,7 +6331,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -6492,7 +6492,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
       ]
     },
     {
@@ -6624,7 +6624,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
       ]
     },
     {
@@ -6977,9 +6977,9 @@
         "call:ai/api_streams.go#BedrockConverseStreamAPI"
       ],
       "evidence": [
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning"
       ]
     },
     {
@@ -7413,7 +7413,7 @@
       ],
       "evidence": [
         "test:agent/proxy_partial_arguments_upstream_test.go#TestStreamProxyShowsGrowingPartialArgumentsWithoutKeepingTheRawTextOnTheBlockInLinearTime",
-        "test:ai/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments",
+        "test:ai/providers/bedrock/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments",
         "test:ai/faux_provider_upstream_test.go#TestFauxProviderUpstream"
       ]
     },
@@ -7655,7 +7655,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing",
-        "test:ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRawStopReason",
+        "test:ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRawStopReason",
         "test:ai/google_stream_upstream_test.go#TestGoogleRawStopReasonUpstream"
       ]
     },
@@ -8968,8 +8968,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -9101,7 +9101,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -9120,7 +9120,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -9389,7 +9389,7 @@
         "call:ai/anthropic.go#anthThinkingOffIsNull"
       ],
       "evidence": [
-        "test:ai/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
+        "test:ai/providers/bedrock/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
         "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
       ]
@@ -9455,7 +9455,7 @@
         "call:ai/model_utils.go#Model.CostRates"
       ],
       "evidence": [
-        "test:ai/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
+        "test:ai/providers/bedrock/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
       ]
@@ -9562,7 +9562,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
@@ -9628,11 +9628,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -9695,10 +9695,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#loadBedrockConfig"
+        "call:ai/providers/bedrock/bedrock.go#loadBedrockConfig"
       ],
       "evidence": [
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockBearerTokenOptionPrecedence"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockBearerTokenOptionPrecedence"
       ]
     },
     {
@@ -9808,8 +9808,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -9830,7 +9830,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/anthropic_oauth_test.go#TestAnthropicBetaHeaderMergeRules"
       ]
     },
@@ -9963,7 +9963,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -9982,7 +9982,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -10005,12 +10005,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#loadBedrockConfig"
+        "call:ai/providers/bedrock/bedrock.go#loadBedrockConfig"
       ],
       "evidence": [
-        "test:ai/bedrock_config_upstream_test.go#TestBedrockUpstreamCredentials",
-        "test:ai/bedrock_config_upstream_test.go#TestBedrockUpstreamEndpointResolution",
-        "test:ai/bedrock_proxy_scope_test.go#TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"
+        "test:ai/providers/bedrock/bedrock_config_upstream_test.go#TestBedrockUpstreamCredentials",
+        "test:ai/providers/bedrock/bedrock_config_upstream_test.go#TestBedrockUpstreamEndpointResolution",
+        "test:ai/providers/bedrock/bedrock_proxy_scope_test.go#TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"
       ]
     },
     {
@@ -10049,12 +10049,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#isGovCloudBedrockTarget"
+        "call:ai/providers/bedrock/bedrock.go#isGovCloudBedrockTarget"
       ],
       "evidence": [
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_thinking_targets_test.go#TestBedrockGovCloudThinkingDisplay"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_thinking_targets_test.go#TestBedrockGovCloudThinkingDisplay"
       ]
     },
     {
@@ -10071,11 +10071,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:coding/extension/host/subprocess/native_stream_options_union_test.go#TestNativeProviderOptionsKeepRawValuesAndNumericPresence"
       ]
     },
@@ -10208,7 +10208,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
       ]
     },
@@ -10231,7 +10231,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
       ]
     },
     {
@@ -10339,9 +10339,9 @@
         "call:ai/anthropic.go#anthropicThinkingDisplay"
       ],
       "evidence": [
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
         "test:ai/anthropic_thinking_display_test.go#TestAnthropicThinkingDisplayOptionRequestShapes",
-        "test:ai/bedrock_thinking_targets_test.go#TestBedrockThinkingDisplayOptionTargets"
+        "test:ai/providers/bedrock/bedrock_thinking_targets_test.go#TestBedrockThinkingDisplayOptionTargets"
       ]
     },
     {
@@ -10363,7 +10363,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
       ]
     },
     {
@@ -12154,7 +12154,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
         "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
@@ -12194,12 +12194,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#bedrockUserAgent"
+        "call:ai/providers/bedrock/bedrock.go#bedrockUserAgent"
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
         "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -12220,7 +12220,7 @@
       ],
       "evidence": [
         "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
         "test:ai/identity_test.go#TestClientIdentityJSON"
       ]
     },
@@ -12304,7 +12304,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/system_message_replay_test.go#TestSystemMessageReplayCollapseKeepsNonSystemMessagesAfterReplayedHead",
@@ -12325,7 +12325,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/system_message_replay_test.go#TestSystemMessageReplayCollapseKeepsNonSystemMessagesAfterReplayedHead",
@@ -12350,7 +12350,7 @@
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -13645,8 +13645,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -13730,7 +13730,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -16481,8 +16481,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -16614,7 +16614,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -16633,7 +16633,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -17015,8 +17015,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -17169,7 +17169,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -17188,7 +17188,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -17652,7 +17652,7 @@
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
         "test:agent/convert_custom_upstream_test.go#TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
       ]
     },
     {
@@ -17674,7 +17674,7 @@
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
         "test:agent/convert_custom_upstream_test.go#TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
       ]
     },
     {
@@ -17696,7 +17696,7 @@
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
         "test:agent/convert_custom_upstream_test.go#TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
       ]
     },
     {
@@ -17718,7 +17718,7 @@
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
         "test:agent/convert_custom_upstream_test.go#TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
       ]
     },
     {
@@ -19740,8 +19740,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -19873,7 +19873,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -19892,7 +19892,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -20161,7 +20161,7 @@
         "call:ai/anthropic.go#anthThinkingOffIsNull"
       ],
       "evidence": [
-        "test:ai/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
+        "test:ai/providers/bedrock/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
         "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
       ]
@@ -20271,7 +20271,7 @@
         "call:ai/model_utils.go#Model.CostRates"
       ],
       "evidence": [
-        "test:ai/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
+        "test:ai/providers/bedrock/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
       ]
@@ -20400,7 +20400,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
@@ -22860,8 +22860,8 @@
       ],
       "evidence": [
         "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap"
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding",
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap"
       ]
     },
     {
@@ -25665,8 +25665,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -25798,7 +25798,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -25817,7 +25817,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -26876,11 +26876,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -27190,8 +27190,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -27323,7 +27323,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -27342,7 +27342,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -27502,7 +27502,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
       ]
     },
@@ -27826,11 +27826,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -28008,8 +28008,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -28141,7 +28141,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -28160,7 +28160,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -28861,7 +28861,7 @@
         "call:ai/identity.go#GetClientVersion"
       ],
       "evidence": [
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
         "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
         "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"
       ]
@@ -29082,8 +29082,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -29215,7 +29215,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -29234,7 +29234,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -30355,8 +30355,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -30440,7 +30440,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -31889,8 +31889,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -32022,7 +32022,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -32041,7 +32041,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -32201,7 +32201,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
       ]
     },
@@ -32652,8 +32652,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -32785,7 +32785,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -32804,7 +32804,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -33309,7 +33309,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock_stream_state.go#bedrockStreamState.handleItem"
+        "call:ai/providers/bedrock/bedrock_stream_state.go#bedrockStreamState.handleItem"
       ],
       "evidence": [
         "test:ai/faux_helpers_upstream_test.go#TestFauxAssistantMessageIsAnAssistantMessageThatStreamsBackUnchanged",
@@ -33441,7 +33441,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
       ]
     },
@@ -33506,7 +33506,7 @@
         "call:ai/simple_options.go#DefaultThinkingBudgets"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/openai_thinking_budget_upstream_test.go#TestResolveClampedThinkingBudgetUpstream",
         "test:coding/openai_thinking_budget_upstream_test.go#TestOpenAICompletionsThinkingTokenBudgetUpstream"
       ]
@@ -33528,7 +33528,7 @@
         "call:ai/simple_options.go#DefaultThinkingBudgets"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:coding/thinking_budgets_settings_test.go#TestSessionThinkingBudgetsKeepConfiguredZeroFromSettings",
         "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleGenerativeAIPayloadMatchesPi"
       ]
@@ -33573,8 +33573,8 @@
       ],
       "evidence": [
         "test:agent/transform_thinking_oracle_test.go#TestNormalizeAssistantReplayThinkingTrimMatchesPi",
-        "test:ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
-        "test:ai/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments"
+        "test:ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
+        "test:ai/providers/bedrock/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments"
       ]
     },
     {
@@ -33662,7 +33662,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
       ]
     },
     {
@@ -33683,7 +33683,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap",
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap",
         "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
       ]
     },
@@ -33749,7 +33749,7 @@
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -34260,9 +34260,9 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
-        "test:ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "test:ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi"
       ]
     },
     {
@@ -34748,7 +34748,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#bedrockUserAgent"
+        "call:ai/providers/bedrock/bedrock.go#bedrockUserAgent"
       ],
       "evidence": [
         "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
@@ -35409,8 +35409,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -35431,7 +35431,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/anthropic_oauth_test.go#TestAnthropicBetaHeaderMergeRules"
       ]
     },
@@ -35564,7 +35564,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -35583,7 +35583,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -35744,7 +35744,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
       ]
     },
     {
@@ -35876,7 +35876,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
       ]
     },
     {
@@ -36207,8 +36207,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -36340,7 +36340,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -36359,7 +36359,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -36959,8 +36959,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -37092,7 +37092,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -37111,7 +37111,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -37468,8 +37468,8 @@
         "call:ai/api_streams.go#BedrockConverseStreamAPI"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/compat_api_streams_oracle_test.go#TestCompatAPIStreamsMatchPi"
       ]
     },
@@ -37490,8 +37490,8 @@
         "call:ai/api_streams.go#BedrockConverseStreamAPI"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/compat_api_streams_oracle_test.go#TestCompatAPIStreamsMatchPi"
       ]
     },
@@ -37501,7 +37501,7 @@
       "upstreamShapeHash": "sha256:d096d48c9866227f90d1553e0799f23ae18a720ed6bf79cd1ab2d28ae99d34b0",
       "rationale": "bedrock-converse-stream.lazy.ts:19-24 overrides the dynamically imported bedrock module for the Bun binary build, where a variable-specifier import() cannot be bundled (the build registers a statically imported module instead; coding-agent/src/bun/runtime-setup.ts). Go links the Bedrock provider statically and has no dynamic import or bundler, so there is nothing to override. Designed out as a JavaScript bundler mechanic, by the lead's ruling of 2026-10-07 15:20 MDT (language mechanics with no Go meaning are designed out with a citation).",
       "pigTargets": [
-        "ai/bedrock.go#NewBedrockProvider"
+        "ai/providers/bedrock/bedrock.go#NewBedrockProvider"
       ]
     },
     {
@@ -37510,7 +37510,7 @@
       "upstreamShapeHash": "sha256:b5ad1daafef33bec3c9885d7fe8145fcc7b00934a6359748d81283d263a94fcc",
       "rationale": "The parameter belongs to setBedrockProviderModule, which is designed out: bedrock-converse-stream.lazy.ts:19-24 overrides a dynamic import for the Bun binary build and Go links the provider statically.",
       "pigTargets": [
-        "ai/bedrock.go#NewBedrockProvider"
+        "ai/providers/bedrock/bedrock.go#NewBedrockProvider"
       ]
     },
     {
@@ -37572,10 +37572,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#loadBedrockConfig"
+        "call:ai/providers/bedrock/bedrock.go#loadBedrockConfig"
       ],
       "evidence": [
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockBearerTokenOptionPrecedence"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockBearerTokenOptionPrecedence"
       ]
     },
     {
@@ -37685,8 +37685,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -37707,7 +37707,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/anthropic_oauth_test.go#TestAnthropicBetaHeaderMergeRules"
       ]
     },
@@ -37840,7 +37840,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -37859,7 +37859,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -37882,12 +37882,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#loadBedrockConfig"
+        "call:ai/providers/bedrock/bedrock.go#loadBedrockConfig"
       ],
       "evidence": [
-        "test:ai/bedrock_config_upstream_test.go#TestBedrockUpstreamCredentials",
-        "test:ai/bedrock_config_upstream_test.go#TestBedrockUpstreamEndpointResolution",
-        "test:ai/bedrock_proxy_scope_test.go#TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"
+        "test:ai/providers/bedrock/bedrock_config_upstream_test.go#TestBedrockUpstreamCredentials",
+        "test:ai/providers/bedrock/bedrock_config_upstream_test.go#TestBedrockUpstreamEndpointResolution",
+        "test:ai/providers/bedrock/bedrock_proxy_scope_test.go#TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"
       ]
     },
     {
@@ -37926,12 +37926,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#isGovCloudBedrockTarget"
+        "call:ai/providers/bedrock/bedrock.go#isGovCloudBedrockTarget"
       ],
       "evidence": [
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_thinking_targets_test.go#TestBedrockGovCloudThinkingDisplay"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_thinking_targets_test.go#TestBedrockGovCloudThinkingDisplay"
       ]
     },
     {
@@ -37948,11 +37948,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:coding/extension/host/subprocess/native_stream_options_union_test.go#TestNativeProviderOptionsKeepRawValuesAndNumericPresence"
       ]
     },
@@ -38085,7 +38085,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
       ]
     },
@@ -38108,7 +38108,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
       ]
     },
     {
@@ -38216,9 +38216,9 @@
         "call:ai/anthropic.go#anthropicThinkingDisplay"
       ],
       "evidence": [
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
         "test:ai/anthropic_thinking_display_test.go#TestAnthropicThinkingDisplayOptionRequestShapes",
-        "test:ai/bedrock_thinking_targets_test.go#TestBedrockThinkingDisplayOptionTargets"
+        "test:ai/providers/bedrock/bedrock_thinking_targets_test.go#TestBedrockThinkingDisplayOptionTargets"
       ]
     },
     {
@@ -39897,8 +39897,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -40030,7 +40030,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -40049,7 +40049,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -41271,8 +41271,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -41425,7 +41425,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -41444,7 +41444,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -42585,8 +42585,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -42718,7 +42718,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -42737,7 +42737,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -43355,8 +43355,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -43488,7 +43488,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -43507,7 +43507,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -44526,8 +44526,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -44659,7 +44659,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -44678,7 +44678,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -44838,7 +44838,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
       ]
     },
@@ -45928,8 +45928,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -46061,7 +46061,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -46080,7 +46080,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -46770,8 +46770,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -46903,7 +46903,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -46922,7 +46922,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -47655,7 +47655,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#adjustBedrockBudgetThinking"
+        "call:ai/providers/bedrock/bedrock.go#adjustBedrockBudgetThinking"
       ],
       "evidence": [
         "test:ai/simple_options_answer_room_test.go#TestAdjustMaxTokensForThinkingClampsABudgetEqualToTheCeiling",
@@ -48434,7 +48434,7 @@
       "upstreamShapeHash": "sha256:9f78595a7346ea8880d2b8ed18c6438df6704aa4b94d820bef723bbdf77c8afd",
       "rationale": "bedrock-provider.ts:1-6 bundles the Bedrock stream/streamSimple functions into one module object so bedrock-converse-stream.lazy.ts and the Bun build can import them without a static dependency on the Node-only AWS SDK. Go links the Bedrock provider statically (ai.NewBedrockProvider) and has no lazy module boundary. Designed out by the lead's ruling of 2026-10-07 15:20 MDT (language mechanics with no Go meaning are designed out with a citation).",
       "pigTargets": [
-        "ai/bedrock.go#NewBedrockProvider"
+        "ai/providers/bedrock/bedrock.go#NewBedrockProvider"
       ]
     },
     {
@@ -49306,8 +49306,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -49328,7 +49328,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/anthropic_oauth_test.go#TestAnthropicBetaHeaderMergeRules"
       ]
     },
@@ -49461,7 +49461,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -49480,7 +49480,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -49641,7 +49641,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
       ]
     },
     {
@@ -49773,7 +49773,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
       ]
     },
     {
@@ -50126,9 +50126,9 @@
         "call:ai/api_streams.go#BedrockConverseStreamAPI"
       ],
       "evidence": [
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning"
       ]
     },
     {
@@ -50782,7 +50782,7 @@
       ],
       "evidence": [
         "test:agent/proxy_partial_arguments_upstream_test.go#TestStreamProxyShowsGrowingPartialArgumentsWithoutKeepingTheRawTextOnTheBlockInLinearTime",
-        "test:ai/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments",
+        "test:ai/providers/bedrock/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments",
         "test:ai/faux_provider_upstream_test.go#TestFauxProviderUpstream"
       ]
     },
@@ -51024,7 +51024,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing",
-        "test:ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRawStopReason",
+        "test:ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRawStopReason",
         "test:ai/google_stream_upstream_test.go#TestGoogleRawStopReasonUpstream"
       ]
     },
@@ -52361,8 +52361,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -52494,7 +52494,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -52513,7 +52513,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -52782,7 +52782,7 @@
         "call:ai/anthropic.go#anthThinkingOffIsNull"
       ],
       "evidence": [
-        "test:ai/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
+        "test:ai/providers/bedrock/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
         "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
       ]
@@ -52848,7 +52848,7 @@
         "call:ai/model_utils.go#Model.CostRates"
       ],
       "evidence": [
-        "test:ai/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
+        "test:ai/providers/bedrock/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
       ]
@@ -52955,7 +52955,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
@@ -53021,11 +53021,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -53046,8 +53046,8 @@
         "call:ai/api_streams.go#BedrockConverseStreamAPI"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/compat_api_streams_oracle_test.go#TestCompatAPIStreamsMatchPi"
       ]
     },
@@ -53068,8 +53068,8 @@
         "call:ai/api_streams.go#BedrockConverseStreamAPI"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/compat_api_streams_oracle_test.go#TestCompatAPIStreamsMatchPi"
       ]
     },
@@ -53132,10 +53132,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#loadBedrockConfig"
+        "call:ai/providers/bedrock/bedrock.go#loadBedrockConfig"
       ],
       "evidence": [
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockBearerTokenOptionPrecedence"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockBearerTokenOptionPrecedence"
       ]
     },
     {
@@ -53245,8 +53245,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -53267,7 +53267,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/anthropic_oauth_test.go#TestAnthropicBetaHeaderMergeRules"
       ]
     },
@@ -53400,7 +53400,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -53419,7 +53419,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -53442,12 +53442,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#loadBedrockConfig"
+        "call:ai/providers/bedrock/bedrock.go#loadBedrockConfig"
       ],
       "evidence": [
-        "test:ai/bedrock_config_upstream_test.go#TestBedrockUpstreamCredentials",
-        "test:ai/bedrock_config_upstream_test.go#TestBedrockUpstreamEndpointResolution",
-        "test:ai/bedrock_proxy_scope_test.go#TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"
+        "test:ai/providers/bedrock/bedrock_config_upstream_test.go#TestBedrockUpstreamCredentials",
+        "test:ai/providers/bedrock/bedrock_config_upstream_test.go#TestBedrockUpstreamEndpointResolution",
+        "test:ai/providers/bedrock/bedrock_proxy_scope_test.go#TestBedrockProxyIsTheBaseURLsAndOnlyTheRuntimeAndSTSUseIt"
       ]
     },
     {
@@ -53486,12 +53486,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#isGovCloudBedrockTarget"
+        "call:ai/providers/bedrock/bedrock.go#isGovCloudBedrockTarget"
       ],
       "evidence": [
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_thinking_targets_test.go#TestBedrockGovCloudThinkingDisplay"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_thinking_targets_test.go#TestBedrockGovCloudThinkingDisplay"
       ]
     },
     {
@@ -53508,11 +53508,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:coding/extension/host/subprocess/native_stream_options_union_test.go#TestNativeProviderOptionsKeepRawValuesAndNumericPresence"
       ]
     },
@@ -53645,7 +53645,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
       ]
     },
@@ -53668,7 +53668,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption"
       ]
     },
     {
@@ -53776,9 +53776,9 @@
         "call:ai/anthropic.go#anthropicThinkingDisplay"
       ],
       "evidence": [
-        "test:ai/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
+        "test:ai/providers/bedrock/bedrock_option_fields_upstream_test.go#TestBedrockThinkingDisplayOption",
         "test:ai/anthropic_thinking_display_test.go#TestAnthropicThinkingDisplayOptionRequestShapes",
-        "test:ai/bedrock_thinking_targets_test.go#TestBedrockThinkingDisplayOptionTargets"
+        "test:ai/providers/bedrock/bedrock_thinking_targets_test.go#TestBedrockThinkingDisplayOptionTargets"
       ]
     },
     {
@@ -53829,7 +53829,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
       ]
     },
     {
@@ -55620,7 +55620,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
         "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
@@ -55660,12 +55660,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#bedrockUserAgent"
+        "call:ai/providers/bedrock/bedrock.go#bedrockUserAgent"
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
         "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -55686,7 +55686,7 @@
       ],
       "evidence": [
         "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
         "test:ai/identity_test.go#TestClientIdentityJSON"
       ]
     },
@@ -55770,7 +55770,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/system_message_replay_test.go#TestSystemMessageReplayCollapseKeepsNonSystemMessagesAfterReplayedHead",
@@ -55791,7 +55791,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/system_message_replay_test.go#TestSystemMessageReplayCollapseKeepsNonSystemMessagesAfterReplayedHead",
@@ -55906,7 +55906,7 @@
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -57201,8 +57201,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -57286,7 +57286,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -60685,8 +60685,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -60818,7 +60818,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -60837,7 +60837,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -61263,8 +61263,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -61417,7 +61417,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -61436,7 +61436,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -61900,7 +61900,7 @@
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
         "test:agent/convert_custom_upstream_test.go#TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
       ]
     },
     {
@@ -61922,7 +61922,7 @@
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
         "test:agent/convert_custom_upstream_test.go#TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
       ]
     },
     {
@@ -61944,7 +61944,7 @@
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
         "test:agent/convert_custom_upstream_test.go#TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
       ]
     },
     {
@@ -61966,7 +61966,7 @@
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
         "test:agent/convert_custom_upstream_test.go#TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages"
       ]
     },
     {
@@ -64169,8 +64169,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -64302,7 +64302,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -64321,7 +64321,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -64590,7 +64590,7 @@
         "call:ai/anthropic.go#anthThinkingOffIsNull"
       ],
       "evidence": [
-        "test:ai/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
+        "test:ai/providers/bedrock/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
         "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
       ]
@@ -64700,7 +64700,7 @@
         "call:ai/model_utils.go#Model.CostRates"
       ],
       "evidence": [
-        "test:ai/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
+        "test:ai/providers/bedrock/bedrock_response_oracle_test.go#TestBedrockResponseStreamMatchesPi",
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
       ]
@@ -64829,7 +64829,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
@@ -67306,8 +67306,8 @@
       ],
       "evidence": [
         "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap"
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding",
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap"
       ]
     },
     {
@@ -70174,8 +70174,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -70307,7 +70307,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -70326,7 +70326,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -71429,11 +71429,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -71743,8 +71743,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -71876,7 +71876,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -71895,7 +71895,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -72055,7 +72055,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
       ]
     },
@@ -72423,11 +72423,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -72605,8 +72605,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -72738,7 +72738,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -72757,7 +72757,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -73458,7 +73458,7 @@
         "call:ai/identity.go#GetClientVersion"
       ],
       "evidence": [
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
         "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
         "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"
       ]
@@ -73723,8 +73723,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -73856,7 +73856,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -73875,7 +73875,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -74996,8 +74996,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -75081,7 +75081,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -76616,7 +76616,7 @@
       "upstreamShapeHash": "sha256:d096d48c9866227f90d1553e0799f23ae18a720ed6bf79cd1ab2d28ae99d34b0",
       "rationale": "compat re-export of bedrock-converse-stream.lazy.ts:19-24 setBedrockProviderModule: overrides the dynamically imported Bedrock module for the Bun binary build, where a variable-specifier import() cannot be bundled. Go links the Bedrock provider statically and has no dynamic import or bundler. Designed out by the lead's ruling of 2026-10-07 15:20 MDT (language mechanics with no Go meaning are designed out with a citation).",
       "pigTargets": [
-        "ai/bedrock.go#NewBedrockProvider"
+        "ai/providers/bedrock/bedrock.go#NewBedrockProvider"
       ]
     },
     {
@@ -76625,7 +76625,7 @@
       "upstreamShapeHash": "sha256:b5ad1daafef33bec3c9885d7fe8145fcc7b00934a6359748d81283d263a94fcc",
       "rationale": "The call row belongs to setBedrockProviderModule, which is designed out: Go links the Bedrock provider statically.",
       "pigTargets": [
-        "ai/bedrock.go#NewBedrockProvider"
+        "ai/providers/bedrock/bedrock.go#NewBedrockProvider"
       ]
     },
     {
@@ -76802,8 +76802,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -76935,7 +76935,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -76954,7 +76954,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -77114,7 +77114,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
       ]
     },
@@ -77961,8 +77961,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -78094,7 +78094,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
-        "test:ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "test:ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
         "test:ai/mistral_stream_events_upstream_test.go#TestMistralProviderStreamEventsUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -78113,7 +78113,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.streamResponse"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.streamResponse"
       ],
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
@@ -79012,7 +79012,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock_stream_state.go#bedrockStreamState.handleItem"
+        "call:ai/providers/bedrock/bedrock_stream_state.go#bedrockStreamState.handleItem"
       ],
       "evidence": [
         "test:ai/faux_helpers_upstream_test.go#TestFauxAssistantMessageIsAnAssistantMessageThatStreamsBackUnchanged",
@@ -79144,7 +79144,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
       ]
     },
@@ -79209,7 +79209,7 @@
         "call:ai/simple_options.go#DefaultThinkingBudgets"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:ai/openai_thinking_budget_upstream_test.go#TestResolveClampedThinkingBudgetUpstream",
         "test:coding/openai_thinking_budget_upstream_test.go#TestOpenAICompletionsThinkingTokenBudgetUpstream"
       ]
@@ -79231,7 +79231,7 @@
         "call:ai/simple_options.go#DefaultThinkingBudgets"
       ],
       "evidence": [
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:coding/thinking_budgets_settings_test.go#TestSessionThinkingBudgetsKeepConfiguredZeroFromSettings",
         "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleGenerativeAIPayloadMatchesPi"
       ]
@@ -79276,8 +79276,8 @@
       ],
       "evidence": [
         "test:agent/transform_thinking_oracle_test.go#TestNormalizeAssistantReplayThinkingTrimMatchesPi",
-        "test:ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
-        "test:ai/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments"
+        "test:ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
+        "test:ai/providers/bedrock/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments"
       ]
     },
     {
@@ -79365,7 +79365,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
       ]
     },
     {
@@ -79386,7 +79386,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap",
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap",
         "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
       ]
     },
@@ -79452,7 +79452,7 @@
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -79963,9 +79963,9 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "test:ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
-        "test:ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi"
+        "test:ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "test:ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi"
       ]
     },
     {
@@ -80491,7 +80491,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#bedrockUserAgent"
+        "call:ai/providers/bedrock/bedrock.go#bedrockUserAgent"
       ],
       "evidence": [
         "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
@@ -86522,7 +86522,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -86628,7 +86628,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -86734,7 +86734,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -86840,7 +86840,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -86946,7 +86946,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -87052,7 +87052,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -87158,7 +87158,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -87486,7 +87486,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -88004,11 +88004,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -88611,11 +88611,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -89026,11 +89026,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
-        "test:ai/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
+        "test:ai/providers/bedrock/bedrock_request_body_oracle_test.go#TestBedrockRequestBodyMatchesPi",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream"
       ]
     },
@@ -89716,7 +89716,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -91168,7 +91168,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -91274,7 +91274,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -91380,7 +91380,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -91486,7 +91486,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -91594,7 +91594,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -91700,7 +91700,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -91808,7 +91808,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -91914,7 +91914,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -92020,7 +92020,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -92126,7 +92126,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -92232,7 +92232,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -92314,7 +92314,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
       ]
     },
     {
@@ -92751,8 +92751,8 @@
       ],
       "evidence": [
         "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap"
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockClaudeHaiku5UsesAdaptiveThinkingWithNativeXhighAndBlockBinding",
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap"
       ]
     },
     {
@@ -92814,7 +92814,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
+        "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi"
       ]
     },
     {
@@ -92835,7 +92835,7 @@
       ],
       "evidence": [
         "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
-        "test:ai/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap",
+        "test:ai/providers/bedrock/bedrock_openai_reasoning_upstream_test.go#TestBedrockOpenAIReasoningEffortHonorsTheModelsThinkingLevelMap",
         "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
       ]
     },
@@ -92942,7 +92942,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -93048,7 +93048,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -93154,7 +93154,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -93260,7 +93260,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -93366,7 +93366,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -93472,7 +93472,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -93620,7 +93620,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -94173,7 +94173,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -94325,7 +94325,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -94431,7 +94431,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -94537,7 +94537,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -94939,7 +94939,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -95137,7 +95137,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -95245,7 +95245,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -95355,7 +95355,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -95461,7 +95461,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -95567,7 +95567,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -95673,7 +95673,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -95779,7 +95779,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -95885,7 +95885,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -95993,7 +95993,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -96099,7 +96099,7 @@
       "evidence": [
         "test:ai/anthropic_adaptive_models_upstream_test.go#TestAnthropicUpstreamAdaptiveThinkingModels",
         "test:ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
-        "test:ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "test:ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ]
     },
     {
@@ -96747,7 +96747,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#formatBedrockError"
+        "call:ai/providers/bedrock/bedrock.go#formatBedrockError"
       ],
       "evidence": [
         "test:ai/error_body_upstream_test.go#TestFormatProviderErrorUpstream"
@@ -96767,7 +96767,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#formatBedrockError"
+        "call:ai/providers/bedrock/bedrock.go#formatBedrockError"
       ],
       "evidence": [
         "test:ai/error_body_upstream_test.go#TestFormatProviderErrorUpstream"
@@ -96807,7 +96807,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#formatBedrockError"
+        "call:ai/providers/bedrock/bedrock.go#formatBedrockError"
       ],
       "evidence": [
         "test:ai/error_body_oracle_test.go#TestErrorBodyHelpersMatchPiOnSeededProbes",
@@ -96872,7 +96872,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#formatBedrockError"
+        "call:ai/providers/bedrock/bedrock.go#formatBedrockError"
       ],
       "evidence": [
         "test:ai/error_body_oracle_test.go#TestErrorBodyHelpersMatchPiOnSeededProbes",
@@ -96914,7 +96914,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#formatBedrockError"
+        "call:ai/providers/bedrock/bedrock.go#formatBedrockError"
       ],
       "evidence": [
         "test:ai/error_body_upstream_test.go#TestNormalizeProviderErrorUpstream",
@@ -96935,7 +96935,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#formatBedrockError"
+        "call:ai/providers/bedrock/bedrock.go#formatBedrockError"
       ],
       "evidence": [
         "test:ai/error_body_upstream_test.go#TestNormalizeProviderErrorUpstream",
@@ -98054,7 +98054,7 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
         "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
@@ -98094,12 +98094,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#bedrockUserAgent"
+        "call:ai/providers/bedrock/bedrock.go#bedrockUserAgent"
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt",
         "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity"
       ]
     },
     {
@@ -98120,7 +98120,7 @@
       ],
       "evidence": [
         "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
-        "test:ai/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
+        "test:ai/providers/bedrock/identity_bedrock_test.go#TestBedrockUserAgentCarriesTheClientIdentity",
         "test:ai/identity_test.go#TestClientIdentityJSON"
       ]
     },
@@ -98476,7 +98476,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#bedrockUserAgent"
+        "call:ai/providers/bedrock/bedrock.go#bedrockUserAgent"
       ],
       "evidence": [
         "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
@@ -99224,7 +99224,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#loadBedrockConfig"
+        "call:ai/providers/bedrock/bedrock.go#loadBedrockConfig"
       ],
       "evidence": [
         "test:ai/node_http_proxy_upstream_test.go#TestNodeHTTPProxyUpstream"
@@ -99244,7 +99244,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#loadBedrockConfig"
+        "call:ai/providers/bedrock/bedrock.go#loadBedrockConfig"
       ],
       "evidence": [
         "test:ai/node_http_proxy_upstream_test.go#TestNodeHTTPProxyUpstream"
@@ -100092,8 +100092,8 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "test:ai/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars",
-        "test:ai/bedrock_test.go#TestBedrockSanitizeSurrogates"
+        "test:ai/providers/bedrock/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars",
+        "test:ai/providers/bedrock/bedrock_test.go#TestBedrockSanitizeSurrogates"
       ]
     },
     {
@@ -100113,8 +100113,8 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "test:ai/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars",
-        "test:ai/bedrock_test.go#TestBedrockSanitizeSurrogates"
+        "test:ai/providers/bedrock/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars",
+        "test:ai/providers/bedrock/bedrock_test.go#TestBedrockSanitizeSurrogates"
       ]
     },
     {
@@ -100653,7 +100653,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/system_message_replay_test.go#TestSystemMessageReplayCollapseKeepsNonSystemMessagesAfterReplayedHead",
@@ -100674,7 +100674,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:ai/bedrock.go#BedrockProvider.Stream"
+        "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
       ],
       "evidence": [
         "test:ai/system_message_replay_test.go#TestSystemMessageReplayCollapseKeepsNonSystemMessagesAfterReplayedHead",
@@ -101712,7 +101712,7 @@
         "call:ai/identity.go#GetClientVersion"
       ],
       "evidence": [
-        "test:ai/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
+        "test:ai/providers/bedrock/identity_bedrock_oracle_test.go#TestBedrockUserAgentMatchesPi",
         "test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi",
         "test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"
       ]
