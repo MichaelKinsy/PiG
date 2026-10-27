@@ -2307,9 +2307,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/model_registry.go 
 [[files]]
 path = "packages/coding-agent/src/core/model-resolver.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/model_reference_upstream_test.go#TestResolveModelReferenceMatchesUpstream", "test:internal/codingagent/model_resolver_oracle_test.go#TestModelResolverMatchesPi", "test:coding/cli/model_resolver_defaults_upstream_test.go#TestModelResolverDefaultsUpstream", "test:coding/cli/model_test.go#TestDefaultModelPerProviderMatchesPinnedUpstream", "test:internal/codingagent/interactive_post_login_test.go#TestAPIKeyLoginSelectsProviderDefault", "test:coding/cli/startup_model_test.go#TestSelectStartupModelUsesStoredLoginProvider", "scenario:test/parity/scenarios/oauth/11-post-login-api-key-model.toml"]
+rationale = "Pi 984cf6643: splitProviderPrefix finds the slash in the lowercased text and cuts the original text there. Ported in internal/codingagent/model_pattern.go (7744a0bd9a); the oracle test runs Pi's resolver on the same models and terms. Delta at Pi f049787d (#11442): defaultModelPerProvider.openai is gpt-6.1-sol, not gpt-5.5, so the model picked after /login with no model set, the startup fallback and --provider openai select it. Ported as the openai entry of DefaultModelPerProviderOrder (internal/codingagent/default_models.go), the one table startup and login share; TestModelResolverDefaultsUpstream asserts the entry, TestDefaultModelPerProviderMatchesPinnedUpstream compares the whole table with the pinned Pi source, and the login, startup and findInitialModel tests plus oauth scenario 11 (paired with Pi) selects the new default, and scenario 13 (paired with Pi) reports it in the login status."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-runtime.ts"

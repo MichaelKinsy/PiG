@@ -4323,8 +4323,22 @@
     },
     {
       "path": "packages/coding-agent/test/model-resolver.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ebf6df38f32f6840ea7cfb0dbafd6282faf264a637864186fdd8580658ff9aae"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ebf6df38f32f6840ea7cfb0dbafd6282faf264a637864186fdd8580658ff9aae",
+      "evidence": [
+        "coding/cli/model_resolver_patterns_upstream_test.go#TestModelResolverScopeUpstream",
+        "coding/cli/model_resolver_cli_upstream_test.go#TestModelResolverCLIUpstream",
+        "coding/cli/model_resolver_defaults_upstream_test.go#TestModelResolverDefaultsUpstream",
+        "coding/model_resolver_scope_upstream_test.go#TestModelResolverPersistedScopeUpstream",
+        "test/parity/scenarios/model-runtime-store-catalog/23-custom-model-thinking-wire.toml",
+        "test/parity/scenarios/model-runtime-store-catalog/24-persisted-model-scope.toml",
+        "internal/codingagent/model_reference_upstream_test.go#TestResolveModelReferenceMatchesUpstream",
+        "internal/codingagent/model_reference_upstream_test.go#TestResolveModelScopeAmbiguousProvidersMatchesUpstream",
+        "internal/codingagent/model_reference_upstream_test.go#TestResolveCliModelDuplicateRawIDsMatchesUpstream",
+        "internal/codingagent/model_resolver_oracle_test.go#TestModelResolverMatchesPi",
+        "coding/cli/model_test.go#TestDefaultModelPerProviderMatchesPinnedUpstream"
+      ],
+      "rationale": "Credited at 0.99.2: the 51 sites keep the 0.87.1 evidence. The two changed cases (model-resolver.test.ts:711 openai-codex default gpt-6.1-sol, :723 'built-in chat providers have defaults in their generated catalogs' with the no-chat-models-no-default rule) are asserted in TestModelResolverDefaultsUpstream (model_resolver_defaults_upstream_test.go:16,:36-45) over every built-in provider. They pass (go test ./cmd/pig). Pi 1.0.3 renames the Azure provider to azure in the ambiguous-model cases; the Go cases use the azure provider. Pi 3daa2028→b06c1f2c: Pi d7f7e0df rewrites the file around resolveModelReference: all 37 referenceCases (and their reversal), the same-id-on-several-providers scope case, and the three duplicate raw id cases (#10160) are ported; the parseModelPattern and removed resolveCliModel cases Pi deleted are deleted in PiG too. Pi 984cf6643 adds a catalog provider whose id contains a slash (llama=http://host:10800) and two resolveModelReference cases, with and without a thinking suffix (:118, :157-166): both are in TestResolveModelReferenceMatchesUpstream with the same catalog entry and expectations, and internal/codingagent's TestModelResolverMatchesPi runs Pi's resolver on a catalog of slash-containing, prefix-clashing, padded and Unicode provider ids; they fail on the old splitProviderPrefix. Pi f049787d (#11442) changes the assertion of 'openai defaults track current models' (:701) to gpt-6.1-sol (openai-codex stays gpt-6.1-sol): TestModelResolverDefaultsUpstream asserts both entries, and TestDefaultModelPerProviderMatchesPinnedUpstream compares the whole table with the pinned Pi source."
     },
     {
       "path": "packages/coding-agent/test/model-runtime-auth-options.test.ts",
