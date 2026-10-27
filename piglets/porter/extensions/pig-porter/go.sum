@@ -2,8 +2,8 @@ cloud.google.com/go/compute/metadata v0.9.0 h1:pDUj4QMoPejqq20dK0Pg2N4yG9zIkYGdB
 cloud.google.com/go/compute/metadata v0.9.0/go.mod h1:E0bWwX5wTnLPedCKqk3pJmVgCBSM6qQI1yTBdEb3C10=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/MichaelKinsy/PiG/extensions/sdk v0.3.1-0.20261026060701-a6e86b8979d5 h1:sZtSjNODSqX3P81J9FUUF5TsCOFWP3/hWOBoAMjvmAc=
-github.com/MichaelKinsy/PiG/extensions/sdk v0.3.1-0.20261026060701-a6e86b8979d5/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
+github.com/MichaelKinsy/PiG/extensions/sdk v0.6.0 h1:V1dR4Dcu1YH+TNprUpZTF0c+c7hWXDRy0w/T1KpCI1k=
+github.com/MichaelKinsy/PiG/extensions/sdk v0.6.0/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/aws/aws-sdk-go-v2 v1.47.1 h1:uOIZnp4PK3ZhKI0dNrJrhTEsLxbpXHTAJlwoS1pvAtw=
