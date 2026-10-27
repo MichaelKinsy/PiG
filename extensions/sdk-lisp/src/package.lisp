@@ -49,6 +49,29 @@
    ;; ==== lane S3: model runtime and registry, create-provider, extension runner and factories, MCP options, event bus, builtin tools ====
    ;; ==== end lane S3 ====
    ;; ==== lane S1: session operations, child sessions, agent session runtime and services ====
+   #:ctx-new-session #:ctx-fork #:ctx-navigate-tree #:ctx-switch-session
+   #:setup-manager #:setup-append-message #:setup-append-custom-entry #:setup-append-custom-message-entry
+   #:setup-append-session-info #:setup-append-model-change #:setup-append-thinking-level-change #:setup-append-label-change
+   #:ctx-create-agent-session #:child-tool #:make-resource-options #:make-session-start-event
+   #:agent-session #:agent-session-prompt #:agent-session-steer #:agent-session-follow-up #:agent-session-abort
+   #:agent-session-bind-extensions #:agent-session-state #:agent-session-messages #:agent-session-refresh-context
+   #:agent-session-session-manager #:agent-session-subscribe #:agent-session-dispose
+   #:agent-session-session-id #:agent-session-session-file #:agent-session-model #:agent-session-thinking-level
+   #:agent-session-active-tools #:agent-session-system-prompt #:agent-session-model-fallback-message #:agent-session-extension-errors
+   #:agent-session-services #:make-agent-session-services #:agent-session-services-cwd #:agent-session-services-agent-dir
+   #:agent-session-services-model-runtime #:agent-session-services-settings-manager #:agent-session-services-resource-loader
+   #:agent-session-services-diagnostics #:create-agent-session-services #:create-agent-session-from-services
+   #:session-runtime-options #:make-session-runtime-options #:session-runtime-options-cwd #:session-runtime-options-agent-dir
+   #:session-runtime-options-session-manager #:session-runtime-options-session-start-event
+   #:session-runtime-result #:make-session-runtime-result
+   #:agent-session-runtime #:create-agent-session-runtime #:agent-session-runtime-session #:agent-session-runtime-services
+   #:agent-session-runtime-cwd #:agent-session-runtime-diagnostics #:agent-session-runtime-model-fallback-message
+   #:agent-session-runtime-set-rebind-session #:agent-session-runtime-set-before-session-invalidate
+   #:agent-session-runtime-switch-session #:agent-session-runtime-new-session #:agent-session-runtime-fork
+   #:agent-session-runtime-import-from-jsonl #:agent-session-runtime-dispose
+   #:session-import-file-not-found-error #:session-import-file-not-found-error-file-path
+   #:missing-session-cwd-error #:missing-session-cwd-error-session-file #:missing-session-cwd-error-session-cwd
+   #:missing-session-cwd-error-fallback-cwd
    ;; ==== end lane S1 ====
    ;; ==== lane P: providers, OAuth, renderers, virtual models, MCP registration ====
    ;; ==== end lane P ====

@@ -295,6 +295,9 @@
                            (obj "messages" returned "_pigContextUnchanged" (if unchanged t :false))))))
              (values result nil))))))))
 
+(defvar *child-tool-handler* nil
+  "(lambda (ext session-id name)) -> the handler of a custom tool of a child session (child-session.lisp), or NIL.")
+
 (defun handle-request (ext env ctx)
   (let* ((id (jget env "id" "")) (req (or (jget env "request") (obj)))
          (method (jget req "method")) (request (ctx-request ctx)))
@@ -302,7 +305,10 @@
         (cond
           ((equal method "tool_call")
            (let* ((name (jget req "tool" "")) (params (let ((a (jget req "args"))) (if (hash-table-p a) a (obj))))
-                  (handler (gethash name (extension-tool-handlers ext))))
+                  (child (let ((c (jget req "child_session"))) (and (stringp c) (plusp (length c)) c)))
+                  (handler (if child
+                               (and *child-tool-handler* (funcall *child-tool-handler* ext child name))
+                               (gethash name (extension-tool-handlers ext)))))
              (unless handler (error "unknown tool ~S" name))
              (ticket-begin (request-ticket request))
              (respond ext id (normalize-tool-result (funcall handler ctx params)) nil)))

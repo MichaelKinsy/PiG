@@ -112,7 +112,8 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
   (request-id "")
   tool-context-p
   tool-args
-  (system-prompt nil))
+  (system-prompt nil)
+  (replacement nil))             ; (:cwd c :mode m :has-ui b) of a withSession context, which answers for the replacement Session
 
 (defun ctx-cancel (ctx)
   (and (ctx-request ctx) (request-signal (ctx-request ctx))))
@@ -126,9 +127,10 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
                (and req (jget req "args")))))
 
 (defun assert-active (ctx)
-  (let ((message (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx)))
-                   (extension-stale-message (ctx-extension ctx)))))
-    (when message (error "~A" message))))
+  (unless (ctx-replacement ctx)
+    (let ((message (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx)))
+                     (extension-stale-message (ctx-extension ctx)))))
+      (when message (error "~A" message)))))
 
 (defparameter *dialog-methods* '("ui.select" "ui.confirm" "ui.input" "ui.editor" "ui.custom"))
 (defparameter *rpc-synchronous-ui-effects*
@@ -169,17 +171,22 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 
 (defun ctx-cwd (ctx)
   (assert-active ctx)
-  (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-cwd (ctx-extension ctx))))
+  (if (ctx-replacement ctx)
+      (getf (ctx-replacement ctx) :cwd)
+      (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-cwd (ctx-extension ctx)))))
 
 (defun ctx-mode (ctx)
   "\"tui\", \"rpc\", \"json\" or \"print\" (the default when the host sent none)."
   (assert-active ctx)
-  (let ((mode (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-mode (ctx-extension ctx)))))
+  (let ((mode (or (and (ctx-replacement ctx) (plusp (length (getf (ctx-replacement ctx) :mode))) (getf (ctx-replacement ctx) :mode))
+                  (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-mode (ctx-extension ctx))))))
     (if (plusp (length mode)) mode "print")))
 
 (defun ctx-has-ui-p (ctx)
   (assert-active ctx)
-  (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-has-ui (ctx-extension ctx))))
+  (if (ctx-replacement ctx)
+      (getf (ctx-replacement ctx) :has-ui)
+      (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-has-ui (ctx-extension ctx)))))
 
 (defun ctx-signal (ctx)
   "The cancellation signal of the run in progress, or NIL while no run is active (Pi's ctx.signal)."
