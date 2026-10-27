@@ -41,7 +41,16 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 	if op == "waitForIdle" {
 		// Harness.waitForIdle / Conversation.waitForIdle (scheduler.ts waitForIdle): idle answers in the same microtask checkpoint,
 		// closed rejects, otherwise the waiter settles with the scope's last live task.
-		h.sched.WaitForIdle(session.ID(numOf(req, "conversationId")), nil, func(err error) { reply(nil, err) })
+		// The client methods (Harness.waitForIdle, Conversation.waitForIdle) are async functions that return the scheduler's promise (Pi 6c384aa3,
+		// harness.ts). The handle an invocation gets is bound and returns it as it is.
+		bound := req.Has("invocation")
+		scope := session.ID(numOf(req, "conversationId"))
+		settled := h.sched.IsIdle(scope)
+		h.sched.WaitForIdle(scope, nil, func(err error) {
+			if err != nil || bound || !h.holdFor(asyncReturnHops(settled), func() { reply(nil, nil) }) {
+				reply(nil, err)
+			}
+		})
 		return true
 	}
 	owner := session.ID(numOf(req, "by"))
@@ -70,6 +79,11 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 			hops := 3
 			if waited {
 				hops = 1
+			}
+			// Harness.waitForTask is an async function that returns the scheduler's promise (harness.ts, Pi 6c384aa3); a wait made by the
+			// runtime of a task returns it as it is.
+			if rt == nil {
+				hops += asyncReturnHops(false)
 			}
 			if err != nil || !h.holdFor(hops, func() { reply(record, err) }) {
 				reply(record, err)
@@ -109,6 +123,16 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 		rt.SleepUntil(numOf(req, "until"), checkpoint, func(err error) { reply(nil, err) })
 	}
 	return true
+}
+
+// asyncReturnHops is the ticks an async function adds when it returns a promise another function made, to the caller that awaits it: the thenable job
+// registers the function's promise on the inner one a tick after the return, and the reaction that settles it runs a tick after the inner promise
+// settled. A promise that has already settled at the return costs two; a pending one costs one.
+func asyncReturnHops(settled bool) int {
+	if settled {
+		return 2
+	}
+	return 1
 }
 
 // wakeJSON is a Wake on the wire: {active, at?}.

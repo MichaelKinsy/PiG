@@ -94,6 +94,10 @@ type ReportFrom struct{ Extension, Callback string }
 // invocation ended, the Harness is closing or, in a run invocation, the task
 // carries an abort mark.
 func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
+	// runtime.commit is an async function that awaits `#gated` (scheduler.ts, Pi 6c384aa3: it adds the checkpoint event after the await), where it
+	// returned the promise itself: its caller resumes a tick after the commit's resolution.
+	inner := then
+	then = func(err error) { r.s.loop.NextTick(func() { inner(err) }) }
 	r.gated(func(tx *Tx, current *jv.Object) error {
 		next, err := change(tx, current)
 		if err != nil {

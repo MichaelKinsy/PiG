@@ -607,6 +607,9 @@ func (s *Scheduler) resolveTaskWaiters(id ID, rec *jv.Object) {
 	}
 }
 
+// IsIdle reports whether WaitForIdle(conversationID) answers at once: the Scheduler is open and the scope has no live task.
+func (s *Scheduler) IsIdle(conversationID ID) bool { return !s.closing && s.idle(conversationID) }
+
 // WaitForIdle calls then when the conversation (0: every root) has no live
 // non-background task or queued input below it.
 func (s *Scheduler) WaitForIdle(conversationID ID, cancel *Cancel, then func(error)) {

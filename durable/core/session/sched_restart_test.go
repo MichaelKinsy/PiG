@@ -140,7 +140,7 @@ func TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit(t *testing.T
 		name string
 		hops int
 		want []int
-	}{{"handler of the core", 3, []int{3}}, {"handler in the host", 0, nil}} {
+	}{{"handler of the core", 5, []int{5}}, {"handler in the host", 0, nil}} {
 		t.Run(tc.name, func(t *testing.T) {
 			mem := sessiontest.New()
 			hold := &session.TaskDef{Name: "t.hold", Version: 1, Initial: func(any) any { return obj("phase", "start") }}
@@ -192,7 +192,7 @@ func TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit(t *testing.T
 			}
 			var abortHops []int
 			for _, n := range got {
-				if n == 3 {
+				if n != 0 && n != 3 { // 3 is the phase span (phaseSpanHops)
 					abortHops = append(abortHops, n)
 				}
 			}

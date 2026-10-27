@@ -79,10 +79,16 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 		}
 		answer := jv.NewObject()
 		answer.Set("id", float64(submission))
-		h.apiOK(id, answer)
+		// Submissions.submit returns the span of "pi.durable.submit" (submissions.ts, Pi 2ec55d80): the no-op span's startSpan is an async
+		// function that returns the callback's promise, and the async submit returns that one, two adoptions on top of the commit's return.
+		h.hopsThen(submitSpanHops, func() { h.apiOK(id, answer) })
 	})
 	return nil
 }
+
+// submitSpanHops is the ticks the "pi.durable.submit" span adds to the return of Submissions.submit (Pi 6c384aa3, F-ticks-gate: cold submit 105
+// against 103).
+const submitSpanHops = 2
 
 // onAbort serves the abort event (ABI section 5, kind 15): {requestId, submissionId, conversationId?} withdraws a queued
 // submission, {requestId, taskId} aborts a task, {requestId, conversationId, background?} aborts a conversation. The answer
