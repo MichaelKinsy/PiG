@@ -898,6 +898,8 @@ type RemoteOverlayOpenPayload struct {
 	HasHandle      bool    `json:"hasHandle,omitempty"`
 	// OverlayOptions is upstream ui.custom()'s serialisable overlayOptions.
 	OverlayOptions *extension.OverlayLayout `json:"overlayOptions,omitempty"`
+	// Blocked is upstream ui.custom()'s blocked option, the status an inline component reports while it is visible.
+	Blocked *extension.CustomBlocked `json:"blocked,omitempty"`
 }
 
 type RemoteOverlayControlPayload struct {

@@ -608,3 +608,60 @@ func TestEditorComponentReplacementDisposesTheActiveSelectorWithoutADialog(t *te
 		t.Fatal("the editor component replacement left the active selector with no dialog open")
 	}
 }
+
+// interactive-mode-extension-dialogs.test.ts "reports blocked status for an inline custom component that opts in" (Pi c1810bf7, #11428):
+// a component that opts in reports blocked, a plain component stacked on it clears the status, closing the plain one restores it and
+// closing the opted-in one clears it.
+func TestExtensionDialogsReportBlockedStatusForAnInlineCustomComponentThatOptsIn(t *testing.T) {
+	r := newCustomRig(t)
+	terminal := recordProgramStatus(r.m, "")
+	approval := &customProbe{label: "approval"}
+	var doneApproval func(any)
+	first := r.start(t.Context(), func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
+		doneApproval = d
+		return approval, nil
+	}, &extension.CustomOptions{Blocked: &extension.CustomBlocked{Kind: tui.ProgramStatusKindPermission, Message: "Approve?"}})
+	r.pump(t, first, func() bool { return openExtensionDialogs(r.m) == 1 })
+	requireVisible(t, r.m, "approval")
+	requireBlocked(t, terminal, tui.ProgramStatusKindPermission, "Approve?")
+
+	_, doneLoader, loader := r.startCustom(t, "loading")
+	requireVisible(t, r.m, "loading")
+	requireBlocked(t, terminal, "", "")
+
+	go (*doneLoader)("loaded")
+	if got := r.finish(t, loader); got.err != nil || got.value != "loaded" {
+		t.Fatalf("the plain component = %v, %v; want loaded", got.value, got.err)
+	}
+	requireVisible(t, r.m, "approval")
+	requireBlocked(t, terminal, tui.ProgramStatusKindPermission, "Approve?")
+
+	go doneApproval("yes")
+	if got := r.finish(t, first); got.err != nil || got.value != "yes" {
+		t.Fatalf("the opted-in component = %v, %v; want yes", got.value, got.err)
+	}
+	requireEditorShown(t, r.m, "after both custom components")
+	requireBlocked(t, terminal, "", "")
+}
+
+// An overlay is not part of the dialog stack, so the blocked option does not apply to it (Pi c1810bf7: "Overlays ignore the option").
+func TestExtensionCustomOverlayIgnoresTheBlockedOption(t *testing.T) {
+	r := newCustomRig(t)
+	terminal := recordProgramStatus(r.m, "")
+	component := &customProbe{label: "overlay"}
+	var done func(any)
+	out := r.start(t.Context(), func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
+		done = d
+		return component, nil
+	}, &extension.CustomOptions{Overlay: true, Blocked: &extension.CustomBlocked{Kind: tui.ProgramStatusKindQuestion, Message: "Pick"}})
+	r.pump(t, out, func() bool { return done != nil && r.m.tuiInst.HasOverlay() })
+	for _, report := range terminal.reports {
+		if report.State == tui.ProgramStateBlocked {
+			t.Fatalf("an overlay reported %+v, want no blocked status", report)
+		}
+	}
+	go done("closed")
+	if got := r.finish(t, out); got.err != nil || got.value != "closed" {
+		t.Fatalf("the overlay = %v, %v; want closed", got.value, got.err)
+	}
+}
