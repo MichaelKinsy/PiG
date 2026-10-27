@@ -243,7 +243,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-433d232-2](#bf-433d232-2) | An extension custom message whose content is a block array (text or images), or an empty string, now reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-433d232-3](#bf-433d232-3) | `DefaultResourceLoader.reload`: new live-Pi oracle `TestDefaultResourceLoaderReloadMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-433d232-4](#bf-433d232-4) | `ReadOnlyAuthStorage`: new live-Pi oracle `TestReadOnlyAuthStorageMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-439c708](#bf-439c708) | fix(ai): open only http(s) URLs a login server supplies, and reject pi-messages content indexes that are not… | PiG's own defect | All platforms | Unreleased |
+| [BF-439c708](#bf-439c708) | Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only… | PiG's own defect | All platforms | 0.6.0 |
+| [BF-439c708-2](#bf-439c708-2) | A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an… | PiG's own defect | All platforms | 0.6.0 |
 | [BF-43a2293](#bf-43a2293) | Key order of non-index keys stays byte order (a Go map has no insertion order): question Q-state-order filed | PiG's own defect | All platforms | Unreleased |
 | [BF-43c46f5](#bf-43c46f5) | Chord host timers (reload vote, gate and retire deadlines, link pings, service linger, host manager grace… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-43d2597](#bf-43d2597) | `@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
@@ -845,7 +846,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aca35e7](#bf-aca35e7) | In print and JSON mode, a Node extension no longer runs a timer or other callback between a prompt's last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ad9ed64](#bf-ad9ed64) | Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ad9ed64-2](#bf-ad9ed64-2) | A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-ae1ee6d](#bf-ae1ee6d) | fix(tui): replace control characters in terminal titles, and open and print only web URLs in the login dialog… | PiG's own defect | All platforms | Unreleased |
+| [BF-ae1ee6d](#bf-ae1ee6d) | The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded… | PiG's own defect | All platforms | 0.6.0 |
+| [BF-ae1ee6d-2](#bf-ae1ee6d-2) | A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no… | PiG's own defect | All platforms | 0.6.0 |
 | [BF-ae498eb](#bf-ae498eb) | A line of many `>` characters no longer makes the Markdown renderer's output grow exponentially with the… | A fix Pi shipped that PiG ported | All platforms | 0.6.0 |
 | [BF-aeaaf97](#bf-aeaaf97) | Model requests reuse their HTTP connection | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aec0042](#bf-aec0042) | The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon… | PiG's own defect | All platforms | 0.6.0 |
@@ -1081,7 +1083,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dfa57b3](#bf-dfa57b3) | An OpenAI Responses request for a conversation with no messages sends `"input": []` instead of `"input": null` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e045fa5](#bf-e045fa5) | fix(durable/codemode): count image blocks in a generateImages result as Pi does, and compare the code mode… | PiG's own defect | All platforms | Unreleased |
 | [BF-e098463](#bf-e098463) | A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-e16cbba](#bf-e16cbba) | fix(coding): rank a tool first when the search query is its name (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-e16cbba](#bf-e16cbba) | Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read… | PiG's own defect | All platforms | 0.6.0 |
 | [BF-e1764c3](#bf-e1764c3) | A live `/skill:` message renders as the collapsed `[skill] name` block instead of the raw `<skill>` XML | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e1ad272](#bf-e1ad272) | The xAI, Kimi Code, Meta, Radius, OpenAI Codex, Sign in with ChatGPT and GitHub Copilot OAuth requests send… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e24487e](#bf-e24487e) | fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version | PiG's own defect | All platforms | Unreleased |
@@ -4338,16 +4340,31 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-439c708
 
-**fix(ai): open only http(s) URLs a login server supplies, and reject pi-messages content indexes that are not…**
+**Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only…**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix(ai): open only http(s) URLs a login server supplies, and reject pi-messages content indexes that are not the next or an existing block (Pi)
+- **Symptom:** Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only when it is an `http:` or `https:` URL, and open and show its normalized form, so a malicious login server cannot make `pig` launch a `file:` or custom protocol URL.
 - **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
-- **Fixed in:** Unreleased
+- **Fixed in:** 0.6.0
 - **Fix commits:** `439c708ebc` (2026-10-26)
 - **Tests:** `ai/oauth_kimi_test.go::TestTrustedHTTPURL`, `ai/oauth_radius_test.go::TestRadiusOAuthBrowserDiscoveryRejectsNonHTTPAuthorizationEndpoint`, `ai/oauth_radius_test.go::TestRadiusOAuthDeviceLoginRejectsNonHTTPVerificationURI`, `ai/oauth_radius_test.go::TestRadiusOAuthThrowsFetchErrorsForCredentialedGatewayAndInvalidEndpoint`, `ai/pi_messages_test.go::TestPiMessagesRejectsContentIndexesThatAreNotTheNextOrAnExistingBlock`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi`
+- **Release note:** Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only when it is an `http:` or `https:` URL, and open and show its normalized form, so a malicious login server cannot make `pig` launch a `file:` or custom protocol URL. Ports Pi's `trustedHttpUrl` use in every login that opens a server-supplied URL.
+
+### BF-439c708-2
+
+**A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an existing block (for any other event) now fails with `Invalid contentIndex <value> in pi-messages <type> event`, as Pi's does, instead of indexing the message's content with a value from the wire.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** 0.6.0
+- **Fix commits:** `439c708ebc` (2026-10-26)
+- **Tests:** `ai/oauth_kimi_test.go::TestTrustedHTTPURL`, `ai/oauth_radius_test.go::TestRadiusOAuthBrowserDiscoveryRejectsNonHTTPAuthorizationEndpoint`, `ai/oauth_radius_test.go::TestRadiusOAuthDeviceLoginRejectsNonHTTPVerificationURI`, `ai/oauth_radius_test.go::TestRadiusOAuthThrowsFetchErrorsForCredentialedGatewayAndInvalidEndpoint`, `ai/pi_messages_test.go::TestPiMessagesRejectsContentIndexesThatAreNotTheNextOrAnExistingBlock`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi`
+- **Release note:** A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an existing block (for any other event) now fails with `Invalid contentIndex <value> in pi-messages <type> event`, as Pi's does, instead of indexing the message's content with a value from the wire.
 
 ### BF-43a2293
 
@@ -12081,7 +12098,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** the 0.6.1 export of `TuiAltScreen` lands in the Go, Rust and Python SDKs; then the 46 cells become `native:` cells with their conformance or vector reach, and this record goes.
-- **Fix commits:** `26bbbe6a80` (2026-10-26), `f67a7da98e` (2026-10-26)
+- **Fix commits:** `26bbbe6a80` (2026-10-26), `f67a7da98e` (2026-10-26), `d834cb2d9f` (2026-10-27)
 - **Tests:** None recorded.
 
 ### BF-a076a50
@@ -12713,16 +12730,31 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-ae1ee6d
 
-**fix(tui): replace control characters in terminal titles, and open and print only web URLs in the login dialog…**
+**The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded…**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix(tui): replace control characters in terminal titles, and open and print only web URLs in the login dialog (Pi)
+- **Symptom:** A URL from a login server could end a terminal hyperlink early or send its own escape sequences.
 - **Root cause:** Not recorded.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
-- **Fixed in:** Unreleased
+- **Fixed in:** 0.6.0
 - **Fix commits:** `ae1ee6d132` (2026-10-26)
 - **Tests:** `tui/login_dialog_device_code_test.go::TestLoginURLsKeepControlCharactersFromEndingTerminalHyperlinks`, `tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs`, `tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs`, `tui/login_dialog_gaps_test.go::TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo`, `tui/terminal_test.go::TestProcessTerminalSetTitleReplacesControlCharacters`, `tui/widthx/grapheme_range_test.go::TestReplaceControlCharacters`
+- **Release note:** The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded control characters); any other URL is shown with its control characters replaced and is not opened in the browser, and no terminal hyperlink is made for it. Before, a URL from a login server could end a terminal hyperlink early or send its own escape sequences.
+
+### BF-ae1ee6d-2
+
+**A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no longer ends the title sequence early and sends the rest to the terminal as escape sequences: control characters become spaces, as in Pi's `setTitle`.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** 0.6.0
+- **Fix commits:** `ae1ee6d132` (2026-10-26)
+- **Tests:** `tui/login_dialog_device_code_test.go::TestLoginURLsKeepControlCharactersFromEndingTerminalHyperlinks`, `tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs`, `tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs`, `tui/login_dialog_gaps_test.go::TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo`, `tui/terminal_test.go::TestProcessTerminalSetTitleReplacesControlCharacters`, `tui/widthx/grapheme_range_test.go::TestReplaceControlCharacters`
+- **Release note:** A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no longer ends the title sequence early and sends the rest to the terminal as escape sequences: control characters become spaces, as in Pi's `setTitle`.
 
 ### BF-ae498eb
 
@@ -15989,16 +16021,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-e16cbba
 
-**fix(coding): rank a tool first when the search query is its name (Pi)**
+**Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read…**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix(coding): rank a tool first when the search query is its name (Pi)
+- **Symptom:** BM25 length normalization could rank a tool with a short description sharing the name's words above it.
 - **Root cause:** Not recorded.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
-- **Fixed in:** Unreleased
+- **Fixed in:** 0.6.0
 - **Fix commits:** `e16cbbaf76` (2026-10-26)
 - **Tests:** `coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchNameQueriesMatchPi`, `coding/extension/builtin/toolsearch/toolsearch_upstream_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryIsItsName`
+- **Release note:** Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read as `_` and the `mcp__app__` prefix optional (`thread_read` and `app__thread_read` name `mcp__app__thread_read`). Before, BM25 length normalization could rank a tool with a short description sharing the name's words above it.
 
 ### BF-e1764c3
 

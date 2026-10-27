@@ -7092,15 +7092,43 @@
     },
     {
       "id": "BF-439c708",
-      "title": "fix(ai): open only http(s) URLs a login server supplies, and reject pi-messages content indexes that are not…",
-      "symptom": "fix(ai): open only http(s) URLs a login server supplies, and reject pi-messages content indexes that are not the next or an existing block (Pi)",
+      "title": "Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only…",
+      "symptom": "Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only when it is an `http:` or `https:` URL, and open and show its normalized form, so a malicious login server cannot make `pig` launch a `file:` or custom protocol URL.",
       "rootCause": "",
       "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
+      "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
+      "fixedIn": "0.6.0",
+      "releaseNote": "Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only when it is an `http:` or `https:` URL, and open and show its normalized form, so a malicious login server cannot make `pig` launch a `file:` or custom protocol URL. Ports Pi's `trustedHttpUrl` use in every login that opens a server-supplied URL.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "439c708ebc",
+          "date": "2026-10-26"
+        }
+      ],
+      "tests": [
+        "ai/oauth_kimi_test.go::TestTrustedHTTPURL",
+        "ai/oauth_radius_test.go::TestRadiusOAuthBrowserDiscoveryRejectsNonHTTPAuthorizationEndpoint",
+        "ai/oauth_radius_test.go::TestRadiusOAuthDeviceLoginRejectsNonHTTPVerificationURI",
+        "ai/oauth_radius_test.go::TestRadiusOAuthThrowsFetchErrorsForCredentialedGatewayAndInvalidEndpoint",
+        "ai/pi_messages_test.go::TestPiMessagesRejectsContentIndexesThatAreNotTheNextOrAnExistingBlock",
+        "ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-439c708-2",
+      "title": "A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an…",
+      "symptom": "A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an existing block (for any other event) now fails with `Invalid contentIndex \u003cvalue\u003e in pi-messages \u003ctype\u003e event`, as Pi's does, instead of indexing the message's content with a value from the wire.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an existing block (for any other event) now fails with `Invalid contentIndex \u003cvalue\u003e in pi-messages \u003ctype\u003e event`, as Pi's does, instead of indexing the message's content with a value from the wire.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "439c708ebc",
@@ -23162,6 +23190,10 @@
         {
           "hash": "f67a7da98e",
           "date": "2026-10-26"
+        },
+        {
+          "hash": "d834cb2d9f",
+          "date": "2026-10-27"
         }
       ],
       "tests": []
@@ -24715,15 +24747,43 @@
     },
     {
       "id": "BF-ae1ee6d",
-      "title": "fix(tui): replace control characters in terminal titles, and open and print only web URLs in the login dialog…",
-      "symptom": "fix(tui): replace control characters in terminal titles, and open and print only web URLs in the login dialog (Pi)",
+      "title": "The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded…",
+      "symptom": "A URL from a login server could end a terminal hyperlink early or send its own escape sequences.",
       "rootCause": "",
       "rootCauseSource": "",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
+      "fixedIn": "0.6.0",
+      "releaseNote": "The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded control characters); any other URL is shown with its control characters replaced and is not opened in the browser, and no terminal hyperlink is made for it. Before, a URL from a login server could end a terminal hyperlink early or send its own escape sequences.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ae1ee6d132",
+          "date": "2026-10-26"
+        }
+      ],
+      "tests": [
+        "tui/login_dialog_device_code_test.go::TestLoginURLsKeepControlCharactersFromEndingTerminalHyperlinks",
+        "tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs",
+        "tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs",
+        "tui/login_dialog_gaps_test.go::TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo",
+        "tui/terminal_test.go::TestProcessTerminalSetTitleReplacesControlCharacters",
+        "tui/widthx/grapheme_range_test.go::TestReplaceControlCharacters"
+      ]
+    },
+    {
+      "id": "BF-ae1ee6d-2",
+      "title": "A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no…",
+      "symptom": "A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no longer ends the title sequence early and sends the rest to the terminal as escape sequences: control characters become spaces, as in Pi's `setTitle`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no longer ends the title sequence early and sends the rest to the terminal as escape sequences: control characters become spaces, as in Pi's `setTitle`.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "ae1ee6d132",
@@ -32855,15 +32915,16 @@
     },
     {
       "id": "BF-e16cbba",
-      "title": "fix(coding): rank a tool first when the search query is its name (Pi)",
-      "symptom": "fix(coding): rank a tool first when the search query is its name (Pi)",
+      "title": "Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read…",
+      "symptom": "BM25 length normalization could rank a tool with a short description sharing the name's words above it.",
       "rootCause": "",
       "rootCauseSource": "",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
+      "fixedIn": "0.6.0",
+      "releaseNote": "Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read as `_` and the `mcp__app__` prefix optional (`thread_read` and `app__thread_read` name `mcp__app__thread_read`). Before, BM25 length normalization could rank a tool with a short description sharing the name's words above it.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "e16cbbaf76",

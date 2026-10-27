@@ -73,7 +73,7 @@ github.com/ClickHouse/clickhouse-go-linter v1.2.0 h1:zbm174up3hTKjp0wKZVnTzRiG7t
 github.com/ClickHouse/clickhouse-go-linter v1.2.0/go.mod h1:pLorS7ffPTfuUV9M0SJgfHA/h/WQPQUk2FWG9x74cQ4=
 github.com/Djarvur/go-err113 v0.1.1 h1:eHfopDqXRwAi+YmCUas75ZE0+hoBHJ2GQNLYRSxao4g=
 github.com/Djarvur/go-err113 v0.1.1/go.mod h1:IaWJdYFLg76t2ihfflPZnM1LIQszWOsFDh2hhhAVF6k=
-github.com/MichaelKinsy/PiG/extensions/sdk v0.6.0 h1:V1dR4Dcu1YH+TNprUpZTF0c+c7hWXDRy0w/T1KpCI1k=
+github.com/MichaelKinsy/PiG/extensions/sdk v0.6.0 h1:0zMtfw0piFU18TcbmgkvpmdWXnSThiCY5y80pdbw/Rw=
 github.com/MichaelKinsy/PiG/extensions/sdk v0.6.0/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
