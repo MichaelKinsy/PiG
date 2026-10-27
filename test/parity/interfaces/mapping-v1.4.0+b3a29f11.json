@@ -208320,7 +208320,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/harness_failed_run_inbox_core_test.go#TestInputsQueuedBehindAFailedRun",
-        "test:durable/harness/harness_generation_test.go#TestGeneration"
+        "test:durable/harness/harness_generation_test.go#TestGeneration",
+        "test:durable/harness/harness_run_failure_test.go#TestRunFailure"
       ]
     },
     {
@@ -208364,7 +208365,7 @@
       "evidence": [
         "test:coding/model_runtime_durable_models_test.go#TestModelRuntimeAnswersDurableHarnessGeneration",
         "test:durable/codemode/telemetry_replay_test.go#TestDurableTelemetryEmitsReplayForACodemodeJournalResultWithoutRerunningItsNestedTool",
-        "test:durable/core/driver/generation_abort_core_test.go#TestCoreAStreamedMessageStartsAtItsFirstPartialAndEndsOnceWithTheConvertedEntryOnAbort"
+        "test:durable/core/driver/generation_abort_core_test.go#TestCoreAStreamedMessageEndsOnceWithTheConvertedEntryOnAbort"
       ]
     },
     {
@@ -208581,9 +208582,9 @@
         "call:durable/session/held.go#SessionImpl.storeHolds"
       ],
       "evidence": [
-        "test:durable/harness/events_pi_oracle_test.go#TestTranslateEventsMatchPi",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits"
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
+        "test:durable/codemode/codemode_test.go#TestDurableCodeMode"
       ]
     },
     {
@@ -208664,7 +208665,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#snapshotOf"
+        "call:durable/harness/live.go#FailCompactionStatus"
       ],
       "evidence": [
         "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced",
@@ -208866,8 +208867,8 @@
       ],
       "evidence": [
         "test:durable/harness/live_pi_oracle_test.go#TestLiveDocHelpersMatchPi",
-        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAnAbortedBlockingCompactionFailsTheRunWithoutRecordingAFailure",
-        "test:durable/examples/tasks_compaction_examples_test.go#TestExample24Compaction"
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced",
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAnAbortedBlockingCompactionFailsTheRunWithoutRecordingAFailure"
       ]
     },
     {
@@ -208984,8 +208985,26 @@
     },
     {
       "id": "pkg:durable/.#Conversation",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b2b28e1dd41b2a1326fca706168d9a5a5f14c05737bc32b8f8db5539eef1445f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b2b28e1dd41b2a1326fca706168d9a5a5f14c05737bc32b8f8db5539eef1445f",
+      "rationale": "Derived by the interface gap detector: Conversation is Go durable/harness/types.go#Conversation (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/types.go#Conversation"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/harness.go#conversationImpl.Fork"
+      ],
+      "evidence": [
+        "test:durable/examples/spec_usage_upstream_test.go#TestSpecUsageHostSequenceRuns",
+        "test:durable/examples/spec_usage_upstream_test.go#TestSpecUsageRevokedLiveDraftPanics",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Conversation::property:abort",
@@ -209444,7 +209463,7 @@
         "public-api:durable/harness/types.go#Conversation.WaitForIdle"
       ],
       "evidence": [
-        "test:durable/core/driver/harness_ownership_core_test.go#TestCoreOwnershipCancelsOnlyTheCallersWaitNeverTheSharedWork"
+        "test:durable/core/driver/harness_nested_core_test.go#TestCoreNestedCallsAreListedInTheViewWithTheirParent"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209465,19 +209484,51 @@
         "public-api:durable/harness/types.go#Conversation.WaitForIdle"
       ],
       "evidence": [
-        "test:durable/core/driver/harness_ownership_core_test.go#TestCoreOwnershipCancelsOnlyTheCallersWaitNeverTheSharedWork"
+        "test:durable/core/driver/harness_nested_core_test.go#TestCoreNestedCallsAreListedInTheViewWithTheirParent"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Conversation::property:watch",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d366024e93397f1d2d2f849df9868b84cc065601aa6674133d7867e84e877abf"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d366024e93397f1d2d2f849df9868b84cc065601aa6674133d7867e84e877abf",
+      "rationale": "Derived by the interface gap detector: Conversation::property:watch is Go durable/harness/types.go#Conversation.Watch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/types.go#Conversation.Watch"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:durable/harness/types.go#Conversation.Watch"
+      ],
+      "evidence": [
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Conversation::property:watch::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ed3a17c8579ea4984f13d4d05b0a8690f64e949e806e8169c85667fa360620f9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ed3a17c8579ea4984f13d4d05b0a8690f64e949e806e8169c85667fa360620f9",
+      "rationale": "Derived by the interface gap detector: Conversation::property:watch::call:0 is Go durable/harness/types.go#Conversation.Watch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/types.go#Conversation.Watch"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:durable/harness/types.go#Conversation.Watch"
+      ],
+      "evidence": [
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#ConversationAbortOptions",
@@ -210042,63 +210093,270 @@
     },
     {
       "id": "pkg:durable/.#ConversationTranscript",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9dd50edf3e169ebd0ec01ac2e8069ec9ee203108446b7a8d2040d9f6b5bc5606"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9dd50edf3e169ebd0ec01ac2e8069ec9ee203108446b7a8d2040d9f6b5bc5606",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript is Go durable/harness/transcript.go#ConversationTranscript (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscript"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#NewConversationTranscript"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#ConversationTranscript::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dab922a3032470db74ee519be2e592966fa9b02b7a21f1876eb54163294fe24a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dab922a3032470db74ee519be2e592966fa9b02b7a21f1876eb54163294fe24a",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript::construct:0 is Go durable/harness/transcript.go#NewConversationTranscript (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#NewConversationTranscript"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#NewConversationTranscript"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/examples/spec_usage_upstream_test.go#TestSpecUsageCompilesTheHarnessExamples"
+      ]
     },
     {
       "id": "pkg:durable/.#ConversationTranscript::property:fillGap",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4c9c777a4b8c81f2aa33e35b8acae4783fb0b2ede7e5fb5c620d12f531d11b4a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4c9c777a4b8c81f2aa33e35b8acae4783fb0b2ede7e5fb5c620d12f531d11b4a",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript::property:fillGap is Go durable/harness/transcript.go#ConversationTranscript.FillGap (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscript.FillGap"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.FillGap"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#ConversationTranscript::property:fillGap::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e836574ad71a787f462ad58a290924396174035eb6ccc6d221a24aa0ea7a1941"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e836574ad71a787f462ad58a290924396174035eb6ccc6d221a24aa0ea7a1941",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript::property:fillGap::call:0 is Go durable/harness/transcript.go#ConversationTranscript.FillGap (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscript.FillGap"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.FillGap"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#ConversationTranscript::property:loadEarlier",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:95642dd1201a561519c449f534777e7e8e72d6c3cc692060c469d05e49ac5093"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:95642dd1201a561519c449f534777e7e8e72d6c3cc692060c469d05e49ac5093",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript::property:loadEarlier is Go durable/harness/transcript.go#ConversationTranscript.LoadEarlier (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscript.LoadEarlier"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.LoadEarlier"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#ConversationTranscript::property:loadEarlier::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:53cb0761e1f8be780afd895a5abbe7b0dcc0654298302ec3f92c6449eca48f47"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:53cb0761e1f8be780afd895a5abbe7b0dcc0654298302ec3f92c6449eca48f47",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript::property:loadEarlier::call:0 is Go durable/harness/transcript.go#ConversationTranscript.LoadEarlier (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscript.LoadEarlier"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.LoadEarlier"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#ConversationTranscript::property:merge",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:25ac1305d75904daf9f41363a3318de640684f579c95dc529d4afd0d74e83190"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:25ac1305d75904daf9f41363a3318de640684f579c95dc529d4afd0d74e83190",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript::property:merge is Go durable/harness/transcript.go#ConversationTranscript.Merge (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscript.Merge"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.Merge"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads"
+      ]
     },
     {
       "id": "pkg:durable/.#ConversationTranscript::property:merge::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:862f9fc64dcc26e590d72a465696dc3906a371b64ba68975b509dc151a341c08"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:862f9fc64dcc26e590d72a465696dc3906a371b64ba68975b509dc151a341c08",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript::property:merge::call:0 is Go durable/harness/transcript.go#ConversationTranscript.Merge (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscript.Merge"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.Merge"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads"
+      ]
     },
     {
       "id": "pkg:durable/.#ConversationTranscript::property:newest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:edbaf87bd1ff083b7443228222c759a65a21197e2cdad23ee481f168cbc7921c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:edbaf87bd1ff083b7443228222c759a65a21197e2cdad23ee481f168cbc7921c",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript::property:newest is Go durable/harness/transcript.go#ConversationTranscript.Newest (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscript.Newest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.Newest"
+      ],
+      "evidence": [
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript"
+      ]
     },
     {
       "id": "pkg:durable/.#ConversationTranscript::property:resume",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:155208ae8b47b4857e4c69a2f598c8bb6ee05558bccd1c49a179457b25994604"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:155208ae8b47b4857e4c69a2f598c8bb6ee05558bccd1c49a179457b25994604",
+      "rationale": "Derived by the interface gap detector: ConversationTranscript::property:resume is Go durable/harness/transcript.go#ConversationTranscript.Resume (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscript.Resume"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.Resume"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptOverAHarness"
+      ]
     },
     {
       "id": "pkg:durable/.#ConversationTranscriptOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a15e2f1abf6b34661276c00b7bcb17fbdd4062ae40ea69301502518129abb2d3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a15e2f1abf6b34661276c00b7bcb17fbdd4062ae40ea69301502518129abb2d3",
+      "rationale": "Derived by the interface gap detector: ConversationTranscriptOptions is Go durable/harness/transcript.go#ConversationTranscriptOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#ConversationTranscriptOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#NewConversationTranscript"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads"
+      ]
     },
     {
       "id": "pkg:durable/.#ConversationView",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:889f5d849eae3253a5ba8faabe654165926aff4618552c31119a8a9e7cee7315"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:889f5d849eae3253a5ba8faabe654165926aff4618552c31119a8a9e7cee7315",
+      "rationale": "Derived by the interface gap detector: ConversationView is Go durable/harness/view.go#ConversationView (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/view.go#ConversationView"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/harness.go#harnessImpl.ObserveConversation"
+      ],
+      "evidence": [
+        "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi",
+        "test:durable/core/driver/watch_reduce_test.go#TestViewFrameCostDoesNotGrowWithEntries",
+        "test:durable/core/driver/watch_reduce_test.go#TestViewReducerMatchesFullConversion"
+      ]
     },
     {
       "id": "pkg:durable/.#ConversationWatch",
@@ -210119,13 +210377,30 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:durable/core/driver/docs_core_test.go#TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites"
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"
       ]
     },
     {
       "id": "pkg:durable/.#ConversationWindow",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7e726a2e251c65cbc48162804d3d66bf1019928d9ee717bc8ac6690cfa13ce0f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7e726a2e251c65cbc48162804d3d66bf1019928d9ee717bc8ac6690cfa13ce0f",
+      "rationale": "Derived by the interface gap detector: ConversationWindow is Go durable/harness/view.go#ConversationWindow (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/view.go#ConversationWindow"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/harness.go#conversationImpl.Watch"
+      ],
+      "evidence": [
+        "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi",
+        "test:durable/core/driver/view_window_core_test.go#TestCoreViewWindowDropsItsOldestPastMaxInOneSplice",
+        "test:durable/core/driver/view_window_core_test.go#TestCoreViewWindowGivesEachObserverItsOwnWindow"
+      ]
     },
     {
       "id": "pkg:durable/.#createRegistry",
@@ -210709,9 +210984,9 @@
         "call:durable/harness/define.go#DefineTool"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
         "test:durable/codemode/call_rows_pi_test.go#TestNestedCallRowsTakeTheirStatusAndErrorTextFromTheResult",
-        "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
+        "test:durable/codemode/codemode_test.go#TestDurableCodeMode"
       ]
     },
     {
@@ -210731,9 +211006,9 @@
         "call:durable/harness/define.go#DefineTool"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
         "test:durable/codemode/call_rows_pi_test.go#TestNestedCallRowsTakeTheirStatusAndErrorTextFromTheResult",
-        "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
+        "test:durable/codemode/codemode_test.go#TestDurableCodeMode"
       ]
     },
     {
@@ -211331,7 +211606,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:durable/core/driver/docs_core_test.go#TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites"
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"
       ]
     },
     {
@@ -211482,19 +211757,55 @@
       ],
       "evidence": [
         "test:durable/harness/compaction_pi_oracle_test.go#TestCompactionHelpersMatchPi",
-        "test:durable/harness/live_pi_oracle_test.go#TestLiveDocHelpersMatchPi",
-        "test:durable/harness/prompt_pi_oracle_test.go#TestPromptPlanningMatchesPi"
+        "test:durable/harness/prompt_pi_oracle_test.go#TestPromptPlanningMatchesPi",
+        "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi"
       ]
     },
     {
       "id": "pkg:durable/.#EntryLoader",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a834a7154b7b027cca8947fbcd02c052ec4498324c298d2ba057bbdaea680814"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a834a7154b7b027cca8947fbcd02c052ec4498324c298d2ba057bbdaea680814",
+      "rationale": "Derived by the interface gap detector: EntryLoader is Go durable/harness/transcript.go#EntryLoader (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#EntryLoader"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#NewConversationTranscript"
+      ],
+      "evidence": [
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptOverAHarness"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#EntryLoader::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8e068e6fbb98260a75827aeeb80c55bf1c5262c70411344031927b8ed4d16011"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8e068e6fbb98260a75827aeeb80c55bf1c5262c70411344031927b8ed4d16011",
+      "rationale": "Derived by the interface gap detector: EntryLoader::call:0 is Go durable/harness/transcript.go#EntryLoader (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#EntryLoader"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#NewConversationTranscript"
+      ],
+      "evidence": [
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptOverAHarness"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#EntryQuery",
@@ -211537,7 +211848,7 @@
       "evidence": [
         "test:durable/harness/compaction_pi_oracle_test.go#TestCompactionHelpersMatchPi",
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/harness/events_pi_oracle_test.go#TestTranslateEventsMatchPi"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash"
       ]
     },
     {
@@ -211718,8 +212029,23 @@
     },
     {
       "id": "pkg:durable/.#GenerationCheckpoint",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:797971f4cbf65ea9db4aec4c1ce689b2d87200d517849878adf8707b7a28ff30"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:797971f4cbf65ea9db4aec4c1ce689b2d87200d517849878adf8707b7a28ff30",
+      "rationale": "Derived by the interface gap detector: GenerationCheckpoint is Go durable/harness/generation.go#GenerationCheckpoint (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/generation.go#GenerationCheckpoint"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#answer"
+      ],
+      "evidence": [
+        "test:durable/harness/agent_regression_test.go#TestCheckpointPhasesAreTheClosedPiUnions"
+      ]
     },
     {
       "id": "pkg:durable/.#GenerationHooks",
@@ -211809,7 +212135,7 @@
       "evidence": [
         "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook",
         "test:durable/harness/harness_structured_test.go#TestToolRounds",
-        "test:durable/harness/harness_structured_test.go#TestToolRoundsAndEvents"
+        "test:durable/harness/harness_structured_test.go#TestToolRoundsAsTheViewShowsThem"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -211832,7 +212158,7 @@
       "evidence": [
         "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook",
         "test:durable/harness/harness_structured_test.go#TestToolRounds",
-        "test:durable/harness/harness_structured_test.go#TestToolRoundsAndEvents"
+        "test:durable/harness/harness_structured_test.go#TestToolRoundsAsTheViewShowsThem"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -212004,7 +212330,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#WatchEvents"
+        "call:durable/harness/harness.go#OpenHarness"
       ],
       "evidence": [
         "test:durable/examples/spec_usage_upstream_test.go#TestSpecUsageHostSequenceRuns",
@@ -212618,7 +212944,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#generationAbortHandler"
+        "call:durable/harness/generation.go#cancelDeferred"
       ],
       "evidence": [
         "test:durable/core/driver/harness_reports_core_test.go#TestReports",
@@ -212684,7 +213010,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#queuedItems"
+        "call:durable/harness/inbox.go#ApplyBoundary"
       ],
       "evidence": [
         "test:durable/examples/inbox_override_examples_test.go#TestExample19Inbox",
@@ -212799,7 +213125,7 @@
       "evidence": [
         "test:durable/doc_token_definition_upstream_test.go#TestDocTokensCarryTheirDefinitionAndValidateTheVersion",
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestDefinitionsRequireACheckpointPolicy",
-        "test:durable/json_test.go#TestDocumentConversionsKeepRevisionsAndStayStrict"
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript"
       ]
     },
     {
@@ -212840,14 +213166,31 @@
       ],
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
-        "test:durable/core/driver/generation_abort_core_test.go#TestCoreAStreamedMessageStartsAtItsFirstPartialAndEndsOnceWithTheConvertedEntryOnAbort",
+        "test:durable/core/driver/generation_abort_core_test.go#TestCoreAStreamedMessageEndsOnceWithTheConvertedEntryOnAbort",
         "test:durable/core/driver/harness_nested_core_test.go#TestCoreACallerThatReturnsAbortsTheNestedCallsItLeftRunning"
       ]
     },
     {
       "id": "pkg:durable/.#LiveState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:231b9ea5ac7edb05aef69c91b2ec5d68525f681ae99d0a55b82692d879a7710f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:231b9ea5ac7edb05aef69c91b2ec5d68525f681ae99d0a55b82692d879a7710f",
+      "rationale": "Derived by the interface gap detector: LiveState is Go durable/harness/live.go#LiveState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/live.go#LiveState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#finishToolRound"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash"
+      ]
     },
     {
       "id": "pkg:durable/.#MemoryStorage",
@@ -213727,11 +214070,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "complete",
+        "production": "public-api-tested",
         "shape": "complete"
       },
       "production": [
-        "call:chord/watch_impl.go#NewNativeWatch"
+        "public-api:durable/types.go#NativeWatchChange"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchCollapses101PendingValuesToTheNewest",
@@ -213775,11 +214118,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#translateEvents"
+        "call:durable/harness/tool_nested.go#NestedCalls.Execute"
       ],
       "evidence": [
         "test:durable/harness/tool_nested_calls_doc_test.go#TestANestedCallOfAnAbortedCallerRejectsAndLeavesNoDocumentForIt",
-        "test:durable/harness/tool_nested_test.go#TestANestedCallIsItsOwnToolTaskAndItsResultGoesToTheCaller"
+        "test:durable/harness/tool_nested_test.go#TestANestedCallIsItsOwnToolTaskAndItsResultGoesToTheCaller",
+        "test:durable/core/driver/harness_nested_core_test.go#TestCoreNestedCallsAreListedInTheViewWithTheirParent"
       ]
     },
     {
@@ -213818,12 +214162,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#snapshotOf"
+        "call:durable/harness/tool_nested.go#startNestedCall"
       ],
       "evidence": [
+        "test:durable/core/driver/harness_nested_core_test.go#TestCoreNestedCallsAreListedInTheViewWithTheirParent",
         "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles",
-        "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreANestedCallMadeWithProgressFalseCommitsOnlyItsStatus",
-        "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreANestedSlotShowsTheArgumentsTheCallRunsWith"
+        "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreANestedCallMadeWithProgressFalseCommitsOnlyItsStatus"
       ]
     },
     {
@@ -213887,9 +214231,9 @@
         "call:durable/harness/harness.go#harnessImpl.ObserveConversation"
       ],
       "evidence": [
+        "test:durable/core/driver/view_window_core_test.go#TestCoreViewWindowGivesEachObserverItsOwnWindow",
         "test:durable/harness/harness_observers_test.go#TestObserveConversationAndObserveTaskGraph",
-        "test:durable/session/session_observers_test.go#TestObserveDoc",
-        "test:durable/session/session_observers_test.go#TestObserveDocDetachedDuringACommit"
+        "test:durable/harness/harness_view_run_test.go#TestARunAsTheConversationViewShowsIt"
       ]
     },
     {
@@ -213930,9 +214274,9 @@
         "call:durable/harness/context.go#CaptureContextBounds"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
         "test:durable/storage/memory_ownership_upstream_test.go#TestMemoryStorageClonesRetainedWritesAndReads",
-        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAFaultedBlockingCompactionFailsTheRunAndIsRecorded",
-        "test:durable/core/driver/docs_core_tables_test.go#TestCoreTableReadsAreAllowedOnlyBeforeTheFirstTableWrite"
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAFaultedBlockingCompactionFailsTheRunAndIsRecorded"
       ]
     },
     {
@@ -214907,7 +215251,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#generationAbortHandler"
+        "call:durable/harness/generation.go#cancelDeferred"
       ],
       "evidence": [
         "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters"
@@ -214915,8 +215259,25 @@
     },
     {
       "id": "pkg:durable/.#ReportInfo",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7b29a2c694e037b94a63983b73b3d24024155f007d6b4747fdfb67004d94498e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7b29a2c694e037b94a63983b73b3d24024155f007d6b4747fdfb67004d94498e",
+      "rationale": "Derived by the interface gap detector: ReportInfo is Go durable/types.go#ReportInfo (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#ReportInfo"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/harness.go#SafeNow"
+      ],
+      "evidence": [
+        "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks",
+        "test:durable/core/driver/harness_inspect_core_test.go#TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode",
+        "test:durable/core/driver/harness_nested_core_test.go#TestCoreABrokenStructuredOutputOfAModelIssuedCallIsReported"
+      ]
     },
     {
       "id": "pkg:durable/.#ReportTask",
@@ -215048,13 +215409,47 @@
     },
     {
       "id": "pkg:durable/.#RunFailure",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:eb2ad9ae902e05543b3bd99ccc9c3fb9f937b0795f2002120e79d8f1a0103a10"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:eb2ad9ae902e05543b3bd99ccc9c3fb9f937b0795f2002120e79d8f1a0103a10",
+      "rationale": "Derived by the interface gap detector: RunFailure is Go durable/harness/live.go#RunFailure (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/live.go#RunFailure"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/live.go#EndRun"
+      ],
+      "evidence": [
+        "test:durable/core/driver/generation_abort_core_test.go#TestCoreAStreamedMessageEndsOnceWithTheConvertedEntryOnAbort",
+        "test:durable/core/driver/tool_structured_callers_core_test.go#TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "test:durable/harness/harness_generation_test.go#TestGeneration"
+      ]
     },
     {
       "id": "pkg:durable/.#RunFailureReason",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:67b1bf1bbebabf8f5b020fafa32ccfbd458f0f005031f2cea6d52edb1e9e6103"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:67b1bf1bbebabf8f5b020fafa32ccfbd458f0f005031f2cea6d52edb1e9e6103",
+      "rationale": "Derived by the interface gap detector: RunFailureReason is Go durable/harness/live.go#RunFailureReason (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/live.go#RunFailureReason"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#classify"
+      ],
+      "evidence": [
+        "test:durable/core/driver/generation_abort_core_test.go#TestCoreAStreamedMessageEndsOnceWithTheConvertedEntryOnAbort",
+        "test:durable/core/driver/tool_structured_callers_core_test.go#TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "test:durable/harness/harness_generation_test.go#TestGeneration"
+      ]
     },
     {
       "id": "pkg:durable/.#RunningTask",
@@ -215074,7 +215469,7 @@
       ],
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
       ]
     },
@@ -215092,7 +215487,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/storage/internal/scan/scan.go#NextCursor"
+        "call:durable/harness/transcript.go#ConversationTranscript.FillGap"
       ],
       "evidence": [
         "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError",
@@ -216175,7 +216570,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#translateEvents"
+        "call:durable/harness/harness.go#boundSubmission.Wait"
       ],
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash",
@@ -216201,7 +216596,7 @@
       ],
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
       ]
     },
@@ -216219,7 +216614,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/context.go#ActiveEntries"
+        "call:durable/harness/context.go#CaptureContextBounds"
       ],
       "evidence": [
         "test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage",
@@ -216817,7 +217212,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#WatchEvents"
+        "call:durable/harness/task_graph.go#TaskGraphView.build"
       ],
       "evidence": [
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
@@ -216840,7 +217235,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#WatchEvents"
+        "call:durable/harness/task_graph.go#TaskGraphView.build"
       ],
       "evidence": [
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
@@ -217422,12 +217817,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#translateEvents"
+        "call:durable/harness/harness.go#boundSubmission.Status"
       ],
       "evidence": [
-        "test:durable/harness/events_pi_oracle_test.go#TestTranslateEventsMatchPi",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput"
       ]
     },
     {
@@ -217444,12 +217839,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#answer"
+        "call:durable/harness/generation.go#noModelEnd"
       ],
       "evidence": [
-        "test:durable/harness/live_pi_oracle_test.go#TestLiveDocHelpersMatchPi",
         "test:durable/harness/harness_generation_test.go#TestGeneration",
-        "test:durable/harness/harness_submissions_test.go#TestSubmissions"
+        "test:durable/harness/harness_submissions_test.go#TestSubmissions",
+        "test:durable/harness/live_helpers_test.go#TestEndRunSettlesAndRemovesTheRunOnlyForItsOwner"
       ]
     },
     {
@@ -217713,7 +218108,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:durable/core/driver/docs_core_test.go#TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites"
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"
       ]
     },
     {
@@ -217733,9 +218128,9 @@
         "call:durable/codecs.go#TaskState.MarshalJSON"
       ],
       "evidence": [
-        "test:durable/harness/events_pi_oracle_test.go#TestTranslateEventsMatchPi",
         "test:durable/harness/live_pi_oracle_test.go#TestLiveDocHelpersMatchPi",
-        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage"
+        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
+        "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists"
       ]
     },
     {
@@ -217796,7 +218191,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#translateEvents"
+        "call:durable/harness/generation.go#abortedState"
       ],
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
@@ -217818,7 +218213,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#translateEvents"
+        "call:durable/harness/generation.go#compactionFailure"
       ],
       "evidence": [
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
@@ -217862,12 +218257,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#WatchEvents"
+        "call:durable/harness/scheduler.go#TaskScheduler.Open"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
         "test:durable/session/read_after_write_methods_upstream_test.go#TestEveryTableReadFailsWithItsOwnNameAfterATableWrite",
-        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAFaultedBlockingCompactionFailsTheRunAndIsRecorded"
+        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage"
       ]
     },
     {
@@ -217887,9 +218282,9 @@
         "call:durable/codemode/call.go#call.earlier"
       ],
       "evidence": [
-        "test:durable/harness/events_pi_oracle_test.go#TestTranslateEventsMatchPi",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
       ]
     },
     {
@@ -218601,7 +218996,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#generationAbortHandler"
+        "call:durable/harness/generation.go#cancelDeferred"
       ],
       "evidence": [
         "test:durable/core/driver/harness_reports_core_test.go#TestReports",
@@ -218623,7 +219018,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#generationAbortHandler"
+        "call:durable/harness/generation.go#cancelDeferred"
       ],
       "evidence": [
         "test:durable/core/driver/harness_reports_core_test.go#TestReports",
@@ -219306,7 +219701,7 @@
       "evidence": [
         "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths",
         "test:durable/codemode/codemode_helpers_pi_oracle_test.go#TestTheHeaderShowsTheWallTimeFromTheHarnessClock",
-        "test:durable/tools/powershell_upstream_test.go#TestPowerShellPrepareChangesTheScriptAndItsErrorFailsTheCall"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -219868,9 +220263,9 @@
         "call:durable/tools/bash.go#runCommand"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
         "test:durable/core/driver/harness_nested_core_test.go#TestCoreACallerThatReturnsAbortsTheNestedCallsItLeftRunning",
-        "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreANestedCallMadeWithProgressFalseCommitsOnlyItsStatus",
-        "test:durable/core/driver/tool_nested_restart_core_test.go#TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned"
+        "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreANestedCallMadeWithProgressFalseCommitsOnlyItsStatus"
       ]
     },
     {
@@ -219890,9 +220285,9 @@
         "call:durable/tools/bash.go#runCommand"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
         "test:durable/core/driver/harness_nested_core_test.go#TestCoreACallerThatReturnsAbortsTheNestedCallsItLeftRunning",
-        "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreANestedCallMadeWithProgressFalseCommitsOnlyItsStatus",
-        "test:durable/core/driver/tool_nested_restart_core_test.go#TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned"
+        "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreANestedCallMadeWithProgressFalseCommitsOnlyItsStatus"
       ]
     },
     {
@@ -220670,12 +221065,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#snapshotOf"
+        "call:durable/harness/generation.go#finishToolRound"
       ],
       "evidence": [
         "test:durable/harness/tool_pi_oracle_test.go#TestToolResultHelpersMatchPi",
         "test:durable/examples/lifecycle_examples_test.go#TestExample20LateJoin",
-        "test:durable/harness/harness_inbox_test.go#TestInbox"
+        "test:durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept"
       ]
     },
     {
@@ -220767,13 +221162,45 @@
     },
     {
       "id": "pkg:durable/.#TranscriptItem",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c8f40e3b38bfcea38a0b6cee48b5516b932dc5aff261508244894908db625663"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c8f40e3b38bfcea38a0b6cee48b5516b932dc5aff261508244894908db625663",
+      "rationale": "Derived by the interface gap detector: TranscriptItem is Go durable/harness/transcript.go#TranscriptItem (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#TranscriptItem"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.build"
+      ],
+      "evidence": [
+        "test:durable/harness/conversation_transcript_test.go#TestTranscriptItemsAreWrittenWithPisKind"
+      ]
     },
     {
       "id": "pkg:durable/.#TranscriptView",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6c75720c15cd5f24cd3d77fb0d98a122d7e4f67c3a8318e346d5921b6637b14d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6c75720c15cd5f24cd3d77fb0d98a122d7e4f67c3a8318e346d5921b6637b14d",
+      "rationale": "Derived by the interface gap detector: TranscriptView is Go durable/harness/transcript.go#TranscriptView (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/transcript.go#TranscriptView"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/transcript.go#ConversationTranscript.FillGap"
+      ],
+      "evidence": [
+        "test:durable/examples/transcript_example_test.go#TestExample31Transcript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads"
+      ]
     },
     {
       "id": "pkg:durable/.#Tx",
@@ -220793,8 +221220,8 @@
       ],
       "evidence": [
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
-        "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -221888,7 +222315,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#snapshotOf"
+        "call:durable/harness/harness.go#harnessImpl.Usage"
       ],
       "evidence": [
         "test:durable/core/driver/harness_nested_core_test.go#TestCoreANestedKeyReturnsItsCallAndRecordsUsage",
@@ -221998,7 +222425,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/events.go#AgentEventStream.End"
+        "call:chord/watch_impl.go#watchLifecycle.Cancel"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline",
@@ -222025,7 +222452,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:durable/core/driver/docs_core_test.go#TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites"
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -222112,8 +222539,8 @@
       ],
       "evidence": [
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:durable/core/driver/docs_core_test.go#TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites",
-        "test:durable/core/driver/docs_core_watches_test.go#TestCoreWatchContinuesAfterASnapshotRead"
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced",
+        "test:durable/core/driver/docs_core_test.go#TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -222135,8 +222562,8 @@
       ],
       "evidence": [
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:durable/core/driver/docs_core_test.go#TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites",
-        "test:durable/core/driver/docs_core_watches_test.go#TestCoreWatchContinuesAfterASnapshotRead"
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced",
+        "test:durable/core/driver/docs_core_test.go#TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232104,8 +232531,26 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:be8db0b32524ed2a0b6e910cf05ac9dce18cb41646b69fdd745618a58c6a2e5b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:be8db0b32524ed2a0b6e910cf05ac9dce18cb41646b69fdd745618a58c6a2e5b",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase is Go durable/storage/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/cloudflare/cloudflare.go#NewDurableObjectSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::construct:0",
@@ -232359,13 +232804,45 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:runCounted",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:runCounted is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "evidence": [
+        "reach:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:runCounted::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase::property:runCounted::call:0 is Go chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "evidence": [
+        "reach:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.RunCounted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:transaction",
@@ -232480,8 +232957,26 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:762bef4aa19512b92233effbdc82904f2e71d746e7295008c1e2c7e8acb02721"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:762bef4aa19512b92233effbdc82904f2e71d746e7295008c1e2c7e8acb02721",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase is Go durable/storage/sqlite/node/node.go#NodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0",
@@ -232736,13 +233231,45 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:runCounted",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:runCounted is Go chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "evidence": [
+        "reach:chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:runCounted::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::property:runCounted::call:0 is Go chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "evidence": [
+        "reach:chord/sqlite/node/node.go#nodeSqliteExecutor.RunCounted"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:transaction",
@@ -233017,8 +233544,26 @@
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5fb71ee4243b0fec9a72351c290bb4fba9e895fffdcf9bbb21217ab2054fff0c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5fb71ee4243b0fec9a72351c290bb4fba9e895fffdcf9bbb21217ab2054fff0c",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase is Go durable/storage/sqlite/database.go#SqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/database.go#SqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles",
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:all",
@@ -233252,13 +233797,45 @@
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:runCounted",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:runCounted is Go chord/sqlite/database.go#SqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:runCounted::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase::property:runCounted::call:0 is Go chord/sqlite/database.go#SqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:transaction",
@@ -233306,8 +233883,26 @@
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteExecutor",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0de2a29e3d6569b2fd315cbee742a007265335928a51d4c4140309e1911d00df"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0de2a29e3d6569b2fd315cbee742a007265335928a51d4c4140309e1911d00df",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor is Go durable/storage/sqlite/database.go#SqliteExecutor (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/database.go#SqliteExecutor"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/storage.go#SqliteStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles",
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:all",
@@ -233495,13 +234090,45 @@
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:runCounted",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b54c804b3ec8c925b4321f7262e2cbe6003189b10b7ade3bd95803be9d473841",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:runCounted is Go chord/sqlite/database.go#SqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:runCounted::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:19399b7f6f7d0e9043f076d4d6e0e31ede9fbb7a458d9b4bb3fead741b2f8ab0",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor::property:runCounted::call:0 is Go chord/sqlite/database.go#SqliteExecutor.RunCounted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sqlite/database.go#SqliteExecutor.RunCounted"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteMigration",

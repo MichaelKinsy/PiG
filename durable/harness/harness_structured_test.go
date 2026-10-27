@@ -2,8 +2,6 @@
 
 package harness
 
-// pi: packages/durable/src/harness/events.ts
-
 import (
 	"context"
 	"encoding/json"
