@@ -4003,6 +4003,8 @@ export class Runtime {
       overlay: isOverlay,
       hasHandle: isOverlay && typeof sizing.onHandle === "function",
     };
+    // Pi's showExtensionCustom hands options.blocked to pushExtensionDialog for an inline component; the host ignores it for an overlay.
+    if (sizing.blocked !== undefined) openArgs.blocked = sizing.blocked;
     // Upstream showOverlay(component, overlayOptions ?? { width: component.width })
     // renders the component at the resolved overlay width, not the terminal
     // width. Serialise the same options so the host resolves the same frame.
