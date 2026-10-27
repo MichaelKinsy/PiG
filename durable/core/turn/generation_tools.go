@@ -10,6 +10,10 @@ import (
 
 // tools is the tools phase: wait on the round's tool tasks, starting the next call of a sequential round, or finish the round.
 func (r *run) tools(cp *jv.Object) {
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
 	assistant := idField(cp, "assistant")
 	toolList, _ := arrayField(cp, "tools")
 	pending, _ := arrayField(cp, "pending")
@@ -202,7 +206,6 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 func (g *Generation) abort(rt *session.Runtime, task *jv.Object, done func(error)) {
 	r := g.newRun(rt, done)
 	cp := checkpointOf(task)
-	h := g.Host
 	finish := func(unstarted []*jv.Object) {
 		r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 			live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
@@ -248,17 +251,9 @@ func (g *Generation) abort(rt *session.Runtime, task *jv.Object, done func(error
 			finish(calls)
 		})
 	}
-	if phase == phasePoll {
-		ref := modelRefOf(objField(cp, "model"))
-		if _, ok := h.ContextWindow(ref); ok {
-			h.CancelDeferred(ref, objField(cp, "handle"), rt.Signal(), func(err error) {
-				if err != nil {
-					_ = rt.Report(err, session.ReportFrom{Callback: "models"})
-				}
-				readUnstarted()
-			})
-			return
-		}
+	if model, handle := deferredOf(cp); handle != nil {
+		r.cancelDeferred(model, handle, readUnstarted)
+		return
 	}
 	readUnstarted()
 }

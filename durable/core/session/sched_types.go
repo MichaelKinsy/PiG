@@ -119,8 +119,11 @@ type Env struct {
 	Report func(err error, info *jv.Object)
 	// RestartLimit is settings.restartLimit, read at each use; nil selects the default.
 	RestartLimit func() float64
-	// BlockedChanged is told when blocked reasons may have changed without a commit: a registry change, a failed
-	// migration, or a task newly parked or no longer parked (scheduler.ts #notifyBlocked).
+	// LimitsRestarts reports whether the phases of tasks of a kind end the task themselves once it was cut off
+	// settings.restartLimit times (the built-in tasks); the scheduler ends a task of any other kind faulted instead. nil: none.
+	LimitsRestarts func(kind string) bool
+	// BlockedChanged is told when blocked reasons may have changed without a commit: a registry change or a failed
+	// migration (scheduler.ts #notifyBlocked).
 	BlockedChanged func()
 	// Now is the Harness clock.
 	Now func() float64

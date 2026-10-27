@@ -58,7 +58,8 @@ func anySlotRunning(value *jv.Object) bool {
 type RunEnd struct {
 	// Answer is the entry a run that ended with an answer produced; it is used when Reason is empty.
 	Answer ID
-	// Reason is why a run that ended without an answer did: model_error, no_model, aborted, reset, faulted or orphaned.
+	// Reason is why a run that ended without an answer did: model_error, no_model, aborted, reset, faulted, orphaned, interrupted or
+	// restart_limit.
 	Reason string
 	// Detail is the failure's detail when HasDetail.
 	Detail    string
@@ -289,17 +290,24 @@ func SettleSchedulerOutcome(tx *session.Tx, record, outcome *jv.Object) error {
 	if err != nil {
 		return err
 	}
-	switch kind {
-	case KindTool:
+	if kind == KindTool {
 		if slot := ToolSlotOf(live, session.ID(id)); slot != nil {
 			if err := FinishSlot(slot); err != nil {
 				return err
 			}
 		}
 		return RemoveNestedSlots(live, session.ID(id))
-	case KindCompaction:
+	}
+	// Only an abort handler is faulted for the limit here (the built-in phases end themselves): the task was aborted, and keeps
+	// that meaning. Its run ends aborted, with the limit as detail, and an aborted compaction is no failure.
+	status, _ := outcome.Get("status")
+	cutOff := status == "faulted" && strIn(objField(objField(outcome, "error"), "detail"), "reason") == "restart_limit"
+	if kind == KindCompaction {
+		if cutOff {
+			return RemoveCompactionStatus(live, session.ID(id))
+		}
 		message := ""
-		if status, _ := outcome.Get("status"); status == "faulted" {
+		if status == "faulted" {
 			message = str(objField(outcome, "error"), "message")
 		} else {
 			message, _ = stringField(outcome, "reason")
@@ -309,17 +317,23 @@ func SettleSchedulerOutcome(tx *session.Tx, record, outcome *jv.Object) error {
 	if run := live.Obj("run"); run == nil || !sameID(run.Get("taskId"), session.ID(id)) {
 		return nil
 	}
-	if err := convertPartial(tx, live, session.ID(c)); err != nil {
-		return err
+	// Cut off, the abort handler may have died converting the partial: the run ends without it.
+	if !cutOff {
+		if err := convertPartial(tx, live, session.ID(c)); err != nil {
+			return err
+		}
 	}
-	status, _ := outcome.Get("status")
 	if status == "faulted" {
-		end := Unanswered("faulted")
+		reason := "faulted"
+		if cutOff {
+			reason = "aborted"
+		}
+		end := Unanswered(reason)
 		if e, ok := outcome.Get("error"); ok {
 			if eo, ok := e.(*jv.Object); ok {
 				if m, ok := eo.Get("message"); ok {
 					if message, ok := m.(string); ok {
-						end = UnansweredWith("faulted", message)
+						end = UnansweredWith(reason, message)
 					}
 				}
 			}

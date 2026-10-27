@@ -74,6 +74,7 @@ func (h *handler) startScheduler() error {
 		FreshSnapshot:      h.freshSnapshot,
 		Report:             h.report,
 		RestartLimit:       h.restartLimit,
+		LimitsRestarts:     turn.LimitsRestarts,
 		BlockedChanged:     h.blockedChanged,
 		Now:                func() float64 { return h.now },
 		Timer:              h.armBackgroundTimer,

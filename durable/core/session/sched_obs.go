@@ -469,9 +469,9 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 				continue
 			}
 			// Work cut off restartLimit times in a row would run forever: an abort handler, or a phase of a task that does not
-			// end itself at the limit (every task of this engine), ends the task faulted instead. The settings are read only
-			// for a task that was cut off at all.
-			if restartsOf(rec) > 0 && restartsOf(rec) >= s.restartLimit() {
+			// end itself at the limit, ends the task faulted instead. The settings are read only for a task that was cut off
+			// at all.
+			if restartsOf(rec) > 0 && restartsOf(rec) >= s.restartLimit() && (abortMode || !s.limitsRestarts(rec)) {
 				kind, _ := getStr(rec, "kind")
 				message := sprintf("Task %d (%s) was cut off %d times without progress", id, kind, restartsOf(rec))
 				if abortMode {

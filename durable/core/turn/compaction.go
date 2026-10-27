@@ -44,6 +44,7 @@ func (g *CompactionTask) newRun(rt *session.Runtime, task *jv.Object, done func(
 
 func (g *CompactionTask) phase(rt *session.Runtime, task *jv.Object, done func(error)) {
 	r := g.newRun(rt, task, done)
+	r.run.task = task
 	cp := checkpointOf(task)
 	switch str(cp, "phase") {
 	case phaseSelect:
@@ -82,6 +83,22 @@ func (r *compactionRun) complete() {
 	})
 }
 
+// failCutOff fails a compaction cut off settings.restartLimit times in a row (spec section 5.4) instead of running it again.
+func (r *compactionRun) failCutOff() {
+	message := "Compaction was interrupted " + cutOffCount(r.task)
+	r.commit(func(tx *session.Tx, current *jv.Object) (*jv.Object, error) {
+		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
+		if err != nil {
+			return nil, err
+		}
+		if err := FailCompactionStatus(live, r.rt.TaskID(), message); err != nil {
+			return nil, err
+		}
+		r.markEnded(current, "restart_limit", message)
+		return failedTerminal(message, "restart_limit"), nil
+	}, r.reportEnded)
+}
+
 func (r *compactionRun) failNoModel(ref *ModelRef) {
 	message := "No model is configured"
 	if ref != nil {
@@ -95,11 +112,15 @@ func (r *compactionRun) failNoModel(ref *ModelRef) {
 		if err := FailCompactionStatus(live, r.rt.TaskID(), message); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", "no_model")))), nil
+		return failedTerminal(message, "no_model"), nil
 	})
 }
 
 func (r *compactionRun) selectPhase() {
+	if r.cutOffTooOften(r.task) {
+		r.failCutOff()
+		return
+	}
 	h := r.g.Host
 	r.agent(func(agent *Agent) {
 		settings := h.Settings()
@@ -184,6 +205,10 @@ func parseJSONObject(raw []byte) *jv.Object {
 }
 
 func (r *compactionRun) summarize(cp *jv.Object) {
+	if r.cutOffTooOften(r.task) {
+		r.failCutOff()
+		return
+	}
 	h := r.g.Host
 	ref := modelRefOf(objField(cp, "model"))
 	attempt := num(cp, "attempt")
@@ -254,47 +279,53 @@ func (r *compactionRun) settleSummary(cp *jv.Object, attempt float64, message *j
 		case history.SummaryPlace:
 			return r.placeSummary(tx, current, live, firstKept, string(outcome.Summary))
 		case history.SummaryRetry:
+			until := any(outcome.Until)
 			if status := CompactionStatusOf(live, r.rt.TaskID()); status != nil {
-				if err := status.Set("retry", jobj("at", outcome.Until, "error", str(message, "errorMessage"))); err != nil {
+				if err := status.Set("retry", jobj("at", until, "error", str(message, "errorMessage"))); err != nil {
 					return nil, err
 				}
 			}
 			next := cp.Shallow()
 			next.Set("phase", phaseRetry)
-			next.Set("until", outcome.Until)
-			return jobj("status", "sleeping", "checkpoint", next, "until", outcome.Until), nil
+			next.Set("until", until)
+			return jobj("status", "sleeping", "checkpoint", next, "until", until), nil
 		}
 		if err := FailCompactionStatus(live, r.rt.TaskID(), string(outcome.FailText)); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", modelErrorOutcome(string(outcome.FailText))), nil
+		return failedTerminal(string(outcome.FailText), "model_error"), nil
 	})
 }
 
 // retry sleeps until the backoff ends, then summarizes again.
 func (r *compactionRun) retry(cp *jv.Object) {
 	attempt := num(cp, "attempt") + 1
+	if r.cutOffTooOften(r.task) {
+		r.failCutOff()
+		return
+	}
 	// After the backoff's sleep; a run before until (an early wake, or a record of an earlier version) sleeps again.
 	if until := num(cp, "until"); until > r.now() {
 		r.rt.SleepUntil(until, cp, func(err error) { r.done(err) })
 		return
 	}
+	next := any(attempt)
 	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
 		}
 		if status := CompactionStatusOf(live, r.rt.TaskID()); status != nil {
-			if err := status.Set("attempt", attempt); err != nil {
+			if err := status.Set("attempt", next); err != nil {
 				return nil, err
 			}
 			status.Delete("retry")
 		}
-		next := cp.Shallow()
-		next.Delete("until")
-		next.Set("phase", phaseSummarize)
-		next.Set("attempt", attempt)
-		return jobj("status", "running", "checkpoint", next), nil
+		checkpoint := cp.Shallow()
+		checkpoint.Delete("until")
+		checkpoint.Set("phase", phaseSummarize)
+		checkpoint.Set("attempt", next)
+		return jobj("status", "running", "checkpoint", checkpoint), nil
 	})
 }
 

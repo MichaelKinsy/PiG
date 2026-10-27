@@ -118,6 +118,14 @@ type run struct {
 	phaseAgent *Agent
 	// hookIndex is the index of the hook handler eachHookRaw is calling, which names the extension of a failure.
 	hookIndex int
+	// task is the task record of the invocation, which carries the restart count the phases check.
+	task *jv.Object
+	// ending is how a generation attempt that crashes cut off ends; endReason, endMessage and endRestarts are what the commit
+	// that ended the task for crashes reports (markEnded).
+	ending      attemptEnding
+	endReason   string
+	endMessage  string
+	endRestarts any
 }
 
 func (g *Generation) newRun(rt *session.Runtime, done func(error)) *run {
@@ -131,6 +139,7 @@ func (r *run) fail(err error) { r.done(err) }
 
 func (g *Generation) phase(rt *session.Runtime, task *jv.Object, done func(error)) {
 	r := g.newRun(rt, done)
+	r.task = task
 	cp := checkpointOf(task)
 	switch str(cp, "phase") {
 	case phasePrepare:
@@ -206,8 +215,9 @@ func systemMessagesOf(v *history.View) []*jv.Object {
 	return out
 }
 
-func modelErrorOutcome(text string) *jv.Object {
-	return jobj("status", "failed", "error", jobj("message", text, "detail", jobj("reason", "model_error")))
+// failedTerminal is the terminal state of a task that failed with message and detail {reason}.
+func failedTerminal(message, reason string) *jv.Object {
+	return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", reason))))
 }
 
 // failModelError settles the run's inputs unanswered with model_error and fails with text.
@@ -224,7 +234,7 @@ func (r *run) failModelError(text string) {
 		if err := r.endFailedRun(tx, live, failed, UnansweredWith("model_error", text)); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", modelErrorOutcome(text)), nil
+		return failedTerminal(text, "model_error"), nil
 	})
 }
 
@@ -246,7 +256,7 @@ func (r *run) failNoModel(ref *ModelRef) {
 		if err := r.endFailedRun(tx, live, failed, RunEnd{Reason: "no_model", Detail: message, HasDetail: true, Settlement: jobj("status", "unanswered", "reason", "no_model")}); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", "no_model")))), nil
+		return failedTerminal(message, "no_model"), nil
 	})
 }
 
@@ -361,6 +371,10 @@ var ProviderDef = &session.DocDef{
 // ---- prepare ---------------------------------------------------------------------------------------------------
 
 func (r *run) prepare(cp *jv.Object) {
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
 	r.agent(func(agent *Agent) { r.prepareWith(cp, agent) })
 }
 

@@ -784,6 +784,7 @@ type reportBody struct {
 		Task           *durable.ReportTask     `json:"task"`
 		Extension      string                  `json:"extension"`
 		Reason         string                  `json:"reason"`
+		Restarts       int                     `json:"restarts"`
 		Callback       durable.HostCallback    `json:"callback"`
 		ConversationId *durable.ConversationId `json:"conversationId"`
 	} `json:"info"`
@@ -794,7 +795,7 @@ func (b reportBody) info() durable.ReportInfo {
 	if i.Type == "" {
 		return durable.ReportInfo{Type: durable.ReportListenerError}
 	}
-	return durable.ReportInfo{Type: i.Type, Task: i.Task, Extension: i.Extension, Reason: i.Reason, Callback: i.Callback, ConversationId: i.ConversationId}
+	return durable.ReportInfo{Type: i.Type, Task: i.Task, Extension: i.Extension, Reason: i.Reason, Restarts: i.Restarts, Callback: i.Callback, ConversationId: i.ConversationId}
 }
 
 // Report is session.ts report: it hands a non-fatal failure, such as the error of a state listener or of the typed listener of

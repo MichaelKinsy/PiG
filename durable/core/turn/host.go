@@ -40,6 +40,8 @@ type Settings struct {
 	Queue         inbox.QueueModes
 	// AfterFailedRun is settings.afterFailedRun: "keep", "continue" or "withdraw".
 	AfterFailedRun string
+	// RestartLimit is settings.restartLimit: how many times in a row a task may be cut off before it ends instead of running again.
+	RestartLimit float64
 }
 
 // Tool is a registered tool of the resolved agent: its transcript declaration, execution mode, replay policy and output limits.

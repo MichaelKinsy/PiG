@@ -40,7 +40,9 @@ type toolRun struct {
 
 func (g *ToolTask) newRun(rt *session.Runtime, task *jv.Object, done func(error)) *toolRun {
 	gen := &Generation{Host: g.Host}
-	return &toolRun{run: gen.newRun(rt, done), input: objField(task, "input")}
+	r := gen.newRun(rt, done)
+	r.task = task
+	return &toolRun{run: r, input: objField(task, "input")}
 }
 
 func (g *ToolTask) phase(rt *session.Runtime, task *jv.Object, done func(error)) {
@@ -128,6 +130,8 @@ const resolveToolReturnHops = 1
 type ending struct {
 	status  string // "completed", "aborted" or "failed"
 	message string
+	// reason is the detail.reason of a failure that crashes caused (restart_limit); empty otherwise.
+	reason string
 }
 
 // Read-only: assigned once at initialization.
@@ -136,6 +140,10 @@ var completed = ending{status: "completed"}
 func (r *toolRun) call() {
 	h := r.g.Host
 	r.readCall(func(call *jv.Object, _ bool) {
+		if r.cutOffTooOften(r.task) {
+			r.endCutOff(call)
+			return
+		}
 		name := str(call, "name")
 		r.findTool(name, func(tool *Tool) {
 			if tool == nil {
@@ -257,6 +265,10 @@ func (r *toolRun) execute(cp *jv.Object) {
 		name := str(call, "name")
 		r.findTool(name, func(tool *Tool) {
 			if replay == "safe" && tool != nil && tool.Replay == "safe" {
+				if r.cutOffTooOften(r.task) {
+					r.endCutOff(call)
+					return
+				}
 				// The rerun reports from scratch; clear what the interrupted attempt published.
 				r.commit(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 					live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
@@ -277,6 +289,15 @@ func (r *toolRun) execute(cp *jv.Object) {
 			}, nil)
 		})
 	})
+}
+
+// endCutOff ends a call cut off settings.restartLimit times in a row (spec section 5.4) with an error result, built from the slot
+// like an interrupted call's, instead of running it again. failed, like an interruption, so its owned work is aborted.
+func (r *toolRun) endCutOff(call *jv.Object) {
+	message := "Tool " + str(call, "name") + " was interrupted " + cutOffCount(r.task) + "; it is not run again"
+	r.settle(call, ending{status: "failed", message: message, reason: "restart_limit"}, func(slot *delta.Obj) *jv.Object {
+		return fromSlot(slot, "restart_limit", message)
+	}, nil)
 }
 
 // abort ends the call aborted with the durable partial output.
@@ -300,7 +321,7 @@ func (g *ToolTask) abort(rt *session.Runtime, task *jv.Object, done func(error))
 // the entry ID. build receives the slot so interruption and abort can report the durable partial output. then, when given,
 // runs after the commit instead of ending the phase.
 func (r *toolRun) settle(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64) {
-	r.settleThen(call, end, build, durationMs, func() { r.done(nil) })
+	r.settleThen(call, end, build, durationMs, r.reportEnded)
 }
 
 func (r *toolRun) settleThen(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64, then func()) {
@@ -328,7 +349,7 @@ func (r *toolRun) settleThen(call *jv.Object, end ending, build func(slot *delta
 }
 
 func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64, made bool, then func()) {
-	r.commit(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+	r.commit(func(tx *session.Tx, current *jv.Object) (*jv.Object, error) {
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
@@ -383,7 +404,12 @@ func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *del
 		case "aborted":
 			return jobj("status", "terminal", "outcome", jobj("status", "aborted", "result", settled)), nil
 		case "failed":
-			return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", end.message), "result", settled)), nil
+			failure := jobj("message", end.message)
+			if end.reason != "" {
+				failure.Set("detail", jobj("reason", end.reason))
+				r.markEnded(current, end.reason, end.message)
+			}
+			return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", failure, "result", settled)), nil
 		}
 		return jobj("status", "terminal", "outcome", jobj("status", "completed", "result", settled)), nil
 	}, then)

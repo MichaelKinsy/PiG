@@ -13,6 +13,16 @@ import (
 // request is the request phase: it clears a stale partial and marks the attempt, runs the beforeRequest hooks, streams
 // the response and classifies it.
 func (r *run) request(cp *jv.Object) {
+	// Charging the attempt may itself be what keeps failing, such as converting a huge partial: the limit ends it.
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
+	// The host stopped while this request was in flight: a failed attempt, not a resend (spec section 8.3).
+	if r.task.Has("restarts") {
+		r.interrupted(cp)
+		return
+	}
 	h := r.g.Host
 	attempt := num(cp, "attempt")
 	compacted := idField(cp, "compacted")
@@ -366,29 +376,44 @@ func parseObjectText(text jv.Raw) *jv.Object {
 // thenable job and a reaction (2).
 const inFlightSettleHops = 5
 
-// retry is the retry phase: sleep until the backoff ends, then prepare the next attempt.
+// retry is the retry phase: sleep until the backoff ends, then prepare the next attempt, or poll the deferred response a host
+// death interrupted the poll of again.
 func (r *run) retry(cp *jv.Object) {
 	attempt := num(cp, "attempt")
-	compacted := idField(cp, "compacted")
 	until := num(cp, "until")
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
 	// After the backoff's sleep; a run before until (an early wake, or a record of an earlier version) sleeps again.
 	if until > r.now() {
 		r.rt.SleepUntil(until, cp, func(err error) { r.done(err) })
 		return
 	}
+	poll := objField(cp, "poll")
 	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
 		}
-		if err := live.Set("generation", jobj("attempt", attempt+1)); err != nil {
+		next := any(attempt + 1)
+		generation := jobj("attempt", next)
+		checkpoint := jobj("phase", phasePrepare, "attempt", next)
+		if compacted, ok := cp.Get("compacted"); ok {
+			checkpoint.Set("compacted", compacted)
+		}
+		// A poll the host died during polls its response again, as the next attempt.
+		if poll != nil {
+			pollAt := any(r.now())
+			generation.Set("deferred", jobj("pollAt", pollAt))
+			checkpoint.Set("phase", phasePoll)
+			poll.Members(func(key string, value any) bool { checkpoint.Set(key, value); return true })
+			checkpoint.Set("pollAt", pollAt)
+		}
+		if err := live.Set("generation", generation); err != nil {
 			return nil, err
 		}
-		next := jobj("phase", phasePrepare, "attempt", attempt+1)
-		if compacted != 0 {
-			next.Set("compacted", float64(compacted))
-		}
-		return jobj("status", "running", "checkpoint", next), nil
+		return jobj("status", "running", "checkpoint", checkpoint), nil
 	})
 }
 
@@ -397,6 +422,16 @@ func (r *run) poll(cp *jv.Object) {
 	h := r.g.Host
 	ref := modelRefOf(objField(cp, "model"))
 	pollAt := num(cp, "pollAt")
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
+	// The host stopped while the poll's fetch was in flight: a failed attempt, as for a request. Checked before the time, which
+	// may have moved backwards on a replacement host; a sleeping poll is never cut off.
+	if r.task.Has("restarts") {
+		r.interrupted(cp)
+		return
+	}
 	// After the sleep until pollAt; a run before it (an early wake, or a record of an earlier version) sleeps again.
 	if pollAt > r.now() {
 		r.rt.SleepUntil(pollAt, cp, func(err error) { r.done(err) })

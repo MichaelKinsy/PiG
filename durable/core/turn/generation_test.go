@@ -97,7 +97,7 @@ func newRig(t *testing.T) *rig {
 	t.Helper()
 	r := &rig{t: t, mem: sessiontest.New(), loop: &session.Loop{}, now: 1000, hooks: map[string]func(int, *jv.Object) (any, error){}}
 	r.settings = turn.Settings{
-		RetryEnabled: true, MaxRetries: 3, BaseDelayMs: 2000,
+		RetryEnabled: true, MaxRetries: 3, BaseDelayMs: 2000, RestartLimit: 5,
 		Compaction:        history.Policy{Enabled: true, ReserveTokens: 16384, KeepRecentTokens: 20000, BackgroundTokens: 32768},
 		PartialIntervalMs: 100, OutputIntervalMs: 100, ToolExecution: "parallel",
 	}

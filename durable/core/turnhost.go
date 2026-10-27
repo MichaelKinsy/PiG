@@ -93,7 +93,7 @@ func (h *handler) turnSettings() turn.Settings {
 		Compaction: history.Policy{ReserveTokens: numOf(compaction, "reserveTokens"), KeepRecentTokens: numOf(compaction, "keepRecentTokens"),
 			BackgroundTokens: numOf(compaction, "backgroundTokens")},
 		PartialIntervalMs: numOf(progress, "partialIntervalMs"), OutputIntervalMs: numOf(progress, "outputIntervalMs"),
-		Stream: objOf(s, "stream"), ToolExecution: strOf(s, "toolExecution"), Queue: h.queueModes(), AfterFailedRun: h.afterFailedRun(),
+		Stream: objOf(s, "stream"), ToolExecution: strOf(s, "toolExecution"), Queue: h.queueModes(), AfterFailedRun: h.afterFailedRun(), RestartLimit: h.restartLimit(),
 	}
 	out.RetryEnabled, _ = boolOf(retry, "enabled")
 	out.Compaction.Enabled, _ = boolOf(compaction, "enabled")
