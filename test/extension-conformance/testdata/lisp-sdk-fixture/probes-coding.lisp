@@ -309,7 +309,7 @@
                  (t (pig:obj "version" pig:+current-session-version+ "virtual" pig:*virtual-model-state-entry*)))))
         (coding-report ctx "skills" result)))))
 
-;;; tool_result guards: every tool_result event is reported with the guards that accept it (TestToolResultGuardsMatchAcrossSDKs, TestConformance_ToolResultGuards...).
+;;; the tool_result guards: probes-core.lisp reports the guards that accept each tool_result event (TestToolResultGuardsMatchAcrossSDKs).
 (defparameter *coding-result-guards*
   (list (cons "bash" #'pig:bash-tool-result-p) (cons "powershell" #'pig:powershell-tool-result-p) (cons "read" #'pig:read-tool-result-p)
         (cons "edit" #'pig:edit-tool-result-p) (cons "write" #'pig:write-tool-result-p) (cons "grep" #'pig:grep-tool-result-p)
@@ -319,10 +319,6 @@
   (loop for (name . guard) in *coding-result-guards* when (funcall guard data) collect name))
 
 (def-fixture "tool_result_guards" (ext)
-  (pig:on ext :tool-result
-          (lambda (ctx data)
-            (pig:ctx-notify ctx (format nil "tool-result-guards=~{~A~^,~}" (coding-accepting-guards data)) "info")
-            nil))
   (pig:command ext "tool_result_guards_probe" "Report the tool_result guards that accept each tool_result event"
     (lambda (ctx args)
       (declare (ignore ctx args))

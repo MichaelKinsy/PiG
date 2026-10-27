@@ -76,7 +76,7 @@ func TestCustomOverlayHandleSDKsMatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping overlay handle conformance in short mode (builds subprocess fixtures)")
 	}
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t) // building a subprocess fixture can take minutes: the call's own deadline starts after it
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -172,7 +172,7 @@ func TestCustomOverlayFocusChangesReachSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping overlay focus conformance in short mode (builds subprocess fixtures)")
 	}
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

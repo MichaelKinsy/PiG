@@ -20,7 +20,7 @@ func TestToolResultGuardsMatchAcrossSDKs(t *testing.T) {
 	}
 	tools := []string{"bash", "read", "ls", "my-bash"}
 	want := []string{"tool-result-guards=bash:info", "tool-result-guards=read:info", "tool-result-guards=ls:info", "tool-result-guards=:info"}
-	for _, test := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, test := range allHarnessCases() {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()

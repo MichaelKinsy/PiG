@@ -75,7 +75,7 @@ func TestConformance_MessageUpdateDeltas(t *testing.T) {
 	t.Parallel()
 
 	events := messageUpdateStream()
-	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

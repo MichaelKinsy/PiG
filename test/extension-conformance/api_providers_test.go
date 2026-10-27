@@ -31,7 +31,7 @@ func TestConformance_ExtensionAPIRegisterProvider(t *testing.T) {
 	}
 	t.Parallel()
 
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

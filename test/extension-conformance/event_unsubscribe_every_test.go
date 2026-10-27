@@ -163,7 +163,7 @@ func TestConformance_EventUnsubscribeEveryEvent(t *testing.T) {
 	if len(emits) != len(subscribedEventNames) {
 		t.Fatalf("%d dispatches for %d pi.on events", len(emits), len(subscribedEventNames))
 	}
-	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

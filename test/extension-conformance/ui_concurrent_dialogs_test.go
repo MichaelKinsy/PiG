@@ -226,7 +226,7 @@ func TestConformance_ConcurrentDialogsAgreeAcrossSDKs(t *testing.T) {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	t.Parallel()
-	for _, tc := range append(append(allHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
+	for _, tc := range append(allHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -318,7 +318,7 @@ func TestConformance_UIPromptStartIsAppliedBeforeTheDialogsAnswerSettles(t *test
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	t.Parallel()
-	for _, tc := range append(append(allHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
+	for _, tc := range append(allHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

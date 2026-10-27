@@ -47,16 +47,16 @@ func TestPackedOrderedToolResults(t *testing.T) {
 	}
 }
 
-// A tool hands the agent the object it built, and Pi's events and JSON stream carry that object (agent-loop.ts:778-786, 912-919), so its members keep the order the tool wrote them in: {details, isError, content} here, not the declared content, details, isError. Node's runtime used to rebuild the object in a fixed order; the host now reads the order from the wire object every SDK sends, so a Python dict and a Rust JSON object keep theirs too. The Go SDK builds the wire object from a struct, which has one fixed order (a Go language mechanic), and the in-process reference builds agent.AgentToolResult directly, so neither is a row.
+// A tool hands the agent the object it built, and Pi's events and JSON stream carry that object (agent-loop.ts:778-786, 912-919), so its members keep the order the tool wrote them in: {details, isError, content} here, not the declared content, details, isError. Node's runtime used to rebuild the object in a fixed order; the host now reads the order from the wire object every SDK sends, so a Python dict, a Lisp hash table and a Rust JSON object keep theirs too. The Go SDK builds the wire object from a struct, which has one fixed order (a Go language mechanic), and the in-process reference builds agent.AgentToolResult directly, so neither is a row.
 func TestToolResultMemberOrderFollowsTheToolAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	want := []string{"details", "isError", "content"}
 	wantPartial := []string{"details", "content"}
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		switch tc.name {
-		case "subprocess-node", "subprocess-node-packed", "subprocess-rust", "subprocess-python":
+		case "subprocess-node", "subprocess-node-packed", "subprocess-rust", "subprocess-python", "subprocess-lisp":
 		default:
 			continue
 		}

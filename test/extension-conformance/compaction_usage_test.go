@@ -295,7 +295,7 @@ func TestConformance_CompactionUsageHelpersAgreeAcrossSDKs(t *testing.T) {
 		t.Fatal("reference getLastAssistantUsage skipped an assistant that stopped normally")
 	}
 
-	for _, tc := range append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...) {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		if tc.name == "subprocess-node" {
 			continue
 		}

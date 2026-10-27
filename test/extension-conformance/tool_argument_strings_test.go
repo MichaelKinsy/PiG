@@ -28,7 +28,7 @@ func TestConformance_ToolArgumentStringsAgreeAcrossSDKs(t *testing.T) {
 	lone := map[string]string{"lone": `"x\ud800y"`, "low": `"\udc00"`, "swapped": `"\ude00\ud83d"`, "k\uFFFD": `1`}
 	replaced := strings.NewReplacer(`\ud800`, "\uFFFD", `\udc00`, "\uFFFD", `\ude00`, "\uFFFD", `\ud83d`, "\uFFFD")
 
-	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

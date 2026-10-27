@@ -402,7 +402,10 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 (defun ctx-get-session-id (ctx) (reply-field ctx "getSessionID" "sessionId"))
 (defun ctx-get-leaf-id (ctx) (optional-string-field ctx "getLeafID" "leafId"))
 (defun ctx-get-all-themes (ctx) (reply-field ctx "ui.getAllThemes" "themes"))
-(defun ctx-get-theme (ctx name) (let ((r (call-result ctx "ui.getTheme" (obj "name" name)))) (and (hash-table-p r) (jget r "theme"))))
+(defun ctx-get-theme (ctx name)
+  "The theme named NAME as the host describes it, or NIL when there is none."
+  (let* ((r (call-result ctx "ui.getTheme" (obj "name" name))) (theme (and (hash-table-p r) (jget r "theme"))))
+    (if (eq theme :null) nil theme)))
 (defun ctx-set-theme (ctx name) (success-and-error ctx "ui.setTheme" (obj "theme" name)))
 (defun ctx-get-editor-text (ctx) (reply-field ctx "ui.getEditorText" "text"))
 (defun ctx-tools-expanded-p (ctx) (eq (reply-field ctx "ui.getToolsExpanded" "expanded") t))

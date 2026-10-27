@@ -49,7 +49,7 @@ func timerDeferWant(name string) (deferred, inline, tick int) {
 // callback that fires after the handler returned; the Go, Rust and Python SDKs mark a call made through a request's context after the handler returned. Calls the handler
 // and its microtask and promise continuations make carry no mark. Probed against Pi: those continuations notify before tool_execution_end, the callbacks after agent_settled.
 func TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs(t *testing.T) {
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -132,7 +132,7 @@ func TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs(t *testing.T) {
 // is over. A Node tool that queued a setImmediate and a setTimeout(0) callback returns; its callbacks fire while the run still awaits the tool's result hooks and the next model request,
 // and their notifications must not reach the UI before tool_execution_end or before the chain ends.
 func TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun(t *testing.T) {
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		if !strings.HasPrefix(tc.name, "subprocess-node") {
 			continue
 		}
@@ -202,7 +202,7 @@ func TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun(t *testing.T) {
 // answer. The host holds a marked call until the loop turns, and the turn waits for the handler, so a held call that a running handler awaits hangs every run that reaches it. The host must run such a
 // call on arrival: while a handler is pending, Pi's loop is turning. The tool timer_stale awaits a ui.notify made through the context of an earlier timer_defer request while a chain runs and holds calls.
 func TestHostCallAwaitedByARunningHandlerIsNotHeldForTheLoopTurn(t *testing.T) {
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
