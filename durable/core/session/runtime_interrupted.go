@@ -14,8 +14,9 @@ import (
 // generation's run ended because the host kept stopping while the model answered), its message, and the task's restart count
 // when it ended. The zero value is a commit that ended nothing for crashes.
 type interruption struct {
-	reason, message string
-	restarts        float64
+	reason   any // "restart_limit" or "interrupted", or nil
+	message  string
+	restarts any // the record's number, or 0
 }
 
 // interruptionOf is the interruption the commit of next, on the record current, makes (scheduler.ts runtime.commit, interruptionOf).
@@ -37,12 +38,22 @@ func interruptionOf(current, next *jv.Object) interruption {
 	if detail == nil {
 		return interruption{}
 	}
-	reason, _ := getStr(detail, "reason")
-	if reason != "restart_limit" && reason != "interrupted" {
+	// The reason is a constant, so it is not boxed on the heap.
+	var reason any
+	switch got, _ := getStr(detail, "reason"); got {
+	case "restart_limit":
+		reason = "restart_limit"
+	case "interrupted":
+		reason = "interrupted"
+	default:
 		return interruption{}
 	}
 	message, _ := getStr(failure, "message")
-	return interruption{reason: reason, message: message, restarts: restartsOf(current)}
+	restarts, ok := current.Get("restarts")
+	if !ok {
+		restarts = float64(0)
+	}
+	return interruption{reason: reason, message: message, restarts: restarts}
 }
 
 // report reports that crashes ended this task. It runs after the commit that ended it, as the commit returns to the task, so the
@@ -57,7 +68,7 @@ func (r *Runtime) reportInterrupted(it interruption) {
 // ReportEnded reports what the host commit last finished with FinishHost ended the task for, if it ended it for crashes: the host's
 // transaction returns to the task when the core answers its end.
 func (r *Runtime) ReportEnded() {
-	if it := r.hostEnded; it.reason != "" {
+	if it := r.hostEnded; it.reason != nil {
 		r.hostEnded = interruption{}
 		r.reportInterrupted(it)
 	}
