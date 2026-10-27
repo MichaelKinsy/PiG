@@ -380,7 +380,6 @@ const inFlightSettleHops = 5
 // death interrupted the poll of again.
 func (r *run) retry(cp *jv.Object) {
 	attempt := num(cp, "attempt")
-	compacted := idField(cp, "compacted")
 	until := num(cp, "until")
 	if r.cutOffTooOften(r.task) {
 		r.endCutOff(cp)
@@ -397,26 +396,24 @@ func (r *run) retry(cp *jv.Object) {
 		if err != nil {
 			return nil, err
 		}
+		next := any(attempt + 1)
+		generation := jobj("attempt", next)
+		checkpoint := jobj("phase", phasePrepare, "attempt", next)
+		if compacted, ok := cp.Get("compacted"); ok {
+			checkpoint.Set("compacted", compacted)
+		}
 		// A poll the host died during polls its response again, as the next attempt.
 		if poll != nil {
-			pollAt := r.now()
-			if err := live.Set("generation", jobj("attempt", attempt+1, "deferred", jobj("pollAt", pollAt))); err != nil {
-				return nil, err
-			}
-			next := jobj("phase", phasePoll, "attempt", attempt+1)
-			withCompacted(next, compacted)
-			poll.Members(func(key string, value any) bool { next.Set(key, value); return true })
-			next.Set("pollAt", pollAt)
-			return jobj("status", "running", "checkpoint", next), nil
+			pollAt := any(r.now())
+			generation.Set("deferred", jobj("pollAt", pollAt))
+			checkpoint.Set("phase", phasePoll)
+			poll.Members(func(key string, value any) bool { checkpoint.Set(key, value); return true })
+			checkpoint.Set("pollAt", pollAt)
 		}
-		if err := live.Set("generation", jobj("attempt", attempt+1)); err != nil {
+		if err := live.Set("generation", generation); err != nil {
 			return nil, err
 		}
-		next := jobj("phase", phasePrepare, "attempt", attempt+1)
-		if compacted != 0 {
-			next.Set("compacted", float64(compacted))
-		}
-		return jobj("status", "running", "checkpoint", next), nil
+		return jobj("status", "running", "checkpoint", checkpoint), nil
 	})
 }
 

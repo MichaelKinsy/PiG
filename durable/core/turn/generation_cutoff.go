@@ -92,13 +92,16 @@ func (r *run) commitEnding() {
 // polls the response of the poll the host died during again.
 func (r *run) sleepRetry(live *delta.Obj) (*jv.Object, error) {
 	e := &r.ending
-	attempt := num(e.cp, "attempt")
-	if err := live.Set("generation", jobj("attempt", attempt, "retry", jobj("at", e.until, "error", e.text))); err != nil {
+	attempt, _ := e.cp.Get("attempt")
+	until := any(e.until)
+	if err := live.Set("generation", jobj("attempt", attempt, "retry", jobj("at", until, "error", e.text))); err != nil {
 		return nil, err
 	}
 	next := jobj("phase", phaseRetry, "attempt", attempt)
-	withCompacted(next, idField(e.cp, "compacted"))
-	next.Set("until", e.until)
+	if compacted, ok := e.cp.Get("compacted"); ok {
+		next.Set("compacted", compacted)
+	}
+	next.Set("until", until)
 	if str(e.cp, "phase") == phasePoll {
 		poll := jv.NewObject()
 		e.cp.Members(func(key string, value any) bool {
@@ -110,7 +113,7 @@ func (r *run) sleepRetry(live *delta.Obj) (*jv.Object, error) {
 		})
 		next.Set("poll", poll)
 	}
-	return jobj("status", "sleeping", "checkpoint", next, "until", e.until), nil
+	return jobj("status", "sleeping", "checkpoint", next, "until", until), nil
 }
 
 // deferredOf is the deferred response a checkpoint polls, or will poll again after a retry's backoff: its model and handle.
