@@ -682,7 +682,9 @@ background: selectedBg customMessageBg."
 (defun kit-run-job (ext function)
   "Run FUNCTION on the extension's view-job worker, after the jobs queued before it (never on the thread that reads the host)."
   (let ((feed (kit-state-jobs (kit-state ext))))
-    (unless (kit-feed-subscribers feed) (kit-feed-subscribe feed #'funcall))
+    (sb-thread:with-mutex ((kit-feed-lock feed))
+      (unless (kit-feed-subscribers feed)
+        (setf (kit-feed-subscribers feed) (list (cons (incf (kit-feed-id feed)) #'funcall)))))
     (kit-feed-publish ext feed function)))
 
 ;;; ---------------------------------------------------------------- image transport
