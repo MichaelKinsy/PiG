@@ -50,6 +50,7 @@ type tuiAltCall struct {
 	DurationMs     int             `json:"durationMs"`
 	Enabled        bool            `json:"enabled"`
 	Force          bool            `json:"force"`
+	Visible        bool            `json:"visible"`
 	PreserveScreen bool            `json:"preserveScreen"`
 	ListenerID     string          `json:"listenerId"`
 	TimeoutMs      float64         `json:"timeoutMs"`
