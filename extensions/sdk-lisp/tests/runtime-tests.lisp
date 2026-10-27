@@ -237,7 +237,7 @@
   (let ((spec (pig::bt-spec-of "ls" "/c" (pig:make-ls-tool-options
                                            :operations (pig:make-ls-operations :exists (lambda (p) (declare (ignore p)) t)
                                                                                :stat (lambda (p) (declare (ignore p)) (pig:make-ls-stat :is-directory (lambda () t)))
-                                                                               :readdir (lambda (p) (declare (ignore p)) (list "a"))))))
+                                                                               :readdir (lambda (p) (declare (ignore p)) (list "a")))))))
     (check (eq t (pig:jget (funcall (gethash "operations.stat" (pig::bt-spec-callbacks spec)) (pig:obj "path" "x")) "isDirectory")))
     (check-equal '("a") (coerce (funcall (gethash "operations.readdir" (pig::bt-spec-callbacks spec)) (pig:obj "path" "x")) 'list))))
 
