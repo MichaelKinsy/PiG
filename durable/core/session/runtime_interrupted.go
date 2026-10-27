@@ -65,11 +65,11 @@ func (r *Runtime) reportInterrupted(it interruption) {
 	r.s.report(errors.New(it.message), info)
 }
 
-// ReportEnded reports what the host commit last finished with FinishHost ended the task for, if it ended it for crashes: the host's
-// transaction returns to the task when the core answers its end.
+// ReportEnded reports what the commit that just returned to the task ended it for, if it ended it for crashes: the commit of
+// Commit when its done runs (the Loop), the host's transaction when the core answers its end.
 func (r *Runtime) ReportEnded() {
-	if it := r.hostEnded; it.reason != nil {
-		r.hostEnded = interruption{}
+	if it := r.ended; it.reason != nil {
+		r.ended = interruption{}
 		r.reportInterrupted(it)
 	}
 }

@@ -17,8 +17,8 @@ type Runtime struct {
 	task  func() *TaskImpl
 	snap  func() Snapshot
 	agent any
-	// hostEnded is what the host commit FinishHost last finished ended the task for, until ReportEnded reports it.
-	hostEnded interruption
+	// ended is what the commit that last ended the task for crashes ended it for, until ReportEnded reports it.
+	ended interruption
 }
 
 func (s *Scheduler) newRuntime(inv *invocation, task func() *TaskImpl, snap func() Snapshot) *Runtime {
@@ -98,9 +98,7 @@ type ReportFrom struct{ Extension, Callback string }
 func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
 	// runtime.commit is an async function that awaits `#gated` (scheduler.ts, Pi 6c384aa3: it adds the checkpoint event after the await), where it
 	// returned the promise itself: its caller resumes a tick after the commit's resolution (the late job).
-	var ended interruption
 	r.gated(true, func(tx *Tx, current *jv.Object) error {
-		ended = interruption{}
 		next, err := change(tx, current)
 		if err != nil {
 			return err
@@ -114,17 +112,14 @@ func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Objec
 		err = r.s.commitState(tx, r.inv, current, next)
 		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
 		if err == nil {
-			ended = interruptionOf(current, next)
+			// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal: reported once the
+			// commit resolved, before its caller resumes (scheduler.ts runtime.commit).
+			if r.ended = interruptionOf(current, next); r.ended.reason != nil {
+				r.s.loop.endedBy(r)
+			}
 		}
 		return err
-	}, func(err error) {
-		// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal: reported once the commit
-		// resolved, before its caller resumes (scheduler.ts runtime.commit).
-		if err == nil && ended.reason != nil {
-			r.reportInterrupted(ended)
-		}
-		then(err)
-	})
+	}, then)
 }
 
 // BeginHost opens a commit whose callback runs in the host, one operation per event (ABI section 8): the checks of Commit
@@ -155,7 +150,7 @@ func (r *Runtime) BeginHost() (tx *Tx, current *jv.Object, err error) {
 // FinishHost commits the host transaction of BeginHost: next, when not nil, is the state the task commits for itself.
 func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, error) {
 	u := tx.ticks
-	r.hostEnded = interruption{}
+	r.ended = interruption{}
 	if next != nil {
 		overlay := stagedTasks(tx)
 		if err := r.s.commitState(tx, r.inv, current, next); err != nil {
@@ -163,7 +158,7 @@ func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, er
 			return nil, err
 		}
 		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
-		r.hostEnded = interruptionOf(current, next)
+		r.ended = interruptionOf(current, next)
 	} else {
 		tx.ticks = hopcost.RuntimeCommit(u, false, 0)
 	}
