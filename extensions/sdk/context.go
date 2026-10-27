@@ -97,9 +97,19 @@ type RemoteOverlayOptions struct {
 	// OverlayOptions is upstream ui.custom()'s overlayOptions: the overlay's
 	// position and size. Nil leaves them to the host's defaults.
 	OverlayOptions *OverlayOptions `json:"overlayOptions,omitempty"`
+	// Blocked is upstream ui.custom()'s blocked option: while an inline component (Overlay false) is visible, the terminal's program
+	// status reports pi as blocked on it. An overlay ignores it.
+	Blocked *RemoteOverlayBlocked `json:"blocked,omitempty"`
 	// OnHandle is upstream ui.custom()'s onHandle: it receives the mounted overlay's [OverlayHandle] (Overlay must be true). It stays in
 	// this process.
 	OnHandle OverlayHandleFunc `json:"-"`
+}
+
+// RemoteOverlayBlocked is upstream ui.custom()'s `blocked` option: Kind is "question", "permission" or "auth" and Message is the line the
+// terminal shows.
+type RemoteOverlayBlocked struct {
+	Kind    string `json:"kind"`
+	Message string `json:"message"`
 }
 
 // OverlayOptions is the serializable subset of upstream pi-tui OverlayOptions:

@@ -1564,6 +1564,18 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// An inline component reports blocked program status through ui.custom's blocked option (conformance TestConformance_CustomBlockedOption).
+	ext.Command("blocked-custom-probe", "Open inline custom components with and without the blocked option", func(ctx sdk.Context, _ string) error {
+		if _, err := ctx.Custom(&overlayWidthProbe{}, sdk.RemoteOverlayOptions{Blocked: &sdk.RemoteOverlayBlocked{Kind: "permission", Message: "Approve?"}}); err != nil {
+			return err
+		}
+		if _, err := ctx.Custom(&overlayWidthProbe{}, sdk.RemoteOverlayOptions{}); err != nil {
+			return err
+		}
+		ctx.Notify("blocked-custom done", "info")
+		return nil
+	})
+
 	registerKitWidgets(ext)
 	registerEditorHooks(ext)
 

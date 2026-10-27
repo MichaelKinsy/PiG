@@ -3296,6 +3296,19 @@ fn main() {
         },
     );
     ext.command(
+        "blocked-custom-probe",
+        "Open inline custom components with and without the blocked option",
+        |ctx, _args| {
+            for options in [json!({"blocked": {"kind": "permission", "message": "Approve?"}}), json!({})] {
+                if let Err(err) = ctx.custom_component(OverlayWidthProbe::default(), options) {
+                    return CommandResult::Error(err.to_string());
+                }
+            }
+            ctx.notify("blocked-custom done", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "timer-focused-probe",
         "Exercise timer-driven focused UI",
         |ctx, _args| {
