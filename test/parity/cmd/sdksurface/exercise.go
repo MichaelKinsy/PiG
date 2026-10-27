@@ -156,6 +156,14 @@ func exerciseTokens(r matrixRow, c cell) []*regexp.Regexp {
 			// A property the runtime reads is handed over in an object literal, so the key names it as much as a member access does.
 			out = append(out, regexp.MustCompile(`[{,]\s*`+regexp.QuoteMeta(identPart.FindString(alt))+`\s*:`))
 		}
+		if lisp, ok := strings.CutPrefix(alt, "pig:"); ok {
+			// A Lisp fixture reaches an exported symbol by its package-qualified name, followed by whitespace or a closing parenthesis.
+			if i := strings.IndexByte(lisp, '('); i >= 0 {
+				lisp = lisp[:i]
+			}
+			out = append(out, regexp.MustCompile(`\bpig:`+regexp.QuoteMeta(lisp)+`[\s)]`))
+			continue
+		}
 		name := identPart.FindString(alt)
 		if name == "" {
 			continue
