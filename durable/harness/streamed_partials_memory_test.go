@@ -30,7 +30,7 @@ import (
 
 // streamedTextAndCall answers with a text of size bytes and a tool call whose content argument is as long, streamed in 64-token
 // chunks.
-func streamedTextAndCall(t *testing.T, size int, tokens int, tokensPerSecond float64) *chatState {
+func streamedTextAndCall(t *testing.T, size int, tokens int, tokensPerSecond int) *chatState {
 	t.Helper()
 	setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: tokensPerSecond, TokenSize: &ai.FauxTokenSize{Min: new(tokens), Max: new(tokens)}})
 	setup.SetSettings(func(settings *HarnessSettings) {
