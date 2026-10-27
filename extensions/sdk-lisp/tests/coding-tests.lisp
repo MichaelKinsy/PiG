@@ -39,18 +39,20 @@
 
 (defvar *ct-calls* '())
 
+(defun ct-answer-call (host frame function)
+  (let* ((call (pig:jget frame "call")) (method (pig:jget call "method")) (args (pig:jget call "args")))
+    (push (cons method args) *ct-calls*)
+    (hsend host "type" "call_result" "id" (pig:jget frame "id")
+                "call_result" (handler-case (pig:obj "result" (funcall function method args))
+                                (error (e) (pig:obj "error" (pig:obj "message" (princ-to-string e))))))))
+
 (defun ct-answer-calls (host function)
   (sb-thread:make-thread
    (lambda ()
      (loop
        (let ((frame (handler-case (hread host) (error () :eof))))
          (when (eq frame :eof) (return))
-         (when (equal (pig:jget frame "type") "call")
-           (let* ((call (pig:jget frame "call")) (method (pig:jget call "method")) (args (pig:jget call "args")))
-             (push (cons method args) *ct-calls*)
-             (hsend host "type" "call_result" "id" (pig:jget frame "id")
-                         "call_result" (handler-case (pig:obj "result" (funcall function method args))
-                                         (error (e) (pig:obj "error" (pig:obj "message" (princ-to-string e))))))))))
+         (when (equal (pig:jget frame "type") "call") (ct-answer-call host frame function)))))
    :name "coding-test-host"))
 
 (defmacro with-answering-host ((function) &body body)
