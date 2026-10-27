@@ -111,28 +111,12 @@ var knownCapabilityGaps = map[string]map[string]string{
 	"watchSessionLog": {
 		"lisp": "the Lisp SDK does not serve the session log watcher yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
 	},
-	"ui.addAutocompleteProvider": {
-		"lisp": "the Lisp SDK does not serve autocomplete providers yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"ui.autocomplete.invoke": {
-		"lisp": "the Lisp SDK does not serve autocomplete providers yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"ui.onTerminalInput": {
-		"lisp": "the Lisp SDK does not serve terminal input listeners yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"ui.offTerminalInput": {
-		"lisp": "the Lisp SDK does not serve terminal input listeners yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"ui.setEditorComponent": {
-		"lisp": "the Lisp SDK does not serve editor components yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
 	"complete": {
 		"node": "host-backed completion is unavailable to Node extensions",
 		"lisp": "the Lisp SDK does not serve host model calls yet (gap lane SdkLispPhase2)",
 	},
 	"ui.editor.base": {
 		"node": "a Node editor component runs Pi's own pi-tui Editor in the extension process, so its super needs no host call",
-		"lisp": "the Lisp SDK does not serve editor components yet (gap lane SdkLispPhase2)",
 	},
 }
 
