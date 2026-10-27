@@ -1,4 +1,16 @@
 {
+ "packages/ai/src/auth/oauth/trusted-url.ts": [
+  {
+   "file": "ai/copilot_verification_uri.go",
+   "old": "\tif href == \"\" {\n",
+   "new": "\tif href == \"\\x00\" {\n"
+  },
+  {
+   "file": "ai/oauth_trusted_url.go",
+   "old": "(httpsOnly && parsed.Protocol != \"https:\")",
+   "new": "(httpsOnly && parsed.Protocol == \"https:\")"
+  }
+ ],
  "packages/codemode/src/cloudflare.ts": [
   {
    "file": "codemode/cloudflare/cloudflare.go",
