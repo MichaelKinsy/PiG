@@ -135,6 +135,7 @@ export class SentSettings {
       if (top[i++] !== "toolExecution" || !same(raw?.toolExecution ?? "parallel", sent.toolExecution)) return false
       if (top[i++] !== "steeringMode" || !same(raw?.steeringMode ?? "one-at-a-time", sent.steeringMode)) return false
       if (top[i++] !== "followUpMode" || !same(raw?.followUpMode ?? "one-at-a-time", sent.followUpMode)) return false
+      if (raw?.afterFailedRun !== undefined && (top[i++] !== "afterFailedRun" || !same(raw.afterFailedRun, sent.afterFailedRun))) return false
       // The retention is live too and travels last, only when it is not the core's default.
       const retention = documentRetentionWire(raw)
       if (retention !== undefined && (top[i++] !== "documentRetentionMs" || !same(retention, sent.documentRetentionMs))) return false
