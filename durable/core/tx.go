@@ -465,7 +465,7 @@ func (h *handler) publish(pub *session.Publication) {
 		// A commit held in memory (session/held.go) is shown to watches and views now and to the host's subscribeCommits listeners
 		// once stored. The host's internal observers (observeCommits) see it in a notice with no sequence number and no tables.
 		if h.changes {
-			out.Append(jv.Append(append(item, `{"memory":true,"changes":`...), commitChanges(pub.Changes)))
+			out.Append(jv.Append(append(item, `{"memory":true,"changes":`...), commitChanges(pub.Changes, h.sentValues(), valueFromOps)))
 			out.Append(append(item[:0], '}'))
 			h.b.NoticeChunks(abi.NoticePublished, out)
 		}
@@ -523,10 +523,10 @@ func (h *handler) publish(pub *session.Publication) {
 		out.Append(append(item[:0], ']'))
 	}
 	if h.changes {
-		out.Append(jv.Append(append(item[:0], `,"changes":`...), commitChanges(pub.StoredChanges())))
+		out.Append(jv.Append(append(item[:0], `,"changes":`...), commitChanges(pub.StoredChanges(), h.sentValues(), storedMode(pub))))
 		if pub.Stored != nil {
 			// The Session's own observers see this commit's own changes only (session.ts #publish `observed`); a deadline's store shows them none.
-			out.Append(jv.Append(append(item[:0], `,"observed":`...), commitChanges(pub.Changes)))
+			out.Append(jv.Append(append(item[:0], `,"observed":`...), commitChanges(pub.Changes, h.sentValues(), valueFromOps)))
 		}
 	}
 	out.Append(append(item[:0], '}'))
@@ -983,6 +983,39 @@ func asObject(v any) *jv.Object {
 	return o
 }
 
+// sentValues is the documents whose value a published notice carried to the host's commit listeners, for as long as one is subscribed;
+// nil while none is. The host keeps the latest value of each (memory notices omit the value of one it holds).
+func (h *handler) sentValues() map[session.ID]bool {
+	if !h.changes {
+		return nil
+	}
+	if h.sent == nil {
+		h.sent = map[session.ID]bool{}
+	}
+	return h.sent
+}
+
+// valueMode is how commitChanges treats the value of a document change the host may already hold (sentValues).
+type valueMode uint8
+
+const (
+	// valueWhole: the value always travels.
+	valueWhole valueMode = iota
+	// valueFromOps: the value is left out when the host holds the previous one and the change has operations to apply to it.
+	valueFromOps
+	// valueCurrent: the value is left out, with `current: true`, when the host holds it: it is the one memory has.
+	valueCurrent
+)
+
+// storedMode is how the changes a storage transaction stored travel: a transaction that stored held changes (or only them) stored the
+// value memory has; any other commit's value is its own.
+func storedMode(pub *session.Publication) valueMode {
+	if pub.Stored != nil {
+		return valueCurrent
+	}
+	return valueWhole
+}
+
 // commitChanges renders the CommitPublication changes of Session.subscribeCommits (types.ts CommitChange): a table
 // write is {type, value: record}; a document change {type: "document", record, conversationId, version, value, ops}
 // with null value and version absent for a retirement; a copy {type: "document.copy", record, conversationId, source}.
@@ -990,7 +1023,7 @@ func asObject(v any) *jv.Object {
 // Not inlined: only a commit listener asks for changes, and an inlined copy would be compiled by V8 with its hot caller, publish.
 //
 //go:noinline
-func commitChanges(changes []session.Change) []any {
+func commitChanges(changes []session.Change, sent map[session.ID]bool, mode valueMode) []any {
 	out := make([]any, 0, len(changes))
 	for _, c := range changes {
 		o := jv.NewObject()
@@ -1004,11 +1037,25 @@ func commitChanges(changes []session.Change) []any {
 			if c.ConversationID != 0 {
 				o.Set("conversationId", float64(c.ConversationID))
 			}
-			if c.Value == nil {
+			id := session.ID(numOf(c.Record, "id"))
+			switch {
+			case c.Value == nil:
+				delete(sent, id)
 				o.Set("value", nil)
-			} else {
+			case mode == valueFromOps && sent[id] && len(c.Ops) > 0 && c.Ops[0].Verb != delta.Replace:
+				// The host holds the value this document had (a notice carried it) and applies the operations to it: a partial commit's
+				// notice costs its new text, not the length of the answer so far (host/cf/src/facade/harness.ts onNotice).
+				o.Set("version", float64(c.Version))
+			case mode == valueCurrent && sent[id]:
+				// What a storage transaction stored of a held document is the value memory has, which the host holds.
+				o.Set("version", float64(c.Version))
+				o.Set("current", true)
+			default:
 				o.Set("version", float64(c.Version))
 				o.Set("value", c.Value)
+				if sent != nil {
+					sent[id] = true
+				}
 			}
 			o.Set("ops", delta.OpsValue(c.Ops))
 		case session.ChangeDocumentCopy:

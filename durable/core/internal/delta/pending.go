@@ -225,14 +225,14 @@ func (pending *PendingOps) mergeLeaf(op Op) bool {
 		}
 		leaf.buf, leaf.growing = append(leaf.buf[:0], text...), true
 	}
-	leaf.buf = appendText(leaf.buf, op.Text)
+	leaf.buf = AppendText(leaf.buf, op.Text)
 	pending.leaves[key] = leaf
 	return true
 }
 
-// appendText appends text to buf as UTF-16 concatenation does: a trailing high surrogate of buf (a lone one, in its
+// AppendText appends text to buf as UTF-16 concatenation does: a trailing high surrogate of buf (a lone one, in its
 // three-byte generalized form) and a leading low surrogate of text join into one code point.
-func appendText(buf []byte, text string) []byte {
+func AppendText(buf []byte, text string) []byte {
 	if len(buf) >= 3 && len(text) >= 3 {
 		tail := string(buf[len(buf)-3:])
 		if joined := jv.Concat(tail, text[:3]); len(joined) != len(tail)+3 {

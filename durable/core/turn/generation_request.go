@@ -263,7 +263,8 @@ func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.
 	h := r.g.Host
 	interval := h.Settings().PartialIntervalMs
 	var (
-		pending  jv.Raw
+		acc      partialAcc
+		dirty    bool
 		cancel   func()
 		inFlight bool
 		stopped  bool
@@ -273,13 +274,12 @@ func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.
 	arm := func() { cancel = h.After(interval, flush) }
 	flush = func() {
 		cancel = nil
-		partial := pending
-		pending = nil
-		if partial == nil || stopped {
+		if !dirty || stopped {
 			return
 		}
+		dirty = false
 		inFlight = true
-		message := parseObjectText(partial)
+		message := acc.message()
 		r.rt.CommitDeferred(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 			live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 			if err != nil {
@@ -299,7 +299,7 @@ func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.
 				_ = r.rt.Report(err)
 			}
 			inFlight = false
-			if pending != nil && !stopped {
+			if dirty && !stopped {
 				arm()
 			}
 			if waiting != nil {
@@ -314,7 +314,9 @@ func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.
 		if !hasContent(partial) {
 			return
 		}
-		pending = partial
+		// The partials of a throttle window add up: each is a patch of the one before (partial_patch.go).
+		acc.apply(parseObjectText(partial))
+		dirty = true
 		if cancel == nil && !inFlight {
 			arm()
 		}

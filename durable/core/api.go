@@ -293,6 +293,9 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		return h.usage()
 	case "commits":
 		h.changes, _ = boolOf(req, "on")
+		if !h.changes {
+			h.sent = nil
+		}
 		return nil, nil
 	case "watch.open":
 		return h.watchOpen(req)
