@@ -458,8 +458,15 @@
     },
     {
       "path": "packages/ai/test/bedrock-strict-tool-fallback.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a9e1e9b9148ccd27602af2fc991f7a0b80e0e83fdcf25e9a538c72254b06752a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a9e1e9b9148ccd27602af2fc991f7a0b80e0e83fdcf25e9a538c72254b06752a",
+      "evidence": [
+        "ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream",
+        "ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockConvertToolsPreferredStrictTools",
+        "ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage",
+        "ai/strict_tool_limit_upstream_test.go#TestPrefersJSONSchemaStrictSampling"
+      ],
+      "rationale": "New in Pi 842c7317 (#11416). All 4 cases are ported as subtests of TestBedrockPreferredStrictToolFallbackUpstream with Pi's titles, inputs and expected results: a strict tool limit ValidationException (the union-parameter message observed from live Bedrock) is retried with the preferred tool non-strict and its original schema while the required and ordinary tools stay byte-identical, onPayload runs for both requests and its requestMetadata reaches the second, and the result carries one bedrock_strict_tools_fallback diagnostic with the message and reason strict_tool_limits_exceeded; no preferred strict tool means one request and the error text 'Validation error: <message>'; another ValidationException is not retried; a rejection that repeats is retried only once. Upstream mocks the AWS SDK client and clones each command input; the port serves the same replies from an httptest Bedrock endpoint (a 400 with x-amzn-errortype ValidationException, then an event stream) and decodes each serialized request body, so the assertions are on the wire shape of toolConfig. TestBedrockConvertToolsPreferredStrictTools checks the converter's hasPreferredStrictTools and disablePreferredStrictTools, and the strict_tool_limit tests the two shared helpers. Red: before the port the first case ends with stopReason error and 'retries only once' sees 1 request, want 2."
     },
     {
       "path": "packages/ai/test/bedrock-thinking-payload.test.ts",
@@ -499,8 +506,14 @@
     },
     {
       "path": "packages/ai/test/classifier-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9f4c34792441dccf4a7d5f74998e67c292dd2bc67183322a0538d478a88bc265"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9f4c34792441dccf4a7d5f74998e67c292dd2bc67183322a0538d478a88bc265",
+      "evidence": [
+        "ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "coding/extension_model_types_wire_test.go#TestExtensionClassifyAction",
+        "ai/opencode_endpoints_upstream_test.go#TestOpenCodeCatalogUsesProtocolSpecificEndpoints"
+      ],
+      "rationale": "Pi 7f225f25 changes the 'routes OpenRouter classifier models through the System One API' case (:248) to expect compat {imageInput: state-image-urls, sendImageOptInHeader: false}, explicit so images keep OpenRouter's form when the baseUrl is overridden. The Go subtest of the same name asserts model.Compat.ImageInput == SystemOneImageInputStateImageURLs and a false SendImageOptInHeader on the catalog models, which the regenerated classifier catalog (ai/classifier_models_generated.go) now carries. Earlier review, retained: All 5 cases. 'keeps chat and classifier entries...', 'exposes Jev only through classifier catalog accessors', the three 'routes <provider> Jev' rows and 'routes OpenRouter classifier models' are TestClassifierModelsUpstream subtests. 'rejects chat models at the classifier entry point at runtime' (:94) casts a chat model to ClassifierModel; ai.Models.Classify takes *ClassifierModel so the cast cannot compile in Go, and the reachable runtime entry that accepts any model (the extension classify action, coding.ModelRuntime via ai.AssertClassifierModel) is covered by TestExtensionClassifyAction asserting an error result containing 'is not a classifier model'. 1.1.0 adds three cases, all subtests of TestClassifierModelsUpstream (ai/classifier_models_upstream_test.go): images rejected before the provider call for text-only classifier models, GPT-6 Luna routed through the Decisions API with images (chat entry stays separate), and Decisions models listed only for API key credentials. Pi 3daa2028→b06c1f2c: Pi 195120a9 moves the OpenCode classifier base URLs from /zen/v1 to /inference/v1; TestClassifierModelsUpstream carries the new URLs. Pi 177e2ad7 (#11434) changes the 'routes opencode Jev' rows (:132-134) to expect https://opencode.ai/inference/systemone/v1/systemone (was /inference/v1/systemone) for jev-1.13 and jev-1.13-free; the Go rows follow and failed before the change against the regenerated classifier catalog (ai/classifier_models_generated.go, from the pinned provider data). TestOpenCodeCatalogUsesProtocolSpecificEndpoints walks every OpenCode and OpenCode Go chat and classifier model and checks its baseUrl against the endpoint of its API: openai-completions and openai-responses at /openai/v1, anthropic-messages at /anthropic, google-generative-ai at /google/v1beta, typesafe-system-one at /systemone/v1, under https://opencode.ai/inference and https://opencode.ai/inference/go."
     },
     {
       "path": "packages/ai/test/cloudflare-ai-binding.test.ts",
@@ -1364,8 +1377,14 @@
     },
     {
       "path": "packages/ai/test/openai-responses-compat.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:846d19dcb91e7f37fac0db3891bfd7cc129e2607b4a8b3e0ac706758a30dda31"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:846d19dcb91e7f37fac0db3891bfd7cc129e2607b4a8b3e0ac706758a30dda31",
+      "evidence": [
+        "ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
+        "ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatHeadersUpstream",
+        "test/parity/scenarios/providers-faux-streaming/15-openai-cache-affinity.toml"
+      ],
+      "rationale": "All 18 sites (37 expanded cases) ported: Copilot omission, required tool choice, Cloudflare strictness, every supported/unsupported-off model row, every affinity-header variant, key clamping, all service-tier pricing rows and both max-output-token cases. HTTP capture uses the production provider; service-tier wire input uses SamplingParams. Red tests expose omitted reasoning incorrectly clamped on, dropped required choice, wrong affinity formats and generic header truncation. Compiling overlays fail these guards and the exact Pi probe. Pi 0.99.2 review: the 0.99.1 changes are ported: the key fixture is now sk-test-key (openai_responses_compat_upstream_test.go:20) and the service-tier cost case takes requested and returned tiers with GPT-6 \"fast\" rows (openai-responses-compat.test.ts:481-534; openai_responses_compat_upstream_test.go:185-201, close-to comparison at 12 digits). The it.each cases are table subtests with titles built from the row values. Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi e5fe9777 changes 'omits reasoning when no reasoning is requested' from github-copilot gpt-5-mini to gpt-6-sol (gpt-6-sol has off: \"none\", so it exercises the Copilot exception of #2567); the Go case takes the same model (openai_responses_compat_upstream_test.go, 437d51c5). All 18 sites remain ported. Pi 81d6759f (#11415) changes 'forwards required tool choice' (:122, :151) to openai gpt-5.6-luna: GPT-5.4 and GPT-5.5 declare their tools at the top level on OpenAI and OpenCode, so only GPT-5.6 and later keep additional_tools items and tool_choice applying to them. The Go subtest of that name uses gpt-5.6-luna with the same context and assertions (tool_choice required, no top-level tools, an additional_tools input item holding ping). The 'declares <provider>/<id> tools' subtests add the other side for openai and opencode: gpt-5.4, gpt-5.4-mini, gpt-5.4-pro and gpt-5.5 send ping in the top-level tools with no additional_tools item and no supportsAdditionalTools compat, gpt-5.6-sol, gpt-5.6-terra and gpt-5.6-luna send it in an additional_tools item, and every row keeps supportsMidConvoSystemMessages. Red: the original subtest (gpt-5.4) fails against the regenerated catalog with top-level tools=[{\"type\":\"function\",\"name\":\"ping\",...}]."
     },
     {
       "path": "packages/ai/test/openai-responses-empty-tool-result.test.ts",

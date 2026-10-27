@@ -188,7 +188,7 @@ func TestBedrockUpstreamConvertMessages(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/bedrock-convert-messages.test.ts:101
 	t.Run("gates native strict tool use by model capability", func(t *testing.T) {
 		tool := ai.ToolSchema{Name: "lookup", Description: "Look up a value", Parameters: map[string]any{"type": "object", "properties": map[string]any{"value": map[string]any{"type": "string"}}, "required": []string{"value"}}, ConstrainedSampling: &ai.ConstrainedSamplingConfig{Type: "json_schema", Strict: "require"}}
-		config, err := convertBedrockTools([]ai.ToolSchema{tool}, nil, true)
+		config, _, err := convertBedrockTools([]ai.ToolSchema{tool}, nil, true, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -196,7 +196,7 @@ func TestBedrockUpstreamConvertMessages(t *testing.T) {
 			t.Fatalf("strict config=%#v", config)
 		}
 		tool.ConstrainedSampling = &ai.ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}
-		config, err = convertBedrockTools([]ai.ToolSchema{tool}, nil, false)
+		config, _, err = convertBedrockTools([]ai.ToolSchema{tool}, nil, false, false)
 		if err != nil {
 			t.Fatal(err)
 		}

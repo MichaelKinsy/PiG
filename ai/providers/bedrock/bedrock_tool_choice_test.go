@@ -83,7 +83,7 @@ func BenchmarkBedrockToolChoice(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
-				config, err := convertBedrockTools(tools, tc.choice, false)
+				config, _, err := convertBedrockTools(tools, tc.choice, false, false)
 				if err != nil || (config == nil && tc.name != "none") {
 					b.Fatalf("config=%+v error=%v", config, err)
 				}

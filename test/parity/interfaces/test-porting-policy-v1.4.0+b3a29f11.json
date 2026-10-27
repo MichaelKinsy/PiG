@@ -865,6 +865,15 @@
       "rationale": "New in 1.4.0+d0aa218c; area and tags follow the sibling tests under packages/ai/test/ until the production-path review."
     },
     {
+      "path": "packages/ai/test/bedrock-strict-tool-fallback.test.ts",
+      "upstreamTestHash": "sha256:a9e1e9b9148ccd27602af2fc991f7a0b80e0e83fdcf25e9a538c72254b06752a",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New in 1.4.0+b3a29f11; area and tags follow the sibling tests under packages/ai/test/ until the production-path review."
+    },
+    {
       "path": "packages/ai/test/bedrock-thinking-payload.test.ts",
       "upstreamTestHash": "sha256:f15266b2ee51b81611c4a91f8f6f418f8391cd2875ffbf022827572b9fab945a",
       "area": "providers",

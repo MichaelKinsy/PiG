@@ -1,7 +1,3 @@
-pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage	ai	no-go-symbol	
-pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage::call:0	ai	child-gap	
-pkg:ai/api/constrained-sampling#prefersJsonSchemaStrictSampling	ai	no-go-symbol	
-pkg:ai/api/constrained-sampling#prefersJsonSchemaStrictSampling::call:0	ai	child-gap	
 pkg:chord/sqlite#SqliteDatabase	chord	child-gap	chord/sqlite/database.go#SqliteDatabase
 pkg:chord/sqlite#SqliteDatabase::property:runCounted	chord	member-missing	chord/sqlite/database.go#SqliteDatabase
 pkg:chord/sqlite#SqliteDatabase::property:runCounted::call:0	chord	member-missing	chord/sqlite/database.go#SqliteDatabase

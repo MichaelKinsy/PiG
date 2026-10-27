@@ -53,9 +53,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (lazy dynamic-impor
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/streaming_tool_arguments_upstream_test.go#TestStreamingToolArgumentsShowGrowingPartialsKeepStreamStateOffEveryPartialAndFinishWithTheExactArguments", "test:ai/anthropic_delta_member_type_oracle_test.go#TestAnthropicDeltaMistypedMembersMatchPi", "test:ai/anthropic_stream_test.go#TestAnthropicOpenBlocksCarryNoProviderScratch", "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream", "test:ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage", "test:ai/strict_tool_limit_upstream_test.go#TestPrefersJSONSchemaStrictSampling"]
+rationale = "Pi f715a15c1 keeps each open block's event index and its ToolCallArgumentsStream in an openBlocks Map instead of on the content block (index, partialJson) and appends every input_json_delta to the stream; a null or absent partial_json throws at the stream's text.length. Ported in ai/anthropic.go (anthropicOpenBlock.args, NoPartialJSON); the streaming test runs the anthropic path, the member-type oracle compares mistyped deltas with Pi's stream, and the open-blocks test checks no block carries index or partialJson. Delta at Pi 842c7317 (#11416): the strict tool fallback's inline list of limit messages and its \"prefer\" test (stream's error filter, buildParams' hasPreferredStrictTools and convertTools) become isStrictToolLimitErrorMessage and prefersJsonSchemaStrictSampling from constrained-sampling.ts, shared with Bedrock; behavior is unchanged. Ported as ai/constrained_sampling.go prefersJSONSchemaStrictSampling and isStrictToolLimitErrorMessage, called from ai/anthropic.go (anthropicStrictToolLimitsExceeded, anthropicMarksPreferredStrict, anthConvertTools); the Anthropic fallback test (all 16 cases) passes unchanged and the new unit tests cover the two helpers."
 
 [[files]]
 path = "packages/ai/src/api/azure-openai-config.ts"
@@ -88,9 +88,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (lazy dynamic-impor
 [[files]]
 path = "packages/ai/src/api/bedrock-converse-stream.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/providers/bedrock/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments", "test:ai/providers/bedrock/bedrock_streaming_tool_arguments_norace_test.go#TestBedrockStreamingToolArgumentsAllocateLinearlyInTheArgumentText", "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream", "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockConvertToolsPreferredStrictTools"]
+rationale = "Pi f715a15c1 keeps the open blocks (content index, ToolCallArgumentsStream, encrypted reasoning bytes) in an OpenBlocks Map and finalizes them from it, so the content blocks carry no index, partialJson or reasoning bytes. Ported in ai/bedrock.go and ai/bedrock_stream_state.go (activeBlock holds the reasoning bytes and the builder holds the argument stream); the ported bedrock-stream-state tests check no partial block carries stream state, the redacted reasoning signature and the exact tool arguments, and linear allocation. Delta at Pi 842c7317 (#11416): stream builds the request in a loop and, when Bedrock rejects it with a ValidationException whose message is a strict tool limit (isStrictToolLimitErrorMessage) and a strict: \"prefer\" tool was sent strict (convertToolConfig now returns {toolConfig, hasPreferredStrictTools}), appends a bedrock_strict_tools_fallback diagnostic ({error: {message}, details: {reason: strict_tool_limits_exceeded}}) and sends the request once more with every preferred tool non-strict and the \"require\" and ordinary tools unchanged; the request is built again, so onPayload runs for each attempt; an aborted signal, a second rejection, a rejection without a preferred strict tool and any other ValidationException are thrown as before. Ported in ai/providers/bedrock/bedrock.go (convertBedrockTools returns hasPreferredStrictTools and takes disablePreferredStrictTools; Stream's buildInput builds one pass and streamResponse retries once on bedrockStrictToolLimitMessage, with ctx.Err() as the abort signal). TestBedrockPreferredStrictToolFallbackUpstream ports the four cases of bedrock-strict-tool-fallback.test.ts against an httptest Bedrock endpoint and checks each serialized request body, and TestBedrockConvertToolsPreferredStrictTools covers the converter."
 
 [[files]]
 path = "packages/ai/src/api/classifier-shared.ts"
@@ -130,9 +130,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/cloudflare.go). coverage.md reports 
 [[files]]
 path = "packages/ai/src/api/constrained-sampling.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/constrained_sampling_oracle_test.go#TestConstrainedSamplingMatchesPi", "test:ai/constrained_sampling_test.go#TestAppendGrammarToolInputJSONDelta", "test:ai/constrained_sampling_test.go#TestAppendGrammarToolInputJSONDelta_NonMonotonic", "test:ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage", "test:ai/strict_tool_limit_upstream_test.go#TestPrefersJSONSchemaStrictSampling"]
+rationale = "Pi f715a15c1 makes appendGrammarToolInputJsonDelta append a delta (cost linear in the delta, undefined for an empty one) and adds closeGrammarToolInputJson(buffer, property, finalInput) for the complete input, which must continue the input streamed so far and closes idempotently. Ported in ai/constrained_sampling.go (appendGrammarToolInputJSONDelta, closeGrammarToolInputJSON, a strings.Builder input); the oracle probes now append deltas and close with and without a final input against Pi's module. Delta at Pi 842c7317 (#11416): adds prefersJsonSchemaStrictSampling(tool) (a json_schema tool with strict \"prefer\") and isStrictToolLimitErrorMessage(message) over STRICT_TOOL_LIMIT_ERROR_MESSAGES (\"The compiled grammar is too large\", \"Too many strict tools (\", \"Schemas contains too many parameters with union types (\"), shared by the Anthropic Messages and Bedrock fallbacks. Ported as prefersJSONSchemaStrictSampling and isStrictToolLimitErrorMessage in ai/constrained_sampling.go (exported to the Bedrock package through ai/provider_kit.go); TestPrefersJSONSchemaStrictSampling covers prefer, require, no strict, grammar and no config, and TestIsStrictToolLimitErrorMessage the three messages and non-matching ones."
 
 [[files]]
 path = "packages/ai/src/api/github-copilot-headers.ts"
@@ -1026,9 +1026,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go (0.80 catalog sh
 [[files]]
 path = "packages/ai/src/providers/opencode.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml", "test:ai/opencode_endpoints_upstream_test.go#TestOpenCodeCatalogUsesProtocolSpecificEndpoints", "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream", "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"]
+rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration), ai/provider_constructors.go). coverage.md reports 1 behavioral verifications for this file (1 scenarios whose covers list it, 0 named unit tests); the first of each are cited. Delta at Pi 177e2ad7 (#11434): the only source change is a stale comment naming the Jev endpoint (now https://opencode.ai/inference/systemone/v1/systemone); the provider's registration is unchanged. The new endpoints are catalog data from scripts/generate-models.ts (openai-completions and openai-responses at /openai/v1, anthropic-messages at /anthropic, google-generative-ai at /google/v1beta, Jev at /systemone/v1, under /inference and /inference/go), which reaches PiG through the pinned provider data in ai/models_generated.go and ai/classifier_models_generated.go; TestOpenCodeCatalogUsesProtocolSpecificEndpoints checks every OpenCode and OpenCode Go model and Jev classifier against them and the Jev rows of TestClassifierModelsUpstream route to the new URL. Delta at Pi 81d6759f: scripts/generate-models.ts keeps supportsAdditionalTools off GPT-5.4 and GPT-5.5 on OpenAI and OpenCode (their tools are declared at the top level; mid-conversation system messages are kept) while GPT-5.6 and later keep additional_tools; the same pinned provider data carries it, and the 'declares opencode/<id> tools' subtests of TestOpenAIResponsesCompatDefaultsUpstream assert the request shape and the catalog compat."
 
 [[files]]
 path = "packages/ai/src/providers/openrouter-api.ts"
