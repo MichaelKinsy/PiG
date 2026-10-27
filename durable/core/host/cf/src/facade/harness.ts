@@ -6,6 +6,7 @@ import { admitWrites, adoptTables } from "./table-identity.ts"
 import { forgetColdLoads, trackColdLoads } from "./coldload.ts"
 import { BACKGROUND_CONTEXT, awaitWithContext, withoutAbortSignal } from "@earendil-works/chord/context"
 import type { Context } from "@earendil-works/chord"
+import type { ConversationId, ReportInfo } from "@earendil-works/pi-durable"
 import { EVENT, NOTICE } from "../abi.ts"
 import { CoreClient } from "../client.ts"
 import { forgetSnapshots, substitutePublished, substituteWrite } from "./snapshots.ts"
@@ -28,9 +29,9 @@ import { recordPublication } from "./publications.ts"
 import { adaptStorage, overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
 import { coreFromEnvironment } from "./core-env.ts"
 import { customTaskRunner } from "./taskruntime.ts"
-import { TimeoutTimers } from "../timers.ts"
+import { hostTimers, SetTimerTimers, TimeoutTimers, type SetTimer } from "../timers.ts"
 import type { TimerDriver } from "../host.ts"
-import { errorMessage, reviveError, SessionFailed, StorageRequestError } from "../errors.ts"
+import { errorMessage, reviveError, SessionFailed, StorageRequestError, type WireErrorBody } from "../errors.ts"
 import { contained } from "./session/session.ts"
 import { Transaction } from "./session/transaction.ts"
 import { structuredOutputError } from "./structured.ts"
@@ -81,7 +82,8 @@ let profileOverride: Partial<Record<StorageProfile, StorageProfile>> | undefined
 export function useStorageProfile(map: Partial<Record<StorageProfile, StorageProfile>> | undefined) { profileOverride = map }
 
 export interface FacadeOptions {
-  models: ModelsLike
+  /** pi-ai model access, or a function returning the current one, called at each use (harness.ts HarnessOptions.models). */
+  models: ModelsLike | (() => ModelsLike)
   /**
    * How model requests identify the app to providers, merged field by field over `DEFAULT_HARNESS_IDENTITY` (provider attribution to pi).
    * It applies to every request through the Harness's models, including hooks and tools, and overrides the identity the `models` was
@@ -89,13 +91,18 @@ export interface FacadeOptions {
    */
   identity?: ClientIdentity
   registry: HostRegistrySource
+  /** `HarnessSettings`, or a function returning the current ones; read at each use either way (harness.ts HarnessOptions.settings). */
   settings?: any
   env?: EffectRuntime["env"]
   conversationCreated?: (tx: TxProxy, record: any) => unknown | Promise<unknown>
   now?: () => number
-  onReport?: (error: unknown) => void
+  onReport?: (error: unknown, info: ReportInfo) => void
   /** PiG addition: the timer driver (a Durable Object passes its alarm timers). Default: setTimeout timers, cancelled at close. */
   timers?: TimerDriver
+  /** types.ts HarnessOptions.setTimer: arms the Harness's timers (pacing, sleeping tasks without `onWake`, `TaskRuntime.setTimer`); a background timer may be declined (returns undefined). Ignored for the core's own timers when `timers` is given. */
+  setTimer?: SetTimer
+  /** types.ts HarnessOptions.onWake: wakes the process for sleeping tasks instead of a timer; called after open and whenever `wake()` changes. */
+  onWake?: (wake: { active: boolean; at?: number }) => void
   /** PiG addition: the compiled core module (default: `useCore()`). */
   core?: CoreSource
   /** PiG addition: the pool of Wasm instances this Harness's session lives in (default: the module's own, shared by every Harness of the isolate). Its high-water mark decides when an instance is recycled at a quiet point. */
@@ -113,18 +120,23 @@ export interface FacadeOptions {
 type Waiter = { match: (n: PublishedNotice) => boolean; resolve: () => void; reject: (error: Error) => void }
 
 /** `onReport` that cannot fail: it is the last place an error goes, so its own throw or rejection is dropped (harness.ts safeReport). */
-export function safeReport(onReport: ((error: unknown) => void) | undefined): (error: unknown) => void {
-  return error => contained(() => onReport?.(error), () => {})
+export function safeReport(onReport: ((error: unknown, info: ReportInfo) => void) | undefined): (error: unknown, info: ReportInfo) => void {
+  return (error, info) => contained(() => onReport?.(error, info), () => {})
 }
 
+/** What a report is about when its source is a commit, close, watch, view or document listener (session.ts LISTENER). */
+export const LISTENER: ReportInfo = { type: "listener_error" }
+/** The Session failed with this error: a Storage error, often a platform reset (types.ts ReportInfo `session_failed`). */
+const SESSION_FAILED: ReportInfo = { type: "session_failed" }
+
 /** The host clock, falling back to `Date.now` when it throws; the first throw is reported (harness.ts safeNow). */
-export function safeNow(now: (() => number) | undefined, report: (error: unknown) => void): () => number {
+export function safeNow(now: (() => number) | undefined, report: (error: unknown, info: ReportInfo) => void): () => number {
   if (now === undefined) return Date.now
   let reported = false
   return () => {
     try { return now() } catch (error) {
       // Set first: a report handler that reads the clock again must not report again.
-      if (!reported) { reported = true; report(error) }
+      if (!reported) { reported = true; report(error, { type: "host_error", callback: "now" }) }
       return Date.now()
     }
   }
@@ -132,6 +144,20 @@ export function safeNow(now: (() => number) | undefined, report: (error: unknown
 
 /** session.ts assertUsable: the error of a call on a Session that is closing. */
 class ClosedSession extends Error { constructor() { super("Session is closed") } }
+
+/**
+ * harness.ts currentModels: `HarnessOptions.models` at this use, a function's answer or the plain object. A Harness reaches its models through
+ * withClientIdentity, so each request carries `identity` as its last option: a plain Models is wrapped once, a function's result at each call.
+ * A Session has no models.
+ */
+function currentModelsOf(options: FacadeOptions): () => ModelsLike {
+  const models = options.models
+  if (options.mode === "session") return typeof models === "function" ? models : () => models
+  const identity = mergeClientIdentity(DEFAULT_HARNESS_IDENTITY, options.identity) ?? DEFAULT_HARNESS_IDENTITY
+  if (typeof models === "function") return () => withHarnessIdentity(models(), identity)
+  const wrapped = withHarnessIdentity(models, identity)
+  return () => wrapped
+}
 
 export class Harness {
   readonly host: HostSession
@@ -147,7 +173,11 @@ export class Harness {
   /** The Pi Storage methods the caller's Storage overrides: the core asks the host's Storage first (PROTOCOL.md, "Storage gate"). */
   private gate: string[]
   /** Pi reads `options.settings` live (resolveSettings(options.settings) at each use). */
-  private get settings(): ReturnType<typeof resolveSettings> { return resolveSettings(this.options.settings) }
+  private get settings(): ReturnType<typeof resolveSettings> { return resolveSettings(this.hostSettings()) }
+  /** harness.ts currentSettings: the host's settings at this use. */
+  private hostSettings(): any { const settings = this.options.settings; return typeof settings === "function" ? settings() : settings }
+  /** `HarnessOptions.models` at this use (harness.ts currentModels); set when the Harness opens. */
+  currentModels!: () => ModelsLike
   private readonly settingsSent = new SentSettings()
   private readonly waiters = new Set<Waiter>()
   /** Pending Submission.wait calls (submissions.ts #waiters). */
@@ -172,7 +202,7 @@ export class Harness {
   private constructor(storage: Storage, store: Store, host: HostSession, client: CoreClient, registry: HostRegistry, options: FacadeOptions) {
     this.storage = storage; this.gate = overriddenMethods(storage); this.store = store; this.host = host; this.client = client; this.registry = registry; this.options = options
     if (options.mode === "session") trackColdLoads(client, storage, this.gate)
-    this.watches = new WatchHub(client, error => (options.onReport ?? (() => {}))(error), BACKGROUND_CONTEXT)
+    this.watches = new WatchHub(client, error => (options.onReport ?? (() => {}))(error, LISTENER), BACKGROUND_CONTEXT)
     this.now = options.now ?? Date.now
   }
 
@@ -183,8 +213,7 @@ export class Harness {
     // harness.ts constructor: `onReport` cannot fail what reports to it, and a clock that throws falls back to Date.now (reported once).
     const reported = safeReport(rawOptions.onReport)
     const options: FacadeOptions = { ...rawOptions, onReport: reported, now: safeNow(rawOptions.now, reported) }
-    // harness.ts currentModels: a Harness reaches its models through withClientIdentity, so each request carries `identity` as its last option. A Session has no models.
-    if (options.mode !== "session") options.models = withHarnessIdentity(options.models, mergeClientIdentity(DEFAULT_HARNESS_IDENTITY, options.identity) ?? DEFAULT_HARNESS_IDENTITY)
+    const currentModels = currentModelsOf(options)
     // A Session has no built-in tasks: only a Harness needs them in its registry.
     const missing = options.mode === "session" ? [] : ["pi.generation", "pi.tool", "pi.compaction"].filter(name => options.registry.snapshot().task(name) === undefined)
     if (missing.length > 0) throw new Error(`Registry lacks built-in tasks ${missing.join(", ")}; create it with createRegistry()`)
@@ -240,11 +269,13 @@ export class Harness {
     track(core)
     const registry = new HostRegistry(options.registry)
     const handlers: Record<number, any> = {}
-    const timers = options.timers ?? new TimeoutTimers(id => host.timerFired(id), options.now)
+    // harness.ts: `hostTimers(options.setTimer, ...)` serves the scheduler's and the tasks' timers, with one "declined" report between them.
+    const hosted = hostTimers(options.setTimer, error => (options.onReport as (error: unknown, info?: unknown) => void)(error, { type: "host_error", callback: "setTimer" }))
+    const timers = options.timers ?? (options.setTimer === undefined ? new TimeoutTimers(id => host.timerFired(id), options.now) : new SetTimerTimers(hosted, id => host.timerFired(id), options.now))
     const host: HostSession = new HostSession({
       core: session, sqlTable: core.sqlTable, store, clock: options.now, handlers, timers,
       onNotice: n => self.harness?.onNotice(n.kind, n.payload),
-      onRejected: error => (options.onReport ?? (() => {}))(error),
+      onRejected: error => (options.onReport ?? (() => {}))(error, LISTENER),
       onFatal: error => {
         // The host freed its session; a trap took the instance (pool.ts broken), and the lease is returned either way.
         if (error.cause2 instanceof CoreTrap) lease?.broke(error)
@@ -269,16 +300,28 @@ export class Harness {
       self.host = host
       const harness = self.harness = new Harness(storage, store, host, client, registry, options)
       harness.timers = timers
+      harness.currentModels = currentModels
       const report = options.onReport ?? (() => {})
+      // harness.ts resolveAgent: a wrapper that fails reports the extension that installed it and the conversation whose agent was resolved.
+      const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
+      if (options.onWake !== undefined) {
+        // scheduler.ts #scheduleWake: only a changed value is offered; one whose delivery threw is reported and offered again at the next change.
+        const onWake = options.onWake
+        let last: { active: boolean; at?: number } | undefined
+        client.onWake = wake => {
+          if (last !== undefined && last.active === wake.active && last.at === wake.at) return
+          try { onWake(wake); last = wake } catch (error) { (report as (error: unknown, info?: unknown) => void)(error, { type: "host_error", callback: "onWake" }) }
+        }
+      }
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), documentState: (token: any, ...args: unknown[]) => harness.documentState(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
-        client, registry, models: options.models, env: options.env, report,
+        client, registry, get models() { return currentModels() }, env: options.env, report,
         hostApi: runtimeHostApi,
         readTarget: () => self.harness,
         snapshot: () => options.registry.snapshot(),
         phase: self.phases = customTaskRunner({
-          registry, hostApi: runtimeHostApi, models: options.models, settings: () => harness.settings, now: () => (options.now ?? Date.now)(), report,
-          snapshot: () => options.registry.snapshot(), env: options.env as never, readTarget: () => self.harness,
+          registry, hostApi: runtimeHostApi, get models() { return currentModels() }, settings: () => harness.settings, now: () => (options.now ?? Date.now)(), report,
+          snapshot: () => options.registry.snapshot(), env: options.env as never, readTarget: () => self.harness, timers: hosted,
         }),
         hostHooks: {
           // scheduler.ts #resolve: a custom task's migrate(input, checkpoint, from) runs in the host when the scheduler reserves an older record.
@@ -290,7 +333,7 @@ export class Harness {
           },
           // scheduler.ts #decide (:955): the step line job calls registry.snapshot() synchronously; the reader may run user code (even close()). The core asks the host to call it at that point and refreshes from the answer.
           registrySnapshot: () => registry.snapshot(),
-          resolveAgent: payload => agentJSON(resolveAgent(payload.state, options.registry.snapshot(), harness.settings, report), o => registry.id(o)),
+          resolveAgent: (payload, _context, effect) => agentJSON(resolveAgent(payload.state, options.registry.snapshot(), harness.settings, reportWrap(effect.conversationId as ConversationId)), o => registry.id(o)),
           // harness/tool.ts prepare and validate: the arguments, or {error} with the text of what the repair or validation threw.
           prepareArguments: payload => {
             const tool = registry.tool(payload.toolName, payload.handler) as any
@@ -381,9 +424,10 @@ export class Harness {
           },
           // compaction.ts summarize: runtime.models.completeSimple.
           complete: (payload, context) => {
-            const model = options.models.getModel(payload.model.provider, payload.model.modelId)
+            const models = currentModels()
+            const model = models.getModel(payload.model.provider, payload.model.modelId)
             if (model === undefined) throw new Error(`Model ${payload.model.provider}/${payload.model.modelId} is not available`)
-            return (options.models as any).completeSimple(model, payload.context, { ...payload.options, signal: context.abortSignal })
+            return (models as any).completeSimple(model, payload.context, { ...payload.options, signal: context.abortSignal })
           },
         },
       }
@@ -424,7 +468,9 @@ export class Harness {
       try { this.host.sendJSON(EVENT.registry, { storageGate: gate }) } finally { this.host.beforeSend = this.syncSettings }
     }
     // The field-by-field check proves "unchanged" without serialising; anything it cannot prove falls through to the exact text comparison.
-    if (this.settingsSent.unchanged(this.options.settings)) return
+    let raw: unknown
+    try { raw = this.hostSettings() } catch { return }
+    if (this.settingsSent.unchanged(raw)) return
     // A settings getter that throws is the consumer's to see (resolveAgent reads it); it must not fail an unrelated event.
     let wire: string
     try { wire = JSON.stringify(this.settingsWire()) } catch { return }
@@ -469,12 +515,13 @@ export class Harness {
 
   private openPayload() {
     // The catalogue entries the core may name: by default every model of the `models` object, as {provider, id, contextWindow, maxTokens}.
-    const models = this.options.modelsInUse ? this.options.modelsInUse(this.options.models)
-      : (this.options.models.getModels?.() ?? []).map(({ provider, id, contextWindow, maxTokens }) => ({ provider, id, contextWindow, maxTokens }))
+    const models = this.options.modelsInUse ? this.options.modelsInUse(this.currentModels())
+      : (this.currentModels().getModels?.() ?? []).map(({ provider, id, contextWindow, maxTokens }) => ({ provider, id, contextWindow, maxTokens }))
     return {
       settings: this.settingsWire(),
       mode: this.options.mode ?? "harness", models, registry: this.registry.snapshot(), sidecar: this.options.sidecar ?? "index", delta: true,
       hasEnv: this.options.env !== undefined,
+      onWake: this.options.onWake !== undefined,
       ...(this.gate.length === 0 ? {} : { storageGate: this.gate }),
       ...(this.profile() === undefined ? {} : { storageProfile: this.profile() }),
 
@@ -484,7 +531,8 @@ export class Harness {
   private onNotice(kind: number, payload: Uint8Array) {
     // A failure the core absorbed (a throwing section or environment, a rejected hook) reaches HarnessOptions.onReport.
     if (kind === NOTICE.report) {
-      ;(this.options.onReport ?? (() => {}))(reviveError(JSON.parse(decoder.decode(payload)), this.client.storageFailure))
+      const body = JSON.parse(decoder.decode(payload)) as WireErrorBody & { info?: ReportInfo }
+      this.report(reviveError(body, this.client.storageFailure), body.info ?? LISTENER)
       this.closeAfterFailure()
       return
     }
@@ -563,7 +611,7 @@ export class Harness {
     const first = this.failure === undefined
     this.storageFailed(error)
     if (!first) return
-    ;(this.options.onReport ?? (() => {}))(error as Error)
+    this.report(error, SESSION_FAILED)
     this.closeAfterFailure()
   }
 
@@ -576,7 +624,7 @@ export class Harness {
     this.submissionWaiters.rejectAll(error)
     // The discard that ends an orderly close is no failure to report (host.ts closeAndJoin); anything else the host discarded for is.
     if (this.shut && error.message === "Harness is closed") return
-    ;(this.options.onReport ?? (() => {}))(error)
+    this.report(error, SESSION_FAILED)
   }
 
   private waitPublished(match: (n: PublishedNotice) => boolean, context: Context): Promise<void> {
@@ -648,14 +696,14 @@ export class Harness {
     if (this.client.busy) await this.client.idle()
     await this.host.closeAndJoin()
     this.client.close()
-    if (this.timers instanceof TimeoutTimers) this.timers.dispose()
+    this.timers?.dispose?.()
     // Session.close awaits the Storage close with the caller's context; a close that fails rejects this one. A failing close of the Storage
     // fails the Session unless it failed already (session.ts close), and `closed` settles after the Storage is closed.
     try { await (this.storage.close as ((context: Context) => unknown) | undefined)?.call(this.storage, context) } catch (error) {
       // A Storage that cannot close fails the Session and reports it, unless an earlier failure already did: that one stays the cause.
       if (this.failure === undefined) {
         this.failure = { error }
-        ;(this.options.onReport ?? (() => {}))(error as Error)
+        this.report(error, SESSION_FAILED)
       }
       throw error
     } finally {
@@ -670,7 +718,7 @@ export class Harness {
   }
   takeAdoptedFailure() { const failure = this.adoptedFailure; this.adoptedFailure = undefined; return failure }
   /** session.ts report: a failure or a listener's error goes to HarnessOptions.onReport, which never fails what ran it. */
-  report(error: unknown) { contained(() => this.options.onReport?.(error as Error), () => {}) }
+  report(error: unknown, info: ReportInfo = LISTENER, _context?: Context) { contained(() => this.options.onReport?.(error, info), () => {}) }
 
   /** Storage.commit() calls the core's gate has open, and the first error one of the Session's own observers threw for the commit they adopted. */
   private inStorage = 0
@@ -681,7 +729,7 @@ export class Harness {
     const first = this.failure === undefined
     this.storageFailed(error)
     if (!first) return
-    this.report(error)
+    this.report(error, SESSION_FAILED)
     this.closeAfterFailure()
   }
 
@@ -864,7 +912,7 @@ export class Harness {
   /** Agent of a conversation, resolved in the host against the live registry (agent.ts). */
   async resolveAgent(conversationId: number, at: number | undefined, context: Context) {
     const state = at === undefined ? await this.snapshot(AgentDoc, conversationId, context) : await this.snapshotAsOf(AgentDoc, conversationId, at, context)
-    return resolveAgent(state as AgentState | undefined, this.options.registry.snapshot(), this.settings, this.options.onReport ?? (() => {}))
+    return resolveAgent(state as AgentState | undefined, this.options.registry.snapshot(), this.settings, (error, extension) => this.report(error, { type: "extension_error", conversationId: conversationId as ConversationId, ...(extension === undefined ? {} : { extension }) }))
   }
 
   // Submissions (spec section 6): the core admits.
