@@ -108,8 +108,8 @@
   (let* ((operations (if (equal (bp-case case "shell") "powershell") (pig:create-local-powershell-operations) (pig:create-local-bash-operations)))
          (signal (pig::make-abort-signal)) (chunks '()) (report (pig:obj))
          (options (pig:make-bash-exec-options
-                   :on-data (lambda (data) (push (bp-text-of data) chunks) (when (bp-case case "abortOnOutput") (pig::signal-abort signal)))
-                   :signal signal :timeout (bp-case case "timeout") :env (bp-case case "env"))))
+                   (lambda (data) (push (bp-text-of data) chunks) (when (bp-case case "abortOnOutput") (pig::signal-abort signal)))
+                   signal (bp-case case "timeout") (bp-case case "env"))))
     (handler-case (setf (gethash "exitCode" report) (pig:jget (funcall (pig:bash-operations-exec operations) (pig:jget case "command") (pig:jget case "factoryCwd") options) "exitCode"))
       (error (e) (setf (gethash "error" report) (princ-to-string e))))
     (setf (gethash "output" report) (apply #'concatenate 'string (reverse chunks)))

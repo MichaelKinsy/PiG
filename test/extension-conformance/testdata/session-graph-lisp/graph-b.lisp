@@ -162,6 +162,11 @@
                        "status" (pig:runtime-get-provider-auth-status rt "openai")))
         (pig:runtime-logout rt "openai")
         (setf (gethash "afterLogout" (gethash "login" r)) (sorted-ids))))
+    ;; not reported: the stream and native-provider forms of the runtime, which model_registry reports through the registry
+    (pig:model-stream-result (pig:runtime-stream rt local (b-conversation) (pig:obj "maxTokens" 50)))
+    (let ((model (b-with (b-native-model "rt-native") "provider" "rt-native")))
+      (pig:runtime-register-native-provider rt (b-native-provider "rt-native" "Runtime Native" model "r" (lambda (input) (declare (ignore input)) nil) (lambda (input) (declare (ignore input)) nil)))
+      (pig:runtime-unregister-provider rt "rt-native"))
     (setf (gethash "stored" r) (b-read-json auth))
     r))
 
