@@ -591,7 +591,11 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		}
 		return
 	}
+	// The exit dump renders the components under mu as a frame does: a component's Render that asks the screen for state is answered from FrameState,
+	// and a render request it makes is dropped (the renderer is stopped).
+	t.frameActive.Store(true)
 	document := t.renderDocument(width)
+	t.frameActive.Store(false)
 	var buf strings.Builder
 	buf.WriteString(altBeginSynchronizedOutput + exit + altDisableAutowrap)
 	for row := range document {
