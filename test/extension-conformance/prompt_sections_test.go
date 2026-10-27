@@ -53,7 +53,7 @@ func TestPromptSectionMutationsAcrossSDKs(t *testing.T) {
 		}
 		assertPromptSections(t, *loaded)
 	})
-	for _, language := range []string{"go", "python", "rust", "node"} {
+	for _, language := range []string{"go", "python", "rust", "node", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			for _, placement := range []string{"isolated", "packed"} {
 				t.Run(placement, func(t *testing.T) {
