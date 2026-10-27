@@ -548,3 +548,93 @@
               (core-info ctx (format nil "turn_end:~A:~A" (core-key-str data "messageEntryId" "")
                                      (let ((ids (pig:jget data "toolResultEntryIds"))) (if (and ids (plusp (length ids))) (core-py-str (aref ids 0)) ""))))
               nil))))
+
+(def-fixture "core-event-probes" (ext)
+  (let ((offs (make-hash-table :test 'equal)) (results (make-hash-table :test 'equal)) (probe-off '()))
+    (flet ((split-first (text) (let* ((text (string-trim '(#\Space #\Newline #\Tab) text)) (space (position #\Space text)))
+                                 (values (subseq text 0 space) (if space (subseq text (1+ space)) "")))))
+      (pig:command ext "event_probe_subscribe" "Subscribe to turn_end after connecting"
+                   (lambda (ctx args) (declare (ignore ctx args))
+                     (push (pig:on ext "turn_end" (lambda (hctx data) (core-info hctx (format nil "event_probe:~A" (core-key-str data "messageEntryId" ""))) nil)) probe-off)))
+      (pig:command ext "event_probe_unsubscribe" "Remove the turn_end handler registered after connecting"
+                   (lambda (ctx args) (declare (ignore ctx args)) (loop while probe-off do (funcall (pop probe-off)))))
+      (pig:command ext "event_field_probe" "Report a field of the events named by the argument `<event> <field>`"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name field) (split-first args)
+                       (pig:on ext name (lambda (hctx data)
+                                          (core-info hctx (format nil "event_field:~A.~A=~A" name field
+                                                                  (if (nth-value 1 (gethash field data)) (pig:to-json (gethash field data)) "absent")))
+                                          nil)))))
+      (pig:command ext "event_probe_result" "Queue the JSON result the next event_probe_on handler call of an event returns"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name raw) (split-first args)
+                       (setf (gethash name results) (append (gethash name results) (list (pig:from-json raw)))))))
+      (pig:command ext "event_probe_on" "Subscribe to the event named by the argument"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (push (pig:on ext name
+                                     (lambda (hctx data)
+                                       (core-info hctx (format nil "event_probe_on:~A" name))
+                                       (core-info hctx (format nil "event_payload:~A:~A" name (pig:to-json data)))
+                                       (core-info hctx (format nil "event_probe_data:~A:~A" name (pig:to-json data)))
+                                       (when (and (hash-table-p data) (vectorp (pig:jget data "servers")) (not (stringp (pig:jget data "servers"))))
+                                         (core-info hctx (format nil "event_probe_servers:~A" (core-join (map 'list (lambda (s) (core-py-str (pig:jget s "name"))) (pig:jget data "servers"))))))
+                                       (let ((queued (gethash name results)))
+                                         (when queued (setf (gethash name results) (cdr queued)) (car queued)))))
+                             (gethash name offs)))))
+      (pig:command ext "event_probe_off" "Unsubscribe the event_probe_on handlers of the event named by the argument"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (dolist (off (reverse (gethash name offs))) (funcall off))
+                       (remhash name offs))))
+      (pig:command ext "event_result_probe" "Subscribe to an event with a handler that returns the given JSON"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name raw) (split-first args)
+                       (let ((result (pig:from-json raw))) (pig:on ext name (lambda (hctx data) (declare (ignore hctx data)) result))))))
+      (pig:command ext "event_payload_probe" "Subscribe and report the payload of the event named by the argument"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (pig:on ext name (lambda (hctx data) (core-info hctx (format nil "event_payload:~A:~A" name (pig:to-json data))) nil)))))
+      (pig:command ext "event_isolation_probe" "Subscribe two handlers that report the nested marker they received and then write sentinels into it"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (flet ((source (data) (let ((entries (pig:jref data "context" "contextEntries"))) (and entries (plusp (length entries)) (pig:jget (aref entries 0) "sourceEntry")))))
+                         (pig:on ext name (lambda (hctx data)
+                                            (let ((container (source data)))
+                                              (core-info hctx (format nil "event_isolation:A:~A:end" (pig:jget container "id")))
+                                              (setf (gethash "id" container) "SENTINEL-HANDLER-A")
+                                              (sb-thread:make-thread (lambda () (sleep 0.1) (setf (gethash "id" container) "SENTINEL-LATE-WRITER"))))
+                                            nil))
+                         (pig:on ext name (lambda (hctx data)
+                                            (core-info hctx (format nil "event_isolation:B:~A:end" (pig:jget (source data) "id")))
+                                            nil)))))))))
+
+(def-fixture "core-flags" (ext)
+  (loop for (name type default) in (list (list "flag-true" "boolean" t) (list "flag-false" "boolean" :false) (list "flag-string" "string" "default")
+                                         (list "flag-empty" "string" "") (list "flag-unset" "string" nil))
+        do (if default (pig:flag ext name :type type :default default) (pig:flag ext name :type type)))
+  (pig:command ext "flag-probe" "Report registered flag values"
+               (lambda (ctx args) (declare (ignore args))
+                 (core-info ctx (pig:to-json (map 'simple-vector (lambda (name) (or (pig:ctx-get-flag ctx name) :null))
+                                                  '("flag-true" "flag-false" "flag-string" "flag-empty" "flag-unset" "unregistered")))))))
+
+(def-fixture "core-state-push" (ext)
+  (pig:command ext "state-push-probe" "Read one replicated accessor from a thread between requests"
+               (lambda (ctx args)
+                 (let* ((request (pig:from-json args)) (kind (pig:jget request "kind")) (directory (pig:jget request "dir"))
+                        (read (cond ((equal kind "model") (lambda () (pig:ctx-model ctx)))
+                                    ((equal kind "session-name") (lambda () (pig:ctx-session-name ctx)))
+                                    ((and (> (length kind) 9) (string= "settings:" kind :end2 9))
+                                     (lambda () (pig:to-json (or (pig:jget (pig:ctx-get-settings ctx) (subseq kind 9)) :null))))
+                                    (t (error "state-push-probe: unsupported kind ~S" kind))))
+                        (guarded (lambda () (handler-case (funcall read) (error (e) (format nil "error:~A" e)))))
+                        (armed (funcall guarded)))
+                   (sb-thread:make-thread
+                    (lambda ()
+                      (let ((current armed) (deadline (+ (get-internal-real-time) (* 5 internal-time-units-per-second))))
+                        (loop while (and (equal current armed) (< (get-internal-real-time) deadline)) do (sleep 0.002) (setf current (funcall guarded)))
+                        (let* ((name (substitute #\_ #\: kind)) (path (format nil "~A/state-push-~A" directory name)) (temp (concatenate 'string path ".tmp")))
+                          (with-open-file (out temp :direction :output :if-exists :supersede :external-format :utf-8)
+                            (write-string (concatenate 'string armed "=>" current) out))
+                          (rename-file temp path))))))
+                 nil)))

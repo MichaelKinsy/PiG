@@ -70,7 +70,7 @@ func TestConformance_ExtensionAPIEventSubscriptions(t *testing.T) {
 	if len(piOnEvents) != len(slices.Compact(slices.Sorted(slices.Values(piOnEvents)))) {
 		t.Fatalf("the list names an event twice: %v", piOnEvents)
 	}
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
