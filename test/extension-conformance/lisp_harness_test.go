@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
@@ -49,11 +48,12 @@ func makeSubprocessLispHarness(t *testing.T) *harness {
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
 
-	ext, err := h.Load(context.Background(), lispFixtureConfig(t, "lisp-sdk-fixture", lispFixtureName))
-	if err != nil {
-		t.Fatalf("lisp subprocess Load: %v", err)
+	// Host.Load builds from source with the Go and Rust toolchains only; the Lisp image is built through the cell loader.
+	loaded, errs := h.LoadAll(context.Background(), []subprocess.ExtConfig{lispFixtureConfig(t, "lisp-sdk-fixture", lispFixtureName)})
+	if len(errs) > 0 || len(loaded) != 1 {
+		t.Fatalf("lisp subprocess load: %d extensions, errors %v", len(loaded), errs)
 	}
-	runner := inproc.NewRunner([]extension.Extension{*ext}, t.TempDir())
+	runner := inproc.NewRunner(loaded, t.TempDir())
 	bridge.SetUIPromptScope(runner)
 	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
 }
