@@ -462,7 +462,7 @@ once the response arrives. A responder that returns (values nil message) answers
                (lambda (ext ctx)
                  (declare (ignore ext))
                  (let* ((provider (pig:registry-get-registered-native-provider (pig:ctx-model-registry ctx) "tp"))
-                        (models (pig:provider-get-models provider))
+                        (models (funcall (pig:provider-get-models provider)))
                         (filtered (funcall (pig:provider-filter-models provider) (vector (pt-model "x") (pt-model "y")) :null))
                         (resolve (funcall (pig:api-key-auth-resolve (pig:provider-auth-api-key (pig:provider-auth provider)))
                                           (pig:make-api-key-auth-input
