@@ -48,7 +48,7 @@ func openSettledChat(t *testing.T) settledChat {
 	return settledChat{harness: harness, root: root, first: first, task: task}
 }
 
-// publishBatch commits a display-only write, which publishes one batch to every started event stream of the conversation.
+// publishBatch commits a display-only write, which publishes one batch to every started view watch of the conversation.
 func (chat settledChat) publishBatch(t *testing.T) {
 	t.Helper()
 	must(chat.root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: "note"}}))
@@ -95,12 +95,12 @@ var waitKinds = []struct {
 	}},
 }
 
-// spinningListener is an event stream whose listener is at work, not at a wait, until the test lets it go: it runs and yields, so
+// spinningListener is a view watch whose listener is at work, not at a wait, until the test lets it go: it runs and yields, so
 // its delivery goroutine has not entered the listener's first await, as the synchronous part of an upstream listener has not
 // completed.
 type spinningListener struct {
 	chat    settledChat
-	stream  *AgentEventStream
+	stream  ConversationWatch
 	release atomic.Bool
 	given   atomic.Int32
 }
@@ -109,8 +109,8 @@ func startSpinningListener(t *testing.T) *spinningListener {
 	t.Helper()
 	spinning := &spinningListener{chat: openSettledChat(t)}
 	t.Cleanup(func() { spinning.release.Store(true) })
-	spinning.stream = must(WatchEvents(testContext, spinning.chat.harness, spinning.chat.root.Id()))
-	spinning.stream.Start(func(_ context.Context, _ chord.NativeWatchChange[[]AgentEvent]) error {
+	spinning.stream = must(spinning.chat.root.Watch(testContext, nil))
+	spinning.stream.Start(func(_ context.Context, _ chord.WatchChange[ConversationView]) error {
 		for !spinning.release.Load() {
 			runtime.Gosched()
 		}
@@ -203,8 +203,8 @@ func TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds(t *test
 			chat := openSettledChat(t)
 			var held sync.Mutex
 			var given atomic.Int32
-			stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-			stream.Start(func(_ context.Context, _ chord.NativeWatchChange[[]AgentEvent]) error {
+			stream := must(chat.root.Watch(testContext, nil))
+			stream.Start(func(_ context.Context, _ chord.WatchChange[ConversationView]) error {
 				held.Lock()
 				defer held.Unlock()
 				given.Add(1)
@@ -232,8 +232,8 @@ func TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait(t *testing.T) {
 	chat := openSettledChat(t)
 	release, entered := make(chan struct{}), make(chan struct{})
 	var once sync.Once
-	stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-	stream.Start(func(_ context.Context, _ chord.NativeWatchChange[[]AgentEvent]) error {
+	stream := must(chat.root.Watch(testContext, nil))
+	stream.Start(func(_ context.Context, _ chord.WatchChange[ConversationView]) error {
 		once.Do(func() { close(entered) })
 		<-release
 		return nil
@@ -260,10 +260,10 @@ func TestListenersThatWaitForTheHarnessDoNotWaitForEachOther(t *testing.T) {
 	var waiting sync.WaitGroup
 	var failed atomic.Int32
 	for range 2 {
-		stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
+		stream := must(chat.root.Watch(testContext, nil))
 		waiting.Add(1)
 		var once sync.Once
-		stream.Start(func(_ context.Context, _ chord.NativeWatchChange[[]AgentEvent]) error {
+		stream.Start(func(_ context.Context, _ chord.WatchChange[ConversationView]) error {
 			once.Do(func() {
 				defer waiting.Done()
 				if err := chat.harness.WaitForIdle(testContext); err != nil {

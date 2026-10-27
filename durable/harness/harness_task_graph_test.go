@@ -597,7 +597,7 @@ func TestTaskGraphViewAdvancesWithTheConversationViewInsideTheOneStorageCommitTh
 	view := must(harness.ObserveConversation(testContext, root.Id(), observerFuncs[ConversationView]{
 		advance: func(context.Context, chord.WatchChange[ConversationView]) { record("view") },
 		end:     func(error) {},
-	}))
+	}, nil))
 	graph := must(harness.ObserveTaskGraph(testContext, observerFuncs[TaskGraph]{
 		advance: func(context.Context, chord.WatchChange[TaskGraph]) { record("graph") },
 		end:     func(error) {},

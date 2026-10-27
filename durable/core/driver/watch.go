@@ -414,8 +414,8 @@ func openDocWatch(ctx context.Context, s *coreSession, def *durable.AnyDocDefini
 	})
 }
 
-func (c *conversation) Watch(ctx context.Context) (harness.ConversationWatch, error) {
-	m, err := openWatch(ctx, c.s, map[string]any{"kind": "view", "conversationId": c.id}, typed[harness.ConversationView], viewReducer())
+func (c *conversation) Watch(ctx context.Context, window *harness.ConversationWindow) (harness.ConversationWatch, error) {
+	m, err := openWatch(ctx, c.s, viewTarget(c.id, window), typed[harness.ConversationView], viewReducer())
 	if err != nil || m == nil {
 		return nil, err
 	}
@@ -429,4 +429,24 @@ func (s *coreSession) WatchTaskGraph(ctx context.Context) (harness.TaskGraphWatc
 		return nil, err
 	}
 	return watchOf(ctx, m), nil
+}
+
+// viewTarget is the watch.open target of a conversation view: the window's fields as given, so the core applies Pi's defaults.
+func viewTarget(id durable.ConversationId, window *harness.ConversationWindow) map[string]any {
+	target := map[string]any{"kind": "view", "conversationId": id}
+	if window == nil {
+		return target
+	}
+	bounds := map[string]any{}
+	if window.From != nil {
+		bounds["from"] = *window.From
+	}
+	if window.Min != nil {
+		bounds["min"] = *window.Min
+	}
+	if window.Max != nil {
+		bounds["max"] = *window.Max
+	}
+	target["window"] = bounds
+	return target
 }

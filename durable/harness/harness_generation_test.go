@@ -253,7 +253,8 @@ func TestGeneration(t *testing.T) {
 		expectEqualJSON(t, must(harness.WaitForTask(testContext, taskId)).State.Outcome, `{"status":"aborted"}`)
 		// The earlier settlement stays; the run's own settlement leaves it unchanged.
 		expectSettled(t, must(submission.Status(testContext)), durable.SubmissionUnanswered, "withdrawn")
-		expectEqualJSON(t, live(t, harness, root), `{}`)
+		// A run ends without an answer even when its inputs were settled already.
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
 		closeHarness(t, harness)
 	})
 
@@ -275,8 +276,10 @@ func TestGeneration(t *testing.T) {
 		}
 		expectKinds(t, allEntries(t, root), "pi.user")
 		expectEqualJSON(t, conversationTasks(t, harness, root)[0].State, `{"status":"terminal","outcome":{"status":"failed","error":{"message":"Model faux/missing is not available","detail":{"reason":"no_model"}}}}`)
-		expectEqualJSON(t, live(t, harness, root), `{}`)
-		expectEqualJSON(t, live(t, harness, plain), `{}`)
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{
+			"taskId": conversationTasks(t, harness, root)[0].Id, "inputs": []durable.SubmissionId{unknown.Id}, "reason": "no_model", "detail": "Model faux/missing is not available",
+		}}))
+		expectMatch(t, live(t, harness, plain), `{"runFailure":{"reason":"no_model","detail":"No model is configured"}}`)
 		closeHarness(t, harness)
 	})
 
@@ -481,7 +484,7 @@ func TestGeneration(t *testing.T) {
 		if got, _ := textOf(converted); !strings.HasPrefix(got, partial) {
 			t.Fatalf("converted %q does not start with the partial %q", got, partial)
 		}
-		expectEqualJSON(t, live(t, harness, root), `{}`)
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
 		expectEqualJSON(t, must(harness.WaitForTask(testContext, taskId)).State.Outcome, `{"status":"aborted"}`)
 		closeHarness(t, harness)
 	})
@@ -507,7 +510,7 @@ func TestGeneration(t *testing.T) {
 		if cancelled := setup.Faux.(interface{ CancelledDeferred() []ai.DeferredHandle }).CancelledDeferred(); len(cancelled) != 1 {
 			t.Fatalf("cancelled deferred = %v, want one", cancelled)
 		}
-		expectEqualJSON(t, live(t, harness, root), `{}`)
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
 		closeHarness(t, harness)
 	})
 
@@ -537,7 +540,7 @@ func TestGeneration(t *testing.T) {
 		if !slices.ContainsFunc(setup.Reports.all(), func(err error) bool { return err.Error() == "cancel failed" }) {
 			t.Fatalf("reports = %v, want cancel failed", setup.Reports.all())
 		}
-		expectEqualJSON(t, live(t, harness, root), `{}`)
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
 		closeHarness(t, harness)
 	})
 
@@ -977,7 +980,10 @@ func TestGeneration(t *testing.T) {
 		if got, _ := textOf(converted); got != "partial" {
 			t.Fatalf("converted text = %q, want partial", got)
 		}
-		expectEqualJSON(t, live(t, harness, root), `{}`)
+		failure := live(t, harness, root).RunFailure
+		if failure == nil || failure.Reason != RunFaulted || !slices.Equal(failure.Inputs, []durable.SubmissionId{submission.Id()}) || failure.Detail == nil || !strings.Contains(*failure.Detail, "is not strict JSON") {
+			t.Fatalf("runFailure = %+v, want faulted with the strict JSON failure", failure)
+		}
 		state := conversationTasks(t, harness, root)[0].State
 		if state.Status != durable.TaskTerminal || state.Outcome.Status != durable.OutcomeFaulted {
 			t.Fatalf("state = %s", jsonText(t, state))
@@ -1028,7 +1034,7 @@ func TestGeneration(t *testing.T) {
 		}
 		expectEqualJSON(t, must(harness.WaitForTask(testContext, ids.taskId)).State.Outcome, `{"status":"orphaned","reason":"task_too_old"}`)
 		expectSettled(t, must(must(harness.Submission(testContext, ids.submissionId)).Status(testContext)), durable.SubmissionUnanswered, "task_too_old")
-		expectEqualJSON(t, live(t, harness, root), `{}`)
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": ids.taskId, "inputs": []durable.SubmissionId{ids.submissionId}, "reason": "orphaned", "detail": "task_too_old"}}))
 		closeHarness(t, harness)
 	})
 

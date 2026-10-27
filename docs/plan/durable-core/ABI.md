@@ -245,7 +245,7 @@ Host code reaches the core only through these channels. Every method of the faca
 | `waitForTask`, `watchDoc` and other observations | `api` request; the core answers when the awaited state is published, and `published` notices drive watches |
 | `createTask` | `tx` with a single `createTask` op; the host computes the definition's `initial(input)` before sending it |
 | `sleepUntil(until, checkpoint)` | `api` request; the core commits the task's sleeping state (`checkpoint` is its next state) and answers once it is committed; the task then holds no invocation, and its wake is a durable `timer` (class 1), or a `wake` notice when the host took `onWake` |
-| `Harness.wake()`, `Harness.retryTask(taskId)` | `api` request answered by `api_result` (`wake`: at once; `retryTask`: once the parked task's restart count is cleared and scheduling is enabled) |
+| `Harness.wake()` | `api` request answered by `api_result` (at once) |
 | `output`, `diagnostic`, `details` | `tool_progress` (`details` waits for `progress_ack`) |
 | `env` | the `env` effect, issued by the core before `execute` (§8.4) |
 | `report` | handled in the host; the core's own reports arrive as `report` notices |
@@ -276,7 +276,6 @@ An `api` event is `u32 requestId` then JSON `{op, ...args}`. The answer is an `a
 | `agent` | conversationId | the resolved agent | at once |
 | `sleepUntil` | taskId, until, checkpoint | null | once the sleep is committed (the task's sleeping state, `checkpoint` its next state); the task then holds no invocation |
 | `wake` | none | `{active, at?}`, the Harness's wake | at once; a `harness`-mode core only |
-| `retryTask` | taskId | null | once a parked task's restart count is cleared and scheduling is enabled; an error for an unknown task |
 | `usage` | none | the UsageState of the Session | at once |
 | `taskGraph` | none | the TaskGraph | at once |
 

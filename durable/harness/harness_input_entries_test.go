@@ -9,11 +9,10 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/chord"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -302,15 +301,7 @@ func TestDataOnlyWrites(t *testing.T) {
 		var mu sync.Mutex
 		setup.Faux.SetResponses([]ai.FauxResponseStep{requestLog(&requests, &mu, holdStep()), requestLog(&requests, &mu, fauxAnswer("done"))})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		var events []AgentEvent
-		stream := must(WatchEvents(testContext, harness, root.Id()))
-		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-			batch := change.Value
-			mu.Lock()
-			events = append(events, batch...)
-			mu.Unlock()
-			return nil
-		})
+		history := viewHistory(t, harness, root.Id())
 		input := submit(t, root, inputDraft("a"))
 		toolRunning(t, harness, root)
 		chat := durable.EntryDraft{Kind: "chat.message", Data: map[string]any{"author": "bob", "text": "lunch?"}}
@@ -326,32 +317,19 @@ func TestDataOnlyWrites(t *testing.T) {
 			t.Fatalf("inbox = %v, want empty", items)
 		}
 		expectEqualJSON(t, dataTranscript(t, allEntries(t, root)), `["pi.user|a","pi.assistant","chat.message|{\"author\":\"bob\",\"text\":\"lunch?\"}"]`)
-		count := func(kind string) int {
-			mu.Lock()
-			defer mu.Unlock()
-			n := 0
-			for _, event := range events {
-				if event.EventType() == kind {
-					n++
-				}
-			}
-			return n
-		}
-		waitFor(t, func() bool { return count("entry_appended") > 0 })
-		mu.Lock()
-		var appended *EntryAppendedEvent
-		for _, event := range events {
-			if each, ok := event.(EntryAppendedEvent); ok {
-				appended = &each
+		// The view shows it while the run goes on.
+		var shown *ConversationView
+		for _, view := range history.All() {
+			if slices.ContainsFunc(view.Entries, func(entry durable.EntryRecord) bool { return entry.Kind == "chat.message" }) {
+				shown = &view
 				break
 			}
 		}
-		mu.Unlock()
-		if appended == nil || appended.Entry.Kind != "chat.message" || appended.Entry.Id != *settled.Entry {
-			t.Fatalf("entry_appended = %+v, want the chat.message entry %d", appended, *settled.Entry)
+		if shown == nil || shown.Entries[len(shown.Entries)-1].Kind != "chat.message" || shown.Entries[len(shown.Entries)-1].Id != *settled.Entry {
+			t.Fatalf("view = %+v, want the chat.message entry %d last", shown, *settled.Entry)
 		}
-		if count("run_end") != 0 {
-			t.Fatal("the run ended")
+		if run := liveValue(t, *shown).Run; run == nil || !slices.Equal(run.Inputs, []durable.SubmissionId{input.Id()}) {
+			t.Fatalf("run = %+v, want the run of %d", run, input.Id())
 		}
 		// A repeated request ID returns the same write without a second entry.
 		if again := submit(t, root, draft); again.Id() != write.Id() {
@@ -365,7 +343,7 @@ func TestDataOnlyWrites(t *testing.T) {
 		got := requests
 		mu.Unlock()
 		expectEqualJSON(t, got, `[["system:","user:a"],["system:","user:a","assistant:","toolResult:held"]]`)
-		_, _ = stream.Stop()
+		history.Detach()
 		closeHarness(t, harness)
 	})
 
@@ -473,7 +451,7 @@ func TestDataOnlyWrites(t *testing.T) {
 		if ids := inboxIds(inboxItemsOf(t, harness, root)); len(ids) != 1 || ids[0] != f.Id() {
 			t.Fatalf("inbox = %v, want [%d]", ids, f.Id())
 		}
-		expectEqualJSON(t, liveOf(t, harness, root.Id()), `{}`)
+		expectMatch(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{"runFailure": map[string]any{"inputs": []durable.SubmissionId{input.Id()}, "reason": "model_error", "detail": "invalid request"}}))
 		if calls := setup.Faux.CallCount(); calls != 1 {
 			t.Fatalf("calls = %d, want 1", calls)
 		}

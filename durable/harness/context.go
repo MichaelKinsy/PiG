@@ -491,32 +491,6 @@ func leadWithSystem(messages []ai.Message, baseline bool) []ai.Message {
 	return append(led, messages[index+1:]...)
 }
 
-// ActiveEntries returns the raw active entries within captured bounds, without deriving model context. The entries are
-// the caller's own.
-func ActiveEntries(ctx context.Context, storage durable.Storage, conversationId durable.ConversationId, bounds *ContextBounds) ([]durable.EntryRecord, error) {
-	entries, err := activeEntries(ctx, storage, conversationId, bounds)
-	if err != nil || !sharesEntries(storage) {
-		return entries, err
-	}
-	owned := make([]durable.EntryRecord, len(entries))
-	for index := range entries {
-		owned[index] = detach.Entry(entries[index])
-	}
-	return owned, nil
-}
-
-// activeEntries is ActiveEntries; the entries may share memory with storage, so callers must not modify them.
-func activeEntries(ctx context.Context, storage durable.Storage, conversationId durable.ConversationId, bounds *ContextBounds) ([]durable.EntryRecord, error) {
-	if bounds == nil {
-		return []durable.EntryRecord{}, nil
-	}
-	scanned, err := scanRange(ctx, storage, conversationId, bounds)
-	if err != nil {
-		return nil, err
-	}
-	return selectActive(bounds.Head, scanned), nil
-}
-
 // scanRange returns the visible entries from the head marker's head, or transcript start, through the tail, oldest first.
 func scanRange(ctx context.Context, storage durable.Storage, conversationId durable.ConversationId, bounds *ContextBounds) ([]durable.EntryRecord, error) {
 	query := durable.EntryQuery{MaxEntryId: new(bounds.Tail)}

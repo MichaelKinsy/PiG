@@ -42,7 +42,6 @@ const (
 	blockedMissingTask     = "missing_task"
 	blockedTaskTooOld      = "task_too_old"
 	blockedMigrationFailed = "migration_failed"
-	blockedRestartLimit    = "restart_limit"
 )
 
 type invocationMode int
@@ -229,6 +228,10 @@ type TaskSchedulerOptions struct {
 	// the seal have settled (BeforeClose of the Session).
 	WriteAtClose func(writes func() []durable.StorageWrite) error
 	Report       func(ctx context.Context, err error, info durable.ReportInfo)
+	// LimitsRestarts reports the task kinds whose run phases end the task themselves once it was cut off
+	// settings.restartLimit times (the built-in tasks, from TaskRecord.Restarts); the scheduler ends a task of any other
+	// kind faulted instead.
+	LimitsRestarts func(kind string) bool
 	// SettleOutcome is the Harness cleanup staged in the commit that makes an outcome the scheduler wrote itself
 	// terminal.
 	SettleOutcome func(tx durable.Tx, record anyTaskRecord, outcome SchedulerOutcome) error
@@ -320,9 +323,6 @@ type TaskScheduler struct {
 	// snapshotReported is set once a registry snapshot that panicked for the task graph was reported; it is read per
 	// record, so only once.
 	snapshotReported bool
-	// parkedTasks holds the tasks a pass left out as parked; each pass checks them again, as settings.restartLimit may
-	// have risen.
-	parkedTasks *orderedSet[durable.TaskId]
 	// sealedRunning holds the tasks with an invocation when the close began: the ones Join stops, which an invocation
 	// ending on the seal's own rejections must not drop (Pi's join reads them in the microtask that follows the seal).
 	sealedRunning map[durable.TaskId]struct{}
@@ -409,7 +409,6 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 		finalizeChecks:      newOrderedSet[durable.TaskId](),
 		waiters:             map[durable.TaskId]*orderedSet[durable.TaskId]{},
 		sleeping:            newOrderedSet[durable.TaskId](),
-		parkedTasks:         newOrderedSet[durable.TaskId](),
 		blockedListeners:    map[int]func(){},
 		dropQueue:           newOrderedSet[treeNode](),
 		unsubscribeRegistry: func() {},
@@ -440,9 +439,9 @@ func (s *TaskScheduler) liveValuesLocked() []anyTaskRecord {
 	return records
 }
 
-// Open loads live tasks and changes surviving running tasks back to pending, counting the restart. It dispatches nothing. A
-// task that reaches the restart limit this way is parked and reported. Read-only, it only loads them: a running task stays
-// as committed, running in another process.
+// Open loads live tasks and changes surviving running tasks back to pending, counting the restart. It dispatches nothing;
+// a task cut off settings.restartLimit times ends when it is next reserved. Read-only, it only loads them: a running task
+// stays as committed, running in another process.
 func (s *TaskScheduler) Open(ctx context.Context) error {
 	s.options.Session.ObserveCommits(func(_ context.Context, publication session.ObservedCommit) { s.observe(publication) })
 	s.options.Session.SubscribeClose(s.seal)
@@ -450,10 +449,7 @@ func (s *TaskScheduler) Open(ctx context.Context) error {
 		s.notifyBlocked()
 		s.kick()
 	})
-	limit := s.restartLimit()
-	var parked []anyTaskRecord
 	_, err := s.options.Session.CommitWith(ctx, func(tx *session.Transaction) (any, error) {
-		parked = nil
 		// Every table read before the first write.
 		var scans [][]anyTaskRecord
 		for _, status := range liveTaskStatuses {
@@ -484,9 +480,6 @@ func (s *TaskScheduler) Open(ctx context.Context) error {
 					if err := setTask(tx, pending); err != nil {
 						return nil, err
 					}
-					if float64(restarts) >= limit && !record.AbortRequested {
-						parked = append(parked, record)
-					}
 				}
 				if record.State.Status == durable.TaskWaiting && record.State.Policy == durable.JoinFailFast {
 					s.failFastChecks[record.Id] = true
@@ -497,10 +490,6 @@ func (s *TaskScheduler) Open(ctx context.Context) error {
 	}, session.TransactionScope{})
 	if err != nil {
 		return err
-	}
-	for _, record := range parked {
-		restarts := record.Restarts + 1
-		s.options.Report(context.Background(), fmt.Errorf("Task %d (%s) was cut off %d times without progress; it is parked until retryTask()", record.Id, record.Kind, restarts), s.aboutRecord(durable.ReportTaskParked, record))
 	}
 	if s.options.ReadOnly {
 		return nil
@@ -514,35 +503,6 @@ func (s *TaskScheduler) Open(ctx context.Context) error {
 	return nil
 }
 
-// Retry runs a task parked by the restart limit again: it clears its restart count and enables scheduling. It does nothing
-// for a task that is not parked, and fails for an unknown one.
-func (s *TaskScheduler) Retry(ctx context.Context, id durable.TaskId) error {
-	_, err := s.options.Session.CommitWith(ctx, func(tx *session.Transaction) (any, error) {
-		current, err := tx.Task(id)
-		if err != nil {
-			return nil, err
-		}
-		if current == nil {
-			return nil, fmt.Errorf("Task %d does not exist", id)
-		}
-		status := current.State.Status
-		if status == durable.TaskTerminal || status == durable.TaskCompleting {
-			return nil, nil
-		}
-		s.mu.Lock()
-		parked := s.parkedLocked(current.AbortRequested, current.Restarts)
-		s.mu.Unlock()
-		if !parked {
-			return nil, nil
-		}
-		return nil, setTask(tx, progressed(*current))
-	}, session.TransactionScope{})
-	if err != nil {
-		return err
-	}
-	return s.TryResume()
-}
-
 // BlockedSubject is what BlockedReason reads of a task: the task graph keeps only this of each record.
 type BlockedSubject struct {
 	Id             durable.TaskId
@@ -550,17 +510,16 @@ type BlockedSubject struct {
 	Version        int
 	AbortRequested bool
 	AbortReason    durable.TaskAbortReason
-	Restarts       int
 	Status         durable.TaskStatus
 }
 
 // BlockedSubjectOf is the part of a record BlockedReason reads.
 func BlockedSubjectOf(record anyTaskRecord) BlockedSubject {
-	return BlockedSubject{Id: record.Id, Kind: record.Kind, Version: record.Version, AbortRequested: record.AbortRequested, AbortReason: record.AbortReason, Restarts: record.Restarts, Status: record.State.Status}
+	return BlockedSubject{Id: record.Id, Kind: record.Kind, Version: record.Version, AbortRequested: record.AbortRequested, AbortReason: record.AbortReason, Status: record.State.Status}
 }
 
-// BlockedReason is why a live task cannot run here, if it cannot: its definition (missing_task, task_too_old,
-// migration_failed) or the restart limit (restart_limit); empty when it can. A running task, an abort-marked one, and
+// BlockedReason is why a live task cannot run here, if it cannot: its definition is missing (missing_task), too old
+// (task_too_old), or failed to migrate (migration_failed); empty when it can. A running task, an abort-marked one, and
 // one holding its outcome are never blocked.
 func (s *TaskScheduler) BlockedReason(record BlockedSubject) durable.BlockedReason {
 	s.mu.Lock()
@@ -572,9 +531,6 @@ func (s *TaskScheduler) BlockedReason(record BlockedSubject) durable.BlockedReas
 	// An abort request runs its handler or orphans the task; a restart mark waits for the definition, blocked.
 	if record.AbortRequested && record.AbortReason == "" {
 		return ""
-	}
-	if s.parkedLocked(record.AbortRequested, record.Restarts) {
-		return durable.BlockedRestartLimit
 	}
 	snapshot := s.snapshotOrReportLocked()
 	if snapshot == nil {
@@ -693,9 +649,6 @@ func (s *TaskScheduler) wakeAtLocked(now float64) Wake {
 			continue
 		}
 		if active {
-			continue
-		}
-		if s.parkedLocked(record.AbortRequested, record.Restarts) {
 			continue
 		}
 		// An abort invocation waits for the live work below it, which counts itself.
@@ -1841,7 +1794,6 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 		// Every pass picks up sleeps whose time has come: a pass started by any change may be the first to run after a
 		// deadline, and the wake it schedules no longer keeps a timer for a due sleep.
 		s.wakeDueLocked()
-		s.unparkRaisedLocked()
 		// Taken once per pass, and only when some task is a candidate.
 		var snapshot durable.RegistrySnapshot
 		for _, id := range s.runnable.Values() {
@@ -1864,16 +1816,6 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 				s.runnable.Delete(id)
 				continue
 			}
-			// It returns when Retry clears its restart count, or at a pass after settings.restartLimit rose.
-			if s.parkedLocked(record.AbortRequested, record.Restarts) {
-				s.runnable.Delete(id)
-				// Newly parked without a commit, as after a lowered limit: the graph must hear it.
-				if !s.parkedTasks.Has(id) {
-					s.notifyBlockedLocked()
-				}
-				s.parkedTasks.Add(id)
-				continue
-			}
 			mode := modeRun
 			if record.AbortRequested {
 				mode = modeAbort
@@ -1885,9 +1827,14 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 				s.scheduleReconcileLocked()
 				continue
 			}
-			// An abort handler cut off restartLimit times in a row would run forever; nothing is left to park it for.
-			if mode == modeAbort && float64(record.Restarts) >= s.restartLimit() {
-				message := fmt.Sprintf("Abort handler of task %d (%s) was cut off %d times", id, record.Kind, record.Restarts)
+			// Work cut off restartLimit times in a row would run forever: an abort handler, or a phase of a kind that does not
+			// end itself at the limit, ends the task faulted instead. The settings are read only for a task that was cut off at
+			// all.
+			if cutOff := record.Restarts > 0 && float64(record.Restarts) >= s.restartLimit(); cutOff && (mode == modeAbort || !s.options.LimitsRestarts(record.Kind)) {
+				message := fmt.Sprintf("Task %d (%s) was cut off %d times without progress", id, record.Kind, record.Restarts)
+				if mode == modeAbort {
+					message = fmt.Sprintf("Abort handler of task %d (%s) was cut off %d times", id, record.Kind, record.Restarts)
+				}
 				if err := s.terminateLocked(tx, record, anyOutcome{Status: durable.OutcomeFaulted, Error: &durable.TaskOutcomeError{Message: message, Detail: map[string]any{"reason": durable.ReasonRestartLimit}}}); err != nil {
 					return nil, err
 				}
@@ -2084,9 +2031,6 @@ func (s *TaskScheduler) inspectTaskLocked(record anyTaskRecord, snapshot durable
 	}
 	if s.notDueLocked(record) {
 		return TaskInspectionState{Kind: TaskInspectionSleeping, Until: *record.State.Until}
-	}
-	if s.parkedLocked(record.AbortRequested, record.Restarts) {
-		return TaskInspectionState{Kind: TaskInspectionBlocked, Reason: blockedRestartLimit}
 	}
 	found := s.fitLocked(record.Id, record.Version, snapshot.Task(record.Kind))
 	if found.reason != "" {
@@ -2894,6 +2838,7 @@ func (hold *lineHold) release() {
 func (runtime *taskRuntime) Commit(ctx context.Context, change func(tx durable.Tx, current durable.ErasedRunningTask) (*durable.NextTaskState[durable.JsonValue, durable.JsonValue], error), options ...durable.CommitOptions) error {
 	var checkpoint string
 	var committed bool
+	var interrupted *interruption
 	_, err := gated(ctx, runtime, func(tx *session.Transaction, current anyTaskRecord) (struct{}, error) {
 		next, err := change(tx, current)
 		if err != nil || next == nil {
@@ -2914,8 +2859,19 @@ func (runtime *taskRuntime) Commit(ctx context.Context, change func(tx durable.T
 				checkpoint, committed = after, true
 			}
 		}
+		// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal.
+		if next.Status == durable.TaskTerminal && next.Outcome != nil && next.Outcome.Status == durable.OutcomeFailed && next.Outcome.Error != nil {
+			if reason := interruptionOf(next.Outcome.Error); reason != "" {
+				interrupted = &interruption{message: next.Outcome.Error.Message, reason: reason, restarts: current.Restarts, record: current}
+			}
+		}
 		return struct{}{}, nil
 	}, options...)
+	if err == nil && interrupted != nil {
+		info := runtime.scheduler.aboutRecord(durable.ReportTaskInterrupted, interrupted.record)
+		info.Reason, info.Restarts = interrupted.reason, interrupted.restarts
+		runtime.scheduler.options.Report(ctx, errors.New(interrupted.message), info)
+	}
 	if err == nil && committed {
 		if span := runtime.invocation.currentSpan(); span != telemetry.NoopTelemetryContext {
 			span.AddEvent("pi.durable.checkpoint", telemetry.SpanAttributes{telemetry.Attr("phase", checkpoint)})
@@ -3406,6 +3362,29 @@ func sameState(left, right anyTaskState) bool {
 	return leftErr == nil && rightErr == nil && jsonEqual(leftValue, rightValue)
 }
 
+// interruption is a failed outcome that says crashes ended the task.
+type interruption struct {
+	message  string
+	reason   string
+	restarts int
+	record   anyTaskRecord
+}
+
+// interruptionOf is why a failed outcome's error says crashes ended the task (detail.reason), if it does.
+func interruptionOf(err *durable.TaskOutcomeError) string {
+	var reason any
+	switch detail := err.Detail.(type) {
+	case map[string]any:
+		reason = detail["reason"]
+	case durable.JsonObject:
+		reason, _ = detail.Get("reason")
+	}
+	if reason == durable.ReasonRestartLimit || reason == durable.ReasonInterrupted {
+		return reason.(string)
+	}
+	return ""
+}
+
 // progressed is the record without its restart count, as after a state the task committed.
 func progressed(record anyTaskRecord) anyTaskRecord {
 	record.Restarts = 0
@@ -3681,32 +3660,6 @@ func (s *TaskScheduler) aboutRecord(reportType durable.ReportType, record anyTas
 		info.Extension = installerOf(snapshot, snapshot.Task(record.Kind))
 	}()
 	return info
-}
-
-// parkedLocked reports a task cut off restartLimit times in a row; an abort mark still runs its abort handler.
-func (s *TaskScheduler) parkedLocked(abortRequested bool, restarts int) bool {
-	return !abortRequested && restarts > 0 && float64(restarts) >= s.restartLimit()
-}
-
-// unparkRaisedLocked makes the parked tasks that a raised settings.restartLimit no longer parks candidates again, and
-// tells the graph.
-func (s *TaskScheduler) unparkRaisedLocked() {
-	unparked := false
-	for _, id := range s.parkedTasks.Values() {
-		record, live := s.live[id]
-		if live && s.parkedLocked(record.AbortRequested, record.Restarts) {
-			continue
-		}
-		s.parkedTasks.Delete(id)
-		if !live {
-			continue
-		}
-		s.runnable.Add(id)
-		unparked = true
-	}
-	if unparked {
-		s.notifyBlockedLocked()
-	}
 }
 
 // restartLimit is settings.restartLimit, or the default when the host's settings panic.

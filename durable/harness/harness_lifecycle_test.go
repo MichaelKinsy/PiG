@@ -391,7 +391,7 @@ func TestHarnessClose(t *testing.T) {
 		if err != nil || docWatch == nil {
 			t.Fatalf("doc watch %v", err)
 		}
-		viewWatch, err := root.Watch(testContext)
+		viewWatch, err := root.Watch(testContext, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -512,7 +512,7 @@ func TestHarnessClose(t *testing.T) {
 		find = store.holdFindDocument()
 		cancelled, cancel = cancelledContext(errors.New("cancelled"))
 		viewWatch := asyncErr(func() error {
-			_, err := root.Watch(cancelled)
+			_, err := root.Watch(cancelled, nil)
 			return err
 		})
 		_ = find.entered.wait(testContext)
@@ -521,13 +521,13 @@ func TestHarnessClose(t *testing.T) {
 		_, err = viewWatch.wait()
 		expectError(t, err, "cancelled")
 		// No observer kept the mount: the next observer builds a new one, and the one after that another.
-		first, err := root.Watch(testContext)
+		first, err := root.Watch(testContext, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		firstValue := first.Value()
 		_, _ = first.Stop()
-		second, err := root.Watch(testContext)
+		second, err := root.Watch(testContext, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -597,7 +597,7 @@ func TestHarnessClose(t *testing.T) {
 			{"reset", func() error { return root.Reset(testContext, nil) }},
 			{"abort", func() error { return root.Abort(testContext, nil) }},
 			{"conversationIdle", func() error { return root.WaitForIdle(testContext) }},
-			{"watch", func() error { _, err := root.Watch(testContext); return err }},
+			{"watch", func() error { _, err := root.Watch(testContext, nil); return err }},
 			{"watchTaskGraph", func() error { _, err := harness.WatchTaskGraph(testContext); return err }},
 			{"status", func() error { _, err := submission.Status(testContext); return err }},
 			{"wait", func() error { _, err := submission.Wait(testContext); return err }},
@@ -712,7 +712,7 @@ func TestHarnessClose(t *testing.T) {
 				watch, err := harness.WatchDocErased(testContext, notes)
 				return watch != nil, err
 			},
-			"watch":          func() (bool, error) { _, err := root.Watch(testContext); return true, err },
+			"watch":          func() (bool, error) { _, err := root.Watch(testContext, nil); return true, err },
 			"watchTaskGraph": func() (bool, error) { _, err := harness.WatchTaskGraph(testContext); return true, err },
 		}
 		queued := map[string]*future[string]{}
@@ -835,7 +835,7 @@ func TestSchedulingOnAPausedHarness(t *testing.T) {
 		check(err)
 		_, err = root.Entries(testContext, durable.EntryQuery{}, 10, nil)
 		check(err)
-		viewWatch, err := root.Watch(testContext)
+		viewWatch, err := root.Watch(testContext, nil)
 		check(err)
 		_, err = viewWatch.Stop()
 		check(err)

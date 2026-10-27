@@ -285,13 +285,16 @@ type HarnessSettings struct {
 	// default, ten minutes; 0 drops one right after use; +Inf keeps them. Anything else that is not a number of
 	// milliseconds, 0 or more, means the default.
 	DocumentRetentionMs *float64
-	// AfterFailedRun is what a run that fails (model_error, no_model) does with the inputs queued behind it: keep leaves
+	// AfterFailedRun is what a run that fails (model_error, no_model, interrupted, restart_limit) does with the inputs queued behind it: keep leaves
 	// them queued until the next input or queued write, continue starts the next run with them, as an answer would, and
 	// withdraw settles them unanswered with reason run_failed. Empty selects keep.
 	AfterFailedRun durable.AfterFailedRun
 	// RestartLimit is how many times in a row a task may be cut off by a crash, eviction, or reset (a close does not
-	// count) without changing its state before it is parked as blocked (restart_limit) instead of run again;
-	// Harness.RetryTask runs it again. Nil selects the default, 5; +Inf never parks.
+	// count) without changing its state before it ends instead of running again: a tool call with an error result, a
+	// compaction failed into pi.live.compactionFailure, a run with pi.live.runFailure reason restart_limit, any other task
+	// faulted with detail {reason: "restart_limit"}. A generation's request or poll the host died during is a failed
+	// attempt under retry first; the limit bounds it only when charging that attempt keeps being cut off. Nil selects the
+	// default, 5; +Inf never ends a task for it.
 	RestartLimit *float64
 }
 

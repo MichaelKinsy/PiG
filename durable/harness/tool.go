@@ -189,6 +189,9 @@ func toolCallPhase(ctx context.Context, task toolRecord, runtime toolRuntime) er
 	if err != nil {
 		return err
 	}
+	if CutOffTooOften(task.Restarts, runtime) {
+		return toolEndCutOff(ctx, runtime, task, call)
+	}
 	tool, err := findTool(ctx, runtime, task.Input, call.Name)
 	if err != nil {
 		return err
@@ -295,6 +298,9 @@ func toolExecutePhase(ctx context.Context, task toolRecord, runtime toolRuntime)
 		return err
 	}
 	if checkpoint.Replay == durable.ReplaySafe && tool != nil && tool.Replay == durable.ReplaySafe {
+		if CutOffTooOften(task.Restarts, runtime) {
+			return toolEndCutOff(ctx, runtime, task, call)
+		}
 		// The rerun reports from scratch; clear what the interrupted attempt published.
 		if err := runtime.Commit(ctx, func(tx durable.Tx, _ toolRecord) (*toolNext, error) {
 			live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
@@ -315,6 +321,17 @@ func toolExecutePhase(ctx context.Context, task toolRecord, runtime toolRuntime)
 	ending := toolEnding{status: durable.OutcomeFailed, message: message}
 	return settleTool(ctx, runtime, task.Input, call, ending, func(slot *ToolSlot) durable.ToolExecutionResult {
 		return fromSlot(slot, "interrupted", message)
+	})
+}
+
+// toolEndCutOff ends a call cut off settings.restartLimit times in a row (spec section 5.4) with an error result, built
+// from the slot like an interrupted call's, instead of running it again. failed, like an interruption, so its owned work
+// is aborted.
+func toolEndCutOff(ctx context.Context, runtime toolRuntime, task toolRecord, call ai.ToolCall) error {
+	message := fmt.Sprintf("Tool %s was interrupted %s; it is not run again", call.Name, CutOffCount(task.Restarts))
+	ending := toolEnding{status: durable.OutcomeFailed, message: message, reason: durable.ReasonRestartLimit}
+	return settleTool(ctx, runtime, task.Input, call, ending, func(slot *ToolSlot) durable.ToolExecutionResult {
+		return fromSlot(slot, "restart_limit", message)
 	})
 }
 
@@ -509,6 +526,8 @@ type toolReported struct {
 type toolEnding struct {
 	status  durable.TaskOutcomeStatus
 	message string
+	// reason is the detail.reason of a failed outcome, when the failure has a fixed one.
+	reason string
 }
 
 var toolCompleted = toolEnding{status: durable.OutcomeCompleted}
@@ -1139,6 +1158,9 @@ func settleTool(ctx context.Context, runtime toolRuntime, input ToolTaskInput, c
 		outcome := durable.TaskOutcome[ToolTaskResult]{Status: ending.status, Result: &settled}
 		if ending.status == durable.OutcomeFailed {
 			outcome.Error = &durable.TaskOutcomeError{Message: ending.message}
+			if ending.reason != "" {
+				outcome.Error.Detail = map[string]any{"reason": ending.reason}
+			}
 		}
 		return &toolNext{Status: durable.TaskTerminal, Outcome: &outcome}, nil
 	})

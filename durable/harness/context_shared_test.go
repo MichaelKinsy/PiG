@@ -178,7 +178,7 @@ func TestConversationViewEntriesAreDetachedFromTheStoredContext(t *testing.T) {
 		}
 	}
 	pristine := must(root.Context(testContext, nil))
-	watch := must(root.Watch(testContext))
+	watch := must(root.Watch(testContext, nil))
 	for _, entry := range watch.Value().Entries {
 		damageMessages(entry.Model)
 	}
@@ -191,7 +191,7 @@ func TestConversationViewEntriesAreDetachedFromTheStoredContext(t *testing.T) {
 	mustClose(t, harness)
 }
 
-// DeriveContext and ActiveEntries are exported: what they return is the caller's own, whatever the storage retains.
+// DeriveContext is exported: what it returns is the caller's own, whatever the storage retains.
 func TestExportedContextReadsAreDetachedFromTheStorage(t *testing.T) {
 	s := newCacheScenario(t, 5)
 	for range 3 {
@@ -201,9 +201,6 @@ func TestExportedContextReadsAreDetachedFromTheStorage(t *testing.T) {
 	// A deep copy, so damage that reached the storage cannot reach the expectation too.
 	pristine := detach.ContextView(must(DeriveContext(testContext, s.storage, 1, bounds)))
 	damageView(must(DeriveContext(testContext, s.storage, 1, bounds)))
-	for _, entry := range must(ActiveEntries(testContext, s.storage, 1, bounds)) {
-		damageMessages(entry.Model)
-	}
 	if again := must(DeriveContext(testContext, s.storage, 1, bounds)); !reflect.DeepEqual(again, pristine) {
 		t.Fatal("a caller's changes to an exported read reached the storage")
 	}

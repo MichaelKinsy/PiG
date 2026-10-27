@@ -313,10 +313,7 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		if err := ownConversation(t, harness, childId).WaitForIdle(testContext); err != nil {
 			t.Fatal(err)
 		}
-		live, err := harness.SnapshotErased(testContext, LiveDoc, childId)
-		if err != nil || live.Len() != 0 {
-			t.Fatalf("child live document %v %v, want {}", live, err)
-		}
+		expectOnlyRunFailure(t, harness, childId, RunAborted)
 		inspection, err := harness.Inspect(testContext)
 		if err != nil {
 			t.Fatal(err)

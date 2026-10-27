@@ -349,18 +349,6 @@ func (s *coreSession) AbortSubmission(ctx context.Context, id durable.Submission
 	return result, json.Unmarshal(raw, &result)
 }
 
-// RetryTask runs a task parked by settings.restartLimit again: it clears its restart count and enables scheduling
-// (scheduler.ts retry). It does nothing for a task that is not parked, and fails for an unknown one.
-func (s *coreSession) RetryTask(ctx context.Context, id durable.TaskId) error {
-	release, err := s.admit()
-	if err != nil {
-		return err
-	}
-	defer release()
-	_, err = s.client.API(ctx, "retryTask", map[string]any{"taskId": id})
-	return err
-}
-
 // AbortTask commits the abort mark and schedules the abort invocation.
 func (s *coreSession) AbortTask(ctx context.Context, id durable.TaskId) (string, error) {
 	return s.abortTask(ctx, id, false)

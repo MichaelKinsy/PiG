@@ -12,12 +12,11 @@ import (
 	"math"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/MichaelKinsy/PiG/chord"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -1809,7 +1808,7 @@ func TestToolRounds(t *testing.T) {
 			calls = append(calls, result.ToolCallID)
 		}
 		expectEqualJSON(t, calls, `["c1","c2"]`)
-		expectEqualJSON(t, liveOf(t, harness, root.Id()), `{}`)
+		expectEqualJSON(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": generation, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
 		expectTaskOutcomeKind(t, harness, generation, "aborted")
 		closeHarness(t, harness)
 	})
@@ -1848,7 +1847,7 @@ func TestToolRounds(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	t.Run("ends a turn at the generation's hold, before its successor's turn starts", func(t *testing.T) {
+	t.Run("hands run control to the successor while the generation holds, and keeps it in the graph until it ends", func(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
 		addTask(t, setup.Registry, nodeTask.Erased())
@@ -1864,37 +1863,42 @@ func TestToolRounds(t *testing.T) {
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCalls([2]string{"noop", "c1"}), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		opened = harness
-		stream := must(WatchEvents(testContext, harness, root.Id()))
-		var mu sync.Mutex
-		turns := []string{}
-		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-			batch := change.Value
-			mu.Lock()
-			for _, event := range batch {
-				if strings.HasPrefix(event.EventType(), "turn_") {
-					turns = append(turns, event.EventType())
-				}
-			}
-			mu.Unlock()
-			return nil
-		})
-		turnTypes := func() []string {
-			mu.Lock()
-			defer mu.Unlock()
-			return slices.Clone(turns)
-		}
+		graph := graphHistory(t, harness)
+		history := viewHistory(t, harness, root.Id())
 		must(submitInput(t, root, "go").Wait(testContext))
 		kind := "pi.generation"
 		first := scanTasks(t, harness, durable.TaskQuery{Kind: &kind}, 1)[0]
 		if status := taskState(t, harness, first.Id).Status; status != durable.TaskCompleting {
 			t.Fatalf("first generation = %s, want completing", status)
 		}
-		waitFor(t, func() bool { return len(turnTypes()) == 4 })
-		expectEqualJSON(t, turnTypes(), `["turn_start","turn_end","turn_start","turn_end"]`)
+		// The first generation's outcome is committed at its hold: the successor already runs the run, and the graph shows the
+		// first one completing beside it.
+		var held, successor TaskGraphNode
+		handed := false
+		for _, value := range graph.All() {
+			if nodes := generations(value); len(nodes) == 2 {
+				held, successor, handed = nodes[0], nodes[1], true
+				break
+			}
+		}
+		if !handed || held.Id != first.Id || held.State.Status != durable.TaskCompleting {
+			t.Fatalf("no graph shows the held generation %d completing beside its successor: %+v", first.Id, held)
+		}
+		if successor.State.Status == durable.TaskCompleting {
+			t.Fatalf("the successor is %s", successor.State.Status)
+		}
+		if !slices.ContainsFunc(history.Live(), func(live LiveState) bool { return live.Run != nil && live.Run.TaskId == successor.Id }) {
+			t.Fatal("no view shows the successor running the run")
+		}
 		openGate("hooked")
 		expectTaskOutcomeKind(t, harness, first.Id, "completed")
-		waitFor(t, func() bool { return len(turnTypes()) == 4 })
-		must(stream.Stop())
+		waitFor(t, func() bool {
+			graphs := graph.All()
+			_, listed := graphs[len(graphs)-1].Tasks[strconv.Itoa(int(first.Id))]
+			return !listed
+		})
+		graph.Detach()
+		history.Detach()
 		closeHarness(t, harness)
 	})
 
@@ -1960,7 +1964,10 @@ func TestToolRounds(t *testing.T) {
 		reopenedHarness, reopenedRoot := openChat(t, store, setup)
 		again := must(reopenedHarness.Submission(testContext, submission.Id()))
 		expectSettled(t, must(again.Wait(testContext)), durable.SubmissionUnanswered, "faulted")
-		expectEqualJSON(t, liveOf(t, reopenedHarness, reopenedRoot.Id()), `{}`)
+		failure := liveOf(t, reopenedHarness, reopenedRoot.Id()).RunFailure
+		if failure == nil || failure.Reason != RunFaulted || !slices.Equal(failure.Inputs, []durable.SubmissionId{submission.Id()}) || failure.Detail == nil || !strings.Contains(*failure.Detail, "is not strict JSON") {
+			t.Fatalf("runFailure = %+v, want faulted with the strict JSON failure", failure)
+		}
 		expectKinds(t, allEntries(t, reopenedRoot), "pi.user", "pi.assistant")
 		closeHarness(t, reopenedHarness)
 	})
@@ -2453,64 +2460,22 @@ func TestRecoveryThroughOwnershipEdges(t *testing.T) {
 	})
 }
 
-// ─── Tool rounds and events ─────────────────────────────────────────────────
+// ─── Tool rounds as the view shows them ─────────────────────────────────────
 
-type eventListener struct {
-	stream *AgentEventStream
-	mu     sync.Mutex
-	events []AgentEvent
-}
-
-func listenEvents(t *testing.T, harness Harness, conversation Conversation) *eventListener {
-	t.Helper()
-	found := &eventListener{stream: must(WatchEvents(testContext, harness, conversation.Id()))}
-	found.stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		found.mu.Lock()
-		found.events = append(found.events, batch...)
-		found.mu.Unlock()
-		return nil
-	})
-	return found
-}
-
-func (found *eventListener) all() []AgentEvent {
-	found.mu.Lock()
-	defer found.mu.Unlock()
-	return slices.Clone(found.events)
-}
-
-func (found *eventListener) count(eventType string) int {
-	count := 0
-	for _, event := range found.all() {
-		if event.EventType() == eventType {
-			count++
-		}
-	}
-	return count
-}
-
-// labels are event types, with tool ends and message ends labelled by call ID and whether an entry came along.
-func (found *eventListener) labels() []string {
-	labels := []string{}
-	for _, event := range found.all() {
-		switch typed := event.(type) {
-		case ToolExecutionEndEvent:
-			labels = append(labels, fmt.Sprintf("end:%s:%v", typed.ToolCallId, typed.Entry != nil))
-		case MessageEndEvent:
-			if len(typed.Entry.Model) > 0 {
-				if result, ok := typed.Entry.Model[0].(ai.ToolResultMessage); ok {
-					labels = append(labels, "result:"+result.ToolCallID)
-					continue
-				}
-				labels = append(labels, "message:"+roles(typed.Entry.Model[:1])[0])
+// resultCallIds are the tool call IDs of the tool result entries of a view, in transcript order.
+func resultCallIds(view ConversationView) []string {
+	ids := []string{}
+	for _, entry := range view.Entries {
+		if len(entry.Model) > 0 {
+			if result, ok := entry.Model[0].(ai.ToolResultMessage); ok {
+				ids = append(ids, result.ToolCallID)
 			}
 		}
 	}
-	return labels
+	return ids
 }
 
-func TestToolRoundsAndEvents(t *testing.T) {
+func TestToolRoundsAsTheViewShowsThem(t *testing.T) {
 	t.Run("ends an aborted sequential round's unstarted calls with their result entries, right before them", func(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
@@ -2519,24 +2484,47 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		addTool(t, setup.Registry, new(structuredBlockingTool("two").registration))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCalls([2]string{"one", "c1"}, [2]string{"two", "c2"}, [2]string{"two", "c3"})})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		found := listenEvents(t, harness, root)
+		history := viewHistory(t, harness, root.Id())
 		submission := submitInput(t, root, "go")
 		awaitGate(t, one.started)
 		must(harness.AbortTask(testContext, liveOf(t, harness, root.Id()).Run.TaskId))
 		must(submission.Wait(testContext))
-		waitFor(t, func() bool { return slices.Contains(found.labels(), "result:c3") })
-		labels := []string{}
-		for _, label := range found.labels() {
-			if !strings.HasPrefix(label, "message:") {
-				labels = append(labels, label)
+		history.Detach()
+		// The started call ends with its result entry; the commit that ends the run appends the unstarted calls' results, in call
+		// order, and removes the round.
+		states := history.Live()
+		views := history.All()
+		last := views[len(views)-1]
+		expectEqualJSON(t, resultCallIds(last), `["c1","c2","c3"]`)
+		var c1Result *durable.EntryRecord
+		for _, entry := range last.Entries {
+			if len(entry.Model) > 0 {
+				if result, ok := entry.Model[0].(ai.ToolResultMessage); ok && result.ToolCallID == "c1" {
+					c1Result = &entry
+				}
 			}
 		}
-		expectEqualJSON(t, labels, `["end:c1:true","result:c1","end:c2:true","result:c2","end:c3:true","result:c3"]`)
-		must(found.stream.Stop())
+		c1Done := firstSlot(slotsOf(states, "c1"), func(slot *slotView) bool { return slot.Status == ToolSlotDone })
+		if c1Done == nil || c1Result == nil || c1Done.Entry == nil || *c1Done.Entry != c1Result.Id {
+			t.Fatalf("slot of c1 %+v, result entry %+v", c1Done, c1Result)
+		}
+		ending := slices.IndexFunc(views, func(view ConversationView) bool { return slices.Contains(resultCallIds(view), "c2") })
+		if ending < 1 {
+			t.Fatal("no view shows the unstarted calls' results")
+		}
+		expectEqualJSON(t, resultCallIds(views[ending]), `["c1","c2","c3"]`)
+		if states[ending].Run != nil || states[ending].Tools != nil {
+			t.Fatalf("the ending commit left run %+v, tools %+v", states[ending].Run, states[ending].Tools)
+		}
+		var round [][2]string
+		for _, slot := range states[ending-1].Tools {
+			round = append(round, [2]string{slot.CallId, string(slot.Status)})
+		}
+		expectEqualJSON(t, round, `[["c1","done"],["c2","pending"],["c3","pending"]]`)
 		closeHarness(t, harness)
 	})
 
-	t.Run("emits one turn_end per generation, also for a stream attached while it holds", func(t *testing.T) {
+	t.Run("shows a held generation as completing to an observer attached while it holds", func(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
 		addTask(t, setup.Registry, nodeTask.Erased())
@@ -2551,20 +2539,32 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCalls([2]string{"noop", "c1"}), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		opened = harness
-		early := listenEvents(t, harness, root)
+		early := graphHistory(t, harness)
 		must(submitInput(t, root, "go").Wait(testContext))
-		late := listenEvents(t, harness, root)
+		late := graphHistory(t, harness)
 		openGate("hooked")
 		kind := "pi.generation"
 		first := scanTasks(t, harness, durable.TaskQuery{Kind: &kind}, 1)[0]
 		must(harness.WaitForTask(testContext, first.Id))
-		appendNote(t, root, "note")
-		waitFor(t, func() bool { return late.count("entry_appended") > 0 })
-		if early.count("turn_end") != 2 || late.count("turn_end") != 0 {
-			t.Fatalf("turn_end: early %d, late %d", early.count("turn_end"), late.count("turn_end"))
+		// The early observer saw both generations; the late one starts with the held one, completing, and sees it leave.
+		seen := map[durable.TaskId]bool{}
+		for _, graph := range early.All() {
+			for _, node := range generations(graph) {
+				seen[node.Id] = true
+			}
 		}
-		must(early.stream.Stop())
-		must(late.stream.Stop())
+		if len(seen) != 2 {
+			t.Fatalf("the early observer saw %d generations, want 2", len(seen))
+		}
+		lateGraphs := late.All()
+		if nodes := generations(lateGraphs[0]); len(nodes) != 1 || nodes[0].Id != first.Id || nodes[0].State.Status != durable.TaskCompleting {
+			t.Fatalf("the late observer started with %+v, want the held generation completing", nodes)
+		}
+		if _, listed := lateGraphs[len(lateGraphs)-1].Tasks[strconv.Itoa(int(first.Id))]; listed {
+			t.Fatal("the late observer still lists the generation")
+		}
+		early.Detach()
+		late.Detach()
 		closeHarness(t, harness)
 	})
 
@@ -2589,7 +2589,6 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		}}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCalls([2]string{"delegate", "c1"}), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		found := listenEvents(t, harness, root)
 		submission := submitInput(t, root, "go")
 		waitFor(t, func() bool {
 			tools := liveOf(t, harness, root.Id()).Tools
@@ -2600,7 +2599,6 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		if state.Tools[0].Entry == nil || taskState(t, harness, tool).Status != durable.TaskCompleting || taskState(t, harness, state.Run.TaskId).Status != durable.TaskWaiting {
 			t.Fatalf("live = %s", jsonText(t, state))
 		}
-		waitFor(t, func() bool { return slices.Contains(found.labels(), "end:c1:true") })
 		waited := make(chan durable.SubmissionRecord, 1)
 		go func() {
 			if record, err := submission.Wait(testContext); err == nil {
@@ -2614,11 +2612,10 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		openGate("sub")
 		expectSettled(t, <-waited, durable.SubmissionDone, "")
 		expectTaskOutcomeKind(t, harness, tool, "completed")
-		must(found.stream.Stop())
 		closeHarness(t, harness)
 	})
 
-	t.Run("holds a faulted tool's slot and task_failed until the work it owns drained", func(t *testing.T) {
+	t.Run("holds a faulted tool's slot and its graph node until the work it owns drained", func(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
 		addTask(t, setup.Registry, nodeTask.Erased())
@@ -2633,23 +2630,36 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		}}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCalls([2]string{"broken", "c1"}), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		found := listenEvents(t, harness, root)
+		history := viewHistory(t, harness, root.Id())
+		graph := graphHistory(t, harness)
 		submission := submitInput(t, root, "go")
 		waitFor(t, func() bool { return logged("abort:held") })
 		state := liveOf(t, harness, root.Id())
 		tool := *state.Tools[0].TaskId
 		expectMatch(t, taskState(t, harness, tool), `{"status":"completing","outcome":{"status":"faulted"}}`)
-		if state.Tools[0].Status == ToolSlotDone || found.count("task_failed") != 0 {
-			t.Fatal("the faulted tool's slot or task_failed did not wait for its owned work")
+		if state.Tools[0].Status == ToolSlotDone {
+			t.Fatal("the faulted tool's slot did not wait for its owned work")
+		}
+		// The graph shows the held fault; the task is not terminal yet.
+		graphs := graph.All()
+		if node, listed := graphs[len(graphs)-1].Tasks[strconv.Itoa(int(tool))]; !listed || node.State.Status != durable.TaskCompleting || node.State.Outcome != durable.OutcomeFaulted {
+			t.Fatalf("graph node of the tool = %+v, listed %v, want completing with a faulted outcome", node, listed)
 		}
 		openGate("abort.held")
 		expectSettled(t, must(submission.Wait(testContext)), durable.SubmissionDone, "")
 		expectTaskOutcomeKind(t, harness, tool, "faulted")
-		waitFor(t, func() bool { return found.count("task_failed") > 0 })
-		if !slices.Contains(found.labels(), "end:c1:false") {
-			t.Fatalf("labels = %v", found.labels())
+		waitFor(t, func() bool {
+			graphs := graph.All()
+			_, listed := graphs[len(graphs)-1].Tasks[strconv.Itoa(int(tool))]
+			return !listed
+		})
+		// The slot ends done without a result entry.
+		done := firstSlot(slotsOf(history.Live(), "c1"), func(slot *slotView) bool { return slot.Status == ToolSlotDone })
+		if done == nil || done.Entry != nil {
+			t.Fatalf("done slot %+v, want one without an entry", done)
 		}
-		must(found.stream.Stop())
+		history.Detach()
+		graph.Detach()
 		closeHarness(t, harness)
 	})
 }

@@ -436,7 +436,6 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		// Every pass picks up sleeps whose time has come: a pass started by any change may be the first to run after a deadline,
 		// and the wake it schedules no longer keeps a timer for a due sleep.
 		s.wakeDue()
-		s.unparkRaised()
 		// Pi's #reserve callback awaits only #loadScopes(false) (scheduler.ts #reserve): one tick, plus the Storage reads of
 		// the chain loads and a tick for each #loadChain call it awaited (scheduler.ts:680-684).
 		ticks := 1 + awaits
@@ -461,16 +460,6 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 				s.runnable.Delete(id)
 				continue
 			}
-			// It returns when Retry clears its restart count, or at a pass after settings.restartLimit rose.
-			if s.parked(rec) {
-				s.runnable.Delete(id)
-				// Newly parked without a commit, as after a lowered limit: the graph must hear it.
-				if !s.parkedTasks.Has(id) {
-					s.loop.Defer(s.notifyBlocked)
-				}
-				s.parkedTasks.Add(id)
-				continue
-			}
 			abortMode := getBool(rec, "abortRequested")
 			// Work below an owner with cancellation intent waits for its cascade mark instead of running a phase; schedule the
 			// cascade, which may not have run yet.
@@ -479,10 +468,15 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 				s.scheduleReconcile()
 				continue
 			}
-			// An abort handler cut off restartLimit times in a row would run forever; nothing is left to park it for.
-			if abortMode && restartsOf(rec) >= s.restartLimit() {
+			// Work cut off restartLimit times in a row would run forever: an abort handler, or a phase of a task that does not
+			// end itself at the limit (every task of this engine), ends the task faulted instead. The settings are read only
+			// for a task that was cut off at all.
+			if restartsOf(rec) > 0 && restartsOf(rec) >= s.restartLimit() {
 				kind, _ := getStr(rec, "kind")
-				message := sprintf("Abort handler of task %d (%s) was cut off %d times", id, kind, restartsOf(rec))
+				message := sprintf("Task %d (%s) was cut off %d times without progress", id, kind, restartsOf(rec))
+				if abortMode {
+					message = sprintf("Abort handler of task %d (%s) was cut off %d times", id, kind, restartsOf(rec))
+				}
 				if err := s.terminate(tx, rec, obj("status", "faulted", "error", obj("message", message, "detail", obj("reason", "restart_limit")))); err != nil {
 					return err
 				}
@@ -665,27 +659,6 @@ func canReserve(task *TaskImpl, rec *jv.Object) bool {
 type faultedTask struct {
 	rec     *jv.Object
 	message string
-}
-
-// unparkRaised makes the parked tasks that a raised settings.restartLimit no longer parks candidates again, and tells the
-// graph (scheduler.ts #unparkRaised).
-func (s *Scheduler) unparkRaised() {
-	unparked := false
-	for _, id := range s.parkedTasks.Values() {
-		rec, live := s.live.get(id)
-		if live && s.parked(rec) {
-			continue
-		}
-		s.parkedTasks.Delete(id)
-		if !live {
-			continue
-		}
-		s.runnable.Add(id)
-		unparked = true
-	}
-	if unparked {
-		s.loop.Defer(s.notifyBlocked)
-	}
 }
 
 func (s *Scheduler) createInvocation(rec *jv.Object, abortMode bool, extension string) *invocation {

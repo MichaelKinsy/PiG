@@ -135,8 +135,8 @@ func (conversation *conversationImpl) WaitForIdle(ctx context.Context) error {
 	return conversation.host.tasks.WaitForIdle(ctx, &id)
 }
 
-func (conversation *conversationImpl) Watch(ctx context.Context) (ConversationWatch, error) {
-	return conversation.host.views.Watch(ctx, conversation.id)
+func (conversation *conversationImpl) Watch(ctx context.Context, window *ConversationWindow) (ConversationWatch, error) {
+	return conversation.host.views.Watch(ctx, conversation.id, window)
 }
 
 // harnessImpl is the Session kernel extended with conversation handles and a registry.
@@ -274,11 +274,6 @@ func (harness *harnessImpl) AbortSubmission(ctx context.Context, id durable.Subm
 	return harness.submissions.Abort(ctx, id, conversationId)
 }
 
-func (harness *harnessImpl) RetryTask(ctx context.Context, id durable.TaskId) error {
-	harness.assertOpen()
-	return harness.tasks.Retry(ctx, id)
-}
-
 func (harness *harnessImpl) AbortTask(ctx context.Context, id durable.TaskId) (string, error) {
 	return harness.tasks.Abort(ctx, id, false)
 }
@@ -327,11 +322,11 @@ func (harness *harnessImpl) ObserveTaskGraph(ctx context.Context, observer durab
 	return harness.taskGraph.Observe(ctx, observer)
 }
 
-func (harness *harnessImpl) ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[ConversationView]) (durable.Observation[ConversationView], error) {
+func (harness *harnessImpl) ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[ConversationView], window *ConversationWindow) (durable.Observation[ConversationView], error) {
 	if err := harness.checkOpen(); err != nil {
 		return nil, err
 	}
-	return harness.host.views.Observe(ctx, id, observer)
+	return harness.host.views.Observe(ctx, id, observer, window)
 }
 
 func (harness *harnessImpl) WatchTaskGraph(ctx context.Context) (TaskGraphWatch, error) {
@@ -642,6 +637,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 			return harness.WriteAtClose(context.WithoutCancel(ctx), writes)
 		},
 		Report:         harness.report,
+		LimitsRestarts: func(kind string) bool { return limitsRestarts[kind] },
 		SettleOutcome:  SettleSchedulerOutcome,
 		WithdrawInputs: WithdrawQueuedInputs,
 		Conversation: func(callCtx context.Context, id durable.ConversationId, binding InvocationBinding) (durable.ConversationHandle, error) {

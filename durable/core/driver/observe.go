@@ -18,8 +18,8 @@ import (
 // reported, detached and ended with its error.
 
 // ObserveConversation attaches a synchronous observer of a conversation's structural view.
-func (s *coreSession) ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[harness.ConversationView]) (durable.Observation[harness.ConversationView], error) {
-	m, err := openWatch(ctx, s, map[string]any{"kind": "view", "conversationId": id}, typed[harness.ConversationView], viewReducer())
+func (s *coreSession) ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[harness.ConversationView], window *harness.ConversationWindow) (durable.Observation[harness.ConversationView], error) {
+	m, err := openWatch(ctx, s, viewTarget(id, window), typed[harness.ConversationView], viewReducer())
 	if err != nil || m == nil {
 		return nil, err
 	}
