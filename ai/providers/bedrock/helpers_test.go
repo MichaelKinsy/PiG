@@ -121,7 +121,7 @@ func streamingWriteCall(t testing.TB, size int) (arguments ai.JsonObject, text s
 // piCodingAgentPackage is Pi 0.87.1's pinned pi-coding-agent package.
 func piCodingAgentPackage(t *testing.T) string {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent"))
+	root, err := filepath.Abs(filepath.Join("..", "..", "..", "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -904,7 +904,7 @@ Why: PiG is not Pi; providers, diagnostics, and their logs should distinguish Pi
 Observable effect: every default provider `User-Agent` (Anthropic Messages, OpenAI Completions, OpenAI/Azure/Codex Responses, Google Generative AI/Vertex, Mistral Conversations) and the `report.json` environment identity in an exported bug report read `pig/...` instead of one of Pi's `pi...` forms. A user-configured provider `User-Agent` header overrides the default, including for OpenAI Codex Responses (`buildBaseCodexHeaders` sets `originator` and `User-Agent` first, #10429). An Anthropic OAuth (subscription-token) request keeps sending `claude-cli/2.1.280` regardless (D63's sibling decision, Q3): that identity is not `getPiUserAgent()`'s output and is untouched by this divergence.
 
 Call sites:
-- `ai/identity.go`: `FormatUserAgent` (detailed `pig/<version> (<platform> <release>; <arch>)`, short `pig`). `ai/anthropic_client.go`: `anthropicIdentityHeaders` (seeds the `User-Agent` key below the other client headers; an Anthropic OAuth request sends the Claude Code identity instead, as upstream). `ai/bedrock.go`: `bedrockUserAgent` adds `pig/<version>` to the AWS SDK for Go user agent, where Pi adds `pi/<version>` to the SDK for JavaScript.
+- `ai/identity.go`: `FormatUserAgent` (detailed `pig/<version> (<platform> <release>; <arch>)`, short `pig`). `ai/anthropic_client.go`: `anthropicIdentityHeaders` (seeds the `User-Agent` key below the other client headers; an Anthropic OAuth request sends the Claude Code identity instead, as upstream). `ai/providers/bedrock/bedrock.go`: `bedrockUserAgent` adds `pig/<version>` to the AWS SDK for Go user agent, where Pi adds `pi/<version>` to the SDK for JavaScript.
 - `ai/openai.go`, `ai/openai_responses.go` (also reached by `ai/azure_openai_responses.go` and `ai/openai_codex_responses.go`, which delegate to the same request builder), `ai/google.go` (also reached by `ai/google_vertex.go`), `ai/mistral.go`: the `User-Agent` header construction. Model and request headers override the default, as upstream; Codex sets its `originator` and `User-Agent` defaults before them (`buildBaseCodexHeaders`, Pi 1.4.0).
 - `internal/codingagent/bug_report.go`: `codingAgentUserAgent`, used for the local bug-report metadata field retained by D62.
 - `internal/codingagent/selfupdate.go`: `FetchUpdateManifest`, which sends the identity with the update-manifest request as upstream `getLatestPiRelease` sends its `User-Agent` and `accept` headers to the version-check API.
@@ -1606,13 +1606,13 @@ Pi bug: Pi's Bedrock Converse request can put two user messages side by side, fo
 
 Why: the Converse API requires the roles of a conversation to alternate and rejects two consecutive messages of one role with a ValidationException (HTTP 400). The shape is common: aborting a turn while tools run and then sending a new prompt gives `assistant(toolUse), user(toolResult...), user(prompt)`, and every later turn of the session then fails.
 
-Scope: `convertBedrockMessages` in `ai/bedrock.go`, for every Bedrock Converse model. An already alternating conversation produces Pi's request byte for byte. The final cache point still goes on the last user message.
+Scope: `convertBedrockMessages` in `ai/providers/bedrock/bedrock.go`, for every Bedrock Converse model. An already alternating conversation produces Pi's request byte for byte. The final cache point still goes on the last user message.
 
 Owner decision: 2026-10-10, owner rule "fix every confirmed bug now, Pi's included", relayed by the lead; number assigned by the lead.
 
-Call-site markers: `ai/bedrock.go` (`push` in `convertBedrockMessages`).
+Call-site markers: `ai/providers/bedrock/bedrock.go` (`push` in `convertBedrockMessages`).
 
-Evidence: `TestBedrockMergesAdjacentSameRoleMessagesD116` (`ai/bedrock_alternation_d116_test.go`, red before the fix: roles [user assistant user user]), `TestBedrockConvertMessages_SkipsEmptyAssistant`, the Pi-derived `TestBedrockUpstreamConvertMessages` case, and `TestBedrockConversePayloadMatchesPi` (Pi's payload rewritten by `piBedrockPayloadWithD116`).
+Evidence: `TestBedrockMergesAdjacentSameRoleMessagesD116` (`ai/providers/bedrock/bedrock_alternation_d116_test.go`, red before the fix: roles [user assistant user user]), `TestBedrockConvertMessages_SkipsEmptyAssistant`, the Pi-derived `TestBedrockUpstreamConvertMessages` case, and `TestBedrockConversePayloadMatchesPi` (Pi's payload rewritten by `piBedrockPayloadWithD116`).
 
 Parity allowance: `test/parity/scenarios/providers-faux-streaming/29-bedrock-ecmascript-whitespace.toml` runs a Bedrock conversation that starts with two user messages. Its Pi probe (`test/parity/testdata/bedrock-whitespace-pi.mjs`) merges adjacent same-role messages in the captured Pi request, content blocks in order. The scenario compares the complete captured message arrays with `json_output_equal`, so block contents, order and presence still have to match.
 
@@ -2545,9 +2545,9 @@ Workaround: none needed in PiG. In Pi, unset the variable instead of exporting i
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not mirror the SDK's presence check: a stray empty variable must not break a working credential setup).
 
-Call-site markers: `ai/bedrock.go` (`loadBedrockConfig`, the bearer token selection).
+Call-site markers: `ai/providers/bedrock/bedrock.go` (`loadBedrockConfig`, the bearer token selection).
 
-Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/bedrock_bearer_divergence_test.go`) runs Pi's `bedrock-converse-stream` through the Node oracle and PiG's provider against a loopback server with the variable empty, under skip-auth and under static keys: Pi sends nothing and ends with the signing error, PiG sends a SigV4 request; its controls (variable unset, with keys) agree. The test fails when either side changes.
+Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/providers/bedrock/bedrock_bearer_divergence_test.go`) runs Pi's `bedrock-converse-stream` through the Node oracle and PiG's provider against a loopback server with the variable empty, under skip-auth and under static keys: Pi sends nothing and ends with the signing error, PiG sends a SigV4 request; its controls (variable unset, with keys) agree. The test fails when either side changes.
 
 Parity allowance: none needed beyond that test. The paired Bedrock oracles (`TestBedrockRequestBodyMatchesPi` and the others) scrub every `AWS_*` variable before they run Pi, so they do not see the difference.
 
@@ -2569,9 +2569,9 @@ Workaround: none needed in PiG. Use an `https://` endpoint, or unset the variabl
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not mirror: PiG keeps the Go SDK's HTTPS-only bearer guard where skip-auth leaves the token to the SDK).
 
-Call-site markers: `ai/bedrock.go` (`loadBedrockConfig`, the bearer token selection; `bedrockClientOptions`, the bearer signer).
+Call-site markers: `ai/providers/bedrock/bedrock.go` (`loadBedrockConfig`, the bearer token selection; `bedrockClientOptions`, the bearer signer).
 
-Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/bedrock_bearer_divergence_test.go`) runs Pi through the Node oracle and PiG's provider against an `http://` loopback server with skip-auth and a token: Pi's request arrives with `Authorization: Bearer tok`, PiG sends nothing and ends with the HTTPS error; its control (a token without skip-auth over `http://`) sends `Bearer tok` in both. The test fails when either side changes.
+Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/providers/bedrock/bedrock_bearer_divergence_test.go`) runs Pi through the Node oracle and PiG's provider against an `http://` loopback server with skip-auth and a token: Pi's request arrives with `Authorization: Bearer tok`, PiG sends nothing and ends with the HTTPS error; its control (a token without skip-auth over `http://`) sends `Bearer tok` in both. The test fails when either side changes.
 
 Parity allowance: none needed beyond that test. The paired Bedrock oracles scrub every `AWS_*` variable before they run Pi.
 

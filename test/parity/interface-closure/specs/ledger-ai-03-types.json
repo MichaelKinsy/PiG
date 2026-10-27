@@ -57,7 +57,7 @@
    "type": "NormalizedProviderError"
   },
   "production": [
-   "call:ai/bedrock.go#formatBedrockError"
+   "call:ai/providers/bedrock/bedrock.go#formatBedrockError"
   ],
   "evidence": [
    "test:ai/error_body_upstream_test.go#TestNormalizeProviderErrorUpstream",
