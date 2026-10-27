@@ -665,12 +665,20 @@ export class Harness {
   }
   /** `observeDoc(token, ...owner, [key], observer, context)`: a synchronous Observer of one document address, or undefined when absent. */
   observeDoc(token: AnyDocToken, ...args: unknown[]) {
-    const { address, nextArgument } = resolveAddress(token.definition, args)
+    // Not async, as session.ts observeDoc: a throw (a closed or failed Session, a missing scope ID) still rejects.
+    try { this.assertReadable() } catch (error) { return Promise.reject(error) }
+    let resolved: ReturnType<typeof resolveAddress>
+    try { resolved = resolveAddress(token.definition, args) } catch (error) { return Promise.reject(error) }
+    const { address, nextArgument } = resolved
     return this.watches.observe({ kind: "doc", address: wireAddress(address), def: wireDefinition(token.definition) }, args[nextArgument] as Observer<never>, args[nextArgument + 1] as Context)
   }
   /** `watchDoc(token, ...owner, [key], context)`: the serialized exact-frame watch of a document, or undefined when absent. */
   watchDoc(token: AnyDocToken, ...args: unknown[]) {
-    const { address, nextArgument } = resolveAddress(token.definition, args)
+    // Not async, as session.ts watchDoc: a throw (a closed or failed Session, a missing scope ID) still rejects.
+    try { this.assertReadable() } catch (error) { return Promise.reject(error) }
+    let resolved: ReturnType<typeof resolveAddress>
+    try { resolved = resolveAddress(token.definition, args) } catch (error) { return Promise.reject(error) }
+    const { address, nextArgument } = resolved
     return this.watches.watch({ kind: "doc", address: wireAddress(address), def: wireDefinition(token.definition) }, args[nextArgument] as Context)
   }
 

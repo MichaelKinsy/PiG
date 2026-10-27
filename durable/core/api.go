@@ -139,16 +139,27 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		})
 		return nil
 	}
+	if h.loop == nil && strOf(req, "op") == "watch.open" && (h.holder != 0 || len(h.queue) != 0) {
+		// Opening a watch is a job on the Session line (session.ts watchDoc, readOnLine): it waits behind the transactions queued
+		// before it, so a commit queued before the attachment is in its value.
+		h.queue = append(h.queue, lineWait{job: func() { _ = h.answerDirect(ev.ID, req) }})
+		return nil
+	}
+	return h.answerDirect(ev.ID, req)
+}
+
+// answerDirect serves an api request on the spot: its value, or its error, as the api_result of id.
+func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 	value, err := h.api(strOf(req, "op"), req)
 	if errors.Is(err, ErrNotImplemented) {
 		return err
 	}
 	h.answerAfterReads(func() {
 		if err != nil {
-			h.apiError(ev.ID, err)
+			h.apiError(id, err)
 			return
 		}
-		h.apiOK(ev.ID, value)
+		h.apiOK(id, value)
 	})
 	return nil
 }

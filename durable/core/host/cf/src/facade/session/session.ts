@@ -12,9 +12,9 @@ type Session = {
 
 export class SessionImpl {
   constructor(storage: Storage, now?: () => number, documentRetentionMs?: () => number | undefined) {
-    const session = createLazySession(storage, { now, documentRetentionMs }) as Session
-    // The descriptors, not the values: documentCacheSizes is a getter.
-    return Object.defineProperties(this, { ...Object.getOwnPropertyDescriptors(session), commitWith: { value: session.commit, writable: true, configurable: true, enumerable: true } })
+    // The Session is this object: the watches it hands out keep it alive (session.ts), so they must reference `this`.
+    const session = createLazySession(storage, { now, documentRetentionMs }, this) as Session
+    return Object.defineProperty(this, "commitWith", { value: session.commit, writable: true, configurable: true, enumerable: true })
   }
 }
 export const createSession = (storage: Storage) => createLazySession(storage)

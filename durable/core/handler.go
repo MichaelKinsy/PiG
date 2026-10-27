@@ -79,7 +79,7 @@ type handler struct {
 
 	txs    map[uint32]*hostTx
 	holder uint32             // the transaction that holds the Session line; 0 when free
-	queue  []uint32           // transactions waiting for the line, in begin order
+	queue  []lineWait         // Session mode: the transactions and line jobs waiting for the line, in arrival order
 	loop   *session.Loop      // Harness mode: the Session line's job queue
 	sched  *session.Scheduler // Harness mode: the task scheduler
 	snap   *registrySnapshot
