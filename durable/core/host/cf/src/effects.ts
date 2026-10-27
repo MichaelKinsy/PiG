@@ -44,7 +44,7 @@ export interface EffectRuntime {
   /** `HarnessOptions.env`; absent means tools and sections see `env: undefined`. */
   env?: (target: { conversationId: number; cwd?: string; read: unknown }, context: Context) => unknown | Promise<unknown>
   /** `HarnessOptions.onReport`: extension failures that do not fail the calling operation. */
-  report(error: unknown): void
+  report(error: unknown, info: { type: string }): void
   /** Credentials for a wire-plane request (`model_http`'s `auth`): headers to add. */
   authorize?: (auth: unknown) => Record<string, string> | Promise<Record<string, string>>
   fetch?: typeof fetch
@@ -53,7 +53,7 @@ export interface EffectRuntime {
   /** A custom task's phase or abort handler: the Harness layer builds the TaskRuntime. */
   phase?: (effect: PhaseEffect, context: Context, effectId: number, settled?: (failure?: { error: unknown }) => void) => Promise<void>
   /** Hooks the host answers itself, by `hook` effect name: `resolveAgent` (wraps are host code), `conversationCreated`. They take no registry handler. */
-  hostHooks?: Record<string, (payload: any, context: Context) => unknown | Promise<unknown>>
+  hostHooks?: Record<string, (payload: any, context: Context, effect: HookEffect) => unknown | Promise<unknown>>
   /** The registry snapshot object tools and sections see as `api.registry` (the Harness layer's published state). */
   snapshot?: () => unknown
   /** The Harness itself: harness.ts buildEnv passes `read: this` to the environment builder. */
@@ -212,7 +212,8 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     const api = {
       ...base,
       callId: p.callId,
-      models: rt.models,
+      // The current models at each access (tool.ts: `get models()`).
+      get models() { return rt.models },
       registry: rt.snapshot?.(),
       env: envs.get(p.taskId),
       outputWindow: p.outputWindow ?? undefined,
@@ -289,7 +290,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
       // A host hook that returns its answer answers in the tick it was asked: the core's caller is Pi code that runs the same
       // call synchronously (registry.snapshot() in a step's decide, scheduler.ts :955), so an `await` of a plain value would add a tick.
       try {
-        const answer = own(p.payload, context)
+        const answer = own(p.payload, context, p)
         host.hookDone(effect.id, 0, typeof (answer as PromiseLike<unknown> | undefined)?.then === "function" ? await answer : answer)
       } catch (error) { host.hookDone(effect.id, 1, thrown(error)) }
       return
@@ -303,7 +304,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     const args = argumentsOf(p.payload)
     const api = invocationApi(rt.hostApi, { taskId: p.taskId, conversationId: p.conversationId })
     try {
-      const value = await fn(...args, { taskId: api.taskId, conversationId: api.conversationId, models: rt.models, memo: api.memo, snapshot: api.snapshot, snapshotAsOf: api.snapshotAsOf }, context)
+      const value = await fn(...args, { taskId: api.taskId, conversationId: api.conversationId, get models() { return rt.models }, memo: api.memo, snapshot: api.snapshot, snapshotAsOf: api.snapshotAsOf }, context)
       host.hookDone(effect.id, 0, value)
     } catch (error) {
       host.hookDone(effect.id, 1, thrown(error))

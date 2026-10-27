@@ -46,6 +46,23 @@ export function documentRetentionWire(settings: any): number | undefined {
   return ms === 600_000 ? undefined : Number.isFinite(ms) ? ms : Number.MAX_VALUE
 }
 
+/** A restart limit as given when it is a number of restarts, 1 or more, rounded down; else the default (harness/agent.ts restartLimit). */
+export function restartLimit(limit: unknown): number {
+  return typeof limit === "number" && limit >= 1 ? Math.floor(limit) : 5
+}
+
+/** `settings.restartLimit` as the core is told: undefined when it is the default, five. Infinity (never parks) travels as the largest finite number. */
+export function restartLimitWire(settings: any): number | undefined {
+  let limit: number
+  try { limit = restartLimit(settings?.restartLimit) } catch { limit = 5 }
+  return limit === 5 ? undefined : Number.isFinite(limit) ? limit : Number.MAX_VALUE
+}
+
+function restartLimitEntry(settings: any): { restartLimit?: number } {
+  const limit = restartLimitWire(settings)
+  return limit === undefined ? {} : { restartLimit: limit }
+}
+
 function documentRetentionEntry(settings: any): { documentRetentionMs?: number } {
   const ms = documentRetentionWire(settings)
   return ms === undefined ? {} : { documentRetentionMs: ms }
@@ -66,7 +83,9 @@ export function resolveSettings(settings: any) {
     toolExecution: settings?.toolExecution ?? "parallel",
     steeringMode: settings?.steeringMode ?? "one-at-a-time",
     followUpMode: settings?.followUpMode ?? "one-at-a-time",
+    ...(settings?.afterFailedRun === undefined ? {} : { afterFailedRun: settings.afterFailedRun }),
     ...documentRetentionEntry(settings),
+    ...restartLimitEntry(settings),
   }
 }
 
@@ -101,15 +120,16 @@ export async function configure(tx: { doc(token: unknown, ...args: unknown[]): P
 export type ResolvedAgent = { model?: unknown; thinkingLevel: string; extensions: HostExtension[]; tools: HostTool[]; callable: HostTool[]; deferred: HostTool[]; sections: HostSection[]; instructions?: string; cwd?: string }
 
 /** Resolve an agent from its stored state, a registry snapshot and resolved settings. A wrapper that throws or renames drops its target and is reported. */
-export function resolveAgent(state: AgentState | undefined, snapshot: ReturnType<HostRegistrySource["snapshot"]>, settings: ReturnType<typeof resolveSettings>, report: (e: unknown) => void): ResolvedAgent {
+export function resolveAgent(state: AgentState | undefined, snapshot: ReturnType<HostRegistrySource["snapshot"]>, settings: ReturnType<typeof resolveSettings>, report: (e: unknown, extension: string | undefined) => void): ResolvedAgent {
   const extensions = selectExtensions(state?.extensions, snapshot, settings)
   const composed = new Map<string, HostTool>()
   for (const x of extensions) for (const tool of x.tools ?? []) composed.set(tool.name, tool)
   const sections = new Map<string, HostSection>()
   for (const x of extensions) for (const s of x.sections ?? []) sections.set(s.key, s)
   for (const x of extensions) for (const wrap of x.wraps ?? []) {
-    if ("tool" in wrap) applyWrap(composed, wrap.tool, t => wrap.wrap(t), t => t.name, report)
-    else applyWrap(sections, wrap.section, s => wrap.wrap(s), s => s.key, report)
+    const wrapReport = (error: unknown) => report(error, x.name)
+    if ("tool" in wrap) applyWrap(composed, wrap.tool, t => wrap.wrap(t), t => t.name, wrapReport)
+    else applyWrap(sections, wrap.section, s => wrap.wrap(s), s => s.key, wrapReport)
   }
   const enabled = filterTools([...composed.values()], state?.tools)
   const callableBy = (caller: "model" | "tools") => (tool: HostTool) => tool.callers === undefined || tool.callers.includes(caller)
@@ -182,17 +202,22 @@ function applyWrap<T>(items: Map<string, T>, target: string, wrap: (i: T) => T, 
 
 /** The `resolveAgent` hook answer: the resolved agent as JSON with handler indexes into the registry table (PROTOCOL.md). */
 export function agentJSON(agent: ResolvedAgent, id: (object: unknown) => number) {
+  // agent.ts toolExtension and sectionExtension: the last selected extension that provides or wraps the tool or section, whose code a failure of it is.
+  const extensionOf = (provides: (x: HostExtension) => boolean) => agent.extensions.reduce<string | undefined>((found, x) => provides(x) ? x.name : found, undefined)
+  const ofTool = (name: string) => extensionOf(x => (x.tools ?? []).some(t => t.name === name) || (x.wraps ?? []).some(w => "tool" in w && w.tool === name))
+  const ofSection = (key: string) => extensionOf(x => (x.sections ?? []).some(s => s.key === key) || (x.wraps ?? []).some(w => "section" in w && w.section === key))
+  const named = (extension: string | undefined) => extension === undefined ? {} : { extension }
   // constrainedSampling rides the declaration the core puts in the system entry (prompt.ts toToolDeclaration).
-  const toolJSON = (t: HostTool) => ({ name: t.name, description: t.description ?? "", parameters: t.parameters ?? {}, ...(t.constrainedSampling === undefined ? {} : { constrainedSampling: t.constrainedSampling }), replay: t.replay ?? "unsafe", handler: id(t), ...(t.executionMode === undefined ? {} : { executionMode: t.executionMode }), ...(t.outputLimits === undefined ? {} : { outputLimits: t.outputLimits }), ...(t.structuredOutputSchema === undefined ? {} : { structuredOutput: true }), ...(t.prepareArguments === undefined ? {} : { prepare: id(t.prepareArguments) }) })
+  const toolJSON = (t: HostTool) => ({ ...named(ofTool(t.name)), name: t.name, description: t.description ?? "", parameters: t.parameters ?? {}, ...(t.constrainedSampling === undefined ? {} : { constrainedSampling: t.constrainedSampling }), replay: t.replay ?? "unsafe", handler: id(t), ...(t.executionMode === undefined ? {} : { executionMode: t.executionMode }), ...(t.outputLimits === undefined ? {} : { outputLimits: t.outputLimits }), ...(t.structuredOutputSchema === undefined ? {} : { structuredOutput: true }), ...(t.prepareArguments === undefined ? {} : { prepare: id(t.prepareArguments) }) })
   return {
     ...(agent.model === undefined ? {} : { model: agent.model }),
     thinkingLevel: agent.thinkingLevel,
     extensions: agent.extensions.map(x => x.name),
     tools: agent.tools.map(toolJSON),
     callable: agent.callable.map(toolJSON),
-    sections: agent.sections.map(s => ({ key: s.key, tag: s.tag ?? true, handler: id(s) })),
+    sections: agent.sections.map(s => ({ ...named(ofSection(s.key)), key: s.key, tag: s.tag ?? true, handler: id(s) })),
     // The hooks of the selected extensions, in extension order (agent.ts agentHooks): hook name to handler index.
-    hooks: agent.extensions.flatMap(x => (x.hooks ?? []).map(hook => ({ task: hook.task, handlers: Object.fromEntries(Object.entries(hook.handlers).filter(([, fn]) => typeof fn === "function").map(([name, fn]) => [name, id(fn)])) }))),
+    hooks: agent.extensions.flatMap(x => (x.hooks ?? []).map(hook => ({ extension: x.name, task: hook.task, handlers: Object.fromEntries(Object.entries(hook.handlers).filter(([, fn]) => typeof fn === "function").map(([name, fn]) => [name, id(fn)])) }))),
     ...(agent.instructions === undefined ? {} : { instructions: agent.instructions }),
     ...(agent.cwd === undefined ? {} : { cwd: agent.cwd }),
   }

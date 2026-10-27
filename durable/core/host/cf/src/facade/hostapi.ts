@@ -150,7 +150,7 @@ export function invocationApi(options: HostApiOptions, who: InvocationIdentity &
       return await awaitWithContext(resolved, context)
     },
     /** Commit a sleep: the core stores it and answers once it is committed; the task then holds no invocation. */
-    sleepUntil: (until: number, checkpoint: unknown, context: Context) => run<null>(context, "sleepUntil", { taskId: who.taskId, until, checkpoint }).then(() => undefined),
+    sleepUntil: (until: number, checkpoint: unknown, context: Context) => run<null>(context, "sleepUntil", { taskId: who.taskId, until: typeof until === "number" && !Number.isFinite(until) ? String(until) : until, checkpoint }).then(() => undefined),
     conversation: async (id: number, context: Context) => options.conversation ? options.conversation(id, binding, context) : undefined,
     /** The serialized watch of a committed document; it stops when the invocation ends. */
     watchDoc: async (token: AnyDocToken, ...args: unknown[]) => {

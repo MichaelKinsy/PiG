@@ -49,6 +49,8 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     commit: async <T>(change: (tx: never) => T | Promise<T>, context: Context, commitOptions?: unknown): Promise<T> => (await open()).commit(change as never, context, commitOptions as never),
     // Closing a Session nobody used must not cold-open the core just to seal it.
     close: async (context: Context) => { if (opened) await (await opened).close(context); else ended.resolve({ reason: "closed" }) },
+    /** Internal (session.ts observeCommits): the Session components' commit listener, run before the host's `subscribeCommits` listeners. */
+    observeCommits: later<(publication: unknown, context: Context) => void>((h, l) => h.observeCommits(l)),
     subscribeCommits: later<(publication: unknown, context: Context) => void>((h, l) => h.subscribeCommits(l)),
     subscribeClose: later<() => void>((h, l) => h.subscribeClose(l)),
     snapshot: via("snapshot"), snapshotAsOf: via("snapshotAsOf"), documentState: via("documentState"), watchDoc: via("watchDoc"), observeDoc: via("observeDoc"), unloadDocuments: via("unloadDocuments"),
