@@ -269,7 +269,7 @@ export class Harness {
       const report = options.onReport ?? (() => {})
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), documentState: (token: any, ...args: unknown[]) => harness.documentState(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
-        client, registry, models: options.models, env: options.env, report,
+        client, registry, models: options.models, env: options.env, report, now: options.now,
         hostApi: runtimeHostApi,
         readTarget: () => self.harness,
         snapshot: () => options.registry.snapshot(),
