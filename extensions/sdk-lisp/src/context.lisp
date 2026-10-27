@@ -11,6 +11,9 @@
         (if (stringp message) message "host call failed"))
       "host call failed"))
 
+(defvar *after-call-sent* nil
+  "When a function, HOST-CALL calls it once the call's frame is written, before it waits (the caller's order point).")
+
 (defun host-call (ext method &optional args parent (request-id ""))
   "Call METHOD on the host and wait for the answer; the result value (NIL for null).
 PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host answers with an error."
@@ -38,6 +41,7 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
         (error (e)
           (sb-thread:with-mutex ((extension-state-lock ext)) (remhash id (extension-pending ext)))
           (error e))))
+    (when *after-call-sent* (funcall *after-call-sent*))
     (wait-call ext id slot)))
 
 (defun wait-call (ext id slot)
@@ -105,13 +109,14 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 
 ;;; ---------------------------------------------------------------- the context
 
-(defstruct (ctx (:constructor %make-ctx (extension request tool-call-id request-id tool-context-p tool-args)))
+(defstruct (ctx (:constructor %make-ctx (extension request tool-call-id request-id tool-context-p tool-args tool-index)))
   extension
   request
   tool-call-id
   (request-id "")
   tool-context-p
   tool-args
+  tool-index
   (system-prompt nil))
 
 (defun ctx-cancel (ctx)
@@ -123,7 +128,8 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
                (and req (jget req "tool_call_id"))
                (if request (request-id request) "")
                (and req (equal (jget req "method") "tool_call"))
-               (and req (jget req "args")))))
+               (and req (equal (jget req "method") "tool_call") (jget req "args"))
+               (let ((index (and req (jget req "tool_call_index")))) (and (integerp index) index)))))
 
 (defun assert-active (ctx)
   (let ((message (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx)))
@@ -265,15 +271,18 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defstruct (exec-result (:constructor make-exec-result (stdout stderr exit-code killed)))
   stdout stderr exit-code killed)
 
+(declaim (ftype function core-exec-with-signal))
+
 (defun ctx-exec (ctx command &key args timeout cwd signal)
-  "Run COMMAND through the host's executor. TIMEOUT is in milliseconds; a command it kills reports KILLED."
-  (when signal (error 'unsupported-capability :member "ctx-exec :signal"))
+  "Run COMMAND through the host's executor. TIMEOUT is in milliseconds; a command it kills reports KILLED.
+SIGNAL, an abort-signal, ends the command when it is set (SIGTERM to the command alone): the call returns the output so far, killed, code 0.
+It replaces the cancellation of the calling request."
   (let ((call-args (obj "command" command "args" (coerce args 'simple-vector)))
         (options (obj)))
     (when timeout (setf (gethash "timeout" options) timeout))
     (when cwd (setf (gethash "cwd" options) cwd))
     (when (plusp (hash-table-count options)) (setf (gethash "options" call-args) options))
-    (let ((result (or (ctx-call-host ctx "exec" call-args) (obj))))
+    (let ((result (or (if signal (core-exec-with-signal ctx call-args signal) (ctx-call-host ctx "exec" call-args)) (obj))))
       (flet ((text (key) (let ((v (jget result key))) (if (stringp v) v "")))
              (truth (key) (eq (jget result key) t)))
         (make-exec-result (text "stdout") (text "stderr")
@@ -288,11 +297,18 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defun ctx-shutdown (ctx) (ctx-call-host ctx "shutdown") nil)
 (defun ctx-reload (ctx) (ctx-call-host ctx "reload") nil)
 
-(defun ctx-compact (ctx &key custom-instructions)
-  "Compact the session and wait for the outcome."
+(declaim (ftype function core-compact-async))
+
+(defun ctx-compact (ctx &key options custom-instructions on-complete on-error)
+  "Compact the session. OPTIONS is a hash-table of compact options. Without ON-COMPLETE and ON-ERROR it waits for the outcome;
+with either it returns at once and a background thread owned by the extension waits: ON-COMPLETE receives the CompactionResult,
+ON-ERROR the condition."
   (let ((args (obj)))
+    (when (hash-table-p options) (maphash (lambda (k v) (setf (gethash k args) v)) options))
     (when custom-instructions (setf (gethash "customInstructions" args) custom-instructions))
-    (ctx-call-host ctx "compact" args)
+    (if (or on-complete on-error)
+        (core-compact-async ctx args on-complete on-error)
+        (ctx-call-host ctx "compact" args))
     nil))
 
 (defun ctx-get-flag (ctx name)
@@ -312,20 +328,23 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
       (reply-field ctx "getSystemPrompt" "prompt")))
 
 (defun ctx-get-all-tools (ctx)
-  "Every tool in the session's registry, as a vector of ToolInfo hash-tables."
+  "Every tool in the session's registry, as a vector of ToolInfo hash-tables. A tool with a reachesTools hook carries it as a
+function of the call's input (a hash-table) returning \"all\" or the words that may name the tools the call reaches; the host runs it."
   (let ((tools (reply-field ctx "getAllTools" "tools")))
     (loop for tool across tools
           do (when (and (hash-table-p tool) (eq (jget tool "reachesTools") t))
-               (error 'unsupported-capability :member "ctx-get-all-tools of a tool with a reachesTools hook")))
+               (let ((name (let ((n (jget tool "name"))) (if (stringp n) n ""))))
+                 (setf (gethash "reachesTools" tool)
+                       (lambda (input)
+                         (call-result ctx "tool.reachesTools" (obj "tool" name "input" (or input (obj)))))))))
     tools))
 
 (defun ctx-get-active-tools (ctx) (reply-field ctx "getActiveTools" "tools"))
 ;;; thin host calls: one wire method each, the member names Pi's API gives them -------
 
 (defun call-result (ctx method &optional args)
-  "The \"result\" member of METHOD's reply (NIL for an absent or null member)."
-  (let* ((reply (ctx-call-host ctx method args))
-         (value (and (hash-table-p reply) (jget reply "result"))))
+  "The result of METHOD's reply (NIL for null): Python's `_call(method).get(\"result\")`."
+  (let ((value (ctx-call-host ctx method args)))
     (if (eq value :null) nil value)))
 
 (defun nonempty-object (value) (and (hash-table-p value) (plusp (hash-table-count value)) value))

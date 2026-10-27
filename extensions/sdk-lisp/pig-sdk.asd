@@ -16,6 +16,7 @@
                (:file "context")
                (:file "hooks")
                (:file "dispatch")
+               (:file "context-extra")
                ;; ==== lane T ====
                (:file "type-engine")
                (:file "tool-schema")
@@ -86,6 +87,7 @@
   :components ((:file "harness")
                (:file "json-tests")
                (:file "sdk-tests")
+               (:file "core-tests")
                 ;; ==== lane T ====
                 (:file "type-tests")
                 ;; ==== end lane T ====
