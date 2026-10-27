@@ -38,8 +38,8 @@ var conformanceCorpus = map[string]struct {
 	"go":     {dirs: []string{"test/extension-conformance"}, exts: []string{".go"}},
 	"rust":   {dirs: []string{"test/extension-conformance"}, exts: []string{".rs", "_test.go"}},
 	"python": {dirs: []string{"test/extension-conformance"}, exts: []string{".py", "_test.go"}},
-	// The Lisp corpus is its scenario driver and the SDK's own wire tests: a Lisp cell is reached by pig:<symbol> in either.
-	"lisp": {dirs: []string{"test/extension-conformance/testdata/scenario-driver-lisp", "extensions/sdk-lisp/tests"}, exts: []string{".lisp"}},
+	// The Lisp corpus is every Lisp fixture of the conformance suite (the scenario driver, the harness fixture and the family fixtures) and the SDK's own tests: a Lisp cell is reached by pig:<symbol> in any.
+	"lisp": {dirs: []string{"test/extension-conformance/testdata", "extensions/sdk-lisp/tests"}, exts: []string{".lisp"}},
 }
 
 // gapSpec is one reviewed conformance hole: a surface an SDK implements that no
