@@ -173,6 +173,12 @@ func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 		h.cg.retry, h.cg.retryID, h.cg.retryReq = retryAPI, id, req
 		return nil
 	}
+	if h.cg.state == gateApplied && h.loop == nil && err == nil {
+		// The read stored held changes (session/held.go) that the host's Storage adopted and has not answered: the read ends when it does, with
+		// its error when it rejects them.
+		h.cg.apiID, h.cg.apiValue, h.cg.apiWaits = id, value, true
+		return nil
+	}
 	h.answerAfterReads(func() {
 		if err != nil {
 			h.apiError(id, err)
@@ -294,6 +300,7 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		return h.usage()
 	case "commits":
 		h.changes, _ = boolOf(req, "on")
+		h.sess.TrackDropped = h.changes
 		if !h.changes {
 			h.sent = h.sent[:0]
 		}

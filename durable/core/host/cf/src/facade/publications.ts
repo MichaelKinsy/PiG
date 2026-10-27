@@ -16,6 +16,17 @@ export function recordPublication(client: CoreClient, seq: number, changes: read
   if (kept.size > KEPT) kept.delete(kept.keys().next().value as number)
 }
 
+/** The core's cache dropped these documents (record IDs): what the kept publications hold of them goes too (session.ts keeps nothing of an evicted document). */
+export function forgetPublished(client: CoreClient, ids: readonly number[]): void {
+  const kept = publications.get(client)
+  if (kept === undefined) return
+  for (const [seq, changes] of kept) {
+    const rest = changes.filter(change => !ids.includes((change as { record?: { id?: number } }).record?.id as number))
+    if (rest.length === 0) kept.delete(seq)
+    else if (rest.length !== changes.length) kept.set(seq, rest)
+  }
+}
+
 /** The change of the newest publication that a frame repeats: the same operations and the same value. A frame's notice names no commit, and its commit's publication precedes it. */
 export function sharedChange(client: CoreClient, frame: { value?: unknown; ops: readonly unknown[] }): DocumentChange | undefined {
   const kept = publications.get(client)

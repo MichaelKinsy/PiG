@@ -52,6 +52,10 @@ type commitGate struct {
 	retryOp   *jv.Object
 	retryID   uint32
 	retryReq  *jv.Object
+	// apiID and apiValue are the api read that waits for the Storage's answer to the commit it applied (apiWaits).
+	apiID    uint32
+	apiValue any
+	apiWaits bool
 	// applied is the host transaction whose commit the Storage adopted and applied: its end is answered when the Storage answers.
 	applied *hostTx
 }
@@ -174,6 +178,16 @@ func (h *handler) gateAnswered(outcome uint8, payload []byte) {
 			// A Session-mode job (the store of held changes, session/held.go) ran again at the adoption: a failure after it fails the Session.
 			if err != nil {
 				h.sess.Fail(err)
+			}
+			if cg.apiWaits {
+				cg.apiWaits = false
+				value := cg.apiValue
+				cg.apiValue = nil
+				if err != nil {
+					h.apiError(cg.apiID, err)
+				} else {
+					h.apiOK(cg.apiID, value)
+				}
 			}
 			return
 		}

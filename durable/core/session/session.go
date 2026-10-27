@@ -71,9 +71,12 @@ type Session struct {
 	PersistWithin func() (float64, bool)
 	// holdOrder is the documents with held changes, in the order they were first held; each is pinned in
 	// the cache until its changes are stored (held.go).
-	holdOrder []*loadedDoc
-	holdTimer holdTimer
-	holdArmed bool
+	// TrackDropped makes the Session list the incarnations that leave the cache (TakeDropped); dropped is the list.
+	TrackDropped bool
+	dropped      []DroppedDoc
+	holdOrder    []*loadedDoc
+	holdTimer    holdTimer
+	holdArmed    bool
 	// holdFiredFn and holdJobFn are the timer's callbacks, made once; scratchHolds is reused by each store of held changes.
 	holdFiredFn  func()
 	holdJobFn    func() error
@@ -504,6 +507,11 @@ func (s *Session) UnloadDocuments() error {
 	if s.failure == nil {
 		if err := s.StoreHolds(); err != nil {
 			return err
+		}
+	}
+	if s.TrackDropped {
+		for _, cached := range s.docs {
+			s.dropped = append(s.dropped, DroppedDoc{ID: mustInt(cached.record, "id"), Address: cached.addressID})
 		}
 	}
 	s.docs = map[string]*loadedDoc{}

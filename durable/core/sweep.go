@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
+	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
 
@@ -68,7 +69,15 @@ func (h *handler) publishDocCache() {
 	sweeps := h.sess.SweepJobs
 	attached := h.sess.DocumentsAttached()
 	held := h.sess.HeldDocuments()
-	if h.cacheSent && h.cacheSizes == [5]int{cached, idle, attached, sweeps, held} {
+	// The documents whose value the host holds and the cache dropped: the host forgets that value (tx.go sentValues), and the core sends the
+	// value of the next change.
+	var dropped []byte
+	for _, doc := range h.sess.TakeDropped() {
+		h.sent.remove(doc.ID)
+		dropped = strconv.AppendInt(append(dropped, `,{"id":`...), int64(doc.ID), 10)
+		dropped = append(jv.AppendString(append(dropped, `,"address":`...), doc.Address), '}')
+	}
+	if h.cacheSent && h.cacheSizes == [5]int{cached, idle, attached, sweeps, held} && dropped == nil {
 		return
 	}
 	h.cacheSent, h.cacheSizes = true, [5]int{cached, idle, attached, sweeps, held}
@@ -77,6 +86,9 @@ func (h *handler) publishDocCache() {
 	body = append(append(body, `,"attached":`...), strconv.Itoa(attached)...)
 	body = append(append(body, `,"sweeps":`...), strconv.Itoa(sweeps)...)
 	body = append(append(body, `,"held":`...), strconv.Itoa(held)...)
+	if dropped != nil {
+		body = append(append(append(body, `,"dropped":[`...), dropped[1:]...), ']')
+	}
 	h.b.Notice(abi.NoticeDocCache, append(body, '}'))
 }
 

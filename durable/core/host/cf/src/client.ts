@@ -43,6 +43,8 @@ export class CoreClient {
   onConversationCreated?: (tx: unknown, record: unknown) => unknown
   /** The sizes of a session-mode core's document cache, as its last doc_cache notice said (session.ts documentCacheSizes is synchronous). */
   docCache: { readonly cached: number; readonly idle: number; readonly attached: number; readonly sweeps: number; readonly held: number } = { cached: 0, idle: 0, attached: 0, sweeps: 0, held: 0 }
+  /** Told which documents the core's cache dropped, with the record IDs: the host forgets the values it holds of them (facade/harness.ts documentValues). */
+  onDropped: ((documents: { id: number; address: string }[]) => void) | undefined
   /** The last wake the core published, and the host's callback for each (HarnessOptions.onWake); the core arms no timer for sleeping tasks when the host takes it. */
   wake: { active: boolean; at?: number } | undefined
   onWake: ((wake: { active: boolean; at?: number }) => void) | undefined
@@ -114,7 +116,10 @@ export class CoreClient {
         return
       }
       case NOTICE.doc_cache: {
-        this.docCache = JSON.parse(dec.decode(n.payload))
+        const body = JSON.parse(dec.decode(n.payload)) as typeof this.docCache & { dropped?: { id: number; address: string }[] }
+        // Documents the core's cache dropped (core/sweep.go): the values this host holds of them go too.
+        if (body.dropped !== undefined) { this.onDropped?.(body.dropped); delete body.dropped }
+        this.docCache = body
         return
       }
       case NOTICE.index_sizes: {
