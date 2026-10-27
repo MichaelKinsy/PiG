@@ -496,6 +496,46 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
         (setf (extension-branch-subscribers ext)
               (remove id (extension-branch-subscribers ext) :key #'car))))))
 
+;;; terminal resizes -------------------------------------------------------------
+
+(defun ctx-on-width-change (ctx handler)
+  "Call HANDLER, with the new terminal width, after each resize. Rows sent with the footer or header carry the width they were
+laid out for, so after a resize they stay hidden until the extension sends rows for the new width: this is that trigger.
+Handlers run one at a time, in the order the widths arrived, on a worker thread (never the thread that reads the host); a handler
+that signals is reported on stderr and does not stop the others. Returns the unsubscribe function."
+  (let* ((ext (ctx-extension ctx))
+         (id (sb-thread:with-mutex ((extension-state-lock ext))
+               (let ((id (incf (extension-width-subscriber-id ext))))
+                 (setf (extension-width-subscribers ext)
+                       (append (extension-width-subscribers ext) (list (cons id handler))))
+                 id))))
+    (lambda ()
+      (sb-thread:with-mutex ((extension-state-lock ext))
+        (setf (extension-width-subscribers ext)
+              (remove id (extension-width-subscribers ext) :key #'car))))))
+
+(defun width-worker-loop (ext)
+  (loop
+    (let ((job (sb-thread:with-mutex ((extension-width-lock ext))
+                 (loop while (null (extension-width-jobs ext))
+                       do (sb-thread:condition-wait (extension-width-wait ext) (extension-width-lock ext)))
+                 (pop (extension-width-jobs ext)))))
+      (dolist (handler (cdr job))
+        (handler-case (funcall handler (car job))
+          (error (e) (format *error-output* "~A: width change handler failed: ~A~%" (extension-name ext) e)))))))
+
+(defun dispatch-width-change (ext width)
+  "Queue WIDTH for the handlers subscribed now."
+  (let ((handlers (sb-thread:with-mutex ((extension-state-lock ext))
+                    (mapcar #'cdr (extension-width-subscribers ext)))))
+    (when handlers
+      (sb-thread:with-mutex ((extension-width-lock ext))
+        (setf (extension-width-jobs ext) (append (extension-width-jobs ext) (list (cons width handlers))))
+        (unless (extension-width-worker ext)
+          (setf (extension-width-worker ext)
+                (sb-thread:make-thread #'width-worker-loop :arguments (list ext) :name "pig-width")))
+        (sb-thread:condition-notify (extension-width-wait ext))))))
+
 ;;; before_agent_start prompt rendering -------------------------------------------
 
 (defstruct (system-prompt (:constructor make-system-prompt (ctx options prompt)))

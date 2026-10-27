@@ -297,3 +297,25 @@ Returns the host and the register envelope."
         (check-call (lambda (c) (pig:registry-get-provider-auth (pig:ctx-model-registry c) "p")) "getProviderAuth" (pig:obj "provider" "p"))
         (check-call (lambda (c) (pig:registry-refresh (pig:ctx-model-registry c))) "refreshModelRegistry" (pig:obj))
         (check-call (lambda (c) (pig:registry-get-available-of-type (pig:ctx-model-registry c) "t" "p")) "getAvailableOfType" (pig:obj "type" "t" "provider" "p"))))))
+
+(defvar *widths* nil)
+
+(defun wait-for-widths (count)
+  (loop repeat 200 until (>= (length *widths*) count) do (sleep 0.01)))
+
+(deftest width-change-handlers-run-in-order-until-unsubscribed
+  (with-host (host (probe-extension))
+    (setf *widths* nil)
+    (let (unsubscribe)
+      (probe-call host (lambda (c)
+                         (setf unsubscribe (pig:ctx-on-width-change c (lambda (w) (setf *widths* (append *widths* (list w))))))
+                         (pig:ctx-wait-for-idle c))
+                  (pig:obj) "w1")
+      (hsend host "type" "notify" "notify" (pig:obj "method" "width_change" "args" (pig:obj "width" 100)))
+      (hsend host "type" "notify" "notify" (pig:obj "method" "width_change" "args" (pig:obj "width" 120)))
+      (wait-for-widths 2)
+      (check-equal '(100 120) *widths*)
+      (funcall unsubscribe)
+      (hsend host "type" "notify" "notify" (pig:obj "method" "width_change" "args" (pig:obj "width" 140)))
+      (sleep 0.2)
+      (check-equal '(100 120) *widths*))))

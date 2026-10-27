@@ -82,6 +82,11 @@
   (cwd "") (mode "") (width 0) (height 0) (has-ui nil)
   (footer (make-footer-data))
   (branch-subscribers '()) (branch-subscriber-id 0)
+  ;; terminal resizes: handlers run in order on one worker thread, never on the thread that reads the host
+  (width-subscribers '()) (width-subscriber-id 0)
+  (width-lock (sb-thread:make-mutex :name "pig width"))
+  (width-wait (sb-thread:make-waitqueue))
+  (width-jobs '()) (width-worker nil)
   (stale-message nil)
   (run-signal nil)               ; (run . abort-signal) while a run is active
   (replicas (make-hash-table :test 'equal))

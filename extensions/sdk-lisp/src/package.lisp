@@ -26,7 +26,7 @@
    #:ctx-set-active-tools #:ctx-get-commands #:ctx-get-context-usage #:ctx-get-system-prompt-options #:ctx-get-model-info
    #:ctx-get-model-auth #:ctx-get-scoped-models #:ctx-set-model #:ctx-set-thinking-level #:ctx-set-label #:ctx-wait-for-idle
    #:ctx-project-trusted-p #:ctx-get-session-id #:ctx-get-leaf-id #:ctx-get-all-themes #:ctx-get-theme #:ctx-set-theme
-   #:ctx-get-editor-text #:ctx-tools-expanded-p
+   #:ctx-on-width-change #:ctx-get-editor-text #:ctx-tools-expanded-p
    #:registry-find #:registry-get-provider-auth #:registry-refresh #:registry-get-available-of-type
    #:ctx-session-manager #:session-get-cwd #:session-get-session-dir #:session-get-session-id
    #:session-get-session-file #:session-get-session-name #:session-get-leaf-id #:session-get-header
