@@ -45,9 +45,9 @@ func (r *run) tools(cp *jv.Object) {
 	})
 }
 
-// finishToolRound runs when the round's tools are terminal: it applies their controls and either ends the run at the
-// final boundary (terminate, handoff, or a queued reset) or hands it to the next generation at the postTools boundary
-// (spec section 8.5).
+// finishToolRound runs when the round's tools are terminal: it applies their controls, appends a handoff's reset, and then
+// ends the run at the final boundary (terminate), ends it at a queued reset, or hands it to the next generation at the
+// postTools boundary, in the handoff's new context when there is one (spec section 8.5).
 func (r *run) finishToolRound(assistant ID, toolList []any) {
 	ids := make([]ID, len(toolList))
 	for i, v := range toolList {
@@ -140,16 +140,17 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 		return nil, err
 	}
 	now := r.now()
-	if terminate || handoff != nil {
-		if handoff != nil {
-			message := jobj("role", "user", "content", handoff, "timestamp", now)
-			fields := jobj("head", "self", "model", []any{message})
-			entry, err := tx.AppendEntry(r.conv, entryDraft(KindReset, fields))
-			if err != nil {
-				return nil, err
-			}
-			boundary.Head, boundary.HasHead = idField(entry, "id"), true
+	if handoff != nil {
+		// The handoff's reset precedes every queued item, so queued writes and selected steers land in its context.
+		message := jobj("role", "user", "content", handoff, "timestamp", now)
+		fields := jobj("head", "self", "model", []any{message})
+		entry, err := tx.AppendEntry(r.conv, entryDraft(KindReset, fields))
+		if err != nil {
+			return nil, err
 		}
+		boundary.Head, boundary.HasHead = idField(entry, "id"), true
+	}
+	if terminate {
 		applied, err := applyBoundary(tx, boundary, true, now)
 		if err != nil {
 			return nil, err

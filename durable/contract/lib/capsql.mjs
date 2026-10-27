@@ -84,6 +84,8 @@ export class Capture {
 		countWrite()
 		if (!this.session) { if (params.length) return Number(this.#prepare(text).run(...params).changes); this.db.exec(text); return 0 }
 		this.stmts.push({ q: this.#q(text), k: "w", p: params.map(plain) })
+		// The core's migration of an older store runs its DROP and ALTER as recorded writes (exec() below sets the flag for a host that execs them).
+		if (/^\s*(DROP|ALTER)\b/i.test(text)) this.schemaChanged = true
 		if (params.length) return Number(this.#prepare(text).run(...params).changes)
 		this.db.exec(text)
 		return 0
