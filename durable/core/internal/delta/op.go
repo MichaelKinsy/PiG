@@ -87,8 +87,11 @@ func IsBase(ops []Op) bool { return len(ops) > 0 && ops[0].Verb == Replace }
 // Tuple returns the operation as the tuple Chord stores: a []any whose path is
 // an array of strings and numbers.
 func (op Op) Tuple() any {
+	// One backing array holds every verb's tuple: a composite literal per verb is one TinyGo heap site each.
+	t := make([]any, 5)
 	if op.Verb == Replace {
-		return []any{"r", op.Value}
+		t[0], t[1] = "r", op.Value
+		return t[:2]
 	}
 	path := make([]any, len(op.Path))
 	for i, s := range op.Path {
@@ -98,27 +101,34 @@ func (op Op) Tuple() any {
 			path[i] = s.Key
 		}
 	}
+	t[1] = path
 	switch op.Verb {
 	case Set:
-		return []any{"s", path, op.Value}
+		t[0], t[2] = "s", op.Value
+		return t[:3]
 	case Delete:
-		return []any{"d", path}
+		t[0] = "d"
+		return t[:2]
 	case Append:
-		return []any{"a", path, op.Text}
+		t[0], t[2] = "a", op.Text
+		return t[:3]
 	case Trim:
-		return []any{"t", path, float64(op.Count)}
+		t[0], t[2] = "t", float64(op.Count)
+		return t[:3]
 	case Splice:
 		items := op.Items
 		if items == nil {
 			items = []any{}
 		}
-		return []any{"p", path, float64(op.Index), float64(op.Remove), items}
+		t[0], t[2], t[3], t[4] = "p", float64(op.Index), float64(op.Remove), items
+		return t
 	}
 	perm := make([]any, len(op.Perm))
 	for i, p := range op.Perm {
 		perm[i] = float64(p)
 	}
-	return []any{"m", path, perm}
+	t[0], t[2] = "m", perm
+	return t[:3]
 }
 
 // OpsValue returns the operations as a JSON array value.
