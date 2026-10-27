@@ -226,6 +226,8 @@
           reply))
       value))
 
+(declaim (ftype function user-bash-operations-reply))
+
 (defun messages-encoding (messages)
   (handler-case (to-json messages) (error () nil)))
 
@@ -264,7 +266,10 @@
              (default "promptGuidelines" (vector)) (default "contextFiles" (vector)) (default "skills" (vector)))
            (let ((sp (make-system-prompt ctx options (let ((p (jget data "systemPrompt"))) (if (stringp p) p "")))))
              (setf (system-prompt-key sp) (to-json options))
-             (setf (ctx-system-prompt ctx) sp))
+             (setf (ctx-system-prompt ctx) sp)
+             ;; Pi's event.systemPrompt is a getter over the shared options: reading it through jget renders them now
+             (when (nth-value 1 (gethash "systemPrompt" data))
+               (setf (gethash "systemPrompt" data) (make-lazy-value (lambda () (system-prompt-get ctx))))))
            (handler-case
                (progn (ticket-begin (request-ticket (ctx-request ctx)))
                       (setf result (funcall handler ctx data)))
@@ -282,9 +287,7 @@
            (ticket-begin (request-ticket (ctx-request ctx)))
            (let ((result (funcall handler ctx data)))
              (when (equal event "user_bash")
-               (when (and (hash-table-p result) (jget result "operations"))
-                 (error 'unsupported-capability :member "user_bash operations"))
-               (setf result (user-bash-event-result result)))
+               (setf result (or (user-bash-operations-reply result) (user-bash-event-result result))))
              (when (and context-event snapshot)
                (let* ((returned (let ((r (and (hash-table-p result) (jget result "messages")))) (or r messages)))
                       (unchanged (and (vectorp returned) (= (length returned) (length snapshot))
