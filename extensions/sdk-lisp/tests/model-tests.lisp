@@ -339,7 +339,7 @@
                                                                         (chunk (make-array (- end offset) :element-type '(unsigned-byte 8))))
                                                                    (dotimes (i (length chunk)) (setf (aref chunk i) (mod (+ offset i) 251)))
                                                                    (setf offset end)
-                                                                   chunk))))))))))))
+                                                                   chunk)))))))))))
       (request host "g1" "command" "tool" "c" "args" "")
       (let* ((frame (hread-type host "call")) (args (pig:jget (pig:jget frame "call") "args")))
         (check-equal t (pig:jget args "fetch"))
