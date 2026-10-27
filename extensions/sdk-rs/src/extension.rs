@@ -2215,6 +2215,14 @@ impl Extension {
                 let (value, error) = match result { Ok(value) => (Some(value), None), Err(err) => (None, Some(ErrorInfo { code: None, message: err.to_string() })) };
                 let _ = conn.respond(id, value, error);
             }
+            "tui.alt.cb" => {
+                // The host sends it while the extension's own thread may be blocked in a tui.alt call: it runs on this request's thread.
+                let (value, error) = match crate::tui_alt_screen::dispatch_callback(&conn.tui_alt, req.args.as_ref().unwrap_or(&Value::Null)) {
+                    Ok(value) => (Some(value), None),
+                    Err(message) => (None, Some(ErrorInfo { code: None, message })),
+                };
+                let _ = conn.respond(id, value, error);
+            }
             "model_stream_callback" => {
                 let (value, error) = match crate::context::dispatch_model_stream_callback(&base_ctx.model_streams, req.args.as_ref().unwrap_or(&Value::Null), &cancel.signal) {
                     Ok(value) => (Some(value), None),

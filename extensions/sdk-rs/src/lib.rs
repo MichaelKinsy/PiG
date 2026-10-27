@@ -50,7 +50,6 @@
 //!
 //! `get_agent_dir`, `get_config_dir_name` and `get_version` are Pi's `getAgentDir()`, `CONFIG_DIR_NAME` and `VERSION`. They fail, instead of returning
 //! a made-up path, when the process was not started by a PiG host.
-// pig divergence (D204): this SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host (the Node SDK does); the 0.6.1 export ends this.
 
 mod event_stream;
 mod autocomplete;
@@ -165,6 +164,12 @@ pub use truncate::{DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, GREP_MAX_LINE_LENGTH, T
 mod extension;
 pub mod kit;
 pub mod tui;
+mod tui_alt_screen;
+pub use tui_alt_screen::{
+    AltScreenOverlayHandle, Component, ComponentRef, CopySelectionOutcome, InputListener, InputListenerResult, LateColorsFn, MouseEventResult, ProgramStatus,
+    QueryTerminalColorsOptions, Terminal, TerminalColorScheme, TerminalColors, TerminalInputFn, TerminalResizeFn, TuiAltScreen, TuiAltScreenOptions,
+    TuiStopOptions, Unsubscribe, OverlayUnfocusTarget, WheelScrollLines,
+};
 mod login;
 mod oauth;
 mod protocol;

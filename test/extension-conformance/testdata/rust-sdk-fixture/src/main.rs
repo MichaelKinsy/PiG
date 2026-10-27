@@ -3701,6 +3701,7 @@ fn main() {
     register_conformance_oauth_large(&mut ext);
     register_state_push_probe(&mut ext);
     register_signal_abort(&mut ext);
+    register_tui_alt_screen_probe(&mut ext);
     ext.run().unwrap();
 }
 
@@ -4668,4 +4669,256 @@ fn register_signal_abort(ext: &mut Extension) {
 /// A dialog's string answer: a select, input or editor result is whatever JSON the client sent (Pi's RPC mode does not check its type), and undefined is null.
 fn dialog_text(value: &serde_json::Value) -> String {
     value.as_str().unwrap_or("").to_string()
+}
+
+/// A Terminal that records what the screen does to it: the callbacks `start` was given, whether it runs, and every write.
+#[derive(Default)]
+struct ProbeTerminal {
+    log: Mutex<Vec<String>>,
+    on_input: Mutex<Option<pig_sdk::TerminalInputFn>>,
+    started: AtomicBool,
+}
+
+impl pig_sdk::Terminal for ProbeTerminal {
+    fn start(&self, on_input: pig_sdk::TerminalInputFn, _on_resize: pig_sdk::TerminalResizeFn) {
+        *self.on_input.lock().unwrap() = Some(on_input);
+        self.started.store(true, Ordering::SeqCst);
+        self.log.lock().unwrap().push("start".to_string());
+    }
+    fn stop(&self) {
+        self.started.store(false, Ordering::SeqCst);
+        self.log.lock().unwrap().push("stop".to_string());
+    }
+    fn drain_input(&self, _max_ms: u64, _idle_ms: u64) {}
+    fn write(&self, data: &str) {
+        self.log.lock().unwrap().push(data.to_string());
+    }
+    fn columns(&self) -> u32 {
+        20
+    }
+    fn rows(&self) -> u32 {
+        6
+    }
+    fn kitty_protocol_active(&self) -> bool {
+        false
+    }
+    fn move_by(&self, _lines: i32) {}
+    fn hide_cursor(&self) {}
+    fn show_cursor(&self) {}
+    fn clear_line(&self) {}
+    fn clear_from_cursor(&self) {}
+    fn clear_screen(&self) {}
+    fn set_title(&self, _title: &str) {}
+    fn set_progress(&self, _active: bool) {}
+    fn set_program_status(&self, _status: &pig_sdk::ProgramStatus) {}
+}
+
+/// A Component that draws the lines its function returns for the width.
+struct ProbeLines(Box<dyn Fn(u32) -> Vec<String> + Send + Sync>);
+
+impl pig_sdk::Component for ProbeLines {
+    fn render(&self, width: u32) -> Vec<String> {
+        (self.0)(width)
+    }
+}
+
+/// A Focusable Component that records the input it receives.
+#[derive(Default)]
+struct ProbeFocus {
+    focused: AtomicBool,
+    inputs: Mutex<Vec<String>>,
+}
+
+impl pig_sdk::Component for ProbeFocus {
+    fn render(&self, _width: u32) -> Vec<String> {
+        vec!["foc".to_string()]
+    }
+    fn handles_input(&self) -> bool {
+        true
+    }
+    fn handle_input(&self, data: &str) {
+        self.inputs.lock().unwrap().push(data.to_string());
+    }
+    fn is_focusable(&self) -> bool {
+        true
+    }
+    fn focused(&self) -> bool {
+        self.focused.load(Ordering::SeqCst)
+    }
+    fn set_focused(&self, focused: bool) {
+        self.focused.store(focused, Ordering::SeqCst);
+    }
+}
+
+/// The text of a screen line without its terminal sequences: CSI sequences and OSC 8 hyperlink openers and closers, as the Pi probe's regex
+/// `\x1b\[[0-9;?]*[A-Za-z]|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)?` strips them.
+fn visible_text(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '\u{1b}' {
+            if chars.get(i + 1) == Some(&'[') {
+                let mut j = i + 2;
+                while j < chars.len() && (chars[j].is_ascii_digit() || chars[j] == ';' || chars[j] == '?') {
+                    j += 1;
+                }
+                if j < chars.len() && chars[j].is_ascii_alphabetic() {
+                    i = j + 1;
+                    continue;
+                }
+            } else if chars.get(i + 1) == Some(&']') && chars.get(i + 2) == Some(&'8') && chars.get(i + 3) == Some(&';') && chars.get(i + 4) == Some(&';') {
+                let mut j = i + 5;
+                while j < chars.len() && chars[j] != '\u{7}' && chars[j] != '\u{1b}' {
+                    j += 1;
+                }
+                if chars.get(j) == Some(&'\u{7}') {
+                    j += 1;
+                } else if chars.get(j) == Some(&'\u{1b}') && chars.get(j + 1) == Some(&'\\') {
+                    j += 2;
+                }
+                i = j;
+                continue;
+            }
+        }
+        out.push(chars[i]);
+        i += 1;
+    }
+    out
+}
+
+/// tui-alt-screen-probe: drives every member of TuiAltScreen through the host and reports the facts the Pi class reports for the same steps.
+fn tui_alt_screen_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
+    use pig_sdk::{
+        ComponentRef, InputListener, InputListenerResult, MouseEvent, QueryTerminalColorsOptions, Terminal, TuiAltScreen, TuiAltScreenOptions,
+        TuiStopOptions, WheelScrollLines,
+    };
+    use std::sync::atomic::AtomicUsize;
+    let probe = Arc::new(ProbeTerminal::default());
+    let terminal: Arc<dyn Terminal> = probe.clone();
+    let screen = TuiAltScreen::new(
+        ctx,
+        terminal,
+        TuiAltScreenOptions {
+            show_hardware_cursor: Some(false),
+            mouse: Some(false),
+            wheel_scroll_lines: Some(WheelScrollLines::Lines(3.0)),
+            copy_on_select: Some(true),
+            ..Default::default()
+        },
+    )?;
+    let lines = |render: fn(u32) -> Vec<String>| -> ComponentRef { Arc::new(ProbeLines(Box::new(render))) };
+    let doc = lines(|w| (1..=12).map(|i| format!("row {i} w={w}")).collect());
+    screen.add_child(&doc)?;
+    let mut f: Vec<String> = Vec::new();
+    let thin = |component: &ComponentRef| Arc::as_ptr(component) as *const () as usize;
+    f.push(format!("mode={}", screen.mode()));
+    f.push(format!("children={}", screen.children().len()));
+    f.push(format!("terminal={}", Arc::as_ptr(&screen.terminal()) as *const () as usize == Arc::as_ptr(&probe) as *const () as usize));
+    if !screen.viewport_tui() {
+        return Err(std::io::Error::other("TuiAltScreen is not a viewport TUI"));
+    }
+    screen.start()?;
+    screen.render_now(false)?;
+    let sl = |screen: &TuiAltScreen| -> std::io::Result<Vec<String>> {
+        Ok(screen.get_screen_lines()?.iter().map(|line| visible_text(line).trim_end().to_string()).collect())
+    };
+    let at = |lines: &[String], index: usize| lines.get(index).cloned().unwrap_or_else(|| "undefined".to_string());
+    f.push(format!("viewport={}/{}", screen.viewport_top()?, screen.is_following_output()?));
+    let current = sl(&screen)?;
+    f.push(format!("first={}", at(&current, 0)));
+    f.push(format!("last={}", at(&current, 5)));
+    f.push(format!("redraws={}", screen.full_redraws()? > 0));
+    f.push(format!("entered={}", probe.log.lock().unwrap().iter().any(|entry| entry.contains("\u{1b}[?1049h"))));
+    screen.scroll_by(-2)?;
+    screen.render_now(false)?;
+    f.push(format!("up={}/{}", screen.viewport_top()?, screen.is_following_output()?));
+    screen.scroll_to_top()?;
+    screen.render_now(false)?;
+    f.push(format!("top={}/{}", screen.viewport_top()?, screen.is_following_output()?));
+    f.push(format!("topfirst={}", at(&sl(&screen)?, 0)));
+    screen.scroll_to_bottom()?;
+    screen.render_now(false)?;
+    f.push(format!("bottom={}/{}", screen.viewport_top()?, screen.is_following_output()?));
+    screen.flash("hello", Some(500))?;
+    screen.render_now(false)?;
+    f.push(format!("flash={}", sl(&screen)?.iter().any(|line| line.contains("hello"))));
+    let ov = lines(|_| vec!["OVER".to_string()]);
+    let handle = screen.show_overlay(&ov, Some(json!({"width": 8, "anchor": "center"})))?;
+    screen.render_now(false)?;
+    let width = handle.bounds()?.map_or_else(|| "undefined".to_string(), |bounds| bounds.width.to_string());
+    f.push(format!("overlay={}/{}/{}/{}", screen.has_overlay()?, screen.has_overlay_entries()?, handle.is_focused()?, width));
+    handle.set_hidden(true)?;
+    f.push(format!("hidden={}", handle.is_hidden()?));
+    handle.set_hidden(false)?;
+    screen.hide_overlay()?;
+    f.push(format!("afterHide={}/{}", screen.has_overlay()?, screen.has_overlay_entries()?));
+    let foc = Arc::new(ProbeFocus::default());
+    let foc_ref: ComponentRef = foc.clone();
+    screen.set_focus(Some(&foc_ref))?;
+    let focused = screen.get_focused_component()?;
+    f.push(format!("focus={}/{}", focused.as_ref().is_some_and(|component| thin(component) == thin(&foc_ref)), foc.focused()));
+    let on_input = probe.on_input.lock().unwrap().clone().ok_or_else(|| std::io::Error::other("the terminal was not started"))?;
+    on_input("k")?;
+    let listener: InputListener = Arc::new(|data: &str| (data == "c").then(|| InputListenerResult { consume: true, data: None }));
+    let remove = screen.add_input_listener(listener.clone())?;
+    on_input("c")?;
+    remove()?;
+    on_input("c")?;
+    screen.add_input_listener(listener.clone())?;
+    screen.remove_input_listener(&listener)?;
+    f.push(format!("inputs={}", foc.inputs.lock().unwrap().join(",")));
+    let debugs = Arc::new(AtomicUsize::new(0));
+    let counter = debugs.clone();
+    screen.set_on_debug(Some(Arc::new(move || {
+        counter.fetch_add(1, Ordering::SeqCst);
+    })))?;
+    on_input("\u{1b}[100;6u")?;
+    f.push(format!("debug={}", debugs.load(Ordering::SeqCst)));
+    screen.set_show_hardware_cursor(true)?;
+    screen.set_clear_on_shrink(true)?;
+    f.push(format!("flags={}/{}", screen.get_show_hardware_cursor()?, screen.get_clear_on_shrink()?));
+    screen.set_wheel_scroll_lines(WheelScrollLines::Lines(2.0))?;
+    screen.set_copy_on_select(false)?;
+    f.push(format!("copy={}/{}/{}", screen.get_copy_on_select()?, screen.has_active_selection()?, screen.copy_active_selection_to_clipboard()?));
+    screen.reset_text_selection()?;
+    let schemes = Arc::new(Mutex::new(Vec::<&'static str>::new()));
+    let seen = schemes.clone();
+    let _unsubscribe = screen.on_terminal_color_scheme_change(move |scheme| seen.lock().unwrap().push(scheme.as_str()));
+    screen.set_terminal_color_scheme_notifications(true)?;
+    on_input("\u{1b}[?997;1n")?;
+    on_input("\u{1b}[?997;2n")?;
+    f.push(format!("schemes={}", schemes.lock().unwrap().join(",")));
+    let colors = screen.query_terminal_colors(QueryTerminalColorsOptions { timeout_ms: 20.0, on_late_reply: None })?;
+    f.push(format!("colors={}", colors.to_value()));
+    let wheel = MouseEvent { kind: "wheel".into(), button: "none".into(), width: 20, height: 6, wheel_delta: 1, ..Default::default() };
+    let mouse = screen.handle_mouse(&wheel)?;
+    f.push(format!("mouse={}", mouse.map_or_else(|| "null".to_string(), |result| serde_json::to_string(&result).unwrap_or_default())));
+    f.push(format!("render={}", screen.render(10)?.iter().take(2).cloned().collect::<Vec<_>>().join("|")));
+    screen.invalidate()?;
+    screen.request_render(false)?;
+    let root = lines(|_| vec!["ROOT".to_string()]);
+    screen.set_layout_root(Some(&root))?;
+    screen.render_now(false)?;
+    f.push(format!("root={}", at(&sl(&screen)?, 0).starts_with("ROOT")));
+    screen.set_layout_root(None)?;
+    screen.remove_child(&doc)?;
+    f.push(format!("removed={}", screen.children().len()));
+    screen.add_child(&doc)?;
+    screen.clear()?;
+    f.push(format!("cleared={}", screen.children().len()));
+    screen.stop(TuiStopOptions::default())?;
+    f.push(format!("stopped={}", !probe.started.load(Ordering::SeqCst)));
+    Ok(format!("tui-alt: {}", f.join("; ")))
+}
+
+/// Contributes tui-alt-screen-probe (TestConformance_TuiAltScreenAgreesAcrossSDKs): one info notify with the facts.
+fn register_tui_alt_screen_probe(ext: &mut Extension) {
+    ext.command("tui-alt-screen-probe", "Drive every TuiAltScreen member and report the facts", |ctx, _args| match tui_alt_screen_probe(ctx) {
+        Ok(report) => {
+            ctx.notify(&report, "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
 }
