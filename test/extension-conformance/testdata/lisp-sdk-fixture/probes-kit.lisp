@@ -448,7 +448,7 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                        (pig:kit-bash-execution-set-complete seq 0)
                        (pig:ctx-set-widget ctx "kit-conversation"
                                            (pig:kit-view (pig:kit-container (list user streaming failed ls grep read custom exited seq diff)))
-                                           (pig:obj))))))
+                                           (pig:obj)))))))
   ;; kit-output-pad: a bash tool card and a bash command with Pi 1.1.0's outputPad 3 and a final result's durationMs 1234; "next" calls
   ;; setOutputPad(2) on both and gives the result durationMs 61500
   (pig:command ext "kit-output-pad" "Show Pi's outputPad and durationMs (D107)"
