@@ -18,7 +18,8 @@ once the response arrives. A responder that returns (values nil message) answers
                               "call_result" (if message (pig:obj "error" (pig:obj "message" message)) (pig:obj "result" result))))))
               ((equal type "response")
                (let ((response (pig:jget frame "response")))
-                 (return (values (pig:jget response "result") (pig:jref response "error" "message") (nreverse frames))))))))))
+                 (return (values (let ((result (pig:jget response "result"))) (if (eq result :null) nil result))
+                                (pig:jref response "error" "message") (nreverse frames))))))))))
 
 (defun pt-calls (frames &optional method)
   "The call members of the call frames in FRAMES, those of METHOD only when given."
@@ -59,7 +60,7 @@ once the response arrives. A responder that returns (values nil message) answers
                     :check (lambda (input) (declare (ignore input)) (pig:make-auth-check :type "api_key" :source "src"))
                     :login (lambda (interaction)
                              (pig:obj "type" "api_key" "key" (funcall (pig:auth-interaction-prompt interaction)
-                                                                      (pig:obj "type" "secret" "message" "k"))))
+                                                                      (pig:obj "type" "secret" "message" "k")))))
           :oauth (pig:make-oauth-auth
                   :name "OA" :is-subscription t :login-label "Login"
                   :login (lambda (interaction options)
@@ -70,7 +71,7 @@ once the response arrives. A responder that returns (values nil message) answers
                                     "agent" (or (pig:login-options-agent-name options) :null)))
                   :refresh (lambda (credential signal) (declare (ignore signal))
                              (let ((copy (pig::prov-copy-table credential))) (setf (gethash "access" copy) "rotated") copy))
-                  :to-auth (lambda (credential) (pig:obj "apiKey" (pig:jget credential "access"))))))
+                  :to-auth (lambda (credential) (pig:obj "apiKey" (pig:jget credential "access")))))
    :get-models (lambda () (list (pt-model "m1")))
    :get-all-models (lambda () (list (pt-model "m1") (pt-model "all-only")))
    :filter-models (lambda (models credential) (declare (ignore credential)) (list (aref models 1)))

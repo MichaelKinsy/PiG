@@ -136,7 +136,7 @@ credentials, REFRESH-TOKEN (credentials) -> credentials, GET-API-KEY (credential
     provider))
 
 (defun oauth-store-for (ext req)
-  (or (oauth-credential-store (oauth-provider-for ext req)) (error "provider has no credential store")))
+  (or (oauth-provider-credential-store (oauth-provider-for ext req)) (error "provider has no credential store")))
 
 (def-request "oauth_login" (ext ctx req)
   (let ((provider (oauth-provider-for ext req)))
