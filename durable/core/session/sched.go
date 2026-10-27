@@ -416,7 +416,7 @@ func (s *Scheduler) Retry(id ID, cancel *Cancel, then func(error)) {
 		return tx.stageTask(progressed(current))
 	}, TxScope{}, func(err error) {
 		if err == nil && s.sess.ReadOnly {
-			err = &ReadOnlyError{What: "running tasks"}
+			err = errReadOnlyRunning
 		} else if err == nil {
 			s.Resume()
 		}

@@ -278,7 +278,7 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 		// Refused before the store: the Session stays healthy, and the caller sees why (session.ts #runCommit).
 		tx.abortChanges()
 		s.sweepDocuments()
-		return nil, &ReadOnlyError{What: "a commit with writes"}
+		return nil, errReadOnlyCommit
 	}
 	seq, err := s.store.Commit(writes, s.nextID)
 	if err != nil {
