@@ -2708,3 +2708,23 @@ Parity allowance: the `divergence:D204` cells are the allowance; no paired Pi co
 Remove when: the 0.6.1 export of `TuiAltScreen` lands in the Go, Rust and Python SDKs; then the 46 cells become `native:` cells with their conformance or vector reach, and this record goes.
 
 SCRUTINIZED:approved
+
+## D205 Fullscreen frames scroll the rows that only moved
+
+What: when the transcript grows by a line or is scrolled, every row of the fullscreen viewport changes, though all but a few rows only moved. Pi 1.4.0, whose default `tuiMode` is fullscreen, clears and writes every row that differs from the previous frame (`packages/tui/src/tui-alt-screen.ts` `doRender`). PiG finds the distance at which the most rows of the changed part of the screen are rows of the previous frame. It scrolls that part inside a scroll region (`CSI top;bottom r`, then line feeds at its bottom or reverse index at its top, then `CSI r`) and draws only the rows that differ after the move. A frame scrolls only when this saves at least three row writes and no row of the moved part holds an image, because images are placed by their own sequences. The screen after every frame is the one Pi's frame shows; the bytes differ. A 20,000-character answer streamed into a 160x48 tmux pane made PiG write 3,578 KB to the terminal; with rows scrolled it writes 544 KB, and the tmux server's CPU for that answer falls from 0.97 s to 0.23 s (medians of four runs). `PIG_TUI_SCROLL_ROWS=0` draws every changed row, as Pi does.
+
+Why: the bytes are work for the terminal, and traffic for a multiplexer or an ssh connection between PiG and the screen. The technique comes from Pi-Bolt (MIT; see THIRD_PARTY_NOTICES.md).
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-27, contingent on terminal-compatibility proof. The proof: a terminal PiG does not trust with scroll regions (`TERM` unset, `dumb`, `unknown` or a terminal with no scroll-region capability such as `vt52`, or Zellij) and `PIG_TUI_SCROLL_ROWS=0` get Pi's bytes (`scrollRegionsUsable` in `tui/tui_alt_screen_scroll.go`); the tmux parity families that touch the alternate screen (`interactive-rendering`, `fullscreen`, `tui-components`) pass with their comparators unchanged; and a Windows Terminal run of the fullscreen scroll scenario is recorded in the coordinator status file.
+
+Call-site markers: `tui/tui_alt_screen.go` (`doRender`), `tui/tui_alt_screen_scroll.go` (`minRowsSavedByScrolling`).
+
+Evidence: `TestAltScreenScrolledFramesShowPisScreens` (`tui/alt_screen_oracle_test.go`) replays Pi's bytes and PiG's for every step of the 500 scenarios of the pinned Pi's alternate-screen fixture on a terminal model with scroll regions, and requires equal rows after every step; 55 steps scroll. `TestAltScreenFramesMatchPiOracle` still compares the bytes, with scrolling off. `TestAltScreenScrolledFramesShowEveryRow` (`tui/tui_alt_screen_scroll_test.go`) draws random frames (lines added, extended, deleted, inserted and changed, the viewport scrolled, the dock changed) and requires the terminal model to show each frame's rows. `TestAltScreenScrollsTheRowsThatMoved`, `TestAltScreenScrollsRowsDownWhenScrolledBack`, `TestAltScreenDoesNotScrollImageRows`, `TestAltScreenDoesNotScrollAnImageRowThatStays` and `TestAltScreenScrollRowsOff` cover the moves, images and the switch. `BenchmarkAltScreenFrameWhileTheTranscriptGrows` writes 153 bytes per frame against 5,417.
+
+Fallback evidence: `TestAltScreenScrollFallsBackToPisBytes` (`tui/alt_screen_oracle_test.go`) replays the 500 scenarios with `TERM` unset, `dumb`, `vt52` and `unknown`, and with `PIG_TUI_SCROLL_ROWS=0` in an xterm, and requires each step's bytes to equal Pi's exactly; `TestScrollRegionsUsableIn` lists which terminals are trusted, Zellij included.
+
+Parity allowance: the fullscreen parity scenarios compare the captured screen, which is the same, and the alternate-screen oracle compares Pi's bytes with scrolling off and Pi's screens with it on.
+
+Remove when: Pi scrolls the rows that moved, or an owner decision reverses this one. Then every changed row is drawn again, and the markers, `tui/tui_alt_screen_scroll.go` and this record go.
+
+SCRUTINIZED:approved
