@@ -1620,7 +1620,9 @@ class RuntimeContext {
     return info && typeof info === "object" ? { ...info } : undefined;
   }
 
-  isIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.isIdle; }
+  // Pi's runner.ts:createContext reads the Session live, including from I/O
+  // callbacks after the last subscribed event's busy snapshot.
+  isIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.callSync("isIdle")?.idle === true; }
   isProjectTrusted() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.projectTrusted; }
   abort() { this.runtime.extensionRuntime.assertActive(); this.runtime.abortRun(); }
   // Pi's hasPendingMessages is a live getter (agent-session.js:2728, `pendingMessageCount > 0`),

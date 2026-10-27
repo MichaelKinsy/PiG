@@ -23702,6 +23702,28 @@
       ]
     },
     {
+      "id": "BF-aec1233",
+      "title": "Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts",
+      "symptom": "Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts.",
+      "rootCause": "Match Pi by reading the live host state from background callbacks. Cover idle and busy transitions in isolated and packed Node runtimes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aec1233d8d",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_idle_test.go::TestNodeBackgroundIsIdleReadsTheHostLive"
+      ]
+    },
+    {
       "id": "BF-af1fe1a",
       "title": "Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the…",
       "symptom": "Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the default, extends a non-empty `enabledModels` scope, keeps scope keys for model IDs that start with their provider, and checks Anthropic subscription auth after the switch.",

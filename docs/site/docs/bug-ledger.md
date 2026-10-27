@@ -807,6 +807,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ad9ed64](#bf-ad9ed64) | Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ad9ed64-2](#bf-ad9ed64-2) | A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aeaaf97](#bf-aeaaf97) | Model requests reuse their HTTP connection | PiG's own defect | All platforms | 0.5.0 |
+| [BF-aec1233](#bf-aec1233) | Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts | PiG's own defect | All platforms | Unreleased |
 | [BF-af1fe1a](#bf-af1fe1a) | Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af36fe8](#bf-af36fe8) | A streamed tool call whose arguments are valid JSON but not an object (`[]`, `null`, `5`, `"s"`) keeps them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-afa1dd5](#bf-afa1dd5) | Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the… | PiG's own defect | All platforms | 0.5.0 |
@@ -12123,6 +12124,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `04b10bcaa0` (2026-10-09), `aeaaf97297` (2026-10-09)
 - **Tests:** `ai/http_transport_reuse_test.go::TestProvidersReuseOneConnectionAcrossBuilds`, `ai/http_transport_reuse_test.go::TestStreamingTransportIsKeyedByItsSettings`, `coding/model_runtime_conn_reuse_test.go::TestModelRuntimeReusesOneConnectionAcrossRequests`
 - **Release note:** Model requests reuse their HTTP connection. Every provider build used to create its own transport, so each request and tool round trip opened a new TCP (and TLS, and proxy CONNECT) connection and left an idle socket with its goroutines for two minutes. Providers now share one transport per TLS mode; a changed idle timeout or proxy environment replaces it, as Pi's configureHttpDispatcher replaces its single dispatcher.
+
+### BF-aec1233
+
+**Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts**
+
+- **Source:** PiG's own defect
+- **Symptom:** Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts.
+- **Root cause:** Match Pi by reading the live host state from background callbacks. Cover idle and busy transitions in isolated and packed Node runtimes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `aec1233d8d` (2026-10-27)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_idle_test.go::TestNodeBackgroundIsIdleReadsTheHostLive`
+- **Release note:** Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts.
 
 ### BF-af1fe1a
 
