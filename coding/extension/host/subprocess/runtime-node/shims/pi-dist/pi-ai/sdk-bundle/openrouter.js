@@ -1,7 +1,7 @@
 import {
   openrouterProvider,
   personalizeOpenRouterCatalog
-} from "./chunk-GWORY4ZZ.js";
+} from "./chunk-BSAWXRFU.js";
 import "./chunk-VLLDVPPZ.js";
 import "./chunk-QGCG6AEG.js";
 import "./chunk-SHUYVCID.js";

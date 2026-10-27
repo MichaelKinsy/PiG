@@ -5925,7 +5925,10 @@ var Markdown = class {
         break;
       case "latexBlock": {
         const latexToken = token;
-        const rendered = !latexToken.pending && this.options.renderLatex !== false ? renderLatex(latexToken.text, { display: true }) ?? latexToken.raw.trim() : latexToken.raw.trim();
+        let rendered = !latexToken.pending && this.options.renderLatex !== false ? renderLatex(latexToken.text, { display: true }) : void 0;
+        if (rendered === void 0 || rendered.split("\n").some((line) => visibleWidth8(line) > width)) {
+          rendered = latexToken.raw.trim();
+        }
         for (const line of rendered.split("\n")) {
           lines.push(this.applyDefaultStyle(line));
         }

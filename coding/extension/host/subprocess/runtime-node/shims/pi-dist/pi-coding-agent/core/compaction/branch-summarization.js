@@ -185,7 +185,7 @@ Keep each section concise. Preserve exact file paths, function names, and error 
  * @param options - Generation options
  */
 export async function generateBranchSummary(entries, options) {
-    const { model, apiKey, headers, env, signal, customInstructions, replaceInstructions, reserveTokens = 16384, streamFn, retry, callbacks, } = options;
+    const { model, apiKey, headers, env, signal, thinkingLevel, customInstructions, replaceInstructions, reserveTokens = 16384, streamFn, retry, callbacks, } = options;
     // Token budget = context window minus reserved space for prompt + response
     const contextWindow = model.contextWindow || 128000;
     const tokenBudget = contextWindow - reserveTokens;
@@ -222,6 +222,9 @@ export async function generateBranchSummary(entries, options) {
     // so transient stream drops reuse the configured retry policy.
     const context = normalizeContext({ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: summarizationMessages });
     const requestOptions = { apiKey, headers, env, signal };
+    if (model.reasoning && thinkingLevel && thinkingLevel !== "off") {
+        requestOptions.reasoning = thinkingLevel;
+    }
     const response = await completeSummarization(model, context, requestOptions, streamFn, retry, callbacks);
     // Check if aborted or errored
     if (response.stopReason === "aborted") {

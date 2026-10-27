@@ -123,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-QLIWYORR.js";
+} from "./chunk-IX4XAYCN.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -158,7 +158,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-6HJCSATA.js";
+} from "./chunk-4XWAF7AN.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
@@ -7911,15 +7911,19 @@ var AssistantMessageComponent = class extends Container11 {
     this.lastMessage = message;
     this.isStreaming = isStreaming;
     this.contentContainer.clear();
-    const hasVisibleContent = message.content.some((c2) => c2.type === "text" && c2.text.trim() || c2.type === "thinking" && c2.thinking.trim());
-    if (hasVisibleContent) {
-      this.contentContainer.addChild(new Spacer10(1));
-    }
+    let needsSpacer = true;
+    const addVisibleChild = /* @__PURE__ */ __name((child) => {
+      if (needsSpacer) {
+        this.contentContainer.addChild(new Spacer10(1));
+        needsSpacer = false;
+      }
+      this.contentContainer.addChild(child);
+    }, "addVisibleChild");
     let thinkingRunIndex = 0;
     for (let i = 0; i < message.content.length; i++) {
       const content = message.content[i];
       if (content.type === "text" && content.text.trim()) {
-        this.contentContainer.addChild(new Markdown(content.text.trim(), this.outputPad, 0, this.markdownTheme, void 0, {
+        addVisibleChild(new Markdown(content.text.trim(), this.outputPad, 0, this.markdownTheme, void 0, {
           transform: createMarkdownTransform("assistant", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
         }));
       } else if (content.type === "thinking") {
@@ -7938,16 +7942,18 @@ var AssistantMessageComponent = class extends Container11 {
         if (thinkingBlocks.length === 0) {
           continue;
         }
-        const hasVisibleContentAfter = message.content.slice(i + 1).some((c2) => c2.type === "text" && c2.text.trim() || c2.type === "thinking" && c2.thinking.trim());
         const runIndex = thinkingRunIndex++;
         const hidden = this.thinkingVisibilityOverrides.get(runIndex) ?? this.hideThinkingBlock;
+        if (hidden && !this.hiddenThinkingLabel.trim()) {
+          continue;
+        }
         const thinkingComponent = hidden ? new Text11(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0) : new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
           color: /* @__PURE__ */ __name((text) => theme.fg("thinkingText", text), "color"),
           italic: true
         }, {
           transform: createMarkdownTransform("assistant-thinking", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
         });
-        this.contentContainer.addChild(new MouseRegion(thinkingComponent, (event) => {
+        addVisibleChild(new MouseRegion(thinkingComponent, (event) => {
           if (event.type !== "click" || event.button !== "left")
             return void 0;
           this.thinkingVisibilityOverrides.set(runIndex, !hidden);
@@ -7955,9 +7961,7 @@ var AssistantMessageComponent = class extends Container11 {
             this.updateContent(this.lastMessage);
           return { handled: true };
         }));
-        if (hasVisibleContentAfter) {
-          this.contentContainer.addChild(new Spacer10(1));
-        }
+        needsSpacer = true;
       }
     }
     const hasToolCalls = message.content.some((c2) => c2.type === "toolCall");
@@ -14917,8 +14921,11 @@ ${message}`, ["Yes", "No"], opts, {
   setCustomEditorComponent(factory) {
     this.editorComponentFactory = factory;
     const currentText = this.editor.getText();
-    this.disposeActiveSelector();
-    this.editorContainer.clear();
+    const dialogOpen = this.extensionDialogs.length > 0;
+    if (!dialogOpen) {
+      this.disposeActiveSelector();
+      this.editorContainer.clear();
+    }
     if (factory) {
       const newEditor = factory(this.ui, getEditorTheme(), this.keybindings);
       newEditor.onSubmit = this.defaultEditor.onSubmit;
@@ -14959,7 +14966,8 @@ ${message}`, ["Yes", "No"], opts, {
       this.defaultEditor.setText(currentText);
       this.editor = this.defaultEditor;
     }
-    this.editorContainer.addChild(this.editor);
+    if (!dialogOpen)
+      this.editorContainer.addChild(this.editor);
     if (this.activeStatusIndicator) {
       this.statusContainer.clear();
       this.activeWorkingIndicatorEmbedded = this.setEditorWorkingStatusIndicator(this.activeStatusIndicator);
@@ -14967,7 +14975,8 @@ ${message}`, ["Yes", "No"], opts, {
         this.statusContainer.addChild(this.activeStatusIndicator);
       }
     }
-    this.ui.setFocus(this.editor);
+    if (!dialogOpen)
+      this.ui.setFocus(this.editor);
     this.ui.requestRender();
   }
   /**
@@ -15026,7 +15035,7 @@ ${message}`, ["Yes", "No"], opts, {
           overlayHandle = this.ui.showOverlay(c2, resolveOptions());
           options?.onHandle?.(overlayHandle);
         } else {
-          this.pushExtensionDialog(c2);
+          this.pushExtensionDialog(c2, options?.blocked);
         }
       }).catch((err) => {
         if (closed)

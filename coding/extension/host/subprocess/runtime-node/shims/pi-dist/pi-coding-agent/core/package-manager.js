@@ -1505,7 +1505,7 @@ export class DefaultPackageManager {
                     "--config.strict-dep-builds=false",
                 ];
             case "npm":
-                return ["install", "--omit=dev", "--legacy-peer-deps"];
+                return ["install", "--omit=dev", "--legacy-peer-deps", "--no-audit", "--no-fund"];
             default:
                 return ["install"];
         }
@@ -1536,7 +1536,8 @@ export class DefaultPackageManager {
                 "--config.strict-dep-builds=false",
             ];
         }
-        return ["install", ...specs, "--prefix", installRoot, "--legacy-peer-deps"];
+        // npm audit fix would run without --legacy-peer-deps and install pi peers, so skip audit advice.
+        return ["install", ...specs, "--prefix", installRoot, "--legacy-peer-deps", "--no-audit", "--no-fund"];
     }
     async installNpm(source, scope, temporary) {
         const installRoot = this.getNpmInstallRoot(scope, temporary);
@@ -1557,7 +1558,7 @@ export class DefaultPackageManager {
         }
         const args = ["uninstall", source.name, "--prefix", installRoot];
         if (packageManagerName !== "pnpm") {
-            args.push("--legacy-peer-deps");
+            args.push("--legacy-peer-deps", "--no-audit", "--no-fund");
         }
         await this.runNpmCommand(args);
     }

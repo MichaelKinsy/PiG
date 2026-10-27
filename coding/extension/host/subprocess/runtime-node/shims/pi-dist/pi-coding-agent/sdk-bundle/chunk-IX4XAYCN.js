@@ -4,7 +4,7 @@ import {
   fetchWithRetry,
   getPiUserAgent,
   processImage
-} from "./chunk-6HJCSATA.js";
+} from "./chunk-4XWAF7AN.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -2606,10 +2606,18 @@ var SessionManager = class _SessionManager {
     }
   }
   _appendEntry(entry) {
+    const previousLeafId = this.leafId;
     this.fileEntries.push(entry);
     this.byId.set(entry.id, entry);
     this.leafId = entry.id;
-    this._persist(entry);
+    try {
+      this._persist(entry);
+    } catch (error) {
+      this.fileEntries.pop();
+      this.byId.delete(entry.id);
+      this.leafId = previousLeafId;
+      throw error;
+    }
   }
   /** Append a message as child of current leaf, then advance leaf. Returns entry id.
    * Does not allow writing CompactionSummaryMessage and BranchSummaryMessage directly.
@@ -4143,7 +4151,7 @@ Use this EXACT format:
 
 Keep each section concise. Preserve exact file paths, function names, and error messages.`;
 async function generateBranchSummary(entries, options) {
-  const { model, apiKey, headers, env, signal, customInstructions, replaceInstructions, reserveTokens = 16384, streamFn, retry, callbacks } = options;
+  const { model, apiKey, headers, env, signal, thinkingLevel, customInstructions, replaceInstructions, reserveTokens = 16384, streamFn, retry, callbacks } = options;
   const contextWindow = model.contextWindow || 128e3;
   const tokenBudget = contextWindow - reserveTokens;
   const { messages, fileOps } = prepareBranchEntries(entries, tokenBudget);
@@ -4176,6 +4184,9 @@ ${instructions}`;
   ];
   const context = normalizeContext2({ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: summarizationMessages });
   const requestOptions = { apiKey, headers, env, signal };
+  if (model.reasoning && thinkingLevel && thinkingLevel !== "off") {
+    requestOptions.reasoning = thinkingLevel;
+  }
   const response = await completeSummarization(model, context, requestOptions, streamFn, retry, callbacks);
   if (response.stopReason === "aborted") {
     return { aborted: true };
@@ -12184,7 +12195,7 @@ var defaultModelPerProvider = {
   "amazon-bedrock": "us.anthropic.claude-opus-4-6-v1",
   "ant-ling": "Ring-2.6-1T",
   anthropic: "claude-opus-4-8",
-  openai: "gpt-5.5",
+  openai: "gpt-6.1-sol",
   azure: "gpt-5.4",
   "openai-codex": "gpt-6.1-sol",
   radius: "balanced",
@@ -15471,7 +15482,7 @@ var DefaultPackageManager = class {
           "--config.strict-dep-builds=false"
         ];
       case "npm":
-        return ["install", "--omit=dev", "--legacy-peer-deps"];
+        return ["install", "--omit=dev", "--legacy-peer-deps", "--no-audit", "--no-fund"];
       default:
         return ["install"];
     }
@@ -15497,7 +15508,7 @@ var DefaultPackageManager = class {
         "--config.strict-dep-builds=false"
       ];
     }
-    return ["install", ...specs, "--prefix", installRoot, "--legacy-peer-deps"];
+    return ["install", ...specs, "--prefix", installRoot, "--legacy-peer-deps", "--no-audit", "--no-fund"];
   }
   async installNpm(source, scope, temporary) {
     const installRoot = this.getNpmInstallRoot(scope, temporary);
@@ -15517,7 +15528,7 @@ var DefaultPackageManager = class {
     }
     const args = ["uninstall", source.name, "--prefix", installRoot];
     if (packageManagerName !== "pnpm") {
-      args.push("--legacy-peer-deps");
+      args.push("--legacy-peer-deps", "--no-audit", "--no-fund");
     }
     await this.runNpmCommand(args);
   }

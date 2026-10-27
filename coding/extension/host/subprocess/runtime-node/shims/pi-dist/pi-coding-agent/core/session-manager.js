@@ -813,10 +813,21 @@ export class SessionManager {
         }
     }
     _appendEntry(entry) {
+        const previousLeafId = this.leafId;
         this.fileEntries.push(entry);
         this.byId.set(entry.id, entry);
         this.leafId = entry.id;
-        this._persist(entry);
+        try {
+            this._persist(entry);
+        }
+        catch (error) {
+            // Keep memory in line with the file: an entry that was not written must not become the
+            // parent of later entries, or the file would hold entries pointing to a missing parent.
+            this.fileEntries.pop();
+            this.byId.delete(entry.id);
+            this.leafId = previousLeafId;
+            throw error;
+        }
     }
     /** Append a message as child of current leaf, then advance leaf. Returns entry id.
      * Does not allow writing CompactionSummaryMessage and BranchSummaryMessage directly.
