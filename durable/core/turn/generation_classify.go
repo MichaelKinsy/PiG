@@ -160,7 +160,7 @@ func (r *run) retryOrFail(req requestInfo, message *jv.Object, settings Settings
 		if !ok {
 			text = "Model response ended with stop reason " + stop
 		}
-		if err := r.endFailedRun(tx, live, failed, jobj("status", "unanswered", "reason", "model_error", "detail", text)); err != nil {
+		if err := r.endFailedRun(tx, live, failed, UnansweredWith("model_error", text)); err != nil {
 			return nil, err
 		}
 		return jobj("status", "terminal", "outcome", modelErrorOutcome(text)), nil
@@ -190,11 +190,11 @@ func (r *run) prepareFailure(tx *session.Tx) (failure, error) {
 	return failure{policy: policy, boundary: boundary}, nil
 }
 
-// endFailedRun ends a failed run, settling its inputs with settlement, and does with the inputs queued behind it what
+// endFailedRun ends a failed run, settling its inputs and recording why, and does with the inputs queued behind it what
 // settings.afterFailedRun says (spec section 6): keep them, start the next run with them, or withdraw them (generation.ts
 // endFailedRun, an async function its caller awaits).
-func (r *run) endFailedRun(tx *session.Tx, live *delta.Obj, failed failure, settlement *jv.Object) error {
-	if err := EndRun(tx, live, r.rt.TaskID(), settlement); err != nil {
+func (r *run) endFailedRun(tx *session.Tx, live *delta.Obj, failed failure, end RunEnd) error {
+	if err := EndRun(tx, live, r.rt.TaskID(), end); err != nil {
 		return err
 	}
 	if failed.policy == "withdraw" {
@@ -209,7 +209,7 @@ func (r *run) endFailedRun(tx *session.Tx, live *delta.Obj, failed failure, sett
 			return err
 		}
 		if len(applied.Users) > 0 {
-			if err := awaitStartRun(tx, r.conv, live, applied.Users); err != nil {
+			if err := awaitStartRun(tx, r.conv, live, applied.Users, true); err != nil {
 				return err
 			}
 		}
@@ -269,11 +269,11 @@ func (r *run) answer(message *jv.Object) {
 				live.Delete("generation")
 				return result, nil
 			}
-			if err := EndRun(tx, live, r.rt.TaskID(), jobj("status", "done", "answer", float64(entryID))); err != nil {
+			if err := EndRun(tx, live, r.rt.TaskID(), Answered(entryID)); err != nil {
 				return nil, err
 			}
 			if len(applied.Users) > 0 {
-				if err := awaitStartRun(tx, r.conv, live, applied.Users); err != nil {
+				if err := awaitStartRun(tx, r.conv, live, applied.Users, false); err != nil {
 					return nil, err
 				}
 			}
@@ -287,13 +287,20 @@ func createGeneration(tx *session.Tx, conv ID) (ID, error) {
 	return tx.CreateTask(GenerationDef, jv.NewObject(), session.TaskOptions{ConversationID: conv})
 }
 
-// startRun starts a run for inputs, placed input submissions: a new generation takes pi.live.run.
-func startRun(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID) error {
+// startRun starts a run for inputs, placed input submissions: a new generation takes pi.live.run. It removes `runFailure`, unless
+// keepFailure: a run started in the commit that ended the failed one keeps its failure.
+func startRun(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID, keepFailure bool) error {
 	id, err := createGeneration(tx, conv)
 	if err != nil {
 		return err
 	}
-	return live.Set("run", jobj("taskId", float64(id), "inputs", idList(inputs)))
+	if err := live.Set("run", jobj("taskId", float64(id), "inputs", idList(inputs))); err != nil {
+		return err
+	}
+	if !keepFailure {
+		live.Delete("runFailure")
+	}
+	return nil
 }
 
 // handOver hands run control from one task to another; the run's inputs move with it.
@@ -313,7 +320,7 @@ func (Runs) Live(tx *session.Tx, conv ID) (*delta.Obj, error) {
 
 // Start is startRun.
 func (Runs) Start(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID) error {
-	return startRun(tx, conv, live, inputs)
+	return startRun(tx, conv, live, inputs, false)
 }
 
 func createToolTask(tx *session.Tx, owner, assistant ID, callID string) (ID, error) {

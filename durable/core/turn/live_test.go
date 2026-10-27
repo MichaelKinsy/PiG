@@ -96,7 +96,7 @@ func TestLiveRunLifecycle(t *testing.T) {
 	}
 
 	// endRun of another task leaves run in place but still removes generation and tools.
-	settle := parse(t, `{"status":"unanswered","reason":"aborted"}`).(*jv.Object)
+	settle := turn.Unanswered("aborted")
 	pub, err = s.Commit(func(tx *session.Tx) error {
 		live, err := tx.Doc(turn.LiveDef, session.DocArgs{Owner: 1})
 		if err != nil {
@@ -137,8 +137,9 @@ func TestLiveRunLifecycle(t *testing.T) {
 	if len(settled) != 2 || settled[0] != inputs[0] || settled[1] != inputs[1] {
 		t.Fatalf("settled %v, want %v", settled, inputs)
 	}
-	if got := liveValue(t, s); got != `{}` {
-		t.Fatalf("after endRun: %s", got)
+	// A run that ended without an answer records why.
+	if got, want := liveValue(t, s), `{"runFailure":{"taskId":7,"inputs":[`+jv.Stringify(inputs[0])+`,`+jv.Stringify(inputs[1])+`],"reason":"aborted"}}`; got != want {
+		t.Fatalf("after endRun:\n got %s\nwant %s", got, want)
 	}
 
 	// Compaction statuses: appended in order, found by task, removed with the list once empty.

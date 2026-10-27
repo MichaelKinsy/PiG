@@ -230,15 +230,19 @@ func TestCoreTheModelIsOfferedOnlyToolsItMayCallAndToolsCallOnlyToolsTheyMayCall
 // harness-view-run.test.ts:111 over the core: a tool call's slot is listed pending with the answer that calls it, shows its
 // running output, and is done with its result entry, appended in the same commit.
 func TestCoreShowsAToolCallsSlotFromPendingThroughItsRunningOutputToItsResultEntry(t *testing.T) {
-	gate := make(chan struct{})
+	gate, finish := make(chan struct{}), make(chan struct{})
 	printer := nestedCoreTool("batch", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		api.Output("one\n")
-		select {
-		case <-gate:
-		case <-ctx.Done():
-			return durable.ToolExecutionResult{}, ctx.Err()
+		for _, wait := range []chan struct{}{gate, finish} {
+			select {
+			case <-wait:
+			case <-ctx.Done():
+				return durable.ToolExecutionResult{}, ctx.Err()
+			}
+			if wait == gate {
+				api.Output("two\n")
+			}
 		}
-		api.Output("two\n")
 		return durable.ToolExecutionResult{}, nil
 	})
 	h, root, submit := nestedCoreOpen(t, &durable.Extension{Name: "s", Tools: []*durable.ToolRegistration{printer}})
@@ -250,6 +254,10 @@ func TestCoreShowsAToolCallsSlotFromPendingThroughItsRunningOutputToItsResultEnt
 		return slot != nil
 	})
 	close(gate)
+	pollUntil(t, "the second output of the tool", func() bool {
+		return firstSlot(slotsOf(history.Live(), "c1"), func(slot *slotView) bool { return slot.Output != nil && *slot.Output == "one\ntwo\n" }) != nil
+	})
+	close(finish)
 	nestedCoreWait(t, sub, durable.SubmissionDone)
 	if err := h.WaitForIdle(t.Context()); err != nil {
 		t.Fatal(err)

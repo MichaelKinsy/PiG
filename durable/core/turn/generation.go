@@ -221,7 +221,7 @@ func (r *run) failModelError(text string) {
 		if err != nil {
 			return nil, err
 		}
-		if err := r.endFailedRun(tx, live, failed, jobj("status", "unanswered", "reason", "model_error", "detail", text)); err != nil {
+		if err := r.endFailedRun(tx, live, failed, UnansweredWith("model_error", text)); err != nil {
 			return nil, err
 		}
 		return jobj("status", "terminal", "outcome", modelErrorOutcome(text)), nil
@@ -243,7 +243,7 @@ func (r *run) failNoModel(ref *ModelRef) {
 		if err != nil {
 			return nil, err
 		}
-		if err := r.endFailedRun(tx, live, failed, jobj("status", "unanswered", "reason", "no_model")); err != nil {
+		if err := r.endFailedRun(tx, live, failed, RunEnd{Reason: "no_model", Detail: &message, Settlement: jobj("status", "unanswered", "reason", "no_model")}); err != nil {
 			return nil, err
 		}
 		return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", "no_model")))), nil
@@ -287,8 +287,8 @@ func applyBoundary(tx *session.Tx, boundary *inbox.Boundary, final bool, now flo
 }
 
 // awaitStartRun is `await startRun(...)` (generation.ts :535, :633, :639): the caller resumes one tick after the async function returns.
-func awaitStartRun(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID) error {
-	if err := startRun(tx, conv, live, inputs); err != nil {
+func awaitStartRun(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID, keepFailure bool) error {
+	if err := startRun(tx, conv, live, inputs, keepFailure); err != nil {
 		return err
 	}
 	tx.Await(1)

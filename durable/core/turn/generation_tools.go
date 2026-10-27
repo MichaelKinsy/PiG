@@ -154,11 +154,11 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 		if err != nil {
 			return nil, err
 		}
-		if err := EndRun(tx, live, r.rt.TaskID(), jobj("status", "done", "answer", float64(assistant))); err != nil {
+		if err := EndRun(tx, live, r.rt.TaskID(), Answered(assistant)); err != nil {
 			return nil, err
 		}
 		if len(applied.Users) > 0 {
-			if err := awaitStartRun(tx, r.conv, live, applied.Users); err != nil {
+			if err := awaitStartRun(tx, r.conv, live, applied.Users, false); err != nil {
 				return nil, err
 			}
 		}
@@ -169,11 +169,11 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 		}
 		if applied.Reset {
 			// The queued reset cut the run's context before an answer.
-			if err := EndRun(tx, live, r.rt.TaskID(), jobj("status", "unanswered", "reason", "reset")); err != nil {
+			if err := EndRun(tx, live, r.rt.TaskID(), Unanswered("reset")); err != nil {
 				return nil, err
 			}
 			if len(applied.Users) > 0 {
-				if err := awaitStartRun(tx, r.conv, live, applied.Users); err != nil {
+				if err := awaitStartRun(tx, r.conv, live, applied.Users, true); err != nil {
 					return nil, err
 				}
 			}
@@ -217,7 +217,7 @@ func (g *Generation) abort(rt *session.Runtime, task *jv.Object, done func(error
 					return nil, err
 				}
 			}
-			if err := EndRun(tx, live, rt.TaskID(), jobj("status", "unanswered", "reason", "aborted")); err != nil {
+			if err := EndRun(tx, live, rt.TaskID(), Unanswered("aborted")); err != nil {
 				return nil, err
 			}
 			return jobj("status", "terminal", "outcome", jobj("status", "aborted")), nil
