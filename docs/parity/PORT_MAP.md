@@ -721,7 +721,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/harness/compaction.ts` | `durable/harness/compaction.go` | ✅ |
 | `packages/durable/src/harness/context.ts` | `durable/harness/context.go` | ✅ |
 | `packages/durable/src/harness/define.ts` | `durable/harness/define.go` | ✅ |
-| `packages/durable/src/harness/events.ts` | `durable/harness/events.go` | ✅ |
 | `packages/durable/src/harness/generation.ts` | `durable/harness/generation.go` | ✅ |
 | `packages/durable/src/harness/harness.ts` | `durable/harness/harness.go`, `durable/harness/types.go` | ✅ |
 | `packages/durable/src/harness/inbox.ts` | `durable/harness/inbox.go` | ✅ |
@@ -731,10 +730,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/harness/prompt.ts` | `durable/harness/prompt.go` | ✅ |
 | `packages/durable/src/harness/provider.ts` | `durable/harness/provider.go` | ✅ |
 | `packages/durable/src/harness/registry.ts` | `durable/harness/registry.go` | ✅ |
-| `packages/durable/src/harness/scheduler.ts` | `durable/harness/scheduler.go` | ✅ |
+| `packages/durable/src/harness/scheduler.ts` | `durable/harness/scheduler.go`, `durable/types.go` | ✅ |
 | `packages/durable/src/harness/submissions.ts` | `durable/harness/submissions.go` | ✅ |
 | `packages/durable/src/harness/task-graph.ts` | `durable/harness/task_graph.go` | ✅ |
 | `packages/durable/src/harness/tool.ts` | `durable/harness/tool.go`, `durable/harness/tool_nested.go` | ✅ |
+| `packages/durable/src/harness/transcript.ts` | `durable/harness/transcript.go` | ✅ |
 | `packages/durable/src/harness/types.ts` | `durable/harness/types.go`, `durable/harness_types.go`, `durable/harness/agent.go`, `durable/tasks.go`, `durable/harness/registry.go` | ✅ |
 | `packages/durable/src/harness/usage.ts` | `durable/harness/usage.go` | ✅ |
 | `packages/durable/src/harness/util.ts` | `durable/harness/util.go` | ✅ |
