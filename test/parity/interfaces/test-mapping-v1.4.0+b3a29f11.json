@@ -5136,8 +5136,19 @@
     },
     {
       "path": "packages/coding-agent/test/session-manager/file-operations.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3d8cb64b64311818394a4b7f6cd87f4e19b4dfde0c9b0899e965a0ba35a3f94e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3d8cb64b64311818394a4b7f6cd87f4e19b4dfde0c9b0899e965a0ba35a3f94e",
+      "evidence": [
+        "internal/codingagent/session_file_operations_upstream_test.go#TestLoadEntriesFromFileUpstream",
+        "internal/codingagent/session_file_operations_upstream_test.go#TestFindMostRecentSessionUpstream",
+        "internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileOperationsUpstream",
+        "internal/codingagent/session_listing_test.go#TestSessionListingCancellationAndProgress",
+        "test/parity/scenarios/session/16-session-list-cancellation.toml",
+        "test/parity/scenarios/session/18-session-file-open-boundaries.toml",
+        "internal/codingagent/session_missing_path_test.go#TestSessionManagerLoadMissingDefersExplicitPath",
+        "internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileCreationUpstream"
+      ],
+      "rationale": "All 31 case sites, each cited by line in internal/codingagent/session_file_operations_upstream_test.go. The four sites that changed in 0.99.1 are TestSessionFileCreationUpstream: :423 initialized empty file works, :447 no file for a session with only setup entries, :456 the file is created when the first user message is appended (#10000), :466 later entries append without rewriting earlier ones. The other 27 keep the 0.87.1 evidence. Pi 807a5c05 (#11460) adds two cases to 'SessionManager session file creation': 'does not keep an entry in memory when writing it fails' (:477, a read-only session file) and 'does not keep an entry in memory when creating the file fails' (:495, a read-only session directory). Both are ported as subtests of TestSessionFileCreationUpstream with the same permissions, entries and expectations (the failed append throws, the leaf and entries stay, the next entry is the child of the last written one, the reopened branch holds both, and the first write of the file holds the model change and the user message); they skip when the process is root or on Windows, where permissions do not stop the write. Both fail on the unchanged code (leaf = the lost entry)."
     },
     {
       "path": "packages/coding-agent/test/session-manager/labels.test.ts",

@@ -183,7 +183,7 @@ Async contract: the prompt does not wait for remote asynchronous handler complet
 
 Go embedding hosts can bind the existing `appendEntry` callback to `coding.Session.AppendExtensionEntry`. The method completes the native append and queues any requested `entry_appended` event on the Session's existing executor; `FlushEvents` waits for delivery. A supplied `DirectEntryAppend` retains its ID and timestamp; a nil value allocates them. `Event: false` writes only the log. It introduces no SDK or wire change: Node still allocates its identity synchronously, and the host's existing call lane orders and confirms the append. `TestAppendExtensionEntryThroughNodeHost` covers isolated and packed Node hosts; the identity, rejection and native-writer lock tests are in `coding/session_custom_entries_test.go`.
 
-Identity and encoding errors append nothing. Filesystem errors propagate without an `entry_appended` event and retain the native writer's memory-before-persistence behavior; this API does not add rollback. `TestAppendExtensionEntryPropagatesNativeStorageFailure` covers that boundary, and `TestAppendExtensionEntryPersistsIdentityAcrossReopen` verifies the persisted identity and parent after reopening.
+Identity and encoding errors append nothing. Filesystem errors propagate without an `entry_appended` event, and the native writer leaves the entry out of memory (Pi's `_appendEntry` undoes its append when persistence fails). `TestAppendExtensionEntryPropagatesNativeStorageFailure` covers that boundary, and `TestAppendExtensionEntryPersistsIdentityAcrossReopen` verifies the persisted identity and parent after reopening.
 
 | Upstream Pi interface | Required Pig equivalent | Test requirement | Status |
 |---|---|---|---|

@@ -2433,9 +2433,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/session_export.go 
 [[files]]
 path = "packages/coding-agent/src/core/session-manager.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_manager_test.go#TestSessionManagerForkFromFile_CopiesAllEntriesUnchangedIntoTheForkedSession", "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileCreationUpstream"]
+rationale = "Pi 8ddc44ec8 (#11253) makes forkFrom write the header and every entry through one fd instead of reopening the file per entry; ForkFromFile already writes the whole fork through one handle (internal/codingagent/session_manager.go), so only its comment changes, and the test ports Pi's 50-entry copy case byte for byte. Delta at Pi 807a5c05 (#11460, #10166, #10661): _appendEntry undoes its in-memory append (entry, byId, leaf) when _persist throws, then rethrows, so an entry that was not written never becomes the parent of a later one. Ported in internal/codingagent/session.go appendEntryRecordOf, which writes the record (the first write creates the file from the header, the buffered entries and this one) before the entry joins the session, under appendMu so the file and memory take entries in one order: a failed write returns its error with the entries, leaf, branch, counts, name and file gate untouched, which is the state Pi restores. Persist shares the planning and writing of the record. TestSessionFileCreationUpstream ports both cases: a read-only session file (failed append) and a read-only session directory (failed first file creation); each checks the leaf, the entries, the parent of the next entry and the file that a reopened session replays."
 
 [[files]]
 path = "packages/coding-agent/src/core/settings-defaults.ts"
