@@ -7731,7 +7731,10 @@
         "durable/harness/document_retention_test.go#TestHarnessDocumentRetentionFollowsSettings",
         "durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept"
       ],
-      "rationale": "Pi f3255de7 retitles the last case 'gives the same views with documents evicted right after use as with documents kept' and compares view histories (entry kinds, whether a run and a generation are live, each tool slot's status and output) instead of the agent events; Go's TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept records the view history with viewHistory and compares the same sequence. The other 20 cases are unchanged (the designed-out :451 and the 'soon' retention input stay as recorded)."
+      "rationale": "Pi f3255de7 retitles the last case 'gives the same views with documents evicted right after use as with documents kept' and compares view histories (entry kinds, whether a run and a generation are live, each tool slot's status and output) instead of the agent events; Go's TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept records the view history with viewHistory and compares the same sequence. The other 20 cases are unchanged (the designed-out :451 and the 'soon' retention input stay as recorded).",
+      "designedOutCases": [
+      "document cache retention \u203a keeps no timer where timers cannot be unreferenced, and evicts on commits"
+      ]
     },
     {
       "path": "packages/durable/test/session-documents.test.ts",
