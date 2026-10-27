@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
 )
 
 func main() {
@@ -41,7 +42,7 @@ func run() error {
 		if err := os.Setenv("AWS_BEDROCK_FORCE_CACHE", tc.AmbientForce); err != nil {
 			return err
 		}
-		provider := ai.NewBedrockProvider(tc.Model, server.URL)
+		provider := bedrock.NewBedrockProvider(tc.Model, server.URL)
 		defer func() { _ = provider.Close() }()
 		stream, err := provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{SystemPrompt: "system", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello"), Timestamp: 1}}}), ai.StreamOptions{CacheRetention: ai.CacheRetention(tc.Option), Env: ai.ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1", "PI_CACHE_RETENTION": tc.Env, "AWS_BEDROCK_FORCE_CACHE": tc.Force}})
 		if err != nil {
