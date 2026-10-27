@@ -4857,7 +4857,7 @@ fn tui_alt_screen_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     let foc_ref: ComponentRef = foc.clone();
     screen.set_focus(Some(&foc_ref))?;
     let focused = screen.get_focused_component()?;
-    f.push(format!("focus={}/{}", focused.as_ref().is_some_and(|component| thin(component) == thin(&foc_ref)), foc.focused()));
+    f.push(format!("focus={}/{}", focused.as_ref().is_some_and(|component| thin(component) == thin(&foc_ref)), foc.focused.load(Ordering::SeqCst)));
     let on_input = probe.on_input.lock().unwrap().clone().ok_or_else(|| std::io::Error::other("the terminal was not started"))?;
     on_input("k")?;
     let listener: InputListener = Arc::new(|data: &str| (data == "c").then(|| InputListenerResult { consume: true, data: None }));
