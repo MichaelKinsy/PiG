@@ -7,9 +7,8 @@ import (
 	"math/rand/v2"
 	"os/exec"
 	"reflect"
-	"sync"
+	"slices"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
@@ -107,13 +106,8 @@ func runLdRenderWithPig(probe ldRenderProbe) []ldRenderFrame {
 	SetCapabilities(TerminalCapabilities{TrueColor: true, Hyperlinks: true})
 	SetTheme(probe.Theme)
 	SetKeybindings(NewKeybindingsManager(TUIKeybindingDefinitionsFor(HostKeybindingPlatform()), nil))
-	var eventsMu sync.Mutex
 	var events []string
-	record := func(event string) {
-		eventsMu.Lock()
-		events = append(events, event)
-		eventsMu.Unlock()
-	}
+	record := func(event string) { events = append(events, event) }
 	var titles []string
 	if probe.Title != "" {
 		titles = append(titles, probe.Title)
@@ -125,29 +119,32 @@ func runLdRenderWithPig(probe ldRenderProbe) []ldRenderFrame {
 	focus := func(dialog *LoginDialogComponent) { dialog.SetFocused(true) }
 	focus(dialog)
 	var frames []ldRenderFrame
-	// An input the probe leaves pending is never answered, so the goroutines watching them end with the probe.
-	probeDone := make(chan struct{})
-	defer close(probeDone)
-	watch := func(label string, ch <-chan string) {
-		go func() {
-			var value string
-			var ok bool
+	// The dialog answers an input (the submitted value, or a close on cancel) before the call that causes it returns, so
+	// receiving without blocking after each step observes exactly the answers that step produced. Pi's pending promise
+	// reactions run after its synchronous completion callback, hence an answer is recorded after the step's own events. An
+	// input a later prompt supersedes, or one the probe never answers, stays pending and records nothing.
+	type pendingInput struct {
+		label string
+		ch    <-chan string
+	}
+	var pending []pendingInput
+	settle := func() {
+		pending = slices.DeleteFunc(pending, func(input pendingInput) bool {
 			select {
-			case value, ok = <-ch:
-			case <-probeDone:
-				return
+			case value, ok := <-input.ch:
+				if ok {
+					record(fmt.Sprintf("%s:resolved:%s", input.label, value))
+				} else {
+					record(fmt.Sprintf("%s:rejected:Login cancelled", input.label))
+				}
+				return true
+			default:
+				return false
 			}
-			if ok {
-				record(fmt.Sprintf("%s:resolved:%s", label, value))
-			} else {
-				record(fmt.Sprintf("%s:rejected:Login cancelled", label))
-			}
-		}()
+		})
 	}
 	for _, step := range probe.Steps {
-		eventsMu.Lock()
 		events = nil
-		eventsMu.Unlock()
 		switch step.Op {
 		case "details":
 			dialog.ShowDetails(step.Lines)
@@ -164,17 +161,14 @@ func runLdRenderWithPig(probe ldRenderProbe) []ldRenderFrame {
 		case "deviceCode":
 			dialog.ShowDeviceCode(OAuthDeviceCodeInfo{VerificationURI: step.URI, UserCode: step.Code})
 		case "manual":
-			watch("manual", dialog.ShowManualInput(step.Message))
+			pending = append(pending, pendingInput{"manual", dialog.ShowManualInput(step.Message)})
 		case "prompt":
-			watch("prompt", dialog.ShowPrompt(step.Message, step.Placeholder))
+			pending = append(pending, pendingInput{"prompt", dialog.ShowPrompt(step.Message, step.Placeholder)})
 		case "keys":
 			dialog.HandleInput(step.Keys)
 		}
-		time.Sleep(2 * time.Millisecond)
-		eventsMu.Lock()
-		observed := append([]string{}, events...)
-		eventsMu.Unlock()
-		frames = append(frames, ldRenderFrame{Events: observed, Rows: dialog.Render(step.Width)})
+		settle()
+		frames = append(frames, ldRenderFrame{Events: append([]string{}, events...), Rows: dialog.Render(step.Width)})
 	}
 	return frames
 }
