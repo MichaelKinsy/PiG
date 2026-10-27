@@ -299,6 +299,8 @@ export class Harness {
       harness.timers = timers
       harness.currentModels = currentModels
       const report = options.onReport ?? (() => {})
+      // harness.ts resolveAgent: a wrapper that fails reports the extension that installed it and the conversation whose agent was resolved.
+      const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
       if (options.onWake !== undefined) {
         // scheduler.ts #scheduleWake: only a changed value is offered; one whose delivery threw is reported and offered again at the next change.
         const onWake = options.onWake
