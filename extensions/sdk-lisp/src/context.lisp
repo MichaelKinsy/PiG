@@ -247,10 +247,12 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
                 "selected"))
 
 (defun ctx-confirm (ctx title message &key timeout)
-  "Ask the user to confirm: true only when the user confirmed."
+  "Ask the user to confirm. (values confirmed-p confirmed): CONFIRMED-P is true only when the user confirmed; CONFIRMED is the JSON
+value the client answered with (RPC clients may send any), :false when it sent none."
   (block-for-user ctx)
-  (let ((result (ctx-call-host ctx "ui.confirm" (dialog-args (obj "title" title "message" message) timeout))))
-    (eq (and (hash-table-p result) (jget result "confirmed")) t)))
+  (let* ((result (ctx-call-host ctx "ui.confirm" (dialog-args (obj "title" title "message" message) timeout)))
+         (confirmed (if (hash-table-p result) (multiple-value-bind (v found) (gethash "confirmed" result) (if found v :false)) :false)))
+    (values (eq confirmed t) confirmed)))
 
 (defun ctx-input (ctx title &key placeholder timeout)
   "Ask the user for a line of text. (values text answered-p)."
@@ -475,12 +477,22 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   (eq (jget (registry-provider-state registry model) "usingOAuth") t))
 
 (defun registry-get-registered-native-provider (registry provider)
-  (declare (ignore registry provider))
-  (error 'unsupported-capability :member "registry-get-registered-native-provider (Provider objects)"))
+  "The Provider object registered under the provider name PROVIDER, or NIL: this extension's own, else a proxy of the extension's that registered it."
+  (let ((ctx (model-registry-ctx registry)))
+    (loop for entry across (or (jget (registry-state registry) "registered") (vector))
+          do (when (and (equal (jget entry "name") provider) (hash-table-p (jget entry "native")))
+               (return (provider-from-declaration ctx (jget entry "native")))))))
+
+(defun registry-get-provider (registry provider)
+  "The Provider object of the provider name PROVIDER, or NIL. A builtin or composed provider has no Provider object here: that signals."
+  (or (registry-get-registered-native-provider registry provider)
+      (let ((providers (jget (registry-state registry) "providers")))
+        (when (and (hash-table-p providers) (nth-value 1 (gethash provider providers)))
+          (error "builtin/composed Provider object carrier is unavailable (D78)")))))
 
 (defun registry-get-provider-name (registry provider)
-  (declare (ignore registry provider))
-  (error 'unsupported-capability :member "registry-get-provider-name (Provider objects)"))
+  "The name of the Provider object of PROVIDER, or NIL."
+  (let ((found (registry-get-provider registry provider))) (and found (provider-name found))))
 
 (defun registry-get-provider-auth-status (registry provider)
   (or (jget (jget (registry-provider-states registry) provider) "authStatus") (obj "configured" :false)))

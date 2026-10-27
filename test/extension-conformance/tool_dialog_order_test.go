@@ -28,7 +28,7 @@ import (
 // a host call that is not a dialog opens none of the later dialogs until the exec returns, and the row fails.
 func TestToolBatchDialogsOpenInCallOrderAndResumeInAnswerOrderAcrossSDKs(t *testing.T) {
 	const batch, rounds, execRounds = 6, 9, 3
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

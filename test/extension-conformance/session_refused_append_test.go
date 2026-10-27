@@ -31,7 +31,7 @@ func TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs(t *testing.T) {
 		return fmt.Sprintf(`{"type":"message","id":%q,"parentId":%s,"timestamp":"2026-10-11T00:00:00.000Z","message":{"role":"user","content":"text of %s"}}`, id, parentJSON, id)
 	}
 	const appends = "conformance-refused,conformance-taken,conformance-raced,conformance-refused"
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
