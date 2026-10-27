@@ -268,7 +268,7 @@ export class Harness {
     const registry = new HostRegistry(options.registry)
     const handlers: Record<number, any> = {}
     // harness.ts: `hostTimers(options.setTimer, ...)` serves the scheduler's and the tasks' timers, with one "declined" report between them.
-    const hosted = hostTimers(options.setTimer, error => (options.onReport as (error: unknown, info?: unknown) => void)(error, { type: "host_error", callback: "setTimer" }))
+    const hosted = hostTimers(options.setTimer, error => options.onReport?.(error, { type: "host_error", callback: "setTimer" }))
     const timers = options.timers ?? (options.setTimer === undefined ? new TimeoutTimers(id => host.timerFired(id), options.now) : new SetTimerTimers(hosted, id => host.timerFired(id), options.now))
     const host: HostSession = new HostSession({
       core: session, sqlTable: core.sqlTable, store, clock: options.now, handlers, timers,
@@ -300,17 +300,17 @@ export class Harness {
       harness.timers = timers
       harness.currentModels = currentModels
       const report = options.onReport ?? (() => {})
-      // harness.ts resolveAgent: a wrapper that fails reports the extension that installed it and the conversation whose agent was resolved.
-      const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
       if (options.onWake !== undefined) {
         // scheduler.ts #scheduleWake: only a changed value is offered; one whose delivery threw is reported and offered again at the next change.
         const onWake = options.onWake
         let last: { active: boolean; at?: number } | undefined
         client.onWake = wake => {
           if (last !== undefined && last.active === wake.active && last.at === wake.at) return
-          try { onWake(wake); last = wake } catch (error) { (report as (error: unknown, info?: unknown) => void)(error, { type: "host_error", callback: "onWake" }) }
+          try { onWake(wake); last = wake } catch (error) { report(error, { type: "host_error", callback: "onWake" }) }
         }
       }
+      // harness.ts resolveAgent: a wrapper that fails reports the extension that installed it and the conversation whose agent was resolved.
+      const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), documentState: (token: any, ...args: unknown[]) => harness.documentState(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
         client, registry, get models() { return currentModels() }, env: options.env, report,
