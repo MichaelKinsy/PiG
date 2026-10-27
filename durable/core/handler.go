@@ -44,7 +44,7 @@ type handler struct {
 
 	b *abi.Builder
 	// sent is the documents whose value the host holds (tx.go sentValues).
-	sent map[session.ID]bool
+	sent idSet
 	// closeErr is the error of the store of held changes at close, which close() rejects with.
 	closeErr error
 	// closeStage is 1 once the close job wrote the stopped tasks back (closeJob).

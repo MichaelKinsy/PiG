@@ -29,6 +29,8 @@ type accBlock struct {
 
 // partialAcc rebuilds the partial message from the patches the host sent, in order.
 type partialAcc struct {
+	// dirty is set when a partial arrived that the throttle has not committed.
+	dirty    bool
 	skeleton *jv.Object
 	blocks   []accBlock
 }

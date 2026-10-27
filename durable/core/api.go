@@ -156,9 +156,10 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	return h.answerDirect(ev.ID, req)
 }
 
-// errHostFailed is the error the core fails the Session with when the host did (api op "fail"); the host keeps the error itself.
-// Read-only: assigned once at initialization.
-var errHostFailed = errors.New("the host failed the Session")
+// hostFailed is the error the core fails the Session with when the host did (api op "fail"); the host keeps the error itself.
+type hostFailed struct{}
+
+func (hostFailed) Error() string { return "the host failed the Session" }
 
 // answerDirect serves an api request on the spot: its value, or its error, as the api_result of id.
 func (h *handler) answerDirect(id uint32, req *jv.Object) error {
@@ -205,7 +206,7 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 	switch op {
 	case "fail":
 		// session.ts fail: the host failed the Session (a test's, or a Storage call of its own that threw): nothing more is stored.
-		h.sess.Fail(errHostFailed)
+		h.sess.Fail(hostFailed{})
 		return nil, nil
 	case "unloadDocuments":
 		// session.ts unloadDocuments: the loaded-document cache is dropped, held changes stored first; later reads load from the
@@ -294,7 +295,7 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 	case "commits":
 		h.changes, _ = boolOf(req, "on")
 		if !h.changes {
-			h.sent = nil
+			h.sent = h.sent[:0]
 		}
 		return nil, nil
 	case "watch.open":

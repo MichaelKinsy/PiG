@@ -183,7 +183,7 @@ func TestMemoryNoticesOmitTheValueOfADocumentTheHostHolds(t *testing.T) {
 		return []session.Change{{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":2}`), Version: 1, Value: parsed(t, `{"a":"xy"}`), Ops: ops}}
 	}
 	appendOp := delta.Op{Verb: delta.Append, Path: delta.Path{delta.Key("a")}, Text: "y"}
-	sent := map[session.ID]bool{}
+	sent := &idSet{}
 	first := jv.Stringify(commitChanges(change(appendOp), sent, valueFromOps))
 	if want := `[{"type":"document","record":{"id":2},"conversationId":1,"version":1,"value":{"a":"xy"},"ops":[["a",["a"],"y"]]}]`; first != want {
 		t.Fatalf("first %s\nwant  %s", first, want)
