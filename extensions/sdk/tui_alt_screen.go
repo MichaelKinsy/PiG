@@ -569,7 +569,7 @@ func (s *TuiAltScreen) ShowOverlay(component Component, options *OverlayOptions)
 		return nil, err
 	}
 	if options != nil {
-		fields["overlayOptions"] = options
+		fields["options"] = options
 	}
 	if err := s.call("showOverlay", fields, nil); err != nil {
 		return nil, err

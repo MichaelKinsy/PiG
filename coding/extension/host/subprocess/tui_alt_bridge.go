@@ -39,7 +39,8 @@ type tuiAltCall struct {
 
 	ShowHardwareCursor *bool           `json:"showHardwareCursor,omitempty"`
 	LogDirectory       string          `json:"logDirectory,omitempty"`
-	Options            *tuiAltOptions  `json:"options,omitempty"`
+	// Options is create's tuiAltOptions or showOverlay's overlay options.
+	Options json.RawMessage `json:"options,omitempty"`
 	Key                *string         `json:"key"`
 	Caps               *tuiAltCaps     `json:"caps,omitempty"`
 	Width              int             `json:"width"`
@@ -57,7 +58,6 @@ type tuiAltCall struct {
 	Hidden             bool            `json:"hidden"`
 	Target             json.RawMessage `json:"target"`
 	Data               string          `json:"data"`
-	OverlayOptions     json.RawMessage `json:"overlayOptions"`
 	Event              json.RawMessage `json:"event"`
 }
 
@@ -417,7 +417,11 @@ func (b *UIBridge) tuiAltCreate(owner *Conn, call *tuiAltCall) (*CallResultPaylo
 	s.term = &tuiAltTerminal{state: s}
 	s.term.update(call.Terminal)
 	var options tui.TuiAltScreenOptions
-	if o := call.Options; o != nil {
+	if len(call.Options) > 0 && string(call.Options) != "null" {
+		o := &tuiAltOptions{}
+		if err := json.Unmarshal(call.Options, o); err != nil {
+			return nil, fmt.Errorf("parse tui.alt options: %w", err)
+		}
 		options.Mouse, options.CopyOnSelect = o.Mouse, o.CopyOnSelect
 		if len(o.WheelScrollLines) > 0 {
 			lines, err := parseTuiAltWheel(o.WheelScrollLines)
@@ -635,9 +639,9 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 			return nil, err
 		}
 		var layout *extension.OverlayLayout
-		if len(call.OverlayOptions) > 0 && string(call.OverlayOptions) != "null" {
+		if len(call.Options) > 0 && string(call.Options) != "null" {
 			layout = &extension.OverlayLayout{}
-			if err := json.Unmarshal(call.OverlayOptions, layout); err != nil {
+			if err := json.Unmarshal(call.Options, layout); err != nil {
 				return nil, fmt.Errorf("parse overlay options: %w", err)
 			}
 		}
@@ -690,14 +694,14 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 		options := tui.TerminalColorQueryOptions{TimeoutMs: call.TimeoutMs}
 		if call.OnLateReply {
 			options.OnLateReply = func(colors tui.TerminalColors) {
-				_ = s.callback("lateColors", map[string]any{"queryId": call.QueryID, "colors": colors}, nil)
+				_ = s.callback("lateColors", map[string]any{"queryId": call.QueryID, "colors": tuiAltColorsWire(colors)}, nil)
 			}
 		}
 		result := <-screen.QueryTerminalColors(options)
 		if result.Err != nil {
 			return nil, result.Err
 		}
-		return tuiAltResult(map[string]any{"colors": result.Colors})
+		return tuiAltResult(map[string]any{"colors": tuiAltColorsWire(result.Colors)})
 	case "handleMouse":
 		var event tuiAltMouseEvent
 		if err := json.Unmarshal(call.Event, &event); err != nil {
@@ -797,4 +801,24 @@ func overlaySpec(layout *extension.OverlayLayout) tui.OverlaySpec {
 		}
 	}
 	return spec
+}
+
+// tuiAltColorsWire is the JSON form of terminal colors: foreground, background and palette, each present only when reported, as {r,g,b}.
+func tuiAltColorsWire(colors tui.TerminalColors) map[string]any {
+	rgb := func(c tui.RgbColor) map[string]float64 { return map[string]float64{"r": c.R, "g": c.G, "b": c.B} }
+	out := map[string]any{}
+	if colors.Foreground != nil {
+		out["foreground"] = rgb(*colors.Foreground)
+	}
+	if colors.Background != nil {
+		out["background"] = rgb(*colors.Background)
+	}
+	if colors.Palette != nil {
+		palette := make([]map[string]float64, len(colors.Palette))
+		for i, c := range colors.Palette {
+			palette[i] = rgb(c)
+		}
+		out["palette"] = palette
+	}
+	return out
 }
