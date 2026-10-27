@@ -212,7 +212,7 @@ def _mouse_wire(event: "MouseEvent | Mapping[str, Any]") -> dict[str, Any]:
 
 
 def _overlay_wire(options: Mapping[str, Any]) -> tuple[dict[str, Any], Callable[[int, int], Any] | None]:
-    """The options as the host takes them, and the ``visible`` callback, which stays here: the wire carries ``"visible": true`` instead."""
+    """The options as the host takes them, and the ``visible`` callback, which stays here: the call carries ``"visible": true`` instead."""
     for key in options:
         if key != "visible" and key not in _OVERLAY_OPTION_KEYS:
             raise ValueError(f"unknown overlay option {key!r}")
@@ -220,8 +220,6 @@ def _overlay_wire(options: Mapping[str, Any]) -> tuple[dict[str, Any], Callable[
     if visible is not None and not callable(visible):
         raise TypeError("overlay option 'visible' must be a callable (term_width, term_height) -> bool")
     wire = {key: value for key, value in options.items() if key != "visible"}
-    if visible is not None:
-        wire["visible"] = True
     return wire, visible
 
 
@@ -531,6 +529,8 @@ class TuiAltScreen:
         visible = None
         if options is not None:
             fields["options"], visible = _overlay_wire(options)
+            if visible is not None:
+                fields["visible"] = True
         # The host asks from the moment it knows the overlay, which can be before the call returns; the latest show of a component names its callback.
         with self._lock:
             previous = self._visible.get(fields["key"])

@@ -248,7 +248,7 @@ def test_overlay_visible_callback() -> None:
         return width >= 20
 
     screen.show_overlay(over, {"width": 8, "visible": visible})
-    assert host.last()["options"] == {"width": 8, "visible": True}  # the callback itself stays here
+    assert host.last()["options"] == {"width": 8} and host.last()["visible"] is True  # the callback itself stays here
     assert _cb(ext, screen, kind="visible", key="c1", termWidth=20, termHeight=6) == {"value": True}
     assert _cb(ext, screen, kind="visible", key="c1", termWidth=10, termHeight=6) == {"value": False}
     assert asked == [(20, 6), (10, 6)]

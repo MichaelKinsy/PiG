@@ -93,6 +93,7 @@ type tuiAltScreenState struct {
 	mu         sync.Mutex
 	components map[string]*tuiAltComponent
 	byComp     map[tui.Component]string
+	layoutRoot tui.Component
 	overlays   map[string]*tui.OverlayHandle
 	listeners  map[string]*tui.TuiInputListener
 	disposed   bool
@@ -586,14 +587,19 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 		return empty()
 	case "invalidate":
 		screen.Invalidate()
-		// Pi's invalidate reaches the mounted roots and every overlay's component.
+		// Pi's invalidate reaches the mounted roots (the layout root, else the children) and every overlay's component, each of the extension.
 		s.mu.Lock()
-		overlays := make([]*tuiAltComponent, 0, len(s.overlays))
+		var targets []tui.Component
+		if s.layoutRoot != nil {
+			targets = append(targets, s.layoutRoot)
+		} else {
+			targets = screen.Children()
+		}
 		for key := range s.overlays {
-			overlays = append(overlays, s.components[key])
+			targets = append(targets, s.components[key])
 		}
 		s.mu.Unlock()
-		for _, c := range overlays {
+		for _, c := range targets {
 			c.Invalidate()
 		}
 		return empty()
@@ -669,6 +675,9 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 			component = c
 		}
 		if call.Op == "setLayoutRoot" {
+			s.mu.Lock()
+			s.layoutRoot = component
+			s.mu.Unlock()
 			screen.SetLayoutRoot(component)
 		} else {
 			screen.SetFocus(component)
