@@ -24,7 +24,7 @@ func TestModelStreamCallbacksSDKsMatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping model stream callback conformance in short mode (builds subprocess fixtures)")
 	}
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t) // building a subprocess fixture can take minutes: the call's own deadline starts after it
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
