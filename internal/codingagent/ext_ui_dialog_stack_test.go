@@ -548,3 +548,63 @@ func TestRemoteEditorSlotComponentRestoresTheEditorText(t *testing.T) {
 		t.Fatalf("editor text after the component closed = %q, want the text saved at open", got)
 	}
 }
+
+// factoryEditorFactory is the EditorFactory an extension passes to ctx.ui.setEditorComponent for component.
+func factoryEditorFactory(component *factoryEditor) extension.EditorFactory {
+	return func(tui.TUI, tui.EditorTheme, extension.KeybindingsManager) tui.EditorComponent { return component }
+}
+
+// interactive-mode-extension-dialogs.test.ts "keeps an open dialog visible when the editor component is replaced" (#11431). The new
+// editor is installed behind the open dialog and answers in the editor slot once the dialog is answered.
+func TestExtensionDialogsStayVisibleWhenTheEditorComponentIsReplaced(t *testing.T) {
+	r := newCustomRig(t)
+	confirmed := r.callDialog(t, r.confirmCall(r.m.runCtx, "Title", "Continue?"))
+	component := &factoryEditor{}
+	r.m.setCustomEditorComponent(factoryEditorFactory(component))
+
+	requireVisible(t, r.m, "Title")
+	if err := r.m.dispatchKey(t.Context(), "\r"); err != nil {
+		t.Fatal(err)
+	}
+	if got := requireResult(t, confirmed, "the confirm"); got.value != "true" || got.err != nil {
+		t.Fatalf("the confirm = %q, %v; want it accepted", got.value, got.err)
+	}
+	requireEditorShown(t, r.m, "after the confirm")
+	if rows := r.m.editor.Render(40); len(rows) != 1 || rows[0] != "factory-editor:" {
+		t.Fatalf("the editor renders %q, want the replacement component's row", rows)
+	}
+}
+
+// interactive-mode.ts setCustomEditorComponent leaves the editor slot alone while a dialog is open, so a selector shown over the dialog
+// stays active: replacing the editor component disposes it only when no dialog is open.
+func TestEditorComponentReplacementKeepsTheActiveSelectorWhileADialogIsOpen(t *testing.T) {
+	r := newCustomRig(t)
+	r.callDialog(t, r.confirmCall(r.m.runCtx, "Title", "Continue?"))
+	selector := tui.NewStaticModelSelectorComponent("Select model", nil, []tui.ModelSelectorItem{{Provider: "fixture", ID: "one"}}, "fixture/one")
+	done := r.m.showModelSelector(selector)
+	defer done()
+	requireFocus(t, r.m, selector, "with the selector shown over the dialog")
+
+	r.m.setCustomEditorComponent(factoryEditorFactory(&factoryEditor{}))
+	requireFocus(t, r.m, selector, "after the editor component was replaced")
+	if children := r.m.editorContainer.Children(); len(children) != 1 || children[0] != tui.Component(selector) {
+		t.Fatalf("editor slot = %v, want the selector", children)
+	}
+	if r.m.activeSelectorDispose == nil {
+		t.Fatal("the editor component replacement disposed the active selector while a dialog was open")
+	}
+}
+
+// With no dialog open, replacing the editor component disposes the active selector (interactive-mode.ts setCustomEditorComponent).
+func TestEditorComponentReplacementDisposesTheActiveSelectorWithoutADialog(t *testing.T) {
+	r := newCustomRig(t)
+	selector := tui.NewStaticModelSelectorComponent("Select model", nil, []tui.ModelSelectorItem{{Provider: "fixture", ID: "one"}}, "fixture/one")
+	done := r.m.showModelSelector(selector)
+	defer done()
+	requireFocus(t, r.m, selector, "with the selector shown")
+
+	r.m.setCustomEditorComponent(factoryEditorFactory(&factoryEditor{}))
+	if r.m.activeSelectorDispose != nil {
+		t.Fatal("the editor component replacement left the active selector with no dialog open")
+	}
+}
