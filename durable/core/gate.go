@@ -52,6 +52,10 @@ type commitGate struct {
 	retryOp   *jv.Object
 	retryID   uint32
 	retryReq  *jv.Object
+	// heldID is the api request a Session-mode read answers when the Storage settles the commit it adopted (answerDirect), with its value or error.
+	heldID    uint32
+	heldValue any
+	heldErr   error
 	// applied is the host transaction whose commit the Storage adopted and applied: its end is answered when the Storage answers.
 	applied *hostTx
 }
@@ -174,6 +178,18 @@ func (h *handler) gateAnswered(outcome uint8, payload []byte) {
 			// A Session-mode job (the store of held changes, session/held.go) ran again at the adoption: a failure after it fails the Session.
 			if err != nil {
 				h.sess.Fail(err)
+			}
+			if id := cg.heldID; id != 0 {
+				value, held := cg.heldValue, cg.heldErr
+				cg.heldID, cg.heldValue, cg.heldErr = 0, nil, nil
+				switch {
+				case err != nil:
+					h.apiError(id, err)
+				case held != nil:
+					h.apiError(id, held)
+				default:
+					h.apiOK(id, value)
+				}
 			}
 			return
 		}
