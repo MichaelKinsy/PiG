@@ -79,7 +79,7 @@
               (pig:registry-get-api-key-and-headers registry found))
     (let* ((model (pig:obj "provider" "conformance" "modelId" "declared" "api" "openai-responses"))
            (request (mp-field-rich-request)) (options (mp-stream-options))
-           (types '("start" "text_start" "text_delta" "text_end" "done"))
+           (types (pig:arr "start" "text_start" "text_delta" "text_end" "done"))
            (stream (pig:registry-stream registry model request options)))
       (mp-check "stream events" types (coerce (mp-event-types stream) 'simple-vector))
       (unless (equal (pig:jget (aref (pig:jget (pig:model-stream-result stream) "content") 0) "text") "streamed")
