@@ -23,6 +23,7 @@ import (
 	"maps"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -413,7 +414,7 @@ func withStderr(message, stderr string) string {
 type utf8Stream struct{ pending []byte }
 
 func (d *utf8Stream) write(chunk []byte) string {
-	data := append(d.pending, chunk...)
+	data := slices.Concat(d.pending, chunk)
 	end := len(data)
 	// A trailing incomplete character is at most 3 bytes.
 	for back := 1; back <= utf8.UTFMax-1 && back <= len(data); back++ {

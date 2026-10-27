@@ -4,6 +4,7 @@ package env
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -198,8 +199,8 @@ func TestConnectionStartFailures(t *testing.T) {
 		replies := append(mustFrame(frameError, 1, refusal, nil), mustFrame(frameError, 2, refusal, nil)...)
 		connection := scriptedConnection(t, syncLine+"printf '"+octal(replies)+"'; exec sleep 30", nil)
 		for attempt := range 2 {
-			remote, ok := startError(t, connection).(*RemoteError)
-			if !ok {
+			var remote *RemoteError
+			if !errors.As(startError(t, connection), &remote) {
 				t.Fatalf("attempt %d: start error is not a RemoteError", attempt)
 			}
 			if remote.Code != "EINVAL" || remote.Path == nil || *remote.Path != "/daemon" || remote.Fields["extra"] != float64(1) {
@@ -216,8 +217,8 @@ func TestConnectionStartFailures(t *testing.T) {
 		t.Parallel()
 		connection := NewConnection(ConnectionOptions{Command: []string{"/nonexistent/pi-env"}})
 		t.Cleanup(connection.Close)
-		remote, ok := startError(t, connection).(*RemoteError)
-		if !ok || remote.Code != "spawn_error" || !IsConnectionLost(remote) {
+		var remote *RemoteError
+		if !errors.As(startError(t, connection), &remote) || remote.Code != "spawn_error" || !IsConnectionLost(remote) {
 			t.Fatalf("start error = %#v, want a lost spawn_error", remote)
 		}
 	})
