@@ -343,7 +343,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:7d74179a7b6df7649d991883571f678b0466565158f9559555f4207768f573d8",
       "evidence": [
-        "ai/providers/bedrock/cache_write_cost_test.go#TestBedrockStreamCacheWrite1hCost"
+        "ai/cache_write_cost_test.go#TestBedrockStreamCacheWrite1hCost"
       ],
       "rationale": "The production Bedrock Stream and real AWS SDK decode a hermetic event-stream response containing the upstream metadata: total writes=1000000 and 150000/600000/250000 details with TTLs 1h/5m/1h. Assertions require total writes unchanged, 1h writes=400000, and the resulting mixed-rate cost in both Result and the terminal event. Compiling mutations that omit extraction, keep only the last 1h detail, or count every TTL fail; the former arithmetic-only evidence passes when extraction is removed."
     },
@@ -1122,7 +1122,7 @@
       "upstreamTestHash": "sha256:cb03e1e1d843492d5efb0417ed281ad2fa10c44560024b61cdd4c96572617742",
       "evidence": [
         "ai/node_http_proxy_upstream_test.go#TestNodeHTTPProxyUpstream",
-        "ai/providers/bedrock/node_http_proxy_upstream_test.go#TestBedrockScopedProxyRequest",
+        "ai/node_http_proxy_upstream_test.go#TestBedrockScopedProxyRequest",
         "test/parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"
       ],
       "rationale": "All five upstream cases and all eleven hostname/port assertions are ported with exact inputs and source citations. The production Bedrock HTTP request uses the resolver and proves scoped aliases override process aliases. Compiling mutations of alias precedence and apex matching fail both Go tests and the real Pi 0.87.1 helper output. No cases are designed out."
