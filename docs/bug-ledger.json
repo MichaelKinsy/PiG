@@ -23259,31 +23259,6 @@
       ]
     },
     {
-      "id": "BF-D204",
-      "title": "The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node…",
-      "symptom": "none claimed.",
-      "rootCause": "Landing the export in all three SDKs needs that unit and its vector tests; it is not part of 0.6.0.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D204",
-      "removeWhen": "the 0.6.1 export of `TuiAltScreen` lands in the Go, Rust and Python SDKs; then the 46 cells become `native:` cells with their conformance or vector reach, and this record goes.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "26bbbe6a80",
-          "date": "2026-10-26"
-        },
-        {
-          "hash": "f67a7da98e",
-          "date": "2026-10-26"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -38518,11 +38493,6 @@
       "id": "D203",
       "title": "registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as…",
       "entry": "BF-D203"
-    },
-    {
-      "id": "D204",
-      "title": "The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node…",
-      "entry": "BF-D204"
     }
   ],
   "exemptCommits": {

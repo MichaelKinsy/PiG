@@ -123126,6 +123126,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallTuiAlt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "CallTuiAlt",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallTypeEngine",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "CallTypeEngine",
@@ -131123,6 +131134,17 @@
       "shapeHash": "sha256:b8131162455dfd86ff5f084a79b2c1bd81d99fdb1b6df70017196400ccd9a5c1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#RequestTuiAltCallback",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "RequestTuiAltCallback",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#RequestUserBashExec",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "RequestUserBashExec",
@@ -132806,6 +132828,28 @@
       "shapeHash": "sha256:370609c97451e7784c0fc482f8b706604c794b498e6e08903c2c47d6d1d5fea5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.disposeTuiAlt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.disposeTuiAlt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owner *Conn, all bool)"
+      },
+      "shapeHash": "sha256:f2b96de88c001c0b65d4b24a44041ed5baba117f4d8e9fafaad270c26dbc5972"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.disposeTuiAltOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.disposeTuiAltOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(extName string)"
+      },
+      "shapeHash": "sha256:bbe8382db9b2b4f166fb98c73799a551368eb48cd061e138367581d523ea78a6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.dropSprites",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.dropSprites",
@@ -133818,6 +133862,17 @@
       "shapeHash": "sha256:e2a9ad25c08844e8af4c4e90d167a0d89470c5bb77ce410ec7e3b4e4cece1e57"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.handleTuiAlt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.handleTuiAlt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owner *Conn, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:330329660d41280041741202ea5af997c9d4736750109b684fa3fd7c53f2a6aa"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.handleWaitForIdle",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.handleWaitForIdle",
@@ -134036,6 +134091,28 @@
         "type": "func(kind string, conn *Conn, raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, lines []string, width int) (*github.com/MichaelKinsy/PiG/coding/extension.FramedView, bool)"
       },
       "shapeHash": "sha256:027b4f46c47262105096af44d3077ae3066ee08700e56b6be4edd3c90d0a874e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.tuiAltCreate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.tuiAltCreate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owner *Conn, call *tuiAltCall) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:a8a4ffbe8d20914fe57abc221aaa93d5749f851b26278ee784d27bcf705a6ce8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.tuiAltScreen",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.tuiAltScreen",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owner *Conn, id string) (*tuiAltScreenState, error)"
+      },
+      "shapeHash": "sha256:a4f10fe27f507bcb7eaed3f9b4375c83cb229bdf21c76cc21a24f02b30ea93ce"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.unregisterCustomOverlay",
@@ -143322,6 +143399,17 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nonNilLines",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "nonNilLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(lines []string) []string"
+      },
+      "shapeHash": "sha256:2881a43f5ab7135c0fd1c04fd3076f54f3ed59dcdbe03e9e7ad143c38f9e89e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nonNilNames",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "nonNilNames",
@@ -143993,6 +144081,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#overlaySpec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "overlaySpec",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(layout *github.com/MichaelKinsy/PiG/coding/extension.OverlayLayout) github.com/MichaelKinsy/PiG/tui.OverlaySpec"
+      },
+      "shapeHash": "sha256:386fffa91fcfeea4012aa7f749e163d192a5a8b1eece7bbfae01644febcba08f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#oversizedFrameError",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "oversizedFrameError",
@@ -144211,6 +144310,17 @@
         "type": "func() error"
       },
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#parseTuiAltWheel",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "parseTuiAltWheel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (github.com/MichaelKinsy/PiG/tui.WheelScrollLines, error)"
+      },
+      "shapeHash": "sha256:3ff24e358620abd936f136a3a5b039e3f9f7f4a7a2e855b0a7d52a2e417e259e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#pathArgs",
@@ -148160,6 +148270,523 @@
         "type": "func(err error) bool"
       },
       "shapeHash": "sha256:4a5055322e6f75d7ee10cc59b4814e22cbd33d6a19d2b99d3e00212a527e3abf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltCall",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltCall",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltCall"
+      },
+      "shapeHash": "sha256:ceb68f26a93a4989680450ae1a3b7bbab262fedb4a689ba26ad5b02446af0f58"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltCaps",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltCaps",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltCaps"
+      },
+      "shapeHash": "sha256:c35f43e17ea3a50425e4c891055a267aca68b17892715ecf822bdc24ff7461e3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltColorsWire",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltColorsWire",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(colors github.com/MichaelKinsy/PiG/tui.TerminalColors) map[string]any"
+      },
+      "shapeHash": "sha256:4798f5efd2d380beb49f62a63e5d6f260310ad07fc0189edbd0acaad8007b107"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltComponent",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltComponent",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltComponent"
+      },
+      "shapeHash": "sha256:a89f21a3522a39dff2846c749cce4553c4c0ea96203c7db448e00eae8b60af04"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltComponent.HandleInput",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltComponent.HandleInput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data string)"
+      },
+      "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltComponent.HandleMouse",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltComponent.HandleMouse",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(event github.com/MichaelKinsy/PiG/tui.TuiMouseEvent) *github.com/MichaelKinsy/PiG/tui.TuiMouseEventResult"
+      },
+      "shapeHash": "sha256:243d2abdef579e3700ac0a23f5d3aa5a393059e60d9f88991ed7612e1f27a14a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltComponent.Invalidate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltComponent.Invalidate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltComponent.Render",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltComponent.Render",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(width int) []string"
+      },
+      "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltComponent.SetFocused",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltComponent.SetFocused",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(focused bool)"
+      },
+      "shapeHash": "sha256:2022dca182fa9a536f7f3c6cb3c1b7edfcee418c2df1a33b626c16a5e4a6c607"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltComponent.WantsKeyRelease",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltComponent.WantsKeyRelease",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltKey"
+      },
+      "shapeHash": "sha256:714e20e196a8f4232b2d4b3ca0e214c11db67de75dcaba40e607c00ceabeca64"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltMouseEvent",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltMouseEvent",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltMouseEvent"
+      },
+      "shapeHash": "sha256:f5e3c8c550516503a36b618b27398fd9afd9e9a564697b83efade9674113679b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltMouseResult",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltMouseResult",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltMouseResult"
+      },
+      "shapeHash": "sha256:7836cc56991957a5b70c4feb377155be6ffc000cfb98d8d7f27fb287c79af22b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltMouseResult.tuiResult",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltMouseResult.tuiResult",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/tui.TuiMouseEventResult"
+      },
+      "shapeHash": "sha256:6647eab9c752a85a78087ff93f8e74385728bf851eede9506ef8a8eb517f3c7a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOptions",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOptions",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltOptions"
+      },
+      "shapeHash": "sha256:04ce1d4e97895296e94eb9d02461a55eb9181117c656fbc0507d856a8556f97a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltRegistry",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltRegistry",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltRegistry"
+      },
+      "shapeHash": "sha256:7676f5d5c447830b76b5c395da17dffbf6915f6dc7c8807ff18b725a623e4993"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltResult",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltResult",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(value any) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:86cfe9fec9ccdb3911695771b5e1c51138c03ad880219fb91d82363d8cab2fde"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltScreenState"
+      },
+      "shapeHash": "sha256:5820dc44e6fac1b56fabb5a6c4928d30d89dca6130eefa64ddce0d3327387baf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.bindCallbacks",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.bindCallbacks",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(options *github.com/MichaelKinsy/PiG/tui.TuiAltScreenOptions, names []string)"
+      },
+      "shapeHash": "sha256:3f829c57ddb6b41783bea348a19c8659b3a4e132dee88919a236d0ccf925095e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.callback",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.callback",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(kind string, fields map[string]any, result any) error"
+      },
+      "shapeHash": "sha256:91e3e9d3143e0e11ae1dd4767cbbba6ea2076f721c6028384adc99e5ba7e470c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.component",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.component",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(key *string, caps *tuiAltCaps) (*tuiAltComponent, error)"
+      },
+      "shapeHash": "sha256:356a7ab4023b3291772eac8b7f95d537b94dd246e92c17348d07eb8c772348c8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.focusedKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.focusedKey",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() any"
+      },
+      "shapeHash": "sha256:6b40cbb40507b7efce1d433d06fed509e653a5671897ef0381b72bf3dce3329e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.keyOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.keyOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(component github.com/MichaelKinsy/PiG/tui.Component) *string"
+      },
+      "shapeHash": "sha256:e04353a560de26da04b2f23b56bb4a3fe01cbdb44a5d82ef6cdfd10133bcd335"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.op",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.op",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(call *tuiAltCall) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:72744729824cabe7a76348230b44fd68370f0f060fdb43fdf3dd0c3a8534141e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.overlayControl",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.overlayControl",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(call *tuiAltCall) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:72744729824cabe7a76348230b44fd68370f0f060fdb43fdf3dd0c3a8534141e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.overlayState",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.overlayState",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(handle *github.com/MichaelKinsy/PiG/tui.OverlayHandle) map[string]any"
+      },
+      "shapeHash": "sha256:785114291a340bf0820aa6fcb765db4dc037e57a2866a2faa6c7014ba6f7b1d6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltTerminal"
+      },
+      "shapeHash": "sha256:32479b4ca48b48f5602d9f8137f8eb59295ad804d60f45cc5d9bbcfff88f3614"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.ClearFromCursor",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.ClearFromCursor",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.ClearLine",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.ClearLine",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.ClearScreen",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.ClearScreen",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.Columns",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.Columns",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.DrainInput",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.DrainInput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(maxWait time.Duration, idleWait time.Duration) error"
+      },
+      "shapeHash": "sha256:3d3f648690c9b0885027ed009dfc6a68566f415e73a5e348959afbecb69bb837"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.HideCursor",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.HideCursor",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.KittyProtocolActive",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.KittyProtocolActive",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.MoveBy",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.MoveBy",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(lines int)"
+      },
+      "shapeHash": "sha256:1876523c3e37f84577b2ea86ae514ae534b4068c0ee9252175351d8b4fb9fd94"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.RestoreOnExit",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.RestoreOnExit",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(before string, after string)"
+      },
+      "shapeHash": "sha256:3eaf32dcdca25aa510938a131d3115f218eee52a14bd8a88ccbb10a9bcd19428"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.Rows",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.Rows",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.SetProgramStatus",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.SetProgramStatus",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(status github.com/MichaelKinsy/PiG/tui.ProgramStatus)"
+      },
+      "shapeHash": "sha256:59461f8b98464249fe17222389925f5758ffc022037f819bc435125f9e4ca0f6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.SetProgress",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.SetProgress",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(active bool)"
+      },
+      "shapeHash": "sha256:293b70ea26cb4b4db9f1f3d8c96c066cb3dbc334eecbf120c15f9a4fec3970ad"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.SetTitle",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.SetTitle",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(s string)"
+      },
+      "shapeHash": "sha256:7ef998fc06ab6413821e62ece88ac626056bbc94448dbe5823c278b7c2aa7c33"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.ShowCursor",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.ShowCursor",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.Start",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.Start",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(onInput func(string), onResize func()) error"
+      },
+      "shapeHash": "sha256:dde97861a2ef7758ba37f3718e5f780593ca0d903413a6dc3e9b2b38c4e3d36d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.Stop",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.Stop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.Write",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.Write",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data string)"
+      },
+      "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.send",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.send",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(method string, fields map[string]any)"
+      },
+      "shapeHash": "sha256:2a40dbbe03c81ff6546ac362e2e513ab9a7dfcfabacd14874e7a9c80acb92457"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal.update",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminal.update",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(block *tuiAltTerminalBlock) bool"
+      },
+      "shapeHash": "sha256:4566576c103658abfcbdedeeff89fddf838ab30e187e3c5e19ea344cfd792324"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminalBlock",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltTerminalBlock",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltTerminalBlock"
+      },
+      "shapeHash": "sha256:975ef8b4507d7d1df82af3be097d4c7b4c4d1ca1f822a6d16e845a96b8b5e486"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#turnEndWire",
@@ -181767,6 +182394,17 @@
       "shapeHash": "sha256:fcfb9dc23f0021fa888b553ba44a31f1577d1bed8673127106840683fc646ec3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Component",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Component",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Component"
+      },
+      "shapeHash": "sha256:981ad49902a0bad4741af6dd9a6803552b6e9a5bf5819b5cc3d0e5257b0df5f7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ConfigDirName",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "ConfigDirName",
@@ -186451,6 +187089,17 @@
         "type": "func(id string, req *requestMsg)"
       },
       "shapeHash": "sha256:5a9bf3e7e58af91c5efea58e6408c4dbd0a4c5af6bcd2f24ea12e344fb749693"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.dispatchTuiAlt",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Extension.dispatchTuiAlt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw encoding/json.RawMessage) (any, error)"
+      },
+      "shapeHash": "sha256:6eb5b0b45221f86955481b8056aea1a799d8325e2822283e4d2a04df67b90a79"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.dispatchUserBashExec",
@@ -191689,6 +192338,17 @@
       "shapeHash": "sha256:a742caedd1af87e873144241a3ca44f286ff00ce2ecb45d004b9ddd88b803025"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#NewTuiAltScreen",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "NewTuiAltScreen",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx Context, terminal Terminal, showHardwareCursor *bool, logDirectory string, options TuiAltScreenOptions) (*TuiAltScreen, error)"
+      },
+      "shapeHash": "sha256:57495682eca4f47b8baed9958d93d830afed80b3f05ed8be33364188d1cdb652"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#NormalizeContext",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "NormalizeContext",
@@ -192644,6 +193304,17 @@
         "type": "func(entries []github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, tokenBudget int) ([]byte, error)"
       },
       "shapeHash": "sha256:f2232b6b7eac697cee917f46603c8921ce8b48f2f3e2c932af119f2c12e25f3f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ProgramStatus",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ProgramStatus",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ProgramStatus"
+      },
+      "shapeHash": "sha256:a14e2a1b67d6c5d2237c14e3f16c77aaaccffb2553251594492e46baf20db3c2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ProgressEvent",
@@ -198608,6 +199279,28 @@
       "shapeHash": "sha256:0627414bc2cc64a3a3f8e71e44d9c312d40da2fc0184703e8643fb35820b3dd2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Terminal",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Terminal",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Terminal"
+      },
+      "shapeHash": "sha256:99d15b6c406da3c0ccc1f3409d0c4be7ef5cf9d09d8e17b9a4ccbc5db0920cf9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TerminalColors",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TerminalColors",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TerminalColors"
+      },
+      "shapeHash": "sha256:c69d88cc695ad68fc1959462a913038d811b3558f63b17ed112a0084f042cba6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TerminalInputHandler",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "TerminalInputHandler",
@@ -198628,6 +199321,17 @@
         "type": "TerminalInputResult"
       },
       "shapeHash": "sha256:738c93c2e63c25cf9646d53b3719d857c0af1cc52669a93f891a15751be476f4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TerminalRestoreOnExit",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TerminalRestoreOnExit",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TerminalRestoreOnExit"
+      },
+      "shapeHash": "sha256:d48309e0650dc1ac8e28c98fd4edd0eb635de0e3632d09efa31f7135f796b7f6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TextAttributes",
@@ -199343,6 +200047,776 @@
         "type": "TruncationResult"
       },
       "shapeHash": "sha256:abb5582c8257471509561adfba5600aebe0e6d45a931bcd784b81dc42f0ab1d7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiAltScreen"
+      },
+      "shapeHash": "sha256:15af5f0f6ecc74d3692c79f3b6279d76906e0113c02ac0b262121336a6d51f14"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.AddChild",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.AddChild",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(component Component) error"
+      },
+      "shapeHash": "sha256:9280ce230e42ad33789a2085e9c040d191320e60bd5d88dbb9d3160cf3dec0c1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.AddInputListener",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.AddInputListener",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(listener TuiInputListener) (func(), error)"
+      },
+      "shapeHash": "sha256:bb764a7c58e5e8a41bb5dc17a93fe7741b6a02c96fec2f5074ceddfeff8b8ab8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Children",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.Children",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []Component"
+      },
+      "shapeHash": "sha256:6f42795760300e5c94e1a3dba125ffaec663f884e0693ca513fc9650d19f1a9e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Clear",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.Clear",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.CopyActiveSelectionToClipboard",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.CopyActiveSelectionToClipboard",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Flash",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.Flash",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(message string, durationMs int) error"
+      },
+      "shapeHash": "sha256:157ac7853ed3a8a289d27d53ab00dcc07db045407905db6a178e431027cadbe7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.FullRedraws",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.FullRedraws",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (int, error)"
+      },
+      "shapeHash": "sha256:3a238467b7959d02aba9159a41cff5ba224872f5051255cd87ecff5dc5fc4aa3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.GetClearOnShrink",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.GetClearOnShrink",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.GetCopyOnSelect",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.GetCopyOnSelect",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.GetFocusedComponent",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.GetFocusedComponent",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (Component, error)"
+      },
+      "shapeHash": "sha256:cb80d0f9626a49d73e7175b8ae1720f914ddd9667ec5822cd245d558802911a9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.GetScreenLines",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.GetScreenLines",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]string, error)"
+      },
+      "shapeHash": "sha256:34b2aa70ff5c7796966504aa03e6b3674b9ea322ae54af4e029f0e1afc55883f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.GetShowHardwareCursor",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.GetShowHardwareCursor",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.HandleMouse",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.HandleMouse",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(event MouseEvent) (*TuiMouseResult, error)"
+      },
+      "shapeHash": "sha256:a5eecd68d9e7128b8c3e87d9d55234a3ab58ef4c50ea2cca2c2c3dee936ae8c9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.HasActiveSelection",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.HasActiveSelection",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.HasOverlay",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.HasOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.HasOverlayEntries",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.HasOverlayEntries",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.HideOverlay",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.HideOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Invalidate",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.Invalidate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.IsFollowingOutput",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.IsFollowingOutput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Mode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.Mode",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.OnTerminalColorSchemeChange",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.OnTerminalColorSchemeChange",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(listener func(scheme string)) func()"
+      },
+      "shapeHash": "sha256:2516a5ae516f30644bf92fbda8411d7e56221f50a7c8bc205c7c8c2e86566261"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.QueryTerminalColors",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.QueryTerminalColors",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(timeoutMs float64, onLateReply func(TerminalColors)) (TerminalColors, error)"
+      },
+      "shapeHash": "sha256:5dfe6d9c860db539b9540361d992ad2bb662c3942072163b6a74871a465e95b3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.RemoveChild",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.RemoveChild",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(component Component) error"
+      },
+      "shapeHash": "sha256:9280ce230e42ad33789a2085e9c040d191320e60bd5d88dbb9d3160cf3dec0c1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.RemoveInputListener",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.RemoveInputListener",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(listener TuiInputListener) error"
+      },
+      "shapeHash": "sha256:cf003416bdd79149475d962690e2197040421a7a0926b72eb1e5a980a735389f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Render",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.Render",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(width int) ([]string, error)"
+      },
+      "shapeHash": "sha256:c77e7ca7bcd92e69bc732ff6c519ab1ffd59629afa8f85b38d84e2f99fe70ce7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.RenderNow",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.RenderNow",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(force bool) error"
+      },
+      "shapeHash": "sha256:97fd264a6f32043c2dff93382bbc31de0a07acc143e36f28bb98822280f873f9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.RequestRender",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.RequestRender",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(force bool) error"
+      },
+      "shapeHash": "sha256:97fd264a6f32043c2dff93382bbc31de0a07acc143e36f28bb98822280f873f9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.ResetTextSelection",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.ResetTextSelection",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.ScrollBy",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.ScrollBy",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(lines int) error"
+      },
+      "shapeHash": "sha256:46e1d43c0fd3d0cb3663863776fbc50c91dc40714eb1b8a3106cb8cdba49a2b8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.ScrollToBottom",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.ScrollToBottom",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.ScrollToTop",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.ScrollToTop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.SetClearOnShrink",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.SetClearOnShrink",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(enabled bool) error"
+      },
+      "shapeHash": "sha256:fd82e70283323148edc1b4afac95b881526867dc39d9a12764c2065971bb304c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.SetCopyOnSelect",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.SetCopyOnSelect",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(enabled bool) error"
+      },
+      "shapeHash": "sha256:fd82e70283323148edc1b4afac95b881526867dc39d9a12764c2065971bb304c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.SetFocus",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.SetFocus",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(component Component) error"
+      },
+      "shapeHash": "sha256:9280ce230e42ad33789a2085e9c040d191320e60bd5d88dbb9d3160cf3dec0c1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.SetLayoutRoot",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.SetLayoutRoot",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(component Component) error"
+      },
+      "shapeHash": "sha256:9280ce230e42ad33789a2085e9c040d191320e60bd5d88dbb9d3160cf3dec0c1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.SetOnDebug",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.SetOnDebug",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(callback func()) error"
+      },
+      "shapeHash": "sha256:d5d85251a6a00d39bc94589d475779a9532a78c45902db354c1ab485542a1c61"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.SetShowHardwareCursor",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.SetShowHardwareCursor",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(enabled bool) error"
+      },
+      "shapeHash": "sha256:fd82e70283323148edc1b4afac95b881526867dc39d9a12764c2065971bb304c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.SetTerminalColorSchemeNotifications",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.SetTerminalColorSchemeNotifications",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(enabled bool) error"
+      },
+      "shapeHash": "sha256:fd82e70283323148edc1b4afac95b881526867dc39d9a12764c2065971bb304c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.SetWheelScrollLines",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.SetWheelScrollLines",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(lines float64, auto bool) error"
+      },
+      "shapeHash": "sha256:5da05ee1983f91d529c1d04564687ef0d7cb66ae4d338cd3218cc6106b8e6f8c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.ShowOverlay",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.ShowOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(component Component, options *OverlayOptions) (*TuiOverlayHandle, error)"
+      },
+      "shapeHash": "sha256:d66ba519dbe48d4e26b6732280d9a2d74b14ee19035f4081e3daea0243692213"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Start",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.Start",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Stop",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.Stop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(preserveScreen bool) error"
+      },
+      "shapeHash": "sha256:2f37d572392bb6adad846cdebe08e9314d8a294aa12c7ae897bd85c9ef4d9f2a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Terminal",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.Terminal",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() Terminal"
+      },
+      "shapeHash": "sha256:e55210e80c5f296e84d4d7e3acec93cccc026f96c9cb245ee25e61572d38a45b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.ViewportTop",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.ViewportTop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (int, error)"
+      },
+      "shapeHash": "sha256:3a238467b7959d02aba9159a41cff5ba224872f5051255cd87ecff5dc5fc4aa3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.ViewportTui",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.ViewportTui",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.call",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.call",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(op string, fields map[string]any, out any) error"
+      },
+      "shapeHash": "sha256:9493e6b17c95773ea98dfc940843a1f1f1f144d13657fd3ef3dc5122b617c0f7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.componentFields",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.componentFields",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(component Component) (map[string]any, error)"
+      },
+      "shapeHash": "sha256:da55eadc8d71ec38f8da1f5e6924cfcfdde919da5bc7365dd3d498660731a99b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.componentFor",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.componentFor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(key any) Component"
+      },
+      "shapeHash": "sha256:b550ed5c3af6015874917c260997e206e734232fbbe7f83209a37ba6a9b299fe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.removeListener",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.removeListener",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) error"
+      },
+      "shapeHash": "sha256:d80e04f56a86516582df66974b40aa017d71965494f812b03ab10ff7363ade6a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.runOption",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.runOption",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string, raw encoding/json.RawMessage) (any, error)"
+      },
+      "shapeHash": "sha256:cfd7399fe82240288314195fee65116a48142af96cc01856d3bc01f3fef388f0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.state",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreen.state",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (tuiAltState, error)"
+      },
+      "shapeHash": "sha256:a4142bce6f7480ceecf7070415bd9ec35e4470252ff6b2e9e8ed5ee32cea4300"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreenOptions",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiAltScreenOptions",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiAltScreenOptions"
+      },
+      "shapeHash": "sha256:1c44ef84e5b8d76666cedd98516adc7395ea7b37eabc07fecc6ccca00ac6a0c5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiFocusable",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiFocusable",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiFocusable"
+      },
+      "shapeHash": "sha256:d0e10ccd35b0c0de635b67da0022fe6cc98e96f221e8d9861dee1a392ecd19a7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiInputHandler",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiInputHandler",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiInputHandler"
+      },
+      "shapeHash": "sha256:fe64fedf2754dc2aadf788a247bb45e01b41955996ff33af9083cd2c7c18520a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiInputListener",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiInputListener",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiInputListener"
+      },
+      "shapeHash": "sha256:cdee6f18d9e58df0f09df3d15330ac1fd0b3692f89391787a9ea8c9ac18a5613"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiInputResult",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiInputResult",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiInputResult"
+      },
+      "shapeHash": "sha256:b67b12d1a848258357f014c9c4abba5b0e2edf25f6b6e1b68a9c9b7f6ab1c295"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiKeyReleaseWanter",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiKeyReleaseWanter",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiKeyReleaseWanter"
+      },
+      "shapeHash": "sha256:6bf4ca39339ce86b79d4007d5b66f45c5d698094850d52cd6cc4ab0f6026560e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiMouseHandler",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiMouseHandler",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiMouseHandler"
+      },
+      "shapeHash": "sha256:541c9f47c88026bb48565434c4dab86fbea1274311d612008280df59b166d082"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiMouseResult",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiMouseResult",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiMouseResult"
+      },
+      "shapeHash": "sha256:961bd9b7d190aae0e43a9a71b4212681a19d7904de924d17dc0b3028a09cfaae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayHandle",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayHandle",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiOverlayHandle"
+      },
+      "shapeHash": "sha256:5aeeb206e0b84f3b4e90242245823ec5d8d94cca462914693f4466c214e114fc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayHandle.Focus",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayHandle.Focus",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayHandle.GetBounds",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayHandle.GetBounds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (*OverlayBounds, error)"
+      },
+      "shapeHash": "sha256:6dd5a600f8518eac6297e6583c1b341885af5d52c7add5b65c6c9917e6b5fe97"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayHandle.Hide",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayHandle.Hide",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayHandle.IsFocused",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayHandle.IsFocused",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayHandle.IsHidden",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayHandle.IsHidden",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (bool, error)"
+      },
+      "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayHandle.SetHidden",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayHandle.SetHidden",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(hidden bool) error"
+      },
+      "shapeHash": "sha256:c479089480250e00f60b0973145ce39ac6f53b3d7e403fb8fc76eadfa44c4ce8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayHandle.Unfocus",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayHandle.Unfocus",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(options ...UnfocusOptions) error"
+      },
+      "shapeHash": "sha256:9e0d5d2df54b0672b9d120f51e3274defe182b0c8ef2fd7ff8955bab8ba36012"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayHandle.control",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayHandle.control",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(action string, fields map[string]any) (*tuiOverlayState, error)"
+      },
+      "shapeHash": "sha256:568703fd3bb8982c73c68f105d843603f1617ab3a66ac166e519b0254224b13a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiRgb",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiRgb",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiRgb"
+      },
+      "shapeHash": "sha256:889691a74baf5834af82a6659f141a5050909b0593b8b757964e4b9e2ae10263"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Type",
@@ -209509,6 +210983,28 @@
       "shapeHash": "sha256:98d7e254797d52805bc09494632fb64cbaa0ed9895d6a3952e650ec762a0c1bc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#tuiAltRegistry",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "tuiAltRegistry",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltRegistry"
+      },
+      "shapeHash": "sha256:7676f5d5c447830b76b5c395da17dffbf6915f6dc7c8807ff18b725a623e4993"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#tuiAltState",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "tuiAltState",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltState"
+      },
+      "shapeHash": "sha256:fe175721cfc789c38e35afc0983eb216083200319fb6801305f32c3565bcf296"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#tuiColor",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "tuiColor",
@@ -209518,6 +211014,17 @@
         "type": "func(c Color) github.com/MichaelKinsy/PiG/extensions/sdk/tui.Color"
       },
       "shapeHash": "sha256:50ce9a4c8cabf148078f97d3aa1532f2052e680a845e5f6ad292e9033f91bed5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#tuiOverlayState",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "tuiOverlayState",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiOverlayState"
+      },
+      "shapeHash": "sha256:f2e75fe6d5d7f198db497320bf13e5f0f5374d91a616db473805aca1987d9d3b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#typeEngineCall",
@@ -335987,6 +337494,17 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.HasVisibleOverlay",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.HasVisibleOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.Height",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.Height",
@@ -338462,6 +339980,17 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.HasVisibleOverlay",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.HasVisibleOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.Height",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.Height",
@@ -340236,6 +341765,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.HasOverlay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.HasOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.HasVisibleOverlay",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.HasVisibleOverlay",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -362192,6 +363732,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.HasOverlay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.HasOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.HasVisibleOverlay",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.HasVisibleOverlay",
       "kind": "function",
       "exported": true,
       "shape": {
