@@ -532,11 +532,11 @@ when the host aborts the command; TIMEOUT is in seconds; ENV, when not NIL, repl
   on-data signal timeout env)
 
 (defvar *bash-ops* (make-hash-table :test 'equal :synchronized t))
-(defvar *bash-ops-seq* 0)
+(defvar *bash-ops-seq* (list 0))
 
 (defun bash-ops-register (operations &optional handle)
   "Keep OPERATIONS until the host releases it; the handle (given, or new) names it on the wire."
-  (let ((handle (or handle (format nil "bash-~D" (sb-ext:atomic-incf *bash-ops-seq*)))))
+  (let ((handle (or handle (format nil "bash-~D" (1+ (sb-ext:atomic-incf (car *bash-ops-seq*)))))))
     (setf (gethash handle *bash-ops*) operations)
     handle))
 

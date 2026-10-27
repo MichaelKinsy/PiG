@@ -105,7 +105,7 @@
         (check-equal "r" (pig:jget (pig:jget call "call") "parent_request_id"))
         (dolist (n '(1 2))
           (request host (format nil "u~D" n) "execute_tool_update" "args" (pig:obj "executeId" (pig:jget payload "executeId") "result" (pig:obj "n" n)))
-          (check-equal nil (pig:jget (pig:jget (hread-type host "response") "response") "error")))
+          (check (eq :null (pig:jget (pig:jget (hread-type host "response") "response") "error"))))
         (check-equal '(2 1) updates)
         (answer-call host call (pig:obj "isError" t "result" (pig:obj "content" "x")))
         (hread-type host "response")
