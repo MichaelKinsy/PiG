@@ -203,7 +203,7 @@
       (funcall (pig:provider-refresh-models p) (pig:make-refresh-models-context :publish #'publish :allow-network t))
       (check-equal '("Fetched") (names))
       (check-equal 1 fetched)
-      (check (eq pig:+models-publication-omitted+ (pig:models-publication-persist (second publications))) "the restore persists nothing")
+      (check (eq :omitted (pig:models-publication-persist (second publications))) "the restore persists nothing")
       (check-equal 1 (length (pig:jget (pig:models-publication-persist (first publications)) "models"))))))
 
 ;;; ---------------------------------------------------------------- built-in tool options

@@ -382,7 +382,7 @@
                                     (funcall (pig:provider-get-all-models f)))))
                    (publish (publication)
                      (let ((persist (pig:models-publication-persist publication)))
-                       (push (pig:obj "persist" (if (eq persist pig:+models-publication-omitted+)
+                       (push (pig:obj "persist" (if (eq persist :omitted)
                                                     "omitted"
                                                     (pig:obj "models" (b-vec (b-ids (pig:jget persist "models"))) "checkedAt" (if (realp (pig:jget persist "checkedAt")) "number" "other")))
                                       "update" (b-kind (pig:models-publication-update publication)))
