@@ -17,7 +17,7 @@ import (
 // and, for "first", waits for <dir>/release. SDKs dispatch each request on its own thread, so the host decides.
 func TestMarkdownAbandonedBodyKeepsOrderAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		if tc.name != "subprocess-python" && tc.name != "subprocess-rust" && tc.name != "subprocess-lisp" {
 			continue
 		}

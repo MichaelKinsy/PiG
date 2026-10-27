@@ -223,10 +223,6 @@
               "failedStop" (pig:jget failed "stopReason") "failedMessage" (pig:jget failed "errorMessage")
               "failedModel" (pig:jget failed "model") "failedOutput" (pig:jget failed "output")))))
 
-(defun mp-virtual-model (&rest arguments)
-  "The virtual model of ARGUMENTS (lane P's constructor, looked up at call time so this file loads before that lane's)."
-  (apply (find-symbol "MAKE-VIRTUAL-MODEL" "PIG") arguments))
-
 (defun mp-route (ctx request)
   (declare (ignore ctx request))
   (pig:obj "model" (pig:obj "provider" "p" "id" "m") "thinkingLevel" "off"))
@@ -234,8 +230,8 @@
 (defun mp-virtual-probe (ctx params)
   (declare (ignore params))
   (let ((registry (pig:ctx-model-registry ctx)) (refused ""))
-    (pig:registry-register-virtual-model registry (mp-virtual-model :provider "router" :id "late" :name "Late" :route #'mp-route :context-window 1000))
-    (handler-case (pig:registry-register-virtual-model registry (mp-virtual-model :provider "router" :id "claimed" :name "Claimed" :route #'mp-route))
+    (pig:registry-register-virtual-model registry (pig:make-virtual-model :provider "router" :id "late" :name "Late" :route #'mp-route :context-window 1000))
+    (handler-case (pig:registry-register-virtual-model registry (pig:make-virtual-model :provider "router" :id "claimed" :name "Claimed" :route #'mp-route))
       (error (e) (setf refused (string-trim '(#\Space #\Newline) (princ-to-string e)))))
     (pig:registry-unregister-virtual-model registry "router" "late")
     (pig:to-json (pig:obj "first" t "refused" refused))))
@@ -246,7 +242,7 @@
     (flet ((listed () (if (find-if (lambda (model) (and (equal (pig:jget model "provider") "router") (equal (pig:jget model "id") "seen")))
                                    (pig:registry-get-all registry))
                           t :false)))
-      (pig:registry-register-virtual-model registry (mp-virtual-model :provider "router" :id "seen" :name "Seen" :route #'mp-route :context-window 1000))
+      (pig:registry-register-virtual-model registry (pig:make-virtual-model :provider "router" :id "seen" :name "Seen" :route #'mp-route :context-window 1000))
       (let ((registered (if (pig:registry-find registry "router" "seen") t :false)) (is-listed (listed)))
         (pig:registry-unregister-virtual-model registry "router" "seen")
         (pig:to-json (pig:obj "registered" registered "listed" is-listed
@@ -356,7 +352,7 @@
   (pig:command ext "model-stream-cancel-report" "Report how the cancelled model stream ended"
                (lambda (ctx args) (declare (ignore args)) (mp-cancel-report ctx))))
 
-(def-fixture "model-types" (ext)
+(def-surface-fixture "model-types" (ext)
   (mp-register-providers ext)
   (loop for (name handler) in (list (list "typed_reads" #'mp-typed-reads) (list "classify_probe" #'mp-classify-probe)
                                     (list "images_probe" #'mp-images-probe) (list "virtual_probe" #'mp-virtual-probe)

@@ -58,7 +58,7 @@ func TestExecRejectionsAcrossSDKs(t *testing.T) {
 	if runtime.GOOS == "windows" && (want[1] != "rejected:spawn EINVAL:info" || want[2] != "rejected:spawn EINVAL:info") {
 		t.Fatalf("reference outcomes = %q, want spawn EINVAL for batch files", want)
 	}
-	cases := append(sdkHarnessCases(), lispHarnessCase())
+	cases := sdkHarnessCases()
 	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}

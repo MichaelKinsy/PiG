@@ -141,7 +141,7 @@ func TestReplicatedAccessorsReadYourWritesAcrossSDKs(t *testing.T) {
 		"name1": "renamed", "entryAfterLabel": "label", "entryAfterMessage": "custom_message",
 		"model1": "id-after", "provider1": "prov-after", "qualified1": "prov-after/id-after",
 	}
-	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

@@ -35,6 +35,7 @@
   (let ((ctx (event-bus-ctx bus)) (ext (event-bus-extension bus)))
     (cond (ctx (ctx-call-host ctx method args))
           ((extension-conn ext) (host-call ext method args))
+          ((helper-socket-path) (helper-loading-call (helper-socket-path) method args ext))
           (t (error "~A: not connected to the host: the extension is not running yet" method)))))
 
 (defun events-on (bus channel handler)
@@ -47,7 +48,8 @@ EVENTS-EMIT while the host waits for its answer; its error fails only that deliv
          (queued nil))
     (sb-thread:with-mutex ((event-hub-lock hub))
       (setf (gethash (event-sub-id sub) (event-hub-subs hub)) sub)
-      (if (event-hub-live hub)
+      ;; while the factory loads, the factory's own connection holds the listener at once; the subscriptions made while the extension connects wait for the register frame
+      (if (or (event-hub-live hub) (and (null (extension-conn (event-bus-extension bus))) (helper-socket-path)))
           (setf (event-sub-sent sub) t)
           (setf queued t (event-hub-pending hub) (append (event-hub-pending hub) (list sub)))))
     (unless queued
@@ -80,20 +82,25 @@ that no listener handles, as EventEmitter throws."
       (error "pi.events.emit ~S: unhandled error event: ~A" channel (to-json data)))
     nil))
 
-(def-request "events.dispatch" (ext ctx req)
-  (let* ((args (jget req "args")) (id (jget args "handlerId" ""))
+(defun event-dispatch (ext ctx args)
+  "Run the listener the host's events.dispatch names. CTX is NIL for a dispatch while the factory loads."
+  (let* ((id (jget args "handlerId" ""))
          (sub (let ((hub (event-hub ext))) (sb-thread:with-mutex ((event-hub-lock hub)) (gethash id (event-hub-subs hub))))))
     (unless (and sub (equal (event-sub-channel sub) (jget args "channel")))
       (error "Unknown event bus handler: ~A" id))
     (funcall (event-sub-handler sub) ctx (let ((data (jget args "json"))) (if (eq data :null) nil data)))
     nil))
 
-(def-notify "events.release" (ext args)
-  "The host says no snapshot can name an unsubscribed listener any more."
+(def-request "events.dispatch" (ext ctx req) (event-dispatch ext ctx (jget req "args")))
+
+(defun event-release (ext handler-id)
+  "Drop an unsubscribed listener once the host says no snapshot can name it."
   (let ((hub (event-hub ext)))
     (sb-thread:with-mutex ((event-hub-lock hub))
-      (let ((sub (gethash (jget args "handlerId" "") (event-hub-subs hub))))
+      (let ((sub (gethash (or handler-id "") (event-hub-subs hub))))
         (when (and sub (event-sub-off sub)) (remhash (event-sub-id sub) (event-hub-subs hub)))))))
+
+(def-notify "events.release" (ext args) (event-release ext (jget args "handlerId" "")))
 
 (defun event-load-call (ext method args)
   "One host call before the register frame, when the read loop has not started: this thread reads until the call's result arrives."

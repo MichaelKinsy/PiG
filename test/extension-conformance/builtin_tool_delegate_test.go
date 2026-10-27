@@ -317,7 +317,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		}
 	}
 
-	harnessCases := append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...)
+	harnessCases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
 	for _, tc := range harnessCases {
 		if tc.name == "subprocess-node" {
 			continue
@@ -356,7 +356,7 @@ func TestConformance_BuiltinToolOverrideDelegatesAcrossSDKs(t *testing.T) {
 		t.Skip("the cases run POSIX shell commands (arithmetic expansion, exec, printf) through Pi's bash tool, which on Windows needs a Git bash or WSL the Windows runners do not guarantee, and compare file paths as text; the test binary is compiled for windows in CI of this lane (GOOS=windows go test -c) and the PowerShell path (createLocalPowerShellOperations, the powershell tool) has no Windows runner to validate it on")
 	}
 	t.Parallel()
-	harnessCases := append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...)
+	harnessCases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
 	for _, tc := range harnessCases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
@@ -431,7 +431,7 @@ func TestConformance_BuiltinEditOverrideNormalisesLegacyArgumentsAcrossSDKs(t *t
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	t.Parallel()
-	harnessCases := append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...)
+	harnessCases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
 	for _, tc := range harnessCases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)

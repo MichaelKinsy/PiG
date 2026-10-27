@@ -15,7 +15,7 @@ import (
 // answering the host's verdict. The sentinel level "xhigh" and the verdict false differ from each SDK's empty fallback.
 func TestExtensionAPIThinkingLevelAndSetModelAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -87,7 +87,7 @@ func TestExtensionAPIThinkingLevelAndSetModelAcrossSDKs(t *testing.T) {
 func TestExtensionAPIGetCommandsAcrossSDKs(t *testing.T) {
 	requireAPIMember(t, "GetCommands", extension.API.GetCommands)
 	t.Parallel()
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

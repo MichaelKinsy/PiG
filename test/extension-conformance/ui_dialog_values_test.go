@@ -78,7 +78,7 @@ func TestConformance_UIDialogValuesAgreeAcrossSDKs(t *testing.T) {
 		`I1=[1,2]`, `I2=<undefined>`,
 		`E1=7.5`, `E2=true`,
 	}
-	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
