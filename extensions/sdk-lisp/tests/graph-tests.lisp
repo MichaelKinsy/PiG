@@ -136,7 +136,7 @@
       (check-equal t (pig:jget wire "noSkills"))
       (check-equal :false (pig:jget wire "noThemes"))
       (check-equal "cb1" (pig:jget wire "systemPromptOverride"))
-      (check (null (pig:jget wire "skillsOverride"))))
+      (check-equal :null (pig:jget wire "skillsOverride")))
     (check-equal "reload" (pig:jget (cdr (second calls)) "method"))
     (check-equal "sessionGraph.async" (car (second calls)))
     (check-equal "cb2" (pig:jget (aref (pig:jget (cdr (second calls)) "args") 0) "resolveProjectTrust"))))
