@@ -254,10 +254,6 @@ Returns the host and the register envelope."
       (probe-call host (lambda (c) (pig:registry-is-using-oauth (pig:ctx-model-registry c) (pig:obj "provider" "nobody" "id" "m"))) state "r4")
       (check-equal nil *thunk-result*))))
 
-(deftest unserved-members-signal-unsupported-capability
-  (check-error pig:unsupported-capability (pig:registry-get-provider-name nil "x"))
-  (check-error pig:unsupported-capability (pig:registry-get-registered-native-provider nil "x")))
-
 (deftest thin-host-calls-use-their-wire-method-and-members
   (with-host (host (probe-extension))
     (let ((n 0))

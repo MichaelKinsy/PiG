@@ -11,6 +11,9 @@
         (if (stringp message) message "host call failed"))
       "host call failed"))
 
+(defvar *host-call-sent* nil
+  "A function without arguments that HOST-CALL calls once the call frame is written, before it waits for the answer.")
+
 (defun host-call (ext method &optional args parent (request-id ""))
   "Call METHOD on the host and wait for the answer; the result value (NIL for null).
 PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host answers with an error."
@@ -38,6 +41,7 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
         (error (e)
           (sb-thread:with-mutex ((extension-state-lock ext)) (remhash id (extension-pending ext)))
           (error e))))
+    (when *host-call-sent* (funcall *host-call-sent*))
     (wait-call ext id slot)))
 
 (defun wait-call (ext id slot)
@@ -433,12 +437,22 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
   (eq (jget (registry-provider-state registry model) "usingOAuth") t))
 
 (defun registry-get-registered-native-provider (registry provider)
-  (declare (ignore registry provider))
-  (error 'unsupported-capability :member "registry-get-registered-native-provider (Provider objects)"))
+  "The Provider object registered under the provider name PROVIDER, or NIL: this extension's own, else a proxy of the extension's that registered it."
+  (let ((ctx (model-registry-ctx registry)))
+    (loop for entry across (or (jget (registry-state registry) "registered") (vector))
+          do (when (and (equal (jget entry "name") provider) (hash-table-p (jget entry "native")))
+               (return (provider-from-declaration ctx (jget entry "native")))))))
+
+(defun registry-get-provider (registry provider)
+  "The Provider object of the provider name PROVIDER, or NIL. A builtin or composed provider has no Provider object here: that signals."
+  (or (registry-get-registered-native-provider registry provider)
+      (let ((providers (jget (registry-state registry) "providers")))
+        (when (and (hash-table-p providers) (nth-value 1 (gethash provider providers)))
+          (error "builtin/composed Provider object carrier is unavailable (D78)")))))
 
 (defun registry-get-provider-name (registry provider)
-  (declare (ignore registry provider))
-  (error 'unsupported-capability :member "registry-get-provider-name (Provider objects)"))
+  "The name of the Provider object of PROVIDER, or NIL."
+  (let ((found (registry-get-provider registry provider))) (and found (provider-name found))))
 
 ;;; model registry host calls
 
