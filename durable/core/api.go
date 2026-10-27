@@ -173,6 +173,12 @@ func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 		h.cg.retry, h.cg.retryID, h.cg.retryReq = retryAPI, id, req
 		return nil
 	}
+	if h.loop == nil && h.cg.state == gateApplied {
+		// The read stored held changes and the Storage adopted them: it answers when the Storage's call settles, with that call's failure
+		// if it failed after adopting (session.ts unloadDocuments awaits the store).
+		h.cg.heldID, h.cg.heldValue, h.cg.heldErr = id, value, err
+		return nil
+	}
 	h.answerAfterReads(func() {
 		if err != nil {
 			h.apiError(id, err)
