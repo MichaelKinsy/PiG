@@ -90,7 +90,7 @@ func (e *rejection) As(target any) bool {
 
 // typedRejection wraps a rejected step so that a caller matches Pi's error classes on it; any other error is unchanged.
 func typedRejection(err error) error {
-	if rejected, ok := err.(*sqlhost.RejectedError); ok {
+	if rejected, ok := errors.AsType[*sqlhost.RejectedError](err); ok {
 		return &rejection{rejected}
 	}
 	return err
