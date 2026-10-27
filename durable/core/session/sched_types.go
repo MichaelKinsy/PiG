@@ -17,9 +17,6 @@ type Cancel struct {
 // Aborted reports whether Abort ran.
 func (c *Cancel) Aborted() bool { return c != nil && c.aborted }
 
-// Resume aborts the signal when a hops chain of the host ends (Loop.Hops).
-func (c *Cancel) Resume() { c.Abort() }
-
 // Abort marks the signal aborted with the default reason (AbortController.abort()) and runs the registered hooks once.
 func (c *Cancel) Abort() { c.AbortWith(ErrAborted) }
 
