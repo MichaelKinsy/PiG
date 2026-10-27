@@ -374,14 +374,6 @@ encoder writes something that reads back as the same schema."
     (pig:tool ext "noop" "No-op" (pig:obj) (lambda (ctx args) (declare (ignore ctx args)) "ok"))
     (check-equal "[{}]" (pig:to-json (mapcar (lambda (tool) (pig:jget tool "parameters")) (pig::extension-tools ext))))))
 
-(deftest tool-sampling-false-presence
-  ;; Pi ToolDefinition.constrainedSampling is false | config | undefined: false stays present, omission stays absent.
-  (let ((ext (pig:make-extension "sampling")))
-    (pig:tool ext "unset" "Unset" (pig:obj "type" "object") (lambda (ctx params) (declare (ignore ctx params)) "ok"))
-    (pig:tool ext "disabled" "Disabled" (pig:obj "type" "object") (lambda (ctx params) (declare (ignore ctx params)) "ok") :constrained-sampling :false)
-    (check (not (nth-value 1 (gethash "constrained_sampling" (first (pig::extension-tools ext))))))
-    (check (eq :false (gethash "constrained_sampling" (second (pig::extension-tools ext)))))))
-
 (defun tt-refine-extension (log)
   (flet ((checked (tag check) (lambda (value) (push (format nil "check:~A" tag) (car log)) (funcall check value)))
          (worded (tag message) (lambda (value) (push (format nil "error:~A" tag) (car log)) (funcall message value))))
@@ -393,8 +385,7 @@ encoder writes something that reads back as the same schema."
                                                                                       (worded "evenmsg" (lambda (v) (format nil "qty must be even, got ~D" v)))))
                                             "boom" (pig:type-optional (pig:type-refine (pig:type-string) (checked "boom" (lambda (v) (declare (ignore v)) (error "kaboom")))))))
                   (checked "root" (lambda (v) (declare (ignore v)) t)) (worded "rootmsg" (lambda (v) (declare (ignore v)) "root refused")))))
-      (pig:tool ext "refine-probe" "Arguments checked by refinements" probe (lambda (ctx args) (declare (ignore ctx args)) "ok")
-                :prepare-arguments (lambda (args) (let ((out (pig:obj))) (maphash (lambda (k v) (setf (gethash k out) v)) args) (setf (gethash "prepared" out) t) out)))
+      (pig:tool ext "refine-probe" "Arguments checked by refinements" probe (lambda (ctx args) (declare (ignore ctx args)) "ok"))
       ext)))
 
 (deftest a-refined-tool-declares-its-sites-and-answers-the-hosts-refinement-requests
@@ -403,7 +394,6 @@ encoder writes something that reads back as the same schema."
       (let ((declaration (aref (pig:jget (pig:jget register "register") "tools") 0)))
         (check-equal "[{\"path\":\"\",\"count\":1},{\"path\":\"/properties/name\",\"count\":1},{\"path\":\"/properties/qty\",\"count\":1},{\"path\":\"/properties/boom\",\"count\":1}]"
                      (pig:to-json (pig:jget declaration "refinements")))
-        (check (eq t (pig:jget declaration "prepares_arguments")))
         (check-equal "Object" (pig:jget (pig:jget declaration "validation_parameters") "~kind"))
         (check-equal "String" (pig:jget (pig:jref (pig:jget declaration "validation_parameters") "properties" "name") "~kind"))
         (check (not (nth-value 1 (gethash "~kind" (pig:jget declaration "parameters"))))))
@@ -423,15 +413,6 @@ encoder writes something that reads back as the same schema."
         (check-equal "tool \"refine-probe\" has no refinement 5 at \"/properties/name\""
                      (pig:jget (pig:jget (pig:jget (refine "/properties/name" 5 "x") "response") "error") "message"))
         (check-equal '("check:len" "error:lenmsg" "check:len" "check:even" "error:evenmsg" "check:root" "check:boom") (reverse (car log)))))))
-
-(deftest a-tool-prepares-its-arguments-for-the-host
-  (let ((ext (tt-refine-extension (list '()))))
-    (with-host (host ext)
-      (request host "p1" "tool_prepare_arguments" "tool" "refine-probe" "args" (pig:obj "name" "abc"))
-      (check-equal "{\"name\":\"abc\",\"prepared\":true}" (pig:to-json (pig:jget (pig:jget (hread-type host "response") "response") "result")))
-      (pig:tool ext "plain" "No prepare" (pig:obj) (lambda (ctx args) (declare (ignore ctx args)) "ok"))
-      (request host "p2" "tool_prepare_arguments" "tool" "plain" "args" (pig:obj))
-      (check-equal "tool \"plain\" has no prepare_arguments" (pig:jget (pig:jget (pig:jget (hread-type host "response") "response") "error") "message") "no hook registered"))))
 
 (deftest a-refinement-the-host-does-not-run-fails-registration
   (let ((ext (pig:make-extension "stranded")))

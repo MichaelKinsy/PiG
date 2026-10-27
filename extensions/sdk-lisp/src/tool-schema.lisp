@@ -1,13 +1,12 @@
 ;;;; SPDX-License-Identifier: MIT
 ;;;; Tools whose parameters are built with Type: what the host validates a tool call's arguments with (the schema with TypeBox's ~kind on every
-;;;; node), the refinements (Type.refine) it asks this process to run, and the arguments a tool prepares before validation.
+;;;; node) and the refinements (Type.refine) it asks this process to run.
 
 (in-package #:pig)
 
 (defstruct (tsd-state (:constructor make-tsd-state ()))
   (lock (sb-thread:make-mutex :name "pig tool schema"))
-  (sites (make-hash-table :test 'equal))      ; tool name -> ((path . refinements) ...)
-  (prepare (make-hash-table :test 'equal)))   ; tool name -> prepare-arguments function
+  (sites (make-hash-table :test 'equal)))     ; tool name -> ((path . refinements) ...)
 
 (defun tsd-state-of (ext) (extension-extra ext :tool-schema #'make-tsd-state))
 
@@ -68,9 +67,9 @@ the node (/properties/a, /anyOf/1, /items). A node reached only through a keywor
   "Signal Pi's error for a schema that holds a bigint, which JSON.stringify cannot write."
   (when (ts-holds-big-int schema) (ts-fail "Do not know how to serialize a BigInt")))
 
-(defun tool-schema-declare (ext name decl schema prepare)
-  "What registering the tool NAME adds to its declaration DECL for its SCHEMA: the validation schema, the refinement sites and whether the tool
-prepares its arguments. Records what the host's later requests need. Signals before anything is recorded."
+(defun tool-schema-declare (ext name decl schema)
+  "What registering the tool NAME adds to its declaration DECL for its SCHEMA: the validation schema and the refinement sites. Records the
+sites the host's later requests need. Signals before anything is recorded."
   (let ((hidden (ts-hidden schema))
         (sites (tsd-refinement-sites schema)))
     (unless (= (tsd-count-refinements schema) (loop for site in sites sum (length (cdr site))))
@@ -78,23 +77,12 @@ prepares its arguments. Records what the host's later requests need. Signals bef
              name (extension-name ext)))
     (when (and hidden (nth-value 1 (gethash "~kind" hidden)))
       (setf (gethash "validation_parameters" decl) (tsd-validation-schema schema)))
-    (when prepare (setf (gethash "prepares_arguments" decl) t))
     (when sites
       (setf (gethash "refinements" decl)
             (map 'simple-vector (lambda (site) (obj "path" (car site) "count" (length (cdr site)))) sites)))
     (let ((state (tsd-state-of ext)))
       (sb-thread:with-mutex ((tsd-state-lock state))
-        (if sites (setf (gethash name (tsd-state-sites state)) sites) (remhash name (tsd-state-sites state)))
-        (if prepare (setf (gethash name (tsd-state-prepare state)) prepare) (remhash name (tsd-state-prepare state)))))))
-
-(def-request "tool_prepare_arguments" (ext ctx req)
-  (let* ((name (jget req "tool" ""))
-         (state (tsd-state-of ext))
-         (prepare (sb-thread:with-mutex ((tsd-state-lock state)) (gethash name (tsd-state-prepare state)))))
-    (unless prepare (error "tool ~S has no prepare_arguments" name))
-    (let ((prepared (funcall prepare (let ((args (jget req "args"))) (if (hash-table-p args) args (obj))))))
-      (unless (hash-table-p prepared) (error "prepare_arguments must return a mapping"))
-      prepared)))
+        (if sites (setf (gethash name (tsd-state-sites state)) sites) (remhash name (tsd-state-sites state)))))))
 
 (def-request "tool_refine_arguments" (ext ctx req)
   ;; TypeBox calls a refinement's check (and message) while the host validates; the host's traversal asks for each call here.
