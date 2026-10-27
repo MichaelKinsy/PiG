@@ -1,6 +1,7 @@
 package extensionconformance
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -310,5 +311,57 @@ func TestLispProviderValueTypes(t *testing.T) {
 			}
 		}
 		return false
+	})
+}
+
+var lispVirtualModelOwnerFixture = lispAPIFixture("lispapi-vm-owner", `
+(defun route (ctx request)
+  (declare (ignore ctx request))
+  (pig:obj "model" (pig:obj "provider" "anthropic" "id" "x") "thinkingLevel" "off"))
+`, `
+    (pig:register-virtual-model e (pig:make-virtual-model :provider "lisprouter" :id "victim" :name "Victim" :route #'route))
+    (pig:register-virtual-model e (pig:make-virtual-model :provider "lisprouter" :id "kept" :name "Kept" :route #'route))
+`)
+
+var lispVirtualModelRemoverFixture = lispAPIFixture("lispapi-vm-remover", "", `
+    (pig:unregister-virtual-model e "lisprouter" "victim")
+`)
+
+// pi.unregisterVirtualModel (loader.ts:511-514) reaches loader.ts:229-233: before the runner binds, unregisterVirtualModel filters the runtime-wide pending list, so a virtual model an earlier-loaded extension queued is removed too.
+func TestLispSDKUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingList(t *testing.T) {
+	eachPyAPIIsolation(t, func(t *testing.T, isolation string) {
+		rig := newLispAPIRig(t, isolation, nil, lispVirtualModelOwnerFixture, lispVirtualModelRemoverFixture)
+		var pending []string
+		for _, p := range rig.host.Runtime().PendingVirtualModelRegistrations() {
+			pending = append(pending, p.Definition.Provider+"/"+p.Definition.ID)
+		}
+		if want := []string{"lisprouter/kept"}; !slices.Equal(pending, want) {
+			t.Fatalf("unregisterVirtualModel: pending virtual models %v, want %v", pending, want)
+		}
+	})
+}
+
+var lispVirtualStateIdentityFixture = lispAPIFixture("lispapi-identity", `
+(defun route (ctx request)
+  (declare (ignore ctx))
+  (pig:obj "model" (pig:obj "provider" "anthropic" "id" "lisp-picked-user") "thinkingLevel" "off" "state" (pig:jget request "state")))
+`, `
+    (pig:register-virtual-model e (pig:make-virtual-model :provider "lisprouter" :id "identity" :name "Identity" :route #'route))
+`)
+
+// agent-session.ts:788: a router that returns the state it was given keeps it. The SDK encodes the returned value with its own JSON bytes, which differ from the bytes the Host sent, so the Host compares the JSON values.
+func TestLispSDKVirtualModelRouterReturningItsRequestStateKeepsTheRequestStateBytes(t *testing.T) {
+	eachPyAPIIsolation(t, func(t *testing.T, isolation string) {
+		rig := newLispAPIRig(t, isolation, &subprocess.HostCallbacks{}, lispVirtualStateIdentityFixture)
+		def := rig.host.Runtime().PendingVirtualModelRegistrations()[0].Definition
+		for _, state := range []string{`{"a":"\u003cb\u003e\u0026","n":1}`, `{"z":1,"a":[1,2,{"k":null}]}`, `"\u003c"`, `7`} {
+			route, err := def.Route(t.Context(), extension.ModelRouteRequest{Model: &ai.Model{ID: "identity"}, Reason: extension.ModelRouteReasonContinuation, State: json.RawMessage(state)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(route.State, json.RawMessage(state)) {
+				t.Fatalf("a router that returned its request state %s produced %s, which the session would store as a new state", state, route.State)
+			}
+		}
 	})
 }
