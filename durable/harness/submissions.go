@@ -421,7 +421,7 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 			return Admission{}, err
 		}
 		if len(placed.Users) > 0 {
-			if err := StartRun(tx, conversationId, live, placed.Users); err != nil {
+			if err := StartRun(tx, conversationId, live, placed.Users, nil); err != nil {
 				return Admission{}, err
 			}
 		}
@@ -462,7 +462,7 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 	if err != nil {
 		return Admission{}, err
 	}
-	if err := StartRun(tx, conversationId, live, []durable.SubmissionId{record.Id}); err != nil {
+	if err := StartRun(tx, conversationId, live, []durable.SubmissionId{record.Id}, nil); err != nil {
 		return Admission{}, err
 	}
 	return Admission{Id: record.Id, Status: string(durable.SubmissionPlaced)}, nil

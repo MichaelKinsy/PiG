@@ -135,8 +135,8 @@ func (conversation *conversationImpl) WaitForIdle(ctx context.Context) error {
 	return conversation.host.tasks.WaitForIdle(ctx, &id)
 }
 
-func (conversation *conversationImpl) Watch(ctx context.Context) (ConversationWatch, error) {
-	return conversation.host.views.Watch(ctx, conversation.id)
+func (conversation *conversationImpl) Watch(ctx context.Context, window *ConversationWindow) (ConversationWatch, error) {
+	return conversation.host.views.Watch(ctx, conversation.id, window)
 }
 
 // harnessImpl is the Session kernel extended with conversation handles and a registry.
@@ -327,11 +327,11 @@ func (harness *harnessImpl) ObserveTaskGraph(ctx context.Context, observer durab
 	return harness.taskGraph.Observe(ctx, observer)
 }
 
-func (harness *harnessImpl) ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[ConversationView]) (durable.Observation[ConversationView], error) {
+func (harness *harnessImpl) ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[ConversationView], window *ConversationWindow) (durable.Observation[ConversationView], error) {
 	if err := harness.checkOpen(); err != nil {
 		return nil, err
 	}
-	return harness.host.views.Observe(ctx, id, observer)
+	return harness.host.views.Observe(ctx, id, observer, window)
 }
 
 func (harness *harnessImpl) WatchTaskGraph(ctx context.Context) (TaskGraphWatch, error) {

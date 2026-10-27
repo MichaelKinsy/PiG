@@ -471,7 +471,7 @@ func generationAbortHandler(ctx context.Context, task durable.RunningTask[Genera
 				return nil, err
 			}
 		}
-		if err := EndRun(tx, live, runtime.TaskId(), durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: "aborted"}); err != nil {
+		if err := EndRun(tx, live, runtime.TaskId(), runUnanswered(RunAborted, nil)); err != nil {
 			return nil, err
 		}
 		return abortedState[GenerationCheckpoint, GenerationResult](), nil
@@ -560,7 +560,7 @@ func failGenerationModelError(ctx context.Context, runtime generationRuntime, te
 		if err != nil {
 			return nil, err
 		}
-		if err := endFailedRun(tx, runtime, live, failure, durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: modelErrorReason, Detail: text}); err != nil {
+		if err := endFailedRun(tx, runtime, live, failure, runUnanswered(RunModelError, &text)); err != nil {
 			return nil, err
 		}
 		return failedState[GenerationCheckpoint, GenerationResult](text, modelErrorReason), nil
@@ -584,12 +584,12 @@ func prepareFailure(tx durable.Tx, runtime generationRuntime) (failure, error) {
 	return failure{policy: policy, boundary: boundary}, err
 }
 
-// endFailedRun ends a failed run, settling its inputs with settlement, and does with the inputs queued behind it what
+// endFailedRun ends a failed run, settling its inputs and recording runFailure as end says, and does with the inputs queued behind it what
 // settings.afterFailedRun says (spec section 6): keep them, start the next run with them, or withdraw them (generation.ts
 // endFailedRun).
-func endFailedRun(tx durable.Tx, runtime generationRuntime, live *delta.Object, failed failure, settlement durable.SubmissionSettlement) error {
+func endFailedRun(tx durable.Tx, runtime generationRuntime, live *delta.Object, failed failure, end RunEnd) error {
 	conversationId := runtime.ConversationId()
-	if err := EndRun(tx, live, runtime.TaskId(), settlement); err != nil {
+	if err := EndRun(tx, live, runtime.TaskId(), end); err != nil {
 		return err
 	}
 	if failed.policy == durable.AfterFailedRunWithdraw {
@@ -605,9 +605,16 @@ func endFailedRun(tx durable.Tx, runtime generationRuntime, live *delta.Object, 
 		return err
 	}
 	if len(placed.Users) > 0 {
-		return StartRun(tx, conversationId, live, placed.Users)
+		return StartRun(tx, conversationId, live, placed.Users, &StartRunOptions{KeepFailure: true})
 	}
 	return nil
+}
+
+// noModelEnd is the end of a run whose model is missing: runFailure says which model, the inputs' settlement only the reason.
+func noModelEnd(message string) RunEnd {
+	end := runUnanswered(RunNoModel, &message)
+	end.Settlement = &durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: noModelReason}
+	return end
 }
 
 // noModelMessage is the failure text when a model is unset or unknown.
@@ -630,7 +637,7 @@ func failGenerationNoModel(ctx context.Context, runtime generationRuntime, ref *
 		if err != nil {
 			return nil, err
 		}
-		if err := endFailedRun(tx, runtime, live, failed, durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: noModelReason}); err != nil {
+		if err := endFailedRun(tx, runtime, live, failed, noModelEnd(message)); err != nil {
 			return nil, err
 		}
 		return failedState[GenerationCheckpoint, GenerationResult](message, noModelReason), nil
@@ -953,7 +960,7 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 		if text == "" {
 			text = fmt.Sprintf("Model response ended with stop reason %s", message.StopReason)
 		}
-		if err := endFailedRun(tx, runtime, live, failed, durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: modelErrorReason, Detail: text}); err != nil {
+		if err := endFailedRun(tx, runtime, live, failed, runUnanswered(RunModelError, &text)); err != nil {
 			return nil, err
 		}
 		return failedState[GenerationCheckpoint, GenerationResult](text, modelErrorReason), nil
@@ -1014,11 +1021,11 @@ func answer(ctx context.Context, runtime generationRuntime, message ai.Assistant
 			live.Delete("generation")
 			return result, nil
 		}
-		if err := EndRun(tx, live, runtime.TaskId(), durable.SubmissionSettlement{Status: durable.SubmissionDone, Answer: entry.Id}); err != nil {
+		if err := EndRun(tx, live, runtime.TaskId(), runDone(entry.Id)); err != nil {
 			return nil, err
 		}
 		if len(placed.Users) > 0 {
-			if err := StartRun(tx, conversationId, live, placed.Users); err != nil {
+			if err := StartRun(tx, conversationId, live, placed.Users, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -1211,11 +1218,11 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 			if err != nil {
 				return nil, err
 			}
-			if err := EndRun(tx, live, taskId, durable.SubmissionSettlement{Status: durable.SubmissionDone, Answer: assistant}); err != nil {
+			if err := EndRun(tx, live, taskId, runDone(assistant)); err != nil {
 				return nil, err
 			}
 			if len(placed.Users) > 0 {
-				if err := StartRun(tx, conversationId, live, placed.Users); err != nil {
+				if err := StartRun(tx, conversationId, live, placed.Users, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -1226,11 +1233,11 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 			}
 			if placed.Reset {
 				// The queued reset cut the run's context before an answer.
-				if err := EndRun(tx, live, taskId, durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: "reset"}); err != nil {
+				if err := EndRun(tx, live, taskId, runUnanswered(RunReset, nil)); err != nil {
 					return nil, err
 				}
 				if len(placed.Users) > 0 {
-					if err := StartRun(tx, conversationId, live, placed.Users); err != nil {
+					if err := StartRun(tx, conversationId, live, placed.Users, &StartRunOptions{KeepFailure: true}); err != nil {
 						return nil, err
 					}
 				}
@@ -1269,14 +1276,26 @@ func appendAssistant(tx durable.Tx, conversationId durable.ConversationId, messa
 	return durable.TxAppendEntry(tx, durable.AssistantEntry, conversationId, durable.TypedEntryDraft[durable.Never]{Model: []ai.Message{message}})
 }
 
+// StartRunOptions are the options of StartRun.
+type StartRunOptions struct {
+	// KeepFailure keeps runFailure: a run started in the commit that ended the failed one keeps its failure.
+	KeepFailure bool
+}
+
 // StartRun starts a run for inputs, placed input submissions: a new generation takes pi.live.run. The generation starts
-// in its first input's trace and links to the others.
-func StartRun(tx durable.Tx, conversationId durable.ConversationId, live *delta.Object, inputs []durable.SubmissionId) error {
+// in its first input's trace and links to the others. It removes runFailure unless options.KeepFailure.
+func StartRun(tx durable.Tx, conversationId durable.ConversationId, live *delta.Object, inputs []durable.SubmissionId, options *StartRunOptions) error {
 	taskId, err := createGeneration(tx, conversationId, nonNil(inputs))
 	if err != nil {
 		return err
 	}
-	return setJSON(live, "run", LiveRun{TaskId: taskId, Inputs: nonNil(inputs)})
+	if err := setJSON(live, "run", LiveRun{TaskId: taskId, Inputs: nonNil(inputs)}); err != nil {
+		return err
+	}
+	if options == nil || !options.KeepFailure {
+		live.Delete("runFailure")
+	}
+	return nil
 }
 
 // submissionTaskCreator is the Session transaction's internal creation entry, which resolves the carriers of the

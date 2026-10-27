@@ -263,8 +263,9 @@ type Conversation interface {
 	// WaitForIdle returns when the ordinary ownership scope has no live non-background task.
 	WaitForIdle(ctx context.Context) error
 	// Watch returns the structural view (spec §9.3) as a serialized watch; commits made while its listener runs arrive folded.
-	// It is built on the same mount as Harness.ObserveConversation.
-	Watch(ctx context.Context) (ConversationWatch, error)
+	// Its Entries are a window over the transcript, as window says: the newest 50 by default, then appends, dropping the
+	// oldest past 100. A nil window takes the defaults. It is built on the same mount as Harness.ObserveConversation.
+	Watch(ctx context.Context, window *ConversationWindow) (ConversationWatch, error)
 }
 
 // Harness is a durable agent harness over one Session.
@@ -307,9 +308,9 @@ type Harness interface {
 	WatchTaskGraph(ctx context.Context) (TaskGraphWatch, error)
 	// ObserveConversation attaches a synchronous Observer to a conversation's structural view (spec §9.3), atomically on
 	// the Session line, for adapters: Advance gets each next revision with its operations as memory adopts the commit,
-	// inside Storage's adopt for a stored one and before it is stored for a deferred one, so it only records it. ctx governs
-	// only the attachment.
-	ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[ConversationView]) (durable.Observation[ConversationView], error)
+	// inside Storage's adopt for a stored one and before it is stored for a deferred one, so it only records it. window is as
+	// for Conversation.Watch; each observer has its own. ctx governs only the attachment.
+	ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[ConversationView], window *ConversationWindow) (durable.Observation[ConversationView], error)
 	// ObserveTaskGraph attaches a synchronous Observer to the task graph (spec §9.5), as ObserveConversation does to a view. A
 	// blocked reason that changes without a commit (a registry change, a failed migration) advances it on the Session line
 	// outside any commit and adopt, with the background context.
