@@ -176,6 +176,7 @@
                                                                       :session-manager (pig::%make-sm ctx "sm1")))))
                      (pig:agent-session-runtime-set-before-session-invalidate runtime (lambda () (incf invalidated)))
                      (setf cancelled (pig:agent-session-runtime-fork runtime "e1" :position "at"))
+                     (check (typep runtime 'pig:agent-session-runtime))
                      (check-equal "/work" (pig:agent-session-runtime-cwd runtime))
                      (pig:agent-session-runtime-dispose runtime)
                      (setf disposed-runtime t))))
@@ -193,3 +194,18 @@
     (check-equal t (pig:jget cancelled "cancelled"))
     (check-equal 1 invalidated)
     (check disposed-runtime)))
+
+(deftest refresh-context-and-the-session-manager-name-the-session
+  (let ((ext (pig:make-extension "child")) (manager nil))
+    (pig:command ext "go" "Go"
+                 (lambda (ctx args) (declare (ignore args))
+                   (let ((session (pig:ctx-create-agent-session ctx :in-memory t)))
+                     (pig:agent-session-refresh-context session)
+                     (setf manager (pig:agent-session-session-manager session)))))
+    (sess-run-command
+     ext "go"
+     (lambda (host)
+       (sess-answer host "childSession.create" (pig:obj "sessionId" "sid"))
+       (check-equal (pig:obj "id" "c1") (sess-answer host "childSession.refreshContext"))
+       (check-equal (pig:obj "id" "c1") (sess-answer host "childSession.sessionManager" (pig:obj "handle" "h9")))))
+    (check-equal "h9" (pig::gobj-handle manager))))
