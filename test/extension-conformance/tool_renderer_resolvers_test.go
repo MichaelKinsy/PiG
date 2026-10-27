@@ -18,7 +18,7 @@ import (
 func TestToolRendererResolversAcrossSDKs(t *testing.T) {
 	requireAPIMember(t, "RegisterToolRenderer", extension.API.RegisterToolRenderer)
 	t.Parallel()
-	for _, tc := range allHarnessCases() {
+	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -98,7 +98,7 @@ func TestToolRendererResolversAcrossSDKs(t *testing.T) {
 // Pi: packages/coding-agent/src/core/extensions/runner.ts:790 (Runner.resolveToolRenderers).
 func TestToolRendererRegisteredAfterLoadingAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
