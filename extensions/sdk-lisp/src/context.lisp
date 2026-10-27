@@ -404,7 +404,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 (defun ctx-send-message (ctx custom-type content &key (display t) trigger-turn deliver-as details)
   (let ((options (obj))
         (message (obj "customType" custom-type "content" content "display" (if display t :false))))
-    (when trigger-turn (setf (gethash "triggerTurn" options) t))
+    (when trigger-turn (setf (gethash "triggerTurn" options) (if (eq trigger-turn :false) :false t)))
     (when deliver-as (setf (gethash "deliverAs" options) deliver-as))
     (when details (setf (gethash "details" message) details))
     (ctx-call-host ctx "sendMessage" (obj "message" message "options" options))
