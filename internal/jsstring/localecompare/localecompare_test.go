@@ -1,4 +1,4 @@
-package jsstring
+package localecompare
 
 import (
 	"bytes"
@@ -29,7 +29,7 @@ func TestLocaleCompareOrdersAsNodeDoes(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := slices.Clone(names)
-	slices.SortStableFunc(got, LocaleCompare)
+	slices.SortStableFunc(got, Compare)
 	if !slices.Equal(got, want) {
 		t.Errorf("order = %q\nNode  = %q", got, want)
 	}
@@ -41,7 +41,7 @@ func TestLocaleCompareIsSafeForConcurrentUse(t *testing.T) {
 	for range 8 {
 		wg.Go(func() {
 			for range 200 {
-				if LocaleCompare("Sessión-1", "Sessión-2") >= 0 || LocaleCompare("b", "a") <= 0 || LocaleCompare("a", "a") != 0 {
+				if Compare("Sessión-1", "Sessión-2") >= 0 || Compare("b", "a") <= 0 || Compare("a", "a") != 0 {
 					t.Error("unexpected order")
 					return
 				}
@@ -69,8 +69,8 @@ func TestLocaleComparePlacesReplacementCharacterAsNodeDoes(t *testing.T) {
 	}
 	for i, a := range names {
 		for j, b := range names {
-			if got := LocaleCompare(a, b); got != want[i][j] {
-				t.Errorf("LocaleCompare(%q, %q) = %d, Node %d", a, b, got, want[i][j])
+			if got := Compare(a, b); got != want[i][j] {
+				t.Errorf("Compare(%q, %q) = %d, Node %d", a, b, got, want[i][j])
 			}
 		}
 	}
@@ -111,8 +111,39 @@ func TestLocaleCompareRandomStringsWithNoncharactersMatchNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i, pair := range pairs {
-		if got := LocaleCompare(pair[0], pair[1]); got != want[i] {
-			t.Errorf("LocaleCompare(%q, %q) = %d, Node %d", pair[0], pair[1], got, want[i])
+		if got := Compare(pair[0], pair[1]); got != want[i] {
+			t.Errorf("Compare(%q, %q) = %d, Node %d", pair[0], pair[1], got, want[i])
+		}
+	}
+}
+
+// The lists Pi sorts with localeCompare hold file names, provider and model ids, session files and server names: mixed case, accents,
+// digit runs (compared digit by digit, not numerically), punctuation, and CJK names. Every ordered pair agrees with Node.
+func TestCompareMatchesNodeOnRepresentativeNames(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("the Node oracle is required: %v", err)
+	}
+	names := []string{
+		"a", "A", "b", "B", "z", "Z", "résumé", "resume", "Résumé", "naïve", "naive", "Ångström", "angstrom", "ß", "ss", "straße", "strasse", "œuvre", "oeuvre",
+		"file1.txt", "file2.txt", "file10.txt", "file01.txt", "File1.txt", "2024-01-02T03-04-05-000Z_abc.jsonl", "2024-01-02T03-04-05-000Z_ABC.jsonl",
+		"_private", "-dash", ".hidden", "~tilde", "claude-opus-4-5", "claude-opus-4-5-20251101", "gpt-4.1", "gpt-4o", "o3", "o3-mini", "GPT-5",
+		"日本語", "中文", "한국어", "ひらがな", "カタカナ", "漢字", "汉字", "文件.txt", "文档.md", "日本語.txt", "名前-1", "名前-2", "имя", "Имя", "αβγ", "Αβγ", "😀", "emoji-😀",
+	}
+	input, _ := json.Marshal(names)
+	out, err := exec.Command(node, "-e", `const n=JSON.parse(process.argv[1]);console.log(JSON.stringify(n.map(a=>n.map(b=>a.localeCompare(b)))))`, string(input)).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want [][]int
+	if err := json.Unmarshal(out, &want); err != nil {
+		t.Fatal(err)
+	}
+	for i, a := range names {
+		for j, b := range names {
+			if got := Compare(a, b); got != want[i][j] {
+				t.Errorf("Compare(%q, %q) = %d, Node %d", a, b, got, want[i][j])
+			}
 		}
 	}
 }

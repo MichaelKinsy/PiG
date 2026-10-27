@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 // TestLsSortWeighsEachEntryOnce pins TO-T13: sorting a directory lowercases and weighs each name once, not twice per comparison (a
@@ -35,13 +36,13 @@ func TestLsSortWeighsEachEntryOnce(t *testing.T) {
 	}
 }
 
-// TestLsCollationKeysOrderLikeCollator checks that sorting by collation keys gives jsstring.Collator's order on randomized names drawn
+// TestLsCollationKeysOrderLikeCollator checks that sorting by collation keys gives localecompare.Collator's order on randomized names drawn
 // from characters that collation treats specially: accents (precomposed and combining), ignorables, punctuation, digits, contractions
 // and expansions, ligatures, Hangul, CJK, emoji, and names that are prefixes of each other or equal but for case or accent.
 func TestLsCollationKeysOrderLikeCollator(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261012, 13))
 	pieces := []string{"a", "A", "b", "z", "é", "e\u0301", "E", "ß", "ss", "æ", "ae", "ﬁ", "fi", "-", "_", ".", " ", "1", "10", "2", "\u00ad", "\u200b", "\x00", "\t", "ch", "c", "h", "l·l", "ŀ", "ı", "İ", "가", "각", "ᄀ", "漢", "字", "😀", "👍🏽", "ǅ", "Ω", "ω", "ͅ", "ø", "o\u0338", "ä", "a\u0308", "～", "~", "＃", "#", "\uFFFF", "\U0001F600"}
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	for range 2000 {
 		names := make([]string, 2+rng.IntN(40))
 		for i := range names {

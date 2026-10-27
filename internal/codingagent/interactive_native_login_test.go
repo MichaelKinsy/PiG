@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -36,7 +36,7 @@ func TestLoginListsARegisteredNativeAPIKeyProviderInNameOrder(t *testing.T) {
 	if index < 0 || listed[index].Name != "llama.cpp" || listed[index].AuthType != "api_key" {
 		t.Fatalf("login list = %+v, want llama.cpp as an api_key provider", listed)
 	}
-	if index > 0 && jsstring.LocaleCompare(listed[index-1].Name, "llama.cpp") > 0 || index+1 < len(listed) && jsstring.LocaleCompare(listed[index+1].Name, "llama.cpp") < 0 {
+	if index > 0 && localecompare.Compare(listed[index-1].Name, "llama.cpp") > 0 || index+1 < len(listed) && localecompare.Compare(listed[index+1].Name, "llama.cpp") < 0 {
 		t.Fatalf("llama.cpp is out of name order among %v", names())
 	}
 }

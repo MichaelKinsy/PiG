@@ -1,4 +1,4 @@
-package jsstring
+package localecompare
 
 import (
 	"strings"
@@ -8,7 +8,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-// Collator compares strings as `a.localeCompare(b)` does under the root locale (see LocaleCompare). Like the collate.Collator it wraps it keeps scratch buffers, so one Collator must not be shared by goroutines.
+// Collator compares strings as `a.localeCompare(b)` does under the root locale (see Compare). Like the collate.Collator it wraps it keeps scratch buffers, so one Collator must not be shared by goroutines.
 type Collator struct{ c *collate.Collator }
 
 // NewCollator returns a Collator that orders strings as Node's root-locale localeCompare does.
@@ -35,10 +35,10 @@ var replacementTokens = strings.NewReplacer("\uFFFD", "\uFFFF\t", "\uFFFF", "\uF
 // A collate.Collator keeps scratch buffers and must not be shared by goroutines, so each comparison borrows one.
 var collators = sync.Pool{New: func() any { return NewCollator() }}
 
-// LocaleCompare is `a.localeCompare(b)` under the root locale: punctuation and case are weighed as Node weighs them, `a`
+// Compare is `a.localeCompare(b)` under the root locale: punctuation and case are weighed as Node weighs them, `a`
 // before `A`, accents after base letters, U+FFFD last. The collation tables are golang.org/x/text's (collate.CLDRVersion,
 // collate.UnicodeVersion), older than Node's ICU. It is safe for concurrent use and returns -1, 0 or 1.
-func LocaleCompare(a, b string) int {
+func Compare(a, b string) int {
 	collator := collators.Get().(*Collator)
 	defer collators.Put(collator)
 	return collator.CompareString(a, b)

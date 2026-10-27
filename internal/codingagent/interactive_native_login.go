@@ -3,7 +3,7 @@ package codingagent
 import (
 	"slices"
 
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -26,7 +26,7 @@ func (m *InteractiveMode) withNativeAPIKeyProviders(providers []tui.OAuthProvide
 			name = id
 		}
 		index := slices.IndexFunc(providers, func(candidate tui.OAuthProvider) bool {
-			return jsstring.LocaleCompare(candidate.Name, name) > 0
+			return localecompare.Compare(candidate.Name, name) > 0
 		})
 		if index < 0 {
 			index = len(providers)

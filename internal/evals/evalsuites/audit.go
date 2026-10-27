@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/evals"
 	"github.com/MichaelKinsy/PiG/internal/evals/bridge"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 const auditToolName = "submit_documentation_audit"
@@ -56,7 +56,7 @@ func documentationPages(docsRoot string) ([]string, error) {
 		return nil
 	})
 	// Pi sorts the pages with localeCompare.
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(pages, collator.CompareString)
 	return pages, err
 }
