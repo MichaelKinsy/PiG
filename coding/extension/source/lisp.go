@@ -19,7 +19,7 @@ var lisp struct {
 
 // EnableLisp makes Resolve classify Lisp extension roots and files.
 func EnableLisp() {
-	lispFactory = lazyregexp.New(`(?mi)^\s*\(\s*(?:(?:cl:)?defun\s+(?:[^\s():]+:{1,2})?new-extension\s*\(\s*\)|(?:[^\s():]+:{1,2})?define-extension[\s)])`)
+	lispFactory = lazyregexp.New(`(?mi)^\s*\(\s*(?:(?:cl:)?defun\s+(?:[^\s():]+:{1,2})?new-extension\s*\(\s*\)|(?:[^\s():]+:{1,2})?define-extension[\s)])`) //portlint:allow regexpinfunc EnableLisp runs once, from lispcell's init: the program that never links lispcell must not link the pattern
 	lisp.root = resolveLisp
 	lisp.file = resolveLispFile
 }
