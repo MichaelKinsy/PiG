@@ -512,14 +512,22 @@ export class Harness {
     }
     if (kind !== NOTICE.published) return
     const body = JSON.parse(decoder.decode(payload)) as PublishedNotice
+    // A commit adopted in memory only (session.ts ObservedCommit `memory`): only the Session's own components observe it. It stored nothing, resolves no wait and settles no submission.
+    if (body.memory === true) {
+      for (const change of body.changes as never[]) substitutePublished(this.client, change)
+      const observed = { kind: "memory", changes: body.changes }
+      for (const l of [...this.internalCommitListeners]) { try { l(observed, BACKGROUND_CONTEXT) } catch (error) { this.failedByListener(error) } }
+      return
+    }
     if ((body.tasks?.length ?? 0) > 0) this.taskPublications++
     if (body.changes !== undefined && body.seq !== undefined) recordPublication(this.client, body.seq, body.changes)
     if (body.watchId !== undefined) this.watches.deliver(body.watchId, body.frame as { value: unknown; ops: never[] })
     if (body.changes !== undefined) { for (const change of body.changes as never[]) substitutePublished(this.client, change); adoptTables(this.client, body.changes as never) }
     if (body.changes !== undefined) {
       const publication = { seq: body.seq, changes: body.changes }
+      const observed = { kind: "stored", ...publication }
       // session.ts #publish: the Session's own components run first, and a throw leaves their state behind storage, so it fails the Session; a host listener's throw is reported.
-      for (const l of [...this.internalCommitListeners]) { try { l(publication, BACKGROUND_CONTEXT) } catch (error) { this.failedByListener(error) } }
+      for (const l of [...this.internalCommitListeners]) { try { l(observed, BACKGROUND_CONTEXT) } catch (error) { this.failedByListener(error) } }
       for (const l of [...this.commitListeners]) contained(() => l(publication, BACKGROUND_CONTEXT), error => this.report(error))
     }
     for (const w of [...this.waiters]) if (w.match(body)) { this.waiters.delete(w); w.resolve() }

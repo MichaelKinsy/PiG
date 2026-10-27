@@ -89,6 +89,8 @@ export type PublishedNotice = {
   seq?: number
   /** The commit's complete publication (types.ts CommitChange[]); present while a commit listener is subscribed. */
   changes?: unknown[]
+  /** A deferred commit adopted in memory only (CommitPersistence): `changes` are its document changes, and nothing was stored (session.ts ObservedCommit). */
+  memory?: boolean
   watchId?: number
   frame?: unknown
 }
