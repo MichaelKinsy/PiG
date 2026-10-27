@@ -1,0 +1,45 @@
+# Behavior family: footer
+# Scenario: the footer prefixes the model with its provider when more than one provider is available.
+#
+# footer.ts:247-250 prepends `(<provider>) ` to the model label when footerData.getAvailableProviderCount() > 1, which interactive-mode.ts
+# updateAvailableProviderCount sets from the distinct providers of the available model snapshot. The run has the faux provider and one extension
+# provider with a configured key, so two providers are available.
+#
+# Upstream evidence: pinned Pi 1.4.0 footer.ts:247-250 and interactive-mode.ts:5223-5232; the scenario compares the whole footer row against real Pi.
+
+name = "12-footer-provider-prefix"
+description = "The footer prefixes the model with its provider when two providers are available"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+  "packages/coding-agent/src/core/footer-data-provider.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=../extensions-runtime/testdata/quiet-pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../extensions-runtime/testdata/quiet-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["../extensions-runtime/testdata/ext/register-valid-provider.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../extensions-runtime/testdata/ext/register-valid-provider.mjs"]
+
+[tmux]
+width = 120
+height = 30
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "parity-snap-cwd-"
+capture_start_last = true
+# "(auto)" and the cwd row can show before the provider count is set (Pi's capture without the prefix was observed in a gate run),
+# so wait for the prefixed label before capturing.
+[[tmux.steps]]
+wait_visible_contains = ["(test-faux) faux-1"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["(test-faux) faux-1"]
+output_equal = true
+runs = 3

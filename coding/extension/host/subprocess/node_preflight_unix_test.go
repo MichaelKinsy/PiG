@@ -15,9 +15,13 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestBuilderBuildContextCancelsAndDrainsNodeRuntimePreflight(t *testing.T) {
+	if testenv.RerunWithoutAsyncPreemption(t) {
+		return
+	}
 	t.Setenv(tsruntime.EnvRuntime, tsruntime.Node) // The Node preflight runs only for the Node runtime.
 	source := filepath.Join(t.TempDir(), "extension.ts")
 	if err := os.WriteFile(source, []byte("export default function () {}\n"), 0o644); err != nil {

@@ -58,10 +58,10 @@ func TestTaskRuntimeGetTaskReadsOnTheSessionLineAndRefusesAnEndedInvocation(t *t
 
 	hold.resolve()
 	tkWaitOutcome(t, opened.harness, id)
-	eventually(t, func() bool {
-		_, err = runtime.GetTask(testContext, id)
-		return err != nil
-	})
+	// The step after the phase ends the invocation, after the outcome the wait returned on; the end marks the invocation ended before it
+	// cancels the runtime signal.
+	<-runtime.Signal().Done()
+	_, err = runtime.GetTask(testContext, id)
 	tkContainsError(t, err, "invocation has ended")
 	if err := opened.harness.Close(testContext); err != nil {
 		t.Fatal(err)

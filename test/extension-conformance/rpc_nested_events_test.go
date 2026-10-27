@@ -49,7 +49,9 @@ func TestRPCNestedEventsCompleteInEverySDK(t *testing.T) {
 	} {
 		t.Run(tc.sdk+"/"+tc.placement, func(t *testing.T) {
 			t.Parallel()
-			pig, err := nestedEventsPig()
+			pig, err := nestedEventsPig.Do(t, func(ctx context.Context) (string, error) {
+				return buildNestedEventsCommand(ctx, "nested-events-pig", "pig")
+			})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -197,19 +199,13 @@ func nestedEventsTag(record map[string]any) string {
 
 // nestedEventsPig is pig with the row's Go extension fused in under the name nested-go-fused; every other extension loads as
 // it does in stock pig.
-var nestedEventsPig = sync.OnceValues(func() (string, error) {
-	return buildNestedEventsCommand("nested-events-pig", "pig", 10*time.Minute)
-})
+var nestedEventsPig testbudget.Once[string]
 
 // nestedEventsGoStandalone is the row's Go extension as a standalone executable.
-var nestedEventsGoStandalone = sync.OnceValues(func() (string, error) {
-	return buildNestedEventsCommand("nested-go-isolated", "cmd", 5*time.Minute)
-})
+var nestedEventsGoStandalone testbudget.Once[string]
 
-func buildNestedEventsCommand(name, dir string, timeout time.Duration) (string, error) {
+func buildNestedEventsCommand(ctx context.Context, name, dir string) (string, error) {
 	bin := filepath.Join(fixtureRoot, "nested-events", testExecutableName(name))
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
 	cmd := exec.CommandContext(ctx, "go", "build", "-o", bin, ".")
 	cmd.Dir = filepath.Join(fixtureSourceRoot, "test", "extension-conformance", "testfixture", "nestedevents", dir)
 	// Root-module fixtures require the workspace's local SDK, not the published release. Workspace mode rejects -mod=mod.
@@ -250,7 +246,9 @@ func nestedEventsExtensions(t *testing.T, sdk, placement string) []string {
 		}
 		return paths
 	case "go/isolated":
-		bin, err := nestedEventsGoStandalone()
+		bin, err := nestedEventsGoStandalone.Do(t, func(ctx context.Context) (string, error) {
+			return buildNestedEventsCommand(ctx, "nested-go-isolated", "cmd")
+		})
 		if err != nil {
 			t.Fatal(err)
 		}

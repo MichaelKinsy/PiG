@@ -52,7 +52,7 @@ func TestRPCModeSessionReplacementAndExport(t *testing.T) {
 		{"id": "messages", "type": "get_messages"},
 		{"id": "stats", "type": "get_session_stats"},
 		{"id": "models", "type": "get_available_models"},
-		{"id": "set-model", "type": "set_model", "provider": "test-faux", "modelId": "echo"},
+		{"id": "set-model", "type": "set_model", "provider": "test-faux", "modelId": "faux-1"},
 		{"id": "cycle-model", "type": "cycle_model"},
 		{"id": "levels", "type": "get_available_thinking_levels"},
 		{"id": "abort-retry", "type": "abort_retry"},
@@ -68,7 +68,7 @@ func TestRPCModeSessionReplacementAndExport(t *testing.T) {
 	// Pi dispatches every line at once, and the replacing commands await, so each command is sent after the previous one answered
 	// (TestRPCSessionReplacementAnswersAfterALaterCommandOfItsBatch covers the pipelined order).
 	p := startRPCProcess(t, []string{"PIG_TEST_FAUX=1", "PIG_HOME=" + home},
-		"--model", "test-faux/echo",
+		"--model", "test-faux/faux-1",
 		"--session", session.Path(),
 		"--session-dir", sessionDir,
 	)

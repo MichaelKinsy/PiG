@@ -1,0 +1,6290 @@
+{
+ "pin": "1.4.0+74f46864",
+ "package": "pi-ai@1.4.0",
+ "module": "pi-ai",
+ "export": "Type",
+ "cases": [
+  {
+   "name": "any",
+   "args": [
+    {
+     "$call": "Any",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{}",
+    "hidden": {
+     "~kind": "Any"
+    }
+   }
+  },
+  {
+   "name": "any with options",
+   "args": [
+    {
+     "$call": "Any",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Any"
+    }
+   }
+  },
+  {
+   "name": "unknown",
+   "args": [
+    {
+     "$call": "Unknown",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{}",
+    "hidden": {
+     "~kind": "Unknown"
+    }
+   }
+  },
+  {
+   "name": "unknown with options",
+   "args": [
+    {
+     "$call": "Unknown",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Unknown"
+    }
+   }
+  },
+  {
+   "name": "string",
+   "args": [
+    {
+     "$call": "String",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "string with options",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "number",
+   "args": [
+    {
+     "$call": "Number",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\"}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "number with options",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "integer",
+   "args": [
+    {
+     "$call": "Integer",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"integer\"}",
+    "hidden": {
+     "~kind": "Integer"
+    }
+   }
+  },
+  {
+   "name": "integer with options",
+   "args": [
+    {
+     "$call": "Integer",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"integer\",\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Integer"
+    }
+   }
+  },
+  {
+   "name": "boolean",
+   "args": [
+    {
+     "$call": "Boolean",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"boolean\"}",
+    "hidden": {
+     "~kind": "Boolean"
+    }
+   }
+  },
+  {
+   "name": "boolean with options",
+   "args": [
+    {
+     "$call": "Boolean",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"boolean\",\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Boolean"
+    }
+   }
+  },
+  {
+   "name": "null",
+   "args": [
+    {
+     "$call": "Null",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"null\"}",
+    "hidden": {
+     "~kind": "Null"
+    }
+   }
+  },
+  {
+   "name": "null with options",
+   "args": [
+    {
+     "$call": "Null",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"null\",\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Null"
+    }
+   }
+  },
+  {
+   "name": "never",
+   "args": [
+    {
+     "$call": "Never",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"not\":{}}",
+    "hidden": {
+     "~kind": "Never"
+    }
+   }
+  },
+  {
+   "name": "never with options",
+   "args": [
+    {
+     "$call": "Never",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"not\":{},\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Never"
+    }
+   }
+  },
+  {
+   "name": "undefined",
+   "args": [
+    {
+     "$call": "Undefined",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"undefined\"}",
+    "hidden": {
+     "~kind": "Undefined"
+    }
+   }
+  },
+  {
+   "name": "undefined with options",
+   "args": [
+    {
+     "$call": "Undefined",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"undefined\",\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Undefined"
+    }
+   }
+  },
+  {
+   "name": "void",
+   "args": [
+    {
+     "$call": "Void",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"void\"}",
+    "hidden": {
+     "~kind": "Void"
+    }
+   }
+  },
+  {
+   "name": "void with options",
+   "args": [
+    {
+     "$call": "Void",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"void\",\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Void"
+    }
+   }
+  },
+  {
+   "name": "symbol",
+   "args": [
+    {
+     "$call": "Symbol",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"symbol\"}",
+    "hidden": {
+     "~kind": "Symbol"
+    }
+   }
+  },
+  {
+   "name": "symbol with options",
+   "args": [
+    {
+     "$call": "Symbol",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"symbol\",\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "Symbol"
+    }
+   }
+  },
+  {
+   "name": "bigint",
+   "args": [
+    {
+     "$call": "BigInt",
+     "args": []
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"bigint\"}",
+    "hidden": {
+     "~kind": "BigInt"
+    }
+   }
+  },
+  {
+   "name": "bigint with options",
+   "args": [
+    {
+     "$call": "BigInt",
+     "args": [
+      {
+       "description": "d",
+       "title": "T",
+       "default": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"bigint\",\"description\":\"d\",\"title\":\"T\",\"default\":1}",
+    "hidden": {
+     "~kind": "BigInt"
+    }
+   }
+  },
+  {
+   "name": "string options after the type",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "minLength": 1,
+       "maxLength": 5,
+       "pattern": "^a",
+       "format": "email"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"minLength\":1,\"maxLength\":5,\"pattern\":\"^a\",\"format\":\"email\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "string option replaces type in place",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "type": "x",
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"x\",\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "number bounds",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 0,
+       "maximum": 10,
+       "multipleOf": 0.5,
+       "exclusiveMinimum": -1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":0,\"maximum\":10,\"multipleOf\":0.5,\"exclusiveMinimum\":-1}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "integer bounds",
+   "args": [
+    {
+     "$call": "Integer",
+     "args": [
+      {
+       "minimum": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"integer\",\"minimum\":1}",
+    "hidden": {
+     "~kind": "Integer"
+    }
+   }
+  },
+  {
+   "name": "options with array-index keys",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "1": "one",
+       "2": "two",
+       "10": "ten",
+       "b": 1,
+       "a": 3,
+       "01": "zero-one"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"1\":\"one\",\"2\":\"two\",\"10\":\"ten\",\"type\":\"string\",\"b\":1,\"a\":3,\"01\":\"zero-one\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "ref",
+   "args": [
+    {
+     "$call": "Ref",
+     "args": [
+      "#/$defs/A"
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"$ref\":\"#/$defs/A\"}",
+    "hidden": {
+     "~kind": "Ref"
+    }
+   }
+  },
+  {
+   "name": "ref with options",
+   "args": [
+    {
+     "$call": "Ref",
+     "args": [
+      "A",
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"$ref\":\"A\",\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "Ref"
+    }
+   }
+  },
+  {
+   "name": "array of string",
+   "args": [
+    {
+     "$call": "Array",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"array\",\"items\":{\"type\":\"string\"}}",
+    "hidden": {
+     "~kind": "Array"
+    }
+   }
+  },
+  {
+   "name": "array with options",
+   "args": [
+    {
+     "$call": "Array",
+     "args": [
+      {
+       "$call": "Integer",
+       "args": []
+      },
+      {
+       "minItems": 1,
+       "maxItems": 3,
+       "uniqueItems": true
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"array\",\"items\":{\"type\":\"integer\"},\"minItems\":1,\"maxItems\":3,\"uniqueItems\":true}",
+    "hidden": {
+     "~kind": "Array"
+    }
+   }
+  },
+  {
+   "name": "array of objects",
+   "args": [
+    {
+     "$call": "Array",
+     "args": [
+      {
+       "$call": "Object",
+       "args": [
+        {
+         "a": {
+          "$call": "String",
+          "args": []
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}}",
+    "hidden": {
+     "~kind": "Array"
+    }
+   }
+  },
+  {
+   "name": "union of string and number",
+   "args": [
+    {
+     "$call": "Union",
+     "args": [
+      [
+       {
+        "$call": "String",
+        "args": []
+       },
+       {
+        "$call": "Number",
+        "args": []
+       }
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"number\"}]}",
+    "hidden": {
+     "~kind": "Union"
+    }
+   }
+  },
+  {
+   "name": "union with null",
+   "args": [
+    {
+     "$call": "Union",
+     "args": [
+      [
+       {
+        "$call": "String",
+        "args": []
+       },
+       {
+        "$call": "Null",
+        "args": []
+       }
+      ],
+      {
+       "description": "maybe"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}],\"description\":\"maybe\"}",
+    "hidden": {
+     "~kind": "Union"
+    }
+   }
+  },
+  {
+   "name": "union of literals",
+   "args": [
+    {
+     "$call": "Union",
+     "args": [
+      [
+       {
+        "$call": "Literal",
+        "args": [
+         "a"
+        ]
+       },
+       {
+        "$call": "Literal",
+        "args": [
+         "b"
+        ]
+       },
+       {
+        "$call": "Literal",
+        "args": [
+         3
+        ]
+       }
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"anyOf\":[{\"type\":\"string\",\"const\":\"a\"},{\"type\":\"string\",\"const\":\"b\"},{\"type\":\"number\",\"const\":3}]}",
+    "hidden": {
+     "~kind": "Union"
+    }
+   }
+  },
+  {
+   "name": "empty union",
+   "args": [
+    {
+     "$call": "Union",
+     "args": [
+      []
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"anyOf\":[]}",
+    "hidden": {
+     "~kind": "Union"
+    }
+   }
+  },
+  {
+   "name": "intersect",
+   "args": [
+    {
+     "$call": "Intersect",
+     "args": [
+      [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "a": {
+           "$call": "String",
+           "args": []
+          }
+         }
+        ]
+       },
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "b": {
+           "$call": "Number",
+           "args": []
+          }
+         }
+        ]
+       }
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"allOf\":[{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"b\"],\"properties\":{\"b\":{\"type\":\"number\"}}}]}",
+    "hidden": {
+     "~kind": "Intersect"
+    }
+   }
+  },
+  {
+   "name": "intersect with options",
+   "args": [
+    {
+     "$call": "Intersect",
+     "args": [
+      [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "a": {
+           "$call": "String",
+           "args": []
+          }
+         }
+        ]
+       }
+      ],
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"allOf\":[{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}],\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "Intersect"
+    }
+   }
+  },
+  {
+   "name": "literal string",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      "x"
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"const\":\"x\"}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "literal number",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      1.5
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":1.5}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "literal zero",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      0
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":0}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "literal negative",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      -3
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":-3}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "literal true",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      true
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"boolean\",\"const\":true}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "literal false",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      false
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"boolean\",\"const\":false}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "literal with options",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      "x",
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"const\":\"x\",\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "literal of an object throws",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      {
+       "a": 1
+      }
+     ]
+    }
+   ],
+   "throws": "Invalid Literal value"
+  },
+  {
+   "name": "literal of null throws",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      null
+     ]
+    }
+   ],
+   "throws": "Invalid Literal value"
+  },
+  {
+   "name": "literal of an array throws",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      [
+       1
+      ]
+     ]
+    }
+   ],
+   "throws": "Invalid Literal value"
+  },
+  {
+   "name": "enum from a list of strings",
+   "args": [
+    {
+     "$call": "Enum",
+     "args": [
+      [
+       "a",
+       "b",
+       "c"
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"enum\":[\"a\",\"b\",\"c\"]}",
+    "hidden": {
+     "~kind": "Enum"
+    }
+   }
+  },
+  {
+   "name": "enum from a list of mixed values",
+   "args": [
+    {
+     "$call": "Enum",
+     "args": [
+      [
+       "a",
+       1,
+       2.5
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"enum\":[\"a\",1,2.5]}",
+    "hidden": {
+     "~kind": "Enum"
+    }
+   }
+  },
+  {
+   "name": "enum from an empty list",
+   "args": [
+    {
+     "$call": "Enum",
+     "args": [
+      []
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"enum\":[]}",
+    "hidden": {
+     "~kind": "Enum"
+    }
+   }
+  },
+  {
+   "name": "enum from an object",
+   "args": [
+    {
+     "$call": "Enum",
+     "args": [
+      {
+       "A": "a",
+       "B": "b"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"enum\":[\"a\",\"b\"]}",
+    "hidden": {
+     "~kind": "Enum"
+    }
+   }
+  },
+  {
+   "name": "enum from a numeric TypeScript enum object",
+   "args": [
+    {
+     "$call": "Enum",
+     "args": [
+      {
+       "0": "A",
+       "1": "B",
+       "A": 0,
+       "B": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"enum\":[0,1]}",
+    "hidden": {
+     "~kind": "Enum"
+    }
+   }
+  },
+  {
+   "name": "enum from a mixed enum object",
+   "args": [
+    {
+     "$call": "Enum",
+     "args": [
+      {
+       "5": "X",
+       "X": 1,
+       "Y": "y"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"enum\":[1,\"y\"]}",
+    "hidden": {
+     "~kind": "Enum"
+    }
+   }
+  },
+  {
+   "name": "enum with options",
+   "args": [
+    {
+     "$call": "Enum",
+     "args": [
+      [
+       "a"
+      ],
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"enum\":[\"a\"],\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "Enum"
+    }
+   }
+  },
+  {
+   "name": "enum object whose key is numeric-looking text",
+   "args": [
+    {
+     "$call": "Enum",
+     "args": [
+      {
+       "1e3": "n",
+       " ": "space",
+       "": "empty",
+       "K": "k",
+       "0x10": "hex",
+       "Infinity": "inf",
+       "-5": "neg",
+       ".5": "dot",
+       "5.": "dot2",
+       "1_0": "underscore"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"enum\":[\"k\",\"underscore\"]}",
+    "hidden": {
+     "~kind": "Enum"
+    }
+   }
+  },
+  {
+   "name": "object empty",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {}
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"properties\":{}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "object with required and optional",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "a": {
+        "$call": "String",
+        "args": []
+       },
+       "b": {
+        "$call": "Optional",
+        "args": [
+         {
+          "$call": "Number",
+          "args": []
+         }
+        ]
+       },
+       "c": {
+        "$call": "Integer",
+        "args": []
+       }
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\",\"c\"],\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"number\"},\"c\":{\"type\":\"integer\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "object all optional",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "a": {
+        "$call": "Optional",
+        "args": [
+         {
+          "$call": "String",
+          "args": []
+         }
+        ]
+       },
+       "b": {
+        "$call": "Optional",
+        "args": [
+         {
+          "$call": "Number",
+          "args": []
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "object with options",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "a": {
+        "$call": "String",
+        "args": []
+       }
+      },
+      {
+       "additionalProperties": false,
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}},\"additionalProperties\":false,\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "object option replaces a member in place",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "a": {
+        "$call": "String",
+        "args": []
+       }
+      },
+      {
+       "type": "x",
+       "required": [
+        "z"
+       ],
+       "extra": 1
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"x\",\"required\":[\"z\"],\"properties\":{\"a\":{\"type\":\"string\"}},\"extra\":1}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "object with array-index property keys",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "1": {
+        "$call": "Boolean",
+        "args": []
+       },
+       "2": {
+        "$call": "Number",
+        "args": []
+       },
+       "10": {
+        "$call": "Integer",
+        "args": []
+       },
+       "b": {
+        "$call": "String",
+        "args": []
+       },
+       "a": {
+        "$call": "String",
+        "args": []
+       }
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"1\",\"2\",\"10\",\"b\",\"a\"],\"properties\":{\"1\":{\"type\":\"boolean\"},\"2\":{\"type\":\"number\"},\"10\":{\"type\":\"integer\"},\"b\":{\"type\":\"string\"},\"a\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "object nested",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "a": {
+        "$call": "Object",
+        "args": [
+         {
+          "b": {
+           "$call": "Array",
+           "args": [
+            {
+             "$call": "Object",
+             "args": [
+              {
+               "c": {
+                "$call": "Optional",
+                "args": [
+                 {
+                  "$call": "String",
+                  "args": []
+                 }
+                ]
+               }
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"object\",\"required\":[\"b\"],\"properties\":{\"b\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"c\":{\"type\":\"string\"}}}}}}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "object with a readonly property",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "a": {
+        "$call": "Readonly",
+        "args": [
+         {
+          "$call": "String",
+          "args": []
+         }
+        ]
+       },
+       "b": {
+        "$call": "Optional",
+        "args": [
+         {
+          "$call": "Readonly",
+          "args": [
+           {
+            "$call": "Number",
+            "args": []
+           }
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "object with optional of unknown",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "a": {
+        "$call": "Optional",
+        "args": [
+         {
+          "$call": "Unknown",
+          "args": []
+         }
+        ]
+       },
+       "b": {
+        "$call": "Any",
+        "args": []
+       }
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"b\"],\"properties\":{\"a\":{},\"b\":{}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "object with an Unsafe property",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "a": {
+        "$call": "Unsafe",
+        "args": [
+         {
+          "type": "string",
+          "enum": [
+           "x"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"enum\":[\"x\"]}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "optional",
+   "args": [
+    {
+     "$call": "Optional",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~optional": true
+    }
+   }
+  },
+  {
+   "name": "optional twice",
+   "args": [
+    {
+     "$call": "Optional",
+     "args": [
+      {
+       "$call": "Optional",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~optional": true
+    }
+   }
+  },
+  {
+   "name": "optional of object",
+   "args": [
+    {
+     "$call": "Optional",
+     "args": [
+      {
+       "$call": "Object",
+       "args": [
+        {
+         "a": {
+          "$call": "String",
+          "args": []
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object",
+     "~optional": true
+    }
+   }
+  },
+  {
+   "name": "readonly",
+   "args": [
+    {
+     "$call": "Readonly",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~readonly": true
+    }
+   }
+  },
+  {
+   "name": "immutable",
+   "args": [
+    {
+     "$call": "Immutable",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~immutable": true
+    }
+   }
+  },
+  {
+   "name": "readonly and optional",
+   "args": [
+    {
+     "$call": "Readonly",
+     "args": [
+      {
+       "$call": "Optional",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~optional": true,
+     "~readonly": true
+    }
+   }
+  },
+  {
+   "name": "optional readonly immutable",
+   "args": [
+    {
+     "$call": "Immutable",
+     "args": [
+      {
+       "$call": "Readonly",
+       "args": [
+        {
+         "$call": "Optional",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~optional": true,
+     "~readonly": true,
+     "~immutable": true
+    }
+   }
+  },
+  {
+   "name": "optional keeps the options",
+   "args": [
+    {
+     "$call": "Optional",
+     "args": [
+      {
+       "$call": "String",
+       "args": [
+        {
+         "description": "d"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "String",
+     "~optional": true
+    }
+   }
+  },
+  {
+   "name": "unsafe of a plain schema",
+   "args": [
+    {
+     "$call": "Unsafe",
+     "args": [
+      {
+       "type": "string",
+       "enum": [
+        "a",
+        "b"
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"enum\":[\"a\",\"b\"]}",
+    "hidden": {
+     "~unsafe": null
+    }
+   }
+  },
+  {
+   "name": "unsafe of a schema",
+   "args": [
+    {
+     "$call": "Unsafe",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~unsafe": null
+    }
+   }
+  },
+  {
+   "name": "unsafe keeps the kind and adds the marker",
+   "args": [
+    {
+     "$call": "Unsafe",
+     "args": [
+      {
+       "$call": "Number",
+       "args": [
+        {
+         "minimum": 0
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":0}",
+    "hidden": {
+     "~kind": "Number",
+     "~unsafe": null
+    }
+   }
+  },
+  {
+   "name": "unsafe with an empty object",
+   "args": [
+    {
+     "$call": "Unsafe",
+     "args": [
+      {}
+     ]
+    }
+   ],
+   "result": {
+    "json": "{}",
+    "hidden": {
+     "~unsafe": null
+    }
+   }
+  },
+  {
+   "name": "with adds options",
+   "args": [
+    {
+     "$call": "With",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      },
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "with replaces an option",
+   "args": [
+    {
+     "$call": "With",
+     "args": [
+      {
+       "$call": "String",
+       "args": [
+        {
+         "description": "old",
+         "minLength": 1
+        }
+       ]
+      },
+      {
+       "description": "new"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"new\",\"minLength\":1}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "with keeps the markers",
+   "args": [
+    {
+     "$call": "With",
+     "args": [
+      {
+       "$call": "Optional",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        }
+       ]
+      },
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "String",
+     "~optional": true
+    }
+   }
+  },
+  {
+   "name": "with of a ref is deferred",
+   "args": [
+    {
+     "$call": "With",
+     "args": [
+      {
+       "$call": "Ref",
+       "args": [
+        "A"
+       ]
+      },
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"deferred\",\"action\":\"With\",\"parameters\":[{\"$ref\":\"A\"},{\"description\":\"d\"}],\"options\":{}}",
+    "hidden": {
+     "~kind": "Deferred"
+    }
+   }
+  },
+  {
+   "name": "record of string to number",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      },
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Record"
+    }
+   }
+  },
+  {
+   "name": "record of number to string",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Number",
+       "args": []
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"patternProperties\":{\"^-?(?:0|[1-9][0-9]*)(?:\\\\.[0-9]+)?$\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Record"
+    }
+   }
+  },
+  {
+   "name": "record of integer to boolean",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Integer",
+       "args": []
+      },
+      {
+       "$call": "Boolean",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"patternProperties\":{\"^-?(?:0|[1-9][0-9]*)$\":{\"type\":\"boolean\"}}}",
+    "hidden": {
+     "~kind": "Record"
+    }
+   }
+  },
+  {
+   "name": "record of string with a pattern",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "String",
+       "args": [
+        {
+         "pattern": "^x"
+        }
+       ]
+      },
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"patternProperties\":{\"^x\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Record"
+    }
+   }
+  },
+  {
+   "name": "record of string with options",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      },
+      {
+       "$call": "Number",
+       "args": []
+      },
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"number\"}},\"description\":\"d\"}",
+    "hidden": {
+     "~kind": "Record"
+    }
+   }
+  },
+  {
+   "name": "record of any",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Any",
+       "args": []
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Record"
+    }
+   }
+  },
+  {
+   "name": "record of boolean keys",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Boolean",
+       "args": []
+      },
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"true\",\"false\"],\"properties\":{\"true\":{\"type\":\"number\"},\"false\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of a string literal",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        "a"
+       ]
+      },
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of a number literal",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        1.5
+       ]
+      },
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"1.5\"],\"properties\":{\"1.5\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of an integer-valued literal",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        7
+       ]
+      },
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"7\"],\"properties\":{\"7\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of true",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        true
+       ]
+      },
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"true\"],\"properties\":{\"true\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of false",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        false
+       ]
+      },
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"false\"],\"properties\":{\"false\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of a union of literals",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Union",
+       "args": [
+        [
+         {
+          "$call": "Literal",
+          "args": [
+           "a"
+          ]
+         },
+         {
+          "$call": "Literal",
+          "args": [
+           "b"
+          ]
+         }
+        ]
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of a union with an array-index literal",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Union",
+       "args": [
+        [
+         {
+          "$call": "Literal",
+          "args": [
+           "b"
+          ]
+         },
+         {
+          "$call": "Literal",
+          "args": [
+           2
+          ]
+         },
+         {
+          "$call": "Literal",
+          "args": [
+           "a"
+          ]
+         },
+         {
+          "$call": "Literal",
+          "args": [
+           1
+          ]
+         }
+        ]
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"1\",\"2\",\"b\",\"a\"],\"properties\":{\"1\":{\"type\":\"string\"},\"2\":{\"type\":\"string\"},\"b\":{\"type\":\"string\"},\"a\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of a union containing string",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Union",
+       "args": [
+        [
+         {
+          "$call": "Literal",
+          "args": [
+           "a"
+          ]
+         },
+         {
+          "$call": "String",
+          "args": []
+         }
+        ]
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Record"
+    }
+   }
+  },
+  {
+   "name": "record of a nested union",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Union",
+       "args": [
+        [
+         {
+          "$call": "Union",
+          "args": [
+           [
+            {
+             "$call": "Literal",
+             "args": [
+              "a"
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "$call": "Literal",
+          "args": [
+           "b"
+          ]
+         }
+        ]
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of a union with a duplicate literal",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Union",
+       "args": [
+        [
+         {
+          "$call": "Literal",
+          "args": [
+           "a"
+          ]
+         },
+         {
+          "$call": "Literal",
+          "args": [
+           "b"
+          ]
+         },
+         {
+          "$call": "Literal",
+          "args": [
+           "a"
+          ]
+         }
+        ]
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of a union with a non-literal",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Union",
+       "args": [
+        [
+         {
+          "$call": "Literal",
+          "args": [
+           "a"
+          ]
+         },
+         {
+          "$call": "Boolean",
+          "args": []
+         }
+        ]
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of null key is an empty object",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Null",
+       "args": []
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"properties\":{}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "record of a ref key is deferred",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Ref",
+       "args": [
+        "K"
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"deferred\",\"action\":\"Record\",\"parameters\":[{\"$ref\":\"K\"},{\"type\":\"string\"}],\"options\":{}}",
+    "hidden": {
+     "~kind": "Deferred"
+    }
+   }
+  },
+  {
+   "name": "record of a ref key with options is deferred",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Ref",
+       "args": [
+        "K"
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      },
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"deferred\",\"action\":\"Record\",\"parameters\":[{\"$ref\":\"K\"},{\"type\":\"string\"}],\"options\":{\"description\":\"d\"}}",
+    "hidden": {
+     "~kind": "Deferred"
+    }
+   }
+  },
+  {
+   "name": "record of optional value",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      },
+      {
+       "$call": "Optional",
+       "args": [
+        {
+         "$call": "Number",
+         "args": []
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"number\"}}}",
+    "hidden": {
+     "~kind": "Record"
+    }
+   }
+  },
+  {
+   "name": "record value that is an object",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      },
+      {
+       "$call": "Object",
+       "args": [
+        {
+         "a": {
+          "$call": "String",
+          "args": []
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}}}",
+    "hidden": {
+     "~kind": "Record"
+    }
+   }
+  },
+  {
+   "name": "unsafe of an array",
+   "args": [
+    {
+     "$call": "Unsafe",
+     "args": [
+      [
+       1,
+       "a",
+       null
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "[1,\"a\",null]",
+    "hidden": {
+     "length": 3,
+     "~unsafe": null
+    }
+   }
+  },
+  {
+   "name": "unsafe of an empty array",
+   "args": [
+    {
+     "$call": "Unsafe",
+     "args": [
+      []
+     ]
+    }
+   ],
+   "result": {
+    "json": "[]",
+    "hidden": {
+     "length": 0,
+     "~unsafe": null
+    }
+   }
+  },
+  {
+   "name": "unsafe of nested arrays",
+   "args": [
+    {
+     "$call": "Unsafe",
+     "args": [
+      [
+       [
+        1
+       ],
+       {
+        "a": 2
+       }
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "[[1],{\"a\":2}]",
+    "hidden": {
+     "length": 2,
+     "~unsafe": null
+    }
+   }
+  },
+  {
+   "name": "optional of an array",
+   "args": [
+    {
+     "$call": "Optional",
+     "args": [
+      [
+       1,
+       2
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "[1,2]",
+    "hidden": {
+     "length": 2
+    }
+   }
+  },
+  {
+   "name": "readonly of an array",
+   "args": [
+    {
+     "$call": "Readonly",
+     "args": [
+      [
+       "x"
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "[\"x\"]",
+    "hidden": {
+     "length": 1
+    }
+   }
+  },
+  {
+   "name": "with options on an array",
+   "args": [
+    {
+     "$call": "With",
+     "args": [
+      [
+       1
+      ],
+      {
+       "description": "d"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "[1]",
+    "hidden": {
+     "length": 1
+    }
+   }
+  },
+  {
+   "name": "IsUnsafe of an unsafe array",
+   "args": [
+    {
+     "$call": "IsUnsafe",
+     "args": [
+      {
+       "$call": "Unsafe",
+       "args": [
+        [
+         1
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsSchema of an unsafe array",
+   "args": [
+    {
+     "$call": "IsSchema",
+     "args": [
+      {
+       "$call": "Unsafe",
+       "args": [
+        [
+         1
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsOptional of an optional array",
+   "args": [
+    {
+     "$call": "IsOptional",
+     "args": [
+      {
+       "$call": "Optional",
+       "args": [
+        [
+         1
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "number option 1e+21",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 1e+21,
+       "maximum": 1e+21
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":1e+21,\"maximum\":1e+21}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 1e+21",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      1e+21
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":1e+21}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 1e+21",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        1e+21
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"1e+21\"],\"properties\":{\"1e+21\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 1e-7",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 1e-7,
+       "maximum": 1e-7
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":1e-7,\"maximum\":1e-7}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 1e-7",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      1e-7
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":1e-7}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 1e-7",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        1e-7
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"1e-7\"],\"properties\":{\"1e-7\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 0.000001",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 0.000001,
+       "maximum": 0.000001
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":0.000001,\"maximum\":0.000001}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 0.000001",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      0.000001
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":0.000001}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 0.000001",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        0.000001
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"0.000001\"],\"properties\":{\"0.000001\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 1.5e-10",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 1.5e-10,
+       "maximum": 1.5e-10
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":1.5e-10,\"maximum\":1.5e-10}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 1.5e-10",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      1.5e-10
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":1.5e-10}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 1.5e-10",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        1.5e-10
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"1.5e-10\"],\"properties\":{\"1.5e-10\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 123456789012345680000",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 123456789012345680000,
+       "maximum": 123456789012345680000
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":123456789012345680000,\"maximum\":123456789012345680000}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 123456789012345680000",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      123456789012345680000
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":123456789012345680000}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 123456789012345680000",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        123456789012345680000
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"123456789012345680000\"],\"properties\":{\"123456789012345680000\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 12345678901234567000",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 12345678901234567000,
+       "maximum": 12345678901234567000
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":12345678901234567000,\"maximum\":12345678901234567000}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 12345678901234567000",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      12345678901234567000
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":12345678901234567000}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 12345678901234567000",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        12345678901234567000
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"12345678901234567000\"],\"properties\":{\"12345678901234567000\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 5e-324",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 5e-324,
+       "maximum": 5e-324
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":5e-324,\"maximum\":5e-324}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 5e-324",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      5e-324
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":5e-324}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 5e-324",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        5e-324
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"5e-324\"],\"properties\":{\"5e-324\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 1.7976931348623157e+308",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 1.7976931348623157e+308,
+       "maximum": 1.7976931348623157e+308
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":1.7976931348623157e+308,\"maximum\":1.7976931348623157e+308}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 1.7976931348623157e+308",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      1.7976931348623157e+308
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":1.7976931348623157e+308}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 1.7976931348623157e+308",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        1.7976931348623157e+308
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"1.7976931348623157e+308\"],\"properties\":{\"1.7976931348623157e+308\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 0.30000000000000004",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 0.30000000000000004,
+       "maximum": 0.30000000000000004
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":0.30000000000000004,\"maximum\":0.30000000000000004}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 0.30000000000000004",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      0.30000000000000004
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":0.30000000000000004}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 0.30000000000000004",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        0.30000000000000004
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"0.30000000000000004\"],\"properties\":{\"0.30000000000000004\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 4.35",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 4.35,
+       "maximum": 4.35
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":4.35,\"maximum\":4.35}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 4.35",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      4.35
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":4.35}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 4.35",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        4.35
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"4.35\"],\"properties\":{\"4.35\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 9007199254740992",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 9007199254740992,
+       "maximum": 9007199254740992
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":9007199254740992,\"maximum\":9007199254740992}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 9007199254740992",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      9007199254740992
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":9007199254740992}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 9007199254740992",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        9007199254740992
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"9007199254740992\"],\"properties\":{\"9007199254740992\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 9007199254740994",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 9007199254740994,
+       "maximum": 9007199254740994
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":9007199254740994,\"maximum\":9007199254740994}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 9007199254740994",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      9007199254740994
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":9007199254740994}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 9007199254740994",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        9007199254740994
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"9007199254740994\"],\"properties\":{\"9007199254740994\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 100",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 100,
+       "maximum": 100
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":100,\"maximum\":100}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 100",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      100
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":100}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 100",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        100
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"100\"],\"properties\":{\"100\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 0.000001234",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 0.000001234,
+       "maximum": 0.000001234
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":0.000001234,\"maximum\":0.000001234}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 0.000001234",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      0.000001234
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":0.000001234}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 0.000001234",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        0.000001234
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"0.000001234\"],\"properties\":{\"0.000001234\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 1e+300",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 1e+300,
+       "maximum": 1e+300
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":1e+300,\"maximum\":1e+300}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 1e+300",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      1e+300
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":1e+300}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 1e+300",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        1e+300
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"1e+300\"],\"properties\":{\"1e+300\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option -1e+21",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": -1e+21,
+       "maximum": -1e+21
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":-1e+21,\"maximum\":-1e+21}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal -1e+21",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      -1e+21
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":-1e+21}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal -1e+21",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        -1e+21
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"-1e+21\"],\"properties\":{\"-1e+21\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option -1e-7",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": -1e-7,
+       "maximum": -1e-7
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":-1e-7,\"maximum\":-1e-7}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal -1e-7",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      -1e-7
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":-1e-7}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal -1e-7",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        -1e-7
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"-1e-7\"],\"properties\":{\"-1e-7\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 1.5",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 1.5,
+       "maximum": 1.5
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":1.5,\"maximum\":1.5}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 1.5",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      1.5
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":1.5}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 1.5",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        1.5
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"1.5\"],\"properties\":{\"1.5\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 0",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 0,
+       "maximum": 0
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":0,\"maximum\":0}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 0",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      0
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":0}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 0",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        0
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"0\"],\"properties\":{\"0\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 123456789",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 123456789,
+       "maximum": 123456789
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":123456789,\"maximum\":123456789}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 123456789",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      123456789
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":123456789}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 123456789",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        123456789
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"123456789\"],\"properties\":{\"123456789\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 0.5",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 0.5,
+       "maximum": 0.5
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":0.5,\"maximum\":0.5}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 0.5",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      0.5
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":0.5}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 0.5",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        0.5
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"0.5\"],\"properties\":{\"0.5\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 100000000000000000000",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 100000000000000000000,
+       "maximum": 100000000000000000000
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":100000000000000000000,\"maximum\":100000000000000000000}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 100000000000000000000",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      100000000000000000000
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":100000000000000000000}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 100000000000000000000",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        100000000000000000000
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"100000000000000000000\"],\"properties\":{\"100000000000000000000\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "number option 999999999999999900000",
+   "args": [
+    {
+     "$call": "Number",
+     "args": [
+      {
+       "minimum": 999999999999999900000,
+       "maximum": 999999999999999900000
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"minimum\":999999999999999900000,\"maximum\":999999999999999900000}",
+    "hidden": {
+     "~kind": "Number"
+    }
+   }
+  },
+  {
+   "name": "literal 999999999999999900000",
+   "args": [
+    {
+     "$call": "Literal",
+     "args": [
+      999999999999999900000
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"number\",\"const\":999999999999999900000}",
+    "hidden": {
+     "~kind": "Literal"
+    }
+   }
+  },
+  {
+   "name": "record of literal 999999999999999900000",
+   "args": [
+    {
+     "$call": "Record",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        999999999999999900000
+       ]
+      },
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"999999999999999900000\"],\"properties\":{\"999999999999999900000\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "numbers in an enum list",
+   "args": [
+    {
+     "$call": "Enum",
+     "args": [
+      [
+       1e+21,
+       1e-7,
+       0.1,
+       100
+      ]
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"enum\":[1e+21,1e-7,0.1,100]}",
+    "hidden": {
+     "~kind": "Enum"
+    }
+   }
+  },
+  {
+   "name": "integer option array of numbers",
+   "args": [
+    {
+     "$call": "Array",
+     "args": [
+      {
+       "$call": "Integer",
+       "args": []
+      },
+      {
+       "examples": [
+        1e+21,
+        1e-7,
+        0.5,
+        1
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"array\",\"items\":{\"type\":\"integer\"},\"examples\":[1e+21,1e-7,0.5,1]}",
+    "hidden": {
+     "~kind": "Array"
+    }
+   }
+  },
+  {
+   "name": "string with HTML characters",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "description": "a<b>&c"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"a<b>&c\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "string with line separators",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "description": "a b c"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"a b c\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "string with control characters",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "description": "a\u0007b\u001fc\td\ne\rf\bg\fh"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"a\\u0007b\\u001fc\\td\\ne\\rf\\bg\\fh\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "string with quotes and backslash",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "description": "q\"b\\s/"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"q\\\"b\\\\s/\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "string with unicode",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "description": "héllo wörld 中文 😀"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"héllo wörld 中文 😀\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "string with DEL",
+   "args": [
+    {
+     "$call": "String",
+     "args": [
+      {
+       "description": "ab"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\",\"description\":\"ab\"}",
+    "hidden": {
+     "~kind": "String"
+    }
+   }
+  },
+  {
+   "name": "property names that need escapes",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "a\"b": {
+        "$call": "String",
+        "args": []
+       },
+       "c\\d": {
+        "$call": "Number",
+        "args": []
+       },
+       "e\nf": {
+        "$call": "Boolean",
+        "args": []
+       },
+       "<>": {
+        "$call": "String",
+        "args": []
+       }
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\\\"b\",\"c\\\\d\",\"e\\nf\",\"<>\"],\"properties\":{\"a\\\"b\":{\"type\":\"string\"},\"c\\\\d\":{\"type\":\"number\"},\"e\\nf\":{\"type\":\"boolean\"},\"<>\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "refine of a string",
+   "args": [
+    {
+     "$call": "Refine",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      },
+      {
+       "$fn": "always"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~refine": {
+      "count": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "refine twice",
+   "args": [
+    {
+     "$call": "Refine",
+     "args": [
+      {
+       "$call": "Refine",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        },
+        {
+         "$fn": "always"
+        }
+       ]
+      },
+      {
+       "$fn": "never"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~refine": {
+      "count": 2
+     }
+    }
+   }
+  },
+  {
+   "name": "refine with an error function",
+   "args": [
+    {
+     "$call": "Refine",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      },
+      {
+       "$fn": "never"
+      },
+      {
+       "$fn": "text",
+       "text": "no"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~refine": {
+      "count": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "refine keeps the other markers",
+   "args": [
+    {
+     "$call": "Refine",
+     "args": [
+      {
+       "$call": "Optional",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        }
+       ]
+      },
+      {
+       "$fn": "always"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~optional": true,
+     "~refine": {
+      "count": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "optional keeps the refinement",
+   "args": [
+    {
+     "$call": "Optional",
+     "args": [
+      {
+       "$call": "Refine",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        },
+        {
+         "$fn": "always"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"string\"}",
+    "hidden": {
+     "~kind": "String",
+     "~refine": {
+      "count": 1
+     },
+     "~optional": true
+    }
+   }
+  },
+  {
+   "name": "refine of an object",
+   "args": [
+    {
+     "$call": "Refine",
+     "args": [
+      {
+       "$call": "Object",
+       "args": [
+        {
+         "a": {
+          "$call": "String",
+          "args": []
+         }
+        }
+       ]
+      },
+      {
+       "$fn": "always"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "hidden": {
+     "~kind": "Object",
+     "~refine": {
+      "count": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "refine of an array keeps ~refine and length",
+   "args": [
+    {
+     "$call": "Refine",
+     "args": [
+      [
+       1,
+       2
+      ],
+      {
+       "$fn": "always"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "[1,2]",
+    "hidden": {
+     "length": 2,
+     "~refine": {
+      "count": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "IsRefine of a refined schema",
+   "args": [
+    {
+     "$call": "IsRefine",
+     "args": [
+      {
+       "$call": "Refine",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        },
+        {
+         "$fn": "always"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsRefine of a plain schema",
+   "args": [
+    {
+     "$call": "IsRefine",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsRefine of an optional refined schema",
+   "args": [
+    {
+     "$call": "IsRefine",
+     "args": [
+      {
+       "$call": "Optional",
+       "args": [
+        {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "always"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsRefine of null",
+   "args": [
+    {
+     "$call": "IsRefine",
+     "args": [
+      null
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "refine does not change the JSON of a union",
+   "args": [
+    {
+     "$call": "Refine",
+     "args": [
+      {
+       "$call": "Union",
+       "args": [
+        [
+         {
+          "$call": "String",
+          "args": []
+         },
+         {
+          "$call": "Number",
+          "args": []
+         }
+        ]
+       ]
+      },
+      {
+       "$fn": "always"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"number\"}]}",
+    "hidden": {
+     "~kind": "Union",
+     "~refine": {
+      "count": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "conformance tool parameters",
+   "args": [
+    {
+     "$call": "Object",
+     "args": [
+      {
+       "query": {
+        "$call": "String",
+        "args": [
+         {
+          "description": "What to look up"
+         }
+        ]
+       },
+       "limit": {
+        "$call": "Optional",
+        "args": [
+         {
+          "$call": "Integer",
+          "args": [
+           {
+            "minimum": 1,
+            "maximum": 50
+           }
+          ]
+         }
+        ]
+       },
+       "mode": {
+        "$call": "Union",
+        "args": [
+         [
+          {
+           "$call": "Literal",
+           "args": [
+            "fast"
+           ]
+          },
+          {
+           "$call": "Literal",
+           "args": [
+            "deep"
+           ]
+          }
+         ]
+        ]
+       },
+       "tags": {
+        "$call": "Optional",
+        "args": [
+         {
+          "$call": "Array",
+          "args": [
+           {
+            "$call": "String",
+            "args": []
+           }
+          ]
+         }
+        ]
+       },
+       "filter": {
+        "$call": "Optional",
+        "args": [
+         {
+          "$call": "Record",
+          "args": [
+           {
+            "$call": "String",
+            "args": []
+           },
+           {
+            "$call": "Number",
+            "args": []
+           }
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "additionalProperties": false
+      }
+     ]
+    }
+   ],
+   "result": {
+    "json": "{\"type\":\"object\",\"required\":[\"query\",\"mode\"],\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"What to look up\"},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":50},\"mode\":{\"anyOf\":[{\"type\":\"string\",\"const\":\"fast\"},{\"type\":\"string\",\"const\":\"deep\"}]},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"filter\":{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"number\"}}}},\"additionalProperties\":false}",
+    "hidden": {
+     "~kind": "Object"
+    }
+   }
+  },
+  {
+   "name": "IsAny of its own kind",
+   "args": [
+    {
+     "$call": "IsAny",
+     "args": [
+      {
+       "$call": "Any",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsAny of a string schema",
+   "args": [
+    {
+     "$call": "IsAny",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsAny of the JSON schema",
+   "args": [
+    {
+     "$call": "IsAny",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsArray of its own kind",
+   "args": [
+    {
+     "$call": "IsArray",
+     "args": [
+      {
+       "$call": "Array",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsArray of a string schema",
+   "args": [
+    {
+     "$call": "IsArray",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsArray of the JSON schema",
+   "args": [
+    {
+     "$call": "IsArray",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsBigInt of its own kind",
+   "args": [
+    {
+     "$call": "IsBigInt",
+     "args": [
+      {
+       "$call": "BigInt",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsBigInt of a string schema",
+   "args": [
+    {
+     "$call": "IsBigInt",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsBigInt of the JSON schema",
+   "args": [
+    {
+     "$call": "IsBigInt",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsBoolean of its own kind",
+   "args": [
+    {
+     "$call": "IsBoolean",
+     "args": [
+      {
+       "$call": "Boolean",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsBoolean of a string schema",
+   "args": [
+    {
+     "$call": "IsBoolean",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsBoolean of the JSON schema",
+   "args": [
+    {
+     "$call": "IsBoolean",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsEnum of its own kind",
+   "args": [
+    {
+     "$call": "IsEnum",
+     "args": [
+      {
+       "$call": "Enum",
+       "args": [
+        [
+         "a"
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsEnum of a string schema",
+   "args": [
+    {
+     "$call": "IsEnum",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsEnum of the JSON schema",
+   "args": [
+    {
+     "$call": "IsEnum",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsInteger of its own kind",
+   "args": [
+    {
+     "$call": "IsInteger",
+     "args": [
+      {
+       "$call": "Integer",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsInteger of a string schema",
+   "args": [
+    {
+     "$call": "IsInteger",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsInteger of the JSON schema",
+   "args": [
+    {
+     "$call": "IsInteger",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsIntersect of its own kind",
+   "args": [
+    {
+     "$call": "IsIntersect",
+     "args": [
+      {
+       "$call": "Intersect",
+       "args": [
+        [
+         {
+          "$call": "String",
+          "args": []
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsIntersect of a string schema",
+   "args": [
+    {
+     "$call": "IsIntersect",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsIntersect of the JSON schema",
+   "args": [
+    {
+     "$call": "IsIntersect",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsLiteral of its own kind",
+   "args": [
+    {
+     "$call": "IsLiteral",
+     "args": [
+      {
+       "$call": "Literal",
+       "args": [
+        "a"
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsLiteral of a string schema",
+   "args": [
+    {
+     "$call": "IsLiteral",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsLiteral of the JSON schema",
+   "args": [
+    {
+     "$call": "IsLiteral",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsNever of its own kind",
+   "args": [
+    {
+     "$call": "IsNever",
+     "args": [
+      {
+       "$call": "Never",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsNever of a string schema",
+   "args": [
+    {
+     "$call": "IsNever",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsNever of the JSON schema",
+   "args": [
+    {
+     "$call": "IsNever",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsNull of its own kind",
+   "args": [
+    {
+     "$call": "IsNull",
+     "args": [
+      {
+       "$call": "Null",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsNull of a string schema",
+   "args": [
+    {
+     "$call": "IsNull",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsNull of the JSON schema",
+   "args": [
+    {
+     "$call": "IsNull",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsNumber of its own kind",
+   "args": [
+    {
+     "$call": "IsNumber",
+     "args": [
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsNumber of a string schema",
+   "args": [
+    {
+     "$call": "IsNumber",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsNumber of the JSON schema",
+   "args": [
+    {
+     "$call": "IsNumber",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsObject of its own kind",
+   "args": [
+    {
+     "$call": "IsObject",
+     "args": [
+      {
+       "$call": "Object",
+       "args": [
+        {}
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsObject of a string schema",
+   "args": [
+    {
+     "$call": "IsObject",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsObject of the JSON schema",
+   "args": [
+    {
+     "$call": "IsObject",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsRecord of its own kind",
+   "args": [
+    {
+     "$call": "IsRecord",
+     "args": [
+      {
+       "$call": "Record",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        },
+        {
+         "$call": "Number",
+         "args": []
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsRecord of a string schema",
+   "args": [
+    {
+     "$call": "IsRecord",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsRecord of the JSON schema",
+   "args": [
+    {
+     "$call": "IsRecord",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsRef of its own kind",
+   "args": [
+    {
+     "$call": "IsRef",
+     "args": [
+      {
+       "$call": "Ref",
+       "args": [
+        "A"
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsRef of a string schema",
+   "args": [
+    {
+     "$call": "IsRef",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsRef of the JSON schema",
+   "args": [
+    {
+     "$call": "IsRef",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsString of its own kind",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsString of a string schema",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      {
+       "$call": "Number",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsString of the JSON schema",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsSymbol of its own kind",
+   "args": [
+    {
+     "$call": "IsSymbol",
+     "args": [
+      {
+       "$call": "Symbol",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsSymbol of a string schema",
+   "args": [
+    {
+     "$call": "IsSymbol",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsSymbol of the JSON schema",
+   "args": [
+    {
+     "$call": "IsSymbol",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsUndefined of its own kind",
+   "args": [
+    {
+     "$call": "IsUndefined",
+     "args": [
+      {
+       "$call": "Undefined",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsUndefined of a string schema",
+   "args": [
+    {
+     "$call": "IsUndefined",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsUndefined of the JSON schema",
+   "args": [
+    {
+     "$call": "IsUndefined",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsUnion of its own kind",
+   "args": [
+    {
+     "$call": "IsUnion",
+     "args": [
+      {
+       "$call": "Union",
+       "args": [
+        [
+         {
+          "$call": "String",
+          "args": []
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsUnion of a string schema",
+   "args": [
+    {
+     "$call": "IsUnion",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsUnion of the JSON schema",
+   "args": [
+    {
+     "$call": "IsUnion",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsUnknown of its own kind",
+   "args": [
+    {
+     "$call": "IsUnknown",
+     "args": [
+      {
+       "$call": "Unknown",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsUnknown of a string schema",
+   "args": [
+    {
+     "$call": "IsUnknown",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsUnknown of the JSON schema",
+   "args": [
+    {
+     "$call": "IsUnknown",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsVoid of its own kind",
+   "args": [
+    {
+     "$call": "IsVoid",
+     "args": [
+      {
+       "$call": "Void",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsVoid of a string schema",
+   "args": [
+    {
+     "$call": "IsVoid",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsVoid of the JSON schema",
+   "args": [
+    {
+     "$call": "IsVoid",
+     "args": [
+      {
+       "type": "x"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsString of a plain JSON string schema",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      {
+       "type": "string"
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsString of a plain object with ~kind",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      {
+       "~kind": "String"
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsString of null",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      null
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsString of a string",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      "x"
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsString of a number",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      1
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsString of an array",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      []
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsString of an optional string",
+   "args": [
+    {
+     "$call": "IsString",
+     "args": [
+      {
+       "$call": "Optional",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsObject of an Unsafe object",
+   "args": [
+    {
+     "$call": "IsObject",
+     "args": [
+      {
+       "$call": "Unsafe",
+       "args": [
+        {
+         "$call": "Object",
+         "args": [
+          {}
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsKind of a matching kind",
+   "args": [
+    {
+     "$call": "IsKind",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      },
+      "String"
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsKind of another kind",
+   "args": [
+    {
+     "$call": "IsKind",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      },
+      "Number"
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsKind of a plain object",
+   "args": [
+    {
+     "$call": "IsKind",
+     "args": [
+      {
+       "~kind": "String"
+      },
+      "String"
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsKind of null",
+   "args": [
+    {
+     "$call": "IsKind",
+     "args": [
+      null,
+      "String"
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsSchema of an object",
+   "args": [
+    {
+     "$call": "IsSchema",
+     "args": [
+      {}
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsSchema of a schema",
+   "args": [
+    {
+     "$call": "IsSchema",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsSchema of an array",
+   "args": [
+    {
+     "$call": "IsSchema",
+     "args": [
+      []
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsSchema of null",
+   "args": [
+    {
+     "$call": "IsSchema",
+     "args": [
+      null
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsSchema of a string",
+   "args": [
+    {
+     "$call": "IsSchema",
+     "args": [
+      "x"
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsSchema of a number",
+   "args": [
+    {
+     "$call": "IsSchema",
+     "args": [
+      1
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsSchema of a boolean",
+   "args": [
+    {
+     "$call": "IsSchema",
+     "args": [
+      true
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsOptional of an optional",
+   "args": [
+    {
+     "$call": "IsOptional",
+     "args": [
+      {
+       "$call": "Optional",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsOptional of a required",
+   "args": [
+    {
+     "$call": "IsOptional",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsOptional of a plain object with ~optional",
+   "args": [
+    {
+     "$call": "IsOptional",
+     "args": [
+      {
+       "~optional": true
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsOptional of null",
+   "args": [
+    {
+     "$call": "IsOptional",
+     "args": [
+      null
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsReadonly of a readonly",
+   "args": [
+    {
+     "$call": "IsReadonly",
+     "args": [
+      {
+       "$call": "Readonly",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsReadonly of a plain",
+   "args": [
+    {
+     "$call": "IsReadonly",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsImmutable of an immutable",
+   "args": [
+    {
+     "$call": "IsImmutable",
+     "args": [
+      {
+       "$call": "Immutable",
+       "args": [
+        {
+         "$call": "String",
+         "args": []
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsImmutable of a plain",
+   "args": [
+    {
+     "$call": "IsImmutable",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsUnsafe of an unsafe",
+   "args": [
+    {
+     "$call": "IsUnsafe",
+     "args": [
+      {
+       "$call": "Unsafe",
+       "args": [
+        {
+         "type": "string"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsUnsafe of a plain",
+   "args": [
+    {
+     "$call": "IsUnsafe",
+     "args": [
+      {
+       "$call": "String",
+       "args": []
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsUnsafe of a plain object with ~unsafe null",
+   "args": [
+    {
+     "$call": "IsUnsafe",
+     "args": [
+      {
+       "~unsafe": null
+      }
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsUnsafe of a plain object with ~unsafe true",
+   "args": [
+    {
+     "$call": "IsUnsafe",
+     "args": [
+      {
+       "~unsafe": true
+      }
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsUnsafe of an array",
+   "args": [
+    {
+     "$call": "IsUnsafe",
+     "args": [
+      []
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsEnumValue of a string",
+   "args": [
+    {
+     "$call": "IsEnumValue",
+     "args": [
+      "a"
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsEnumValue of a number",
+   "args": [
+    {
+     "$call": "IsEnumValue",
+     "args": [
+      1.5
+     ]
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "IsEnumValue of a boolean",
+   "args": [
+    {
+     "$call": "IsEnumValue",
+     "args": [
+      true
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsEnumValue of null",
+   "args": [
+    {
+     "$call": "IsEnumValue",
+     "args": [
+      null
+     ]
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "IsEnumValue of an object",
+   "args": [
+    {
+     "$call": "IsEnumValue",
+     "args": [
+      {}
+     ]
+    }
+   ],
+   "result": false
+  }
+ ]
+}

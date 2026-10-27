@@ -1,0 +1,3264 @@
+{
+ "pin": "1.4.0+74f46864",
+ "package": "pi-coding-agent@1.4.0",
+ "module": "pi-coding-agent",
+ "export": "buildSessionContext",
+ "cases": [
+  {
+   "name": "empty",
+   "args": [
+    []
+   ],
+   "result": {
+    "messages": [],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "chain, last leaf",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "three",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "four"
+        }
+       ],
+       "provider": "openai",
+       "model": "gpt",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     {
+      "role": "user",
+      "content": "three",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "four"
+       }
+      ],
+      "provider": "openai",
+      "model": "gpt",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "openai",
+     "modelId": "gpt"
+    }
+   }
+  },
+  {
+   "name": "chain, named leaf",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "three",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "four"
+        }
+       ],
+       "provider": "openai",
+       "model": "gpt",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    "b"
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "chain, null leaf",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "three",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "four"
+        }
+       ],
+       "provider": "openai",
+       "model": "gpt",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    null
+   ],
+   "result": {
+    "messages": [],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "chain, unknown leaf falls back to the last entry",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "three",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "four"
+        }
+       ],
+       "provider": "openai",
+       "model": "gpt",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    "nope"
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     {
+      "role": "user",
+      "content": "three",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "four"
+       }
+      ],
+      "provider": "openai",
+      "model": "gpt",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "openai",
+     "modelId": "gpt"
+    }
+   }
+  },
+  {
+   "name": "chain, empty-string leaf falls back to the last entry",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "three",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "four"
+        }
+       ],
+       "provider": "openai",
+       "model": "gpt",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    ""
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     {
+      "role": "user",
+      "content": "three",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "four"
+       }
+      ],
+      "provider": "openai",
+      "model": "gpt",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "openai",
+     "modelId": "gpt"
+    }
+   }
+  },
+  {
+   "name": "branch left",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "root",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "left"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "x",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "right",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "y",
+      "parentId": "x",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "right again"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    "b"
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "root",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "left"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "branch right",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "root",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "left"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "x",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "right",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "y",
+      "parentId": "x",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "right again"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    "y"
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "root",
+      "timestamp": 1
+     },
+     {
+      "role": "user",
+      "content": "right",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "right again"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "branch default leaf is the last entry",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "root",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "left"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "x",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "right",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "y",
+      "parentId": "x",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "right again"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "root",
+      "timestamp": 1
+     },
+     {
+      "role": "user",
+      "content": "right",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "right again"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "dangling parent ends the path",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": "gone",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "orphan",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "child"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "orphan",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "child"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "thinking level and model along the path",
+   "args": [
+    [
+     {
+      "type": "thinking_level_change",
+      "id": "t",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "thinkingLevel": "high"
+     },
+     {
+      "type": "model_change",
+      "id": "m",
+      "parentId": "t",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "provider": "google",
+      "modelId": "gemini"
+     },
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": "m",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "hi",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "hello"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "thinking_level_change",
+      "id": "t2",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "thinkingLevel": "low"
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "hello"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "low",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "thinking level and model stop at the leaf",
+   "args": [
+    [
+     {
+      "type": "thinking_level_change",
+      "id": "t",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "thinkingLevel": "high"
+     },
+     {
+      "type": "model_change",
+      "id": "m",
+      "parentId": "t",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "provider": "google",
+      "modelId": "gemini"
+     },
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": "m",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "hi",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "hello"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "thinking_level_change",
+      "id": "t2",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "thinkingLevel": "low"
+     }
+    ],
+    "a"
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "high",
+    "model": {
+     "provider": "google",
+     "modelId": "gemini"
+    }
+   }
+  },
+  {
+   "name": "no settings: off and null",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "assistant message sets the model",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "q",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "r"
+        }
+       ],
+       "provider": "p",
+       "model": "m",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "q",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "r"
+       }
+      ],
+      "provider": "p",
+      "model": "m",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "p",
+     "modelId": "m"
+    }
+   }
+  },
+  {
+   "name": "model_change without a provider",
+   "args": [
+    [
+     {
+      "type": "model_change",
+      "id": "m",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "modelId": "only"
+     }
+    ]
+   ],
+   "result": {
+    "messages": [],
+    "thinkingLevel": "off",
+    "model": {
+     "modelId": "only"
+    }
+   }
+  },
+  {
+   "name": "thinking_level_change without a level",
+   "args": [
+    [
+     {
+      "type": "thinking_level_change",
+      "id": "t",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z"
+     }
+    ]
+   ],
+   "result": {
+    "messages": [],
+    "model": null
+   }
+  },
+  {
+   "name": "assistant without provider",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [],
+       "model": "m"
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "assistant",
+      "content": [],
+      "model": "m"
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "modelId": "m"
+    }
+   }
+  },
+  {
+   "name": "compaction keeps from firstKeptEntryId",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "three",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "compaction",
+      "id": "k",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "summary": "summary k",
+      "firstKeptEntryId": "b",
+      "tokensBefore": 100
+     },
+     {
+      "type": "message",
+      "id": "e",
+      "parentId": "k",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "after",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "compactionSummary",
+      "summary": "summary k",
+      "tokensBefore": 100,
+      "timestamp": 1767323045678
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     {
+      "role": "user",
+      "content": "three",
+      "timestamp": 1
+     },
+     {
+      "role": "user",
+      "content": "after",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "compaction drops system messages it keeps",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "s",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "system",
+       "content": "sys",
+       "timestamp": 3
+      }
+     },
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": "s",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "compaction",
+      "id": "k",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "summary": "summary k",
+      "firstKeptEntryId": "s",
+      "tokensBefore": 100
+     },
+     {
+      "type": "message",
+      "id": "e",
+      "parentId": "k",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "after",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "compactionSummary",
+      "summary": "summary k",
+      "tokensBefore": 100,
+      "timestamp": 1767323045678
+     },
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     {
+      "role": "user",
+      "content": "after",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "compaction whose firstKeptEntryId is not on the path keeps nothing before it",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "compaction",
+      "id": "k",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "summary": "summary k",
+      "firstKeptEntryId": "missing",
+      "tokensBefore": 100
+     },
+     {
+      "type": "message",
+      "id": "e",
+      "parentId": "k",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "after",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "compactionSummary",
+      "summary": "summary k",
+      "tokensBefore": 100,
+      "timestamp": 1767323045678
+     },
+     {
+      "role": "user",
+      "content": "after",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "compaction with a system message",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "compaction",
+      "id": "k",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "summary": "summary k",
+      "firstKeptEntryId": "a",
+      "tokensBefore": 100,
+      "systemMessage": {
+       "role": "system",
+       "content": "new system",
+       "timestamp": 9
+      }
+     },
+     {
+      "type": "message",
+      "id": "e",
+      "parentId": "k",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "after",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "system",
+      "content": "new system",
+      "timestamp": 9
+     },
+     {
+      "role": "compactionSummary",
+      "summary": "summary k",
+      "tokensBefore": 100,
+      "timestamp": 1767323045678
+     },
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "user",
+      "content": "after",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "an older compaction inside the kept range is dropped",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "compaction",
+      "id": "k1",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "summary": "summary k1",
+      "firstKeptEntryId": "a",
+      "tokensBefore": 100
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "k1",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "two",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "three"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "compaction",
+      "id": "k2",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "summary": "summary k2",
+      "firstKeptEntryId": "b",
+      "tokensBefore": 100
+     },
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "k2",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "four",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "compactionSummary",
+      "summary": "summary k2",
+      "tokensBefore": 100,
+      "timestamp": 1767323045678
+     },
+     {
+      "role": "user",
+      "content": "two",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "three"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     {
+      "role": "user",
+      "content": "four",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "leaf before the compaction ignores it",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "compaction",
+      "id": "k",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "summary": "summary k",
+      "firstKeptEntryId": "a",
+      "tokensBefore": 100
+     },
+     {
+      "type": "message",
+      "id": "e",
+      "parentId": "k",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "after",
+       "timestamp": 1
+      }
+     }
+    ],
+    "b"
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "branch summary",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "branch_summary",
+      "id": "s",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "fromId": "a",
+      "summary": "went elsewhere"
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "s",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "next",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "branchSummary",
+      "summary": "went elsewhere",
+      "fromId": "a",
+      "timestamp": 1767323045678
+     },
+     {
+      "role": "user",
+      "content": "next",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "empty branch summary adds nothing",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "branch_summary",
+      "id": "s",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "fromId": "a",
+      "summary": ""
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "s",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "next",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "user",
+      "content": "next",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "custom message and plain custom entry",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "custom_message",
+      "id": "c",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "customType": "note",
+      "content": "shown",
+      "display": true,
+      "details": {
+       "n": 1
+      }
+     },
+     {
+      "type": "custom",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "customType": "state",
+      "data": {
+       "x": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "d",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "next",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "custom",
+      "customType": "note",
+      "content": "shown",
+      "display": true,
+      "details": {
+       "n": 1
+      },
+      "timestamp": 1767323045678
+     },
+     {
+      "role": "user",
+      "content": "next",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "label and session_info entries add nothing",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "label",
+      "id": "l",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "targetId": "a",
+      "label": "x"
+     },
+     {
+      "type": "session_info",
+      "id": "i",
+      "parentId": "l",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "name": "n"
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "i",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "next",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "user",
+      "content": "next",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "context_edit removes a message",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "context_edit",
+      "id": "e",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "targetId": "a",
+      "replacement": null
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "context_edit replaces a user message's content",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "context_edit",
+      "id": "e",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "targetId": "a",
+      "replacement": {
+       "content": "edited"
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "edited",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "context_edit with a string replaces an assistant message with a text block",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "context_edit",
+      "id": "e",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "targetId": "b",
+      "replacement": {
+       "content": "edited"
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "edited"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "context_edit with blocks replaces an assistant message's content",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "context_edit",
+      "id": "e",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "targetId": "b",
+      "replacement": {
+       "content": [
+        {
+         "type": "text",
+         "text": "blocks"
+        }
+       ]
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "blocks"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "context_edit of a message that is not on the path does nothing",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "context_edit",
+      "id": "e",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "targetId": "zzz",
+      "replacement": null
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "context_edit leaves a system message alone",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "s",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "system",
+       "content": "sys",
+       "timestamp": 3
+      }
+     },
+     {
+      "type": "context_edit",
+      "id": "e",
+      "parentId": "s",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "targetId": "s",
+      "replacement": {
+       "content": "x"
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "system",
+      "content": "sys",
+      "timestamp": 3
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": null
+   }
+  },
+  {
+   "name": "message with missing content",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "timestamp": 1
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "timestamp": 1,
+      "content": []
+     },
+     {
+      "role": "assistant",
+      "timestamp": 1,
+      "content": []
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {}
+   }
+  },
+  {
+   "name": "message entry without a message throws",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z"
+     }
+    ]
+   ],
+   "throws": "Cannot read properties of undefined (reading 'role')"
+  },
+  {
+   "name": "message entry with a null message throws",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": null
+     }
+    ]
+   ],
+   "throws": "Cannot read properties of null (reading 'role')"
+  },
+  {
+   "name": "index passed in",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "three",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "four"
+        }
+       ],
+       "provider": "openai",
+       "model": "gpt",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    "c",
+    [
+     [
+      "a",
+      {
+       "type": "message",
+       "id": "a",
+       "parentId": null,
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "user",
+        "content": "one",
+        "timestamp": 1
+       }
+      }
+     ],
+     [
+      "b",
+      {
+       "type": "message",
+       "id": "b",
+       "parentId": "a",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "assistant",
+        "content": [
+         {
+          "type": "text",
+          "text": "two"
+         }
+        ],
+        "provider": "anthropic",
+        "model": "claude",
+        "api": "x",
+        "usage": {},
+        "stopReason": "stop",
+        "timestamp": 2
+       }
+      }
+     ],
+     [
+      "c",
+      {
+       "type": "message",
+       "id": "c",
+       "parentId": "b",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "user",
+        "content": "three",
+        "timestamp": 1
+       }
+      }
+     ],
+     [
+      "d",
+      {
+       "type": "message",
+       "id": "d",
+       "parentId": "c",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "assistant",
+        "content": [
+         {
+          "type": "text",
+          "text": "four"
+         }
+        ],
+        "provider": "openai",
+        "model": "gpt",
+        "api": "x",
+        "usage": {},
+        "stopReason": "stop",
+        "timestamp": 2
+       }
+      }
+     ]
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     {
+      "role": "user",
+      "content": "three",
+      "timestamp": 1
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "index passed in without a leaf falls back to the last entry",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "three",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "four"
+        }
+       ],
+       "provider": "openai",
+       "model": "gpt",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    "",
+    [
+     [
+      "a",
+      {
+       "type": "message",
+       "id": "a",
+       "parentId": null,
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "user",
+        "content": "one",
+        "timestamp": 1
+       }
+      }
+     ],
+     [
+      "b",
+      {
+       "type": "message",
+       "id": "b",
+       "parentId": "a",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "assistant",
+        "content": [
+         {
+          "type": "text",
+          "text": "two"
+         }
+        ],
+        "provider": "anthropic",
+        "model": "claude",
+        "api": "x",
+        "usage": {},
+        "stopReason": "stop",
+        "timestamp": 2
+       }
+      }
+     ],
+     [
+      "c",
+      {
+       "type": "message",
+       "id": "c",
+       "parentId": "b",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "user",
+        "content": "three",
+        "timestamp": 1
+       }
+      }
+     ],
+     [
+      "d",
+      {
+       "type": "message",
+       "id": "d",
+       "parentId": "c",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "assistant",
+        "content": [
+         {
+          "type": "text",
+          "text": "four"
+         }
+        ],
+        "provider": "openai",
+        "model": "gpt",
+        "api": "x",
+        "usage": {},
+        "stopReason": "stop",
+        "timestamp": 2
+       }
+      }
+     ]
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     {
+      "role": "user",
+      "content": "three",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "four"
+       }
+      ],
+      "provider": "openai",
+      "model": "gpt",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "openai",
+     "modelId": "gpt"
+    }
+   }
+  },
+  {
+   "name": "index passed in answers lookups that entries would not",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "four"
+        }
+       ],
+       "provider": "openai",
+       "model": "gpt",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    "b",
+    [
+     [
+      "a",
+      {
+       "type": "message",
+       "id": "a",
+       "parentId": null,
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "user",
+        "content": "one",
+        "timestamp": 1
+       }
+      }
+     ],
+     [
+      "b",
+      {
+       "type": "message",
+       "id": "b",
+       "parentId": "a",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "assistant",
+        "content": [
+         {
+          "type": "text",
+          "text": "two"
+         }
+        ],
+        "provider": "anthropic",
+        "model": "claude",
+        "api": "x",
+        "usage": {},
+        "stopReason": "stop",
+        "timestamp": 2
+       }
+      }
+     ],
+     [
+      "c",
+      {
+       "type": "message",
+       "id": "c",
+       "parentId": "b",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "user",
+        "content": "three",
+        "timestamp": 1
+       }
+      }
+     ],
+     [
+      "d",
+      {
+       "type": "message",
+       "id": "d",
+       "parentId": "c",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "assistant",
+        "content": [
+         {
+          "type": "text",
+          "text": "four"
+         }
+        ],
+        "provider": "openai",
+        "model": "gpt",
+        "api": "x",
+        "usage": {},
+        "stopReason": "stop",
+        "timestamp": 2
+       }
+      }
+     ]
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  },
+  {
+   "name": "index passed in lacks the parent",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": "a",
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "b",
+      "parentId": "a",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     },
+     {
+      "type": "message",
+      "id": "c",
+      "parentId": "b",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "three",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": "d",
+      "parentId": "c",
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "four"
+        }
+       ],
+       "provider": "openai",
+       "model": "gpt",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ],
+    "d",
+    [
+     [
+      "d",
+      {
+       "type": "message",
+       "id": "d",
+       "parentId": "c",
+       "timestamp": "2026-01-02T03:04:05.678Z",
+       "message": {
+        "role": "assistant",
+        "content": [
+         {
+          "type": "text",
+          "text": "four"
+         }
+        ],
+        "provider": "openai",
+        "model": "gpt",
+        "api": "x",
+        "usage": {},
+        "stopReason": "stop",
+        "timestamp": 2
+       }
+      }
+     ]
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "four"
+       }
+      ],
+      "provider": "openai",
+      "model": "gpt",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "openai",
+     "modelId": "gpt"
+    }
+   }
+  },
+  {
+   "name": "numeric ids",
+   "args": [
+    [
+     {
+      "type": "message",
+      "id": 1,
+      "parentId": null,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "user",
+       "content": "one",
+       "timestamp": 1
+      }
+     },
+     {
+      "type": "message",
+      "id": 2,
+      "parentId": 1,
+      "timestamp": "2026-01-02T03:04:05.678Z",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "two"
+        }
+       ],
+       "provider": "anthropic",
+       "model": "claude",
+       "api": "x",
+       "usage": {},
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    ]
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "one",
+      "timestamp": 1
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "two"
+       }
+      ],
+      "provider": "anthropic",
+      "model": "claude",
+      "api": "x",
+      "usage": {},
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    ],
+    "thinkingLevel": "off",
+    "model": {
+     "provider": "anthropic",
+     "modelId": "claude"
+    }
+   }
+  }
+ ]
+}

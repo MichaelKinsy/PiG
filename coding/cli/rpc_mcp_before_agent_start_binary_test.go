@@ -45,7 +45,7 @@ func TestRPCPromptAnswersAfterTheBuiltinMCPBeforeAgentStartHandler(t *testing.T)
 			defer func() { _ = stdin.Close() }()
 			// modePigCommand always passes --no-extensions, which drops builtin:mcp as in Pi.
 			agentDir := t.TempDir()
-			cmd := exec.Command(bin, append([]string{"--mode", "rpc", "--no-session", "--offline", "--model", "test-faux/echo"}, tc.extra...)...)
+			cmd := exec.Command(bin, append([]string{"--mode", "rpc", "--no-session", "--offline", "--model", "test-faux/faux-1"}, tc.extra...)...)
 			cmd.Dir = agentDir
 			cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1")
 			cmd.Stdin = stdin

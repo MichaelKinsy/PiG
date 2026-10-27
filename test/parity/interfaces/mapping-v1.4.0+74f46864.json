@@ -158017,8 +158017,8 @@
       ],
       "evidence": [
         "test:coding/cli/builtin_extension_order_test.go#TestBuiltinLlamaRegistersItsNativeProviderAndCommandThroughTheLoader",
-        "test:coding/extension/runtime_state_test.go#TestBindProviderActionsDrainsTheNativeQueue",
-        "test:coding/extension/runtime_state_test.go#TestPendingNativeProviderRegistrationsExposeTheProviderObject"
+        "test:coding/extension/host/subprocess/provider_object_load_queue_test.go#TestProviderObjectRegisteredWhileLoadingIsQueuedForABoundRegistry",
+        "test:coding/extension/runtime_state_test.go#TestBindProviderActionsDrainsTheNativeQueue"
       ]
     },
     {
@@ -158040,7 +158040,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestUpstreamRunnerProviderRegistration",
         "test:test/extension-conformance/node_extension_api_test.go#TestNodeProviderConfigWithImageAndClassifierModels",
-        "test:test/extension-conformance/python_extension_api_test.go#TestPythonSDKProviderConfigWithImageAndClassifierModels"
+        "test:test/extension-conformance/provider_registration_diagnostic_test.go#TestProviderRegistrationFailureIsADiagnosticAcrossSDKs"
       ]
     },
     {
@@ -158598,7 +158598,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestRunnerProviderActionsOverrideRegistry",
         "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestUpstreamRunnerProviderRegistration",
-        "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreKeepsTheActionsAHostBoundToTheSharedRuntime"
+        "test:coding/cli/extension_host_wiring_guard_test.go#TestBuildFlushesTheExtensionHostProviderRegistrations"
       ]
     },
     {
@@ -158620,7 +158620,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestRunnerProviderActionsOverrideRegistry",
         "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestUpstreamRunnerProviderRegistration",
-        "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreKeepsTheActionsAHostBoundToTheSharedRuntime"
+        "test:coding/cli/extension_host_wiring_guard_test.go#TestBuildFlushesTheExtensionHostProviderRegistrations"
       ]
     },
     {
@@ -170254,40 +170254,44 @@
       "id": "pkg:coding-agent/.#ModelRegistry::property:registerVirtualModel",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e73fe86aff3d544584f5ae37e9a3227540a34eecc130a15bb93ca12d72c1239e",
-      "rationale": "ModelRegistry.registerVirtualModel is the Go method coding.ModelRegistry.RegisterVirtualModel; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+      "rationale": "Derived by the interface gap detector: ModelRegistry::property:registerVirtualModel is Go coding/virtual_models.go#ModelRegistry.RegisterVirtualModel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/virtual_models.go#ModelRegistry.RegisterVirtualModel"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/extensions.go#flushExtensionHostVirtualModels"
+        "call:coding/virtual_models.go#ModelRegistry.RegisterVirtualModel"
       ],
       "evidence": [
-        "test:coding/cli/startup_virtual_model_test.go#TestSelectStartupModelLeavesTheVirtualCatalogEntryUnchanged"
+        "test:coding/cli/startup_virtual_model_test.go#TestSelectStartupModelLeavesTheVirtualCatalogEntryUnchanged",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeGetCommandsListsACommandRegisteredAfterLoad"
       ]
     },
     {
       "id": "pkg:coding-agent/.#ModelRegistry::property:registerVirtualModel::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:000d10b1661ebcf4d7c7b704ca1b5d7d5498076b58a31a4e2f4ae22ad147bc15",
-      "rationale": "ModelRegistry.registerVirtualModel is the Go method coding.ModelRegistry.RegisterVirtualModel; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+      "rationale": "Derived by the interface gap detector: ModelRegistry::property:registerVirtualModel::call:0 is Go coding/virtual_models.go#ModelRegistry.RegisterVirtualModel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/virtual_models.go#ModelRegistry.RegisterVirtualModel"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/extensions.go#flushExtensionHostVirtualModels"
+        "call:coding/virtual_models.go#ModelRegistry.RegisterVirtualModel"
       ],
       "evidence": [
-        "test:coding/cli/startup_virtual_model_test.go#TestSelectStartupModelLeavesTheVirtualCatalogEntryUnchanged"
+        "test:coding/cli/startup_virtual_model_test.go#TestSelectStartupModelLeavesTheVirtualCatalogEntryUnchanged",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeGetCommandsListsACommandRegisteredAfterLoad"
       ]
     },
     {
@@ -171351,40 +171355,44 @@
       "id": "pkg:coding-agent/.#ModelRuntime::property:getAvailableSnapshot",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2c111ffd530486ca4e30beb89c4694b027ecea96d0ac7b1ed1178b7130665c57",
-      "rationale": "ModelRuntime.getAvailableSnapshot is the Go method ModelRuntime.GetAvailableSnapshot; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs).",
+      "rationale": "Derived by the interface gap detector: ModelRuntime::property:getAvailableSnapshot is Go coding/model_availability.go#ModelRuntime.GetAvailableSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/model_availability.go#ModelRuntime.GetAvailableSnapshot"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_mode.go#rpcAvailableModels"
+        "call:coding/model_availability.go#ModelRuntime.GetAvailableSnapshot"
       ],
       "evidence": [
-        "test:coding/credential_refresh_7027_upstream_test.go#TestCredentialRefreshHang7027StalledLogin"
+        "test:coding/credential_refresh_7027_upstream_test.go#TestCredentialRefreshHang7027StalledLogin",
+        "test:test/extension-conformance/provider_stream_test.go#TestProviderProducersAcrossSDKs",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesSelectsTheInitialModelOrReportsNone"
       ]
     },
     {
       "id": "pkg:coding-agent/.#ModelRuntime::property:getAvailableSnapshot::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:eda778942dc1e664e85130af1626407040a09ba01b0e9dfb975508ef3fc29f92",
-      "rationale": "ModelRuntime.getAvailableSnapshot is the Go method ModelRuntime.GetAvailableSnapshot; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs).",
+      "rationale": "Derived by the interface gap detector: ModelRuntime::property:getAvailableSnapshot::call:0 is Go coding/model_availability.go#ModelRuntime.GetAvailableSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/model_availability.go#ModelRuntime.GetAvailableSnapshot"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_mode.go#rpcAvailableModels"
+        "call:coding/model_availability.go#ModelRuntime.GetAvailableSnapshot"
       ],
       "evidence": [
-        "test:coding/credential_refresh_7027_upstream_test.go#TestCredentialRefreshHang7027StalledLogin"
+        "test:coding/credential_refresh_7027_upstream_test.go#TestCredentialRefreshHang7027StalledLogin",
+        "test:test/extension-conformance/provider_stream_test.go#TestProviderProducersAcrossSDKs",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesSelectsTheInitialModelOrReportsNone"
       ]
     },
     {
@@ -176707,7 +176715,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/provider_registration_validation.go#ModelRegistry.validateExtensionRegistration"
+        "call:coding/services.go#registerHarnessTestFaux"
       ],
       "evidence": [
         "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
@@ -176725,14 +176733,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/provider.go#ProviderConfig.APIKey"
+        "call:coding/services.go#registerHarnessTestFaux"
       ],
       "evidence": [
-        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackServesOnlyItsAPI"
+        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
+        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackServesOnlyItsAPI",
+        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCustomStreamUpstream"
       ]
     },
     {
@@ -176769,7 +176779,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_provider.go#ModelRegistry.RegisterNativeProvider"
+        "call:coding/services.go#registerHarnessTestFaux"
       ],
       "evidence": [
         "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
@@ -176857,7 +176867,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/model_registry.go#providerConfigFromRegistration"
+        "call:coding/services.go#registerHarnessTestFaux"
       ],
       "evidence": [
         "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
@@ -176969,7 +176979,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/model_registry.go#providerConfigFromRegistration"
+        "call:coding/services.go#registerHarnessTestFaux"
       ],
       "evidence": [
         "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
@@ -208091,7 +208101,7 @@
       "evidence": [
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
         "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
-        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
+        "test:durable/codemode/lone_surrogate_tool_result_test.go#TestAToolResultWithALoneSurrogateKeepsItThroughTheHarnessAndTheEntry"
       ]
     },
     {
@@ -208113,7 +208123,7 @@
       "evidence": [
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
         "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt",
-        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
+        "test:durable/codemode/lone_surrogate_tool_result_test.go#TestAToolResultWithALoneSurrogateKeepsItThroughTheHarnessAndTheEntry"
       ]
     },
     {
@@ -208751,9 +208761,9 @@
         "call:durable/entries.go#DefineEntry"
       ],
       "evidence": [
+        "test:durable/codemode/lone_surrogate_tool_result_test.go#TestAToolResultWithALoneSurrogateKeepsItThroughTheHarnessAndTheEntry",
         "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments",
-        "test:durable/entries_behavior_test.go#TestDefineEntryGuardsByKindAndDecodesTypedData",
-        "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground"
+        "test:durable/entries_behavior_test.go#TestDefineEntryGuardsByKindAndDecodesTypedData"
       ]
     },
     {
@@ -208773,9 +208783,9 @@
         "call:durable/entries.go#Entry.Is"
       ],
       "evidence": [
+        "test:durable/codemode/lone_surrogate_tool_result_test.go#TestAToolResultWithALoneSurrogateKeepsItThroughTheHarnessAndTheEntry",
         "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments",
-        "test:durable/entries_behavior_test.go#TestDefineEntryGuardsByKindAndDecodesTypedData",
-        "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground"
+        "test:durable/entries_behavior_test.go#TestDefineEntryGuardsByKindAndDecodesTypedData"
       ]
     },
     {
@@ -208795,9 +208805,9 @@
         "call:durable/entries.go#Entry.Is"
       ],
       "evidence": [
+        "test:durable/codemode/lone_surrogate_tool_result_test.go#TestAToolResultWithALoneSurrogateKeepsItThroughTheHarnessAndTheEntry",
         "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments",
-        "test:durable/entries_behavior_test.go#TestDefineEntryGuardsByKindAndDecodesTypedData",
-        "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground"
+        "test:durable/entries_behavior_test.go#TestDefineEntryGuardsByKindAndDecodesTypedData"
       ]
     },
     {
@@ -212289,8 +212299,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks",
-        "test:durable/core/driver/harness_nested_core_test.go#TestCoreABrokenStructuredOutputOfAModelIssuedCallIsReported",
-        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
+        "test:durable/core/driver/harness_inspect_core_test.go#TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode",
+        "test:durable/core/driver/harness_nested_core_test.go#TestCoreABrokenStructuredOutputOfAModelIssuedCallIsReported"
       ]
     },
     {
@@ -212311,8 +212321,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks",
-        "test:durable/core/driver/harness_reports_core_test.go#TestReports",
-        "test:durable/harness/harness_tasks_recovery_test.go#TestDefinitionHandover"
+        "test:durable/core/driver/harness_inspect_core_test.go#TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode",
+        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
       ]
     },
     {
@@ -217913,9 +217923,9 @@
         "call:durable/harness/tool.go#AppendToolResult"
       ],
       "evidence": [
+        "test:durable/codemode/lone_surrogate_tool_result_test.go#TestAToolResultWithALoneSurrogateKeepsItThroughTheHarnessAndTheEntry",
         "test:durable/examples/chat_examples_test.go#TestExample16CodingTools",
-        "test:durable/examples/inbox_override_examples_test.go#TestExample29ToolOverride",
-        "test:durable/examples/lifecycle_examples_test.go#TestExample30ReloadAndRestart"
+        "test:durable/examples/inbox_override_examples_test.go#TestExample29ToolOverride"
       ]
     },
     {
@@ -219650,6 +219660,7 @@
       ],
       "evidence": [
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
+        "test:durable/codemode/lone_surrogate_preview_test.go#TestAPreviewCutInsideASurrogatePairKeepsItsEscapeLikePi",
         "test:durable/codemode/models_test.go#TestCodeModeModels"
       ]
     },
@@ -219692,8 +219703,8 @@
       ],
       "evidence": [
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch",
-        "test:durable/codemode/models_test.go#TestCodeModeModelCallsRunInTheCallingPhasesTrace"
+        "test:durable/codemode/lone_surrogate_preview_test.go#TestAPreviewCutInsideASurrogatePairKeepsItsEscapeLikePi",
+        "test:durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch"
       ]
     },
     {
@@ -238796,7 +238807,8 @@
       ],
       "evidence": [
         "test:env/connection_request_test.go#TestConnectionRequestSendsPayloadsAndReportsTheAnsweringSession",
-        "test:env/connection_request_test.go#TestReplyCarriesTheFramePayloadOfAPread"
+        "test:env/connection_request_test.go#TestReplyCarriesTheFramePayloadOfAPread",
+        "test:env/frame_limit_test.go#TestRequestOverTheFrameLimitFailsWithoutReachingTheDaemon"
       ]
     },
     {

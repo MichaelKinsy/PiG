@@ -51,7 +51,9 @@ func TestUnknownEventHandlerIsAnErrorInEverySDK(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			build := exec.CommandContext(testbudget.Context(t), "cargo", "build", "--release", "--quiet")
+			buildCtx, cancelBuild := buildContext(t)
+			defer cancelBuild()
+			build := exec.CommandContext(buildCtx, "cargo", "build", "--release", "--quiet")
 			build.Dir = dir
 			if out, err := build.CombinedOutput(); err != nil {
 				t.Fatalf("build rust fixture: %v\n%s", err, out)

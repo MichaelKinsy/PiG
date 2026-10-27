@@ -5,6 +5,7 @@ package ai
 import (
 	"errors"
 	"fmt"
+	"math"
 	"testing"
 )
 
@@ -25,7 +26,8 @@ func TestRequestBuildDoesNotCopyWhatItDoesNotSend(t *testing.T) {
 				provider = newMatrixProvider(t, model, "http://127.0.0.1:1", false)
 			}
 			t.Cleanup(func() { _ = provider.Close() })
-			allocs := func(details func(int) any) float64 {
+			// prepare builds the history a request is built from; the closure it returns is the measured work.
+			prepare := func(details func(int) any) func() {
 				messages := transformHistory(turns)
 				for i := range messages {
 					switch message := messages[i].(type) {
@@ -39,20 +41,26 @@ func TestRequestBuildDoesNotCopyWhatItDoesNotSend(t *testing.T) {
 				}
 				transcript := NormalizeContext(Context{Messages: messages})
 				options := StreamOptions{APIKey: "matrix-key", Transport: TransportSSE, OnPayload: func(any, *Model) (any, error) { return nil, errors.New("stop") }}
-				return testing.AllocsPerRun(3, func() {
+				return func() {
 					if stream, err := provider.Stream(t.Context(), transcript, options); err == nil && stream != nil {
 						_ = stream.Result()
 					}
-				})
+				}
 			}
-			plain := allocs(func(int) any { return nil })
-			heavy := allocs(func(i int) any {
+			plainBuild := prepare(func(int) any { return nil })
+			heavyBuild := prepare(func(i int) any {
 				rows := make([]any, 16)
 				for j := range rows {
 					rows[j] = map[string]any{"line": float64(j), "text": fmt.Sprintf("row %d of result %d", j, i)}
 				}
 				return map[string]any{"rows": rows, "path": fmt.Sprintf("file-%d", i)}
 			})
+			// testing.AllocsPerRun counts every allocation in the process, so a goroutine still running from an earlier test (or the runtime's own) adds to a run whatever the build does, and the two histories are measured at different moments. Such noise only adds, never subtracts: the least of several interleaved rounds is the build's own count for each history.
+			plain, heavy := math.Inf(1), math.Inf(1)
+			for range 9 {
+				plain = min(plain, testing.AllocsPerRun(3, plainBuild))
+				heavy = min(heavy, testing.AllocsPerRun(3, heavyBuild))
+			}
 			// One details tree is 18 objects; a single deep copy of the history adds 3*turns of them.
 			if heavy-plain >= turns {
 				t.Fatalf("the request build allocates %.0f times with tool-result details and %.0f times without: it copies data it does not send", heavy, plain)

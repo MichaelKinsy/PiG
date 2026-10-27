@@ -1,9 +1,7 @@
 package subprocess
 
 import (
-	"context"
 	"testing"
-	"time"
 )
 
 func TestReloadReport_CapturesPlacementAndCacheHits(t *testing.T) {
@@ -17,7 +15,7 @@ func TestReloadReport_CapturesPlacementAndCacheHits(t *testing.T) {
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
 	t.Cleanup(func() { h.Shutdown("test done") })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 
 	if _, err := h.Reload(ctx); err != nil {
@@ -76,7 +74,7 @@ func TestReloadReport_QuarantineFissionsAppearInReport(t *testing.T) {
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
 	t.Cleanup(func() { h.Shutdown("test done") })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 
 	if _, err := h.Reload(ctx); err != nil {

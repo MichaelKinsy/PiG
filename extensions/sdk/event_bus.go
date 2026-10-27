@@ -200,6 +200,9 @@ func (b EventBus) Emit(channel string, data any) error {
 
 var errNoFactoryHost = errors.New("PIG_EXT_SOCKET is not set, so this extension was not launched by pig")
 
+// errExtensionAlreadyServing is what a second concurrent serve of one Extension returns.
+var errExtensionAlreadyServing = errors.New("this extension is already serving a connection; an Extension serves one connection at a time, so build a new one per connection")
+
 // busConn is the connection a bus call made outside a request rides: the running extension's, or the factory's while it loads. It is nil before the first factory-time call.
 func (e *Extension) busConn() *conn {
 	e.eventMu.Lock()

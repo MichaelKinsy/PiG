@@ -55,7 +55,7 @@ func runSessionEntryRPC(t *testing.T, binary, home, path string, commands ...str
 // runSessionEntryRPCResponses returns every response line, successful or not, by request ID.
 func runSessionEntryRPCResponses(t *testing.T, binary, home, path string, commands ...string) map[string]string {
 	t.Helper()
-	cmd := exec.Command(binary, "--offline", "--mode", "rpc", "--model", "test-faux/echo", "--session", path, "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-context-files")
+	cmd := exec.Command(binary, "--offline", "--mode", "rpc", "--model", "test-faux/faux-1", "--session", path, "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-context-files")
 	cmd.Dir = home
 	cmd.Env = append(os.Environ(), "PIG_TEST_FAUX=1", "PIG_HOME="+home, "PIG_CODING_AGENT_DIR="+filepath.Join(home, "agent"), "PI_CODING_AGENT_DIR="+filepath.Join(home, "agent"))
 	cmd.Stdin = strings.NewReader(strings.Join(commands, "\n") + "\n")

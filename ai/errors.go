@@ -12,6 +12,7 @@ import (
 	"unicode"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 const MaxProviderErrorBodyChars = 4000
@@ -160,6 +161,10 @@ var safeJSONEncoders = sync.Pool{New: func() any {
 func (state *safeJSONEncoder) stringify(value any) []byte {
 	state.buffer.Reset()
 	if err := state.encoder.Encode(value); err != nil {
+		// encoding/json refuses a NaN or an infinity, which JSON.stringify writes as null: only a value with no JSON form is written as String(value).
+		if stringified, stringifyErr := jsstring.MarshalJSON(value); stringifyErr == nil {
+			return append(state.canonical[:0], stringified...)
+		}
 		return append(state.canonical[:0], fmt.Sprint(value)...)
 	}
 	encoded := bytes.TrimSuffix(state.buffer.Bytes(), []byte("\n"))

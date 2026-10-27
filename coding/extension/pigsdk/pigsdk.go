@@ -38,11 +38,13 @@
 package pigsdk
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"errors"
 	"slices"
 
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -228,10 +230,16 @@ func (b sdkBundle) sync(configRoot string) ([]string, error) {
 	}
 	written := make([]string, 0, len(b.files))
 	made := map[string]bool{staging: true}
-	for _, name := range b.files {
-		data, err := fs.ReadFile(b.fsys, name)
+	for _, embedded := range b.files {
+		data, err := fs.ReadFile(b.fsys, embedded)
 		if err != nil {
-			return nil, fmt.Errorf("pig reload: read embedded %s/%s: %w", b.lang, name, err)
+			return nil, fmt.Errorf("pig reload: read embedded %s/%s: %w", b.lang, embedded, err)
+		}
+		name := stagedName(embedded)
+		if name != embedded {
+			if data, err = gunzip(data); err != nil {
+				return nil, fmt.Errorf("pig reload: decompress embedded %s/%s: %w", b.lang, embedded, err)
+			}
 		}
 		target := filepath.Join(staging, filepath.FromSlash(name))
 		if parent := filepath.Dir(target); !made[parent] {
@@ -254,6 +262,18 @@ func (b sdkBundle) sync(configRoot string) ([]string, error) {
 	renamed = true
 	sort.Strings(written)
 	return written, nil
+}
+
+// stagedName is the name a file of the bundle is staged under: an embedded name ending in .gz holds the gzip of the file without it.
+func stagedName(embedded string) string { return strings.TrimSuffix(embedded, ".gz") }
+
+// gunzip expands an embedded file that is stored compressed. The bundles compress their generated unicode tables (the Python and Rust SDKs carry them as 186 KB and 189 KB of text); staging is the one place that reads the text, and the hash of the bundle covers the compressed bytes, so a start that stages nothing does not expand them.
+func gunzip(data []byte) ([]byte, error) {
+	reader, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(reader)
 }
 
 // stagePrefix names the private trees syncs build beside the staged directory dir, and the aside copies of the tree they replace. It names dir itself, so a sync never touches another build's trees.

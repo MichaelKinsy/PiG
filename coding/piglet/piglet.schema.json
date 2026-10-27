@@ -653,6 +653,9 @@
           "enum": [
             "fused"
           ]
+        },
+        "allowOverlays": {
+          "type": "boolean"
         }
       }
     },

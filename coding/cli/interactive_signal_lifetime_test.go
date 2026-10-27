@@ -164,7 +164,10 @@ func TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain(t *testing.T) {
 				t.Fatalf("signal interrupted pending disposal: %v\n%s", err, output.since(0))
 			case <-time.After(1500 * time.Millisecond):
 			}
-			// Keep late key releases arriving while cleanup finishes, so a re-sent HUP lands during the terminal drain rather than after process exit. Pi's drain ends once the terminal is idle for 50 ms (terminal.ts drainInput), so the writer must not depend on this test process's scheduler: under a loaded -race run a stall of that length ended the drain, the process exited, and the HUP found it gone ("process left before drain signal"). A separate process writes the keys. It marks its first key, and the handler is released only after that mark, so a slow writer start-up cannot leave the drain without input either. The writer exits with status 1 when a write fails.
+			// The third signal must land during the terminal drain, so it follows the first sign of that drain.
+			// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:4263-4279 (shutdown({ fromSignal }) keeps the handlers registered, disposes the runtime before it touches the terminal, drains input, then exits) and packages/tui/src/terminal.ts:435-466 (drainInput writes the pop of the Kitty keyboard protocol first, then drains until the terminal has been idle for 50 ms or 1 s has passed).
+			// The pop is therefore the first sign of the drain, and it follows the extension's disposal. A fixed wait after `complete` stood in for it: under a loaded -race run the key writer's own gap (the shell forks a sleep for every key), or this test's scheduler, passed 50 ms, the drain ended, the process exited, and the HUP found it gone ("process left before drain signal").
+			// Late key releases keep arriving meanwhile, so the drain outlasts a slow reaction here; a separate process writes them, so this test's scheduler does not starve them. It marks its first key, and the handler is released only after that mark, so a slow writer start-up cannot leave the drain without input either. The writer exits with status 1 when a write fails.
 			keysStarted := filepath.Join(root, "keys")
 			keys := exec.CommandContext(ctx, "sh", "-c", `printf '\033[97;1:3u' && : >"$1" && while printf '\033[97;1:3u'; do sleep 0.005; done; exit 1`, "sh", keysStarted)
 			keys.Stdout = master
@@ -208,18 +211,28 @@ func TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain(t *testing.T) {
 				case <-keyTick.C:
 				}
 			}
+
+			drainMark := output.mark()
 			if err := os.WriteFile(release, []byte("release"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			// The drain cannot end before 50 ms after the completion file appears (it waits for the terminal to be idle that long), so a HUP
-			// sent as soon as the file is seen lands inside the retained-handler window whatever the machine is doing. Waiting any fixed time
-			// first made the test the loser of a race: a writer or this process starved for that long let the drain end and the process exit
-			// before the signal ("process left before drain signal").
-			waitFile(complete)
+			drainTick := time.NewTicker(time.Millisecond)
+			defer drainTick.Stop()
+			for !bytes.Contains(output.since(drainMark), []byte("\x1b[<u")) {
+				select {
+				case err := <-done:
+					t.Fatalf("process exited before the terminal drain began: %v\n%s", err, output.since(0))
+				case <-ctx.Done():
+					t.Fatalf("the terminal drain did not begin: %v\n%s", ctx.Err(), output.since(0))
+				case <-drainTick.C:
+				}
+			}
+			if _, err := os.Stat(complete); err != nil {
+				t.Fatalf("the terminal drain began before the extension's disposal completed: %v", err)
+			}
 			if err := cmd.Process.Signal(syscall.SIGHUP); err != nil {
 				t.Fatalf("process left before drain signal: %v", err)
 			}
-			time.Sleep(50 * time.Millisecond)
 			if err := stopWriting(); err != nil {
 				t.Fatal(err)
 			}

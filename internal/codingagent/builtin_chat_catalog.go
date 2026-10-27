@@ -14,11 +14,13 @@ type builtinChatCatalogs struct {
 	stripped   []string
 	mu         sync.RWMutex
 	byProvider map[string][]ai.GeneratedModel
+	// openRouterListed is the OpenRouter list builtinChatCatalogListed derives, built on first use.
+	openRouterListed []ai.GeneratedModel
 }
 
 var currentBuiltinChatCatalogs atomic.Pointer[builtinChatCatalogs]
 
-// builtinChatCatalog returns the models ai.ListModels(id) lists, in the same order, copying them at most once rather than on every call. The list is shared, and may be a window of ai.GeneratedModels itself, so callers read it and never write an element; its capacity is clipped, so an append copies it.
+// builtinChatCatalog returns the models of Pi's bundled catalog that ai.ListModels(id) lists, without the OpenRouter routing variants it derives (D199; builtinChatCatalogListed lists them), in the same order, copying them at most once rather than on every call. The list is shared, and may be a window of ai.GeneratedModels itself, so callers read it and never write an element; its capacity is clipped, so an append copies it.
 func builtinChatCatalog(id string) []ai.GeneratedModel {
 	stripped := pigstrip.IDs(pigstrip.ListAPIs)
 	catalogs := currentBuiltinChatCatalogs.Load()
@@ -72,4 +74,32 @@ func builtinChatCatalog(id string) []ai.GeneratedModel {
 	}
 	catalogs.byProvider[id] = models
 	return models
+}
+
+// builtinChatCatalogListed is builtinChatCatalog for a caller that lists the catalog's models: the bundled catalog of OpenRouter also holds each
+// model's routing variants, derived once from the bundled models (ai.WithOpenRouterRoutingVariants) the first time the list is read, so a caller that
+// only resolves a model or counts the catalog (builtinChatCatalog) builds none. The list is shared, and read-only like builtinChatCatalog's.
+//
+// pig divergence (D199): Pi lists no OpenRouter routing variant; PiG derives them from the bundled models instead of storing them.
+func builtinChatCatalogListed(id string) []ai.GeneratedModel {
+	catalog := builtinChatCatalog(id)
+	if id != "openrouter" || len(catalog) == 0 { //portlint:allow providerliteral the variants are OpenRouter's own routing suffixes
+		return catalog
+	}
+	catalogs := currentBuiltinChatCatalogs.Load()
+	catalogs.mu.RLock()
+	listed := catalogs.openRouterListed
+	catalogs.mu.RUnlock()
+	if listed != nil {
+		return listed
+	}
+	listed = ai.WithOpenRouterRoutingVariants(catalog)
+	listed = listed[:len(listed):len(listed)]
+	catalogs.mu.Lock()
+	defer catalogs.mu.Unlock()
+	if catalogs.openRouterListed != nil {
+		return catalogs.openRouterListed
+	}
+	catalogs.openRouterListed = listed
+	return listed
 }

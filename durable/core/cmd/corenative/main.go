@@ -35,9 +35,6 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/contracttest/guard"
 )
 
-// maxPayload bounds one request's payload: a corrupt length must not allocate before the read fails.
-const maxPayload = 1 << 30
-
 type server struct {
 	in       *bufio.Reader
 	out      *bufio.Writer
@@ -62,8 +59,8 @@ func (s *server) read() (request, error) {
 		return request{}, err
 	}
 	n := binary.LittleEndian.Uint32(head[18:])
-	if n > maxPayload {
-		return request{}, fmt.Errorf("request payload of %d bytes is over the %d byte bound", n, maxPayload)
+	if n > abi.MaxEventPayload {
+		return request{}, fmt.Errorf("request payload of %d bytes is over the %d byte bound", n, abi.MaxEventPayload)
 	}
 	r := request{op: head[0], handle: binary.LittleEndian.Uint32(head[1:]), kind: head[5],
 		now: math.Float64frombits(binary.LittleEndian.Uint64(head[6:])), origin: binary.LittleEndian.Uint32(head[14:]), payload: make([]byte, n)}

@@ -2579,6 +2579,46 @@ Remove when: Pi refuses to send a bearer token over HTTP (its SDK adds an HTTPS 
 
 SCRUTINIZED:approved
 
+## D198 The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`, `EncodeBuilder`, `IsCodec`)
+
+What: pi-ai's `Type` is TypeBox 1.3.27's builder namespace. The Go (`sdk.Type`), Rust (`pig_sdk::Type`) and Python (`pig_sdk.Type`) ports serve its schema constructors and guards, but not the six members that attach a JavaScript decode/encode callback pair to a schema (`Codec(type).Decode(f).Encode(g)`, `Decode(type, f)`, `Encode(type, g)`, the `DecodeBuilder` and `EncodeBuilder` classes, and the guard `IsCodec`). They are absent: a call fails to compile in Go and Rust and raises `AttributeError` in Python. The Node runtime serves TypeBox's own and behaves as in Pi.
+
+Why: a Codec's callbacks have no consumer outside `Value.Decode` and `Value.Encode` (`typebox/build/value/codec/callback.mjs`, the only reader of `~codec`), which pi-ai does not export (`ai/src/index.ts` exports `Static`, `TSchema` and `Type` from typebox) and no SDK serves. Pi's own tool-argument validation does not call them (`ai/src/utils/validation.ts` uses `Value.Convert` and `Compile(schema).Check`). A port could store the callbacks, but nothing in any SDK or in the host could ever call them, which is an inert member that accepts the call and does nothing.
+
+Pi bug: none.
+
+Scope: the six members above only, in `extensions/sdk/type_schema.go`, `extensions/sdk-py/pig_sdk/type_schema.py` and `extensions/sdk-rs/src/type_schema.rs`. Every other member of `Type` is ported and tested against Pi's own answers (`test/parity/sdk-vectors/pi-ai/Type.json`); the schemas `Type` builds are plain JSON on the wire, so a schema that a Node extension builds with a Codec registers the same JSON it would without one (`~codec` is a hidden member that JSON drops).
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-24 (Codec family of `Type`: numbered divergence; `Refine` and `IsRefine` are not part of it: the SDKs run an extension tool's refinements themselves).
+
+SCRUTINIZED:approved
+
+Remove when: an SDK serves `Value.Decode`/`Value.Encode` (or a host call runs a codec) so a stored callback pair has a consumer.
+
+Call-site markers: `extensions/sdk/type_schema.go` (`Type`), `extensions/sdk-py/pig_sdk/type_schema.py` (module doc), `extensions/sdk-rs/src/type_schema.rs` (module doc).
+
+Evidence: `TestTypeOmitsTheCodecFamily` (`extensions/sdk/type_vectors_test.go`) and `test_type_omits_the_codec_family` (`extensions/sdk-py/tests/test_pi_ai_type_vectors.py`) require that the six members do not exist; the Rust members are absent by construction (`type_schema.rs` doctest `compile_fail`). The Node row of `TestConformance_TypeSchemaToolParametersAgreeAcrossSDKs` (`test/extension-conformance/type_schema_registration_test.go`) runs TypeBox's own `Type`.
+
+## D199 PiG lists OpenRouter's :nitro and :floor routing variants beside every OpenRouter model, where Pi lists only what OpenRouter's /models returns
+
+What: for every `openrouter` chat model of Pi's catalog that does not already end in a routing variant, PiG also lists `<id>:nitro` and `<id>:floor` (named `<name> (nitro)` and `<name> (floor)`), right after the model, and resolves a lookup of either. The variants are derived from the base entry when listed or looked up; the bundled catalog (`ai.GeneratedModels`) stays exactly Pi's. A variant is a copy of its base entry in everything but its id, name and JSON record: API, base URL, prices, limits, input types, reasoning and thinking levels are the base model's. `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDKs list them like any other built-in model.
+
+Why: OpenRouter accepts `:nitro` (providers sorted by throughput, priority service tier endpoints admitted) and `:floor` (providers sorted by price, flex service tier endpoints admitted) on every model ID but never lists them in `GET /api/v1/models`, which is where Pi's catalog comes from, so a user cannot pick them in Pi's selector (issue #315). OpenRouter's variants page (https://openrouter.ai/docs/guides/routing/model-variants/overview, "Offering routing variants in a model picker") tells clients to derive them from the base entries and to read the metadata from the base entry.
+
+Scope: one rule, `ai/openrouter_variants.go` (`OpenRouterRoutingVariants`, `OpenRouterVariant`, `WithOpenRouterRoutingVariants`), data-driven from OpenRouter's documented suffix list; no model is named. Used by `ai.ListModels` (OpenRouter and the whole catalog), `ai.LookupModel` and `ai.LookupModelExact` (a variant the catalog does not list is derived from its base and cached), `builtinChatCatalogListed` (the registry's selector, `--list-models`, RPC and SDK lists; built on first use, so a caller that only resolves a model builds none), `GetProviderModelDataByID` and the model reference resolver (`withNamedRoutingVariants`: a reference that names `:nitro` or `:floor` finds the variant of the model it means). A partial model text (`--model 4o`, scoped-model patterns, the resolver's fuzzy match) is not matched against a variant unless the text itself names `:nitro` or `:floor`, so every text Pi resolves resolves to the same model here (Pi's reverse-collation tie break would otherwise prefer `:nitro`). The listed price is the base model's rate; OpenRouter bills a request at the rate of the endpoint that served it (a priority endpoint for `:nitro`, a flex endpoint for `:floor`). Image and classifier models, other providers, the remote catalog overlay and the other routing variants (`:exacto`, `:online`) are unchanged.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-24 (issue #315, an additive extension that overlaps Pi's catalog).
+
+Call-site markers: `ai/openrouter_variants.go` (`OpenRouterVariant`), `ai/registry.go` (`ListModels`, `LookupModel`, `LookupModelExact`), `internal/codingagent/builtin_chat_catalog.go` (`builtinChatCatalogListed`), `internal/codingagent/model_catalog_data.go` (`GetProviderModelDataByID`), `internal/codingagent/model_pattern.go` (`withNamedRoutingVariants`, `fuzzyMatches`).
+
+Evidence: `TestOpenRouterRoutingVariantsMirrorTheirBaseEntries`, `TestOpenRouterRoutingVariantsAreLookedUpFromTheirBase` and `TestRewriteRecordIdentity` (`ai/openrouter_variants_test.go`) pin the rule from OpenRouter's documentation: both variants after each base entry, equal to the base but for id, name and record, found by lookup, none on another provider, none stored in `GeneratedModels`; `TestPartialModelTextIgnoresOpenRouterRoutingVariants` (`internal/codingagent/model_pattern_openrouter_variants_test.go`) pins the resolver rule against the failure the paired `TestResolveCliModelAndScopeMatchPi` showed when a variant was a candidate (`--model 4o` resolved to `:nitro`, Pi to `:batch`).
+
+Parity allowance: the bundled catalog and every comparison of it with Pi (`TestCatalogModelJSONMatchesPiForEveryBuiltinModel`, `TestGeneratedCatalogsMatchPublishedPackage`, `TestModelObjectsMatchPisModelObjects`) are unchanged. The tests that compare a provider list with Pi's (`TestBuiltinCatalogsMatchPinnedProviderDataModules`, `TestProviderCatalogExportsMatchPinnedData`, the Anthropic catalog denominators, `TestModelRegistryMatchesPi`) leave the derived variants out of the comparison. `TestResolveCliModelAndScopeMatchPi` is unchanged and still equal to Pi.
+
+Remove when: Pi lists the routing variants (or OpenRouter lists them in `/models`), or the owner reverses the decision; then the derivation in `ai/openrouter_variants.go`, its markers, the allowance in the oracle test and this record go.
+
+SCRUTINIZED:approved
+
 ## D200 With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and fails with Pi's error where Pi's home lookup would run
 
 What: on a host where Node's `os.homedir()` throws (no `HOME`, and no entry for the process's user in the system's user database: a container run as a uid its passwd file does not list), the pinned Pi 1.4.0 fails to load in every mode, `--version` and `list` included. It exits 1 with Node's uncaught `SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)`: `tools-manager.ts:11` evaluates `getBinDir()` at import, `getAgentDir()` expands even an explicit `PI_CODING_AGENT_DIR` through `normalizePath`, and `normalizePath` calls `homedir()` before it looks at its input (`utils/paths.ts:89`). PiG runs `--version`, `list` and every other command that loads no resources, and fails with the same message (exit 1, nothing on stdout) only where Pi's `resolve()` would look the home directory up, `getHomeDir()` at `package-manager.ts:2464`: startup in print, RPC and interactive mode, a reload and `pig config`.
@@ -2598,5 +2638,27 @@ Evidence: `TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands`
 Parity allowance: `TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands` is the allowance: the Pi half pins the crash, the PiG half pins the run. No paired corpus runs without a home directory, so none changes.
 
 Remove when: Pi stops resolving the home directory at import (so `--version` and `list` run there without one), or an owner decision reverses this one; then PiG's startup fails at the same point as Pi's, the markers, the allowance test and this record go.
+
+SCRUTINIZED:approved
+
+## D203 registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as a configured key
+
+What: Pi's `registerProvider(id, { apiKey: "" })` (the extension registration of `ModelRuntime` and `ModelRegistry`) keeps the empty string as the provider's configured raw key: `configuredApiKey` is `extension?.apiKey ?? config?.apiKey` (`packages/coding-agent/src/core/provider-composer.ts:397`), and `""` is not `undefined`. `configuredRequestAuthStatus` then reports `{ configured: true, source: "fallback" }` (`provider-composer.ts:723-736`, the `"fallback"` source is the extension's literal key), and the composed API-key `check` returns a configured check (`provider-composer.ts:450-457`: an empty key has no environment names to miss). After the availability refresh settles, `hasConfiguredAuth(provider)` is true, `getProviderAuthStatus` reads configured, and the provider's models are available. PiG reads an empty `apiKey` as no key (the registration's `APIKey` is a Go string, and `""` means unset on every path that reads it): the provider stays unconfigured and its models unavailable until a stored credential, an environment variable or a non-empty key supplies one.
+
+Why: Pi's behaviour is an accident of `??` on a string. The empty string is not a form the option documents (`packages/coding-agent/src/core/extensions/types.ts:1936`: "API key literal, env interpolation ($ENV_VAR or ${ENV_VAR}), or leading !command"), and Pi treats `""` as missing where it validates the same option (`provider-composer.ts:318`, `!config.apiKey`). Its effect is a provider that reads configured and available whose every request fails with `No API key for provider: <id>` (for example `packages/ai/src/api/openai-completions.ts:95`), so an extension that passes `process.env.KEY ?? ""` gets a selectable provider that cannot answer. Distinguishing `""` from an absent key needs presence tracking on the public `ProviderConfigInput.APIKey` string and on the models.json path, for a quirk no caller can use.
+
+Pi bug: the inconsistency above: `""` is a configured key to `configuredApiKey`, `configuredRequestAuthStatus` and the composed `check`, and a missing one to `provider-composer.ts:318`.
+
+Scope: the extension registration (`ModelRuntime.RegisterProvider`, `ModelRegistry.registerProvider` over every SDK, `ProviderConfigInput.APIKey`) and the configured-auth reads that follow it: `ConfiguredRequestAuthStatus`, the registration's request auth, and `mergeProviderConfigInput`, whose merge keeps the earlier key when a re-registration passes `""` (Pi's merge keeps the earlier key only for `undefined`, `model-runtime.ts:921-933`). A non-empty key, `$VAR` and `!command` keys behave as in Pi.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-25 (record, no port).
+
+Call-site markers: `internal/codingagent/model_configured_auth_status.go` (`ConfiguredRequestAuthStatus`), `internal/codingagent/extension_model_registry.go` (the registration's request auth and its configured status), `internal/codingagent/native_model_runtime.go` (`mergeProviderConfigInput`).
+
+Evidence: `TestRegisterProviderWithEmptyAPIKeyIsNotConfigured` (`coding/register_provider_empty_apikey_test.go`) registers one provider with `APIKey: ""` and one with a literal key: after the refresh settles the first is unconfigured and its status unconfigured, the second configured. Pi's side was read through the session-graph `ModelRegistry` over Pi's own `ModelRuntime` (the Node row of `TestSessionGraphModelRegistryAcrossSDKs`): `{ configured: true, source: "fallback" }`, available `true`, for `apiKey: ""`.
+
+Parity allowance: no parity scenario registers a provider with an empty `apiKey`.
+
+Remove when: Pi treats `""` as missing in `configuredApiKey`, or the SDK API gains explicit presence for `apiKey` (a pointer or an option) and an owner decision asks for Pi's behaviour; then the three markers, the test and this record go.
 
 SCRUTINIZED:approved

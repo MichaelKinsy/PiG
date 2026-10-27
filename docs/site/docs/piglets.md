@@ -98,7 +98,7 @@ build:
 | `slots` | Replace a part of PiG with a fused Go member. `frontend` is the only slot (D91); see [Piglet Binaries](piglet-binaries.md#frontend-members). |
 | `strip` | Strip built-in tools, slash commands, built-in extensions, model APIs, and features; a Piglet Binary compiles most of them out (D92). |
 | `release` | Set release identity. |
-| `build` | Set portable Binary target, output, and realization requirements. |
+| `build` | Set portable Binary target, output, and realization requirements, and whether the Binary [accepts overlay Piglets](piglet-binaries.md#accept-overlay-piglets) (`allowOverlays`, D202). |
 
 ## Model selection
 

@@ -418,16 +418,26 @@ func TestRPCEventLinesMatchTheReplacedEncoderForFauxSessions(t *testing.T) {
 	}
 }
 
-// A tool call that cannot be encoded fails when the event is converted, which ends the RPC output, not when the line is written, where a failed line is dropped.
-func TestRPCEventLinesFailAtConversionForAnUnencodableToolCall(t *testing.T) {
+// Pi keeps the Infinity JSON.parse reads for 1e999 in a tool call's arguments, and the JSON line of the event, JSON.stringify, writes it as null: the event converts,
+// and its line carries null for each non-finite number (captured with Pi's own stringify; see nonfinite_tool_args_test.go).
+func TestRPCEventLinesWriteNullForANonFiniteToolCall(t *testing.T) {
 	partial := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "c", Name: "t"}}}
 	assistant := agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Usage: &ai.Usage{}, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "x"}}}}
 	for _, value := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
 		event := agent.MessageUpdateEvent{Message: assistant, AssistantMessageEvent: ai.ToolCallEndEvent{ContentIndex: 0, Partial: partial,
 			ToolCall: ai.ToolCall{ID: "c", Name: "t", Arguments: ai.JsonObject{"nested": []any{ai.JsonObject{"k": value}}}}}}
-		requireLegacyRPCLines(t, fmt.Sprintf("toolcall_end %v", value), event)
-		if _, err := rpcAgentEvent(event); err == nil {
-			t.Fatalf("toolcall_end with %v converted; want the conversion to fail", value)
+		frames, err := rpcAgentEvent(event)
+		if err != nil {
+			t.Fatalf("toolcall_end with %v did not convert: %v", value, err)
+		}
+		line, err := rpcclient.SerializeJsonLine(frames[0])
+		if err != nil || !strings.Contains(string(line), `"arguments":{"nested":[{"k":null}]}`) {
+			t.Fatalf("toolcall_end with %v: line %s, %v", value, line, err)
+		}
+		var written bytes.Buffer
+		writeJSONLine(&written, frames[0])
+		if !bytes.Equal(written.Bytes(), line) {
+			t.Fatalf("written %q, serialized %q", written.Bytes(), line)
 		}
 	}
 }

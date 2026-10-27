@@ -228,3 +228,39 @@ func TestVerifyRegisteredClosure_UnexpectedPackedFails(t *testing.T) {
 		t.Fatalf("VerifyRegisteredClosure(unexpected packed) = %v, want an unexpected-packed error", err)
 	}
 }
+
+// TestOverlayBase: only a Piglet Binary whose baked Piglet sets build.allowOverlays offers a base for an overlay, with the
+// digest of the baked bytes; stock pig, an unmarked Binary and a Binary that sets the flag false offer none. Name is the
+// baked Piglet's name from the closure.
+func TestOverlayBase(t *testing.T) {
+	swapBaked(t, nil, nil)
+	if OverlayBase() != nil || Name() != "" {
+		t.Fatalf("stock pig offered an overlay base %+v or a name %q", OverlayBase(), Name())
+	}
+	for _, tc := range []struct {
+		name string
+		yaml string
+		want bool
+	}{
+		{"set", "name: t\nmodel:\n  provider: p\n  name: m\nbuild:\n  allowOverlays: true\n", true},
+		{"flag only", "name: t\nbuild:\n  allowOverlays: true\n", true},
+		{"false", "name: t\nmodel:\n  provider: p\n  name: m\nbuild:\n  allowOverlays: false\n", false},
+		{"unset", "name: t\nmodel:\n  provider: p\n  name: m\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			yaml := []byte(tc.yaml)
+			record := resolutionFor(t, yaml)
+			swapBaked(t, yaml, marshal(t, record))
+			base := OverlayBase()
+			if (base != nil) != tc.want {
+				t.Fatalf("OverlayBase() = %+v, want present = %t", base, tc.want)
+			}
+			if tc.want && (base.Piglet.Name != "t" || base.Digest != "sha256:"+hex.EncodeToString(sha256Sum(yaml)) || base.Digest != record.Resolution.EffectiveDigest) {
+				t.Fatalf("base = %+v, want the baked Piglet and its digest", base)
+			}
+			if Name() != "t" {
+				t.Fatalf("Name() = %q, want t", Name())
+			}
+		})
+	}
+}

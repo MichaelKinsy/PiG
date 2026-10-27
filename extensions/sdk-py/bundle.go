@@ -10,27 +10,31 @@
 package pysdk
 
 import (
-	"embed"
 	"io/fs"
 	"slices"
 )
 
-//go:embed LICENSE pig_sdk/*.py pig_sdk/tui/*.py pyproject.toml
-var Source embed.FS
+// bundle_embed.go lists the package's modules, its license and pyproject.toml. The unicode property tables (pig_sdk/tui/_tables.py, 186 KB of generated text) are embedded as _tables.py.gz, an eighth of the size, which staging writes back as _tables.py (coding/extension/pigsdk): go:embed cannot compress, so the list is generated. TestEveryPackageSourceIsBundled fails when it and the source tree disagree.
+//
+//go:generate go run ../../automation/gen/embed-bundle.go -pkg pysdk -out bundle_embed.go -skip _tables.py LICENSE pyproject.toml pig_sdk/*.py pig_sdk/tui/*.py pig_sdk/tui/*.py.gz
 
 // BundledFiles lists the embedded files, relative to the SDK root, in a stable
-// order. Paths use forward slashes; a stager recreates subdirectories.
+// order. Paths use forward slashes; a stager recreates subdirectories. A name
+// ending in .gz is the gzip of the file the stager writes under the name
+// without it.
+//
+// pig_sdk/__init__.py imports pig_sdk.tui at load, so the subpackage is staged with the package.
 func BundledFiles() []string {
 	var files []string
-	// pig_sdk/__init__.py imports pig_sdk.tui at load, so the subpackage is staged with the package.
-	for _, pattern := range []string{"pig_sdk/*.py", "pig_sdk/tui/*.py"} {
-		matches, err := fs.Glob(Source, pattern)
-		if err != nil {
-			panic(err)
+	err := fs.WalkDir(Source, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err == nil && !entry.IsDir() {
+			files = append(files, path)
 		}
-		files = append(files, matches...)
+		return err
+	})
+	if err != nil {
+		panic(err)
 	}
-	files = append(files, "LICENSE", "pyproject.toml")
 	slices.Sort(files)
 	return files
 }

@@ -7,7 +7,21 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 )
+
+// The pig command installs the classification (coding/cli); the host does not link it.
+func init() {
+	SetDriftClassifier(func(output []byte, source func(path string) ([]byte, error)) ([]Drift, int) {
+		diagnostics := upgrade.ParseDiagnostics(output)
+		var drifts []Drift
+		for _, drift := range upgrade.Classify(diagnostics, source) {
+			drifts = append(drifts, Drift(drift))
+		}
+		return drifts, len(diagnostics)
+	})
+}
 
 // goDriftFixture writes an extension written for SDK 0.2.0: its getter returns one value and its option is a bool.
 func goDriftFixture(t *testing.T, name string) GoExtension {

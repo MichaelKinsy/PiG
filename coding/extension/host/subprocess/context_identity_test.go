@@ -3,6 +3,7 @@
 package subprocess
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -189,12 +190,17 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 	type loader struct {
 		load func(t *testing.T) extension.Extension
 	}
-	loadSubprocess := func(t *testing.T, config ExtConfig) extension.Extension {
+	// ctx bounds the load. A load that compiles an extension takes as long as the host needs, and a cold Rust SDK build on a
+	// slow host outlasts testbudget.Wait (a Windows run stopped at 120.01 s), so that load ends at the go test deadline.
+	loadSubprocess := func(t *testing.T, ctx context.Context, config ExtConfig) extension.Extension {
 		t.Helper()
 		host := NewHost(t.TempDir())
 		t.Cleanup(func() { host.Shutdown("test complete") })
-		loaded, err := host.Load(testbudget.Context(t), config)
+		loaded, err := host.Load(ctx, config)
 		if err != nil {
+			if expired := testbudget.Expired(ctx); expired != "" {
+				t.Fatalf("load %s: %s: %v", config.Name, expired, err)
+			}
 			t.Fatal(err)
 		}
 		return *loaded
@@ -236,7 +242,7 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 			if err := os.WriteFile(source, []byte(nodeContextResultShapeExtension), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			return loadSubprocess(t, ExtConfig{Name: "context-result-shape", Source: source, Enabled: true})
+			return loadSubprocess(t, testbudget.Context(t), ExtConfig{Name: "context-result-shape", Source: source, Enabled: true})
 		}},
 		"python": {load: func(t *testing.T) extension.Extension {
 			source := filepath.Join(t.TempDir(), "main.py")
@@ -244,7 +250,7 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 			if err := os.WriteFile(source, fmt.Appendf(nil, pythonContextResultShapeExtension, sdkRoot), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			return loadSubprocess(t, ExtConfig{Name: "context-result-shape", Path: source, Enabled: true, RuntimeLanguage: "python"})
+			return loadSubprocess(t, testbudget.Context(t), ExtConfig{Name: "context-result-shape", Path: source, Enabled: true, RuntimeLanguage: "python"})
 		}},
 		"rust": {load: func(t *testing.T) extension.Extension {
 			dir := t.TempDir()
@@ -259,7 +265,7 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "src", "main.rs"), []byte(rustContextResultShapeExtension), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			return loadSubprocess(t, ExtConfig{Name: "context-result-shape", Source: dir, Enabled: true})
+			return loadSubprocess(t, testbudget.DeadlineContext(t), ExtConfig{Name: "context-result-shape", Source: dir, Enabled: true})
 		}},
 	}
 	for name, sdkLoader := range loaders {

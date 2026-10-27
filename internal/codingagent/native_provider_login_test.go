@@ -161,6 +161,8 @@ func loadNativeLoginFixture(t *testing.T, m *InteractiveMode, language string) {
 	if _, errs := host.LoadAll(t.Context(), []subprocess.ExtConfig{config}); len(errs) != 0 {
 		t.Fatalf("load %s fixture: %v", language, errs)
 	}
+	// The services apply the registrations the extension queued while it loaded.
+	host.Runtime().BindProviderActions(host.Runtime().BoundProviderActions(), nil)
 	for _, id := range []string{"sso-proxy", "plain-proxy", "odd-proxy", "loud-proxy"} {
 		if m.opts.ModelRegistry.NativeProvider(id) == nil {
 			t.Fatalf("%s fixture did not register %s", language, id)

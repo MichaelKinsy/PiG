@@ -55,13 +55,20 @@ func memoKeyOf(value any) (memoKey, bool) {
 }
 
 // validate is validateJsonValue that skips a reference this memo has already validated.
-func (m *ValidationMemo) validate(value any) error {
+func (m *ValidationMemo) validate(value any) error { return m.validateWith(value, validateJsonValue) }
+
+// validateArguments is validateArgumentsValue that skips a reference this memo has already validated.
+func (m *ValidationMemo) validateArguments(value any) error {
+	return m.validateWith(value, validateArgumentsValue)
+}
+
+func (m *ValidationMemo) validateWith(value any, validate func(any) error) error {
 	if m == nil {
-		return validateJsonValue(value)
+		return validate(value)
 	}
 	key, ok := memoKeyOf(value)
 	if !ok {
-		return validateJsonValue(value)
+		return validate(value)
 	}
 	m.mu.Lock()
 	if entry, hit := m.seen[key]; hit {
@@ -71,7 +78,7 @@ func (m *ValidationMemo) validate(value any) error {
 		return nil
 	}
 	m.mu.Unlock()
-	if err := validateJsonValue(value); err != nil {
+	if err := validate(value); err != nil {
 		return err
 	}
 	m.mu.Lock()

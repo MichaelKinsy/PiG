@@ -1,0 +1,3 @@
+### Added
+
+- PiG lists OpenRouter's `:nitro` (providers sorted by throughput) and `:floor` (providers sorted by price) routing variants beside every OpenRouter model, for example `openrouter/openai/gpt-5.2:nitro`, in `--list-models`, the model selector and the SDKs, and resolves them by name. OpenRouter accepts them on every model id but does not list them, so Pi's catalog has none (D199). A variant carries its base model's limits and listed prices and is derived when it is listed or named, so startup and the binary do not grow. A partial model text such as `--model 4o` still resolves as it does in Pi; naming a variant selects it.

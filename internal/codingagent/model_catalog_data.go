@@ -17,7 +17,7 @@ func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 	if r.GetProvider(id) != nil {
 		return r.GetNativeModels(id)
 	}
-	generatedModels := builtinChatCatalog(id)
+	generatedModels := builtinChatCatalogListed(id)
 	var baseline []*ai.Model
 	if len(generatedModels) > 0 {
 		baseline = make([]*ai.Model, 0, len(generatedModels))
@@ -65,13 +65,21 @@ func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 	return ai.OfferedModels(models)
 }
 
-// plainGeneratedModels returns the bundled catalog of provider id when nothing changes it: no provider code, remote catalog overlay, Radius provider, extension registration or models.json entry. GetProviderModelData's models for such a provider are exactly plainModelData of it, and building them has no effect to observe.
+// plainGeneratedModels returns the bundled catalog of provider id, with OpenRouter's routing variants (builtinChatCatalogListed), when nothing changes it: no provider code, remote catalog overlay, Radius provider, extension registration or models.json entry. GetProviderModelData's models for such a provider are exactly plainModelData of it, and building them has no effect to observe.
 func (r *ModelRegistry) plainGeneratedModels(id string) ([]ai.GeneratedModel, bool) {
-	if r.GetProvider(id) != nil {
+	if !r.isPlainGenerated(id) {
 		return nil, false
 	}
+	return builtinChatCatalogListed(id), true
+}
+
+// isPlainGenerated reports whether nothing changes the bundled catalog of provider id (plainGeneratedModels).
+func (r *ModelRegistry) isPlainGenerated(id string) bool {
+	if r.GetProvider(id) != nil {
+		return false
+	}
 	if len(r.remoteOverlayModels(id)) > 0 {
-		return nil, false
+		return false
 	}
 	r.mu.RLock()
 	radius := r.radiusProviderLocked(id)
@@ -81,10 +89,7 @@ func (r *ModelRegistry) plainGeneratedModels(id string) ([]ai.GeneratedModel, bo
 		_, configured = r.config.Providers[id]
 	}
 	r.mu.RUnlock()
-	if radius != nil || registered || configured {
-		return nil, false
-	}
-	return builtinChatCatalog(id), true
+	return radius == nil && !registered && !configured
 }
 
 // plainModelData builds the models of a plain bundled catalog in catalog order.
@@ -102,9 +107,15 @@ func plainModelData(generated []ai.GeneratedModel) []*ai.Model {
 // GetProviderModelDataByID is the first model of GetProviderModelData(id) whose ID is modelID, or nil. A plain bundled catalog is searched
 // by entry and only the match is built, where GetProviderModelData builds every model of the provider (about 8 allocations and 1 KB each).
 func (r *ModelRegistry) GetProviderModelDataByID(id, modelID string) *ai.Model {
-	if plain, ok := r.plainGeneratedModels(id); ok {
-		for _, generated := range ai.OfferedGeneratedModels(plain) {
+	if r.isPlainGenerated(id) {
+		for _, generated := range ai.OfferedGeneratedModels(builtinChatCatalog(id)) {
 			if generated.ID == modelID {
+				return generated.ToModel()
+			}
+		}
+		// pig divergence (D199): an OpenRouter routing variant is derived from its base model, not read from the bundled list.
+		if _, _, variant := ai.OpenRouterRoutingVariant(id, modelID); variant {
+			if generated, ok := ai.LookupModelExact(id + "/" + modelID); ok && len(ai.OfferedGeneratedModels([]ai.GeneratedModel{*generated})) == 1 {
 				return generated.ToModel()
 			}
 		}

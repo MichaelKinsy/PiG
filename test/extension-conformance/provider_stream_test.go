@@ -99,6 +99,7 @@ func TestProviderProducersAcrossSDKs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			applyQueuedRegistrations(host)
 			// Pi model-runtime.ts:753-787 publishes a configured registration in the available snapshot before registerProvider returns; the selector, cycling and SDK snapshot readers need no reload.
 			if !availableModel(services.ModelRuntime().GetAvailableSnapshot(), "extension-provider", "faux") || !availableModel(services.Registry().GetAvailableModelData(), "extension-provider", "faux") {
 				t.Fatalf("registered provider missing from availability: snapshot=%v registry=%v", services.ModelRuntime().GetAvailableSnapshot(), services.Registry().GetAvailableModelData())

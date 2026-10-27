@@ -23,6 +23,8 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
+	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -601,12 +603,12 @@ func detailsOf(t *testing.T, root harness.Conversation) ToolDetails {
 	t.Helper()
 	for _, entry := range allEntries(t, root) {
 		if durable.ToolResultEntry.Is(&entry) {
-			encoded, err := json.Marshal(entry.Model[0].(ai.ToolResultMessage).Details)
+			encoded, err := jsstring.MarshalJSON(entry.Model[0].(ai.ToolResultMessage).Details)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var details ToolDetails
-			if err := json.Unmarshal(encoded, &details); err != nil {
+			if err := sdkjson.Unmarshal(encoded, &details); err != nil {
 				t.Fatal(err)
 			}
 			return details

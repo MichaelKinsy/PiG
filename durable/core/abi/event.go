@@ -8,6 +8,10 @@ import (
 	"strconv"
 )
 
+// MaxEventPayload is the largest event payload a host sends and the native core server reads: a corrupt length must not
+// allocate before the read fails.
+const MaxEventPayload = 1 << 30
+
 // Event is one input of a session (ABI sections 5 and 11). Payload and Rows alias the host's input buffer and are valid
 // only during the Step call that receives them; a core package that keeps any of it copies it first.
 type Event struct {

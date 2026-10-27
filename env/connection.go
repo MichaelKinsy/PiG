@@ -212,20 +212,35 @@ func closedError() *RemoteError {
 	return NewRemoteError(Json{"code": "unknown", "message": "Connection closed"})
 }
 
-func encodeFrame(kind byte, id uint32, value Json, payload []byte) []byte {
+// errFrameTooLarge is the error of a frame that would pass maxFrame, the largest frame either side accepts.
+var errFrameTooLarge = fmt.Errorf("frame is over the %d byte frame limit", maxFrame)
+
+// encodeFrame builds one frame. A JSON body or payload past maxFrame is rejected before any size is added up, so the
+// frame length never overflows its u32 field or the allocation.
+func encodeFrame(kind byte, id uint32, value Json, payload []byte) ([]byte, error) {
+	if len(payload) > maxFrame {
+		return nil, errFrameTooLarge
+	}
 	var body bytes.Buffer
 	encoder := json.NewEncoder(&body)
 	encoder.SetEscapeHTML(false)
 	//portlint:allow mapkeyorder the daemon reads every frame into serde_json Maps, which sort their keys (daemon/Cargo.toml:11 enables no preserve_order), so frame key order is not observable
 	_ = encoder.Encode(value)
 	encoded := bytes.TrimSuffix(body.Bytes(), []byte("\n"))
-	data := make([]byte, 13, 13+len(encoded)+len(payload))
-	binary.BigEndian.PutUint32(data[0:4], uint32(9+len(encoded)+len(payload)))
+	if len(encoded) > maxFrame {
+		return nil, errFrameTooLarge
+	}
+	length := 9 + len(encoded) + len(payload)
+	if length > maxFrame {
+		return nil, errFrameTooLarge
+	}
+	data := make([]byte, 13, 4+length)
+	binary.BigEndian.PutUint32(data[0:4], uint32(length))
 	data[4] = kind
 	binary.BigEndian.PutUint32(data[5:9], id)
 	binary.BigEndian.PutUint32(data[9:13], uint32(len(encoded)))
 	data = append(data, encoded...)
-	return append(data, payload...)
+	return append(data, payload...), nil
 }
 
 type pendingCall struct {
@@ -397,7 +412,7 @@ func (c *Connection) Kill(id uint32, sessionID int) {
 	current := c.session
 	c.mu.Unlock()
 	if current != nil && current.id == sessionID && current.isLive() {
-		c.write(current, encodeFrame(frameCancel, id, Json{"mode": "kill"}, nil))
+		c.writeControl(current, frameCancel, id, Json{"mode": "kill"})
 	}
 }
 
@@ -461,14 +476,47 @@ func (c *Connection) send(ctx context.Context, s *session, op string, request Js
 	if options.OnStart != nil {
 		options.OnStart(id, s.id)
 	}
+	frame, err := encodeRequest(id, op, request, options.Payload)
+	if err != nil {
+		s.mu.Lock()
+		delete(s.pending, id)
+		s.mu.Unlock()
+		call.finish(Reply{}, err)
+		return call
+	}
+	c.write(s, frame)
+	// Registered after the request is written, so a cancel never leaves before its request; a context that is already
+	// done sends its cancel right away.
+	call.onSettled(context.AfterFunc(ctx, func() { c.writeControl(s, frameCancel, id, Json{}) }))
+	return call
+}
+
+// encodeRequest builds the request frame of op. A request is rejected, as a *RemoteError the daemon would have sent,
+// when it cannot fit one frame: each field takes at least one byte of it, so a field count at maxFrame is over the
+// limit before the body is sized.
+func encodeRequest(id uint32, op string, request Json, payload []byte) ([]byte, error) {
+	if len(request) >= maxFrame {
+		return nil, frameTooLarge()
+	}
 	body := make(Json, len(request)+1)
 	maps.Copy(body, request)
 	body["op"] = op
-	c.write(s, encodeFrame(frameRequest, id, body, options.Payload))
-	// Registered after the request is written, so a cancel never leaves before its request; a context that is already
-	// done sends its cancel right away.
-	call.onSettled(context.AfterFunc(ctx, func() { c.write(s, encodeFrame(frameCancel, id, Json{}, nil)) }))
-	return call
+	frame, err := encodeFrame(frameRequest, id, body, payload)
+	if err != nil {
+		return nil, frameTooLarge()
+	}
+	return frame, nil
+}
+
+func frameTooLarge() *RemoteError {
+	return NewRemoteError(Json{"code": "EINVAL", "message": fmt.Sprintf("request is over the %d byte frame limit", maxFrame)})
+}
+
+// writeControl writes a cancel or ping, whose fixed small body always fits a frame.
+func (c *Connection) writeControl(s *session, kind byte, id uint32, value Json) {
+	if frame, err := encodeFrame(kind, id, value, nil); err == nil {
+		c.write(s, frame)
+	}
 }
 
 func (c *Connection) write(s *session, data []byte) {
@@ -613,7 +661,7 @@ func (c *Connection) pingLoop(s *session) {
 			c.teardown(s, lost("pi-env connection timed out"))
 			return
 		}
-		c.write(s, encodeFrame(framePing, 0, Json{}, nil))
+		c.writeControl(s, framePing, 0, Json{})
 	}
 }
 

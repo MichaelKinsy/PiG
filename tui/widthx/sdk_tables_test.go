@@ -1,7 +1,10 @@
 package widthx
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -85,6 +88,33 @@ func sdkRustTables() string {
 	return b.String()
 }
 
+// gzipTables compresses a generated table file for the embed: the bundles stage it back to the file's name (see coding/extension/pigsdk), and
+// the binary carries an eighth of the text. The header holds no name or time, so the same text gives the same bytes.
+func gzipTables(t *testing.T, text string) []byte {
+	t.Helper()
+	var out bytes.Buffer
+	writer, err := gzip.NewWriterLevel(&out, gzip.BestCompression)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Write([]byte(text)); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return out.Bytes()
+}
+
+func gunzipTables(data []byte) (string, error) {
+	reader, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return "", err
+	}
+	text, err := io.ReadAll(reader)
+	return string(text), err
+}
+
 func TestSDKTablesAreCurrent(t *testing.T) {
 	for _, c := range []struct{ path, want string }{
 		{"../../extensions/sdk-py/pig_sdk/tui/_tables.py", sdkPythonTables()},
@@ -97,11 +127,23 @@ func TestSDKTablesAreCurrent(t *testing.T) {
 			if err := os.WriteFile(c.path, []byte(c.want), 0o644); err != nil {
 				t.Fatal(err)
 			}
+			if err := os.WriteFile(c.path+".gz", gzipTables(t, c.want), 0o644); err != nil {
+				t.Fatal(err)
+			}
 			continue
 		}
 		got, err := os.ReadFile(c.path)
 		if err != nil || string(got) != c.want {
 			t.Errorf("%s is stale: run PIG_UPDATE_SDK_TUI=1 go test ./tui/widthx -run TestSDKTablesAreCurrent", c.path)
+		}
+		// The embed carries the compressed copy: it must hold the same text, whatever compressor wrote it.
+		compressed, err := os.ReadFile(c.path + ".gz")
+		if err != nil {
+			t.Errorf("%s.gz is missing: run PIG_UPDATE_SDK_TUI=1 go test ./tui/widthx -run TestSDKTablesAreCurrent", c.path)
+			continue
+		}
+		if text, err := gunzipTables(compressed); err != nil || text != c.want {
+			t.Errorf("%s.gz is stale: run PIG_UPDATE_SDK_TUI=1 go test ./tui/widthx -run TestSDKTablesAreCurrent", c.path)
 		}
 	}
 }

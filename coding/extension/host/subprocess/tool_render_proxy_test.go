@@ -139,7 +139,7 @@ func TestToolRenderersAcrossSDKs(t *testing.T) {
 			config := toolRendererFactory(t, language, "renderers_"+language)
 			host := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 			defer host.Shutdown("test done")
-			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+			ctx, cancel := buildContext(t)
 			defer cancel()
 			loaded, errs := host.LoadAll(ctx, []ExtConfig{config})
 			if len(errs) != 0 || len(loaded) != 1 {

@@ -1,0 +1,6810 @@
+{
+ "pin": "1.4.0+74f46864",
+ "package": "pi-ai@1.4.0",
+ "module": "pi-ai",
+ "export": "validateToolArguments",
+ "cases": [
+  {
+   "name": "probe: everything passes",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "abcd",
+      "qty": 4,
+      "pick": "a"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "name": "abcd",
+     "qty": 4,
+     "pick": "a"
+    },
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:len",
+     "check:even",
+     "check:u1",
+     "check:root"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: no optional members",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "abc",
+      "pick": "b"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "name": "abc",
+     "pick": "b"
+    },
+    "calls": [
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:len",
+     "check:u1",
+     "check:u2",
+     "check:root"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: first union branch fails, the second rescues",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "abc",
+      "pick": "b",
+      "qty": 2
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "name": "abc",
+     "pick": "b",
+     "qty": 2
+    },
+    "calls": [
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:len",
+     "check:even",
+     "check:u1",
+     "check:u2",
+     "check:root"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: a refinement fails",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "ab",
+      "pick": "a"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"probe\":\n  - name: name is too short\n\nReceived arguments:\n{\n  \"name\": \"ab\",\n  \"pick\": \"a\"\n}",
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:len",
+     "check:len",
+     "check:len",
+     "error:lenmsg",
+     "check:u1",
+     "check:u2",
+     "error:u2m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: an optional refinement fails with the value in its message",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "abc",
+      "qty": 3,
+      "pick": "a"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"probe\":\n  - qty: qty must be even, got 3\n\nReceived arguments:\n{\n  \"name\": \"abc\",\n  \"qty\": 3,\n  \"pick\": \"a\"\n}",
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:len",
+     "check:even",
+     "check:len",
+     "check:even",
+     "check:len",
+     "check:even",
+     "error:evenmsg",
+     "check:u1",
+     "check:u2",
+     "error:u2m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: every union branch fails",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "abc",
+      "pick": "c"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"probe\":\n  - pick: not a\n  - pick: not b\n  - pick: must match a schema in anyOf\n\nReceived arguments:\n{\n  \"name\": \"abc\",\n  \"pick\": \"c\"\n}",
+    "calls": [
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:len",
+     "check:u1",
+     "check:u2",
+     "check:len",
+     "check:u1",
+     "check:u2",
+     "check:len",
+     "check:u1",
+     "error:u1m",
+     "check:u2",
+     "error:u2m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: two refinements fail",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "ab",
+      "qty": 5,
+      "pick": "a"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"probe\":\n  - name: name is too short\n  - qty: qty must be even, got 5\n\nReceived arguments:\n{\n  \"name\": \"ab\",\n  \"qty\": 5,\n  \"pick\": \"a\"\n}",
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:len",
+     "check:len",
+     "check:len",
+     "error:lenmsg",
+     "check:even",
+     "error:evenmsg",
+     "check:u1",
+     "check:u2",
+     "error:u2m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: all three fail",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "x",
+      "qty": 1,
+      "pick": "z"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"probe\":\n  - name: name is too short\n  - qty: qty must be even, got 1\n  - pick: not a\n  - pick: not b\n  - pick: must match a schema in anyOf\n\nReceived arguments:\n{\n  \"name\": \"x\",\n  \"qty\": 1,\n  \"pick\": \"z\"\n}",
+    "calls": [
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:len",
+     "check:len",
+     "check:len",
+     "error:lenmsg",
+     "check:even",
+     "error:evenmsg",
+     "check:u1",
+     "error:u1m",
+     "check:u2",
+     "error:u2m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: a structural error beside a refined member",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "abc",
+      "pick": 5
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"probe\":\n  - pick: must be string\n  - pick: must be string\n  - pick: must match a schema in anyOf\n\nReceived arguments:\n{\n  \"name\": \"abc\",\n  \"pick\": 5\n}",
+    "calls": [
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:len",
+     "check:len",
+     "check:len"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: a missing required member is not refined",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "pick": "a"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"probe\":\n  - name: must have required properties name\n\nReceived arguments:\n{\n  \"pick\": \"a\"\n}",
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:u1",
+     "check:u2",
+     "error:u2m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: an optional null is dropped before it is refined",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "abc",
+      "qty": null,
+      "pick": "a"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "name": "abc",
+     "pick": "a"
+    },
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:len",
+     "check:u1",
+     "check:root"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: a string coerced to an integer is refined as the integer",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "abc",
+      "qty": "4",
+      "pick": "a"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "name": "abc",
+     "qty": 4,
+     "pick": "a"
+    },
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:len",
+     "check:even",
+     "check:u1",
+     "check:root"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: a predicate that throws",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "abc",
+      "pick": "a",
+      "boom": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "kaboom",
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:len",
+     "check:u1",
+     "check:boom"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "probe: a predicate that would throw is not reached after a failure above it",
+   "args": [
+    {
+     "name": "probe",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "name": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "lengthAtLeast",
+             "n": 3,
+             "tag": "len"
+            },
+            {
+             "$fn": "text",
+             "text": "name is too short",
+             "tag": "lenmsg"
+            }
+           ]
+          },
+          "qty": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "Integer",
+               "args": []
+              },
+              {
+               "$fn": "even",
+               "tag": "even"
+              },
+              {
+               "$fn": "textWithValue",
+               "prefix": "qty must be even, got ",
+               "tag": "evenmsg"
+              }
+             ]
+            }
+           ]
+          },
+          "pick": {
+           "$call": "Union",
+           "args": [
+            [
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "a",
+                "tag": "u1"
+               },
+               {
+                "$fn": "text",
+                "text": "not a",
+                "tag": "u1m"
+               }
+              ]
+             },
+             {
+              "$call": "Refine",
+              "args": [
+               {
+                "$call": "String",
+                "args": []
+               },
+               {
+                "$fn": "equals",
+                "value": "b",
+                "tag": "u2"
+               },
+               {
+                "$fn": "text",
+                "text": "not b",
+                "tag": "u2m"
+               }
+              ]
+             }
+            ]
+           ]
+          },
+          "boom": {
+           "$call": "Optional",
+           "args": [
+            {
+             "$call": "Refine",
+             "args": [
+              {
+               "$call": "String",
+               "args": []
+              },
+              {
+               "$fn": "throws",
+               "message": "kaboom",
+               "tag": "boom"
+              }
+             ]
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "root refused",
+        "tag": "rootmsg"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "probe",
+     "arguments": {
+      "name": "ab",
+      "pick": "a",
+      "boom": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "kaboom",
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:len",
+     "check:len",
+     "check:len",
+     "error:lenmsg",
+     "check:u1",
+     "check:u2",
+     "error:u2m",
+     "check:boom"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\"},\"qty\":{\"type\":\"integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},\"boom\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"name\",\"pick\"],\"properties\":{\"name\":{\"type\":\"string\",\"~kind\":\"String\"},\"qty\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"pick\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},\"boom\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "root refused",
+         "tag": "rootmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/name",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "len"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "name is too short",
+         "tag": "lenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/qty",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "even"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "qty must be even, got ",
+         "tag": "evenmsg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "a",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not a",
+         "tag": "u1m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/pick/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "equals",
+         "value": "b",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "not b",
+         "tag": "u2m"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/boom",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "kaboom",
+         "tag": "boom"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "packed: a refined property passes",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "lengthAtLeast",
+           "n": 3,
+           "tag": "p"
+          },
+          {
+           "$fn": "text",
+           "text": "a is too short",
+           "tag": "pm"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "abc"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "a": "abc"
+    },
+    "calls": [
+     "check:p"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "p"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "a is too short",
+         "tag": "pm"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "packed: a refined property fails",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "lengthAtLeast",
+           "n": 3,
+           "tag": "p"
+          },
+          {
+           "$fn": "text",
+           "text": "a is too short",
+           "tag": "pm"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - a: a is too short\n\nReceived arguments:\n{\n  \"a\": \"x\"\n}",
+    "calls": [
+     "check:p",
+     "check:p",
+     "check:p",
+     "error:pm"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "lengthAtLeast",
+         "n": 3,
+         "tag": "p"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "a is too short",
+         "tag": "pm"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "two refinements on one node: the first fails, the second is not called by Check",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Refine",
+        "args": [
+         {
+          "$call": "String",
+          "args": []
+         },
+         {
+          "$fn": "never",
+          "tag": "r1"
+         },
+         {
+          "$fn": "text",
+          "text": "one",
+          "tag": "m1"
+         }
+        ]
+       },
+       {
+        "$fn": "never",
+        "tag": "r2"
+       },
+       {
+        "$fn": "text",
+        "text": "two",
+        "tag": "m2"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": "x"
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - root: one\n  - root: two\n\nReceived arguments:\n\"x\"",
+    "calls": [
+     "check:r1",
+     "check:r1",
+     "check:r1",
+     "error:m1",
+     "check:r2",
+     "error:m2"
+    ],
+    "schema": "{\"type\":\"string\"}",
+    "validation": "{\"type\":\"string\",\"~kind\":\"String\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "r1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "one",
+         "tag": "m1"
+        }
+       },
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "r2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "two",
+         "tag": "m2"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "two refinements on one node: both pass",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Refine",
+        "args": [
+         {
+          "$call": "String",
+          "args": []
+         },
+         {
+          "$fn": "always",
+          "tag": "r1"
+         }
+        ]
+       },
+       {
+        "$fn": "always",
+        "tag": "r2"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": "x"
+    }
+   ],
+   "result": {
+    "args": "x",
+    "calls": [
+     "check:r1",
+     "check:r2"
+    ],
+    "schema": "{\"type\":\"string\"}",
+    "validation": "{\"type\":\"string\",\"~kind\":\"String\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "r1"
+        },
+        "error": null
+       },
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "r2"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refinement whose node has a structural error is not called",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "String",
+        "args": []
+       },
+       {
+        "$fn": "never",
+        "tag": "r"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": 5
+    }
+   ],
+   "result": {
+    "args": 5,
+    "calls": [
+     "check:r"
+    ],
+    "schema": "{\"type\":\"string\"}",
+    "validation": "{\"type\":\"string\",\"~kind\":\"String\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "r"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a root refinement on an object",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "a": {
+           "$call": "String",
+           "args": []
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "never",
+        "tag": "root"
+       },
+       {
+        "$fn": "text",
+        "text": "no object",
+        "tag": "m"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - root: no object\n\nReceived arguments:\n{\n  \"a\": \"x\"\n}",
+    "calls": [
+     "check:root",
+     "check:root",
+     "check:root",
+     "error:m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "root"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "no object",
+         "tag": "m"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "array items: the first failing item stops Check, Errors visits every item",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "xs": {
+         "$call": "Array",
+         "args": [
+          {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "Integer",
+             "args": []
+            },
+            {
+             "$fn": "even",
+             "tag": "e"
+            },
+            {
+             "$fn": "textWithValue",
+             "prefix": "odd ",
+             "tag": "m"
+            }
+           ]
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "xs": [
+       2,
+       3,
+       5,
+       4
+      ]
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - xs.1: odd 3\n  - xs.2: odd 5\n\nReceived arguments:\n{\n  \"xs\": [\n    2,\n    3,\n    5,\n    4\n  ]\n}",
+    "calls": [
+     "check:e",
+     "check:e",
+     "check:e",
+     "check:e",
+     "check:e",
+     "check:e",
+     "error:m",
+     "check:e",
+     "error:m",
+     "check:e"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"xs\"],\"properties\":{\"xs\":{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"xs\"],\"properties\":{\"xs\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"~kind\":\"Array\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/xs/items",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "e"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "odd ",
+         "tag": "m"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "array items all pass",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "xs": {
+         "$call": "Array",
+         "args": [
+          {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "Integer",
+             "args": []
+            },
+            {
+             "$fn": "even",
+             "tag": "e"
+            }
+           ]
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "xs": [
+       2,
+       4
+      ]
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "xs": [
+      2,
+      4
+     ]
+    },
+    "calls": [
+     "check:e",
+     "check:e"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"xs\"],\"properties\":{\"xs\":{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"xs\"],\"properties\":{\"xs\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"~kind\":\"Array\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/xs/items",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "e"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refinement on the array itself",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "xs": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "Array",
+           "args": [
+            {
+             "$call": "Integer",
+             "args": []
+            }
+           ]
+          },
+          {
+           "$fn": "never",
+           "tag": "arr"
+          },
+          {
+           "$fn": "text",
+           "text": "bad list",
+           "tag": "m"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "xs": [
+       1
+      ]
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - xs: bad list\n\nReceived arguments:\n{\n  \"xs\": [\n    1\n  ]\n}",
+    "calls": [
+     "check:arr",
+     "check:arr",
+     "check:arr",
+     "error:m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"xs\"],\"properties\":{\"xs\":{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"xs\"],\"properties\":{\"xs\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"~kind\":\"Integer\"},\"~kind\":\"Array\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/xs",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "arr"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad list",
+         "tag": "m"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "nested objects",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Object",
+         "args": [
+          {
+           "b": {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "never",
+              "tag": "b"
+             },
+             {
+              "$fn": "text",
+              "text": "deep",
+              "tag": "m"
+             }
+            ]
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": {
+       "b": "x"
+      }
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - a.b: deep\n\nReceived arguments:\n{\n  \"a\": {\n    \"b\": \"x\"\n  }\n}",
+    "calls": [
+     "check:b",
+     "check:b",
+     "check:b",
+     "error:m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"object\",\"required\":[\"b\"],\"properties\":{\"b\":{\"type\":\"string\"}}}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"object\",\"required\":[\"b\"],\"properties\":{\"b\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a/properties/b",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "b"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "deep",
+         "tag": "m"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a parent refinement runs only when the children report no error",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Refine",
+      "args": [
+       {
+        "$call": "Object",
+        "args": [
+         {
+          "a": {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "never",
+             "tag": "child"
+            },
+            {
+             "$fn": "text",
+             "text": "child",
+             "tag": "cm"
+            }
+           ]
+          }
+         }
+        ]
+       },
+       {
+        "$fn": "never",
+        "tag": "parent"
+       },
+       {
+        "$fn": "text",
+        "text": "parent",
+        "tag": "pm"
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - a: child\n\nReceived arguments:\n{\n  \"a\": \"x\"\n}",
+    "calls": [
+     "check:child",
+     "check:child",
+     "check:child",
+     "error:cm"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "parent"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "parent",
+         "tag": "pm"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "child"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "child",
+         "tag": "cm"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "sibling properties: the first failing property stops Check",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "a"
+          },
+          {
+           "$fn": "text",
+           "text": "a bad",
+           "tag": "am"
+          }
+         ]
+        },
+        "b": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "b"
+          },
+          {
+           "$fn": "text",
+           "text": "b bad",
+           "tag": "bm"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x",
+      "b": "y"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - a: a bad\n  - b: b bad\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"b\": \"y\"\n}",
+    "calls": [
+     "check:a",
+     "check:a",
+     "check:a",
+     "error:am",
+     "check:b",
+     "error:bm"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"},\"b\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "a"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "a bad",
+         "tag": "am"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/b",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "b"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "b bad",
+         "tag": "bm"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "sibling properties: Errors reports both",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "always",
+           "tag": "a"
+          }
+         ]
+        },
+        "b": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "b"
+          },
+          {
+           "$fn": "text",
+           "text": "b bad",
+           "tag": "bm"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x",
+      "b": "y"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - b: b bad\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"b\": \"y\"\n}",
+    "calls": [
+     "check:a",
+     "check:b",
+     "check:a",
+     "check:b",
+     "check:a",
+     "check:b",
+     "error:bm"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"},\"b\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "a"
+        },
+        "error": null
+       }
+      ]
+     },
+     {
+      "path": "/properties/b",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "b"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "b bad",
+         "tag": "bm"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "anyOf: the first branch passes, the others are not called",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "v": {
+         "$call": "Union",
+         "args": [
+          [
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "always",
+              "tag": "u1"
+             }
+            ]
+           },
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "never",
+              "tag": "u2"
+             }
+            ]
+           }
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "v": "x"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "v": "x"
+    },
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:u1"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/v/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "u1"
+        },
+        "error": null
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "u2"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "anyOf: all branches fail, Errors words every branch",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "v": {
+         "$call": "Union",
+         "args": [
+          [
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "never",
+              "tag": "u1"
+             },
+             {
+              "$fn": "text",
+              "text": "first",
+              "tag": "m1"
+             }
+            ]
+           },
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "never",
+              "tag": "u2"
+             },
+             {
+              "$fn": "text",
+              "text": "second",
+              "tag": "m2"
+             }
+            ]
+           }
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "v": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - v: first\n  - v: second\n  - v: must match a schema in anyOf\n\nReceived arguments:\n{\n  \"v\": \"x\"\n}",
+    "calls": [
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "check:u2",
+     "check:u1",
+     "error:m1",
+     "check:u2",
+     "error:m2"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/v/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "u1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "first",
+         "tag": "m1"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "u2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "second",
+         "tag": "m2"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "anyOf: a branch of another type is not refined",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "v": {
+         "$call": "Union",
+         "args": [
+          [
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "Integer",
+              "args": []
+             },
+             {
+              "$fn": "never",
+              "tag": "u1"
+             }
+            ]
+           },
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "always",
+              "tag": "u2"
+             }
+            ]
+           }
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "v": "x"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "v": "x"
+    },
+    "calls": [
+     "check:u2",
+     "check:u2",
+     "check:u2"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"string\"}]}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"integer\",\"~kind\":\"Integer\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/v/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "u1"
+        },
+        "error": null
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "u2"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "anyOf inside anyOf",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "v": {
+         "$call": "Union",
+         "args": [
+          [
+           {
+            "$call": "Union",
+            "args": [
+             [
+              {
+               "$call": "Refine",
+               "args": [
+                {
+                 "$call": "String",
+                 "args": []
+                },
+                {
+                 "$fn": "never",
+                 "tag": "i1"
+                },
+                {
+                 "$fn": "text",
+                 "text": "i1",
+                 "tag": "m1"
+                }
+               ]
+              },
+              {
+               "$call": "Refine",
+               "args": [
+                {
+                 "$call": "String",
+                 "args": []
+                },
+                {
+                 "$fn": "never",
+                 "tag": "i2"
+                },
+                {
+                 "$fn": "text",
+                 "text": "i2",
+                 "tag": "m2"
+                }
+               ]
+              }
+             ]
+            ]
+           },
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "always",
+              "tag": "o2"
+             }
+            ]
+           }
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "v": "x"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "v": "x"
+    },
+    "calls": [
+     "check:i1",
+     "check:i2",
+     "check:o2",
+     "check:i1",
+     "check:i2",
+     "check:o2",
+     "check:i1",
+     "check:i2",
+     "check:o2"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},{\"type\":\"string\"}]}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/v/anyOf/0/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "i1"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "i1",
+         "tag": "m1"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/0/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "i2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "i2",
+         "tag": "m2"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "o2"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "anyOf inside anyOf: the inner rescues",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "v": {
+         "$call": "Union",
+         "args": [
+          [
+           {
+            "$call": "Union",
+            "args": [
+             [
+              {
+               "$call": "Refine",
+               "args": [
+                {
+                 "$call": "String",
+                 "args": []
+                },
+                {
+                 "$fn": "never",
+                 "tag": "i1"
+                }
+               ]
+              },
+              {
+               "$call": "Refine",
+               "args": [
+                {
+                 "$call": "String",
+                 "args": []
+                },
+                {
+                 "$fn": "always",
+                 "tag": "i2"
+                }
+               ]
+              }
+             ]
+            ]
+           },
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "never",
+              "tag": "o2"
+             }
+            ]
+           }
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "v": "x"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "v": "x"
+    },
+    "calls": [
+     "check:i1",
+     "check:i2",
+     "check:i1",
+     "check:i2",
+     "check:i1",
+     "check:i2"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]},{\"type\":\"string\"}]}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/v/anyOf/0/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "i1"
+        },
+        "error": null
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/0/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "i2"
+        },
+        "error": null
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "o2"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "anyOf of objects with refined members",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "v": {
+         "$call": "Union",
+         "args": [
+          [
+           {
+            "$call": "Object",
+            "args": [
+             {
+              "k": {
+               "$call": "Literal",
+               "args": [
+                "a"
+               ]
+              },
+              "n": {
+               "$call": "Refine",
+               "args": [
+                {
+                 "$call": "Integer",
+                 "args": []
+                },
+                {
+                 "$fn": "even",
+                 "tag": "n1"
+                }
+               ]
+              }
+             }
+            ]
+           },
+           {
+            "$call": "Object",
+            "args": [
+             {
+              "k": {
+               "$call": "Literal",
+               "args": [
+                "b"
+               ]
+              },
+              "n": {
+               "$call": "Refine",
+               "args": [
+                {
+                 "$call": "Integer",
+                 "args": []
+                },
+                {
+                 "$fn": "greaterThan",
+                 "n": 10,
+                 "tag": "n2"
+                },
+                {
+                 "$fn": "text",
+                 "text": "n too small",
+                 "tag": "m2"
+                }
+               ]
+              }
+             }
+            ]
+           }
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "v": {
+       "k": "b",
+       "n": 3
+      }
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - v.k: must be equal to constant\n  - v.n: Refine Error\n  - v.n: n too small\n  - v: must match a schema in anyOf\n\nReceived arguments:\n{\n  \"v\": {\n    \"k\": \"b\",\n    \"n\": 3\n  }\n}",
+    "calls": [
+     "check:n2",
+     "check:n2",
+     "check:n2",
+     "check:n2",
+     "check:n2",
+     "check:n2",
+     "check:n2",
+     "check:n1",
+     "check:n2",
+     "error:m2"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"object\",\"required\":[\"k\",\"n\"],\"properties\":{\"k\":{\"type\":\"string\",\"const\":\"a\"},\"n\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"k\",\"n\"],\"properties\":{\"k\":{\"type\":\"string\",\"const\":\"b\"},\"n\":{\"type\":\"integer\"}}}]}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"object\",\"required\":[\"k\",\"n\"],\"properties\":{\"k\":{\"type\":\"string\",\"const\":\"a\",\"~kind\":\"Literal\"},\"n\":{\"type\":\"integer\",\"~kind\":\"Integer\"}},\"~kind\":\"Object\"},{\"type\":\"object\",\"required\":[\"k\",\"n\"],\"properties\":{\"k\":{\"type\":\"string\",\"const\":\"b\",\"~kind\":\"Literal\"},\"n\":{\"type\":\"integer\",\"~kind\":\"Integer\"}},\"~kind\":\"Object\"}],\"~kind\":\"Union\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/v/anyOf/0/properties/n",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "n1"
+        },
+        "error": null
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/1/properties/n",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "greaterThan",
+         "n": 10,
+         "tag": "n2"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "n too small",
+         "tag": "m2"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "allOf: every part is checked, in order",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Intersect",
+      "args": [
+       [
+        {
+         "$call": "Object",
+         "args": [
+          {
+           "a": {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "always",
+              "tag": "a"
+             }
+            ]
+           }
+          }
+         ]
+        },
+        {
+         "$call": "Object",
+         "args": [
+          {
+           "b": {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "never",
+              "tag": "b"
+             },
+             {
+              "$fn": "text",
+              "text": "b bad",
+              "tag": "bm"
+             }
+            ]
+           }
+          }
+         ]
+        }
+       ]
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x",
+      "b": "y"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - b: b bad\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"b\": \"y\"\n}",
+    "calls": [
+     "check:a",
+     "check:b",
+     "check:a",
+     "check:b",
+     "check:a",
+     "check:b",
+     "error:bm"
+    ],
+    "schema": "{\"allOf\":[{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"b\"],\"properties\":{\"b\":{\"type\":\"string\"}}}]}",
+    "validation": "{\"allOf\":[{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"},{\"type\":\"object\",\"required\":[\"b\"],\"properties\":{\"b\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}],\"~kind\":\"Intersect\",\"~convert\":{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"},\"b\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}}",
+    "sites": [
+     {
+      "path": "/allOf/0/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "a"
+        },
+        "error": null
+       }
+      ]
+     },
+     {
+      "path": "/allOf/1/properties/b",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "b"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "b bad",
+         "tag": "bm"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "allOf: the first part fails, the second is not called by Check",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Intersect",
+      "args": [
+       [
+        {
+         "$call": "Object",
+         "args": [
+          {
+           "a": {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "never",
+              "tag": "a"
+             },
+             {
+              "$fn": "text",
+              "text": "a bad",
+              "tag": "am"
+             }
+            ]
+           }
+          }
+         ]
+        },
+        {
+         "$call": "Object",
+         "args": [
+          {
+           "b": {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "always",
+              "tag": "b"
+             }
+            ]
+           }
+          }
+         ]
+        }
+       ]
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x",
+      "b": "y"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - a: a bad\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"b\": \"y\"\n}",
+    "calls": [
+     "check:a",
+     "check:a",
+     "check:a",
+     "error:am",
+     "check:b"
+    ],
+    "schema": "{\"allOf\":[{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"b\"],\"properties\":{\"b\":{\"type\":\"string\"}}}]}",
+    "validation": "{\"allOf\":[{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"},{\"type\":\"object\",\"required\":[\"b\"],\"properties\":{\"b\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}],\"~kind\":\"Intersect\",\"~convert\":{\"type\":\"object\",\"required\":[\"a\",\"b\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"},\"b\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}}",
+    "sites": [
+     {
+      "path": "/allOf/0/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "a"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "a bad",
+         "tag": "am"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/allOf/1/properties/b",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "b"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "record values",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "m": {
+         "$call": "Record",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "Integer",
+             "args": []
+            },
+            {
+             "$fn": "even",
+             "tag": "v"
+            },
+            {
+             "$fn": "textWithValue",
+             "prefix": "odd ",
+             "tag": "m"
+            }
+           ]
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "m": {
+       "x": 2,
+       "y": 3,
+       "z": 4
+      }
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - m.y: odd 3\n\nReceived arguments:\n{\n  \"m\": {\n    \"x\": 2,\n    \"y\": 3,\n    \"z\": 4\n  }\n}",
+    "calls": [
+     "check:v",
+     "check:v",
+     "check:v",
+     "check:v",
+     "check:v",
+     "check:v",
+     "error:m",
+     "check:v"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"m\"],\"properties\":{\"m\":{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"integer\"}}}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"m\"],\"properties\":{\"m\":{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"integer\",\"~kind\":\"Integer\"}},\"~kind\":\"Record\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/m/patternProperties/^.*$",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "v"
+        },
+        "error": {
+         "$fn": "textWithValue",
+         "prefix": "odd ",
+         "tag": "m"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "record values all pass",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "m": {
+         "$call": "Record",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "Integer",
+             "args": []
+            },
+            {
+             "$fn": "even",
+             "tag": "v"
+            }
+           ]
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "m": {
+       "x": 2,
+       "y": 4
+      }
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "m": {
+      "x": 2,
+      "y": 4
+     }
+    },
+    "calls": [
+     "check:v",
+     "check:v"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"m\"],\"properties\":{\"m\":{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"integer\"}}}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"m\"],\"properties\":{\"m\":{\"type\":\"object\",\"patternProperties\":{\"^.*$\":{\"type\":\"integer\",\"~kind\":\"Integer\"}},\"~kind\":\"Record\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/m/patternProperties/^.*$",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "even",
+         "tag": "v"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refined optional member that is absent is not called",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Optional",
+         "args": [
+          {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "String",
+             "args": []
+            },
+            {
+             "$fn": "never",
+             "tag": "a"
+            }
+           ]
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {}
+    }
+   ],
+   "result": {
+    "args": {},
+    "calls": [],
+    "schema": "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "a"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refined Unknown receives null where the property is optional",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Optional",
+         "args": [
+          {
+           "$call": "Refine",
+           "args": [
+            {
+             "$call": "Unknown",
+             "args": []
+            },
+            {
+             "$fn": "never",
+             "tag": "a"
+            },
+            {
+             "$fn": "text",
+             "text": "unknown bad",
+             "tag": "m"
+            }
+           ]
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": null
+     }
+    }
+   ],
+   "result": {
+    "args": {},
+    "calls": [
+     "check:a"
+    ],
+    "schema": "{\"type\":\"object\",\"properties\":{\"a\":{}}}",
+    "validation": "{\"type\":\"object\",\"properties\":{\"a\":{\"~kind\":\"Unknown\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "a"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "unknown bad",
+         "tag": "m"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a throw: the check throws an Error",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "throws",
+           "message": "boom",
+           "tag": "a"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "boom",
+    "calls": [
+     "check:a"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "boom",
+         "tag": "a"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a throw: the check throws a string",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "throwsText",
+           "message": "thrown text",
+           "tag": "a"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "thrown text",
+    "calls": [
+     "check:a"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throwsText",
+         "message": "thrown text",
+         "tag": "a"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a throw: the error function throws",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "a"
+          },
+          {
+           "$fn": "errorThrows",
+           "message": "message boom",
+           "tag": "m"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "message boom",
+    "calls": [
+     "check:a",
+     "check:a",
+     "check:a",
+     "error:m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "a"
+        },
+        "error": {
+         "$fn": "errorThrows",
+         "message": "message boom",
+         "tag": "m"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a throw in a union branch that Check does not reach",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "v": {
+         "$call": "Union",
+         "args": [
+          [
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "always",
+              "tag": "u1"
+             }
+            ]
+           },
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "throws",
+              "message": "never reached",
+              "tag": "u2"
+             }
+            ]
+           }
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "v": "x"
+     }
+    }
+   ],
+   "result": {
+    "args": {
+     "v": "x"
+    },
+    "calls": [
+     "check:u1",
+     "check:u1",
+     "check:u1"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/v/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "always",
+         "tag": "u1"
+        },
+        "error": null
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "never reached",
+         "tag": "u2"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a throw in the second union branch after the first fails",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "v": {
+         "$call": "Union",
+         "args": [
+          [
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "never",
+              "tag": "u1"
+             }
+            ]
+           },
+           {
+            "$call": "Refine",
+            "args": [
+             {
+              "$call": "String",
+              "args": []
+             },
+             {
+              "$fn": "throws",
+              "message": "second branch",
+              "tag": "u2"
+             }
+            ]
+           }
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "v": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "second branch",
+    "calls": [
+     "check:u1",
+     "check:u2"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"string\"}]}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"v\"],\"properties\":{\"v\":{\"anyOf\":[{\"type\":\"string\",\"~kind\":\"String\"},{\"type\":\"string\",\"~kind\":\"String\"}],\"~kind\":\"Union\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/v/anyOf/0",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "u1"
+        },
+        "error": null
+       }
+      ]
+     },
+     {
+      "path": "/properties/v/anyOf/1",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "throws",
+         "message": "second branch",
+         "tag": "u2"
+        },
+        "error": null
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "more than eight errors: Errors stops at capacity",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "a"
+          },
+          {
+           "$fn": "text",
+           "text": "bad a",
+           "tag": "ma"
+          }
+         ]
+        },
+        "b": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "b"
+          },
+          {
+           "$fn": "text",
+           "text": "bad b",
+           "tag": "mb"
+          }
+         ]
+        },
+        "c": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "c"
+          },
+          {
+           "$fn": "text",
+           "text": "bad c",
+           "tag": "mc"
+          }
+         ]
+        },
+        "d": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "d"
+          },
+          {
+           "$fn": "text",
+           "text": "bad d",
+           "tag": "md"
+          }
+         ]
+        },
+        "e": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "e"
+          },
+          {
+           "$fn": "text",
+           "text": "bad e",
+           "tag": "me"
+          }
+         ]
+        },
+        "f": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "f"
+          },
+          {
+           "$fn": "text",
+           "text": "bad f",
+           "tag": "mf"
+          }
+         ]
+        },
+        "g": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "g"
+          },
+          {
+           "$fn": "text",
+           "text": "bad g",
+           "tag": "mg"
+          }
+         ]
+        },
+        "h": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "h"
+          },
+          {
+           "$fn": "text",
+           "text": "bad h",
+           "tag": "mh"
+          }
+         ]
+        },
+        "i": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "i"
+          },
+          {
+           "$fn": "text",
+           "text": "bad i",
+           "tag": "mi"
+          }
+         ]
+        },
+        "j": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "String",
+           "args": []
+          },
+          {
+           "$fn": "never",
+           "tag": "j"
+          },
+          {
+           "$fn": "text",
+           "text": "bad j",
+           "tag": "mj"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x",
+      "b": "x",
+      "c": "x",
+      "d": "x",
+      "e": "x",
+      "f": "x",
+      "g": "x",
+      "h": "x",
+      "i": "x",
+      "j": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - a: bad a\n  - b: bad b\n  - c: bad c\n  - d: bad d\n  - e: bad e\n  - f: bad f\n  - g: bad g\n  - h: bad h\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"b\": \"x\",\n  \"c\": \"x\",\n  \"d\": \"x\",\n  \"e\": \"x\",\n  \"f\": \"x\",\n  \"g\": \"x\",\n  \"h\": \"x\",\n  \"i\": \"x\",\n  \"j\": \"x\"\n}",
+    "calls": [
+     "check:a",
+     "check:a",
+     "check:a",
+     "error:ma",
+     "check:b",
+     "error:mb",
+     "check:c",
+     "error:mc",
+     "check:d",
+     "error:md",
+     "check:e",
+     "error:me",
+     "check:f",
+     "error:mf",
+     "check:g",
+     "error:mg",
+     "check:h",
+     "error:mh"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\"],\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"string\"},\"c\":{\"type\":\"string\"},\"d\":{\"type\":\"string\"},\"e\":{\"type\":\"string\"},\"f\":{\"type\":\"string\"},\"g\":{\"type\":\"string\"},\"h\":{\"type\":\"string\"},\"i\":{\"type\":\"string\"},\"j\":{\"type\":\"string\"}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"},\"b\":{\"type\":\"string\",\"~kind\":\"String\"},\"c\":{\"type\":\"string\",\"~kind\":\"String\"},\"d\":{\"type\":\"string\",\"~kind\":\"String\"},\"e\":{\"type\":\"string\",\"~kind\":\"String\"},\"f\":{\"type\":\"string\",\"~kind\":\"String\"},\"g\":{\"type\":\"string\",\"~kind\":\"String\"},\"h\":{\"type\":\"string\",\"~kind\":\"String\"},\"i\":{\"type\":\"string\",\"~kind\":\"String\"},\"j\":{\"type\":\"string\",\"~kind\":\"String\"}},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/properties/a",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "a"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad a",
+         "tag": "ma"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/b",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "b"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad b",
+         "tag": "mb"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/c",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "c"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad c",
+         "tag": "mc"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/d",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "d"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad d",
+         "tag": "md"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/e",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "e"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad e",
+         "tag": "me"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/f",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "f"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad f",
+         "tag": "mf"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/g",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "g"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad g",
+         "tag": "mg"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/h",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "h"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad h",
+         "tag": "mh"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/i",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "i"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad i",
+         "tag": "mi"
+        }
+       }
+      ]
+     },
+     {
+      "path": "/properties/j",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "j"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "bad j",
+         "tag": "mj"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refinement under an if/then/else",
+   "args": [
+    {
+     "name": "t",
+     "parameters": {
+      "$call": "Object",
+      "args": [
+       {
+        "a": {
+         "$call": "String",
+         "args": []
+        }
+       },
+       {
+        "if": {
+         "properties": {
+          "a": {
+           "const": "x"
+          }
+         }
+        },
+        "then": {
+         "$call": "Refine",
+         "args": [
+          {
+           "$call": "Object",
+           "args": [
+            {}
+           ]
+          },
+          {
+           "$fn": "never",
+           "tag": "then"
+          },
+          {
+           "$fn": "text",
+           "text": "then bad",
+           "tag": "m"
+          }
+         ]
+        },
+        "else": {
+         "$call": "Object",
+         "args": [
+          {}
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "toolCall",
+     "id": "c1",
+     "name": "t",
+     "arguments": {
+      "a": "x"
+     }
+    }
+   ],
+   "result": {
+    "error": "Validation failed for tool \"t\":\n  - root: must match \"then\" schema\n\nReceived arguments:\n{\n  \"a\": \"x\"\n}",
+    "calls": [
+     "check:then",
+     "check:then",
+     "check:then",
+     "error:m"
+    ],
+    "schema": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\"}},\"if\":{\"properties\":{\"a\":{\"const\":\"x\"}}},\"then\":{\"type\":\"object\",\"properties\":{}},\"else\":{\"type\":\"object\",\"properties\":{}}}",
+    "validation": "{\"type\":\"object\",\"required\":[\"a\"],\"properties\":{\"a\":{\"type\":\"string\",\"~kind\":\"String\"}},\"if\":{\"properties\":{\"a\":{\"const\":\"x\"}}},\"then\":{\"type\":\"object\",\"properties\":{},\"~kind\":\"Object\"},\"else\":{\"type\":\"object\",\"properties\":{},\"~kind\":\"Object\"},\"~kind\":\"Object\"}",
+    "sites": [
+     {
+      "path": "/then",
+      "refinements": [
+       {
+        "check": {
+         "$fn": "never",
+         "tag": "then"
+        },
+        "error": {
+         "$fn": "text",
+         "text": "then bad",
+         "tag": "m"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

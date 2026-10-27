@@ -86,6 +86,28 @@ shareDecodedFrames((envelope) => envelope?.type === "notify" && envelope.notify?
 // Marks the renderers of a definition from Pi's create<Tool>ToolDefinition
 // (shims/builtin-tools.mjs): the host draws those halves with its built-in
 // renderers for the named tool.
+// The nodes of a tool's parameter schema that carry TypeBox refinements (the hidden ~refine list of Type.Refine), by the path of each node ("/properties/a", "/anyOf/1", "/items"): the
+// Host asks for each predicate call with tool_refine_arguments while it validates the arguments (ai/validate_refine.go).
+const refinementWithMembers = ["properties", "patternProperties", "dependentSchemas", "dependencies", "$defs", "definitions"];
+const refinementWithList = ["allOf", "anyOf", "oneOf", "prefixItems", "items"];
+const refinementWithChild = ["additionalProperties", "additionalItems", "contains", "propertyNames", "not", "if", "then", "else", "items", "unevaluatedItems", "unevaluatedProperties"];
+function refinementSites(schema) {
+  const sites = [];
+  const visit = (node, path) => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return;
+    const list = node["~refine"];
+    if (Array.isArray(list) && list.length > 0) sites.push({ path, refinements: list });
+    for (const key of Object.keys(node)) {
+      const value = node[key];
+      if (refinementWithMembers.includes(key) && value && typeof value === "object") for (const name of Object.keys(value)) visit(value[name], `${path}/${key}/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`);
+      else if (refinementWithList.includes(key) && Array.isArray(value)) value.forEach((member, index) => visit(member, `${path}/${key}/${index}`));
+      else if (refinementWithChild.includes(key)) visit(value, `${path}/${key}`);
+    }
+  };
+  visit(schema, "");
+  return sites;
+}
+
 const builtInToolRenderer = Symbol.for("pig.builtInToolRenderer");
 
 // A host call the runtime cancels (its parent request was cancelled, or its connection closed on shutdown, reload or session replacement) rejects with an error made here. Pi never rejects a host call that way: its calls are in-process and outlive the command that started them (interactive-mode.ts showExtensionCustom 2858-2940 settles only through done() or a factory failure). An extension that dropped the call's promise, as pi-mcp-adapter drops ctx.ui.custom's, owns nothing that can observe this rejection, so it must not end the process, which a packed cell shares with the successor generation of a reload. Every other unhandled rejection keeps Node's default (lib/internal/process/promises.js, --unhandled-rejections=throw): an extension listener handles it, and with none it raises as an uncaught exception, as in Pi, whose process the extension shares.
@@ -2702,7 +2724,9 @@ export class Runtime {
   }
 
   toolDeclaration(tool) {
+    const refinements = refinementSites(tool.parameters).map((site) => ({ path: site.path, count: site.refinements.length }));
     return {
+      refinements: refinements.length > 0 ? refinements : undefined,
       name: tool.name,
       label: tool.label,
       description: tool.description || "",
@@ -4581,8 +4605,8 @@ export class Runtime {
       return;
     }
     if (!config) throw new Error("Provider config is required when registering by name");
-    // Pi validates the incoming registration on its own, before it touches the stored configuration, then merges its defined values over the previous effective root (model-runtime.ts:753-766).
-    piProviderComposer().validateExtensionProvider(name, piBuiltinProvider(name), this.registryState.providers?.[name]?.modelsConfig, config);
+    // A registration made while the extension loads is queued, as Pi's loader queues it (loader.ts:217-218); the model runtime that applies the queue validates it and reports the rejection as a diagnostic, and the extension stays loaded. After the load Pi's registerProvider validates the incoming registration on its own, before it touches the stored configuration, then merges its defined values over the previous effective root (model-runtime.ts:753-766).
+    if (this.loadState === "active") piProviderComposer().validateExtensionProvider(name, piBuiltinProvider(name), this.registryState.providers?.[name]?.modelsConfig, config);
     // A loading member merges over its own queued root, else over the cell's active root, as Pi's flush merges over the effective registration.
     const merged = { ...(this.loadState === "active" ? this.registeredProviderConfig(name) ?? this.foreignProviderConfigForMerge(name) : this.registeredProviderConfigs.get(name) ?? this.providerConfigObjects.get(name)?.config) };
     for (const [key, value] of Object.entries(config)) {
@@ -4830,6 +4854,18 @@ export class Runtime {
           const tool = this.tools.get(request.tool);
           if (typeof tool?.prepareArguments !== "function") throw new Error(`tool ${request.tool} has no prepareArguments`);
           await this.respond(id, tool.prepareArguments(request.args || {}));
+          return;
+        }
+        case "tool_refine_arguments": {
+          // validation.ts validateToolArguments: TypeBox calls a refinement's check (and error) while it validates; the Host's traversal asks for each call here.
+          const refine = request.refine ?? {};
+          const site = refinementSites(this.tools.get(request.tool)?.parameters).find((candidate) => candidate.path === refine.path);
+          const refinement = site?.refinements[refine.index];
+          if (!refinement) throw new Error(`tool ${request.tool} has no refinement ${refine.index} at "${refine.path}"`);
+          const ok = !!refinement.check(refine.value);
+          const result = { ok };
+          if (!ok && refine.with_message) result.message = refinement.error(refine.value);
+          await this.respond(id, result);
           return;
         }
         case "tool_prepare_loadout": {

@@ -167,6 +167,7 @@ func loadRustAPIExtension(t *testing.T, packed bool) *rustAPIHost {
 	if h.ext.Name == "" {
 		t.Fatalf("extapi not loaded: %v", loaded)
 	}
+	applyQueuedRegistrations(h.host)
 	return h
 }
 

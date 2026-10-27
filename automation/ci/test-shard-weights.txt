@@ -2,7 +2,8 @@
 #
 # Placement of the slowest tests of sharded packages, read by test-shard-pattern.sh.
 # Each "package" line starts a section; "shards" names the shard count the
-# placement balances; with any other count every test is placed by name hash. Each line "<shard> <test>" pins that
+# placement balances; with any other count every test is placed by name hash. A package that runs under two shard
+# counts (a Linux and a Windows job split) has one section for each. Each line "<shard> <test>" pins that
 # test to the shard, packed by measured duration (tests over 10 s for cmd/pig and 5 s for the extension packages, measured
 # with go test -json) on top of the hash-placed rest. A name that is no longer
 # listed is ignored; a test not named here is placed by hash, so every test
@@ -61,49 +62,37 @@ shards 8
 8 TestResourceLoaderUpstreamRPCFileURLs
 8 TestSharedSubprocessExecAcrossModes
 
+# The extension host package runs in three shards on Linux (SHARDED_SPEC) and on Windows (ci.yml, extension-host-1 to
+# -3). Its pins had been packed for two, a count nothing runs, so they never applied and the shards were placed by name
+# hash (196, 132 and 157 s at 4 CPUs on a loaded host). The 24 tests of 5 s or more are packed to an equal load, the
+# hash-placed rest included, by their median duration over two measured runs (a serial test counts its elapsed time, a
+# t.Parallel test about half of it).
 package ./coding/extension/host/subprocess
-shards 2
-1 TestAC59PackedSDKFocusedComponentsOwnInput
+shards 3
 1 TestContextResultShapesCrossSDKTransports
-1 TestDrainSpansIsolatedNodeProcesses
-1 TestGitMergeAndResolveExample
 1 TestHostClosedConnectionKeepsItsProcessRetained
-1 TestHostLoadAndReloadPreserveConfiguredGuardOrder
-1 TestNodeCommandReturnDoesNotCancelItsHostCalls
-1 TestNodeIssuePackageForms
-1 TestNodeRecoveryKeepsOriginalOwnerCancellation
-1 TestNodeRepeatedUnknownCrashBisectsAndRejoinsHealthyMembers
-1 TestPackedStderrLogLifecycle
-1 TestReloadAcrossAPlacementChangeStartsAFreshProcess
-1 TestSlowNodeFactoryLoads
-1 TestToolRenderersAcrossSDKs
-1 TestUnknownEventHandlerIsAnErrorInEverySDK
+1 TestPackedMemberStoppingDoesNotReleaseAnotherMembersFileMutationTurn
+1 TestPackedPromptHandlerBodyFIFO
+1 TestPackedProviderResponseAndToolPrompts
+1 TestPackedSDKFocusedComponentAndSessionActionsMatch
+1 TestTurnBoundaryPackedFactoriesMatchIsolated
 1 TestUpstreamExtensionFactoryCache
-1 TestXrefEventBusCloneMatchesPi
-1 TestXrefEventBusInspectMatchesPi
-1 TestXrefEventBusListenerOrderMatchesPi
-1 TestXrefEventBusMaxListenersWarningIsSilentLikePi
-2 TestConcurrentIsolatedStartsClaimOnlyCompleteProcesses
-2 TestEmbeddedPackedOwnerActivationByLanguage
-2 TestHostProviderQueueBindsToRunnerRegistry
 2 TestHost_ReloadPlansPackedRustAndFissionsQuarantinedCell
-2 TestInputTransformStreamingExample
-2 TestNodeCrashAfterRetainedReloadRecoversWithoutReplay
-2 TestNodeCrashQuarantinesOnlyCulpritAndDoesNotReplay
-2 TestOAuthSubscriptionSDKPlacements
-2 TestPackedMemberFactoryFailureEndsTheLoad
+2 TestNodeRepeatedUnknownCrashBisectsAndRejoinsHealthyMembers
 2 TestPackedMessageOutputPadAcrossSDKs
-2 TestPackedPromptHandlerBodyFIFO
-2 TestPackedProviderResponseAndToolPrompts
-2 TestPackedSDKFocusedComponentAndSessionActionsMatch
 2 TestPackedUserMessageContentAcrossSDKs
+2 TestRecoveredExtensionTakesItsNewToolRegistration
 2 TestRustFactoryReloadReinvokesFactoryInTheRetainedProcess
-2 TestTurnBoundaryPackedFactoriesMatchIsolated
-2 TestXrefEventBusForeignPrefixMutationMatchesPi
-2 TestXrefEventBusMatchesPiAcrossRealms
-2 TestXrefEventBusPayloadLifetimeMatchesPi
-2 TestXrefEventBusReentrantDispatchMatchesPi
-2 TestXrefEventBusSymbolLifetimeMatchesPi
+2 TestRustFactoryReloadWithControlCharactersInNameAndSocketDirectory
+2 TestToolRenderersAcrossSDKs
+3 TestAC59PackedSDKFocusedComponentsOwnInput
+3 TestAbortedToolCallSettlesCooperativelyOrFailsAfterTheGrace
+3 TestEmbeddedPackedOwnerActivationByLanguage
+3 TestOAuthSubscriptionSDKPlacements
+3 TestPackedMemberFactoryFailureEndsTheLoad
+3 TestPackedStderrLogLifecycle
+3 TestSlowNodeFactoryLoads
+3 TestXrefEventBusInspectMatchesPi
 
 package ./test/extension-conformance
 shards 2
@@ -133,3 +122,103 @@ shards 2
 2 TestPromptOptionEditsAcrossSDKs
 2 TestPromptSectionMutationsAcrossSDKs
 2 TestProviderObjectsAcrossSDKs
+
+# The Linux test-conformance job runs these eight shards one after another, each its own go test process under go test's
+# 10-minute package timeout. At three shards by name hash the shards measured 601, 540 and 527 s of that 600 s (4 CPUs,
+# a loaded host), and the package grows with every row (a Lisp SDK adds a cell). The 91 tests of 5 s or more are packed
+# to an equal load, the hash-placed rest included, by their median duration over three measured runs (a serial test
+# counts its elapsed time, a t.Parallel test about half of it: a shard's parallel tail overlaps); three tests of the
+# slowest shard then moved to the fastest ones. Measured the same way, the eight shards take 181 to 237 s.
+package ./test/extension-conformance
+shards 8
+1 TestConfigRootGettersAgreeAcrossLanguages
+1 TestConformance_FileMutationQueueSpansExtensionProcesses
+1 TestConformance_HeadlessModesNeverRunUIClosures
+1 TestConformance_HostHelpersAgreeAcrossSDKs
+1 TestConformance_SerializeConversationAgreesAcrossSDKs
+1 TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs
+1 TestContextSignalIsTheActiveRunsSignalInEverySDK
+1 TestInitThemeAcrossSDKs
+1 TestKeyHintAcrossSDKs
+1 TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs
+1 TestOnToolsExpandedChangeAcrossSDKs
+1 TestProviderObjectsAcrossSDKs
+1 TestSelectListThemeAcrossSDKs
+2 TestConformance_AbortedToolSettlesWithinTheGrace
+2 TestConformance_BuiltinToolDelegationAcrossSDKs
+2 TestConformance_ComponentKitImagesSendOnce
+2 TestConformance_FileMutationQueueIsTheHostsQueue
+2 TestFileMutationOrderAcrossSDKs
+2 TestModelTypesClassifyAcrossSDKs
+2 TestOnLoadedAndFactoryEmitAcrossSDKs
+2 TestOrderingRowsAcrossSDKs
+2 TestSessionGraphModelRuntimeAcrossSDKs
+2 TestSupersededOwnerKeepsACapturedProviderCallableAcrossSDKs
+2 TestThemeAcrossSDKs
+3 TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs
+3 TestChildAgentSessionNativeSDKsLifecycleAndModelErrors
+3 TestChildAgentSessionRust
+3 TestConformance_TerminalInput
+3 TestLateProviderSupersededByAnotherExtensionKeepsOperationsAcrossSDKs
+3 TestOutboundFramesAreTheEncodersBytes
+3 TestPromptHandlerBodyFIFOAcrossSDKs
+3 TestRenderCurrentSystemPromptAcrossSDKs
+3 TestSessionGraphDefaultPackageManagerAcrossSDKs
+3 TestSessionGraphSessionManagerAcrossSDKs
+3 TestSetWidgetRendererAcrossSDKs
+3 TestThemeQueriesAcrossSDKs
+4 TestBeforeAgentStartTriggerAcrossSDKs
+4 TestConformance_CompactionUsageHelpersAgreeAcrossSDKs
+4 TestHostStateChangeReachesABackgroundReaderAcrossSDKs
+4 TestLateProviderKeepsOperationsAcrossSDKs
+4 TestLateProviderUnregisterDropsOperationsAcrossSDKs
+4 TestModelTypesVirtualModelIsVisibleInTheSameTurnAcrossSDKs
+4 TestOnThemeChangeAcrossSDKs
+4 TestPrepareLoadoutRunsBeforeEveryTurnAcrossSDKs
+4 TestPromptSectionMutationsAcrossSDKs
+4 TestProviderProducersAcrossSDKs
+4 TestSDKScenarios
+5 TestConformance_FileMutationQueueAgreesAcrossSDKs
+5 TestConformance_OversizedToolResultIsAnsweredAcrossSDKs
+5 TestConformance_RPCModeDropsFrameWidgetsInEverySDK
+5 TestDynamicToolRegistrationAcrossSDKs
+5 TestMarkdownThemeAcrossSDKs
+5 TestNativeEventBusStressKeepsEveryDeliveryAndBoundedState
+5 TestSessionGraphDefaultResourceLoaderAcrossSDKs
+5 TestThemeFaintForegroundAcrossSDKs
+6 TestConformance_MessageConversionAgreesAcrossSDKs
+6 TestConformance_UIPromptStartIsAppliedBeforeTheDialogsAnswerSettles
+6 TestContextSignalFollowsTheRunBetweenRequestsInEverySDK
+6 TestExtensionRoundTripLatencyOpenLoop
+6 TestExtensionSourceInfoAcrossSDKs
+6 TestHighlightCodeAcrossSDKs
+6 TestModelTypesGenerateImagesAcrossSDKs
+6 TestModelTypesProviderObjectAcrossSDKs
+6 TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners
+6 TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener
+6 TestNodeRegistryVirtualWritesSurviveConcurrentPublications
+6 TestPromptSelectedToolsMutationsAcrossSDKs
+6 TestSystemPromptOptionContentAcrossSDKs
+7 TestCancelReasonReachesEveryNativeSDK
+7 TestConformance_EventUnsubscribeEveryEvent
+7 TestExtensionPayloadScalesLinearly
+7 TestModelTypesProviderConfigImplementationsAcrossSDKs
+7 TestModelTypesProviderOperationCancellationAcrossSDKs
+7 TestNodeRegistryWritesSurviveConcurrentPublications
+7 TestPromptOptionEditsAcrossSDKs
+7 TestRawKeyHintAcrossSDKs
+7 TestSessionGraphChildHandlesAcrossSDKs
+7 TestSessionGraphProjectTrustStoreAcrossSDKs
+7 TestSettingsListThemeAcrossSDKs
+7 TestToolCallInputAcrossSDKs
+8 TestBellAcrossSDKs
+8 TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK
+8 TestExtensionSoak
+8 TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs
+8 TestLateProviderReRegistrationKeepsOperationsAcrossSDKs
+8 TestModelTypesReadsAcrossSDKs
+8 TestModelTypesVirtualModelsAcrossSDKs
+8 TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter
+8 TestScopedModelsAcrossSDKs
+8 TestSessionGraphSettingsManagerAcrossSDKs
+8 TestTuiStateAcrossSDKs

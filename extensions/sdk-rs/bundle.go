@@ -14,12 +14,14 @@ import (
 	"slices"
 )
 
-// bundle_embed.go lists the crate's files without its unit-test modules (src/*tests.rs, each declared under #[cfg(test)], which cargo does not load in a build): go:embed cannot leave files out of a directory, so the list is generated. TestBundledFilesMatchRustSourceTree fails when it and the source tree disagree.
+// bundle_embed.go lists the crate's files without its unit-test modules (src/*tests.rs, each declared under #[cfg(test)], which cargo does not load in a build): go:embed cannot leave files out of a directory, so the list is generated. The unicode property tables (src/tui/tables.rs, 189 KB of generated text) are embedded as tables.rs.gz, an eighth of the size, which staging writes back as tables.rs (coding/extension/pigsdk). TestBundledFilesMatchRustSourceTree fails when it and the source tree disagree.
 //
-//go:generate go run ../../automation/gen/embed-bundle.go -pkg rssdk -out bundle_embed.go -skip tests.rs -skip bundle.go -skip bundle_embed.go -walk src LICENSE Cargo.toml Cargo.lock
+//go:generate go run ../../automation/gen/embed-bundle.go -pkg rssdk -out bundle_embed.go -skip tests.rs -skip tables.rs -skip bundle.go -skip bundle_embed.go -walk src LICENSE Cargo.toml Cargo.lock
 
 // BundledFiles lists the embedded files, relative to the crate root, in a stable
-// order. Paths use forward slashes; a stager recreates subdirectories.
+// order. Paths use forward slashes; a stager recreates subdirectories. A name
+// ending in .gz is the gzip of the file the stager writes under the name
+// without it.
 func BundledFiles() []string {
 	var files []string
 	err := fs.WalkDir(Source, ".", func(path string, entry fs.DirEntry, err error) error {

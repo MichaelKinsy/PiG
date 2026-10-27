@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 )
 
 // writeHeightReportingModule writes a packed Go factory whose "height" tool
@@ -94,7 +93,7 @@ func TestPackedGoExtensionReceivesHeightThroughReload(t *testing.T) {
 	h.SetHeightFunc(func() int { return int(height.Load()) })
 	h.SetWidthFunc(func() int { return 123 })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 
 	// First reload loads the packed cell through acceptPackedExt with the

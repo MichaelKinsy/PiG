@@ -260,9 +260,10 @@ func TestTaskRuntime(t *testing.T) {
 		if len(reports) != 1 || reports[0].Error() != "reported" {
 			t.Fatalf("reports %v, want [reported]", reports)
 		}
-		// The step after the phase ends the invocation.
-		flush()
+		// The step after the phase ends the invocation, on its own goroutine and after the outcome the wait above returned
+		// on; the end marks the invocation ended before it cancels the runtime signal (scheduler.ts:1100-1107).
 		runtime, _ := captured.get()
+		<-runtime.Signal().Done()
 		_, snapshotErr := runtime.SnapshotErased(testContext, notes, opened.root.Id())
 		tkContainsError(t, snapshotErr, "invocation has ended")
 		var documents durable.DocumentReader = runtime
@@ -278,13 +279,15 @@ func TestTaskRuntime(t *testing.T) {
 		store := newControlledStorage()
 		before := make(chan error, 1)
 		after := make(chan error, 1)
-		var afterQueued atomic.Bool
 		heldGate := &syncValue[gate]{}
+		runtimeValue := &syncValue[stepRuntimeOf[string]]{}
+		handlerReturns := deferred()
 		var harnessRef atomic.Pointer[Harness]
 		detached := tkOneStep("test.detached", func(_ context.Context, _ stepRecordOf[string], runtime stepRuntimeOf[string]) error {
-			// Hold the line, queue a commit without awaiting it, and return; the step queues behind that commit.
+			// Hold the line, queue a commit without awaiting it, and return once the test has seen it queue; the step queues behind that commit.
 			held := store.holdCommits()
 			heldGate.put(held)
+			runtimeValue.put(runtime)
 			tkAppendBlocker(*harnessRef.Load(), runtime.ConversationId())
 			// Goroutines queue in no fixed order: wait until a commit is in storage, then let the other one queue.
 			if err := held.entered.wait(testContext); err != nil {
@@ -295,23 +298,25 @@ func TestTaskRuntime(t *testing.T) {
 					return completed[stepState, string]("before"), nil
 				})
 			}()
-			flush()
-			// Queued after the handler returned, so after the step.
-			time.AfterFunc(20*time.Millisecond, func() {
-				afterQueued.Store(true)
-				after <- runtime.Commit(testContext, func(durable.Tx, stepRecordOf[string]) (*durable.NextTaskState[stepState, string], error) {
-					return completed[stepState, string]("after"), nil
-				})
-			})
-			return nil
+			return handlerReturns.wait(testContext)
 		})
 		opened := tkOpenRoot(t, []durable.AnyTask{detached.Erased()}, tkOptions{storage: store})
 		harnessRef.Store(&opened.harness)
 		id := tkStart(t, opened.root, detached.Erased())
+		commits, steps := waitingOnLine("taskRuntime).Commit"), waitingOnLine("TaskScheduler).step")
 		opened.harness.Resume()
 		eventually(t, func() bool { return heldGate.isSet() })
-		eventually(t, afterQueued.Load)
-		flush()
+		eventually(t, func() bool { return waitingOnLine("taskRuntime).Commit") > commits })
+		handlerReturns.resolve()
+		// The step queues behind the commit queued before it; the commit below, started after the handler returned, queues behind the step.
+		eventually(t, func() bool { return waitingOnLine("TaskScheduler).step") > steps })
+		runtime, _ := runtimeValue.get()
+		go func() {
+			after <- runtime.Commit(testContext, func(durable.Tx, stepRecordOf[string]) (*durable.NextTaskState[stepState, string], error) {
+				return completed[stepState, string]("after"), nil
+			})
+		}()
+		eventually(t, func() bool { return waitingOnLine("taskRuntime).Commit") > commits+1 })
 		held, _ := heldGate.get()
 		held.release()
 		if err := tkWaitErr(t, before); err != nil {
@@ -330,33 +335,33 @@ func TestTaskRuntime(t *testing.T) {
 		notes := tkSessionNotes("test.late-watch")
 		store := newControlledStorage()
 		watching := make(chan error, 1)
-		var watchQueued atomic.Bool
 		heldGate := &syncValue[gate]{}
+		runtimeValue := &syncValue[stepRuntime]{}
 		var harnessRef atomic.Pointer[Harness]
 		late := tkOneStep("test.late-watch", func(_ context.Context, _ stepRecord, runtime stepRuntime) error {
 			held := store.holdCommits()
 			heldGate.put(held)
+			runtimeValue.put(runtime)
 			tkAppendBlocker(*harnessRef.Load(), runtime.ConversationId())
-			// Starts after the handler returned, so its line job queues behind the step that ends the invocation.
-			time.AfterFunc(20*time.Millisecond, func() {
-				watchQueued.Store(true)
-				_, err := runtime.WatchDocErased(testContext, notes)
-				watching <- err
-			})
-			return nil
+			// Goroutines queue in no fixed order: return once the commit is in storage, so the step that ends the invocation queues behind it.
+			return held.entered.wait(testContext)
 		})
 		opened := tkOpenRoot(t, []durable.AnyTask{late.Erased()}, tkOptions{storage: store})
 		harnessRef.Store(&opened.harness)
 		tkSetNotes(t, opened.harness, notes, "x")
 		id := tkStart(t, opened.root, late.Erased())
+		steps, watches := waitingOnLine("TaskScheduler).step"), waitingOnLine("WatchDocErased")
 		opened.harness.Resume()
 		eventually(t, heldGate.isSet)
+		// Starts after the handler returned, so its line job queues behind the step that ends the invocation.
+		eventually(t, func() bool { return waitingOnLine("TaskScheduler).step") > steps })
+		runtime, _ := runtimeValue.get()
+		go func() {
+			_, err := runtime.WatchDocErased(testContext, notes)
+			watching <- err
+		}()
+		eventually(t, func() bool { return waitingOnLine("WatchDocErased") > watches })
 		held, _ := heldGate.get()
-		if err := held.entered.wait(testContext); err != nil {
-			t.Fatal(err)
-		}
-		eventually(t, watchQueued.Load)
-		flush()
 		held.release()
 		tkContainsError(t, tkWaitErr(t, watching), "invocation has ended")
 		if outcome := tkWaitOutcome(t, opened.harness, id); outcome.Status != durable.OutcomeFaulted {

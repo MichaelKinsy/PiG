@@ -97,11 +97,17 @@ func TestAfterResponseSkipsHookSetsWithoutIt(t *testing.T) {
 func TestToolApiMemoRejectsOnceTheInvocationEnded(t *testing.T) {
 	setup := chatSetup(t)
 	var kept durable.ToolExecutionApi
-	addTool(t, setup.Registry, tlTool("probe", func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+	toolContext := &syncValue[context.Context]{}
+	addTool(t, setup.Registry, tlTool("probe", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		kept = api
+		toolContext.put(ctx)
 		return durable.ToolExecutionResult{}, nil
 	}))
 	run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"probe", map[string]any{}, "c1"}), tlDone()}, nil)
+	// The call's invocation ends in the step after its phase, on its own goroutine, and the run goes on from the call's result without waiting
+	// for it. The call's context is the invocation's, which the end cancels after it marks the invocation ended.
+	callContext, _ := toolContext.get()
+	<-callContext.Done()
 	if value, ok, err := kept.Memo(context.Background(), "pick"); err == nil {
 		t.Fatalf("Memo after the tool invocation ended = %v, %v, want an error", value, ok)
 	}

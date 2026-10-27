@@ -25,7 +25,7 @@ func TestRPCAbortWhileIdleAnswersBeforeALaterRun(t *testing.T) {
 	}
 	defer func() { _ = stdin.Close() }()
 	t.Setenv("PIG_TEST_FAUX", "1")
-	stdout, stderr, code := runPigForModeTest(t, bin, stdin, nil, "--mode", "rpc", "--no-session", "--no-extensions", "--offline", "--model", "test-faux/echo")
+	stdout, stderr, code := runPigForModeTest(t, bin, stdin, nil, "--mode", "rpc", "--no-session", "--no-extensions", "--offline", "--model", "test-faux/faux-1")
 	if code != 0 {
 		t.Fatalf("pig --mode rpc exited %d\nstderr: %s", code, stderr)
 	}

@@ -126,6 +126,17 @@ func (b *bridgeTool) PrepareArguments(params json.RawMessage) (json.RawMessage, 
 	return b.def.PrepareArguments(params)
 }
 
+// RefinementSites implements ai.Refiner: the nodes of the tool's schema that carry refinements, which the extension runs.
+func (b *bridgeTool) RefinementSites() []ai.RefinementSite { return b.def.RefinementSites }
+
+// Refine implements ai.Refiner.
+func (b *bridgeTool) Refine(ctx context.Context, path string, index int, value any, withMessage bool) (ai.RefineOutcome, error) {
+	if b.def.RefineArguments == nil {
+		return ai.RefineOutcome{OK: true}, nil
+	}
+	return b.def.RefineArguments(ctx, path, index, value, withMessage)
+}
+
 // Execute invokes the underlying `extension.ToolDefinition.Execute` (types.ts ToolDefinition.execute): the result is an
 // [agent.AgentToolResult] and onUpdate the [agent.ToolUpdateCallback] the agent loop passes.
 func (b *bridgeTool) Execute(

@@ -284,9 +284,11 @@ func selectSessionOptionModel(rt *startupModelRuntime, modelRuntime *coding.Mode
 	return &chosen.Model, cliErr
 }
 
-// testFauxCLIModel selects the test-only test-faux provider, which has no
-// catalog entry, for a --model naming it. It exists only when PIG_TEST_FAUX=1,
-// so normal runs resolve such a --model like any unknown model.
+// testFauxCLIModel selects the test-only test-faux provider for a --model naming it, without the registry resolution a real --model takes
+// (ResolveCliModel, which builds every runtime model). It exists only when PIG_TEST_FAUX=1. The provider is registered in the model registry
+// (registerHarnessTestFaux), so every consumer of the registry sees it as Pi's harness-registered one; only this selection is a shortcut, and
+// the startup allocation ceilings (TestStartupAllocationBudget, test/perfgate), which only move down, are measured with it: the registry
+// resolution adds about 6,100 allocations and 380 KB to the warm first prompt.
 func testFauxCLIModel(options startupModelOptions) (*codingagent.RuntimeModel, string, bool) {
 	if os.Getenv("PIG_TEST_FAUX") != "1" {
 		return nil, "", false

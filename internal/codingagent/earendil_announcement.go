@@ -13,7 +13,18 @@ import (
 //go:embed assets/clankolas.png
 var clankolasPNG []byte
 
-var loadAnnouncementImage = sync.OnceValue(func() string { return base64.StdEncoding.EncodeToString(clankolasPNG) })
+// announcementImage holds the base64 image, encoded on first use. It is not a sync.OnceValue package variable: that
+// initializer runs at program start and keeps the 539 KB image in every program that links this package, the
+// interactive mode or not. Here only the announcement component refers to the image.
+var announcementImage struct {
+	once  sync.Once
+	value string
+}
+
+func loadAnnouncementImage() string {
+	announcementImage.once.Do(func() { announcementImage.value = base64.StdEncoding.EncodeToString(clankolasPNG) })
+	return announcementImage.value
+}
 
 type earendilAnnouncementComponent struct {
 	*tui.Container

@@ -12,12 +12,24 @@ import (
 
 var builtinChatCatalogSink []ai.GeneratedModel
 
-// checkBuiltinChatCatalog compares builtinChatCatalog with ai.ListModels for every provider and returns how many models they list.
+// piListedModels is the part of models that Pi's catalog lists: it leaves out the OpenRouter routing variants PiG derives when it lists models (D199),
+// which builtinChatCatalog leaves out and builtinChatCatalogListed adds.
+func piListedModels(models []ai.GeneratedModel) []ai.GeneratedModel {
+	listed := make([]ai.GeneratedModel, 0, len(models))
+	for _, model := range models {
+		if _, _, variant := ai.OpenRouterRoutingVariant(model.Provider, model.ID); !variant {
+			listed = append(listed, model)
+		}
+	}
+	return listed
+}
+
+// checkBuiltinChatCatalog compares builtinChatCatalog with ai.ListModels, less the routing variants it derives, for every provider and returns how many models they list.
 func checkBuiltinChatCatalog(t *testing.T, stage string) int {
 	t.Helper()
 	listed := 0
 	for _, id := range append(ai.ListProviders(), "no-such-provider") {
-		want, got := ai.ListModels(id), builtinChatCatalog(id)
+		want, got := piListedModels(ai.ListModels(id)), builtinChatCatalog(id)
 		if len(want) != len(got) || (len(want) > 0 && !reflect.DeepEqual(want, got)) {
 			t.Fatalf("%s: builtinChatCatalog(%q) = %d models, ai.ListModels = %d, or they differ", stage, id, len(got), len(want))
 		}
@@ -32,7 +44,7 @@ func checkBuiltinChatCatalog(t *testing.T, stage string) int {
 			t.Fatalf("%s: builtinChatCatalog(%q) copied the list", stage, id)
 		}
 	}
-	if all := len(ai.ListModels("")); listed != all || listed == 0 {
+	if all := len(piListedModels(ai.ListModels(""))); listed != all || listed == 0 {
 		t.Fatalf("%s: the providers list %d models, the catalog %d", stage, listed, all)
 	}
 	return listed

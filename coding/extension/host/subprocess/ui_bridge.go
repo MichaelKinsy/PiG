@@ -137,6 +137,9 @@ type UIBridge struct {
 	registeredProviderConfigs map[string]map[string]json.RawMessage
 	registeredProviderOrder   []string
 	registeredNativeProviders map[string]NativeProviderDeclaration
+	// providerContributions are the registrations merged into registeredProviderConfigs[name], in order, so one a registry refused can be withdrawn without undoing the others.
+	providerContributions map[string][]providerContribution
+	nextContributionID    uint64
 
 	// WatchSessionLog enrolls one extension in session-log replication and
 	// returns the entries it has not seen. Set by the Host, which owns the
@@ -2001,6 +2004,7 @@ func (b *UIBridge) recordNativeProviderRegistration(name string, native NativePr
 		b.registeredNativeProviders = map[string]NativeProviderDeclaration{}
 	}
 	delete(b.registeredProviderConfigs, name)
+	delete(b.providerContributions, name)
 	b.registeredNativeProviders[name] = native
 	if !slices.Contains(b.registeredProviderOrder, name) {
 		b.registeredProviderOrder = append(b.registeredProviderOrder, name)
@@ -2012,7 +2016,12 @@ func (b *UIBridge) recordNativeProviderRegistration(name string, native NativePr
 // registered. A re-registration merges its defined top-level values over the
 // previous config and keeps the provider's place, as upstream
 // ModelRuntime.registerProvider does with its extensionProviders map.
-func (b *UIBridge) RecordProviderRegistration(name string, config json.RawMessage) {
+//
+// The returned function withdraws this registration again, as when the registry
+// the host binds later refuses it: the config is rebuilt from the registrations
+// that remain, and the provider disappears when none does. It does nothing once
+// the provider was forgotten or replaced by a Provider object.
+func (b *UIBridge) RecordProviderRegistration(name string, config json.RawMessage) (withdraw func()) {
 	var incoming map[string]json.RawMessage
 	if err := json.Unmarshal(config, &incoming); err != nil || incoming == nil {
 		incoming = map[string]json.RawMessage{}
@@ -2020,6 +2029,9 @@ func (b *UIBridge) RecordProviderRegistration(name string, config json.RawMessag
 	b.mu.Lock()
 	if b.registeredProviderConfigs == nil {
 		b.registeredProviderConfigs = make(map[string]map[string]json.RawMessage)
+	}
+	if b.providerContributions == nil {
+		b.providerContributions = make(map[string][]providerContribution)
 	}
 	previous, exists := b.registeredProviderConfigs[name]
 	delete(b.registeredNativeProviders, name)
@@ -2030,6 +2042,40 @@ func (b *UIBridge) RecordProviderRegistration(name string, config json.RawMessag
 	b.registeredProviderConfigs[name] = merged
 	if !exists {
 		b.registeredProviderOrder = append(b.registeredProviderOrder, name)
+	}
+	b.nextContributionID++
+	id := b.nextContributionID
+	b.providerContributions[name] = append(b.providerContributions[name], providerContribution{id: id, config: incoming})
+	b.mu.Unlock()
+	b.PublishModelCatalog()
+	return func() { b.withdrawProviderContribution(name, id) }
+}
+
+type providerContribution struct {
+	id     uint64
+	config map[string]json.RawMessage
+}
+
+func (b *UIBridge) withdrawProviderContribution(name string, id uint64) {
+	b.mu.Lock()
+	contributions := b.providerContributions[name]
+	index := slices.IndexFunc(contributions, func(c providerContribution) bool { return c.id == id })
+	if index < 0 {
+		b.mu.Unlock()
+		return
+	}
+	contributions = slices.Delete(slices.Clone(contributions), index, index+1)
+	if len(contributions) == 0 {
+		delete(b.providerContributions, name)
+		delete(b.registeredProviderConfigs, name)
+		b.registeredProviderOrder = slices.DeleteFunc(b.registeredProviderOrder, func(existing string) bool { return existing == name })
+	} else {
+		b.providerContributions[name] = contributions
+		merged := map[string]json.RawMessage{}
+		for _, contribution := range contributions {
+			maps.Copy(merged, contribution.config)
+		}
+		b.registeredProviderConfigs[name] = merged
 	}
 	b.mu.Unlock()
 	b.PublishModelCatalog()
@@ -2042,6 +2088,7 @@ func (b *UIBridge) ForgetProviderRegistration(name string) {
 	_, exists := b.registeredProviderConfigs[name]
 	exists = exists || slices.Contains(b.registeredProviderOrder, name)
 	delete(b.registeredNativeProviders, name)
+	delete(b.providerContributions, name)
 	if exists {
 		delete(b.registeredProviderConfigs, name)
 		b.registeredProviderOrder = slices.DeleteFunc(b.registeredProviderOrder, func(existing string) bool { return existing == name })

@@ -50,3 +50,4 @@ D178: facet modules load in an isolated Node child, not in the host process (cho
 D179: reserved, retired before release (the Windows host manager is ported; durable-c2); number assigned by the tern lead 2026-10-14.
 D180: a provider transport failure records its Go cause as a provider_transport_failure diagnostic (additive, #87); owner, 2026-10-14 (in session): option A, non-invasive.
 Next free ID: D119.
+D198: the Go, Rust and Python `Type` (pi-ai) has no Codec family (Codec, Decode, Encode, DecodeBuilder, EncodeBuilder, IsCodec): the callbacks have no consumer in any SDK; sdk-export-gaps; owner approved 2026-10-24.

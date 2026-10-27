@@ -934,7 +934,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 	go h.handleIncoming(me, conn)
 	for _, provider := range reg.Providers {
 		if provider.Native != nil {
-			if err := h.registerNativeProvider(ctx, me, conn, provider.Native); err != nil {
+			if err := h.registerNativeProvider(ctx, me, conn, provider.Native, true); err != nil {
 				return nil, err
 			}
 			continue
@@ -945,21 +945,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 			loadErr.StderrLog = me.stderrLogPath
 			return nil, loadErr
 		}
-		// Model-provider registration and OAuth registration are independent
-		// concerns: an extension may contribute an OAuth login with no
-		// model-provider callback wired, so gate only the model-provider hook.
-		h.attachProviderOperations(me, provider, &cfg)
-		if err := h.providerRuntime.RegisterProvider(provider.Name, cfg, extConfigOrigin(me.config)); err != nil {
-			return nil, err
-		}
-		if h.uiBridge != nil {
-			h.uiBridge.RecordProviderRegistration(provider.Name, provider.Config)
-		}
-		h.mu.Lock()
-		notifySuperseded := h.transferProviderOwnershipLocked(me, conn, provider.Name)
-		h.mu.Unlock()
-		notifySuperseded()
-		if err := h.registerOAuthProvider(me, provider.Name, provider.Config); err != nil {
+		if err := h.queueLoadedProvider(me, conn, provider, cfg); err != nil {
 			loadErr := newLoadError(me.config.Name, "register", "provider_config_invalid", err)
 			loadErr.StderrLog = me.stderrLogPath
 			return nil, loadErr

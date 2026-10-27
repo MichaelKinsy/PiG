@@ -11,10 +11,12 @@ package subprocess
 
 import (
 	"encoding/json"
+	"errors"
 	"math"
 	"os"
 	"reflect"
 	"slices"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -48,9 +50,38 @@ func init() {
 				}
 			}
 		},
-		build:     buildEditor,
+		build:     buildEditorView,
 		focusable: true,
 	})
+}
+
+// editorViewBuilder is buildEditor once EnableEditorViews ran. The widget registered above reaches the builder only through
+// this variable, so a program that never enables editor views does not link tui.Editor or the word-segmentation
+// dictionaries behind it (6.3 MB): the linker keeps a function only when something refers to it.
+var editorViewBuilder atomic.Pointer[editorBuildFunc]
+
+type editorBuildFunc func(*viewBuilder, *ViewNode, *frontend.ViewNode) (tui.Component, error)
+
+// EnableEditorViews lets the view kit build `editor` nodes. The `pig` command calls it where it creates the extension host, so
+// every mode serves editor views as before. An embedder that never draws an extension's editor leaves it out and
+// does not link the terminal editor; one that serves views to its own terminal calls it once before the first view
+// is built. It is safe to call more than once and from any goroutine.
+func EnableEditorViews() {
+	build := editorBuildFunc(buildEditor)
+	editorViewBuilder.Store(&build)
+}
+
+// buildEditorView is the registered builder of the `editor` kind. Validation (check above) does not need the editor, so a
+// program without it still rejects a malformed node the same way; building one fails with a message that names the call.
+func buildEditorView(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error) {
+	return buildEditorWith(editorViewBuilder.Load(), b, n, out)
+}
+
+func buildEditorWith(build *editorBuildFunc, b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error) {
+	if build == nil {
+		return nil, errors.New("editor views are not enabled in this program: call subprocess.EnableEditorViews before building a view that holds an editor")
+	}
+	return (*build)(b, n, out)
 }
 
 // viewEditorComponent is the Editor the tree holds. It asks the surface for the terminal's rows before it renders or

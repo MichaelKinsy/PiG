@@ -63,7 +63,7 @@ func TestHostLeavesNoGoroutineBehindAfterUseReloadAndShutdown(t *testing.T) {
 func TestHostLeavesNoGoroutineBehindAfterAPackedGoCellShutsDown(t *testing.T) {
 	rootA := writePackedFactoryModule(t, "example.com/goroutinegate/a", "gate-a", "tool_a")
 	rootB := writePackedFactoryModule(t, "example.com/goroutinegate/b", "gate-b", "tool_b")
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	cell, err := runtimecell.BuildGoPackedCell(ctx, t.TempDir(), "cell:goroutine-gate", []runtimecell.GoExtension{
 		{Name: "gate-a", Root: rootA, ModulePath: "example.com/goroutinegate/a", Package: "example.com/goroutinegate/a", Factory: "Extension", Hash: "ha"},

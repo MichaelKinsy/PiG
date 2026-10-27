@@ -9,6 +9,9 @@ func (r *ModelRegistry) RuntimeModels() []RuntimeModel {
 	builtins := 0
 	for _, id := range providerIDs {
 		builtins += len(builtinChatCatalog(id))
+		if id == "openrouter" { //portlint:allow providerliteral the variants are OpenRouter's own routing suffixes
+			builtins += len(builtinChatCatalog(id)) * len(ai.OpenRouterRoutingVariants)
+		}
 	}
 	result := make([]RuntimeModel, 0, builtins)
 	for _, id := range providerIDs {
@@ -21,6 +24,10 @@ func (r *ModelRegistry) RuntimeModels() []RuntimeModel {
 		// Unmodified built-ins already contain every field the model resolver reads. Preserve fresh header ownership without materializing the request-only fields of ai.Model.
 		for _, model := range builtinChatCatalog(id) {
 			result = append(result, RuntimeModel{Provider: model.Provider, ID: model.ID, Name: model.DisplayName, Reasoning: model.Reasoning, Headers: ai.ProviderHeadersFromStrings(model.Headers)})
+			// pig divergence (D199): OpenRouter's routing variants follow their model, as they do in the composed catalog; only the selection metadata is built.
+			for _, variantID := range ai.OpenRouterRoutingVariantIDs(model.Provider, model.ID) {
+				result = append(result, RuntimeModel{Provider: model.Provider, ID: variantID, Name: model.DisplayName + " (" + variantID[len(model.ID)+1:] + ")", Reasoning: model.Reasoning, Headers: ai.ProviderHeadersFromStrings(model.Headers)})
+			}
 		}
 	}
 	return result

@@ -34,7 +34,7 @@ func jsonModeCmd(t *testing.T, pigHome string, extra ...string) *exec.Cmd {
 	t.Helper()
 	args := append([]string{
 		"--no-extensions", "--mode", "json",
-		"--model", "test-faux/echo",
+		"--model", "test-faux/faux-1",
 	}, extra...)
 	cmd := exec.Command(buildBinary(t), args...)
 	cmd.Dir = pigHome

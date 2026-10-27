@@ -1,14 +1,12 @@
 package subprocess
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
@@ -76,7 +74,7 @@ func TestPackedCell_ProviderLifecycle(t *testing.T) {
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
 	t.Cleanup(func() { h.Shutdown("test done") })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	if _, err := h.Reload(ctx); err != nil {
 		t.Fatalf("first reload: %v", err)
@@ -84,6 +82,7 @@ func TestPackedCell_ProviderLifecycle(t *testing.T) {
 
 	check := func(want []string) {
 		t.Helper()
+		applyQueuedRegistrations(h)
 		mu.Lock()
 		got := make([]string, 0, len(registered))
 		for k := range registered {

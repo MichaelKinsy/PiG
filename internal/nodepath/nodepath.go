@@ -114,9 +114,11 @@ func normalizeString(path string, allowAboveRoot bool, separator byte, isSep fun
 	return buildNormal(path, allowAboveRoot, separator, isSep)
 }
 
-// buildNormal is Node's normalizeString, building the result in one buffer.
+// buildNormal is Node's normalizeString, building the result in one buffer. Every byte of the result is a byte of path,
+// a separator that stands for one, or a ".." that stands for one in path, so the result never outgrows path and path's own
+// length is the capacity; no size is computed from it.
 func buildNormal(path string, allowAboveRoot bool, separator byte, isSep func(int) bool) string {
-	res := make([]byte, 0, len(path)+2)
+	res := make([]byte, 0, len(path))
 	lastSegmentLength := 0
 	lastSlash := -1
 	dots := 0

@@ -134,6 +134,12 @@ selected extension. The Binary build then fails if an extension is not a
 fuse-compatible Go factory. It does not use a subprocess fallback. Source
 invocation still uses the normal extension host.
 
+Set `build.allowOverlays: true` to let the Binary accept a Piglet selected at
+launch (`--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME`) as an overlay on its
+own Piglet. It is off by default, applies to the built Piglet only, and the
+overlay cannot replace or remove the Binary's extensions, skills, slots or
+system prompt, widen its ceilings, or re-enable what it strips.
+
 Direct-binary startup verifies every non-fused component from its registered
 release/environment closure before model/session/tools. It never uses an
 arbitrary same-named PATH extension or silently pulls/substitutes content.

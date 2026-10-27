@@ -62,10 +62,11 @@
 "process.large_write.record_bytes" = 18000
 # process: Pi-Bolt's headless scenario in print mode, one prompt with four read tool calls on 47-239 KB files (test/perfgate TestPrintReadToolsProcessGate), under GOMAXPROCS=1. auth_stats counts the auth.json revision stats (internal/profiling FileRevisionStats less ModelsFileStats). Measured at f22240330e on the Linux lab host (linux/amd64), three runs: 85896-85898 allocs, 13008200-13013048 B, 3-4 GC cycles, 535 goroutines created, 433 auth.json stats. Lowered after lw-pfast-registry (one auth.json view per offline model operation), measured at its merge e330f6b791: 84446-84453 allocs, 12905824-12908400 B, 4 GC cycles, 107 goroutines created, 15 auth.json stats. Lowered again after each JSON Schema draft's metaschema compiles on first use (third_party/jsonschema FORK.md), ten runs at 2a05b4ab0c+F4: 68203-68381 allocs, 11444144-11482688 B, 3 GC cycles. Each ceiling is the tighter of the two measurements (maximum plus about 6%; GC cycles maximum plus one). Lowered after F2 (session-f2 33904230a8: a typed tool result is appended without decoding its record), measured at integrate-042 1166362571 on the Linux lab host, three runs: 66442-66458 allocs, 9529136-9531584 B, 2 GC cycles, 107 goroutines created, 15 auth.json stats.
 # gc_cycles lowered to 0 by D175 (print runs collect at GOGC 400 unless GOGC is set): 0 GC cycles and 107 goroutines created in every run at fb18cdb01b + F1b on the Linux lab host, against 2 GC cycles and 107 at GOGC=100. goroutines_created stays: with no GC cycle it rose to 191 until refresh signals shared one forwarder per caller (4f9ee731bd).
+# goroutines_created raised 114 -> 118 with the owner's approval (2026-10-25): PIG_TEST_FAUX registers the harness's test-faux provider through the model registry, as Pi's parity harness registers it from an extension, so the run carries one more registered provider and its deferred registration refresh pass (the pass goroutine plus the new provider's refresh and auth-check operations). Measured on the Linux lab host, print_tools: 114 -> 118, allocs 47,225 and bytes 8,291,424 stay under their ceilings. Production runs (no PIG_TEST_FAUX) are unchanged. Profiles: alloc_objects diff of a warm print run, branch fix/faux-footer-prefix against main (xd670 ~/tern-v5/trees/faux-reg/tmp/prof1, ~/tern-v5/trees/faux-main/tmp/prof0).
 "process.print_tools.allocs" = 70500
 "process.print_tools.bytes" = 10110000
 "process.print_tools.gc_cycles" = 0
-"process.print_tools.goroutines_created" = 114
+"process.print_tools.goroutines_created" = 118
 "process.print_tools.auth_stats" = 16
 "ai.provider_frame.google-text.bytes" = 4460
 "ai.provider_frame.mistral-text.bytes" = 4460
@@ -190,6 +191,16 @@
 "binary.pig.darwin_arm64.bytes" = 67190784
 # windows_amd64: owner-approved 2026-10-16 for the Pi v1.3.0 pin. Stripped size 72,289,792 at 9db1ecc0a3 -> 72,310,272 (+20,480 B); symbol growth: type data +12.8 KB, ai +6.1 KB, go/types +2.8 KB, tui/widthx +1.5 KB, coding/cli +0.6 KB.
 "binary.pig.windows_amd64.bytes" = 71606272
+
+# binary: the headless embed example (examples/headless: session API, MCP, one provider, no terminal) per release platform, stripped as released (TestHeadlessEmbedBinarySizeGate). "default" is a plain build; "stripped" passes every strip tag except pig_strip_mcp. Measured at the change that stopped the Node view kit's editor builder (tui.Editor and the 6.3 MB word dictionaries behind it) and the announcement image (539 KB) from linking into programs that never draw an interactive editor, rounded up to 8 KiB with one 4 KiB page of linker alignment as headroom (the same program built by the test and by hand differed by a page). A ceiling only moves down.
+"binary.headless.default.linux_amd64.bytes" = 40148992
+"binary.headless.default.linux_arm64.bytes" = 37363712
+"binary.headless.default.darwin_arm64.bytes" = 38576128
+"binary.headless.default.windows_amd64.bytes" = 41541632
+"binary.headless.stripped.linux_amd64.bytes" = 30384128
+"binary.headless.stripped.linux_arm64.bytes" = 28057600
+"binary.headless.stripped.darwin_arm64.bytes" = 28999680
+"binary.headless.stripped.windows_amd64.bytes" = 31686656
 
 # process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider.
 "process.interactive_first_frame.allocs" = 22700

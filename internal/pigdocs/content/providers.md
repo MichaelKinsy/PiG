@@ -37,7 +37,7 @@ PiG ships the same built-in chat providers and classifier models as Pi 1.4.0. `t
 | `openai-codex` | OpenAI Codex (ChatGPT subscription) | `openai-codex-responses` | OAuth via `pig login openai-codex` |
 | `opencode` | OpenCode Zen | `anthropic-messages`, `google-generative-ai`, `openai-completions`, `openai-responses` | `OPENCODE_API_KEY` |
 | `opencode-go` | OpenCode Go | `anthropic-messages`, `openai-completions`, `openai-responses` | `OPENCODE_API_KEY` |
-| `openrouter` | OpenRouter | `anthropic-messages`, `openai-completions` | `OPENROUTER_API_KEY` or OAuth |
+| `openrouter` | OpenRouter | `anthropic-messages`, `openai-completions` | `OPENROUTER_API_KEY` or OAuth. Every model also lists its `:nitro` and `:floor` routing variants (D199, see [Models](models.md)). |
 | `qwen-token-plan` | Qwen Token Plan | `openai-completions` | `QWEN_TOKEN_PLAN_API_KEY` |
 | `qwen-token-plan-cn` | Qwen Token Plan (China) | `openai-completions` | `QWEN_TOKEN_PLAN_CN_API_KEY` |
 | `qwen-token-plan-individual` | Qwen Token Plan (Individual) | `openai-completions` | `QWEN_TOKEN_PLAN_API_KEY` |

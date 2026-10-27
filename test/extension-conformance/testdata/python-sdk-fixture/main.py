@@ -522,6 +522,49 @@ def new_extension() -> pig_sdk.Extension:
         ext.tool("schema-invalid", "Must not register", None, lambda ctx, args: {"content": "bad"})
     except ValueError as error:
         schema_rejected = str(error) == 'Tool "schema-invalid" registered by extension "python-sdk-fixture" must define an object parameter schema.'
+    Type = pig_sdk.Type
+    ext.tool("type-schema-tool", "Parameters built with Type", Type.object({
+        "query": Type.string({"description": "What to look up"}),
+        "limit": Type.optional(Type.integer({"minimum": 1, "maximum": 50})),
+        "mode": Type.union([Type.literal("fast"), Type.literal("deep")]),
+        "tags": Type.optional(Type.array(Type.string())),
+        "filter": Type.optional(Type.record(Type.string(), Type.number())),
+    }, {"additionalProperties": False}), lambda ctx, args: "ok")
+    # refine-probe (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): the schema of the "probe" cases of validateToolArguments.json; every predicate and message function logs its call.
+    refine_log: list = []
+
+    def checked(tag, check):
+        def run(value):
+            refine_log.append(f"check:{tag}")
+            return check(value)
+        return run
+
+    def worded(tag, message):
+        def run(value):
+            refine_log.append(f"error:{tag}")
+            return message(value)
+        return run
+
+    def equals(tag, want):
+        return Type.refine(Type.string(), checked(tag, lambda value: value == want), worded(tag + "m", lambda value: "not " + want))
+
+    def must_throw(value):
+        raise RuntimeError("kaboom")
+
+    probe = Type.refine(Type.object({
+        "name": Type.refine(Type.string(), checked("len", lambda value: len(value) >= 3), worded("lenmsg", lambda value: "name is too short")),
+        "qty": Type.optional(Type.refine(Type.integer(), checked("even", lambda value: value % 2 == 0), worded("evenmsg", lambda value: "qty must be even, got " + str(value)))),
+        "pick": Type.union([equals("u1", "a"), equals("u2", "b")]),
+        "boom": Type.optional(Type.refine(Type.string(), checked("boom", must_throw))),
+    }), checked("root", lambda value: True), worded("rootmsg", lambda value: "root refused"))
+    ext.tool("refine-probe", "Arguments checked by refinements", probe, lambda ctx, args: "ok")
+
+    def refine_log_probe(ctx, args):
+        calls = list(refine_log)
+        refine_log.clear()
+        ctx.notify("refine_log:" + json.dumps(calls) + ":end", "info")
+
+    ext.command("refine_log", "Report and clear the refinement call log", refine_log_probe)
     class ConformanceEditor(pig_sdk.EditorComponent):
         """Swallows "q", rewrites "a" to "A", upper-cases the host's setText, and frames super.render."""
 
@@ -978,6 +1021,15 @@ def new_extension() -> pig_sdk.Extension:
                 report["diff"], report["firstChangedLine"] = diff.diff, diff.first_changed_line
             diffs.append(report)
         entries = [pig_sdk.session_entry_to_context_messages(case["entry"]) for case in golden["entries"]]
+        contexts = []
+        for case in golden["contexts"]:
+            entries_arg, *rest = case["args"]
+            leaf = rest[0] if rest else pig_sdk.SESSION_LEAF_LAST
+            by_id = dict(rest[1]) if len(rest) > 1 else None
+            try:
+                contexts.append({"result": pig_sdk.build_session_context(entries_arg, leaf, by_id)})
+            except TypeError as error:
+                contexts.append({"throws": str(error)})
         images = []
         for case in golden["images"]:
             if case["op"] == "convert":
@@ -994,7 +1046,7 @@ def new_extension() -> pig_sdk.Extension:
             "notJSON": pig_sdk.read_stored_credential("anthropic", auth_path + ".bad"),
         }
         ctx.copy_to_clipboard(text)
-        ctx.notify("host_helpers:" + json.dumps({"diffs": diffs, "entries": entries, "images": images, "creds": creds}) + ":end", "info")
+        ctx.notify("host_helpers:" + json.dumps({"diffs": diffs, "entries": entries, "contexts": contexts, "images": images, "creds": creds}) + ":end", "info")
 
     ext.command("host_helpers_probe", "Run the host-served pi helpers over the golden inputs", host_helpers_probe)
     # pi_ai_helpers_probe runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the test) through this SDK's pi-ai

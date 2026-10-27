@@ -17,7 +17,7 @@ CLI_SHARDS=8
 CLI_PKG=./coding/cli
 SUBPROCESS_PKG=./coding/extension/host/subprocess
 CONFORMANCE_PKG=./test/extension-conformance
-# Heavy packages that run as several go test processes, each under its own package timeout and each warm from the shared Go and Cargo caches, like cmd/pig: <package>:<shards>. test-shard-pattern.sh partitions each package's tests by name hash, and run_sharded_pkg refuses to run a package unless its shard patterns select every listed test exactly once. changed mode runs these packages whole.
+# Heavy packages that run as several go test processes, each under its own package timeout and each warm from the shared Go and Cargo caches, like cmd/pig: <package>:<shards>. test-shard-pattern.sh partitions each package's tests by name hash, with the slowest pinned to shards by automation/ci/test-shard-weights.txt for the shard count declared here, and run_sharded_pkg refuses to run a package unless its shard patterns select every listed test exactly once. changed mode runs these packages whole.
 SHARDED_SPEC=(
   ./ai:7
   ./coding:4
@@ -27,7 +27,7 @@ SHARDED_SPEC=(
   ./codemode:2
   ./durable/codemode:2
   ./coding/extension/host/subprocess:3
-  ./test/extension-conformance:3
+  ./test/extension-conformance:8
 )
 MODE=${1:-default}
 COUNT_FLAG=()
@@ -47,7 +47,9 @@ HEAVY_PKGS=(
   ./coding/extension/host/subprocess
   ./test/extension-conformance
 )
+# Packages that start real processes and gate what those use, and need the machine to themselves: they run after the parallel groups, one package at a time, each with every CPU. test/perfgate runs pig under a pseudo-terminal and cross-builds the release binaries in one go test process under the default 10-minute package timeout. Beside the 12-way pool of the fast group on a 4-CPU runner it took 390-494 s, 96 s with the machine to itself; a run that cold-built more of the binaries took 597 s, and the hang bounds that testbudget.Wait derives from the package deadline then cut its last tests short and killed their pig children.
 SERIAL_PKGS=(
+  ./test/perfgate
 )
 
 all_pkgs=$(go list ./...)
@@ -110,7 +112,9 @@ if [[ "$MODE" == changed ]]; then
   kept=()
   for pkg in "${HEAVY_PKGS[@]}"; do in_list "$pkg" "${AFFECTED[@]}" && kept+=("$pkg"); done
   HEAVY_PKGS=("${kept[@]}")
-  SERIAL_PKGS=()
+  kept=()
+  for pkg in "${SERIAL_PKGS[@]}"; do in_list "$pkg" "${AFFECTED[@]}" && kept+=("$pkg"); done
+  SERIAL_PKGS=("${kept[@]}")
   JSON_DIR="$ROOT/tmp/test-changed/$(date -u +%Y%m%dT%H%M%SZ)"
   mkdir -p "$JSON_DIR"
 fi
@@ -282,9 +286,12 @@ run_fault_group() {
   fi
   TAG_FLAG=(-tags pigfault)
   RUN_FLAG=(-run "^($tests)\$")
-  run_group core-fault "$1" ./durable/core/driver || return $?
+  local status=0
+  run_group core-fault "$1" ./durable/core/driver || status=$?
+  # The flags belong to this group alone, failed or not: a group that runs after it must not inherit them.
   TAG_FLAG=()
   RUN_FLAG=()
+  return "$status"
 }
 
 # The other heavy packages run as one group; cmd/pig runs in its shards.
@@ -305,19 +312,22 @@ case "$MODE" in
   fast|fast-parallel|fast-sharded)
     # fast is fast-parallel and fast-sharded in one run. CI runs the two halves on separate jobs, because together they
     # were the run's longest job.
+    # Every group runs even when an earlier one failed, so one run reports all the failing groups: a failure in the parallel group must not hide one in the serial packages.
+    status=0
     if [[ "$MODE" != fast-sharded ]]; then
-      run_group fast-parallel "$FAST_PARALLEL" "${FAST_PKGS[@]}"
+      run_group fast-parallel "$FAST_PARALLEL" "${FAST_PKGS[@]}" || status=$?
     fi
     if [[ "$MODE" != fast-parallel ]]; then
       # Every sharded package but the extension host and the conformance suite, which test-subprocess and test-conformance run.
       fast_sharded=()
       for pkg in "${!SHARD_COUNT[@]}"; do [[ "$pkg" == "$SUBPROCESS_PKG" || "$pkg" == "$CONFORMANCE_PKG" ]] || fast_sharded+=("$pkg"); done
-      [[ ${#fast_sharded[@]} -eq 0 ]] || run_sharded "$SUBPROCESS_PARALLEL" "${fast_sharded[@]}"
+      [[ ${#fast_sharded[@]} -eq 0 ]] || run_sharded "$SUBPROCESS_PARALLEL" "${fast_sharded[@]}" || status=$?
     fi
     if [[ "$MODE" != fast-sharded ]]; then
-      run_fault_group "$SERIAL_PARALLEL"
-      run_group serial-exclusive "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}"
+      run_fault_group "$SERIAL_PARALLEL" || status=$?
+      run_group serial-exclusive "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}" || status=$?
     fi
+    exit "$status"
     ;;
   cli)
     # cli [<first> <last>]: CI runs the shards in two jobs; make test-cli runs all of them.
@@ -369,7 +379,8 @@ case "$MODE" in
       run_cli_shards "$SUBPROCESS_PARALLEL" || status=$?
       RACE_FLAG=()
     fi
-    if [[ ${#FAST_PKGS[@]} -eq 0 && ${#HEAVY_PKGS[@]} -eq 0 ]]; then echo "[test-grouped] changed: no Go package is affected"; fi
+    run_group "changed serial-exclusive" "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}" || status=$?
+    if [[ ${#FAST_PKGS[@]} -eq 0 && ${#HEAVY_PKGS[@]} -eq 0 && ${#SERIAL_PKGS[@]} -eq 0 ]]; then echo "[test-grouped] changed: no Go package is affected"; fi
     exit "$status"
     ;;
   report)

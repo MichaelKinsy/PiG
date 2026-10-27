@@ -368,6 +368,10 @@ func runRegistryOracleWithPig(t *testing.T, scenario registryOracleScenario) []a
 	refs := func(models []*ai.Model) []string {
 		out := make([]string, 0, len(models))
 		for _, model := range models {
+			// OpenRouter's :nitro and :floor variants are PiG's addition (D199); Pi's lists have none.
+			if _, _, variant := ai.OpenRouterRoutingVariant(model.ProviderID(), model.ID); variant {
+				continue
+			}
 			out = append(out, model.ProviderID()+"/"+model.ID)
 		}
 		return out
@@ -537,6 +541,10 @@ func runRegistryOracleWithPig(t *testing.T, scenario registryOracleScenario) []a
 				if models, err := provider.GetModels(); err == nil {
 					ids := make([]string, 0, len(models))
 					for _, model := range models {
+						// OpenRouter's :nitro and :floor variants are PiG's addition (D199); Pi's provider lists have none.
+						if _, _, variant := ai.OpenRouterRoutingVariant(provider.ID, model.ID); variant {
+							continue
+						}
 						ids = append(ids, model.ID)
 					}
 					record["models"] = ids
@@ -730,6 +738,10 @@ func runRegistryOracleWithPig(t *testing.T, scenario registryOracleScenario) []a
 func anyModelRefs(models []ai.AnyModel) []string {
 	refs := make([]string, 0, len(models))
 	for _, model := range models {
+		// OpenRouter's :nitro and :floor variants are PiG's addition (D199); Pi's lists have none.
+		if _, _, variant := ai.OpenRouterRoutingVariant(model.ProviderID(), model.ModelID()); variant {
+			continue
+		}
 		refs = append(refs, model.ProviderID()+"/"+model.ModelID())
 	}
 	return refs

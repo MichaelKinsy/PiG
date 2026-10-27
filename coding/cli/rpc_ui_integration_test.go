@@ -312,7 +312,7 @@ func TestRPCModeStartsWithUnknownModelAndRejectsPromptBeforeAcceptance(t *testin
 }
 
 func TestRPCModeEOFStopsSessionTransitionWaitingOnExtensionUI(t *testing.T) {
-	p := startRPCUIFixture(t, []string{"PIG_HOME=" + t.TempDir()}, "--model", "test-faux/echo", "--no-session")
+	p := startRPCUIFixture(t, []string{"PIG_HOME=" + t.TempDir()}, "--model", "test-faux/faux-1", "--no-session")
 
 	p.send(`{"id":"arm","type":"prompt","message":"/block-session-switch"}`)
 	p.await("session-switch arm response", func(record rpcRecord) bool { return isSuccessResponse(record, "arm") })
@@ -352,7 +352,7 @@ func TestRPCModePromptRejectsWhileCompactionWaitsOnExtensionUI(t *testing.T) {
 	}
 
 	p := startRPCUIFixture(t, []string{"PIG_HOME=" + home},
-		"--model", "test-faux/echo", "--session", session.Path(), "--session-dir", sessionDir,
+		"--model", "test-faux/faux-1", "--session", session.Path(), "--session-dir", sessionDir,
 	)
 
 	p.send(`{"id":"arm","type":"prompt","message":"/block-compaction"}`)
@@ -394,7 +394,7 @@ func TestRPCModePromptRejectsWhileCompactionWaitsOnExtensionUI(t *testing.T) {
 }
 
 func TestRPCModeExtensionUIRoundTrip(t *testing.T) {
-	p := startRPCUIFixture(t, []string{"PIG_HOME=" + t.TempDir()}, "--model", "test-faux/echo", "--no-session")
+	p := startRPCUIFixture(t, []string{"PIG_HOME=" + t.TempDir()}, "--model", "test-faux/faux-1", "--no-session")
 
 	p.send(`{"id":"ask","type":"prompt","message":"/ask"}`)
 	var requestID string

@@ -21,6 +21,8 @@ type PendingNativeProviderRegistration struct {
 	Provider      *ai.ModelsProvider
 	ExtensionPath string
 	carrier       *NativeProvider
+	// Outcome is told the registry's verdict when the queue drains (see PendingProviderRegistration.Outcome).
+	Outcome func(error)
 }
 
 // AssertActive returns the stale message as an error once the runtime was invalidated, and nil before.
@@ -146,6 +148,15 @@ func (r *ExtensionRuntime) registerNativeProvider(ctx context.Context, provider 
 	return actions.registerNative(ctx, provider, carrier)
 }
 
+// QueueNativeProviderCarrier queues the Provider object an extension registers while it loads, whether or not a registry is bound, as QueueProviderRegistration does for a configuration: Pi's loader queues both in the runtime of the load, and the binding that drains them reports a rejection as the registering extension's diagnostic (loader.ts:220-222, runner.ts:488-504).
+//
+// upstream: loader.ts:220-222 (`runtime.registerNativeProvider` of the loading runtime)
+func (r *ExtensionRuntime) QueueNativeProviderCarrier(carrier *NativeProvider, extensionPath string, outcome func(error)) {
+	r.mu.Lock()
+	r.pendingNativeProviders = append(r.pendingNativeProviders, PendingNativeProviderRegistration{Provider: carrier.ProviderObject(), ExtensionPath: extensionPath, carrier: carrier, Outcome: outcome})
+	r.mu.Unlock()
+}
+
 // PendingNativeProviderRegistrations returns the queued native providers in registration order.
 func (r *ExtensionRuntime) PendingNativeProviderRegistrations() []PendingNativeProviderRegistration {
 	r.mu.Lock()
@@ -170,7 +181,11 @@ func (r *ExtensionRuntime) bindNativeProviders(actions ProviderActions, report f
 		}
 		entry := r.pendingNativeProviders[i]
 		r.mu.Unlock()
-		if err := actions.registerNative(context.Background(), entry.Provider, entry.carrier); err != nil && report != nil {
+		err := actions.registerNative(context.Background(), entry.Provider, entry.carrier)
+		if entry.Outcome != nil {
+			entry.Outcome(err)
+		}
+		if err != nil && report != nil {
 			report(&ExtensionError{ExtensionPath: entry.ExtensionPath, Event: "register_provider", Error: err.Error(), Stack: ErrorStack(err)})
 		}
 	}

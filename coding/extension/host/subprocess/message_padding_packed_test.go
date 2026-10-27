@@ -1,7 +1,6 @@
 package subprocess
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,7 +8,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
@@ -21,7 +19,7 @@ func TestPackedMessageOutputPadAcrossSDKs(t *testing.T) {
 			configs := []ExtConfig{paddingFactory(t, language, "padding_a"), paddingFactory(t, language, "padding_b")}
 			host := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 			defer host.Shutdown("test done")
-			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+			ctx, cancel := buildContext(t)
 			defer cancel()
 			loaded, errs := host.LoadAll(ctx, configs)
 			if len(errs) != 0 || len(loaded) != len(configs) {

@@ -135,6 +135,7 @@ func TestLateProviderSupersededByAnotherExtensionKeepsOperationsAcrossSDKs(t *te
 		if _, err := r.host.Load(t.Context(), cfg); err != nil {
 			t.Fatal(err)
 		}
+		applyQueuedRegistrations(r.host)
 		configs := r.lateRegistrations(t)
 		if len(configs) != 2 || configs[1].BaseURL != "https://late.test/v2" || configs[1].StreamSimple != nil || configs[1].Images != nil || configs[1].Classifiers != nil {
 			t.Fatalf("the successor's registration = %+v (of %d)", configs[len(configs)-1], len(configs))

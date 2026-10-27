@@ -1,0 +1,24 @@
+# Pi binds an extension's ctx.mode to the mode it runs in: "tui" (interactive-mode.ts bindExtensions), "rpc" (rpc-mode.ts), "json" or "print" (print-mode.ts).
+# The fixture runs the real CLI in interactive mode on a PTY and in print, json and rpc mode on pipes, with an extension that records ctx.mode at session_start,
+# and prints the mode each run recorded. A host that never sent the run mode leaves every extension on the "print" default, so the tui, json and rpc runs differ from Pi's.
+name = "90-extension-run-mode"
+description = "An extension reads ctx.mode as tui, print, json and rpc in the run mode of the CLI that loaded it."
+covers = ["packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/core/extensions/types.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/extension-run-mode.py", "pig"]
+pi_args = ["python3", "./test/parity/testdata/extension-run-mode.py", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 180
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 2

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // nestedResultWire is NestedToolExecutionResult's JSON: taskId, structuredOutput, isError, details, diagnostics, usage,
@@ -30,7 +31,7 @@ func (result NestedToolExecutionResult) MarshalJSON() ([]byte, error) {
 	if result.HasDetails {
 		wire.Details = &result.Details
 	}
-	return json.Marshal(wire) //perf:ok once per nested tool call result encoded; the members a result lacks are left out, so the Marshaler encodes its wire struct
+	return jsstring.MarshalKeepingSurrogates(wire) //perf:ok once per nested tool call result encoded; the members a result lacks are left out, so the Marshaler encodes its wire struct
 }
 
 // UnmarshalJSON reads a result written by MarshalJSON; a present null member is a value.
@@ -44,7 +45,7 @@ func (result *NestedToolExecutionResult) UnmarshalJSON(data []byte) error {
 		Usage            *ai.Usage        `json:"usage"`
 		DurationMs       *int64           `json:"durationMs"`
 	}
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
 		return err
 	}
 	*result = NestedToolExecutionResult{TaskId: wire.TaskId, IsError: wire.IsError, Diagnostics: wire.Diagnostics, Usage: wire.Usage, DurationMs: wire.DurationMs}
@@ -66,9 +67,5 @@ func (result *NestedToolExecutionResult) UnmarshalJSON(data []byte) error {
 }
 
 func decodeJsonValue(raw json.RawMessage) (JsonValue, error) {
-	var value any
-	if err := json.Unmarshal(raw, &value); err != nil {
-		return nil, err
-	}
-	return ToJsonValue(value)
+	return decodeJsonText(raw)
 }

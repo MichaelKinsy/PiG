@@ -191,7 +191,7 @@ func TestHost_ReloadPlansPackedPythonAndFissionsQuarantinedCell(t *testing.T) {
 	h := NewHost(t.TempDir())
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
 	t.Cleanup(func() { h.Shutdown("test done") })
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	if _, err := h.Reload(ctx); err != nil {
 		t.Fatal(err)
@@ -296,7 +296,7 @@ func TestHost_ReloadPlansPackedGoAndFissionsQuarantinedCell(t *testing.T) {
 	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
 	t.Cleanup(func() { h.Shutdown("test done") })
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	if _, err := h.Reload(ctx); err != nil {
 		t.Fatal(err)
@@ -365,7 +365,7 @@ func TestHost_ReloadSupersededNativePackedProcessExitIsStale(t *testing.T) {
 	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
 	t.Cleanup(func() { h.Shutdown("test done") })
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	if _, err := h.Reload(ctx); err != nil {
 		t.Fatal(err)
@@ -429,7 +429,7 @@ func TestHost_KillingPackedProcessNeverClaimsItRemainedAlive(t *testing.T) {
 		mu.Unlock()
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	if _, err := h.Reload(ctx); err != nil {
 		t.Fatal(err)
@@ -494,7 +494,7 @@ func TestHost_KillingPackedProcessNeverClaimsItRemainedAlive(t *testing.T) {
 func TestHost_LoadGoPackedCellRegistersAllExtensionsAtomically(t *testing.T) {
 	rootA := writePackedFactoryModule(t, "example.com/packedhost/a", "pack-a", "tool_a")
 	rootB := writePackedFactoryModule(t, "example.com/packedhost/b", "pack-b", "tool_b")
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	cell, err := runtimecell.BuildGoPackedCell(ctx, t.TempDir(), "cell:host-test", []runtimecell.GoExtension{
 		{Name: "pack-a", Root: rootA, ModulePath: "example.com/packedhost/a", Package: "example.com/packedhost/a", Factory: "Extension", Hash: "ha"},
@@ -535,7 +535,7 @@ func TestHost_MixedFusedPackedAndIsolatedExtensions(t *testing.T) {
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Skipf("node not found: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 
 	packedA := writePackedFactoryModule(t, "example.com/mixed/a", "mixed-packed-a", "packed-a")
@@ -875,7 +875,7 @@ func TestAC59PackedSDKFocusedComponentsOwnInput(t *testing.T) {
 			host.SetUIBridge(bridge)
 			defer host.Shutdown("test done")
 
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+			ctx, cancel := buildContext(t)
 			defer cancel()
 			loaded, errs := host.LoadAll(ctx, configs)
 			if len(errs) > 0 || len(loaded) != 2 {
@@ -1070,7 +1070,7 @@ func TestPackedSDKFocusedComponentAndSessionActionsMatch(t *testing.T) {
 			host.SetUIBridge(bridge)
 			defer host.Shutdown("test done")
 
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+			ctx, cancel := buildContext(t)
 			defer cancel()
 			configs := test.configs(t)
 			loaded, errs := host.LoadAll(ctx, configs)
@@ -1210,7 +1210,7 @@ func TestPackedSDKFocusedComponentAndSessionActionsMatch(t *testing.T) {
 func TestHost_LoadEmbeddedCellsStartsPrebuiltBinaryWithoutSource(t *testing.T) {
 	rootA := writePackedFactoryModule(t, "example.com/embedded/a", "embed-a", "tool_a")
 	rootB := writePackedFactoryModule(t, "example.com/embedded/b", "embed-b", "tool_b")
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	cell, err := runtimecell.BuildGoPackedCell(ctx, t.TempDir(), "cell:embedded-test", []runtimecell.GoExtension{
 		{Name: "embed-a", Root: rootA, ModulePath: "example.com/embedded/a", Package: "example.com/embedded/a", Factory: "Extension", Hash: "ha"},
@@ -1222,7 +1222,7 @@ func TestHost_LoadEmbeddedCellsStartsPrebuiltBinaryWithoutSource(t *testing.T) {
 
 	h := NewHost(t.TempDir())
 	t.Cleanup(func() { h.Shutdown("test done") })
-	loaded, errs := h.LoadEmbeddedCells(ctx, []EmbeddedCell{{
+	loaded, errs := h.LoadEmbeddedCells(testbudget.Context(t), []EmbeddedCell{{
 		Language:   "go",
 		Key:        "cell:embedded-test",
 		BinaryPath: cell.BinaryPath,

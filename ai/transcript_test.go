@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
+// A non-finite number is not invalid: Pi holds Infinity in a tool call's arguments and JSON.stringify writes it as null (tool_call_nonfinite_test.go).
 func TestNormalizeContextRejectsInvalidJSONValues(t *testing.T) {
 	tests := []struct {
 		name      string
 		arguments JsonObject
 	}{
-		{name: "non-finite", arguments: JsonObject{"value": math.Inf(1)}},
 		{name: "unsupported", arguments: JsonObject{"value": make(chan int)}},
 	}
 	cycle := map[string]any{}
@@ -195,5 +195,20 @@ func TestResolveTranscriptCollapsesUnsupportedMidConversationSystemMessages(t *t
 	head, ok := collapsed[0].(SystemMessage)
 	if len(collapsed) != 3 || !ok || head.Content != SystemText("base\n\nlater") {
 		t.Fatalf("collapsed = %#v", collapsed)
+	}
+}
+
+func TestNormalizeContextAcceptsNonFiniteToolArguments(t *testing.T) {
+	context := NormalizeContext(Context{Messages: []Message{AssistantMessage{Content: []AssistantContentBlock{
+		ToolCall{ID: "call", Name: "tool", Arguments: JsonObject{"value": math.Inf(1)}},
+	}}}})
+	if context.err != nil {
+		t.Fatalf("NormalizeContext rejected a non-finite number: %v", context.err)
+	}
+	if err := validateTranscriptContext(context); err != nil {
+		t.Fatalf("provider boundary rejected it: %v", err)
+	}
+	if got := context.Messages()[0].(AssistantMessage).Content[0].(ToolCall).Arguments["value"].(float64); !math.IsInf(got, 1) {
+		t.Fatalf("normalized value = %v, want +Inf", got)
 	}
 }

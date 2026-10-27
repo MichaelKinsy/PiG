@@ -19,8 +19,8 @@ import (
 // scriptedWatchFrames is scriptedWatchDaemon with the frames given as they are, each a frame of request 2.
 func scriptedWatchFrames(t *testing.T, target durableenv.WatchTarget, frames ...[]byte) *Connection {
 	t.Helper()
-	hello := encodeFrame(frameRequest, 1, Json{"protocol": 1, "op": "hello"}, nil)
-	watch := encodeFrame(frameRequest, 2, Json{"targets": []any{Json{"path": target.Path, "recursive": false, "exclude": Json{"hidden": false, "names": []any{}}}}, "op": "watch"}, nil)
+	hello := mustFrame(frameRequest, 1, Json{"protocol": 1, "op": "hello"}, nil)
+	watch := mustFrame(frameRequest, 2, Json{"targets": []any{Json{"path": target.Path, "recursive": false, "exclude": Json{"hidden": false, "names": []any{}}}}, "op": "watch"}, nil)
 	var script strings.Builder
 	script.WriteString(syncLine + helloResult)
 	_, _ = fmt.Fprintf(&script, `head -c %d >/dev/null; `, len(hello)+len(watch))
@@ -36,12 +36,12 @@ func scriptedWatchFrames(t *testing.T, target durableenv.WatchTarget, frames ...
 func TestRemoteWatcherStopsAfterAnErrorEventAndSurvivesAThrowingCallback(t *testing.T) {
 	target := durableenv.WatchTarget{Path: "/watched"}
 	change := func(path string) []byte {
-		return encodeFrame(frameEvent, 2, Json{"kind": "change", "paths": []any{path}}, nil)
+		return mustFrame(frameEvent, 2, Json{"kind": "change", "paths": []any{path}}, nil)
 	}
 	connection := scriptedWatchFrames(t, target,
-		encodeFrame(frameEvent, 2, Json{"kind": "ready"}, nil),
+		mustFrame(frameEvent, 2, Json{"kind": "ready"}, nil),
 		change("/watched/a"), change("/watched/b"),
-		encodeFrame(frameEvent, 2, Json{"kind": "error", "code": "permission_denied", "message": "denied"}, nil),
+		mustFrame(frameEvent, 2, Json{"kind": "error", "code": "permission_denied", "message": "denied"}, nil),
 		change("/watched/c"),
 	)
 	log := &changeLog{}
@@ -71,14 +71,14 @@ func TestRemoteWatcherStopsAfterAnErrorEventAndSurvivesAThrowingCallback(t *test
 // instead); one before coverage rejects open with that failure.
 func TestRemoteWatcherReportsAFailedRequestBeforeAndAfterCoverage(t *testing.T) {
 	target := durableenv.WatchTarget{Path: "/watched"}
-	failure := encodeFrame(frameError, 2, Json{"code": "invalid", "message": "boom"}, nil)
+	failure := mustFrame(frameError, 2, Json{"code": "invalid", "message": "boom"}, nil)
 	before := scriptedWatchFrames(t, target, failure)
 	ctx, cancel := context.WithTimeout(background, 10*time.Second)
 	defer cancel()
 	if _, err := OpenRemoteWatcher(ctx, before, []durableenv.WatchTarget{target}, func(durableenv.WatchChange) {}, RemoteWatchOptions{}); err == nil || errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("open over a failing request = %v, want the request's failure", err)
 	}
-	after := scriptedWatchFrames(t, target, encodeFrame(frameEvent, 2, Json{"kind": "ready"}, nil), failure)
+	after := scriptedWatchFrames(t, target, mustFrame(frameEvent, 2, Json{"kind": "ready"}, nil), failure)
 	log := &changeLog{}
 	watcher, err := OpenRemoteWatcher(background, after, []durableenv.WatchTarget{target}, log.add, RemoteWatchOptions{})
 	if err != nil {
@@ -97,7 +97,7 @@ func TestRemoteWatcherSendsEachTargetsExcludeAndThePollInterval(t *testing.T) {
 	captured := filepath.Join(t.TempDir(), "request")
 	var script strings.Builder
 	script.WriteString(syncLine + helloResult)
-	_, _ = fmt.Fprintf(&script, `exec 3<&0; cat <&3 >%s & sleep 1; printf '%s'; exec sleep 30`, captured, octal(encodeFrame(frameEvent, 2, Json{"kind": "ready"}, nil)))
+	_, _ = fmt.Fprintf(&script, `exec 3<&0; cat <&3 >%s & sleep 1; printf '%s'; exec sleep 30`, captured, octal(mustFrame(frameEvent, 2, Json{"kind": "ready"}, nil)))
 	connection := scriptedConnection(t, script.String(), nil)
 	interval := 25
 	var watcher *RemoteWatcher

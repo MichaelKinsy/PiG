@@ -24,7 +24,7 @@ fn golden() -> Value {
     let mut cases = Vec::new();
     let mut exports: Vec<String> = std::fs::read_dir(format!("{VECTORS}/pi-ai")).unwrap().map(|entry| entry.unwrap().path()).filter(|path| path.extension().is_some_and(|ext| ext == "json")).map(|path| path.file_stem().unwrap().to_string_lossy().into_owned()).collect();
     exports.sort();
-    for export in exports.iter().filter(|export| !matches!(export.as_str(), "envApiKeyAuth" | "createAssistantMessageEventStream")) {
+    for export in exports.iter().filter(|export| !matches!(export.as_str(), "envApiKeyAuth" | "createAssistantMessageEventStream" | "Type" | "validateToolArguments")) {
         for case in read_vectors("pi-ai", export) {
             let args: Vec<Value> = case["args"].as_array().unwrap().iter().map(|arg| if is_undefined(arg) { Value::Null } else { arg.clone() }).collect();
             let mut entry = json!({ "fn": export, "args": args });

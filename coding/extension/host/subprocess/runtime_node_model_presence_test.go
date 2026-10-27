@@ -77,6 +77,8 @@ func TestConnectedNodeProviderPreservesModelListPresence(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer host.Shutdown("test cleanup")
+	// The services apply the registrations the extension queued while it loaded.
+	host.Runtime().BindProviderActions(host.Runtime().BoundProviderActions(), nil)
 
 	got := make(map[string]extension.ProviderConfig, 3)
 	for len(got) < 3 {

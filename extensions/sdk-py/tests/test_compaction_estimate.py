@@ -1,7 +1,9 @@
+import random
+
 import pytest
 
 import pig_sdk
-from pig_sdk.compaction_estimate import _js_number_string
+from pig_sdk.compaction_estimate import _js_number_string, _utf16_length
 
 # Pi's estimateTokens (core/compaction/compaction.ts) counts UTF-16 units and the JSON.stringify length of a tool call's arguments; the cases
 # below are ECMA-262 7.1.12.1 Number::toString and V8 output.
@@ -32,3 +34,16 @@ def test_number_to_string_matches_javascript(value, want):
 )
 def test_estimate_tokens_counts_utf16_units_and_stringify_length(message, want):
     assert pig_sdk.estimate_tokens(message) == want
+
+
+def test_utf16_length_is_the_sum_of_the_utf16_lengths_of_the_characters():
+    # ASCII runs of every length around a word, characters of every encoded size, and an unpaired surrogate (a Python string holds one as a code point of its own,
+    # one unit in JavaScript).
+    pieces = ["a", "abcdefgh", "é", "日", "\U0001F600", "\U0010FFFF", "\uffff", "\ud7ff", "\ue000", "\ud800", "\udfff", "\x00", "\n"]
+    rng = random.Random(11)
+    for _ in range(20000):
+        text = "".join(rng.choice(pieces) for _ in range(rng.randrange(8)))
+        want = sum(2 if ord(char) >= 0x10000 else 1 for char in text)
+        assert _utf16_length(text) == want, repr(text)
+    assert _utf16_length(1) == 0
+    assert [_utf16_length(text) for text in ("", "abcdefgh", "abcdefg\U0001F600", "\ud800")] == [0, 8, 9, 1]

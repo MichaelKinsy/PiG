@@ -13,6 +13,9 @@ import (
 
 // The extracted cell binary is executed as soon as the Piglet Binary starts its extension. A fork while the staged copy is open leaves a child that holds the copy's write descriptor until it calls exec, and the host's exec of the cell then fails with "text file busy".
 func TestAtomicWriteFileStartsNoChildWhileWriting(t *testing.T) {
+	if testenv.RerunWithoutAsyncPreemption(t) {
+		return
+	}
 	dest := filepath.Join(t.TempDir(), "runner")
 	payload, err := testenv.CopyFromFIFO(t, func(fifo string) error {
 		source, err := os.Open(fifo)

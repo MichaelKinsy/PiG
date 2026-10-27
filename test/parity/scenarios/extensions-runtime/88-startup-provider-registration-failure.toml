@@ -1,0 +1,38 @@
+# Behavior family: extensions-runtime
+# Scenario: a provider registration the model runtime rejects is not an
+# extension load failure. Pi's loader queues the registration; the services
+# apply it after every extension loaded and report the rejection as the startup
+# diagnostic `Extension "<path>" error: <message>`, which ends startup without
+# the extension-load hint.
+#
+# Upstream evidence: loader.ts:217-218 (registerProvider queues),
+# agent-session-services.ts:157-169 (the services apply the queue and word the
+# diagnostic), main.ts:915-925 (a runtime error exits 1; the hint follows only a
+# message that names "Failed to load extension").
+
+name = "88-startup-provider-registration-failure"
+description = "A rejected provider registration is the services diagnostic, not a failed extension load"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/agent-session-services.ts",
+  "packages/coding-agent/src/main.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/ext/register-invalid-provider.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/register-invalid-provider.mjs"]
+
+[print]
+prompt = "hello"
+timeout_seconds = 60
+
+[assert]
+exit_code = 1
+both_contain = ['Extension "', 'register-invalid-provider.mjs" error: Provider bad-provider, model bad-model: no "api" specified.']
+both_not_contain = ["Failed to load extension", "Hint:", "panic:"]
+output_normalized_equal = true
+runs = 3

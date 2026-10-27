@@ -407,3 +407,38 @@ func isWTF8(text string) bool {
 	}
 	return true
 }
+
+// hasNonFiniteNumber reports whether a tree of decoded JSON holds a NaN or an infinity, which Pi keeps in memory and JSON.stringify writes as
+// null but encoding/json refuses. It walks nil, booleans, strings, numbers, []any, map[string]any and JsonObject, stops at any other value, and does not
+// follow a container into itself.
+func hasNonFiniteNumber(value any) bool { return hasNonFiniteNumberWalk(value, &plainWalk{}) }
+
+func hasNonFiniteNumberWalk(value any, walk *plainWalk) bool {
+	switch typed := value.(type) {
+	case float64, float32:
+		return nonFiniteNumber(typed)
+	case JsonObject:
+		return hasNonFiniteNumberWalk(map[string]any(typed), walk)
+	case map[string]any:
+		if len(typed) == 0 || !walk.enterMap(typed) {
+			return false
+		}
+		defer walk.leave()
+		for _, item := range typed {
+			if hasNonFiniteNumberWalk(item, walk) {
+				return true
+			}
+		}
+	case []any:
+		if len(typed) == 0 || !walk.enterSlice(typed) {
+			return false
+		}
+		defer walk.leave()
+		for _, item := range typed {
+			if hasNonFiniteNumberWalk(item, walk) {
+				return true
+			}
+		}
+	}
+	return false
+}

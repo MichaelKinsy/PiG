@@ -180,7 +180,7 @@ func TestReloadResizeDuringHandshakeReachesEveryExtension(t *testing.T) {
 				return current
 			})
 
-			ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+			ctx, cancel := buildContext(t)
 			defer cancel()
 			reloadGeometryHost(t, ctx, h)
 			for _, name := range []string{"geom-a", "geom-b"} {
@@ -217,7 +217,7 @@ func TestCrashRestartHandshakeDoesNotSuppressResizeForOthers(t *testing.T) {
 		}
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	reloadGeometryHost(t, ctx, h)
 	waitGeometry(t, ctx, h, "geom-a", "height=40 width=100")
@@ -256,7 +256,7 @@ func TestReloadHandshakeRacesResizeBroadcast(t *testing.T) {
 	h.SetWidthFunc(func() int { return 100 })
 	h.SetHeightFunc(func() int { return int(height.Load()) })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	stop := make(chan struct{})
 	var wg sync.WaitGroup

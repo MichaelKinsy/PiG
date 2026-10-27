@@ -22,6 +22,8 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
+from .type_schema import count_refinements
+
 if TYPE_CHECKING:
     from . import Extension, ToolDefinition
 
@@ -343,6 +345,8 @@ def create_agent_session(extension: "Extension", call: Callable[[str, Any], dict
     declarations = []
     for definition in options.custom_tools or []:
         declaration = extension._tool_declaration(definition, "child session tool")
+        if count_refinements(declaration.get("parameters")):
+            raise ValueError(f"custom tool {definition.name!r}: the refinements of its parameters (Type.refine) run for the tools an extension registers, not for a child session's custom tools")
         if definition.prepare_arguments is not None:
             declaration["prepares_arguments"] = True
             session._prepares[definition.name] = definition.prepare_arguments

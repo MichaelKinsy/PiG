@@ -115,9 +115,12 @@ export default function (pi) {
     await resourceLoader.reload();
     const { session } = await create({ model: runtime.getModel("sentinel", "echo"), settingsManager, resourceLoader, scopedModels: [{ model: runtime.getModel("sentinel", "echo"), thinkingLevel: "high" }, { model: runtime.getModel("nokey", "locked"), thinkingLevel: "low" }] });
     try {
+      // The listener's view of the session: its events in order, a message's role and an appended entry's type after the event's.
+      const seen = [];
+      session.subscribe(e => seen.push(e.type + (e.type.startsWith("message_") ? ":" + e.message.role : "") + (e.type === "entry_appended" ? ":" + e.entry.customType : "")));
       await session.bindExtensions({});
       await session.prompt("stream:3");
-      return "done";
+      return seen;
     } finally { session.dispose(); }
   })) });
 

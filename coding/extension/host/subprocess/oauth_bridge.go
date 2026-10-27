@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"sync"
 
@@ -270,27 +271,50 @@ func storedOAuthCredential(creds ai.OAuthCredentials) (json.RawMessage, error) {
 // Called from both the isolated and packed register paths. A nil/absent oauth
 // key is a no-op.
 func (h *Host) registerOAuthProvider(me *managedExt, name string, config json.RawMessage) error {
+	_, err := h.registerOAuthProviderUndoable(me, name, config)
+	return err
+}
+
+// registerOAuthProviderUndoable is registerOAuthProvider that also returns undo, which restores the OAuth provider the id had before (a built-in or another extension's) if this registration is still the one in place. undo is never nil.
+func (h *Host) registerOAuthProviderUndoable(me *managedExt, name string, config json.RawMessage) (undo func(), err error) {
+	undo = func() {}
 	var probe struct {
 		OAuth *ProviderOAuthConfig `json:"oauth"`
 	}
 	if err := json.Unmarshal(config, &probe); err != nil {
-		return fmt.Errorf("provider %s: decode oauth config: %w", name, err)
+		return undo, fmt.Errorf("provider %s: decode oauth config: %w", name, err)
 	}
 	if probe.OAuth == nil {
-		return nil
+		return undo, nil
 	}
 	base := &oauthProxy{host: h, me: me, name: name, cfg: *probe.OAuth}
 	var provider ai.OAuthProviderInterface = base
 	if probe.OAuth.HasCredentialStore {
 		provider = &oauthProxyWithStore{oauthProxy: base}
 	}
+	previous, hadPrevious := ai.GetOAuthProvider(name)
 	ai.RegisterOAuthProvider(name, provider)
 	h.mu.Lock()
 	if !slices.Contains(me.oauthProviderNames, name) {
 		me.oauthProviderNames = append(me.oauthProviderNames, name)
 	}
 	h.mu.Unlock()
-	return nil
+	return func() {
+		if current, ok := ai.GetOAuthProvider(name); !ok || !sameOAuthProvider(current, provider) {
+			return
+		}
+		ai.UnregisterOAuthProvider(name)
+		// A built-in the id had is back after the unregistration; an extension's own earlier provider is put back.
+		if restored, ok := ai.GetOAuthProvider(name); hadPrevious && (!ok || !sameOAuthProvider(restored, previous)) {
+			ai.RegisterOAuthProvider(name, previous)
+		}
+	}, nil
+}
+
+// sameOAuthProvider reports whether a and b are the same provider value; a value of an incomparable type is never the same as another.
+func sameOAuthProvider(a, b ai.OAuthProviderInterface) bool {
+	ta, tb := reflect.TypeOf(a), reflect.TypeOf(b)
+	return ta == tb && ta != nil && ta.Comparable() && a == b
 }
 
 // unregisterOAuthProviders removes this extension's bridged OAuth providers,

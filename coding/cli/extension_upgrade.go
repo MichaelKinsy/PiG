@@ -60,7 +60,7 @@ func sdkDriftOf(ctx context.Context, upgrader *extensionUpgrader, errs []error, 
 			var own []upgrade.Drift
 			for _, drift := range failure.Drift {
 				if pathWithinAny(drift.File, roots) {
-					own = append(own, drift)
+					own = append(own, upgrade.Drift(drift))
 				}
 			}
 			var plan *upgrade.Result

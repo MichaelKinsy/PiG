@@ -152,11 +152,17 @@ func TestConfigSelectorMatchesPi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The oracle prints a stage line on stderr at least every 32 probes. It is stuck only when no stage line arrives for 2 minutes;
-	// a loaded Windows runner once took the full 5 minutes of a fixed deadline to render, and another waited 29 minutes with no output.
+	// The oracle runs with --single-threaded because Node can deadlock in its own shutdown. process.exit, called as soon as the 16.7 MB
+	// result is written, joins the V8 worker threads in DisposePlatform; a worker that is compiling baseline code can be parked in
+	// CollectionBarrier::AwaitCollectionBackground, waiting for a collection only the main thread can run, and the join never returns
+	// (nodejs/node#64274, nodejs/node#54918). Windows runs of this test hung that way after "oracle: written", exit event already fired.
+	// With no V8 background threads no job can park there.
+	//
+	// The oracle also prints a stage line on stderr at least every 32 probes. A run is stuck when no stage line arrives for 2 minutes,
+	// and the failure shows the last stage it reached.
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "node", "testdata/config_selector.mjs", pigversion.UpstreamPackageVersion)
+	cmd := exec.CommandContext(ctx, "node", "--single-threaded", "testdata/config_selector.mjs", pigversion.UpstreamPackageVersion)
 	cmd.WaitDelay = 10 * time.Second // after a kill, a descendant holding the pipes does not keep Output waiting
 	cmd.Stdin = bytes.NewReader(input)
 	stderr := &oracleStages{progress: make(chan struct{}, 1)}

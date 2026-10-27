@@ -9,17 +9,18 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gofrs/flock"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// Share only build artifacts. Every harness owns fresh processes, connections, and state; build failures are retained for the package run.
-var sdkFixtureBinary = sync.OnceValues(func() (string, error) {
+// Share only build artifacts. Every harness owns fresh processes, connections, and state; build failures are retained for the package run. Each build ends at the go test deadline (testbudget.Once), not at a fixed bound: it waits behind every other build into the shared Cargo target, and a cold compile on a slow host outlasts any fixed one.
+var sdkFixtureBinary testbudget.Once[string]
+
+func buildSDKFixtureBinary(ctx context.Context) (string, error) {
 	bin := filepath.Join(fixtureRoot, testExecutableName("sdk-fixture"))
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
 	cmd := exec.CommandContext(ctx, "go", "build", "-o", bin, ".")
 	cmd.Dir = filepath.Join(fixtureSourceRoot, "test", "extension-conformance", "testfixture", "cmd")
 	// Root-module fixtures require the workspace's local SDK, not the published release. Workspace mode rejects -mod=mod.
@@ -29,7 +30,7 @@ var sdkFixtureBinary = sync.OnceValues(func() (string, error) {
 		return "", fmt.Errorf("build sdk-fixture: %w\n%s", err, out)
 	}
 	return bin, nil
-})
+}
 
 // rustFixtureBinary builds the Rust SDK fixture and returns a copy of the program that belongs to this test run.
 //
@@ -38,7 +39,9 @@ var sdkFixtureBinary = sync.OnceValues(func() (string, error) {
 // shares the cache) builds its own fixture into that same path, which has other tools than this checkout's: a test that started the path after the other build
 // ran the other checkout's extension and failed with "Tool order_probe not found" in every round that followed, while the iterations before it passed. So the
 // build and the copy happen with the target's fixture lock held, and the tests start the copy.
-var rustFixtureBinary = sync.OnceValues(func() (string, error) {
+var rustFixtureBinary testbudget.Once[string]
+
+func buildRustFixtureBinary(ctx context.Context) (string, error) {
 	if _, err := exec.LookPath("cargo"); err != nil {
 		return "", fmt.Errorf("cargo is required for SDK conformance: %w", err)
 	}
@@ -49,8 +52,6 @@ var rustFixtureBinary = sync.OnceValues(func() (string, error) {
 	} else if !filepath.IsAbs(target) {
 		target = filepath.Join(src, target)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
-	defer cancel()
 	return buildFixtureCopy(ctx, target, filepath.Join(fixtureRoot, testExecutableName("rust-sdk-fixture")), func(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx, "cargo", "build", "--release", "--quiet")
 		cmd.Dir = src
@@ -59,7 +60,7 @@ var rustFixtureBinary = sync.OnceValues(func() (string, error) {
 		}
 		return nil
 	})
-})
+}
 
 // buildFixtureCopy runs build with the Cargo target's fixture lock held, which every checkout's test run takes, and copies the program it left at
 // <target>/release/rust-sdk-fixture to dst. A build of another checkout that follows replaces the shared program and leaves the copy as it was.

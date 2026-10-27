@@ -117,6 +117,8 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 		return subprocess.TerminalCapabilitiesPayload{Images: string(caps.Images), TrueColor: caps.TrueColor, Hyperlinks: caps.Hyperlinks}
 	})
 	bridge.SetThemeFunc(codingagent.ActiveExtensionThemeWire)
+	// The pig command draws the editors an extension's view holds in every mode; an embedder that does not leaves the call out and does not link the terminal editor.
+	subprocess.EnableEditorViews()
 	subprocess.SetThemeLoader(codingagent.LoadExtensionTheme)
 	host.SetUIBridge(bridge)
 	host.SetSessionGraph(coding.NewSessionGraph())
@@ -266,16 +268,22 @@ func (s *startupExtensionSet) close() {
 
 var stopStartupExtensions = func() {}
 
-// flushExtensionHostVirtualModels binds the virtual models host's extensions register to registry, as Pi's createAgentSessionServices does after it loads extensions (agent-session-services.ts:182-193): the registrations queued while the extensions loaded apply now, after the provider registrations and before the awaited local refresh and model resolution, so --model and a restored selection can name them. Each failed registration becomes the error diagnostic `Extension "<path>" error: <message>`. Later registrations apply at once and return their error to the extension (runner.ts:497-541). A nil host has nothing to bind.
-func flushExtensionHostVirtualModels(host *subprocess.Host, registry *coding.ModelRegistry) []codingagent.AgentSessionRuntimeDiagnostic {
+// flushExtensionHostRegistrations applies the registrations host's extensions queued while they loaded, as Pi's createAgentSessionServices does after it loads extensions (agent-session-services.ts:157-193): the provider registrations apply first, then the native providers and the virtual models, so --model and a restored selection can name them. Each failed registration becomes the error diagnostic `Extension "<path>" error: <message>` and the extension stays loaded. The provider and native provider actions the host already bound keep serving later registrations (they start the registration refresh); the registry's own bind where the host bound none. Later registrations apply at once and return their error to the extension (runner.ts:497-541). A nil host has nothing to bind.
+func flushExtensionHostRegistrations(host *subprocess.Host, registry *coding.ModelRegistry) []codingagent.AgentSessionRuntimeDiagnostic {
 	if host == nil || registry == nil {
 		return nil
 	}
 	var diagnostics []codingagent.AgentSessionRuntimeDiagnostic
-	host.Runtime().BindProviderActions(extension.ProviderActions{
-		RegisterVirtualModel:   registry.RegisterVirtualModel,
-		UnregisterVirtualModel: registry.UnregisterVirtualModel,
-	}, func(err *extension.ExtensionError) {
+	runtime := host.Runtime()
+	actions := runtime.BoundProviderActions()
+	if actions.RegisterProvider == nil {
+		actions.RegisterProvider = registry.RegisterExtensionProvider
+	}
+	if actions.UnregisterProvider == nil {
+		actions.UnregisterProvider = registry.UnregisterProvider
+	}
+	actions.RegisterVirtualModel, actions.UnregisterVirtualModel = registry.RegisterVirtualModel, registry.UnregisterVirtualModel
+	runtime.BindProviderActions(actions, func(err *extension.ExtensionError) {
 		diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "error", Message: fmt.Sprintf(`Extension "%s" error: %s`, err.ExtensionPath, err.Error)})
 	})
 	return diagnostics

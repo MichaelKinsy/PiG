@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
@@ -138,18 +137,20 @@ func markBrokenToolchain(tc toolchain.GoToolchain, failure *BuildFailure) {
 }
 
 // sdkDriftOnly classifies the compiler diagnostics of a failed build. It reports the SDK changes only when every diagnostic is one, so an unrelated compile error, in the extension or in another extension of the same packed cell, keeps the compiler's own message.
-func sdkDriftOnly(output []byte, dir string) ([]upgrade.Drift, bool) {
-	diagnostics := upgrade.ParseDiagnostics(output)
-	drifts := upgrade.Classify(diagnostics, buildDirSource(dir))
+func sdkDriftOnly(output []byte, dir string) ([]Drift, bool) {
+	if driftClassifier == nil {
+		return nil, false
+	}
+	drifts, diagnostics := driftClassifier(output, buildDirSource(dir))
 	classified := 0
 	for _, drift := range drifts {
 		classified += drift.Count
 	}
-	return drifts, len(drifts) > 0 && classified == len(diagnostics)
+	return drifts, len(drifts) > 0 && classified == diagnostics
 }
 
 // buildDirSource reads the files a compiler diagnostic names. The go command prints a path relative to its working directory, the generated build directory.
-func buildDirSource(dir string) upgrade.FileSource {
+func buildDirSource(dir string) func(path string) ([]byte, error) {
 	return func(path string) ([]byte, error) {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(dir, path)
@@ -163,7 +164,7 @@ func buildDirSource(dir string) upgrade.FileSource {
 // and the startup prompt.
 //
 // pig additive (D109): PiG compiles extensions against its own SDK, which Pi does not have.
-func olderSDKFailure(drifts []upgrade.Drift, dir string) *BuildFailure {
+func olderSDKFailure(drifts []Drift, dir string) *BuildFailure {
 	// The go command prints a path relative to the generated build directory; keep the path that names the extension's file.
 	for i := range drifts {
 		if !filepath.IsAbs(drifts[i].File) {

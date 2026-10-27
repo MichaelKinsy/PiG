@@ -311,6 +311,8 @@ func (r *scenarioRig) loadPeer(lines *[]string) {
 		r.t.Fatalf("load the peer extension: %v", err)
 	}
 	r.loaded = append(r.loaded, *loaded)
+	// A mode applies the registrations a load queued once it has loaded (agent-session-services.ts, runner.ts bindCore).
+	applyQueuedRegistrations(r.host)
 	scenariof(lines, "peer loaded")
 }
 
@@ -782,6 +784,7 @@ func (r *scenarioRig) reload(step sdkscenarios.Step, lines *[]string) {
 		return
 	}
 	r.loaded = loaded
+	applyQueuedRegistrations(r.host)
 	scenariof(lines, "reload loaded=%d", len(loaded))
 }
 

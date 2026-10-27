@@ -57,6 +57,7 @@ func runNativeProviderCallbackProbe(t *testing.T, mode string) {
 		t.Fatalf("load: %v", loadErr)
 	}
 	runner := inproc.NewRunner([]extension.Extension{*loaded}, dir)
+	applyQueuedRegistrations(host)
 	model := services.ModelRuntime().GetModel("native-probe", "native-model")
 	if model == nil {
 		t.Fatal("the native model is absent from the catalog")
@@ -140,6 +141,7 @@ func TestNodeNativeProviderReceivesTheCallersOnResponseAndOnPayloadByName(t *tes
 		t.Fatalf("load: %v", loadErr)
 	}
 	_ = inproc.NewRunner([]extension.Extension{*loaded}, dir)
+	applyQueuedRegistrations(host)
 	model := services.ModelRuntime().GetModel("native-probe", "native-model")
 	if model == nil {
 		t.Fatal("the native model is absent from the catalog")

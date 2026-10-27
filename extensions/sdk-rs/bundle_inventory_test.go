@@ -2,6 +2,8 @@ package rssdk
 
 import (
 	"bytes"
+	"compress/gzip"
+	"io"
 	"io/fs"
 	"os"
 	"slices"
@@ -16,7 +18,7 @@ func TestBundledFilesMatchRustSourceTree(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if !entry.IsDir() && !isTestModule(path) {
+		if !entry.IsDir() && !isTestModule(path) && !hasCompressedCopy(path) {
 			want = append(want, path)
 		}
 		return nil
@@ -46,6 +48,49 @@ func TestBundledFilesMatchRustSourceTree(t *testing.T) {
 }
 
 func isTestModule(path string) bool { return strings.HasSuffix(path, "tests.rs") }
+
+// hasCompressedCopy reports whether the bundle embeds a file as its gzip, path + ".gz", which holds the same text.
+func hasCompressedCopy(path string) bool {
+	_, err := os.Stat(path + ".gz")
+	return err == nil
+}
+
+// A compressed copy is the file it stands for: staging writes the decompressed text under the name without .gz.
+func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
+	found := 0
+	err := fs.WalkDir(os.DirFS("."), "src", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || !hasCompressedCopy(path) {
+			return err
+		}
+		found++
+		source, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		embedded, err := Source.ReadFile(path + ".gz")
+		if err != nil {
+			return err
+		}
+		reader, err := gzip.NewReader(bytes.NewReader(embedded))
+		if err != nil {
+			return err
+		}
+		text, err := io.ReadAll(reader)
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(text, source) {
+			t.Errorf("embedded %s.gz differs from %s", path, path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found == 0 {
+		t.Fatal("no compressed copy found: the unicode tables are embedded as tables.rs.gz")
+	}
+}
 
 // A test module is left out of the staged crate only if every declaration of it is behind #[cfg(test)], which rustc strips before it looks for the file.
 func TestOmittedTestModulesAreDeclaredUnderCfgTest(t *testing.T) {

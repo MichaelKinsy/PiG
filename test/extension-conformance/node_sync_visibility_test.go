@@ -61,9 +61,10 @@ func newNodeSyncRig(t *testing.T, isolation string, actions *subprocess.HostCall
 	h, loaded := loadNodeFixturesWith(t, isolation, bridge, fixtures, func(h *subprocess.Host) {
 		h.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 		h.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
-		// The binary binds the virtual models its extensions register to the registry once they loaded (flushExtensionHostVirtualModels); a later registration applies at once.
+		// The binary binds the virtual models its extensions register to the registry once they loaded (flushExtensionHostRegistrations); a later registration applies at once.
 		h.Runtime().BindProviderActions(extension.ProviderActions{RegisterVirtualModel: services.Registry().RegisterVirtualModel, UnregisterVirtualModel: services.Registry().UnregisterVirtualModel}, nil)
 	})
+	applyQueuedRegistrations(h)
 	rig := &nodeAPIRig{t: t, host: h, bridge: bridge, ui: ui, exts: map[string]extension.Extension{}}
 	for _, ext := range loaded {
 		rig.exts[ext.Name] = ext
@@ -347,7 +348,7 @@ func TestNodeRegistryNativeProviderRegistrationIsVisibleInTheSameTick(t *testing
 //	registered    [true,true,true,true,{"configured":true,"source":"environment","label":"virtual"},false]
 //	unregistered  [false,false,false,true,{"configured":true,"source":"environment","label":"virtual"},false]   (hasConfiguredAuth and the status are Pi's provisional marks, which its async availability refresh clears)
 //
-// The registrations reach the host as the production binary binds them (flushExtensionHostVirtualModels), so the host registry holds them when the call returns.
+// The registrations reach the host as the production binary binds them (flushExtensionHostRegistrations), so the host registry holds them when the call returns.
 func TestNodeRegistryVirtualModelRegistrationIsVisibleInTheSameTick(t *testing.T) {
 	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
 		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-native", nodeSyncNativeFixture})

@@ -15,11 +15,15 @@ import (
 // agent shape (extensions, skills, MCP, scoping, discovery) so the Binary can
 // assemble the intended agent. Prompt files and skills are inlined; release,
 // build, slot, and package metadata and extension source origins are dropped
-// because the runnable members come from the embedded cell manifest. Its
-// digest is the Piglet digest a Binary's records and signed manifest name.
+// because the runnable members come from the embedded cell manifest. The one
+// build setting kept is build.allowOverlays (D202). Its digest is the Piglet
+// digest a Binary's records and signed manifest name, so they vouch for it.
 func Bake(p *Piglet, pigletDir string) ([]byte, error) {
 	baked := Clone(p)
 	baked.Build = nil
+	if p.Build != nil && p.Build.AllowOverlays {
+		baked.Build = &BuildSpec{AllowOverlays: true}
+	}
 	// The frontend member is fused into the Binary; its source path means
 	// nothing to the Binary's own Piglet.
 	baked.Slots = nil

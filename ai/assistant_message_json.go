@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // UnmarshalJSON decodes the upstream AssistantMessage wire shape, including
@@ -14,7 +16,7 @@ func (message *AssistantMessage) UnmarshalJSON(data []byte) error {
 		plain
 		Content []json.RawMessage `json:"content"`
 	}
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
 		return err
 	}
 	decoded := AssistantMessage(wire.plain)

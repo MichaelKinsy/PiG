@@ -198,6 +198,13 @@ type CallableToolsResult struct {
 // RequestPrepareArguments (host→ext) runs a tool's prepareArguments. RequestPayload.Tool names the tool and Args is the model's arguments; the response is the prepared arguments.
 const RequestPrepareArguments = "tool_prepare_arguments"
 
+// ── refinements ──────────────────────────────────────────────────────────────
+
+// RequestRefineArguments (host→ext) runs one refinement of a tool's parameter schema (Type.Refine): RequestPayload.Tool names the tool and RequestPayload.Refine the node's path, the
+// refinement's index and the value. The response is a RefineResult; an error response is the refinement throwing, and its message is the tool call's error, as Pi's thrown error is.
+// The host sends one request per predicate call TypeBox makes, in TypeBox's order, and only for a tool whose declaration lists Refinements.
+const RequestRefineArguments = "tool_refine_arguments"
+
 // ── reachesTools ─────────────────────────────────────────────────────────────
 
 // RequestReachesTools (host→ext) runs a tool's reachesTools. RequestPayload.Tool names the tool and Args is the call's input; the response is the string "all", or an array of the words of the input that may name the tools the call reaches (upstream's `"all" | readonly string[]`).

@@ -110,6 +110,7 @@ func (r *scenarioRig) installHostState() {
 	// ctx.reload() reloads the host as the command-context action of a mode does (agent-session.ts reload).
 	b.SetHostAction("reload", func(ctx context.Context) error {
 		_, err := r.host.Reload(ctx)
+		applyQueuedRegistrations(r.host)
 		return err
 	})
 	b.SetHostAction("shutdown", func() { r.calls.add("shutdown") })

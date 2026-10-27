@@ -17,6 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -27,8 +28,7 @@ func TestBuildRustPackedCellBuildsCachedRunner(t *testing.T) {
 	rootA := writeRustFactoryCrate(t, "packed_a", "a-ext", "a")
 	rootB := writeRustFactoryCrate(t, "packed_b", "b-ext", "b")
 	cache := t.TempDir()
-	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
-	defer cancel()
+	ctx := testbudget.DeadlineContext(t)
 
 	cell, err := runtimecell.BuildRustPackedCell(ctx, cache, "cell:rust-test", []runtimecell.RustExtension{
 		{Name: "b-ext", Root: rootB, Package: "packed_b", Factory: "new_extension", Hash: "hb"},

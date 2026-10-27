@@ -101,6 +101,16 @@ func pollUntil(t *testing.T, what string, ok func() bool) {
 	t.Fatalf("timed out waiting for %s", what)
 }
 
+// receiveWithin waits for what a test goroutine is told by another; the bound only fails a run that will never hear it.
+func receiveWithin(t *testing.T, signal <-chan struct{}, what string) {
+	t.Helper()
+	select {
+	case <-signal:
+	case <-time.After(15 * time.Second):
+		t.Fatalf("timed out waiting for %s", what)
+	}
+}
+
 // harness-inspect.test.ts "derives every live task's state without running task code".
 func TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode(t *testing.T) {
 	gate := make(chan struct{})
@@ -122,12 +132,34 @@ func TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode(t *testing.
 		Abort: func(context.Context, stepRecord, stepRuntime) error { return nil },
 	})
 	var migrations atomic.Int32
-	h, root := openTasksHarness(t,
+	// A definition's migrate() runs in the host, on a goroutine of its own, concurrently with the migrations and phases of the other
+	// tasks (TaskImpl.MigrateAsync); the scheduler records a failure only when the answer reaches a later pass. Pi's migrate runs
+	// inside the one reservation pass, so by the time the task before it has settled every migration of the pass has been tried; here
+	// nothing orders the failing migration against them. The test holds it in flight to see both sides: ready while pending, blocked
+	// once the scheduler has recorded the failure, which it reports.
+	failingStarted, releaseFailing := make(chan struct{}), make(chan struct{})
+	var failingId atomic.Int64
+	failureReported := make(chan struct{}, 1)
+	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(_ error, info durable.ReportInfo) {
+		if info.Type == durable.ReportMigrationFailed && info.Task != nil && int64(info.Task.Id) == failingId.Load() {
+			select {
+			case failureReported <- struct{}{}:
+			default:
+			}
+		}
+	}},
 		gateTask.Erased(),
 		dependent.Erased(),
 		inspectTask("test.migrating", 2, inspectOptions{migrate: func() error { migrations.Add(1); return nil }}).Erased(),
 		inspectTask("test.no-migration", 2).Erased(),
-		inspectTask("test.failing", 2, inspectOptions{migrate: func() error { return errors.New("cannot migrate") }}).Erased(),
+		inspectTask("test.failing", 2, inspectOptions{migrate: func() error {
+			close(failingStarted)
+			select {
+			case <-releaseFailing:
+			case <-t.Context().Done():
+			}
+			return errors.New("cannot migrate")
+		}}).Erased(),
 		inspectTask("test.too-old", 1).Erased(),
 	)
 	type taskIds struct{ gate, dependent, migrating, noMigration, failing, tooOld, missing durable.TaskId }
@@ -150,6 +182,7 @@ func TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode(t *testing.
 		ids.migrating = create(inspectTask("test.migrating", 1).Erased())
 		ids.noMigration = create(inspectTask("test.no-migration", 1).Erased())
 		ids.failing = create(inspectTask("test.failing", 1).Erased())
+		failingId.Store(int64(ids.failing))
 		ids.tooOld = create(inspectTask("test.too-old", 2).Erased())
 		ids.missing = create(inspectTask("test.missing", 1).Erased())
 		return ids, err
@@ -205,7 +238,12 @@ func TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode(t *testing.
 	if inspectStateOf(running.Tasks, ids.migrating) != nil {
 		t.Fatal("the migrated task is still live")
 	}
-	expectInspectState(t, inspectStateOf(running.Tasks, ids.failing), harness.TaskInspectionState{Kind: harness.TaskInspectionBlocked, Reason: "migration_failed", Error: errors.New("cannot migrate")})
+	// The failing migration was asked for and has not answered: the scheduler has not tried it to the end, so inspect shows it pending.
+	receiveWithin(t, failingStarted, "the failing migration to start")
+	expectInspectState(t, inspectStateOf(running.Tasks, ids.failing), harness.TaskInspectionState{Kind: harness.TaskInspectionReady, Migrates: true})
+	close(releaseFailing)
+	receiveWithin(t, failureReported, "the scheduler to report the failed migration")
+	expectInspectState(t, inspectStateOf(inspect().Tasks, ids.failing), harness.TaskInspectionState{Kind: harness.TaskInspectionBlocked, Reason: "migration_failed", Error: errors.New("cannot migrate")})
 
 	close(gate)
 	waitSettled(t, h, ids.dependent)

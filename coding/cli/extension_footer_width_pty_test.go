@@ -180,12 +180,15 @@ type footerProbeCase struct {
 // cache its cases share.
 type footerProbe struct{ extension, pigHome string }
 
-// footerProbes writes each language's probe once per test.
-func footerProbes(t *testing.T) map[string]footerProbe {
+// footerProbes writes each language's probe once per test and builds it into the language's PiG home before any session
+// starts (prebuildExtension), so no case's first wait covers a build.
+func footerProbes(t *testing.T, binary string) map[string]footerProbe {
 	t.Helper()
 	probes := map[string]footerProbe{}
 	for _, language := range []string{"go", "py", "rs"} {
-		probes[language] = footerProbe{extension: writeFooterProbe(t, language), pigHome: t.TempDir()}
+		probe := footerProbe{extension: writeFooterProbe(t, language), pigHome: t.TempDir()}
+		prebuildExtension(t, binary, probe.pigHome, seededAgentDir(t), probe.extension, "F104_MODE=none")
+		probes[language] = probe
 	}
 	return probes
 }
@@ -194,7 +197,7 @@ func footerProbes(t *testing.T) map[string]footerProbe {
 // the differential renderer no wider than the pane after the pane narrows.
 func TestExtensionFooterSurvivesNarrowingResize(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
-	probes := footerProbes(t)
+	probes := footerProbes(t, binary)
 	for _, tc := range []footerProbeCase{
 		{language: "go", mode: "static", staleFooterUnpainted: true},
 		{language: "go", mode: "contextinfo"},
@@ -215,7 +218,7 @@ func TestExtensionFooterSurvivesNarrowingResize(t *testing.T) {
 // starting width and after the pane narrows.
 func TestExtensionStringWidgetIsWrappedByTheHost(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
-	probes := footerProbes(t)
+	probes := footerProbes(t, binary)
 	for _, language := range []string{"go", "py", "rs"} {
 		t.Run(language, func(t *testing.T) {
 			t.Parallel()

@@ -1,0 +1,60 @@
+# Behavior family: extensions-runtime
+# Scenario: /reload of an extension whose provider registration the model runtime rejects.
+#
+# Pi's loader queues the registration of the reloaded extension and the runner that binds the new runtime applies the queue: a rejection is an error
+# for the runner's error listeners, not a failed load (loader.ts:217-218, runner.ts:471-487). The extension registers a valid provider on its first load and
+# an invalid one (a model with no "api") on the reload, and shows its factory count as a widget, which is only set when the extension loaded.
+#
+# Probed against pinned Pi 1.4.0 and PiG: after /reload both panes hold the status `Reloaded keybindings, extensions, skills, prompts, themes, and context
+# files` and the widget `reload-provider-calls=2` (the extension is loaded), and neither prints the registry's message (the runner binds before interactive mode attaches
+# its error listener, so Pi's emitError reaches no one). PiG once failed the reloaded extension's load with `Failed to load extension` in the
+# same situation. Startup shows the diagnostic (scenario 88).
+#
+# Upstream evidence: pinned Pi 1.4.0 (loader.ts:217-218, runner.ts:471-487, agent-session.ts reload) probed 2026-10-25 against PiG: the pane between the reload status
+# and the editor is identical in 3 of 3 pairs, and a build before the fix fails the load with `Failed to load extension: Provider reload-provider, model reload-model: no "api" specified.`
+
+name = "89-reload-provider-registration-failure"
+description = "A provider registration rejected on /reload is the extension error and the extension stays loaded"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/quiet-pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/quiet-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/reload-provider-failure.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/reload-provider-failure.mjs",
+]
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+wait_visible_contains = ["reload-provider-calls=1"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded", "reload-provider-calls=2"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["Reloaded keybindings", "reload-provider-calls=2"]
+# Pi shows no extension error for the rejected registration after /reload (its error listener is not attached while the reloaded runtime binds), and
+# neither does PiG; the extension stays loaded, which only a loaded extension's widget shows.
+both_not_contain = ["Failed to load extension", "no \"api\" specified", "panic:", "goroutine ", "connection closed"]
+output_equal = true
+runs = 3

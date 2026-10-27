@@ -76,6 +76,8 @@ func TestConfigOAuthLoginSelectCancelReturnsToMenu(t *testing.T) {
 			if _, errs := host.LoadAll(t.Context(), []subprocess.ExtConfig{config}); len(errs) != 0 {
 				t.Fatalf("load %s fixture: %v", language, errs)
 			}
+			// The services apply the registrations the extension queued while it loaded.
+			host.Runtime().BindProviderActions(host.Runtime().BoundProviderActions(), nil)
 			done := dispatchLogin(t, m, "Cfg SSO")
 			waitForRender(t, m.editorContainer, "Select authentication method for Cfg SSO:")
 			deliverModalInput(t, m, []byte("\r"))

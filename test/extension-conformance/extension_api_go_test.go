@@ -120,6 +120,7 @@ func newExtensionAPIHarness(t *testing.T, placement string) *extensionAPIHarness
 		}
 		h.ext = &loaded[0]
 	}
+	applyQueuedRegistrations(h.host)
 	h.loaded.Store(h.ext)
 	h.runner = inproc.NewRunner([]extension.Extension{*h.ext}, dir, h.host.Runtime())
 	// The runner delivers mcp_servers_change on its own goroutine, so an event can still be in flight when the test ends and the host shuts the extension down; that failure is not the row's.

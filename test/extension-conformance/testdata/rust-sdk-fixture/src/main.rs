@@ -633,6 +633,61 @@ fn main() {
     let schema_rejected = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         ext.tool("schema-invalid", "Must not register", Value::Null, |_, _| ToolResult::text("bad"));
     })).is_err();
+    {
+        use pig_sdk::Type;
+        let parameters = Type::object(
+            [
+                ("query", Type::string(json!({"description": "What to look up"}).as_object())),
+                ("limit", Type::optional(Type::integer(json!({"minimum": 1, "maximum": 50}).as_object()))),
+                ("mode", Type::union([Type::literal("fast", None).unwrap(), Type::literal("deep", None).unwrap()], None)),
+                ("tags", Type::optional(Type::array(Type::string(None), None))),
+                ("filter", Type::optional(Type::record(Type::string(None), Type::number(None), None).unwrap())),
+            ],
+            json!({"additionalProperties": false}).as_object(),
+        );
+        ext.tool("type-schema-tool", "Parameters built with Type", parameters.to_value(), |_, _| ToolResult::text("ok"));
+    }
+    {
+        // refine-probe (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): the schema of the "probe" cases of validateToolArguments.json; every predicate and message function logs its call.
+        use pig_sdk::Type;
+        use std::sync::{Arc, Mutex};
+        let log: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let checked = |tag: &'static str, log: Arc<Mutex<Vec<String>>>, check: Box<dyn Fn(&Value) -> Result<bool, String> + Send + Sync>| {
+            move |value: &Value| -> Result<bool, String> {
+                log.lock().unwrap().push(format!("check:{tag}"));
+                check(value)
+            }
+        };
+        let worded = |tag: &'static str, log: Arc<Mutex<Vec<String>>>, message: Box<dyn Fn(&Value) -> String + Send + Sync>| -> Option<Box<dyn Fn(&Value) -> Result<String, String> + Send + Sync>> {
+            Some(Box::new(move |value: &Value| {
+                log.lock().unwrap().push(format!("error:{tag}"));
+                Ok(message(value))
+            }))
+        };
+        let equals = |tag: &'static str, message_tag: &'static str, want: &'static str, log: Arc<Mutex<Vec<String>>>| {
+            Type::refine(Type::string(None), checked(tag, log.clone(), Box::new(move |value| Ok(value.as_str() == Some(want)))), worded(message_tag, log, Box::new(move |_| format!("not {want}"))))
+        };
+        let name = Type::refine(Type::string(None), checked("len", log.clone(), Box::new(|value| Ok(value.as_str().is_some_and(|text| text.len() >= 3)))), worded("lenmsg", log.clone(), Box::new(|_| "name is too short".to_string())));
+        let qty = Type::optional(Type::refine(
+            Type::integer(None),
+            checked("even", log.clone(), Box::new(|value| Ok(value.as_f64().is_some_and(|n| n % 2.0 == 0.0)))),
+            worded("evenmsg", log.clone(), Box::new(|value| format!("qty must be even, got {}", value.as_f64().unwrap_or(0.0)))),
+        ));
+        let pick = Type::union([equals("u1", "u1m", "a", log.clone()), equals("u2", "u2m", "b", log.clone())], None);
+        let boom = Type::optional(Type::refine(Type::string(None), checked("boom", log.clone(), Box::new(|_| Err("kaboom".to_string()))), None));
+        let root = Type::refine(
+            Type::object([("name", name), ("qty", qty), ("pick", pick), ("boom", boom)], None),
+            checked("root", log.clone(), Box::new(|_| Ok(true))),
+            worded("rootmsg", log.clone(), Box::new(|_| "root refused".to_string())),
+        );
+        ext.tool_typed("refine-probe", "Arguments checked by refinements", &root, |_, _| ToolResult::text("ok"));
+        let reported = log.clone();
+        ext.command("refine_log", "Report and clear the refinement call log", move |ctx, _args| {
+            let calls: Vec<String> = std::mem::take(&mut *reported.lock().unwrap());
+            ctx.notify(&format!("refine_log:{}:end", json!(calls)), "info");
+            CommandResult::Ok
+        });
+    }
     ext.command("language_probe", "Report the highlight language of a path", |ctx, args| {
         let case: serde_json::Value = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
         let language = pig_sdk::get_language_from_path(case["path"].as_str().unwrap_or(""));
@@ -4156,6 +4211,23 @@ fn host_helpers_probe(ctx: &pig_sdk::Context, args: &str) -> Result<Value, Strin
     for case in golden["entries"].as_array().ok_or("no entries")? {
         entries.push(json!(pig_sdk::session_entry_to_context_messages(&case["entry"]).map_err(io)?));
     }
+    let mut contexts = Vec::new();
+    for case in golden["contexts"].as_array().ok_or("no contexts")? {
+        let args = case["args"].as_array().ok_or("no args")?;
+        let entries: Vec<Value> = args[0].as_array().cloned().unwrap_or_default();
+        let leaf = match args.get(1) {
+            None => pig_sdk::SessionLeaf::Last,
+            Some(Value::Null) => pig_sdk::SessionLeaf::None,
+            Some(id) => pig_sdk::SessionLeaf::At(id.as_str().ok_or("leaf is not a string")?),
+        };
+        let by_id: Option<serde_json::Map<String, Value>> = args.get(2).map(|pairs| {
+            pairs.as_array().into_iter().flatten().filter_map(|pair| Some((pair[0].as_str()?.to_string(), pair[1].clone()))).collect()
+        });
+        contexts.push(match pig_sdk::build_session_context(&entries, leaf, by_id.as_ref()) {
+            Ok(result) => json!({"result": result}),
+            Err(error) => json!({"throws": error.to_string().trim_start_matches("TypeError: ")}),
+        });
+    }
     let mut images = Vec::new();
     for case in golden["images"].as_array().ok_or("no images")? {
         let (data, mime) = (case["data"].as_str().unwrap_or_default(), case["mimeType"].as_str().unwrap_or_default());
@@ -4184,7 +4256,7 @@ fn host_helpers_probe(ctx: &pig_sdk::Context, args: &str) -> Result<Value, Strin
         "missingFile": credential("anthropic", Some(&format!("{auth_path}.missing"))), "notJSON": credential("anthropic", Some(&format!("{auth_path}.bad"))),
     });
     ctx.copy_to_clipboard(text).map_err(io)?;
-    Ok(json!({"diffs": diffs, "entries": entries, "images": images, "creds": creds}))
+    Ok(json!({"diffs": diffs, "entries": entries, "contexts": contexts, "images": images, "creds": creds}))
 }
 
 fn decode_base64(text: &str) -> Vec<u8> {

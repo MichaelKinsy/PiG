@@ -13,7 +13,6 @@ import (
 
 // literalDeadlineAllowed lists, by file and enclosing function, the test sites where a literal duration is the behavior under test or the bound on a build, not the bound on a hang.
 var literalDeadlineAllowed = map[string]string{
-	"build_binary_test.go:compilePigBinary":                                                           "bounds one go build of the shared test binary",
 	"session_extension_actions_exec_test.go:buildGoSDKFixture":                                        "bounds one go build of the exec fixture",
 	"auth_embedded_packed_test.go:buildRustPackedAuthFixture":                                         "bounds a packed extension build",
 	"session_replaced_2860_sdk_test.go:replaced2860Fixtures":                                          "bounds one cargo release build of the Rust fixture",

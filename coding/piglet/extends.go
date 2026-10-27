@@ -55,6 +55,10 @@ type ResolveOptions struct {
 	//
 	// pig additive (D194): Piglet resolution installs Packages without running lifecycle scripts unless the user opts in.
 	AllowInstallScripts bool
+	// Base, when set, is the Piglet the chain's root implicitly extends: a Piglet Binary's baked Piglet, offered as the base of an overlay selected at launch. The resolved Piglet keeps the base's name and cannot replace, remove or widen what the base baked.
+	//
+	// pig additive (D202): a Piglet Binary can declare that it accepts overlay Piglets.
+	Base *OverlayBase
 }
 
 // ResolveEffective resolves with no workspace anchor. Piglets that require a
@@ -79,7 +83,14 @@ func ResolveEffectiveWithOptions(path string, options ResolveOptions) (*Effectiv
 
 func resolveEffectiveRoot(canonical string, options ResolveOptions) (*EffectiveResolution, error) {
 	resolved, err := resolveEffective(canonical, "local:"+filepath.ToSlash(filepath.Base(canonical)), nil, 0, options)
+	if err == nil && options.Base != nil {
+		err = checkOverlay(options.Base.Piglet, resolved.Piglet)
+		resolved.Piglet.Name = options.Base.Piglet.Name
+	}
 	if err != nil {
+		if options.Base != nil {
+			return nil, fmt.Errorf("overlay %s on Piglet Binary %q: %w", canonical, options.Base.Piglet.Name, err)
+		}
 		return nil, err
 	}
 	var graph strings.Builder
@@ -125,6 +136,9 @@ func resolveEffective(path, sourceIdentity string, visits []lineageVisit, depth 
 	visits = append(slices.Clone(visits), lineageVisit{path: path, digest: digest})
 
 	if p.Extends == nil {
+		if options.Base != nil {
+			return resolveOverlayRoot(p, entry, digest, options.Base)
+		}
 		effective := clearDerivationMetadata(p)
 		if err := effective.Validate(); err != nil {
 			return nil, fmt.Errorf("effective Piglet %s: %w", path, err)

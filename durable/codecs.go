@@ -296,7 +296,7 @@ func (state TaskState[S, R]) MarshalJSON() ([]byte, error) {
 type orderedValue struct{ value JsonValue }
 
 func (member *orderedValue) UnmarshalJSON(data []byte) error {
-	value, err := delta.DecodeJson(data)
+	value, err := decodeJsonText(data)
 	member.value = value
 	return err
 }

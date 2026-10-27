@@ -333,7 +333,7 @@ func (h *rpcHost) newAdmission(session *coding.Session, runner *inproc.Runner, c
 			if providerID == "" && model.Provider != nil {
 				providerID = model.Provider.ID()
 			}
-			if providerID != "test-faux" && !registry.ModelRegistry.HasConfiguredAuth(providerID) {
+			if !registry.ModelRegistry.HasConfiguredAuth(providerID) {
 				return errors.New(codingagent.FormatNoAPIKeyFoundMessage(providerID))
 			}
 			return nil

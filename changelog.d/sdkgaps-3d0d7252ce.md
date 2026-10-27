@@ -1,0 +1,3 @@
+### Added
+
+- The Go, Rust and Python SDKs export the first part of pi-ai's `Type` (TypeBox 1.3.27): `Object`, `String`, `Number`, `Integer`, `Boolean`, `Null`, `Array`, `Union`, `Intersect`, `Literal`, `Enum`, `Record`, `Optional`, `Readonly`, `Immutable`, `Unsafe`, `With`, `Ref`, `Any`, `Unknown`, `Never`, `Undefined`, `Void`, `Symbol`, `BigInt` and the matching `Is...` guards. A schema built with them is exactly the JSON Schema Pi's `Type` returns, including member order and the optional markers `Type.Object` reads, and is checked against Pi's own answers for 292 cases. The other members come in later releases; the Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`, `EncodeBuilder`, `IsCodec`) is not served (D198).

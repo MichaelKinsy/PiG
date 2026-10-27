@@ -104,7 +104,7 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--approve`, `-a` | Trust project-local files for this run. |
 | `--no-approve`, `-na` | Ignore project-local files for this run. |
 | `--offline` | Turn off startup network operations, as `PI_OFFLINE=1` does. |
-| `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. See [Piglets](piglets.md). |
+| `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. A Piglet Binary refuses it unless its Piglet set `build.allowOverlays`, which lays the selected Piglet over the Binary's own. See [Piglets](piglets.md). |
 
 Extensions can register their own options, such as `--plan` from a plan-mode extension.
 

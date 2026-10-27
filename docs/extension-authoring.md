@@ -492,6 +492,27 @@ Prefer the context branch (what the model will see, trimmed at the last compacti
 
 Compute incrementally: keep running totals and update them from each new entry instead of rescanning the branch. Stream or peek (read only the fields you need, skip entries you do not care about) rather than materializing every entry. Before shipping, measure the handler on a large synthetic session (hundreds of MB, tens of thousands of entries, many compactions) and check both latency and peak memory.
 
+## Pricing what compaction would drop
+
+An extension that needs Pi's own answer to "where would compaction cut, and how many tokens lie before the cut" imports Pi's three helpers from its SDK. The helpers take the entries `getBranch()` returns, so no host call and no copy of Pi's logic is needed. Node re-exports Pi's `findCutPoint`, `sessionEntryToContextMessages` and `estimateTokens`. Go has `sdk.FindCutPoint`, `sdk.SessionEntryToContextMessages` and `sdk.EstimateTokens` in `github.com/MichaelKinsy/PiG/extensions/sdk` (a separate module: importing it does not pull in the host). Rust has `find_cut_point`, `session_entry_to_context_messages` and `estimate_tokens`. Python has the same snake_case names in `pig_sdk`.
+
+```go
+branch, _ := ctx.SessionManager().GetBranch(nil)
+cut := sdk.FindCutPoint(branch, 0, len(branch), keepRecentTokens) // Pi's findCutPoint
+dropped := 0
+for _, entry := range branch[:cut.FirstKeptEntryIndex] {
+	messages, err := sdk.SessionEntryToContextMessages(entry) // []any of map[string]any
+	if err != nil {
+		return err
+	}
+	for _, message := range messages {
+		dropped += sdk.EstimateTokens(message.(map[string]any))
+	}
+}
+```
+
+The helpers answer for the entries as stored. Pi's own `prepareCompaction` runs a cut over the session projection (context edits applied, a previous compaction's retained tail selected), and Pi does not export that projected cut, so over a branch with context edits the answer can differ from what native compaction does. Pass a `startIndex` after the last compaction entry to leave out what an earlier compaction already summarized. Each call costs time linear in the entries between `startIndex` and `endIndex`, as in Pi; a handler that runs per turn still follows the guidance above and keeps a running total instead of repricing the branch.
+
 ## Child agent sessions (`createAgentSession`)
 
 Pi's `createAgentSession` builds an independent `AgentSession` an extension can prompt, observe and abort without touching the session that runs it. Node extensions call Pi's own implementation. Go, Python and Rust extensions call `ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{...})`, `ctx.create_agent_session(CreateAgentSessionOptions(...))` and `ctx.create_agent_session(CreateAgentSessionOptions { .. })`; the host builds the child `coding.Session` over the parent's model runtime, so every provider the extensions registered is available to it (`modelRuntime: ctx.modelRegistry.runtime` in Pi).

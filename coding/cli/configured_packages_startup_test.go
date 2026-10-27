@@ -205,7 +205,7 @@ type rpcStartupResult struct {
 
 func runRPCStartup(t *testing.T, binary, home, agentDir, cwd string, args ...string) rpcStartupResult {
 	t.Helper()
-	cmd := exec.Command(binary, append([]string{"--mode", "rpc", "--model", "test-faux/echo", "--offline"}, args...)...)
+	cmd := exec.Command(binary, append([]string{"--mode", "rpc", "--model", "test-faux/faux-1", "--offline"}, args...)...)
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), "HOME="+home, "PIG_HOME="+filepath.Join(home, "pig"), "PIG_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1")
 	cmd.Stdin = strings.NewReader(`{"id":"commands","type":"get_commands"}` + "\n")

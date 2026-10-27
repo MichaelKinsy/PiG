@@ -230,6 +230,8 @@ Create a fresh Session with `Runtime.New`. Open an existing Session with the Run
 
 When an `agent_settled` extension handler appends custom messages, their message events precede the final settlement event on both Session listeners and mode output.
 
+When an extension that a Session's resource loader loaded calls `pi.appendEntry`, the Session reports an `entry_appended` event to its listeners, before the event the extension was handling. `ctx.sessionManager.appendCustomEntry` writes the log only and reports no event.
+
 Subscribe to Session events before sending when your application needs streaming updates.
 
 ### Supply a SessionManager
@@ -354,6 +356,51 @@ Pass extension definitions through `coding.RuntimeOptions` when your application
 `coding.DiscoverAndLoadExtensions(ctx, configuredPaths, cwd, agentDir)` discovers extensions in the project, global and configured locations with Pi's `discoverAndLoadExtensions` order and entry-point rules, and loads them in the extension host. Call `Close()` on the returned `LoadExtensionsResult` to shut the host down. Pi's function takes an event bus; PiG's does not (D117).
 
 Use a Piglet when the composition should also be usable from the `pig` executable or built as a Piglet Binary.
+
+## Headless embedding and binary size
+
+A program that embeds PiG without a terminal still links everything the session API can reach. `examples/headless` is a complete small program: the session API, MCP servers from `mcp.json` and one provider (Anthropic). It has no terminal and no extension files. Build it the way PiG builds its releases:
+
+```text
+CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o headless ./examples/headless
+```
+
+On linux/amd64 this is 40.1 MB, against 69.8 MB for the `pig` command. Three things are already left out of such a program without any option: the terminal MCP view and tool renderers (package `mcptui`, see below), the terminal editor with the word dictionaries behind it (6.3 MB), and the announcement image of the interactive mode (0.5 MB). The rest is features you can remove with build tags.
+
+### Strip tags
+
+Every feature that can be left out of a build has a Go build tag, `pig_strip_<id>`. They are the same tags a [Piglet Binary](piglet-binaries.md) uses, so one mechanism covers both. Pass the ones you do not need to `go build -tags`. A stripped feature is not linked and acts as if it were absent: a request for it reports that it was stripped from this build, and model lists leave out the models of a stripped API.
+
+| Tag | Leaves the binary | Saves on `examples/headless` (linux/amd64) |
+| --- | --- | ---: |
+| `pig_strip_node_extensions` | The embedded Node runtime that runs TypeScript and JavaScript extensions | 5.07 MB |
+| `pig_strip_bedrock_converse_stream` | The Amazon Bedrock API and the AWS SDK | 3.29 MB |
+| `pig_strip_syntax_highlight` | Code highlighting grammars | 0.63 MB |
+| `pig_strip_google_vertex` | The Google Vertex API and its OAuth code | 0.46 MB |
+| `pig_strip_mistral_conversations` | The Mistral conversations API | 0.10 MB |
+| `pig_strip_mermaid` | Mermaid diagram drawing | 0.07 MB |
+| `pig_strip_word_dictionaries` | The CJK, Thai, Lao, Khmer and Burmese word dictionaries | 0, already absent (6.3 MB in the `pig` command) |
+
+The remaining tags (`pig_strip_llama_cpp`, `pig_strip_codemode`, `pig_strip_tool_search`, `pig_strip_pig_login`, `pig_strip_docs`, `pig_strip_changelog`, `pig_strip_export_html`, `pig_strip_self_update`, `pig_strip_piglet_builder`, `pig_strip_extension_sdk_go`, `pig_strip_extension_sdk_python` and `pig_strip_extension_sdk_rust`) remove features the session API does not link by itself. They matter when your program also links the `pig` command's packages, and they do no harm here. Passing all of them except `pig_strip_mcp` takes `examples/headless` to 30.4 MB on linux/amd64, 29.0 MB on darwin/arm64 and 31.7 MB on windows/amd64.
+
+Notes:
+
+- Leave `pig_strip_mcp` out. It removes MCP from the `pig` command's built-in extension list. A program that calls `mcpext` itself, as `examples/headless` does, needs the package.
+- `pig_strip_node_extensions` means the program cannot load TypeScript or JavaScript extension files. Set `DefaultResourceLoaderOptions.NoExtensions` if the program loads none, as the example does.
+- There is no tag that keeps one provider and removes the others. The tags above remove whole APIs that bring their own large dependencies (Bedrock, Vertex, Mistral). The other providers share one code path and stay linked. The code of one provider is small next to these dependencies.
+- The tags apply to the whole program and to every package it links. Check the result with `go build -tags` and the size of the file.
+
+### MCP without a terminal
+
+`mcpext.CreateMcpExtension(mcpext.Options{...})` is the headless entry point. Leave `Options.Terminal` nil: then the extension has no `/mcp` manager view and no tool renderers, and nothing from package `mcptui` is linked. The `pig` command sets `Options.Terminal` to `mcptui.Terminal()`. `mcpext.NewHeadless` does the same for a caller that builds the extension from a `Host` of its own.
+
+### Editors in extension views
+
+Extensions can put an editor in a view they draw. The component that builds it uses the terminal editor, which pulls in the word dictionaries. The `pig` command enables it with `subprocess.EnableEditorViews()` where it creates the extension host. A program that never draws an extension's editor does not call it, and the editor is not linked. A program that serves extension views to its own terminal calls `subprocess.EnableEditorViews()` once before the first view is built. Until then a view with an editor fails with an error that names the call, and an editor node that is not valid is rejected as before.
+
+### Size gate
+
+`TestHeadlessEmbedBinarySizeGate` builds `examples/headless` for every release platform, with no tags and with every strip tag except `pig_strip_mcp`, and fails when a binary is larger than its ceiling in `automation/perf/ratchet.toml` (`binary.headless.*`). A ceiling only moves down. It is the same gate that holds the `pig` command's size (`binary.pig.*`).
 
 ## Go API changes in 0.5.0
 

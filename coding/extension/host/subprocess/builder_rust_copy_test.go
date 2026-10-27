@@ -13,6 +13,9 @@ import (
 
 // The binary cargo built is copied to the cache path and executed as soon as the build is published. A fork while the copy is open leaves a child that holds the copy's write descriptor until it calls exec, and the host's exec then fails with "text file busy".
 func TestCopyBuiltBinaryStartsNoChildWhileCopying(t *testing.T) {
+	if testenv.RerunWithoutAsyncPreemption(t) {
+		return
+	}
 	dst := filepath.Join(t.TempDir(), "bin.tmp")
 	payload, err := testenv.CopyFromFIFO(t, func(fifo string) error {
 		return copyBuiltBinary(fifo, dst)

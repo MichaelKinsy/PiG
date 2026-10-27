@@ -47,6 +47,7 @@ func TestNativeProviderOAuthRefreshAndLogin(t *testing.T) {
 	if _, err := host.Load(t.Context(), subprocess.ExtConfig{Name: "oauth-native", Source: entry, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
+	applyQueuedRegistrations(host)
 	result, err := services.Registry().NativeProviderAuth(t.Context(), "native-oauth", ai.AuthResolutionOverrides{})
 	if err != nil {
 		t.Fatal(err)

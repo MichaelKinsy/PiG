@@ -7,12 +7,15 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -138,36 +141,110 @@ func canonicalizeRPCClocks(value any) any {
 	return value
 }
 
+// azureServerTrace records what the loopback server of one runAzureRPCOnce saw and did, with the time since the run began, so
+// a stall's failure message says whether the request arrived, whether the handler wrote a response and how much, and whether
+// the connection was still open. A stalled run without it cannot tell a response the server never wrote from one that left the
+// server and never reached PiG.
+type azureServerTrace struct {
+	mu     sync.Mutex
+	start  time.Time
+	events []string
+}
+
+func newAzureServerTrace() *azureServerTrace { return &azureServerTrace{start: time.Now()} }
+
+func (trace *azureServerTrace) add(format string, args ...any) {
+	trace.mu.Lock()
+	defer trace.mu.Unlock()
+	trace.events = append(trace.events, fmt.Sprintf("+%.3fs ", time.Since(trace.start).Seconds())+fmt.Sprintf(format, args...))
+}
+
+func (trace *azureServerTrace) String() string {
+	trace.mu.Lock()
+	defer trace.mu.Unlock()
+	return strings.Join(trace.events, "\n\t")
+}
+
+// azureSocketSnapshot is the kernel's view of every TCP connection to or from the server's port. ss -tni gives each socket's
+// state, queues and bytes sent, acknowledged and received, so the client's received bytes can be compared with the server's sent
+// ones. Where ss is missing it reads /proc/net/tcp, which has the state and the queues but no byte counts.
+func azureSocketSnapshot(port int) string {
+	filter := "( sport = :" + strconv.Itoa(port) + " or dport = :" + strconv.Itoa(port) + " )"
+	if out, err := exec.Command("ss", "-tni", "state", "all", filter).CombinedOutput(); err == nil {
+		return strings.TrimSpace(string(out))
+	}
+	states := map[string]string{"01": "ESTABLISHED", "02": "SYN_SENT", "03": "SYN_RECV", "04": "FIN_WAIT1", "05": "FIN_WAIT2", "06": "TIME_WAIT", "07": "CLOSE", "08": "CLOSE_WAIT", "09": "LAST_ACK", "0A": "LISTEN", "0B": "CLOSING"}
+	suffix := fmt.Sprintf(":%04X", port)
+	var lines []string
+	for _, table := range []string{"/proc/net/tcp", "/proc/net/tcp6"} {
+		data, err := os.ReadFile(table)
+		if err != nil {
+			continue
+		}
+		for line := range strings.SplitSeq(string(data), "\n") {
+			// sl local_address rem_address st tx_queue:rx_queue ...
+			fields := strings.Fields(line)
+			if len(fields) < 5 || (!strings.HasSuffix(fields[1], suffix) && !strings.HasSuffix(fields[2], suffix)) {
+				continue
+			}
+			queues := strings.Split(fields[4], ":")
+			if len(queues) != 2 {
+				continue
+			}
+			lines = append(lines, fmt.Sprintf("%s local %s remote %s %s tx_queue 0x%s rx_queue 0x%s", table, fields[1], fields[2], states[fields[3]], queues[0], queues[1]))
+		}
+	}
+	if len(lines) == 0 {
+		return "no socket table available"
+	}
+	return strings.Join(lines, "\n")
+}
+
 func runAzureRPCOnce(t *testing.T, bin string, bodies map[string]string, shape, fixture string, keep int) []byte {
 	t.Helper()
 	release := make(chan struct{})
 	releaseOnce := sync.OnceFunc(func() { close(release) })
 	defer releaseOnce()
 	var requests atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.Copy(io.Discard, r.Body)
+	trace := newAzureServerTrace()
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		trace.add("handler enter %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+		defer trace.add("handler exit")
+		copied, copyErr := io.Copy(io.Discard, r.Body)
+		trace.add("request body %d bytes, err %v", copied, copyErr)
 		// Only the model's Responses request takes a response slot. A foreign client that reaches this reused loopback port must not consume the first body, or PiG's first request would receive the follow-up body.
 		if r.Method != http.MethodPost || r.URL.Path != "/openai/v1/responses" {
+			trace.add("not the Responses request: 404")
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
-		if requests.Add(1) != 1 {
-			_, _ = io.WriteString(w, bodies["followup"])
+		if number := requests.Add(1); number != 1 {
+			trace.add("request %d: follow-up body", number)
+			n, err := io.WriteString(w, bodies["followup"])
+			trace.add("wrote %d bytes, err %v", n, err)
 			return
 		}
 		if fixture == "buffered" {
-			_, _ = io.WriteString(w, bodies[shape])
+			n, err := io.WriteString(w, bodies[shape])
+			trace.add("request 1: buffered body written %d bytes, err %v (sent when the handler returns)", n, err)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		w.(http.Flusher).Flush()
+		trace.add("request 1: headers flushed, waiting for the release")
 		select {
 		case <-release:
-			_, _ = io.WriteString(w, bodies[shape])
+			n, err := io.WriteString(w, bodies[shape])
+			trace.add("released: body written %d bytes, err %v", n, err)
 		case <-r.Context().Done():
+			trace.add("request context done before the release: %v", r.Context().Err())
 		}
 	}))
+	server.Config.ConnState = func(conn net.Conn, state http.ConnState) {
+		trace.add("connection %s -> %s: %s", conn.RemoteAddr(), conn.LocalAddr(), state)
+	}
+	server.Start()
 	defer server.Close()
 	dir := t.TempDir()
 	agentDir := filepath.Join(dir, "agent")
@@ -248,10 +325,13 @@ func runAzureRPCOnce(t *testing.T, bin string, bodies map[string]string, shape, 
 		}
 		return canonicalRPCRecords(t, r.records[:min(keep, len(r.records))])
 	case <-time.After(testbudget.Wait(t)):
-		// A stalled child names its own stall: SIGQUIT makes the Go runtime dump every goroutine to stderr. Without a dump a
-		// timeout here cannot tell a request that never left PiG from one the loopback server never answered.
+		// A stalled run names the side that holds the response. The server's trace says whether the handler wrote one; the
+		// kernel's socket table, read while the child is still alive, says whether those bytes were sent and received (the
+		// server's bytes_sent against the client's bytes_received) and what is queued unread on either end; and SIGQUIT makes
+		// the child's Go runtime dump every goroutine to stderr, which says what PiG was waiting on.
+		sockets, events := azureSocketSnapshot(server.Listener.Addr().(*net.TCPAddr).Port), trace.String()
 		dump := dumpStalledChild(cmd, stderr)
-		t.Errorf("timeout after %d Responses request(s); stderr: %s", requests.Load(), dump)
+		t.Errorf("timeout after %d Responses request(s); server %s\nserver trace:\n\t%s\nsockets while the child waited:\n%s\nchild stderr: %s", requests.Load(), server.URL, events, sockets, dump)
 		return nil
 	}
 }

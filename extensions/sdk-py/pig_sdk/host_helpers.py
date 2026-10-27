@@ -5,6 +5,7 @@ handler's own connection (``ctx.parse_frontmatter``, ``ctx.parse_date``)."""
 import base64
 import json
 import os
+import re
 import struct
 import threading
 from dataclasses import dataclass
@@ -71,11 +72,40 @@ def strip_frontmatter(content: str) -> str:
 
 
 def parse_date(text: str) -> Optional[float]:
-    """``Date.parse(text)`` (``new Date(text).getTime()`` for a string), V8's parser answered by the host: the time value in milliseconds, None when it is NaN."""
+    """``Date.parse(text)`` (``new Date(text).getTime()`` for a string), V8's parser answered by the host: the time value in milliseconds, None when it is NaN. Text in the
+    form ``toISOString`` writes for a four-digit year (``2026-01-02T03:04:05.678Z``) is answered without the host."""
+    ms = _parse_iso_date(text)
+    if ms is not None:
+        return ms
     hook = _State.hook
     if hook is not None and hook[1] is not None:
         return hook[1](text)
     return _decode_date(_helper_call(_CALL_PARSE_DATE, {"text": text}))
+
+
+_ISO_DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})Z", re.ASCII)
+
+
+def _parse_iso_date(text: str) -> Optional[float]:
+    """``Date.parse`` for the text ``Date.prototype.toISOString`` writes for a year of four digits, ``YYYY-MM-DDTHH:mm:ss.sssZ`` with every field in range, which is how Pi
+    writes the timestamp of each session entry. ECMA-262 21.4.1.32 defines that form, so the answer is the same in every engine and needs no host. Text in any other form (a
+    missing Z, an offset, a year of six digits, a lowercase t or z, a field out of range such as February 30 or hour 24) is not decided here: the host's parser answers it, as V8
+    does. None means the host must answer."""
+    match = _ISO_DATE.fullmatch(text)
+    if match is None:
+        return None
+    year, month, day, hour, minute, second, millisecond = (int(group) for group in match.groups())
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    days_in_month = 29 if month == 2 and leap else 28 if month == 2 else 30 if month in (4, 6, 9, 11) else 31
+    if not 1 <= month <= 12 or not 1 <= day <= days_in_month or hour > 23 or minute > 59 or second > 59:
+        return None
+    # The days from 1970-01-01 in the proleptic Gregorian calendar, which is what ECMA-262 time values count.
+    shifted = year - 1 if month <= 2 else year
+    era = shifted // 400
+    year_of_era = shifted - era * 400
+    day_of_year = (153 * ((month + 9) % 12) + 2) // 5 + day - 1
+    days = era * 146097 + year_of_era * 365 + year_of_era // 4 - year_of_era // 100 + day_of_year - 719468
+    return float(((days * 24 + hour) * 60 + minute) * 60000 + second * 1000 + millisecond)
 
 
 @dataclass(frozen=True)

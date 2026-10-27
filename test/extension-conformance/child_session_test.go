@@ -358,11 +358,22 @@ def new_extension():
             options["resources"] = pig_sdk.ResourceOptions(additional_extension_paths=[args["probe"]], **probe)
         session = ctx.create_agent_session(pig_sdk.CreateAgentSessionOptions(**options))
         try:
+            seen = []
+
+            def observe(event):
+                name = event["type"]
+                if name.startswith("message_"):
+                    name += ":" + event["message"]["role"]
+                if name == "entry_appended":
+                    name += ":" + event["entry"]["customType"]
+                seen.append(name)
+
+            session.subscribe(observe)
             session.bind_extensions()
             session.prompt("stream:3")
+            return json.dumps(seen)
         finally:
             session.dispose()
-        return "done"
 
     for name, fn in (("child_lifecycle", lifecycle), ("child_hold", hold), ("child_errors", errors), ("child_events", events)):
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=fn))
@@ -577,9 +588,21 @@ pub fn new_extension() -> Extension {
             Ok(session) => session,
             Err(error) => return ToolResult::Error(error.to_string()),
         };
+        let seen: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let sink = seen.clone();
+        let _subscription = session.subscribe(move |event| {
+            let mut name = event["type"].as_str().unwrap_or("").to_string();
+            if name.starts_with("message_") {
+                name = format!("{}:{}", name, event["message"]["role"].as_str().unwrap_or(""));
+            }
+            if name == "entry_appended" {
+                name = format!("{}:{}", name, event["entry"]["customType"].as_str().unwrap_or(""));
+            }
+            sink.lock().unwrap().push(name);
+        });
         let outcome = session.bind_extensions().and_then(|()| session.prompt("stream:3"));
         session.dispose();
-        match outcome { Ok(()) => ToolResult::text("done".to_string()), Err(error) => ToolResult::Error(error.to_string()) }
+        match outcome { Ok(()) => ToolResult::text(json!(*seen.lock().unwrap()).to_string()), Err(error) => ToolResult::Error(error.to_string()) }
     }));
 
     e.register_tool(ToolDefinition::new("child_errors", "child_errors", "child_errors", json!({"type": "object"}), |ctx, _args: Value| {

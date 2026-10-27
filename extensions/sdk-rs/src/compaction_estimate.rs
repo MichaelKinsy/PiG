@@ -5,7 +5,12 @@ use serde_json::Value;
 
 const ESTIMATED_IMAGE_CHARS: usize = 4800;
 
+/// A JavaScript string's length: the UTF-16 code units of the text. A text of ASCII has one unit per byte, which `is_ascii` answers a word at a time, where
+/// `encode_utf16().count()` visits each character.
 fn utf16_length(text: &str) -> usize {
+    if text.is_ascii() {
+        return text.len();
+    }
     text.encode_utf16().count()
 }
 
@@ -142,6 +147,30 @@ pub(crate) fn js_number_string(value: f64) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    // The text a fast path must agree on: ASCII runs of every length around a word, and characters of every encoded size.
+    #[test]
+    fn utf16_length_is_the_sum_of_the_utf16_lengths_of_the_chars() {
+        let pieces = ["a", "abcdefgh", "é", "日", "😀", "\u{10ffff}", "\u{ffff}", "\u{d7ff}", "\u{e000}", "\0", "\n"];
+        let mut state = 0x9e3779b97f4a7c15_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for _ in 0..20000 {
+            let mut text = String::new();
+            for _ in 0..next() % 8 {
+                text.push_str(pieces[(next() % pieces.len() as u64) as usize]);
+            }
+            let want: usize = text.chars().map(char::len_utf16).sum();
+            assert_eq!(utf16_length(&text), want, "{text:?}");
+        }
+        for (text, want) in [("", 0), ("abcdefgh", 8), ("abcdefghi", 9), ("abcdefg😀", 9), ("😀", 2), ("é", 1)] {
+            assert_eq!(utf16_length(text), want, "{text:?}");
+        }
+    }
 
     // The cases ECMA-262 7.1.12.1 and V8 print.
     #[test]

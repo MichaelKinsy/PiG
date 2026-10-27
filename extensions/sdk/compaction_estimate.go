@@ -4,6 +4,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // EstimateTokens is Pi's estimateTokens (core/compaction/compaction.ts): a chars/4 heuristic over one agent message as the wire carries it (a decoded JSON
@@ -100,10 +101,20 @@ func estimateContentChars(content any) int {
 	return 0
 }
 
-// utf16Length is a JavaScript string's length: the UTF-16 code units of the text. A byte that is not UTF-8 counts as the one unit of U+FFFD.
+// utf16Length is a JavaScript string's length: the UTF-16 code units of the text. A byte that is not UTF-8 counts as the one unit of U+FFFD. JavaScript reads the
+// length of a string in constant time, so an ASCII prefix, one unit per byte, is skipped eight bytes at a time and only the rest is decoded.
 func utf16Length(text string) int {
-	units := 0
-	for _, r := range text {
+	prefix := 0
+	for ; prefix+8 <= len(text); prefix += 8 {
+		if text[prefix]|text[prefix+1]|text[prefix+2]|text[prefix+3]|text[prefix+4]|text[prefix+5]|text[prefix+6]|text[prefix+7] >= utf8.RuneSelf {
+			break
+		}
+	}
+	for prefix < len(text) && text[prefix] < utf8.RuneSelf {
+		prefix++
+	}
+	units := prefix
+	for _, r := range text[prefix:] {
 		units++
 		if r >= 0x10000 {
 			units++

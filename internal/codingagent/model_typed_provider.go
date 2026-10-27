@@ -56,8 +56,10 @@ func builtinTypedBase(id string, fallback ai.ModelsStreamFunction) *ai.ModelsPro
 	}
 	auth, _ := ai.BuiltinProviderAuth(id)
 	chatModels := func() []*ai.Model {
-		models := make([]*ai.Model, 0, len(chat))
-		for _, generated := range chat {
+		// The models are read when the provider is listed, so OpenRouter's routing variants (D199) are derived then and not at startup.
+		listed := builtinChatCatalogListed(id)
+		models := make([]*ai.Model, 0, len(listed))
+		for _, generated := range listed {
 			model := generated.ToModel()
 			model.Capabilities = generated.ToCapabilities()
 			models = append(models, model)

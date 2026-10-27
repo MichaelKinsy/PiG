@@ -25,13 +25,13 @@ func octal(data []byte) string {
 // event frames of request 2.
 func scriptedWatchDaemon(t *testing.T, targets []durableenv.WatchTarget, events ...Json) *Connection {
 	t.Helper()
-	hello := encodeFrame(frameRequest, 1, Json{"protocol": 1, "op": "hello"}, nil)
-	watch := encodeFrame(frameRequest, 2, Json{"targets": []any{Json{"path": targets[0].Path, "recursive": false, "exclude": Json{"hidden": false, "names": []any{}}}}, "op": "watch"}, nil)
+	hello := mustFrame(frameRequest, 1, Json{"protocol": 1, "op": "hello"}, nil)
+	watch := mustFrame(frameRequest, 2, Json{"targets": []any{Json{"path": targets[0].Path, "recursive": false, "exclude": Json{"hidden": false, "names": []any{}}}}, "op": "watch"}, nil)
 	var script strings.Builder
 	script.WriteString(syncLine + helloResult)
 	_, _ = fmt.Fprintf(&script, `head -c %d >/dev/null; `, len(hello)+len(watch))
 	for _, event := range events {
-		_, _ = fmt.Fprintf(&script, `printf '%s'; `, octal(encodeFrame(frameEvent, 2, event, nil)))
+		_, _ = fmt.Fprintf(&script, `printf '%s'; `, octal(mustFrame(frameEvent, 2, event, nil)))
 	}
 	script.WriteString(`exec sleep 30`)
 	return scriptedConnection(t, script.String(), nil)

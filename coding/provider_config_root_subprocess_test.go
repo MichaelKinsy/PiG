@@ -40,6 +40,7 @@ func TestNodeConfigProviderRootAcrossCellMembers(t *testing.T) {
 	if len(errs) != 0 || len(exts) != 2 {
 		t.Fatalf("LoadAll = %d extensions, %v", len(exts), errs)
 	}
+	applyQueuedRegistrations(host)
 	if err := exts[0].Commands["root-check"].Handler(t.Context(), ""); err != nil {
 		t.Fatal(err)
 	}

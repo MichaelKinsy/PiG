@@ -17,7 +17,8 @@ func TestListModelsAllocatesOnlyFilteredCatalog(t *testing.T) {
 				}
 			}
 			got := ListModels(provider)
-			if !reflect.DeepEqual(got, want) {
+			// The OpenRouter routing variants ListModels derives (D199) are not in the generated catalog; the catalog's own models keep its order.
+			if !reflect.DeepEqual(piListedModels(got), want) {
 				t.Fatal("filtered catalog differs from generated order or metadata")
 			}
 			if cap(got) != len(got) {

@@ -139,6 +139,7 @@ func testProviderObjectPair(t *testing.T, root, role, language, placement, call 
 	if len(loaded) != len(configs) {
 		t.Fatalf("loaded %d of %d configured providers", len(loaded), len(configs))
 	}
+	applyQueuedRegistrations(host)
 	model := services.ModelRuntime().GetModel("carrier-provider", "carrier-model")
 	if model == nil {
 		t.Fatalf("%s: native provider model missing from host runtime", call)

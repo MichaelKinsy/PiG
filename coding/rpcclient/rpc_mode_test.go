@@ -55,7 +55,7 @@ func newRpcModeFixture(t *testing.T, provider, model string, files map[string]st
 
 func newFauxFixture(t *testing.T) rpcModeFixture {
 	t.Helper()
-	return newRpcModeFixture(t, "test-faux", "echo", map[string]string{})
+	return newRpcModeFixture(t, "test-faux", "faux-1", map[string]string{})
 }
 
 // A reasoning model from models.json; these tests never contact it.
@@ -126,7 +126,7 @@ func TestRpcModeShouldGetState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if state.Model == nil || state.Model.Provider != "test-faux" || state.Model.ID != "echo" {
+	if state.Model == nil || state.Model.Provider != "test-faux" || state.Model.ID != "faux-1" {
 		t.Fatalf("state.model = %+v", state.Model)
 	}
 	if state.IsStreaming || state.MessageCount != 0 {

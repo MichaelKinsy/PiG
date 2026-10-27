@@ -1575,12 +1575,6 @@ func WireModelOperations(bridge ModelOperationBridge, bindings ModelOperationBin
 		if bindings.Registry == nil {
 			return map[string]any{"ok": false, "error": "model registry not available"}
 		}
-		if providerID == "test-faux" && os.Getenv("PIG_TEST_FAUX") == "1" {
-			// The scripted test provider authenticates as the upstream side of
-			// the parity harness registers it (test/parity/testdata/test-faux-provider.ts:
-			// apiKey "unused"), so extensions take the same authenticated path.
-			return map[string]any{"ok": true, "apiKey": "unused", "baseUrl": "http://localhost:0"}
-		}
 		if bindings.Registry.NativeProvider(providerID) != nil {
 			auth, err := bindings.Registry.NativeProviderAuth(ctx, providerID, ai.AuthResolutionOverrides{})
 			if err != nil {

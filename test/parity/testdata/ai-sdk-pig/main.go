@@ -150,7 +150,11 @@ func buildCatalogSnapshot() map[string]any {
 	byProvider := make(map[string]any, len(providers))
 	total := 0
 	for _, provider := range providers {
-		models := ai.ListModels(provider)
+		// D199 parity allowance: OpenRouter's :nitro and :floor variants are PiG's addition; Pi's catalog has none.
+		models := slices.DeleteFunc(ai.ListModels(provider), func(model ai.GeneratedModel) bool {
+			_, _, variant := ai.OpenRouterRoutingVariant(model.Provider, model.ID)
+			return variant
+		})
 		total += len(models)
 		apis := make(map[string]struct{})
 		imageInputCount := 0

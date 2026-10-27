@@ -373,7 +373,15 @@ func prepareToolCall(ctx context.Context, tools []AgentTool, hooks ToolCallHooks
 	}
 	var validationErr error
 	if schemaTool, ok := tool.(interface{ ArgumentSchema() json.RawMessage }); ok {
-		args, validationErr = ai.ValidateToolArgumentsJSON(call.name, schemaTool.ArgumentSchema(), args)
+		if refiner, refines := tool.(ai.Refiner); refines && len(refiner.RefinementSites()) > 0 {
+			// The tool's schema carries refinements, which its extension runs while TypeBox's traversal asks for them (validate_refine.go).
+			args, validationErr = ai.ValidateToolArgumentsRefined(ctx, call.name, schemaTool.ArgumentSchema(), args, refiner)
+			if validationErr != nil && ctx.Err() != nil && errors.Is(validationErr, ctx.Err()) {
+				return immediateOutcome(call, errorToolResult("Operation aborted"))
+			}
+		} else {
+			args, validationErr = ai.ValidateToolArgumentsJSON(call.name, schemaTool.ArgumentSchema(), args)
+		}
 	} else {
 		args, validationErr = ai.ValidateToolArgumentsSchema(call.name, tool.Schema().Parameters, args)
 	}

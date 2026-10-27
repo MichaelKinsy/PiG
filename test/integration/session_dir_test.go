@@ -44,7 +44,7 @@ func runWithSessionDir(t *testing.T, modeArgs []string, prompt string) (sessionD
 	sessionDir = filepath.Join(t.TempDir(), "chosen-sessions")
 	pigHome = extIsolatedHome(t)
 
-	args := append([]string{"--no-extensions", "--model", "test-faux/echo", "--session-dir", sessionDir}, modeArgs...)
+	args := append([]string{"--no-extensions", "--model", "test-faux/faux-1", "--session-dir", sessionDir}, modeArgs...)
 	cmd := exec.Command(buildBinary(t), append(args, prompt)...)
 	cmd.Env = append(os.Environ(), "PIG_HOME="+pigHome, "PIG_QUIET_STARTUP=1", "PIG_TEST_FAUX=1")
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -85,7 +85,7 @@ func TestSessionDirUsedForResumeLookup(t *testing.T) {
 	run := func(prompt string) string {
 		t.Helper()
 		cmd := exec.Command(buildBinary(t),
-			"--no-extensions", "--mode", "json", "--model", "test-faux/echo",
+			"--no-extensions", "--mode", "json", "--model", "test-faux/faux-1",
 			"--session-dir", sessionDir, "--session-id", id, prompt)
 		cmd.Env = append(os.Environ(), "PIG_HOME="+pigHome, "PIG_QUIET_STARTUP=1", "PIG_TEST_FAUX=1")
 		out, err := cmd.CombinedOutput()
@@ -112,7 +112,7 @@ func runRPCTurn(t *testing.T, extra ...string) (sessionDir, pigHome string) {
 
 	args := append([]string{
 		"--no-extensions", "--mode", "rpc",
-		"--model", "test-faux/echo", "--session-dir", sessionDir,
+		"--model", "test-faux/faux-1", "--session-dir", sessionDir,
 	}, extra...)
 	cmd := exec.Command(buildBinary(t), args...)
 	cmd.Env = append(os.Environ(), "PIG_HOME="+pigHome, "PIG_QUIET_STARTUP=1", "PIG_TEST_FAUX=1")

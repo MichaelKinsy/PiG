@@ -1,7 +1,6 @@
 package ai
 
 import (
-	"math"
 	"testing"
 )
 
@@ -30,7 +29,7 @@ func TestFrozenContextSharesItsMessagesAndAnOrdinaryOneCopiesThem(t *testing.T) 
 }
 
 func TestFrozenContextStillValidatesAndStillCopiesTheCallersTools(t *testing.T) {
-	bad := NormalizeContext(Context{Messages: []Message{assistantWithCall(JsonObject{"n": math.NaN()})}, Frozen: true})
+	bad := NormalizeContext(Context{Messages: []Message{assistantWithCall(JsonObject{"n": make(chan int)})}, Frozen: true})
 	if bad.Len() != 0 || bad.Messages() != nil {
 		t.Fatal("a frozen transcript with an unmarshalable argument was accepted")
 	}

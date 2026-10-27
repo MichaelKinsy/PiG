@@ -236,3 +236,10 @@ commit = "8c2fe46dda772e91ad0cdab8441177c06e2045b1"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The Windows pipe tests are PiG-original: Pi reads a pipe stdin through libuv and has no counterpart, so no Pi line governs them. The commit makes the reader read a Windows pipe in one cancellable ReadFile instead of waiting on the handle first (a pipe handle is signalled whether or not input is queued), so the tests move from asserting terminalInputWaiter.wait's ready or not-ready answer to asserting what terminalReader.read returns: the bytes, nil for a timeout, io.EOF for the end of the pipe, the context's error for a cancel. Each case keeps the behavior it proved (an empty pipe times out, input is delivered, an emptied pipe times out again, a closed writer ends the input, a cancel ends a read of an empty pipe, input wakes a blocked read, a timed-out read leaves no stale abort, an idle read costs no CPU); only the call that reports it changed."
+
+[[entry]]
+path = "coding/cli/rpc_model_type_binary_test.go"
+commit = "1ad7357814ccd6a54bfa35941c52f1124478b75d"
+class = "CITE"
+cite = "packages/coding-agent/src/core/provider-composer.ts:297"
+reason = "test-faux is now registered through the registry as an extension chat model, like Pi's harness, and Pi's extension model spreads its config (provider-composer.ts:297 returns { ...definition, api, provider, baseUrl, headers: undefined }), so a config with no type yields a model with no type member: the test expects no type for test-faux, as it does for custom-typeless."

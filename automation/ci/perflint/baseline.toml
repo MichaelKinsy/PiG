@@ -677,9 +677,9 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "ai/transcript.go"
-func = "normalizeJSONValue"
+func = "normalizeJSONValueWith"
 pattern = "decode-own-encode"
-detail = "json.Marshal->json.NewDecoder"
+detail = "ai.marshal->json.NewDecoder"
 count = 1
 class = "hot-kept: normalizes a value without a typed form once per conversion; needs its own byte oracle"
 
@@ -1117,7 +1117,7 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/cli/main.go"
-func = "resolvePiglet"
+func = "resolvePigletOn"
 pattern = "env-stat"
 detail = "os.Getenv"
 count = 2
@@ -1224,14 +1224,6 @@ file = "coding/cli/rpc_events.go"
 func = "rpcStreamingBlockScratch"
 pattern = "json-roundtrip"
 detail = "marshal+unmarshal"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "coding/cli/rpc_mode.go"
-func = "rpcAvailableModels"
-pattern = "env-stat"
-detail = "os.Getenv"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
@@ -3325,14 +3317,6 @@ class = "cold: once per session switch or fork"
 
 [[hit]]
 file = "coding/services.go"
-func = "ModelRuntime.knowsProvider"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "coding/services.go"
 func = "newConfiguredServices"
 pattern = "env-stat"
 detail = "os.Getenv"
@@ -3655,7 +3639,7 @@ class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder com
 file = "durable/json.go"
 func = "FromJsonValue"
 pattern = "decode-own-encode"
-detail = "durable.marshalStrict->delta.DecodeJson"
+detail = "durable.marshalStrict->durable.decodeJsonText"
 count = 2
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
@@ -3663,7 +3647,7 @@ class = "hot-kept: durable store per record; needs its own byte oracle, not atte
 file = "durable/json.go"
 func = "FromJsonValue"
 pattern = "decode-own-encode"
-detail = "durable.marshalStrict->json.NewDecoder"
+detail = "durable.marshalStrict->jsstring.UnmarshalKeepingSurrogates"
 count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
@@ -3671,7 +3655,7 @@ class = "hot-kept: durable store per record; needs its own byte oracle, not atte
 file = "durable/json.go"
 func = "ToJsonValue"
 pattern = "decode-own-encode"
-detail = "durable.marshalStrict->delta.DecodeJson"
+detail = "durable.marshalStrict->durable.decodeJsonText"
 count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
@@ -3884,14 +3868,6 @@ count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "internal/codingagent/extension_model_registry.go"
-func = "testFauxProvider"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "internal/codingagent/extension_package_warnings.go"
 func = "ExtensionPackageWarnings"
 pattern = "loop-format"
@@ -4016,14 +3992,6 @@ file = "internal/codingagent/interactive_commands.go"
 func = "InteractiveMode.buildSlashContext"
 pattern = "loop-format"
 detail = "string+="
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "internal/codingagent/interactive_extensions.go"
-func = "WireModelOperations"
-pattern = "env-stat"
-detail = "os.Getenv"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 

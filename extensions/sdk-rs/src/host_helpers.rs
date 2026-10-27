@@ -53,10 +53,53 @@ pub fn strip_frontmatter(content: &str) -> io::Result<String> {
     Ok(parse_frontmatter(content)?.body)
 }
 
-/// `Date.parse(text)` (`new Date(text).getTime()` for a string), V8's parser answered by the host: the time value in milliseconds, `None` when it is NaN. It may
-/// be called before `run`, like [`parse_frontmatter`].
+/// `Date.parse(text)` (`new Date(text).getTime()` for a string), V8's parser answered by the host: the time value in milliseconds, `None` when it is NaN. Text in the
+/// form `toISOString` writes for a four-digit year (`2026-01-02T03:04:05.678Z`) is answered without the host. It may be called before `run`, like [`parse_frontmatter`].
 pub fn parse_date(text: &str) -> io::Result<Option<f64>> {
+    if let Some(ms) = parse_iso_date(text) {
+        return Ok(Some(ms));
+    }
     decode_date(helper_call(CALL_PARSE_DATE, json!({"text": text}))?)
+}
+
+/// `Date.parse` for the text `Date.prototype.toISOString` writes for a year of four digits, `YYYY-MM-DDTHH:mm:ss.sssZ` with every field in range, which is how Pi
+/// writes the timestamp of each session entry. ECMA-262 21.4.1.32 defines that form, so the answer is the same in every engine and needs no host. Text in any other
+/// form (a missing Z, an offset, a year of six digits, a lowercase t or z, a field out of range such as February 30 or hour 24) is not decided here: the host's parser
+/// answers it, as V8 does.
+pub(crate) fn parse_iso_date(text: &str) -> Option<f64> {
+    let bytes = text.as_bytes();
+    if bytes.len() != 24 || bytes[4] != b'-' || bytes[7] != b'-' || bytes[10] != b'T' || bytes[13] != b':' || bytes[16] != b':' || bytes[19] != b'.' || bytes[23] != b'Z' {
+        return None;
+    }
+    let digits = |from: usize, to: usize| -> Option<i64> {
+        let mut n = 0;
+        for &byte in &bytes[from..to] {
+            if !byte.is_ascii_digit() {
+                return None;
+            }
+            n = n * 10 + i64::from(byte - b'0');
+        }
+        Some(n)
+    };
+    let (year, month, day) = (digits(0, 4)?, digits(5, 7)?, digits(8, 10)?);
+    let (hour, minute, second, millisecond) = (digits(11, 13)?, digits(14, 16)?, digits(17, 19)?, digits(20, 23)?);
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days_in_month = match month {
+        2 if leap => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
+    if !(1..=12).contains(&month) || day < 1 || day > days_in_month || hour > 23 || minute > 59 || second > 59 {
+        return None;
+    }
+    // The days from 1970-01-01 in the proleptic Gregorian calendar, which is what ECMA-262 time values count.
+    let shifted = if month <= 2 { year - 1 } else { year };
+    let era = shifted.div_euclid(400);
+    let year_of_era = shifted - era * 400;
+    let day_of_year = (153 * ((month + 9) % 12) + 2) / 5 + day - 1;
+    let days = era * 146097 + year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year - 719468;
+    Some((((days * 24 + hour) * 60 + minute) * 60000 + second * 1000 + millisecond) as f64)
 }
 
 /// The connection of the running extension a call made outside a handler goes through.
@@ -406,5 +449,50 @@ mod tests {
         assert_eq!(first_answer(&none, |_| Ok(None)).unwrap_err().kind(), io::ErrorKind::NotConnected);
         let failure = first_answer(&["a", "b"], |name| Err(io::Error::other(format!("{name} failed")))).unwrap_err();
         assert_eq!(failure.to_string(), "b failed");
+    }
+
+    // The values are what Node 24.22.1 (V8) answers for Date.parse of each text.
+    const CANONICAL: [(&str, f64); 15] = [
+        ("1970-01-01T00:00:00.000Z", 0.0),
+        ("0000-01-01T00:00:00.000Z", -62167219200000.0),
+        ("0000-03-01T00:00:00.000Z", -62162035200000.0),
+        ("0001-01-01T00:00:00.000Z", -62135596800000.0),
+        ("9999-12-31T23:59:59.999Z", 253402300799999.0),
+        ("2000-02-29T12:34:56.789Z", 951827696789.0),
+        ("1900-02-28T23:59:59.999Z", -2203891200001.0),
+        ("1900-03-01T00:00:00.000Z", -2203891200000.0),
+        ("2100-03-01T00:00:00.000Z", 4107542400000.0),
+        ("2024-02-29T00:00:00.000Z", 1709164800000.0),
+        ("2026-10-24T18:30:15.042Z", 1792866615042.0),
+        ("1969-12-31T23:59:59.999Z", -1.0),
+        ("1600-02-29T00:00:00.000Z", -11670998400000.0),
+        ("2026-12-31T23:59:59.999Z", 1798761599999.0),
+        ("2026-01-01T00:00:00.001Z", 1767225600001.0),
+    ];
+
+    // Texts V8 reads that the local parser must leave to the host: another form of the same instant, a field the legacy parser accepts although it is out of range
+    // (February 30 is March 2), and text that is not a date.
+    const LEFT_TO_THE_HOST: [&str; 27] = [
+        "2026-01-02T03:04:05.678", "2026-01-02T03:04:05.678+00:00", "+012026-01-02T03:04:05.678Z", "-000001-01-01T00:00:00.000Z", "2026-01-02t03:04:05.678Z",
+        "2026-01-02T03:04:05.678z", "2026-02-30T00:00:00.000Z", "2026-13-01T00:00:00.000Z", "2026-01-02T24:00:00.000Z", "2026-01-02T03:04:60.000Z",
+        "2026-01-02T03:60:05.000Z", "2026-00-10T00:00:00.000Z", "2026-04-31T00:00:00.000Z", "2026-01-02 03:04:05.678Z", "2026-01-02T03:04:05.678Z\n",
+        "２０２６-01-02T03:04:05.678Z", "2026-01-02T03:04:05Z", "2026-01-02T03:04:05.67Z", "2026-01-02T03:04:05.678Zx", "", "2026", "2026-01-02T0x:04:05.678Z",
+        "2026-01-02T03:04:05.67:Z", "2026-01-02T03:04:0/.678Z", "202:-01-02T03:04:05.678Z", "2026-01-02T03:04:05.@78Z", "2026-01-00T00:00:00.000Z",
+    ];
+
+    #[test]
+    fn parse_iso_date_matches_date_parse() {
+        for (text, want) in CANONICAL {
+            assert_eq!(parse_iso_date(text), Some(want), "{text:?}");
+            // With no connection to the host, an answer can only be the local one.
+            assert_eq!(parse_date(text).unwrap(), Some(want), "{text:?}");
+        }
+    }
+
+    #[test]
+    fn parse_iso_date_leaves_other_text_to_the_host() {
+        for text in LEFT_TO_THE_HOST {
+            assert_eq!(parse_iso_date(text), None, "{text:?}");
+        }
     }
 }

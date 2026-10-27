@@ -408,6 +408,9 @@ func (c Context) CreateAgentSession(options CreateAgentSessionOptions) (*AgentSe
 		if definition.Execute == nil {
 			return nil, fmt.Errorf("custom tool %q has no Execute", definition.Name)
 		}
+		if countRefinements(map[string]any(definition.Parameters)) > 0 {
+			return nil, fmt.Errorf("custom tool %q: the refinements of its parameters (Type.Refine) run for the tools an extension registers, not for a child session's custom tools", definition.Name)
+		}
 		create.CustomTools = append(create.CustomTools, toolDef{
 			Name: definition.Name, Label: definition.Label, Description: definition.Description, Parameters: definition.Parameters,
 			PromptGuidelines: definition.PromptGuidelines, PromptSnippet: definition.PromptSnippet, ExecutionMode: definition.ExecutionMode,

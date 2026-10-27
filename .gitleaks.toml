@@ -22,6 +22,8 @@ regexes = [
   '''^c74cf1a77b670764e896cfbf2800bb28$''',
   # A header-name constant in the vendored AWS SDK (third_party/awssdk stays verbatim; see its FORK.md).
   '''^v4Internal\.AmzSignedHeadersKey$''',
+  # Keybinding lists in Pi's SDK helper fixtures (test/parity/sdk-bulk): modifier combos joined by "/", e.g. "Alt+X/Ctrl+Shift+F5/Alt+/".
+  '''^(?i)(?:(?:ctrl|shift|alt|meta|super|cmd)\+)*(?:escape|enter|tab|up|down|left|right|f\d{1,2}|[a-z0-9]|/)(?:/(?:(?:ctrl|shift|alt|meta|super|cmd)\+)*(?:escape|enter|tab|up|down|left|right|f\d{1,2}|[a-z0-9]|/))+$''',
 ]
 paths = [
   # Upstream test-file SHA-256 digests.

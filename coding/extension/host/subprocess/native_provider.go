@@ -304,8 +304,8 @@ func decodeNativeProviderEvent(data json.RawMessage) (ai.AssistantMessageEvent, 
 	}
 }
 
-// registerNativeProvider binds the provider to conn, the connection of me that declared it.
-func (h *Host) registerNativeProvider(ctx context.Context, me *managedExt, conn *Conn, declaration *NativeProviderDeclaration) error {
+// registerNativeProvider binds the provider to conn, the connection of me that declared it. A provider declared while the extension loads (loading) is queued as Pi's loader queues it, whatever registry is bound: the registry is asked when the services or the runner that binds it apply the queue, and its rejection is a diagnostic of that binding, not a failed load. One registered later reaches a bound registry at once.
+func (h *Host) registerNativeProvider(ctx context.Context, me *managedExt, conn *Conn, declaration *NativeProviderDeclaration, loading bool) error {
 	if declaration.ID == "" || declaration.Key == "" || declaration.Auth == nil {
 		return errors.New("native provider requires id, callback key and auth declaration")
 	}
@@ -329,7 +329,13 @@ func (h *Host) registerNativeProvider(ctx context.Context, me *managedExt, conn 
 	h.releaseProviderCallbacks(released)
 	var published sync.Once
 	publish := func() { published.Do(func() { h.publishNativeProvider(p) }); extension.CallInitiated(ctx) }
-	if err := h.providerRuntime.RegisterNativeProviderCarrier(extension.WithCallInitiation(ctx, publish), p.carrier(), extConfigOrigin(me.config)); err != nil {
+	if loading {
+		h.providerRuntime.QueueNativeProviderCarrier(p.carrier(), extConfigOrigin(me.config), func(err error) {
+			if err != nil {
+				h.withdrawNativeProvider(p)
+			}
+		})
+	} else if err := h.providerRuntime.RegisterNativeProviderCarrier(extension.WithCallInitiation(ctx, publish), p.carrier(), extConfigOrigin(me.config)); err != nil {
 		return err
 	}
 	publish()
@@ -337,6 +343,21 @@ func (h *Host) registerNativeProvider(ctx context.Context, me *managedExt, conn 
 		h.uiBridge.PublishModelCatalog()
 	}
 	return nil
+}
+
+// withdrawNativeProvider gives back what the host recorded for a queued Provider object the registry refused, unless another registration replaced it since.
+func (h *Host) withdrawNativeProvider(p *nativeProviderProxy) {
+	h.mu.Lock()
+	if h.nativeProviders[p.conn][p.declaration.ID] != p {
+		h.mu.Unlock()
+		return
+	}
+	released, _ := h.retireNativeProviderLocked(p.owner, p.conn, p.declaration.ID)
+	h.mu.Unlock()
+	h.releaseProviderCallbacks(released)
+	if h.uiBridge != nil {
+		h.uiBridge.ForgetProviderRegistration(p.declaration.ID)
+	}
 }
 
 func (h *Host) publishNativeProvider(p *nativeProviderProxy) {

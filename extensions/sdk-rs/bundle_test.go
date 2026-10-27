@@ -40,6 +40,9 @@ func TestBundledFilesIncludeEveryCrateSource(t *testing.T) {
 		if isTestModule(name) {
 			return nil
 		}
+		if hasCompressedCopy(name) {
+			name += ".gz"
+		}
 		if !slices.Contains(BundledFiles(), name) {
 			t.Errorf("BundledFiles is missing crate source %s", name)
 		}

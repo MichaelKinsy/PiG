@@ -870,7 +870,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: VERSION" = { go = "native:Version", rust = "native:get_version", python = "native:get_version" }
 "pi-coding-agent: VIRTUAL_MODEL_STATE_ENTRY" = { go = "native:VirtualModelStateEntry", rust = "native:VIRTUAL_MODEL_STATE_ENTRY", python = "native:VIRTUAL_MODEL_STATE_ENTRY" }
 "pi-coding-agent: buildContextEntries" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: buildSessionContext" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: buildSessionContext" = { go = "native:BuildSessionContext", rust = "native:build_session_context", python = "native:build_session_context" }
 "pi-coding-agent: buildSessionProjection" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-coding-agent: calculateContextTokens" = { go = "native:CalculateContextTokens", rust = "native:calculate_context_tokens", python = "native:calculate_context_tokens" }
 "pi-coding-agent: collectEntriesForBranchSummary" = { go = "native:CollectEntriesForBranchSummary", rust = "native:collect_entries_for_branch_summary", python = "native:collect_entries_for_branch_summary" }

@@ -14,7 +14,7 @@ import (
 // idle) before the message is queued, and a handled message is not queued.
 // Pig queued steer and follow_up text directly.
 func TestRPCSteerAndFollowUpRunInputHandlers(t *testing.T) {
-	p := startRPCUIFixture(t, []string{"PIG_HOME=" + t.TempDir()}, "--model", "test-faux/echo", "--no-session")
+	p := startRPCUIFixture(t, []string{"PIG_HOME=" + t.TempDir()}, "--model", "test-faux/faux-1", "--no-session")
 	for _, command := range []string{"steer", "follow_up"} {
 		id := "queue-" + command
 		p.send(fmt.Sprintf(`{"id":%q,"type":%q,"message":"handled input"}`, id, command))

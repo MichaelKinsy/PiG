@@ -221,6 +221,30 @@ pub struct ToolDef {
     /// The tool defines prepareArguments; the host asks with `tool_prepare_arguments` before it validates the arguments.
     #[serde(skip_serializing_if = "std::ops::Not::not", default)]
     pub prepares_arguments: bool,
+    /// `parameters` with TypeBox's `~kind` on its nodes, which the host validates arguments with (set by `Extension::tool_typed`).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub validation_parameters: Option<Value>,
+    /// The nodes of `parameters` that carry refinements (`Type::refine`); the host asks for each predicate call with `tool_refine_arguments` while it validates the arguments.
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub refinements: Vec<RefinementDecl>,
+}
+
+/// A schema node of a tool's parameters that carries refinements: its path in the schema and how many refinements it has.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct RefinementDecl {
+    pub path: String,
+    pub count: usize,
+}
+
+/// The payload of `tool_refine_arguments`: run refinement `index` of the node at `path` on `value`; `with_message` asks for the error message when it fails.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RefineRequest {
+    pub path: String,
+    pub index: usize,
+    #[serde(default)]
+    pub value: Value,
+    #[serde(default)]
+    pub with_message: bool,
 }
 
 /// Provider-side constrained sampling request for a tool. `type` is "json_schema"
@@ -341,6 +365,9 @@ pub struct RequestMsg {
     /// The child agent session whose customTools define `tool` (`tool_call`, `tool_prepare_arguments`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub child_session: Option<String>,
+    /// On `tool_refine_arguments`, the refinement to run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refine: Option<RefineRequest>,
     pub terminal_input: Option<TerminalInputArgs>,
     /// Numbers one connection's payloads of an event name and key (`EventStream` in the host's protocol.go).
     pub stream: Option<EventStream>,
@@ -399,6 +426,8 @@ struct RawRequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     child_session: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    refine: Option<RefineRequest>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     stream: Option<EventStream>,
 }
 
@@ -413,7 +442,7 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
             raw.args.as_ref().map(|a| from_json_str(a.get())).transpose()?
         };
         let args_raw = if raw.method == "tool_call" { raw.args.as_ref().map(|a| a.get().to_string()) } else { None };
-        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, batch: raw.batch, args, child_session: raw.child_session, terminal_input, stream: raw.stream, stream_error: None, tool_call_index: raw.tool_call_index, args_raw })
+        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, batch: raw.batch, args, child_session: raw.child_session, refine: raw.refine, terminal_input, stream: raw.stream, stream_error: None, tool_call_index: raw.tool_call_index, args_raw })
     }
 }
 
@@ -423,7 +452,7 @@ impl From<RequestMsg> for RawRequestMsg {
             Some(args) => Some(serde_json::value::to_raw_value(&args).expect("terminal input is JSON")),
             None => req.args.map(|args| serde_json::value::to_raw_value(&args).expect("Value is JSON")),
         };
-        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, batch: req.batch, tool_call_index: req.tool_call_index, args, child_session: req.child_session, stream: req.stream }
+        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, batch: req.batch, tool_call_index: req.tool_call_index, args, child_session: req.child_session, refine: req.refine, stream: req.stream }
     }
 }
 

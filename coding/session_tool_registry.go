@@ -107,6 +107,22 @@ func (tool *sessionBoundTool) PrepareArguments(args json.RawMessage) (json.RawMe
 	return args, nil
 }
 
+// RefinementSites implements ai.Refiner for a wrapped tool that has refinements.
+func (tool *sessionBoundTool) RefinementSites() []ai.RefinementSite {
+	if refiner, ok := tool.AgentTool.(ai.Refiner); ok {
+		return refiner.RefinementSites()
+	}
+	return nil
+}
+
+// Refine implements ai.Refiner.
+func (tool *sessionBoundTool) Refine(ctx context.Context, path string, index int, value any, withMessage bool) (ai.RefineOutcome, error) {
+	if refiner, ok := tool.AgentTool.(ai.Refiner); ok {
+		return refiner.Refine(ctx, path, index, value, withMessage)
+	}
+	return ai.RefineOutcome{OK: true}, nil
+}
+
 func (tool *sessionBoundTool) ReserveMutationOrder(args json.RawMessage) (*agent.MutationTicket, bool) {
 	if ordered, ok := tool.AgentTool.(agent.QueueOrderable); ok {
 		return ordered.ReserveMutationOrder(args)

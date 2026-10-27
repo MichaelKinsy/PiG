@@ -7,7 +7,7 @@ import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
 const { Container } = piTui;
 import {
-  createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, getPackageDir, getShellConfig, generateDiffString, generateUnifiedPatch, sessionEntryToContextMessages, convertToPng, resizeImage, readStoredCredential, VERSION, formatSize, DEFAULT_MAX_LINES, DEFAULT_MAX_BYTES, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
+  createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, getPackageDir, getShellConfig, generateDiffString, generateUnifiedPatch, sessionEntryToContextMessages, buildSessionContext, convertToPng, resizeImage, readStoredCredential, VERSION, formatSize, DEFAULT_MAX_LINES, DEFAULT_MAX_BYTES, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
   getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff,
 } from "@earendil-works/pi-coding-agent";
 
@@ -17,6 +17,27 @@ export default function (pi) {
   let schemaRejected = false;
   try { pi.registerTool({ name: "schema-invalid", description: "Must not register", parameters: null, execute: async () => ({ content: [] }) }); }
   catch (error) { schemaRejected = error.message.endsWith('must define an object parameter schema.'); }
+  { const Type = piAi.Type;
+    pi.registerTool({ name: "type-schema-tool", description: "Parameters built with Type", parameters: Type.Object({
+      query: Type.String({ description: "What to look up" }),
+      limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+      mode: Type.Union([Type.Literal("fast"), Type.Literal("deep")]),
+      tags: Type.Optional(Type.Array(Type.String())),
+      filter: Type.Optional(Type.Record(Type.String(), Type.Number())),
+    }, { additionalProperties: false }), execute: async () => ({ content: [{ type: "text", text: "ok" }] }) }); }
+  { // refine-probe (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): Pi's own Type.Refine; every predicate and message function logs its call.
+    const Type = piAi.Type, log = [];
+    const checked = (tag, check) => (value) => { log.push(`check:${tag}`); return check(value); };
+    const worded = (tag, message) => (value) => { log.push(`error:${tag}`); return message(value); };
+    const equals = (tag, want) => Type.Refine(Type.String(), checked(tag, (v) => v === want), worded(`${tag}m`, () => `not ${want}`));
+    pi.registerTool({ name: "refine-probe", description: "Arguments checked by refinements", parameters: Type.Refine(Type.Object({
+      name: Type.Refine(Type.String(), checked("len", (v) => v.length >= 3), worded("lenmsg", () => "name is too short")),
+      qty: Type.Optional(Type.Refine(Type.Integer(), checked("even", (v) => v % 2 === 0), worded("evenmsg", (v) => `qty must be even, got ${v}`))),
+      pick: Type.Union([equals("u1", "a"), equals("u2", "b")]),
+      boom: Type.Optional(Type.Refine(Type.String(), checked("boom", () => { throw new Error("kaboom"); }))),
+    }), checked("root", () => true), worded("rootmsg", () => "root refused")), execute: async () => ({ content: [{ type: "text", text: "ok" }] }) });
+    pi.registerCommand("refine_log", { description: "Report and clear the refinement call log", handler: async (_args, ctx) => { const calls = log.splice(0); ctx.ui.notify(`refine_log:${JSON.stringify(calls)}:end`, "info"); } });
+  }
   pi.registerCommand("schema-probe", { description: "Report schema rejection", handler: async (_args, ctx) => ctx.ui.notify(`schema-rejected:${schemaRejected}`, "info") });
   for (const [name, type, value] of [["flag-true", "boolean", true], ["flag-false", "boolean", false], ["flag-string", "string", "default"], ["flag-empty", "string", ""], ["flag-unset", "string", undefined]]) {
     pi.registerFlag(name, { type, default: value });
@@ -935,6 +956,10 @@ export default function (pi) {
       return report;
     });
     const entries = golden.entries.map((c) => sessionEntryToContextMessages(c.entry));
+    const contexts = golden.contexts.map((c) => {
+      const [entries, leafId, pairs] = c.args;
+      try { return { result: JSON.parse(JSON.stringify(buildSessionContext(entries, leafId, pairs === undefined ? undefined : new Map(pairs)))) }; } catch (error) { return { throws: error.message }; }
+    });
     const meta = (image) => (image ? { mimeType: image.mimeType, ...(image.originalWidth === undefined ? {} : { originalWidth: image.originalWidth, originalHeight: image.originalHeight, width: image.width, height: image.height, wasResized: image.wasResized }), decodes: image.data.length > 0 } : null);
     const images = [];
     for (const c of golden.images) {
@@ -943,7 +968,7 @@ export default function (pi) {
     }
     const read = (provider, path) => readStoredCredential(provider, path) ?? null;
     const creds = { explicit: read("anthropic", authPath), default: read("anthropic"), absentProvider: read("nobody", authPath), missingFile: read("anthropic", `${authPath}.missing`), notJSON: read("anthropic", `${authPath}.bad`) };
-    ctx.ui.notify(`host_helpers:${JSON.stringify({ diffs, entries, images, creds })}:end`, "info");
+    ctx.ui.notify(`host_helpers:${JSON.stringify({ diffs, entries, contexts, images, creds })}:end`, "info");
   } });
   // pi_ai_helpers_probe runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the test) through the runtime's pi-ai and
   // reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).

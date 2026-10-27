@@ -28,7 +28,7 @@ func TestReviewR2PrintReportsPackageAndCLIExtensionFailuresTogether(t *testing.T
 	writeStartupFixtureFile(t, filepath.Join(agentDir, "settings.json"), string(settings))
 	missing := filepath.Join(home, "missing-ext")
 	binary := buildPigBinaryForSignalTest(t)
-	cmd := exec.Command(binary, "--model", "test-faux/echo", "--offline", "--no-session", "-e", missing, "--print", "hi")
+	cmd := exec.Command(binary, "--model", "test-faux/faux-1", "--offline", "--no-session", "-e", missing, "--print", "hi")
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), "HOME="+home, "PIG_HOME="+filepath.Join(home, "pig"), "PIG_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1")
 	out, err := cmd.CombinedOutput()
@@ -77,7 +77,7 @@ func TestReviewR2PreTrustAndProjectFailuresTogether(t *testing.T) {
 			if err := codingagent.NewProjectTrustStore(agentDir).Set(cwd, &trusted); err != nil {
 				t.Fatal(err)
 			}
-			args := []string{"--model", "test-faux/echo", "--offline", "--no-session"}
+			args := []string{"--model", "test-faux/faux-1", "--offline", "--no-session"}
 			if mode == "rpc" {
 				args = append(args, "--mode", "rpc")
 			} else {

@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 )
 
 // BuildFailure is a compiler failure reduced to what a person reads: one line, a
@@ -35,7 +33,7 @@ type BuildFailure struct {
 	// run again because none of its inputs changed.
 	Cached bool
 	// Drift lists the SDK changes the extension was written for the old shape of. It is empty unless every compile error is such a change.
-	Drift []upgrade.Drift
+	Drift []Drift
 
 	// cause is the error the failure was recorded from, when it was not already a report, so errors.Is and errors.As reach it.
 	cause error

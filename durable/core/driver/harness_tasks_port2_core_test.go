@@ -356,22 +356,20 @@ func TestCoreTaskReadsCommittedDocumentsAndContextThroughTheRuntimeAndForwardsCl
 		t.Fatalf("reports %v, want [reported]", reports)
 	}
 	reportsMu.Unlock()
-	// The step after the phase ends the invocation (upstream awaits one flush before it looks).
+	// The step after the phase ends the invocation, after the outcome the wait returned on; the end marks the invocation ended before it
+	// cancels the runtime signal.
 	rt := <-captured
-	endedBy := func(what string, call func() error) {
+	<-rt.Signal().Done()
+	ended := func(what string, err error) {
 		t.Helper()
-		var err error
-		for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
-			if err = call(); err != nil {
-				break
-			}
-		}
 		if err == nil || !strings.Contains(err.Error(), "invocation has ended") {
 			t.Fatalf("%s after the end = %v", what, err)
 		}
 	}
-	endedBy("snapshot", func() error { _, err := rt.SnapshotErased(t.Context(), notes, root.Id()); return err })
-	endedBy("context", func() error { _, err := rt.Context(t.Context(), root.Id(), nil); return err })
+	_, err := rt.SnapshotErased(t.Context(), notes, root.Id())
+	ended("snapshot", err)
+	_, err = rt.Context(t.Context(), root.Id(), nil)
+	ended("context", err)
 }
 
 // The ContextView of a conversation with entries: contributions and messages are ai.Message values, decoded by role (the plain

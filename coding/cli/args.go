@@ -432,7 +432,8 @@ const pigCommands = `PiG Commands:
   pig diagnose                  Show resolved configuration and binary identity
 
 PiG Options:
-  --piglet <name|path>           Run the named Piglet, or the Piglet file at path
+  --piglet <name|path>           Run the named Piglet, or the Piglet file at path; a Piglet Binary
+                                 built with build.allowOverlays lays it over its own Piglet
   --no-stdin                     Ignore piped stdin (for a stdin pipe that never closes)
 
 PiG keeps its configuration in ~/.pig and never reads or writes ~/.pi.

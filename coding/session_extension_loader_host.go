@@ -5,10 +5,22 @@ package coding
 import (
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
+
+// reportExtensionEntry is the part of upstream's appendEntry action (agent-session.ts:3321-3327) that follows the append: the entry reaches the Session's listeners as an entry_appended event. Only pi.appendEntry emits it; ctx.sessionManager.appendCustomEntry writes the log alone.
+func (s *Session) reportExtensionEntry(entry icodingagent.CustomEntry, direct *subprocess.DirectEntryAppend) error {
+	if direct != nil && !direct.Event {
+		return nil
+	}
+	if stored, ok := s.Inner().GetEntry(entry.ID); ok {
+		s.emitEvent(agent.EntryAppendedEvent{Entry: stored.Raw()})
+	}
+	return nil
+}
 
 // bindLoaderExtensionHost binds the Session's state to the bridge of the Extension Host that loaded its resource loader's extensions, so that their contexts read the Session as Pi's do: _bindExtensionCore binds the Session's model, scoped models, idle state, signal, tools, commands, session reads and actions in every mode. Nothing binds a UI, so ctx.hasUI is false and the dialogs answer nothing, as in Pi's headless context. It binds what print mode binds for the same context. Close unbinds.
 //
@@ -20,7 +32,7 @@ func (s *Session) bindLoaderExtensionHost(bridge *subprocess.UIBridge) {
 	stopRunSignal := WatchSessionRunSignal(bridge, s)
 	stopHostState := WatchHostState(bridge, s)
 	BindSessionReadActions(bridge, current, s.CWD(), s.Inner().GetSessionDir())
-	icodingagent.BindAppendEntryAction(bridge, func() (*icodingagent.Session, error) { return s.Inner(), nil }, nil)
+	icodingagent.BindAppendEntryAction(bridge, func() (*icodingagent.Session, error) { return s.Inner(), nil }, s.reportExtensionEntry)
 	flagValues := services.ExtensionFlagValues()
 	BindSessionExtensionActions(nil, bridge, current, extension.ContextActions{
 		ModelRegistry:    services.Registry(),

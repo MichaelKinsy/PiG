@@ -105,14 +105,6 @@ func buildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEnt
 	}
 	provider = newRequestOptionsProvider(provider, providerID, entry.Headers)
 
-	if providerID == "test-faux" {
-		entry.Input = []string{"text", "image"}
-		entry.ContextWindow = ai.TestFauxContextWindow
-		entry.MaxTokens = ai.TestFauxMaxTokens
-		entry.DisplayName = "Test Faux"
-		entry.API = "test-faux"
-		entry.BaseURL = "http://localhost:0"
-	}
 	return modelFromEntry(entry, provider), nil
 }
 

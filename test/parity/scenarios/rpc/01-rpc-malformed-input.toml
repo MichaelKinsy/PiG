@@ -22,7 +22,7 @@ wait_timeout_seconds = 10
 
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
-pig_args = ["--offline", "--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pig_args = ["--offline", "--session-dir", "{{TEMP}}/sessions"]
 pi_extensions = ["../../testdata/test-faux-provider.ts"]
 pi_args = ["--offline", "--session-dir", "{{TEMP}}/sessions"]
 

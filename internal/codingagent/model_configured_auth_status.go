@@ -12,6 +12,7 @@ func (r *ModelRegistry) ConfiguredRequestAuthStatus(providerID string) (ai.AuthS
 	if r.config != nil {
 		value = r.config.Providers[providerID].APIKey
 	}
+	// pig divergence (D203): an empty apiKey is no key, where Pi's `extension?.apiKey ?? config?.apiKey` (provider-composer.ts:397) keeps "" as a configured raw key; the provider stays unconfigured.
 	if provider, ok := r.dynamic[providerID]; ok && provider.APIKey != "" {
 		value, fromExtension = provider.APIKey, true
 	}

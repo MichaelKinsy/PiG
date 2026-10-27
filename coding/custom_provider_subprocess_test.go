@@ -28,6 +28,7 @@ func TestExtensionProviderCommandStreamsAcrossProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	applyQueuedRegistrations(host)
 	consumer, err := host.Load(t.Context(), subprocess.ExtConfig{Name: "provider-stream-consumer", Source: filepath.Join("testdata", "provider-stream-consumer.mjs"), Enabled: true})
 	if err != nil {
 		t.Fatal(err)

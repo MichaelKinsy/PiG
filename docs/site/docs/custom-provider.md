@@ -112,6 +112,10 @@ Use environment interpolation for a secret. Do not place a literal credential in
 
 Validate the extension against the binary that will run it.
 
+## When a registration takes effect
+
+A provider that an extension registers while it loads, as a configuration or as a `Provider` object, takes effect after every extension has loaded, as in Pi. If the model registry rejects the registration, for example because a model has no `api`, PiG reports `Extension "<path>" error: <message>` and the extension stays loaded. A rejected registration leaves nothing behind: a registration of the same provider by another extension stays as it was, and the rejected one's login and model list are not shown. At startup, this error ends the run. A provider that an extension registers after it loaded takes effect at once, and the error returns to the extension.
+
 ## Validate registration
 
 ```bash

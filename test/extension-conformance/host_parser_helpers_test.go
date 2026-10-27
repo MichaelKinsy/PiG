@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand/v2"
 	"reflect"
 	"strings"
 	"testing"
@@ -244,5 +245,95 @@ func hostParserHelperInputs() []helperInput {
 	date("epoch", "1970-01-01T00:00:00Z", ms(0))
 	date("before the epoch", "1969-12-31T23:59:59.999Z", ms(-1))
 	date("non-ASCII", "２０２０-01-02", nil)
+	isoDateInputs(date, ms, nan)
 	return inputs
 }
+
+// isoDateInputs is the corpus of the form Pi writes every entry timestamp in, YYYY-MM-DDTHH:mm:ss.sssZ (Date.prototype.toISOString), which the Go, Rust and Python
+// SDKs parse without the host, and of the texts next to it that they must leave to the host's parser: a missing Z, an offset, a year of six digits, a lowercase t or z,
+// a field out of range (V8 reads February 30 as March 2 and hour 24 as the next midnight, and refuses month 13 and second 60) and digits that are not ASCII. Node's own
+// Date.parse is the reference for every text; a few answers are pinned to what V8 gives so a mistake every SDK shares cannot pass.
+func isoDateInputs(date func(name, text string, want map[string]any), ms func(float64) map[string]any, nan map[string]any) {
+	for text, want := range map[string]float64{
+		"1970-01-01T00:00:00.000Z": 0, "0000-01-01T00:00:00.000Z": -62167219200000, "0000-03-01T00:00:00.000Z": -62162035200000, "0001-01-01T00:00:00.000Z": -62135596800000,
+		"9999-12-31T23:59:59.999Z": 253402300799999, "2000-02-29T12:34:56.789Z": 951827696789, "1900-02-28T23:59:59.999Z": -2203891200001, "1900-03-01T00:00:00.000Z": -2203891200000,
+		"2100-03-01T00:00:00.000Z": 4107542400000, "2024-02-29T00:00:00.000Z": 1709164800000, "2026-10-24T18:30:15.042Z": 1792866615042, "1969-12-31T23:59:59.999Z": -1,
+		"1600-02-29T00:00:00.000Z": -11670998400000, "2026-12-31T23:59:59.999Z": 1798761599999, "2026-01-01T00:00:00.001Z": 1767225600001,
+	} {
+		date("pinned entry timestamp "+text, text, ms(want))
+	}
+	for text, want := range map[string]map[string]any{
+		"2026-02-30T00:00:00.000Z": ms(1772409600000), "2026-04-31T00:00:00.000Z": ms(1777593600000), "2026-01-02T24:00:00.000Z": ms(1767398400000),
+		"2026-01-02T03:04:05.678+00:00": ms(1767323045678), "2026-01-02t03:04:05.678z": ms(1767323045678), "+012026-01-02T03:04:05.678Z": ms(317336843045678),
+		"-000001-01-01T00:00:00.000Z": ms(-62198755200000), "2026-13-01T00:00:00.000Z": nan, "2026-01-02T03:04:60.000Z": nan, "2026-01-02T03:60:05.000Z": nan,
+		"2026-00-10T00:00:00.000Z": nan, "2026-01-02T03:04:05.678Z\n": nan, "２０２６-01-02T03:04:05.678Z": nan, "٢٠٢٦-01-02T03:04:05.678Z": nan,
+	} {
+		date("pinned near miss "+strings.ReplaceAll(text, "\n", "\\n"), text, want)
+	}
+
+	rng := rand.New(rand.NewPCG(7, 9))
+	pick := func(values ...int) int { return values[rng.IntN(len(values))] }
+	daysIn := func(year, month int) int {
+		switch month {
+		case 2:
+			if year%4 == 0 && (year%100 != 0 || year%400 == 0) {
+				return 29
+			}
+			return 28
+		case 4, 6, 9, 11:
+			return 30
+		}
+		return 31
+	}
+	for i := range 300 {
+		year := pick(0, 1, 99, 100, 399, 400, 1582, 1600, 1899, 1900, 1969, 1970, 1999, 2000, 2023, 2024, 2025, 2026, 2100, 2400, 9998, 9999, rng.IntN(10000), rng.IntN(10000))
+		month := pick(1, 2, 3, 12, 1+rng.IntN(12), 1+rng.IntN(12))
+		day := pick(1, daysIn(year, month), 28, 29, 30, 31, 1+rng.IntN(daysIn(year, month)))
+		day = min(day, daysIn(year, month))
+		text := fmt.Sprintf("%04d-%02d-%02dT%02d:%02d:%02d.%03d", year, month, day, pick(0, 1, 12, 23, rng.IntN(24)), pick(0, 1, 59, rng.IntN(60)), pick(0, 59, rng.IntN(60)), pick(0, 1, 9, 10, 99, 100, 999, rng.IntN(1000)))
+		date(fmt.Sprintf("entry timestamp %d", i), text+"Z", nil)
+		switch i % 16 {
+		case 0:
+			date(fmt.Sprintf("near miss without Z %d", i), text, nil)
+		case 1:
+			date(fmt.Sprintf("near miss with an offset %d", i), text+pick2(rng, "+00:00", "-05:30", "+01:00", "+0100", "-12:00", "+14:00"), nil)
+		case 2:
+			date(fmt.Sprintf("near miss lowercase t %d", i), strings.Replace(text, "T", "t", 1)+"Z", nil)
+		case 3:
+			date(fmt.Sprintf("near miss lowercase z %d", i), text+"z", nil)
+		case 4:
+			date(fmt.Sprintf("near miss six-digit year %d", i), fmt.Sprintf("%+07d", year)[:1]+fmt.Sprintf("%06d", year)+text[4:]+"Z", nil)
+		case 5:
+			date(fmt.Sprintf("near miss day 32 %d", i), fmt.Sprintf("%04d-%02d-32", year, month)+text[10:]+"Z", nil)
+		case 6:
+			date(fmt.Sprintf("near miss day 00 %d", i), fmt.Sprintf("%04d-%02d-00", year, month)+text[10:]+"Z", nil)
+		case 7:
+			date(fmt.Sprintf("near miss month 00 or 13 %d", i), fmt.Sprintf("%04d-%02d-%02d", year, pick(0, 13), day)+text[10:]+"Z", nil)
+		case 8:
+			date(fmt.Sprintf("near miss hour 24 or 25 %d", i), text[:11]+fmt.Sprintf("%02d", pick(24, 25))+text[13:]+"Z", nil)
+		case 9:
+			date(fmt.Sprintf("near miss 24:00:00.000 %d", i), text[:11]+"24:00:00.000Z", nil)
+		case 10:
+			date(fmt.Sprintf("near miss minute or second 60 %d", i), text[:14]+fmt.Sprintf("%02d", 60+rng.IntN(5))+text[16:]+"Z", nil)
+		case 11:
+			date(fmt.Sprintf("near miss second 60 %d", i), text[:17]+"60"+text[19:]+"Z", nil)
+		case 12:
+			date(fmt.Sprintf("near miss day past the month %d", i), fmt.Sprintf("%04d-%02d-%02d", year, month, daysIn(year, month)+1)+text[10:]+"Z", nil)
+		case 13:
+			date(fmt.Sprintf("near miss space or newline %d", i), pick2(rng, " "+text+"Z", text+"Z\n", strings.Replace(text, "T", " ", 1)+"Z", text+"Z "), nil)
+		case 14:
+			date(fmt.Sprintf("near miss other fraction or no fraction %d", i), pick2(rng, text[:19]+"Z", text[:21]+"Z", text[:22]+"Z", text+"9Z", text[:19]+",5Z"), nil)
+		case 15:
+			// A character next to the digits in a digit's place: its distance from "0" is a small number, so a parser that does not test the character reads a date.
+			at := pick(0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20, 21, 22)
+			date(fmt.Sprintf("near miss a non-digit in a digit's place %d", i), text[:at]+pick2(rng, "/", ":", ";", "<", "=", ">", "?", "@", "A", "x")+text[at+1:]+"Z", nil)
+		}
+	}
+	// Digits that are not ASCII, in a text that is 24 characters long (a Python string counts characters, not bytes).
+	date("full-width digits in a 24-character text", "２０２６-０１-０２T０３:０４:０５.６７８Z", nan)
+	date("Arabic-Indic digits in a 24-character text", "٢٠٢٦-٠١-٠٢T٠٣:٠٤:٠٥.٦٧٨Z", nan)
+	date("Devanagari digits in a 24-character text", "२०२६-०१-०२T०३:०४:०५.६७८Z", nan)
+	date("a 24-character text of two-byte characters", strings.Repeat("é", 24), nan)
+}
+
+func pick2(rng *rand.Rand, values ...string) string { return values[rng.IntN(len(values))] }

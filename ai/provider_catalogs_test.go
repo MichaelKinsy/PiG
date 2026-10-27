@@ -64,8 +64,15 @@ func TestProviderCatalogExportsMatchPinnedData(t *testing.T) {
 		t.Run(tc.provider, func(t *testing.T) {
 			want := pinnedCatalogIDs(t, tc.provider)
 			chat, image, classifier := tc.chat(), tc.image(), tc.classifier()
-			if !slices.Equal(chat.IDs(), want["chat"]) {
-				t.Errorf("chat ids %v, upstream %v", chat.IDs(), want["chat"])
+			// OpenRouter's :nitro and :floor variants are PiG's addition (D199); the pinned data has none.
+			var chatIDs []string
+			for _, id := range chat.IDs() {
+				if _, _, variant := OpenRouterRoutingVariant(tc.provider, id); !variant {
+					chatIDs = append(chatIDs, id)
+				}
+			}
+			if !slices.Equal(chatIDs, want["chat"]) {
+				t.Errorf("chat ids %v, upstream %v", chatIDs, want["chat"])
 			}
 			if !slices.Equal(image.IDs(), want["image"]) {
 				t.Errorf("image ids %v, upstream %v", image.IDs(), want["image"])
@@ -73,8 +80,8 @@ func TestProviderCatalogExportsMatchPinnedData(t *testing.T) {
 			if !slices.Equal(classifier.IDs(), want["classifier"]) {
 				t.Errorf("classifier ids %v, upstream %v", classifier.IDs(), want["classifier"])
 			}
-			if chat.Len() != len(want["chat"]) || image.Len() != len(want["image"]) || classifier.Len() != len(want["classifier"]) {
-				t.Errorf("lengths %d/%d/%d, upstream %d/%d/%d", chat.Len(), image.Len(), classifier.Len(), len(want["chat"]), len(want["image"]), len(want["classifier"]))
+			if len(chatIDs) != len(want["chat"]) || image.Len() != len(want["image"]) || classifier.Len() != len(want["classifier"]) {
+				t.Errorf("lengths %d/%d/%d, upstream %d/%d/%d", len(chatIDs), image.Len(), classifier.Len(), len(want["chat"]), len(want["image"]), len(want["classifier"]))
 			}
 			for i, id := range chat.IDs() {
 				model, ok := chat.Get(id)

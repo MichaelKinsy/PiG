@@ -46,6 +46,7 @@ import (
 	cm "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Sandbox runs the scripts: a *codemode.Sandbox, or anything that starts deterministic runs as it does.
@@ -248,7 +249,8 @@ func (stored storedResult) result() durable.ToolExecutionResult {
 	result := durable.ToolExecutionResult{Output: output, IsError: &isError}
 	if stored.Details != nil {
 		var details any
-		if json.Unmarshal(stored.Details, &details) == nil {
+		// A decode with JavaScript string semantics: a lone surrogate escape is kept (as WTF-8), not replaced by U+FFFD.
+		if jsstring.UnmarshalKeepingSurrogates(stored.Details, &details) == nil {
 			result.Details, result.HasDetails = details, true
 		}
 	}

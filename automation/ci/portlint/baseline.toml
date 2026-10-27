@@ -2677,7 +2677,7 @@ snippet = "args, _ := json.Marshal(map[string]string{\"key\": provider.declarati
 [[hit]]
 check = "mapkeyorder"
 file = "coding/extension/host/subprocess/provider_object_lifetime.go"
-func = "Host.transferProviderOwnershipLocked"
+func = "Host.claimProviderOwnershipLocked"
 snippet = "args, _ := json.Marshal(map[string]string{\"name\": id})"
 
 [[hit]]
@@ -5921,7 +5921,7 @@ snippet = "err := withSDKStageLock(context.Background(), configRoot, func() erro
 check = "ctxbackground"
 file = "coding/extension/runtime_state.go"
 func = "ExtensionRuntime.bindNativeProviders"
-snippet = "if err := actions.registerNative(context.Background(), entry.Provider, entry.carrier); err != nil && report != nil {"
+snippet = "err := actions.registerNative(context.Background(), entry.Provider, entry.carrier)"
 
 [[hit]]
 check = "ctxbackground"
@@ -6906,12 +6906,6 @@ check = "jsonclone"
 file = "ai/google.go"
 func = "marshalGeminiParameters"
 snippet = "if err := json.Unmarshal(encoded, &params); err != nil {"
-
-[[hit]]
-check = "jsonclone"
-file = "ai/transcript.go"
-func = "normalizeJSONValue"
-snippet = "decoder := sdkjson.NewDecoder(bytes.NewReader(encoded))"
 
 [[hit]]
 check = "jsonclone"

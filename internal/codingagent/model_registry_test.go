@@ -695,6 +695,104 @@ func TestModelRegistryExtensionModelCarriesSamplingParamsByThinkingLevel(t *test
 	}
 }
 
+// Pi's extensionModelFromDefinition (provider-composer.ts:299) registers `{ ...definition, api, provider: providerId, baseUrl, headers: undefined }`: a member the
+// definition has keeps its place, so a `provider` the config writes after `api` stays there with the registering provider as its value, and one the config lacks
+// follows the definition's members. A registered chat model carries that object wherever it is read back (CatalogModelJSON is its serialization), whether the config
+// was decoded from the registerProvider wire JSON or built in Go.
+func TestModelRegistryExtensionModelKeepsProviderMemberPosition(t *testing.T) {
+	const cost = `"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0}`
+	keys := func(t *testing.T, config extension.ProviderConfig) (order []string, provider any) {
+		t.Helper()
+		r := NewModelRegistry(t.TempDir())
+		if err := r.RegisterExtensionProvider("ext-spread", config); err != nil {
+			t.Fatal(err)
+		}
+		models := r.GetProviderModelData("ext-spread")
+		if len(models) != 1 {
+			t.Fatalf("models = %d, want 1", len(models))
+		}
+		data, ok, err := ai.CatalogModelJSON(models[0])
+		if err != nil || !ok {
+			t.Fatalf("CatalogModelJSON ok=%v err=%v", ok, err)
+		}
+		decoder := json.NewDecoder(strings.NewReader(string(data)))
+		if _, err := decoder.Token(); err != nil {
+			t.Fatal(err)
+		}
+		members := map[string]any{}
+		for decoder.More() {
+			token, err := decoder.Token()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var value any
+			if err := decoder.Decode(&value); err != nil {
+				t.Fatal(err)
+			}
+			order = append(order, token.(string))
+			members[token.(string)] = value
+		}
+		return order, members["provider"]
+	}
+	decode := func(t *testing.T, wire string) extension.ProviderConfig {
+		t.Helper()
+		var config extension.ProviderConfig
+		if err := json.Unmarshal([]byte(wire), &config); err != nil {
+			t.Fatal(err)
+		}
+		return config
+	}
+	wantMid := []string{"id", "name", "api", "provider", "baseUrl", "reasoning", "input", "cost", "contextWindow", "maxTokens"}
+	wantAppended := []string{"id", "name", "api", "baseUrl", "reasoning", "input", "cost", "contextWindow", "maxTokens", "provider"}
+	for _, tc := range []struct {
+		name   string
+		config extension.ProviderConfig
+		want   []string
+	}{
+		{"wire provider mid-object", decode(t, `{"api":"openai-completions","baseUrl":"https://ext.test/v1","models":[{"id":"m","name":"M","api":"openai-completions","provider":"someone-else","baseUrl":"https://ext.test/v1","reasoning":false,"input":["text"],`+cost+`,"contextWindow":128000,"maxTokens":4096}]}`), wantMid},
+		{"wire without provider", decode(t, `{"api":"openai-completions","baseUrl":"https://ext.test/v1","models":[{"id":"m","name":"M","api":"openai-completions","baseUrl":"https://ext.test/v1","reasoning":false,"input":["text"],`+cost+`,"contextWindow":128000,"maxTokens":4096}]}`), wantAppended},
+		{"Go provider mid-object", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://ext.test/v1", Models: []extension.ProviderModelConfig{{
+			ID: "m", Name: "M", API: ai.APIOpenAICompletions, Provider: "someone-else", BaseURL: "https://ext.test/v1", Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096,
+		}}}, wantMid},
+		{"Go without provider", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://ext.test/v1", Models: []extension.ProviderModelConfig{{
+			ID: "m", Name: "M", API: ai.APIOpenAICompletions, BaseURL: "https://ext.test/v1", Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096,
+		}}}, wantAppended},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			order, provider := keys(t, tc.config)
+			if !slices.Equal(order, tc.want) {
+				t.Errorf("members = %v, want %v", order, tc.want)
+			}
+			if provider != "ext-spread" {
+				t.Errorf("provider = %v, want the registering provider", provider)
+			}
+		})
+	}
+}
+
+// BenchmarkRegisterExtensionProviderAndRead is the registration path every extension-registered provider takes in a real session: one registration, then the
+// reads the runtime makes of its models. The registered object's catalog record (ai.ExtensionModelRecord) is composed once per registration, not once per read.
+func BenchmarkRegisterExtensionProviderAndRead(b *testing.B) {
+	var config extension.ProviderConfig
+	wire := `{"api":"openai-completions","baseUrl":"https://ext.test/v1","apiKey":"k","models":[{"id":"m","name":"M","api":"openai-completions","provider":"x","baseUrl":"https://ext.test/v1","reasoning":false,"input":["text","image"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}]}`
+	if err := json.Unmarshal([]byte(wire), &config); err != nil {
+		b.Fatal(err)
+	}
+	dir := b.TempDir()
+	b.ReportAllocs()
+	for b.Loop() {
+		r := NewModelRegistry(dir)
+		if err := r.RegisterExtensionProvider("ext-bench", config); err != nil {
+			b.Fatal(err)
+		}
+		for range 6 {
+			if len(r.GetProviderModelData("ext-bench")) != 1 {
+				b.Fatal("model not listed")
+			}
+		}
+	}
+}
+
 // A resolved Model handed to a built-in API by an extension's streamSimple keeps its per-level sampling parameters (Pi 1.0.2 Model.samplingParamsByThinkingLevel, read by resolveSamplingParams).
 func TestSubprocessAPIModelCarriesSamplingParamsByThinkingLevel(t *testing.T) {
 	model, err := subprocessAPIModel(map[string]any{"id": "m", "name": "M", "provider": "p", "api": "openai-completions", "reasoning": true, "input": []any{"text"},

@@ -101,6 +101,7 @@ export default pi=>{
 			if loadErr != nil {
 				t.Fatal(loadErr)
 			}
+			applyQueuedRegistrations(host)
 			model := services.ModelRuntime().GetModel("native-test", "model")
 			if model == nil {
 				t.Fatal("native model absent")

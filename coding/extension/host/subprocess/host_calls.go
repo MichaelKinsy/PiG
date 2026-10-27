@@ -657,7 +657,7 @@ func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedEx
 		if request.Native.ID != request.Name {
 			return nil, errors.New("native provider id does not match registration")
 		}
-		if err := h.registerNativeProvider(ctx, me, conn, request.Native); err != nil {
+		if err := h.registerNativeProvider(ctx, me, conn, request.Native, false); err != nil {
 			return nil, err
 		}
 		h.dropProviderConfigRef(request.Name)

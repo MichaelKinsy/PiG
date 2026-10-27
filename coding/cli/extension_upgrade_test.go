@@ -41,9 +41,9 @@ func writeOldExtension(t *testing.T, dir string) {
 }
 
 func driftFailure(files ...string) error {
-	var drifts []upgrade.Drift
+	var drifts []runtimecell.Drift
 	for _, file := range files {
-		drifts = append(drifts, upgrade.Drift{Rule: upgrade.RuleContextGetters, Symbol: "Context.GetSessionID", Old: "func() string", New: "func() (string, error)", Since: "0.3.0", Rewrites: true, File: file, Line: 9, Count: 1})
+		drifts = append(drifts, runtimecell.Drift{Rule: upgrade.RuleContextGetters, Symbol: "Context.GetSessionID", Old: "func() string", New: "func() (string, error)", Since: "0.3.0", Rewrites: true, File: file, Line: 9, Count: 1})
 	}
 	return &runtimecell.BuildFailure{Summary: "go build: written for an older SDK (Context.GetSessionID changed)", Cause: "go build: written for an older SDK (Context.GetSessionID)", Drift: drifts}
 }

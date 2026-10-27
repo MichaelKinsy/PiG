@@ -2206,6 +2206,9 @@ impl Context {
 
     /// `Date.parse(text)` over this handler's own connection; see [`crate::parse_date`].
     pub fn parse_date(&self, text: &str) -> io::Result<Option<f64>> {
+        if let Some(ms) = crate::host_helpers::parse_iso_date(text) {
+            return Ok(Some(ms));
+        }
         let (method, args) = crate::host_helpers::date_args(text);
         crate::host_helpers::decode_date(self.call_host(method, Some(args))?)
     }

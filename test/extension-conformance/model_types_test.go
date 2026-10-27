@@ -364,6 +364,7 @@ func loadModelTypesGo(placement string) modelTypesLoader {
 				return sdk.ServeFactory(conn, modeltypes.Extension)
 			}
 			ext, err := r.host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: modeltypes.Name, Path: "/ext/" + modeltypes.Name + ".go", Enabled: true, SourceInfo: hostSurfaceSource}, serve)
+			applyQueuedRegistrations(r.host)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -382,6 +383,7 @@ func loadModelTypesGo(placement string) modelTypesLoader {
 			configs = []subprocess.ExtConfig{cfg, providerPeer(t, root, cfg)}
 		}
 		loaded, failures := r.host.LoadAll(t.Context(), configs)
+		applyQueuedRegistrations(r.host)
 		if len(failures) != 0 || len(loaded) != len(configs) {
 			t.Fatalf("load: %v", failures)
 		}
@@ -416,6 +418,7 @@ func loadModelTypesNode(packed bool) modelTypesLoader {
 			configs[0].Isolation = "isolated"
 		}
 		loaded, failures := r.host.LoadAll(t.Context(), configs)
+		applyQueuedRegistrations(r.host)
 		if len(failures) != 0 {
 			t.Fatal(failures[0])
 		}
@@ -456,6 +459,7 @@ func loadModelTypesRust(packed bool) modelTypesLoader {
 			configs[0].Isolation = "isolated"
 		}
 		loaded, failures := r.host.LoadAll(t.Context(), configs)
+		applyQueuedRegistrations(r.host)
 		if len(failures) != 0 {
 			t.Fatal(failures[0])
 		}
@@ -870,6 +874,7 @@ func loadModelTypesPython(isolation string) modelTypesLoader {
 			t.Fatalf("model-types not loaded: %v", loaded)
 		}
 		loaded, failures := r.host.LoadAll(t.Context(), configs)
+		applyQueuedRegistrations(r.host)
 		if len(failures) != 0 || len(loaded) != len(configs) {
 			t.Fatalf("load: %v", failures)
 		}

@@ -235,6 +235,8 @@ pig piglet build reviewer --format binary|image --record <path>
 
 Set `build.extensionRealization: fused` when every selected extension must be compiled into the Piglet Binary. A Binary build then rejects every extension that is not a fuse-compatible Go factory. It does not fall back to a subprocess component. This requirement does not change source invocation.
 
+Set `build.allowOverlays: true` and the Piglet Binary built from the Piglet accepts a Piglet selected at launch (`--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME`) as an overlay on its baked Piglet (D202). Otherwise the Binary refuses those selectors. The setting belongs to the built Piglet and is not inherited through `extends`; `Bake` keeps it in the baked Piglet, so the Binary's Piglet digest covers it. The overlay resolves as `extends` resolves a child over its base, with the Binary's name kept, and cannot replace or remove a baked extension or skill, set `slots` or `systemPrompt`, widen `tools`, `discovery`, `agentEnv` or an extension's `tools`, or re-enable a stripped built-in.
+
 ## Records and inventory
 
 Piglet records use one strict current unversioned shape with current kinds `piglet-resolution` and `piglet-binary`; `piglet-image` is reserved until an Image producer exists. They bind source/effective/graph, Resource/component closure, target, builder/toolchain, environment/external requirements, artifact digest, and verification. Records verify; they do not launch.

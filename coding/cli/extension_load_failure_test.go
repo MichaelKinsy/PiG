@@ -58,7 +58,7 @@ type startupRun struct {
 
 func runPigStartup(t *testing.T, binary, home, agentDir, cwd, stdin string, args ...string) startupRun {
 	t.Helper()
-	cmd := exec.Command(binary, append([]string{"--model", "test-faux/echo", "--offline"}, args...)...)
+	cmd := exec.Command(binary, append([]string{"--model", "test-faux/faux-1", "--offline"}, args...)...)
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), "HOME="+home, "PIG_HOME="+filepath.Join(home, "pig"), "PIG_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1")
 	cmd.Stdin = strings.NewReader(stdin)

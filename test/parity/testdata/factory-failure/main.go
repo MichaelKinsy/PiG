@@ -48,6 +48,8 @@ func main() {
 	if !ok {
 		panic(failures[0])
 	}
+	// The services apply the registrations the extensions queued while they loaded, after every extension finished (agent-session-services.ts:157-169).
+	host.Runtime().BindProviderActions(host.Runtime().BoundProviderActions(), nil)
 	fmt.Println(failure.Message)
 	fmt.Println(loaded[1].Commands["factory-failure-report"].Description)
 	mu.Lock()

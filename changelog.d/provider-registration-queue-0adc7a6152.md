@@ -1,0 +1,3 @@
+### Fixed
+
+- A provider that an extension registers while it loads no longer fails the load when the model registry rejects it. The host asked the registry at once and reported `Failed to load extension: Provider x, model y: no "api" specified.`, with the `pig -ne` hint. Pi queues the registration and applies it after every extension has loaded. PiG now does the same: the extension stays loaded, the other registrations apply, and startup reports `Error: Extension "<path>" error: Provider x, model y: no "api" specified. Set it at model level or provider level.` as Pi does. A registration that an extension makes after it loaded still applies at once and returns its error to the extension. <!-- fix: 0adc7a61525beab8efd166cbca49895faf45ecd6 -->

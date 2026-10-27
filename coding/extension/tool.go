@@ -3,6 +3,8 @@ package extension
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // ToolRenderResultOptions mirrors upstream ToolRenderResultOptions.
@@ -93,6 +95,10 @@ type ToolRenderers struct {
 // upstream: types.ts ToolRendererResolver
 type ToolRendererResolver = func(toolName string, next func() *ToolRenderers) *ToolRenderers
 
+// ToolRefineFunc runs one refinement of a tool's parameter schema (TypeBox Type.Refine): refinement index of the node at path on value, and, when withMessage is set and it fails,
+// its error function. A returned error is the refinement throwing. ctx ends with the tool call.
+type ToolRefineFunc = func(ctx context.Context, path string, index int, value any, withMessage bool) (ai.RefineOutcome, error)
+
 // ToolPrepareArgumentsFunc mirrors upstream ToolDefinition.prepareArguments.
 type ToolPrepareArgumentsFunc = func(args json.RawMessage) (json.RawMessage, error)
 
@@ -169,10 +175,14 @@ type ToolDefinition struct {
 	ConstrainedSampling json.RawMessage          `json:"constrainedSampling,omitempty"`
 	RenderShell         ToolRenderShell          `json:"renderShell,omitempty"`
 	PrepareArguments    ToolPrepareArgumentsFunc `json:"-"`
-	ExecutionMode       ToolExecutionMode        `json:"executionMode,omitempty"`
-	Execute             ToolExecuteFunc          `json:"-"`
-	RenderCall          ToolRenderCallFunc       `json:"-"`
-	RenderResult        ToolRenderResultFunc     `json:"-"`
+	// RefinementSites lists the nodes of Parameters that carry refinements (Type.Refine) and RefineArguments runs them: the argument validator calls it for each predicate call
+	// TypeBox makes (ai.ValidateToolArgumentsRefined). Both are empty for a tool without refinements, which then validates exactly as before.
+	RefinementSites []ai.RefinementSite  `json:"-"`
+	RefineArguments ToolRefineFunc       `json:"-"`
+	ExecutionMode   ToolExecutionMode    `json:"executionMode,omitempty"`
+	Execute         ToolExecuteFunc      `json:"-"`
+	RenderCall      ToolRenderCallFunc   `json:"-"`
+	RenderResult    ToolRenderResultFunc `json:"-"`
 	// DefaultActive is whether registering the tool activates it. Default: true
 	// for direct and model-only tools; other exposures are never activated on
 	// registration. A tool with DefaultActive false is activated by naming it in

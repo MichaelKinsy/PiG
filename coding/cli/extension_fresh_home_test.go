@@ -79,7 +79,7 @@ func TestFreshHomeLoginListInspectsScaffoldedExtension(t *testing.T) {
 // paths, and no VCS stamp, so nothing in the binary points back at this tree.
 func buildReleasePigBinary(t *testing.T) string {
 	t.Helper()
-	out, err := releaseTestBinary()
+	out, err := releaseTestBinary.get(t)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"math"
 	"reflect"
 	"slices"
 	"strings"
@@ -747,7 +748,7 @@ func validateTranscriptContextWith(context TranscriptContext, memo *ValidationMe
 		case AssistantMessage:
 			for contentIndex, block := range message.Content {
 				if call, ok := block.(ToolCall); ok {
-					if err := memo.validate(call.Arguments); err != nil {
+					if err := memo.validateArguments(call.Arguments); err != nil {
 						return fmt.Errorf("message %d content %d arguments: %w", messageIndex, contentIndex, err)
 					}
 				}
@@ -792,9 +793,23 @@ func validateJsonValue(value any) error {
 	return err
 }
 
+// validateArgumentsValue is validateJsonValue for a tool call's arguments, where a non-finite number is valid: Pi keeps the Infinity JSON.parse reads for 1e999
+// in them, and every serialization, JSON.stringify, writes null. A tool result's details stay strict.
+func validateArgumentsValue(value any) error {
+	err := validateJsonValue(value)
+	if err != nil && hasNonFiniteNumber(value) {
+		_, err = normalizeJSONValueWith(value, sdkjson.MarshalJS)
+	}
+	return err
+}
+
 func normalizeJSONValue(value any) (any, error) {
-	// sdkjson writes a lone surrogate as its escape and reads it back as one, as JSON.stringify and JSON.parse do; encoding/json would turn it into U+FFFD.
-	encoded, err := sdkjson.Marshal(value)
+	return normalizeJSONValueWith(value, sdkjson.Marshal)
+}
+
+// normalizeJSONValueWith is normalizeJSONValue encoding with marshal. sdkjson writes a lone surrogate as its escape and reads it back as one, as JSON.stringify and JSON.parse do; encoding/json would turn it into U+FFFD.
+func normalizeJSONValueWith(value any, marshal func(any) ([]byte, error)) (any, error) {
+	encoded, err := marshal(value)
 	if err != nil {
 		return nil, err
 	}
@@ -819,17 +834,51 @@ func cloneJSONValue(value any) any {
 	return preserveJSONValueTypes(value, normalized)
 }
 
-// clonePublishedJSONValue is cloneJSONValue for a value that is itself a cloneJSONValue result: a plain tree copies without validating its strings again, and anything else takes cloneJSONValue.
+// cloneArgumentsValue is cloneJSONValue for a tool call's arguments, which may hold a non-finite number: Pi keeps the Infinity JSON.parse reads for 1e999
+// in them as structuredClone copies it, and JSON.stringify writes null. The copy keeps the number; a value with another fault panics as cloneJSONValue does.
+func cloneArgumentsValue(value any) any {
+	if copied, ok := clonePlainJSON(value, &plainWalk{}); ok {
+		return copied
+	}
+	normalized, err := normalizeJSONValue(value)
+	if err != nil && hasNonFiniteNumber(value) {
+		normalized, err = normalizeJSONValueWith(value, sdkjson.MarshalJS)
+	}
+	if err != nil {
+		panic(fmt.Sprintf("clone validated JSON value: %v", err))
+	}
+	return preserveJSONValueTypes(value, normalized)
+}
+
+// clonePublishedJSONValue is cloneArgumentsValue for a value that is itself such a result: a plain tree copies without validating its strings again, and anything else takes cloneArgumentsValue.
 func clonePublishedJSONValue(value any) any {
 	if copied, ok := clonePlainJSON(value, &plainWalk{validatedStrings: true}); ok {
 		return copied
 	}
-	return cloneJSONValue(value)
+	return cloneArgumentsValue(value)
+}
+
+// nonFiniteNumber reports whether value is a float64 or float32 that is NaN or an infinity.
+func nonFiniteNumber(value any) bool {
+	switch number := value.(type) {
+	case float64:
+		return math.IsNaN(number) || math.IsInf(number, 0)
+	case float32:
+		return math.IsNaN(float64(number)) || math.IsInf(float64(number), 0)
+	}
+	return false
 }
 
 func preserveJSONValueTypes(value, normalized any) any {
 	switch value := value.(type) {
 	case float64, float32, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr:
+		if nonFiniteNumber(value) {
+			// JSON wrote it as null; structuredClone keeps the infinity or NaN, and so does the copy.
+			if normalized == nil {
+				return value
+			}
+			return normalized
+		}
 		// A custom marshaler can mutate a sibling after JSON captured it. Restore a native number's type only when its value still matches that captured value.
 		if number, ok := normalized.(json.Number); ok {
 			if encoded, err := json.Marshal(value); err == nil && string(encoded) == string(number) {

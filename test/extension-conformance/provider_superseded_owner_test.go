@@ -45,6 +45,7 @@ func TestSupersededOwnerKeepsACapturedProviderCallableAcrossSDKs(t *testing.T) {
 			}
 			reader := subprocess.ExtConfig{Name: "extension-provider-carrier-remote", Source: filepath.Join(root, "test/parity/scenarios/testdata/extension-provider-carrier-remote.mjs"), Enabled: true, Isolation: "strict"}
 			loaded, errs := host.LoadAll(t.Context(), []subprocess.ExtConfig{owner, reader})
+			applyQueuedRegistrations(host)
 			if len(errs) > 0 {
 				t.Fatal(errs)
 			}
@@ -61,6 +62,7 @@ func TestSupersededOwnerKeepsACapturedProviderCallableAcrossSDKs(t *testing.T) {
 			if _, err := host.Load(t.Context(), subprocess.ExtConfig{Name: "carrier-replacement", Source: replacement, Enabled: true, Isolation: "strict"}); err != nil {
 				t.Fatal(err)
 			}
+			applyQueuedRegistrations(host)
 			retained := filepath.Join(dir, "retained.json")
 			if err := loaded[1].Commands["carrier-retained"].Handler(t.Context(), retained); err != nil {
 				t.Fatalf("the captured Provider failed after its owner was superseded: %v", err)

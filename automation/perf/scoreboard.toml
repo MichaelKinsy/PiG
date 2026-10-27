@@ -152,6 +152,26 @@ gates = [
 ]
 
 [[metric]]
+id = "binary.headless"
+area = "startup"
+title = "Headless embed binary size (examples/headless: session API, MCP, one provider), plain and with every strip tag but mcp, per release platform"
+impact = 2
+owner = "go-native-perf"
+target = "no terminal editor, word dictionary or announcement image in a program that draws no terminal; under 31 MB with the strip tags on linux/amd64"
+basis = "An embedder that runs MCP tools and one provider needs the session loop, the MCP client and TLS. A Rust or C build of the same would not carry the terminal editor, the dictionaries behind it or the Node runtime archive."
+gates = [
+  { ratchet = "binary.headless.default.linux_amd64.bytes" },
+  { ratchet = "binary.headless.default.linux_arm64.bytes" },
+  { ratchet = "binary.headless.default.darwin_arm64.bytes" },
+  { ratchet = "binary.headless.default.windows_amd64.bytes" },
+  { ratchet = "binary.headless.stripped.linux_amd64.bytes" },
+  { ratchet = "binary.headless.stripped.linux_arm64.bytes" },
+  { ratchet = "binary.headless.stripped.darwin_arm64.bytes" },
+  { ratchet = "binary.headless.stripped.windows_amd64.bytes" },
+  { test = "test/perfgate:TestHeadlessEmbedBinarySizeGate" },
+]
+
+[[metric]]
 id = "piglet.binary"
 area = "startup"
 title = "Piglet Binary size and start (stripped and Standard Piglets)"

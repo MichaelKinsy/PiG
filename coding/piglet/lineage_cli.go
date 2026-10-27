@@ -165,6 +165,13 @@ func CheckProvenance(manifest signature.Manifest, source, workspace string) (*Pr
 	if err != nil {
 		return nil, fmt.Errorf("resolve effective Piglet %s: %w", path, err)
 	}
+	// The build reattaches the built source's authored build block before it bakes (coding/pigletbuild loadPiglet); Bake keeps only
+	// build.allowOverlays from it.
+	authored, err := Parse(path)
+	if err != nil {
+		return nil, fmt.Errorf("parse Piglet %s: %w", path, err)
+	}
+	resolution.Piglet.Build = authored.Build
 	baked, err := Bake(resolution.Piglet, filepath.Dir(path))
 	if err != nil {
 		return nil, fmt.Errorf("bake Piglet %s: %w", path, err)

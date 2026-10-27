@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 func writeWatchedTheme(t *testing.T, directory, name, accent string) {
@@ -243,6 +245,61 @@ func TestThemeWatcherKeepsLastGoodAndCoalescesBurst(t *testing.T) {
 		writeWatchedTheme(t, dir, "custom-test", fmt.Sprintf("#%06x", i+1))
 	}
 	waitThemeAccent(t, "#000064")
+}
+
+// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:startThemeWatcher — an overflowed native buffer loses events but leaves the watch armed, so the watcher reloads the file and keeps watching.
+func TestThemeWatcherOverflowReloadsAndKeepsWatching(t *testing.T) {
+	for _, overflow := range []error{fsnotify.ErrEventOverflow, errors.New(windowsOverflowMessage)} {
+		t.Run(overflow.Error(), func(t *testing.T) {
+			dir, watcher := watchedThemeFixture(t)
+			reloaded := make(chan struct{}, 1)
+			watcher.mu.Lock()
+			native := watcher.watcher
+			watcher.dispatch = func(ctx context.Context, apply func()) error {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				apply()
+				select {
+				case reloaded <- struct{}{}:
+				default:
+				}
+				return nil
+			}
+			watcher.mu.Unlock()
+			native.Errors <- overflow
+			select {
+			case <-reloaded:
+			case <-time.After(5 * time.Second):
+				t.Fatal("overflow did not reload the theme")
+			}
+			writeWatchedTheme(t, dir, "custom-test", "#654321")
+			waitThemeAccent(t, "#654321")
+		})
+	}
+}
+
+// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:startThemeWatcher — the error handler closes the watcher.
+func TestThemeWatcherOtherErrorsCloseNativeWatcher(t *testing.T) {
+	_, watcher := watchedThemeFixture(t)
+	watcher.mu.Lock()
+	native := watcher.watcher
+	watcher.mu.Unlock()
+	native.Errors <- errors.New("simulated OS watcher failure")
+	select {
+	case _, ok := <-native.Errors:
+		if ok {
+			t.Fatal("native watcher still delivering after a failure")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("failure did not close the native watcher")
+	}
+	watcher.mu.Lock()
+	closed := watcher.watcher == nil
+	watcher.mu.Unlock()
+	if !closed {
+		t.Fatal("closed native watcher stayed registered")
+	}
 }
 
 func TestThemeWatcherCloseCancelsBlockedDispatch(t *testing.T) {

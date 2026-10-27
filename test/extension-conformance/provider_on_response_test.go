@@ -61,6 +61,7 @@ export default pi=>{
 	if _, err := host.Load(t.Context(), subprocess.ExtConfig{Name: "probe", Source: entry, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
+	applyQueuedRegistrations(host)
 	model := services.ModelRuntime().GetModel("probe-native", "probe-model")
 	if model == nil {
 		t.Fatal("the native Provider's model is absent from the catalog")

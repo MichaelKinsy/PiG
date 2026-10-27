@@ -127,8 +127,11 @@ func StripFrontmatter(content string) (string, error) {
 }
 
 // ParseDate is `Date.parse(text)` (`new Date(text).getTime()` for a string), V8's parser answered by the host: the time value in milliseconds, and false when it
-// is NaN. It may be called before Run, like ParseFrontmatter.
+// is NaN. Text in the form `toISOString` writes for a four-digit year (`2026-01-02T03:04:05.678Z`) is answered without the host. It may be called before Run, like ParseFrontmatter.
 func ParseDate(text string) (float64, bool, error) {
+	if ms, ok := parseISODate(text); ok {
+		return ms, true, nil
+	}
 	if hook := installedHelpers(); hook != nil && hook.ParseDate != nil {
 		ms, ok := hook.ParseDate(text)
 		return ms, ok, nil
@@ -149,8 +152,72 @@ func (c Context) ParseFrontmatter(content string) (ParsedFrontmatter, error) {
 
 // ParseDate is ParseDate over the handler's own connection.
 func (c Context) ParseDate(text string) (float64, bool, error) {
+	if ms, ok := parseISODate(text); ok {
+		return ms, true, nil
+	}
 	result, err := c.callHost(callParseDate, map[string]string{"text": text})
 	return decodeDate(result, err)
+}
+
+// parseISODate is `Date.parse` for the text `Date.prototype.toISOString` writes for a year of four digits, `YYYY-MM-DDTHH:mm:ss.sssZ` with every field in range, which is
+// how Pi writes the timestamp of each session entry. ECMA-262 21.4.1.32 defines that form, so the answer is the same in every engine and needs no host. Text in any other
+// form (a missing Z, an offset, a year of six digits, a lowercase t or z, a field out of range such as February 30 or hour 24) is not decided here: the host's parser
+// answers it, as V8 does.
+func parseISODate(text string) (float64, bool) {
+	if len(text) != 24 || text[4] != '-' || text[7] != '-' || text[10] != 'T' || text[13] != ':' || text[16] != ':' || text[19] != '.' || text[23] != 'Z' {
+		return 0, false
+	}
+	year, ok1 := isoDigits(text[0:4])
+	month, ok2 := isoDigits(text[5:7])
+	day, ok3 := isoDigits(text[8:10])
+	hour, ok4 := isoDigits(text[11:13])
+	minute, ok5 := isoDigits(text[14:16])
+	second, ok6 := isoDigits(text[17:19])
+	millisecond, ok7 := isoDigits(text[20:23])
+	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 || !ok7 || month < 1 || month > 12 || day < 1 || day > isoDaysInMonth(year, month) || hour > 23 || minute > 59 || second > 59 {
+		return 0, false
+	}
+	days := isoDaysFromCivil(year, month, day)
+	return float64(((int64(days)*24+int64(hour))*60+int64(minute))*60000 + int64(second)*1000 + int64(millisecond)), true
+}
+
+// isoDigits is the number the ASCII digits of text spell, and false when a character is not one.
+func isoDigits(text string) (int, bool) {
+	n := 0
+	for i := range len(text) {
+		if text[i] < '0' || text[i] > '9' {
+			return 0, false
+		}
+		n = n*10 + int(text[i]-'0')
+	}
+	return n, true
+}
+
+func isoDaysInMonth(year, month int) int {
+	switch month {
+	case 2:
+		if year%4 == 0 && (year%100 != 0 || year%400 == 0) {
+			return 29
+		}
+		return 28
+	case 4, 6, 9, 11:
+		return 30
+	}
+	return 31
+}
+
+// isoDaysFromCivil is the number of days from 1970-01-01 to the date in the proleptic Gregorian calendar, which is what ECMA-262 time values count.
+func isoDaysFromCivil(year, month, day int) int {
+	if month <= 2 {
+		year--
+	}
+	era := year / 400
+	if year < 0 {
+		era = (year - 399) / 400
+	}
+	yearOfEra := year - era*400
+	dayOfYear := (153*((month+9)%12)+2)/5 + day - 1
+	return era*146097 + yearOfEra*365 + yearOfEra/4 - yearOfEra/100 + dayOfYear - 719468
 }
 
 func decodeFrontmatter(result *callResultMsg, err error) (ParsedFrontmatter, error) {

@@ -111,7 +111,13 @@ func LookupModel(spec string) (*GeneratedModel, bool) {
 	if entries := registryByID[id]; len(entries) > 0 {
 		return entries[0], true
 	}
-	return nil, false
+	// pig divergence (D199): an OpenRouter routing variant is derived from its base entry; the catalog stores none.
+	return lookupOpenRouterVariant(spec, func(base string) (*GeneratedModel, bool) {
+		if entry, ok := LookupModel(base); ok && isOpenRouterBase(entry) {
+			return entry, true
+		}
+		return LookupModelExact("openrouter/" + base) //portlint:allow providerliteral the variants are OpenRouter's own routing suffixes
+	})
 }
 
 // LookupModelExact resolves only the fully-qualified "provider/id" key,
@@ -124,11 +130,18 @@ func LookupModelExact(spec string) (*GeneratedModel, bool) {
 	if spec == "" {
 		return nil, false
 	}
+	var m *GeneratedModel
+	var ok bool
 	if !registryFQBuilt.Load() {
-		return scanModelExact(GeneratedModels, spec)
+		m, ok = scanModelExact(GeneratedModels, spec)
+	} else {
+		m, ok = registryByFQ[spec]
 	}
-	m, ok := registryByFQ[spec]
-	return m, ok
+	if ok {
+		return m, true
+	}
+	// pig divergence (D199): an OpenRouter routing variant is derived from its base entry; the catalog stores none.
+	return lookupOpenRouterVariant(spec, LookupModelExact)
 }
 
 // scanModelExact is the byFQ index's answer for spec without the index: the last catalog model whose "<provider>/<model-id>" is spec
@@ -234,6 +247,9 @@ func (m *GeneratedModel) catalogView() *Model {
 // provider prefix. Empty provider returns everything. It omits the models
 // of a stripped API (OfferedModels); LookupModel and LookupModelExact
 // still find them.
+//
+// pig divergence (D199): the list of OpenRouter, or of every provider, also holds each OpenRouter model's routing variants
+// (WithOpenRouterRoutingVariants), derived for the list and not stored in the catalog.
 func ListModels(provider string) []GeneratedModel {
 	stripped := strippedAPIs()
 	if provider == "" {
@@ -243,7 +259,7 @@ func ListModels(provider string) []GeneratedModel {
 				out = append(out, model)
 			}
 		}
-		return out
+		return WithOpenRouterRoutingVariants(out)
 	}
 	registryProviderOnce.Do(initRegistryProvider)
 	models := registryByProvider[provider]
@@ -252,6 +268,9 @@ func ListModels(provider string) []GeneratedModel {
 		if !slices.Contains(stripped, model.API) {
 			out = append(out, *model)
 		}
+	}
+	if provider == "openrouter" { //portlint:allow providerliteral the variants are OpenRouter's own routing suffixes
+		return WithOpenRouterRoutingVariants(out)
 	}
 	return out
 }

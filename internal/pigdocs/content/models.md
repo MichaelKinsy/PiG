@@ -15,6 +15,10 @@ A model in pig is identified by a **provider-qualified spec**: `provider/modelID
 
 The selector lists models from providers with configured authentication. It uses `GEMINI_API_KEY` for Google Gemini, not `GOOGLE_API_KEY`. Providers without configured authentication are omitted.
 
+### OpenRouter routing variants
+
+PiG lists two OpenRouter routing variants beside every `openrouter` model: `<id>:nitro` sorts the model's providers by throughput and `<id>:floor` sorts them by price (for example `openrouter/openai/gpt-5.2:nitro`). Pi does not list them, because OpenRouter's model listing does not (OpenRouter accepts them on any model ID; see [Model Variants](https://openrouter.ai/docs/guides/routing/model-variants/overview)). A variant repeats its base model's limits, capabilities and listed prices, as OpenRouter documents, so the listed price is the base rate; a request served by a priority (`:nitro`) or flex (`:floor`) endpoint is billed at that endpoint's rate. `--list-models` and the selector show them as `<name> (nitro)` and `<name> (floor)`. This is divergence D199 in `docs/parity/DIVERGENCES.md`.
+
 ## Scoped models
 
 Scoped models are the list `Ctrl+P` cycles through. They are stored in settings as provider-qualified IDs; pig accepts legacy bare IDs and rewrites them on next save.

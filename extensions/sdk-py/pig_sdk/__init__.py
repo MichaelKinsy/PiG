@@ -57,7 +57,9 @@ from .child_session import AgentSession as AgentSession, CreateAgentSessionOptio
 from .image_dimension_note import ResizedImage as ResizedImage, format_dimension_note as format_dimension_note
 from .llm_convert import convert_to_llm as convert_to_llm
 from .serialize_conversation import _ordered_keys, serialize_conversation as serialize_conversation
-from .session_entry_messages import session_entry_to_context_messages as session_entry_to_context_messages
+from .session_entry_messages import _truthy as _js_truthy, session_entry_to_context_messages as session_entry_to_context_messages
+from .session_context import SESSION_LEAF_LAST as SESSION_LEAF_LAST, build_session_context as build_session_context
+from .type_schema import Refinement as Refinement, TSchema as TSchema, TSchemaArray as TSchemaArray, Type as Type, count_refinements as _count_refinements, refinement_sites as refinement_sites, type_to_json as type_to_json, validation_schema as _validation_schema
 from .stored_credential import read_stored_credential as read_stored_credential
 from .pi_ai_helpers import (
     DEFAULT_MAX_AGENT_RETRY_DELAY_MS as DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
@@ -3097,6 +3099,9 @@ class Context:
         """``Date.parse(text)`` over this handler's own connection; see :func:`pig_sdk.parse_date`."""
         from . import host_helpers
 
+        ms = host_helpers._parse_iso_date(text)
+        if ms is not None:
+            return ms
         return host_helpers._decode_date(self._call("date.parse", {"text": text}).get("result") or {})
 
     def generate_diff_string(self, old_content: str, new_content: str, context_lines: "int | None" = None) -> "DiffString":
@@ -4071,6 +4076,8 @@ class Extension:
         self._oauth_providers: dict[str, OAuthProvider] = {}
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
+        # The nodes of each tool's parameter schema that carry refinements (Type.refine), which the host asks for with tool_refine_arguments.
+        self._tool_refine_sites: dict[str, dict[str, list[Refinement]]] = {}
         self._children = _ChildSessions()
         self._tool_batches = _ToolBatches()
         self._request_starts = _RequestStartOrder()
@@ -4190,9 +4197,17 @@ class Extension:
     def _register_tool(self, declaration, handler, prepare=None, render_call=None, render_result=None, prepare_loadout=None, call_view=None, result_view=None, reaches_tools=None):
         name = declaration["name"]
         # agent-loop.ts:707-716: the host validates, so it asks the extension for the prepared arguments (tool_prepare_arguments).
-        declaration = {key: value for key, value in declaration.items() if key != "prepares_arguments"}
+        declaration = {key: value for key, value in declaration.items() if key not in ("prepares_arguments", "refinements", "validation_parameters")}
+        if isinstance(declaration.get("parameters"), TSchema) and "~kind" in declaration["parameters"].hidden:
+            # The host validates arguments with TypeBox's kinds, as it does for a Node tool.
+            declaration["validation_parameters"] = _validation_schema(declaration["parameters"])
         if prepare is not None:
             declaration["prepares_arguments"] = True
+        sites = refinement_sites(declaration.get("parameters"))
+        if _count_refinements(declaration.get("parameters")) != sum(len(site.refinements) for site in sites):
+            raise ValueError(f'Tool "{name}" registered by extension "{self._name}" has a refinement under a schema keyword whose refinements the host does not run (it runs them under properties, patternProperties, additionalProperties, items, prefixItems, additionalItems, allOf, anyOf, oneOf, not, if, then, else and $defs).')
+        if sites:
+            declaration["refinements"] = [{"path": site.path, "count": len(site.refinements)} for site in sites]
         with self._tool_registration_lock:
             index = next((i for i, tool in enumerate(self._tools) if tool["name"] == name), None)
             if index is None:
@@ -4200,6 +4215,10 @@ class Extension:
             else:
                 self._tools[index] = declaration
             self._tool_handlers[name] = handler
+            if sites:
+                self._tool_refine_sites[name] = {site.path: site.refinements for site in sites}
+            else:
+                self._tool_refine_sites.pop(name, None)
             for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result), (self._tool_loadout_handlers, prepare_loadout), (self._tool_reach_handlers, reaches_tools), (self._tool_call_view_renderers, call_view), (self._tool_result_view_renderers, result_view)):
                 if callback is None:
                     handlers.pop(name, None)
@@ -4223,6 +4242,23 @@ class Extension:
             return session._tools[name]
         with self._tool_registration_lock:
             return self._tool_handlers[name]
+
+    def _run_refinement(self, name: str, request: dict[str, Any]) -> dict[str, Any]:
+        """Run refinement ``request["index"]`` of the node at ``request["path"]`` of the tool's schema on ``request["value"]``. An exception from the predicate is what a thrown
+        JavaScript error is: the host fails the tool call with its message. A check's result counts as JavaScript counts truthiness."""
+        with self._tool_registration_lock:
+            sites = self._tool_refine_sites.get(name, {})
+        refinements = sites.get(request.get("path", ""), [])
+        index = request.get("index", -1)
+        if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < len(refinements):
+            raise RuntimeError(f"tool {name!r} has no refinement {index!r} at {request.get('path')!r}")
+        refinement = refinements[index]
+        value = request.get("value")
+        passed = _js_truthy(refinement.check(value))
+        result: dict[str, Any] = {"ok": passed}
+        if not passed and request.get("with_message"):
+            result["message"] = "Refine Error" if refinement.error is None else refinement.error(value)
+        return result
 
     def _tool_prepare_handler(self, req: dict[str, Any], name: str) -> ToolPrepareArguments | None:
         """The prepare_arguments of a request; see :meth:`_tool_handler`."""
@@ -5449,6 +5485,9 @@ class Extension:
                 if not isinstance(prepared, dict):
                     raise TypeError("prepare_arguments must return a mapping")
                 self._respond(req_id, prepared, None)
+            elif method == "tool_refine_arguments":
+                # validation.ts validateToolArguments: TypeBox calls a refinement's check (and error) while it validates; the host's traversal asks for each call here.
+                self._respond(req_id, self._run_refinement(req.get("tool", ""), req.get("refine") or {}), None)
             elif method == "tool_reaches_tools":
                 name = req.get("tool", "")
                 with self._tool_registration_lock:

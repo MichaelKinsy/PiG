@@ -53,6 +53,11 @@ func TestConformance_HostHelpersAgreeAcrossSDKs(t *testing.T) {
 		Entries []struct {
 			Messages json.RawMessage `json:"messages"`
 		} `json:"entries"`
+		Contexts []struct {
+			Name   string          `json:"name"`
+			Result json.RawMessage `json:"result"`
+			Throws *string         `json:"throws"`
+		} `json:"contexts"`
 		Images []json.RawMessage `json:"images"`
 	}
 	if err := json.Unmarshal(content, &want); err != nil {
@@ -123,12 +128,19 @@ func TestConformance_HostHelpersAgreeAcrossSDKs(t *testing.T) {
 					FirstChangedLine *int    `json:"firstChangedLine"`
 					Patch            string  `json:"patch"`
 				} `json:"diffs"`
-				Entries []json.RawMessage `json:"entries"`
-				Images  []json.RawMessage `json:"images"`
-				Creds   map[string]json.RawMessage
+				Entries  []json.RawMessage `json:"entries"`
+				Contexts []struct {
+					Result json.RawMessage `json:"result"`
+					Throws *string         `json:"throws"`
+				} `json:"contexts"`
+				Images []json.RawMessage `json:"images"`
+				Creds  map[string]json.RawMessage
 			}
 			if err := json.Unmarshal([]byte(reported), &got); err != nil {
 				t.Fatalf("report is not JSON: %v", err)
+			}
+			if len(got.Contexts) != len(want.Contexts) {
+				t.Fatalf("%d buildSessionContext answers for %d calls", len(got.Contexts), len(want.Contexts))
 			}
 			if len(got.Diffs) != len(want.Diffs) || len(got.Entries) != len(want.Entries) || len(got.Images) != len(wantImages) {
 				t.Fatalf("answers %d/%d/%d for %d/%d/%d calls", len(got.Diffs), len(got.Entries), len(got.Images), len(want.Diffs), len(want.Entries), len(wantImages))
@@ -152,6 +164,16 @@ func TestConformance_HostHelpersAgreeAcrossSDKs(t *testing.T) {
 			for i, w := range want.Entries {
 				if g, e := piAiCanonicalJSON(t, got.Entries[i], false), piAiCanonicalJSON(t, w.Messages, false); g != e {
 					fail("entry case %d: %s, want %s", i, g, e)
+				}
+			}
+			for i, w := range want.Contexts {
+				g := got.Contexts[i]
+				if (g.Throws == nil) != (w.Throws == nil) || (g.Throws != nil && *g.Throws != *w.Throws) {
+					fail("buildSessionContext %q: throws %v, Pi throws %v", w.Name, g.Throws, w.Throws)
+				} else if w.Throws == nil {
+					if have, e := piAiCanonicalJSON(t, g.Result, false), piAiCanonicalJSON(t, w.Result, false); have != e {
+						fail("buildSessionContext %q: %s, want %s", w.Name, have, e)
+					}
 				}
 			}
 			for i, w := range wantImages {

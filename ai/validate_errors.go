@@ -14,12 +14,20 @@ import (
 // properties, pattern properties and property names follow it.
 func (s *argumentSchema) argumentErrorsAt(order schemaObjectOrder, value any, path, pointer string) []string {
 	var lines []string
+	run := s.root.refine
+	// ErrorSchema (schema.mjs): a context at capacity (TypeBox keeps eight errors) stops visiting nodes, so the predicates of the nodes after the eighth error are not called.
+	if run != nil && run.errorCount >= typeboxMaxErrors {
+		return nil
+	}
 	emit := func(message string) {
 		location := path
 		if location == "" {
 			location = "root"
 		}
 		lines = append(lines, "  - "+location+": "+message)
+		if run != nil {
+			run.errorCount++
+		}
 	}
 	nested := func(child *argumentSchema, item any, nextPath, nextPointer string) bool {
 		failures := child.argumentErrorsAt(order, item, nextPath, nextPointer)
@@ -51,6 +59,9 @@ func (s *argumentSchema) argumentErrorsAt(order schemaObjectOrder, value any, pa
 		if len(missing) > 0 {
 			location := argumentPath(path, missing[0])
 			lines = append(lines, "  - "+location+": must have required properties "+strings.Join(missing, ", "))
+			if run != nil {
+				run.errorCount++
+			}
 		}
 		properties := s.child("properties")
 		patterns := s.child("patternProperties")
@@ -226,16 +237,30 @@ func (s *argumentSchema) argumentErrorsAt(order schemaObjectOrder, value any, pa
 		}
 		count := 0
 		var failures []string
+		// ErrorAnyOf and ErrorOneOf give every branch an error context of its own, so a branch's errors count against its own capacity.
+		parentCount := 0
+		if run != nil {
+			parentCount = run.errorCount
+		}
 		for _, child := range children {
+			if run != nil {
+				run.errorCount = 0
+			}
 			current := child.argumentErrorsAt(order, value, path, pointer)
 			if len(current) == 0 {
 				count++
 			}
 			failures = append(failures, current...)
 		}
+		if run != nil {
+			run.errorCount = parentCount
+		}
 		if count == 0 || (keyword == "oneOf" && count != 1) {
 			if count == 0 {
 				lines = append(lines, failures...)
+				if run != nil {
+					run.errorCount += len(failures)
+				}
 			}
 			if keyword == "anyOf" {
 				emit("must match a schema in anyOf")
@@ -243,6 +268,10 @@ func (s *argumentSchema) argumentErrorsAt(order schemaObjectOrder, value any, pa
 				emit("must match exactly one schema in oneOf")
 			}
 		}
+	}
+	// ErrorRefine (schema.mjs ErrorSchema): a node's refinements run only when none of its keywords reported an error.
+	if run != nil && len(lines) == 0 && run.sites[s.path] > 0 {
+		lines = append(lines, run.errorLines(s, value, path)...)
 	}
 	return lines
 }

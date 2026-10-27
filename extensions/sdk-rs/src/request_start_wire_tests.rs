@@ -26,6 +26,7 @@ fn request(id: &str, method: &str, tool: Option<&str>, event: Option<&str>, hand
         msg_type: "request".into(),
         id: Some(id.into()),
         request: Some(RequestMsg {
+            refine: None,
             child_session: None,
             terminal_input: None,
             stream: None,

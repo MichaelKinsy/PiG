@@ -213,8 +213,12 @@ type ToolDecl struct {
 	// ReachesTools reports that the tool defines reachesTools (upstream ToolDefinition.reachesTools). The host asks with RequestReachesTools.
 	ReachesTools bool `json:"reaches_tools,omitempty"`
 	// PreparesArguments reports that the tool defines prepareArguments. The host asks with RequestPrepareArguments before it validates the arguments.
-	PreparesArguments bool   `json:"prepares_arguments,omitempty"`
-	Source            string `json:"source,omitempty"` // pig additive (D23): per-tool source override; default: extension name
+	PreparesArguments bool `json:"prepares_arguments,omitempty"`
+	// Refinements lists the schema nodes of Parameters that carry TypeBox refinements (Type.Refine), which the extension runs: the host asks with RequestRefineArguments while it
+	// validates the arguments, in the order TypeBox calls them.
+	//portlint:allow emptydrop PiG wire field read by the host as a list: an empty list and an absent one both mean the tool has no refinement
+	Refinements []RefinementDecl `json:"refinements,omitempty"`
+	Source      string           `json:"source,omitempty"` // pig additive (D23): per-tool source override; default: extension name
 	// RenderShell is upstream ToolDefinition.renderShell: "self" when the
 	// tool's renderers draw their own framing, else empty for "default".
 	RenderShell string `json:"render_shell,omitempty"`
@@ -228,6 +232,28 @@ type ToolDecl struct {
 	BuiltInRenderers string `json:"builtin_renderers,omitempty"`
 	// ValidationParameters preserves non-enumerable TypeBox kinds separately from provider parameters.
 	ValidationParameters json.RawMessage `json:"validation_parameters,omitempty"`
+}
+
+// RefinementDecl is a schema node of a tool's parameters that carries refinements: Path is the node's path in the schema (the keywords that lead to it as JSON pointer segments:
+// "/properties/a", "/anyOf/1", "/items"; "" is the root) and Count how many refinements it has.
+type RefinementDecl struct {
+	Path  string `json:"path"`
+	Count int    `json:"count"`
+}
+
+// RefineRequest is the payload of RequestRefineArguments: run refinement Index of the node at Path on Value. WithMessage asks for the refinement's error message when it fails.
+type RefineRequest struct {
+	Path        string          `json:"path"`
+	Index       int             `json:"index"`
+	Value       json.RawMessage `json:"value"`
+	WithMessage bool            `json:"with_message,omitempty"`
+}
+
+// RefineResult is the response of RequestRefineArguments: whether the value passed and, when it failed and the request asked, the refinement's error message. A refinement that
+// throws is an error response with the thrown message.
+type RefineResult struct {
+	OK      bool   `json:"ok"`
+	Message string `json:"message,omitempty"`
 }
 
 // CommandDecl declares a slash command the extension provides.
@@ -595,6 +621,8 @@ type RequestPayload struct {
 	HandlerID  int             `json:"handler_id,omitempty"`
 	ToolCallID string          `json:"tool_call_id,omitempty"` // For tool_call: unique ID
 	Args       json.RawMessage `json:"args,omitempty"`         // Tool args or event payload
+	// Refine, on tool_refine_arguments, names the refinement to run (RequestRefineArguments).
+	Refine *RefineRequest `json:"refine,omitempty"`
 	// Batch, on tool_call, names the parallel batch the call belongs to: the same value for every call of one assistant message's batch, absent for a call of a sequential batch or one a tool makes inside its own. A runtime that runs each request on a thread of its own orders only the calls of one batch (Pi's single thread orders a batch's calls, not the calls of other sessions).
 	Batch string `json:"batch,omitempty"`
 	// ChildSession, on tool_call and tool_prepare_arguments, names the child agent session (CallChildSessionCreate) whose customTools define Tool: the tool is the one that session was created with, not one the extension registered. Absent, Tool is a registered tool.

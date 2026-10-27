@@ -30,7 +30,7 @@ func TestLaunchDirectoryDotenvFilesDoNotReachPigEnvironment(t *testing.T) {
 
 	run := func(extraEnv ...string) string {
 		t.Helper()
-		cmd := exec.Command(binary, "--model", "test-faux/echo", "--offline", "--mode", "rpc")
+		cmd := exec.Command(binary, "--model", "test-faux/faux-1", "--offline", "--mode", "rpc")
 		cmd.Dir = cwd
 		var env []string
 		for _, kv := range os.Environ() {

@@ -41,6 +41,12 @@ func decodeSchemaInstance(text json.RawMessage) (any, error) {
 }
 
 func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (json.RawMessage, error) {
+	return validateToolArgsSchemaRefined(toolName, rawSchema, args, nil)
+}
+
+// validateToolArgsSchemaRefined is validateToolArgsSchema with the refinements of run, nil for none. Every point where Pi calls the compiled validator's Check (the coercion of a
+// non-object root, the check itself) and every Check of a subschema (optional nulls, unions) calls the refinements TypeBox would.
+func validateToolArgsSchemaRefined(toolName string, rawSchema, args json.RawMessage, run *refineRun) (json.RawMessage, error) {
 	entry := toolArgumentSchemas.entry(rawSchema)
 	// The parsed schema caches its children and its compiled form as validation reaches them, so one validation at a time uses it.
 	entry.mu.Lock()
@@ -54,7 +60,8 @@ func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (j
 		return nil, fmt.Errorf("Validation failed for tool %q:\n  - invalid JSON: %w\n\nReceived arguments:\n%s", toolName, err, args)
 	}
 	// The cached schema outlives this validation; it must not keep the arguments' objects reachable after it.
-	defer func() { schema.wrapped, schema.mutated = nil, false }()
+	schema.root.refine = run
+	defer func() { schema.wrapped, schema.mutated, schema.refine = nil, false, nil }()
 	schema.normalizeOptionalNulls(instance)
 	// Pi ignores Convert's return value. Interior mutations survive; replacing the root does not.
 	schema.convert(instance)
@@ -70,15 +77,19 @@ func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (j
 		_, fromObject := instance.(map[string]any)
 		_, toObject := coerced.(map[string]any)
 		if !fromObject || !toObject {
-			if compiled.Validate(coerced) == nil {
+			if schema.passes(compiled, coerced, "", args) {
 				return schema.marshalInSourceOrder(coerced, args)
 			}
 			return schema.marshalInSourceOrder(instance, args)
 		}
 		instance = coerced
 	}
-	if err := compiled.Validate(instance); err != nil {
-		failures := schema.argumentErrorsAt(schema.sourceOrder(instance, args), instance, "", "")
+	if !schema.passes(compiled, instance, "", args) {
+		var failures []string
+		// compile/validator.mjs Errors checks the value again before it collects errors, and returns none when that second Check passes (a predicate that answers differently).
+		if schema.root.refine == nil || !schema.passes(compiled, instance, "", args) {
+			failures = schema.argumentErrorsAt(schema.sourceOrder(instance, args), instance, "", "")
+		}
 		// TypeBox's error context keeps the first maxErrors (8) errors and drops the rest.
 		failures = failures[:min(len(failures), typeboxMaxErrors)]
 		message := strings.Join(failures, "\n")
@@ -92,6 +103,15 @@ func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (j
 		return args, nil
 	}
 	return schema.marshalInSourceOrder(instance, args)
+}
+
+// passes is the compiled validator's Check of a value: the structural check, or TypeBox's Check with the refinements of the validation in progress.
+func (s *argumentSchema) passes(compiled *jsonschema.Schema, value any, pointer string, args json.RawMessage) bool {
+	if run := s.root.refine; run != nil {
+		run.order = s.sourceOrder(value, args)
+		return run.checkNode(s, value, pointer)
+	}
+	return compiled.Validate(value) == nil
 }
 
 // typeboxMaxErrors is typebox 1.3.27 Settings.maxErrors.
@@ -165,6 +185,10 @@ type argumentSchema struct {
 	compiled   *jsonschema.Schema
 	compileErr error
 	root       *argumentSchema
+	// path is the node's path in the schema, the JSON pointer segments of the keywords that lead to it ("/properties/a", "/anyOf/1", "/items"); the root's is "".
+	path string
+	// refine is the validation in progress that runs refinements (see ValidateToolArgumentsRefined), nil for every other; only the root carries it, and the caller holds entry.mu.
+	refine *refineRun
 	// matchers holds typeboxPropertyNameMatcher of each property name of a "properties" node, compiled when validation first reaches it. The caller holds entry.mu, as for children.
 	matchers map[string]func(string) bool
 	// wrapped lists the objects Convert wrapped in arrays during the validation in progress, and is empty between validations; only the root carries it, and the caller holds entry.mu.
@@ -233,6 +257,7 @@ func (s *argumentSchema) child(key string) *argumentSchema {
 		return nil
 	}
 	child.root = s.root
+	child.path = s.path + "/" + escapeArgumentPointer(key)
 	s.children[key] = child
 	return child
 }
@@ -249,6 +274,7 @@ func (s *argumentSchema) list(key string) []*argumentSchema {
 		if !ok {
 			child, _ = parseArgumentSchema(raw)
 			child.root = s.root
+			child.path = s.path + "/" + cacheKey
 			s.children[cacheKey] = child
 		}
 		out = append(out, child)
@@ -292,7 +318,18 @@ func (s *argumentSchema) validator() (*jsonschema.Schema, error) {
 	return s.compiled, s.compileErr
 }
 
+// acceptsNull is the compiled validator's Check(null): structural, or with the refinements of the validation in progress.
+func (s *argumentSchema) acceptsNull(validator *jsonschema.Schema) bool {
+	if s.root.refine != nil {
+		return s.root.refine.checkNode(s, nil, "")
+	}
+	return validator.Validate(nil) == nil
+}
+
 func (s *argumentSchema) check(value any) bool {
+	if root := s.root; root != nil && root.refine != nil {
+		return root.refine.checkNode(s, value, "")
+	}
 	validator, err := s.validator()
 	return err == nil && validator.Validate(value) == nil
 }
@@ -315,7 +352,8 @@ func (s *argumentSchema) normalizeOptionalNulls(value any) {
 		}
 		child := properties.child(key)
 		if current == nil && !slices.Contains(required, any(key)) && child.text("$ref") == "" {
-			if validator, err := child.validator(); err == nil && validator.Validate(nil) != nil {
+			// Pi: getSubSchemaValidator(propertySchema)?.Check(null) === false, a Check that calls the property's refinements when it has any.
+			if validator, err := child.validator(); err == nil && !child.acceptsNull(validator) {
 				delete(object, key)
 				s.root.mutated = true
 				continue

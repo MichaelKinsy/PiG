@@ -32,7 +32,7 @@ func testTemporaryCLIProvenance(t *testing.T, source, relativeCache string) {
 		"PIG_HOME=" + home,
 		"PIG_CODING_AGENT_DIR=" + agentDir,
 		"PIG_TEST_FAUX=1", "PIG_OFFLINE=1", "PI_OFFLINE=1",
-	}, "--model", "test-faux/echo", "--no-session", "--no-extensions", "-e", source)
+	}, "--model", "test-faux/faux-1", "--no-session", "--no-extensions", "-e", source)
 	process.send(`{"id":"commands","type":"get_commands"}`)
 	process.await("temporary CLI command provenance", func(record rpcRecord) bool {
 		if record["type"] != "response" || record["id"] != "commands" {

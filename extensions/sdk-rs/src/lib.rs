@@ -121,6 +121,12 @@ pub use llm_convert::convert_to_llm;
 mod pi_ai_helpers;
 mod session_entry_messages;
 pub use session_entry_messages::session_entry_to_context_messages;
+mod session_context;
+pub use session_context::{SessionLeaf, build_session_context};
+mod type_schema;
+pub use type_schema::{LiteralValue, Refinement, RefinementSite, TSchema, TValue, Type};
+#[cfg(test)]
+mod type_schema_tests;
 mod stored_credential;
 pub use stored_credential::read_stored_credential;
 pub use pi_ai_helpers::{

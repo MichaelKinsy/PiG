@@ -13,6 +13,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // TestLiveRenderingAdvancesWithoutInput drives the release-shaped binary through
@@ -43,6 +45,9 @@ func TestLiveRenderingAdvancesWithoutInput(t *testing.T) {
 
 	t.Run("parallel-tools", func(t *testing.T) {
 		requireTmux(t)
+		if testenv.RerunWithoutAsyncPreemption(t) {
+			return
+		}
 		cwd := t.TempDir()
 		paths := []string{
 			filepath.Join(cwd, ".pig-live-parallel-a"),

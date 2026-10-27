@@ -1042,7 +1042,7 @@ commandLoop:
 				writeRPC(rpcError(env.ID, "set_model", err.Error()))
 				continue
 			}
-			models := rpcAvailableModels(services(), sess().Model())
+			models := services().ModelRuntime().GetAvailableSnapshot()
 			var newModel *ai.Model
 			for _, candidate := range models {
 				if candidate.ProviderMeta.ProviderID == cmd.Provider && candidate.ID == cmd.ModelID {
@@ -1186,7 +1186,7 @@ commandLoop:
 
 		// ── get_available_models ─────────────────────────────────────────
 		case RPCCommandGetAvailableModels:
-			models := rpcAvailableModels(services(), sess().Model())
+			models := services().ModelRuntime().GetAvailableSnapshot()
 			writeRPC(rpcSuccess(env.ID, "get_available_models", map[string]any{
 				"models": rpcModelList(models),
 			}))
@@ -1560,23 +1560,6 @@ type rpcSessionTreeNode struct {
 	Children       []rpcSessionTreeNode `json:"children"`
 	Label          string               `json:"label,omitempty"`
 	LabelTimestamp string               `json:"labelTimestamp,omitempty"`
-}
-
-// rpcAvailableModels is the model runtime's availability snapshot, which is what Pi's get_available_models, set_model and cycle_model read (rpc-mode.ts:473,490-493; agent-session.ts getAvailableSnapshot). Only the PIG_TEST_FAUX provider, which has no catalog entry, joins it. With nothing available Pi answers [].
-// Ports packages/coding-agent/src/modes/rpc/rpc-mode.ts:get_available_models.
-func rpcAvailableModels(services *coding.AgentSessionServices, current *ai.Model) []*ai.Model {
-	models := services.ModelRuntime().GetAvailableSnapshot()
-	if current == nil || current.ID == "" || os.Getenv("PIG_TEST_FAUX") != "1" {
-		return models
-	}
-	provider := current.ProviderMeta.ProviderID
-	if provider == "" && current.Provider != nil {
-		provider = current.Provider.ID()
-	}
-	if provider != "test-faux" || slices.ContainsFunc(models, func(model *ai.Model) bool { return model.ProviderMeta.ProviderID == provider && model.ID == current.ID }) {
-		return models
-	}
-	return append(models, current)
 }
 
 func rpcModelList(models []*ai.Model) []*RPCModel {

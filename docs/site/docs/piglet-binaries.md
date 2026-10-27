@@ -104,7 +104,7 @@ NAME      SCOPE  SOURCE                                BINARY       IMAGE  DESCR
 reviewer  user   /home/you/.pig/piglets/reviewer.yaml  linux/amd64  -      Reviews a change and lists risks.
 ```
 
-Run it like `pig`, with no `--piglet` option, because the Piglet is built in. Checked with a test model, the provider request carried the Piglet's own system prompt text and only the tools the Piglet allows (`read`, and `codemode` because an MCP server was configured on that machine):
+Run it like `pig`, with no `--piglet` option, because the Piglet is built in (a Binary refuses `--piglet` unless its Piglet [accepts overlays](#accept-overlay-piglets)). Checked with a test model, the provider request carried the Piglet's own system prompt text and only the tools the Piglet allows (`read`, and `codemode` because an MCP server was configured on that machine):
 
 ```bash
 ./pig-reviewer -p "Review the last commit"
@@ -446,6 +446,48 @@ The Binary record lists each stripped ID with its kind and disposition in its `s
 A keep-mode list ([Piglets](piglets.md#keep-mode)) reaches the Binary expanded: the build compiles out every built-in of that list the Piglet does not keep, and the `strip` field lists each one. The record states the intent too: `stripKeep` lists each keep-mode list with the IDs it keeps (`[{"kind": "extension", "ids": []}]`), and `pig piglet show` prints it above the expanded rows (`extensions  keep([])`). A deny-mode Piglet has no `stripKeep` field. The baked Piglet keeps the keep lists, not their expansion, and the Binary expands them again at startup against its own table, which is the table it was built from.
 
 Every Binary record also keeps `stripTable`, the strip table of the PiG that built it, one list of IDs per kind. A later PiG compares its own table with it and prints the [strip delta report](piglets.md#strip-delta-report) on `pig piglet build` and `pig piglet show`: the new built-ins a keep-mode list leaves out and the ones a deny-mode list now includes.
+
+## Accept overlay Piglets
+
+A Piglet Binary runs its built-in Piglet and refuses `--piglet`, `PIG_PIGLET_PATH` and `PIG_PIGLET_NAME` (D202). A base Piglet can declare that its Binary accepts one more Piglet, selected at launch, as an overlay. Set `build.allowOverlays` in the Piglet you build:
+
+```yaml
+name: pig-base
+build:
+  allowOverlays: true
+strip:
+  extensions: [mcp]
+```
+
+The default is `false`. Like all of `build`, the setting belongs to the Piglet you build: a Piglet that `extends` a base with `allowOverlays: true` does not inherit it. The builder keeps the setting in the Piglet it bakes, so it is part of the digest the Binary's record and signed manifest name; a signed Binary whose setting was changed refuses to start.
+
+A Binary that accepts overlays takes the same selectors stock PiG does and resolves them the same way, with the same project trust, user and system Piglet directories, and Package install flow (lifecycle scripts stay off unless you allow them):
+
+```bash
+./pig-base --piglet ./extra.yaml
+PIG_PIGLET_PATH=./extra.yaml ./pig-base
+```
+
+The overlay is an ordinary Piglet file with its own `name`; its own `extends` chain works as usual. PiG merges it onto the Binary's Piglet as `extends` merges a child onto its base. Its extensions and skills follow the Binary's, its Packages and `strip` lists add, `model` and `description` replace, and the Binary keeps its name for `/piglet` and for strip messages. `/piglet` also prints `Overlay of: <Binary>`. A Binary starts exactly as before when you select no Piglet: it installs nothing and resolves nothing.
+
+The Binary's own contents stay what was verified. An overlay can add and narrow; it cannot change what the Binary baked. Each refusal names the field and the Binary and stops the start; the Binary never falls back to its own Piglet when an overlay fails:
+
+| The overlay | Result |
+|---|---|
+| adds extensions, skills or Packages with origins; sets `model`; strips more built-ins; narrows `tools` | Allowed. Its extensions resolve at run time as under stock PiG, so a `local:` origin runs as a subprocess extension. |
+| names an extension or skill the Binary carries, or removes one through its own `extends.remove` | Refused: `extensions[<name>]: Piglet Binary "<name>" already carries one with this name; an overlay cannot replace it`. Baked members are fused or embedded and checked at startup. |
+| sets `slots.frontend` | Refused: a frontend member is Go code compiled into the Binary. |
+| sets `systemPrompt` | Refused, as `--system-prompt` is: use `--append-system-prompt`. |
+| widens `tools`, `discovery`, `agentEnv` or an extension's `tools` | Refused. An overlay has no `allowWiden`; rebuild the Binary's Piglet to widen. |
+| re-enables a stripped built-in or slot | Refused: `strip.tools: "bash" is stripped by Piglet Binary "<name>"; an overlay cannot re-enable it`. |
+
+Without `allowOverlays`, the Binary refuses the selector and names itself:
+
+```text
+pig: this Piglet Binary (pig-base) runs only its built-in Piglet and does not accept --piglet overlays (nor PIG_PIGLET_PATH or PIG_PIGLET_NAME); build its Piglet with build.allowOverlays: true to accept them, or run the Piglet with stock pig (pig --piglet <name|path>)
+```
+
+Accepting overlays changes neither the Binary's verification nor its update ownership: it still verifies its signature, Piglet and component closure before anything else, and `pig update` still refuses to modify an immutable Binary. The overlay is input you supplied, outside that closure. A Binary you ship to others with `allowOverlays` runs whatever Piglet its user selects, within the rules above.
 
 ## Startup verification
 

@@ -57,6 +57,7 @@ export default pi=>{
 	if err != nil {
 		t.Fatal(err)
 	}
+	applyQueuedRegistrations(host)
 	model := services.ModelRuntime().GetModel("hooks-native", "hooks-model")
 	if model == nil {
 		t.Fatal("the Provider object's model is absent from the catalog")

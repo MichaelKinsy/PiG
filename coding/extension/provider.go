@@ -65,6 +65,11 @@ type ProviderStreamSimple = func(model Model, ctx AIContext, opts SimpleStreamOp
 // Input, InputLimits, Cost, Headers and Output. A classifier entry uses ID,
 // Name, API (a classifier API), BaseURL, Input, InputLimits, Cost, Headers and
 // ContextWindow. A field outside its variant is not marshalled.
+//
+// Provider is a member Pi's ProviderModelConfig does not declare but a config may carry: Pi registers the model as the config spread with api,
+// provider and baseUrl set (provider-composer.ts:299 `{ ...definition, api, provider: providerId, baseUrl, headers: undefined }`), so a config's
+// own provider keeps its place among the model's members and one it lacks is appended after them. The registry sets the member's value to the
+// registering provider either way; empty is no member.
 type ProviderModelConfig struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -76,6 +81,7 @@ type ProviderModelConfig struct {
 	// Output is the output types of an image entry: it always includes "image"; "text" means the model can also return text blocks.
 	// upstream: types.ts:1969 (ProviderImageModelConfig.output)
 	Output           []string            `json:"output,omitempty"`
+	Provider         string              `json:"provider,omitempty"`
 	BaseURL          string              `json:"baseUrl,omitempty"`
 	Reasoning        bool                `json:"reasoning"`
 	ThinkingLevelMap ai.ThinkingLevelMap `json:"thinkingLevelMap,omitempty"`

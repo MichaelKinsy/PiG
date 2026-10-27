@@ -2,6 +2,8 @@ package childsession
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
@@ -14,7 +16,7 @@ func sentinelScope() []sdk.ScopedModel {
 	}
 }
 
-// registerEvents is the child_events scenario of the Node row (child_session_node_test.go): a session whose resources load a probe extension (args.probe) is created with scopedModels, its extensions are bound, and a streamed prompt runs. The probe records the events it receives in a file the test reads. args.via "loader" builds the session over a DefaultResourceLoader this extension created; any other value selects the resources by option.
+// registerEvents is the child_events scenario of the Node row (child_session_node_test.go): a session whose resources load a probe extension (args.probe) is created with scopedModels, its extensions are bound, and a streamed prompt runs. The probe records the events it receives in a file the test reads; the tool returns, as JSON, the events its own listener received. args.via "loader" builds the session over a DefaultResourceLoader this extension created; any other value selects the resources by option.
 func registerEvents(e *sdk.Extension) {
 	e.RegisterTool(sdk.ToolDefinition{
 		Name: "child_events", Label: "child_events", Description: "child_events", Parameters: sdk.Schema{"type": "object"},
@@ -45,13 +47,25 @@ func registerEvents(e *sdk.Extension) {
 				return nil, err
 			}
 			defer session.Dispose()
+			seen := []string{}
+			session.Subscribe(func(event map[string]any) {
+				name := event["type"].(string)
+				if message, ok := event["message"].(map[string]any); ok && strings.HasPrefix(name, "message_") {
+					name += ":" + message["role"].(string)
+				}
+				if entry, ok := event["entry"].(map[string]any); ok && name == "entry_appended" {
+					name += ":" + entry["customType"].(string)
+				}
+				seen = append(seen, name)
+			})
 			if err := session.BindExtensions(); err != nil {
 				return nil, err
 			}
 			if err := session.Prompt(context.Background(), "stream:3"); err != nil {
 				return nil, err
 			}
-			return "done", nil
+			encoded, err := json.Marshal(seen)
+			return string(encoded), err
 		},
 	})
 }

@@ -14,12 +14,13 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// childEventsProbe is the extension a child session's resource loader loads in the child_events scenario. It appends one JSON line to __LOG__ for each event it receives, with the context facts Pi's extension context gives a child: hasUI, scopedModels, model, isIdle and the answers of the dialogs of a context that has no UI.
+// childEventsProbe is the extension a child session's resource loader loads in the child_events scenario. It appends one JSON line to __LOG__ for each event it receives, with the context facts Pi's extension context gives a child: hasUI, scopedModels, model, isIdle and the answers of the dialogs of a context that has no UI. It also appends a custom entry from the handler of each event in `appended` with pi.appendEntry, which the session reports to its listeners as an entry_appended event, and one from turn_start with ctx.sessionManager.appendCustomEntry, which it does not.
 const childEventsProbe = `import { appendFileSync } from "node:fs";
 export default function (pi) {
   const LOG = __LOG__;
   const record = entry => appendFileSync(LOG, JSON.stringify(entry) + "\n");
   const scoped = ctx => ctx.scopedModels.map(s => s.model.provider + "/" + s.model.id + (s.thinkingLevel === undefined ? "" : "@" + s.thinkingLevel));
+  const appended = ["session_start", "input", "before_agent_start", "agent_start", "turn_start", "context", "message_start", "message_end", "turn_end", "agent_end"];
   const names = ["session_start", "input", "before_agent_start", "agent_start", "turn_start", "context", "message_start", "message_update", "message_end", "turn_end", "agent_end", "session_shutdown"];
   for (const type of names) pi.on(type, async (event, ctx) => {
     const entry = { type: type + (type.startsWith("message_") ? ":" + event.message.role : "") };
@@ -31,6 +32,8 @@ export default function (pi) {
       entry.ui = { notify: String(await ctx.ui.notify("hi")), select: String(await ctx.ui.select("t", ["a", "b"])), confirm: String(await ctx.ui.confirm("t", "m")), input: String(await ctx.ui.input("t")), editor: String(await ctx.ui.editor("t")) };
     }
     record(entry);
+    if (appended.includes(type)) pi.appendEntry("probe:" + type + (type.startsWith("message_") ? ":" + event.message.role : ""), { type });
+    if (type === "turn_start") ctx.sessionManager.appendCustomEntry("direct:" + type, { type });
   });
 }
 `
@@ -39,6 +42,13 @@ export default function (pi) {
 //
 //go:embed testdata/child-session-extension-events.json
 var childExtensionEventsWant string
+
+// childEntryEventsWant is the events the session reports to its listener for the same run, in order: Pi's createAgentSession emits an entry_appended event, named here by the entry's custom type, from the appendEntry call of each handler, before the event the handler was handling reaches the listener, and none for ctx.sessionManager.appendCustomEntry.
+//
+// mutation-checked: dropping the emit of reportExtensionEntry (coding/session_extension_loader_host.go) fails every row (no entry_appended reaches the listener); emitting for ctx.sessionManager.appendCustomEntry too fails every row with an extra entry_appended:direct:turn_start.
+//
+//go:embed testdata/child-session-entry-events.json
+var childEntryEventsWant string
 
 // checkChildExtensionEvents runs the fixture's child_events tool once with the child's resources selected by option and once with a DefaultResourceLoader the extension built, and compares what the probe recorded with Pi's.
 //
@@ -68,8 +78,20 @@ func checkChildExtensionEvents(t *testing.T, scratch string, ext extension.Exten
 			if err := os.MkdirAll(filepath.Join(dir, "project"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := ext.Tools["child_events"].Definition.Execute(t.Context(), "call", args, nil); err != nil {
+			result, err := ext.Tools["child_events"].Definition.Execute(t.Context(), "call", args, nil)
+			if err != nil {
 				t.Fatal(err)
+			}
+			var wantListener []string
+			if err := json.Unmarshal([]byte(childEntryEventsWant), &wantListener); err != nil {
+				t.Fatal(err)
+			}
+			var gotListener []string
+			if err := json.Unmarshal([]byte(result.Text()), &gotListener); err != nil {
+				t.Fatalf("child_events returned %q: %v", result.Text(), err)
+			}
+			if !reflect.DeepEqual(gotListener, wantListener) {
+				t.Fatalf("the child's listener received\n%s\nwant Pi's\n%s", strings.Join(gotListener, "\n"), strings.Join(wantListener, "\n"))
 			}
 			raw, err := os.ReadFile(logPath)
 			if err != nil {

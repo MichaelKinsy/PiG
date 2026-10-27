@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 	"github.com/MichaelKinsy/PiG/internal/execfile"
 	"github.com/MichaelKinsy/PiG/internal/filelock"
 )
@@ -52,8 +51,8 @@ type cellFailureMeta struct {
 	Cause       string `json:"cause"`
 	Log         string `json:"log,omitempty"`
 	// Drift is the SDK drift of the failure: a recorded failure keeps the changes the build named.
-	Drift   []upgrade.Drift `json:"drift,omitempty"` //portlint:allow emptydrop PiG-only cache record of a build failure; Pi has no such record and no reader tells absent from empty
-	Created int64           `json:"created"`
+	Drift   []Drift `json:"drift,omitempty"` //portlint:allow emptydrop PiG-only cache record of a build failure; Pi has no such record and no reader tells absent from empty
+	Created int64   `json:"created"`
 }
 
 type cacheableBuildFailure struct {

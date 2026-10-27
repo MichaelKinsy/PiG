@@ -11,6 +11,9 @@ _ESTIMATED_IMAGE_CHARS = 4800
 def _utf16_length(text: Any) -> int:
     if not isinstance(text, str):
         return 0
+    if text.isascii():
+        # One unit per character, and CPython knows an ASCII string without reading it.
+        return len(text)
     return len(text.encode("utf-16-le", "surrogatepass")) // 2
 
 

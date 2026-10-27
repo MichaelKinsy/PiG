@@ -38,7 +38,7 @@ func (stream *AssistantMessageEventStream) publishPartialLocked(message *Assista
 			walk := plainWalk{knownValid: stream.validated}
 			copied, ok := clonePlainJSON(value, &walk)
 			if !ok {
-				return cloneJSONValue(value)
+				return cloneArgumentsValue(value)
 			}
 			if len(walk.longest) > len(validated) {
 				validated = walk.longest

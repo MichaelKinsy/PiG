@@ -61,6 +61,31 @@ func parse(data []byte) *piglet.Piglet {
 	return p
 }
 
+// OverlayBase returns the baked Piglet as the base of an overlay when this Piglet Binary accepts one (its Piglet set
+// build.allowOverlays), and nil otherwise, including for stock pig. The flag is part of the baked Piglet, so the digest the
+// record and the signed manifest name covers it.
+//
+// pig additive (D202): a Piglet Binary can declare that it accepts overlay Piglets.
+func OverlayBase() *piglet.OverlayBase {
+	if !IsPigletBinary() {
+		return nil
+	}
+	p, err := piglet.ParseBytes(pigletYAML)
+	if err != nil || p.Build == nil || !p.Build.AllowOverlays {
+		return nil
+	}
+	return &piglet.OverlayBase{Piglet: p, Digest: "sha256:" + hex.EncodeToString(sha256Sum(pigletYAML))}
+}
+
+// Name returns the name of the Piglet baked into this Binary, or "" for stock pig.
+func Name() string {
+	record, err := DefaultClosure()
+	if err != nil || record == nil {
+		return ""
+	}
+	return record.Piglet
+}
+
 // DefaultClosure returns the Piglet resolution record baked into this binary,
 // or nil when none was baked (stock pig). A non-empty but malformed closure is
 // a fail-closed condition: it returns an error rather than a nil record so the

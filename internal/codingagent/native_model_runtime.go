@@ -149,6 +149,7 @@ func mergeProviderConfigInput(previous *ProviderConfigInput, input ProviderConfi
 	if input.BaseURL != "" {
 		merged.BaseURL = input.BaseURL
 	}
+	// pig divergence (D203): a re-registration's empty apiKey keeps the earlier key; Pi's merge replaces it with "" (it keeps the earlier value only for undefined, model-runtime.ts registerProvider).
 	if input.APIKey != "" {
 		merged.APIKey = input.APIKey
 	}

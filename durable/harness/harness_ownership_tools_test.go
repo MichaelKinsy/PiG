@@ -109,7 +109,9 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		handle := &syncValue[durable.ConversationHandle]{}
 		missing := &syncValue[durable.ConversationHandle]{}
 		submission := &syncValue[durable.Submission]{}
+		toolContext := &syncValue[context.Context]{}
 		addTool(t, setup.Registry, ownTool("delegate", "Delegates", emptyObjectSchema(), func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			toolContext.put(ctx)
 			child, err := ownCreateChild(ctx, api)
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
@@ -141,6 +143,10 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		if absent, _ := missing.get(); absent != nil {
 			t.Fatalf("handle of an absent conversation is %v, want nil", absent)
 		}
+		// The call's invocation ends in the step after its phase, on its own goroutine, and the parent's turn goes on from the call's result
+		// without waiting for it. The call's context is the invocation's, which the end cancels after it marks the invocation ended.
+		callContext, _ := toolContext.get()
+		<-callContext.Done()
 		// The call ended: the handle and its submission reject, while the submission record remains.
 		bound, _ := handle.get()
 		_, submitErr := bound.Submit(testContext, ownInput("again"))

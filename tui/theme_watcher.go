@@ -3,6 +3,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -11,6 +12,15 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 )
+
+// windowsOverflowMessage is the error fsnotify v1.5.4 sends on Windows when ReadDirectoryChangesW overflows. That backend has no sentinel for it, sends a nameless event just before it, and re-arms the watch afterwards.
+const windowsOverflowMessage = "short read in readEvents()"
+
+// isWatchOverflow reports whether err says events were lost while the native watch stays armed. A reload re-reads the file, so lost events need no other recovery.
+func isWatchOverflow(err error) bool {
+	//portlint:allow erroridentity fsnotify v1.5.4's Windows backend returns errors.New("short read in readEvents()") with no sentinel, so the message is its only identity
+	return errors.Is(err, fsnotify.ErrEventOverflow) || err != nil && err.Error() == windowsOverflowMessage
+}
 
 // ThemeWatcher owns native notifications and the reload worker for one interactive mode. Close cancels and joins the worker. Dispatch transfers publication to the UI owner; file reading and color resolution stay on the worker.
 type ThemeWatcher struct {
@@ -162,6 +172,17 @@ func (w *ThemeWatcher) run() {
 			timer.Stop()
 		}
 	}()
+	scheduleReload := func(name string, generation uint64) {
+		pendingName, pendingGeneration = name, generation
+		if timer == nil {
+			// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:startThemeWatcher
+			timer = time.NewTimer(100 * time.Millisecond)
+		} else {
+			// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:startThemeWatcher
+			timer.Reset(100 * time.Millisecond)
+		}
+		timerC = timer.C
+	}
 	for {
 		w.mu.Lock()
 		watcher, name, generation, changed := w.watcher, w.name, w.generation, w.changed
@@ -180,7 +201,14 @@ func (w *ThemeWatcher) run() {
 			return
 		case <-changed:
 			continue
-		case <-failures:
+		case err := <-failures:
+			// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:startThemeWatcher — a change without a filename reloads, and only fs.watch's error handler closes the watcher. An overflow is a lost-event notice, so it reloads and keeps watching.
+			if isWatchOverflow(err) {
+				if selectedThemeIs(name) {
+					scheduleReload(name, generation)
+				}
+				continue
+			}
 			// The error handler closes notifications without cancelling a reload scheduled by an earlier file event.
 			w.closeNative(watcher)
 		case event, ok := <-events:
@@ -191,15 +219,7 @@ func (w *ThemeWatcher) run() {
 			if !selectedThemeIs(name) || event.Name != "" && filepath.Base(event.Name) != name+".json" {
 				continue
 			}
-			pendingName, pendingGeneration = name, generation
-			if timer == nil {
-				// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:startThemeWatcher
-				timer = time.NewTimer(100 * time.Millisecond)
-			} else {
-				// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:startThemeWatcher
-				timer.Reset(100 * time.Millisecond)
-			}
-			timerC = timer.C
+			scheduleReload(name, generation)
 		case <-timerC:
 			timerC = nil
 			w.reload(pendingName, pendingGeneration)

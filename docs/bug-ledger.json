@@ -930,6 +930,30 @@
       ]
     },
     {
+      "id": "BF-0adc7a6",
+      "title": "A provider that an extension registers while it loads no longer fails the load when the model registry…",
+      "symptom": "A provider that an extension registers while it loads no longer fails the load when the model registry rejects it.",
+      "rootCause": "The Extension Host asked the model registry at once for each provider an extension registered while it loaded, and failed the whole extension load with the registry's message when the registry rejected it (\"Failed to load extension: Provider x, model y: no \"api\" specified.\"). Pi's loader queues the registration; the services that bind the model runtime apply the queue after every extension loaded and report a rejection as the diagnostic `Extension \"\u003cpath\u003e\" error: \u003cmessage\u003e`, and the extension stays loaded (loader.ts:217-218, agent-session-services.ts:157-169, runner.ts:471-487).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider that an extension registers while it loads no longer fails the load when the model registry rejects it. The host asked the registry at once and reported `Failed to load extension: Provider x, model y: no \"api\" specified.`, with the `pig -ne` hint. Pi queues the registration and applies it after every extension has loaded. PiG now does the same: the extension stays loaded, the other registrations apply, and startup reports `Error: Extension \"\u003cpath\u003e\" error: Provider x, model y: no \"api\" specified. Set it at model level or provider level.` as Pi does. A registration that an extension makes after it loaded still applies at once and returns its error to the extension.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0adc7a6152",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_host_wiring_guard_test.go::TestBuildFlushesTheExtensionHostProviderRegistrations",
+        "test/extension-conformance/provider_registration_diagnostic_test.go::TestProviderRegistrationFailureIsADiagnosticAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/88-startup-provider-registration-failure.toml"
+      ]
+    },
+    {
       "id": "BF-0ae3fcf",
       "title": "The login provider list selects with Enter when `tui.select.confirm` is rebound, as Pi's search input submits…",
       "symptom": "The login provider list selects with Enter when `tui.select.confirm` is rebound, as Pi's search input submits it, and starts its search cursor at the beginning of a prefilled query.",
@@ -2566,6 +2590,26 @@
         "durable/storage/jsonl/jsonl_storage_reads_test.go::TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
         "durable/tools/bash_input_test.go::TestBashToolInputIsTheBashSchemaArguments"
       ]
+    },
+    {
+      "id": "BF-1c6b864",
+      "title": "A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns…",
+      "symptom": "A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns, now reports `entry_appended` to its listeners when an extension that its resource loader loaded calls `pi.appendEntry`, as Pi does.",
+      "rootCause": "A Session whose resource loader started the extensions (a child session an extension creates, or coding.CreateAgentSession) wrote the entry that pi.appendEntry appended to the log and told no listener. Pi's appendEntry action also emits entry_appended (agent-session.ts:3321-3327), before the event the extension was handling reaches the listeners; ctx.sessionManager. appendCustomEntry emits none. The loader host's appendEntry action now emits the event the same way every mode's action does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns, now reports `entry_appended` to its listeners when an extension that its resource loader loaded calls `pi.appendEntry`, as Pi does. The event arrives before the event the extension was handling, and `ctx.sessionManager.appendCustomEntry` still writes the log without an event. The Session wrote the entry and told no listener.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1c6b8643ab",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-1ca0e2f",
@@ -5519,6 +5563,25 @@
       ]
     },
     {
+      "id": "BF-36e82ad",
+      "title": "fix(durable): a non-finite number is a strict JSON error whichever JSON package a value's own encoder used",
+      "symptom": "fix(durable): a non-finite number is a strict JSON error whichever JSON package a value's own encoder used",
+      "rootCause": "Fix-Commit:",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "36e82ade57",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-37c6048",
       "title": "fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start",
       "symptom": "fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start",
@@ -5677,6 +5740,33 @@
       ],
       "tests": [
         "mcp/client_options_test.go::TestClientInitializeCarriesTheConfiguredClientOptions"
+      ]
+    },
+    {
+      "id": "BF-3a0d0e1",
+      "title": "A `Provider` object that an extension registers while it loads is now applied after every extension has…",
+      "symptom": "A `Provider` object that an extension registers while it loads is now applied after every extension has loaded, like a provider configuration, instead of at once.",
+      "rootCause": "Pi's loader queues a Provider object as it queues a configuration, and its model runtime stores nothing of a registration it refuses. The host now queues a Provider object declared while an extension loads, whatever registry is bound, and a registration the registry refuses when the queue drains gives back what the host recorded at load: the replica record, the claim on the provider's callbacks, the bridged OAuth login, a Provider object's proxy. A superseded owner is told only when the registry accepts. A scenario reloads an extension whose registration is rejected and compares with Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `Provider` object that an extension registers while it loads is now applied after every extension has loaded, like a provider configuration, instead of at once. When the model registry rejects a registration, PiG now leaves nothing of it behind: the login it declared, its entry in the model list that extensions read, and its claim on the provider are given back, so a registration of the same provider by another extension stays as it was. Pi's registry validates a registration before it stores anything of it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3a0d0e1711",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_host_wiring_guard_test.go::TestBuildFlushesTheExtensionHostProviderRegistrations",
+        "coding/extension/host/subprocess/native_provider_callback_context_test.go::TestNodeNativeProviderReceivesTheCallersOnResponseAndOnPayloadByName",
+        "coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthRefreshAndLogin",
+        "coding/extension/host/subprocess/provider_load_rejection_rollback_test.go::TestRejectedLoadRegistrationLeavesAnEarlierRegistrationIntact",
+        "coding/extension/host/subprocess/provider_object_load_queue_test.go::TestProviderObjectRegisteredWhileLoadingIsQueuedForABoundRegistry",
+        "test/parity/scenarios/extensions-runtime/89-reload-provider-registration-failure.toml"
       ]
     },
     {
@@ -6545,6 +6635,25 @@
         "tui/highlight_resume_scaling_norace_test.go::TestScalingStreamedCodeBlockHighlight",
         "tui/internal/hljs/resume_test.go::TestPatternReach"
       ]
+    },
+    {
+      "id": "BF-4312595",
+      "title": "fix(ai,durable): keep a value that is not JSON an error when a message or a nested result is encoded",
+      "symptom": "fix(ai,durable): keep a value that is not JSON an error when a message or a nested result is encoded",
+      "rootCause": "Fix-Commit:",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "43125951f9",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-432ab7f",
@@ -9124,6 +9233,25 @@
         }
       ],
       "commitsFrom": "release note",
+      "tests": []
+    },
+    {
+      "id": "BF-579b4d2",
+      "title": "fix(durable): a non-finite number is a strict JSON error whichever JSON package a value's own encoder used",
+      "symptom": "fix(durable): a non-finite number is a strict JSON error whichever JSON package a value's own encoder used",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "579b4d240a",
+          "date": "2026-10-24"
+        }
+      ],
       "tests": []
     },
     {
@@ -17796,6 +17924,25 @@
       ]
     },
     {
+      "id": "BF-87a6ac5",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "UnmarshalKeepingSurrogates is generic over its destination, so the call sites decode into their own concrete types. The perf-lint entry for FromJsonValue's typed decode keeps its count and follows the callee's new name. unmarshalOrdered is generic for the same reason.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "87a6ac512c",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-88177e8",
       "title": "fix(cli): type the validate-only scratch-fetch marker as D28 and extend the record",
       "symptom": "fix(cli): type the validate-only scratch-fetch marker as D28 and extend the record",
@@ -17982,6 +18129,29 @@
       "tests": [
         "test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules",
         "test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence"
+      ]
+    },
+    {
+      "id": "BF-8a88c34",
+      "title": "On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version",
+      "symptom": "On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version.",
+      "rootCause": "An overflow of the native change buffer loses events but leaves the watch armed. The run loop closed the native watcher on every error, so a burst of writes that overflowed the Windows ReadDirectoryChangesW buffer ended the watch and the final write was never reloaded. An overflow now schedules a reload, as Pi does for a change without a filename, and keeps watching; any other error still closes the watcher.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version. A burst that overflowed the native change buffer made the watcher treat the overflow as a failure and close its watch, so writes after the overflow were never seen and the theme kept an older version of the file (seen as `accent=\"#123456\" want=\"#000064\"` in Windows CI, only while the machine was loaded). An overflow now reloads the theme file, as Pi reloads on a change without a filename, and the watcher keeps watching; any other watch failure still closes it, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8a88c34d51",
+          "date": "2026-10-26"
+        }
+      ],
+      "tests": [
+        "tui/theme_watcher_upstream_test.go::TestThemeWatcherOtherErrorsCloseNativeWatcher",
+        "tui/theme_watcher_upstream_test.go::TestThemeWatcherOverflowReloadsAndKeepsWatching"
       ]
     },
     {
@@ -20948,6 +21118,38 @@
       ]
     },
     {
+      "id": "BF-958e80d",
+      "title": "A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session…",
+      "symptom": "Pi reads such a number as an infinity, keeps it in the call's arguments, and writes `null` wherever it serializes them (events, the session file, requests); PiG now does the same, for a streamed argument text, a tool call a Go caller or the faux provider supplies, and an Anthropic `content_block_start` input, which used to end the turn with a decode error.",
+      "rootCause": "Pi's JSON.parse reads 1e999 as Infinity (and partial-json reads Infinity, -Infinity and NaN), keeps it in a tool call's arguments, and every serialization, JSON.stringify, writes null. A tool call in PiG could hold a non-finite float64 (the streamed text of a provider that hands the cell the parser's number, a Go caller's FauxToolCall, a provider that decodes the whole input) but publishing it copied the arguments through cloneJSONValue, which panicked with \"clone validated JSON value: json: unsupported value: +Inf\" and ended the session.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session with a panic (`clone validated JSON value: json: unsupported value: +Inf`). Pi reads such a number as an infinity, keeps it in the call's arguments, and writes `null` wherever it serializes them (events, the session file, requests); PiG now does the same, for a streamed argument text, a tool call a Go caller or the faux provider supplies, and an Anthropic `content_block_start` input, which used to end the turn with a decode error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "958e80d99f",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": [
+        "ai/tool_call_nonfinite_test.go::FuzzToolArgumentNumberLiterals",
+        "ai/tool_call_nonfinite_test.go::TestCellPublishesNonFiniteArguments",
+        "ai/tool_call_nonfinite_test.go::TestNonFiniteArgumentsAreValidCloneAndSerializeAsStringify",
+        "ai/tool_call_nonfinite_test.go::TestNonFiniteArgumentsDoNotExcuseOtherFaults",
+        "ai/tool_call_nonfinite_test.go::TestStreamedNonFiniteArgumentsDoNotPanic",
+        "ai/tool_call_nonfinite_test.go::TestStreamedNonFiniteArgumentsMatchPi",
+        "ai/transcript_frozen_test.go::TestFrozenContextStillValidatesAndStillCopiesTheCallersTools",
+        "ai/transcript_test.go::TestNormalizeContextAcceptsNonFiniteToolArguments",
+        "coding/cli/nonfinite_tool_args_test.go::TestPrintJSONModeWritesNonFiniteToolArgumentsAsNull",
+        "coding/cli/nonfinite_tool_args_test.go::TestRPCEventsWriteNonFiniteToolArgumentsAsNull",
+        "coding/cli/rpc_output_differential_test.go::TestRPCEventLinesWriteNullForANonFiniteToolCall"
+      ]
+    },
+    {
       "id": "BF-95a5f79",
       "title": "RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does",
       "symptom": "RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does.",
@@ -22122,6 +22324,34 @@
       ]
     },
     {
+      "id": "BF-D198",
+      "title": "The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`…",
+      "symptom": "none.",
+      "rootCause": "a Codec's callbacks have no consumer outside `Value.Decode` and `Value.Encode` (`typebox/build/value/codec/callback.mjs`, the only reader of `~codec`), which pi-ai does not export (`ai/src/index.ts` exports `Static`, `TSchema` and `Type` from typebox) and no SDK serves. Pi's own tool-argument validation does not call them (`ai/src/utils/validation.ts` uses `Value.Convert` and `Compile(schema).Check`). A port could store the callbacks, but nothing in any SDK or in the host could ever call them, which is an inert member that accepts the call and does nothing.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D198",
+      "removeWhen": "an SDK serves `Value.Decode`/`Value.Encode` (or a host call runs a codec) so a stored callback pair has a consumer.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "a8c3cdfb85",
+          "date": "2026-10-24"
+        },
+        {
+          "hash": "eb9071495b",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/type_vectors_test.go::TestTypeOmitsTheCodecFamily",
+        "test/extension-conformance/type_schema_registration_test.go::TestConformance_TypeSchemaToolParametersAgreeAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-D200",
       "title": "With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and…",
       "symptom": "none claimed; Pi's behaviour is a crash at load rather than a reported error, and is kept for the paths that need a home directory.",
@@ -22148,6 +22378,29 @@
         "coding/cli/no_home_directory_test.go::TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeCommands",
         "coding/cli/no_home_directory_test.go::TestStartupFailsWhereNoHomeDirectoryExists",
         "coding/cli/no_home_directory_test.go::TestStartupFollowsNodeWhenThereIsNoHomeDirectory"
+      ]
+    },
+    {
+      "id": "BF-D203",
+      "title": "registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as…",
+      "symptom": "the inconsistency above: `\"\"` is a configured key to `configuredApiKey`, `configuredRequestAuthStatus` and the composed `check`, and a missing one to `provider-composer.ts:318`.",
+      "rootCause": "Pi's behaviour is an accident of `??` on a string. The empty string is not a form the option documents (`packages/coding-agent/src/core/extensions/types.ts:1936`: \"API key literal, env interpolation ($ENV_VAR or ${ENV_VAR}), or leading !command\"), and Pi treats `\"\"` as missing where it validates the same option (`provider-composer.ts:318`, `!config.apiKey`). Its effect is a provider that reads configured and available whose every request fails with `No API key for provider: \u003cid\u003e` (for example `packages/ai/src/api/openai-completions.ts:95`), so an extension that passes `process.env.KEY ?? \"\"` gets a selectable provider that cannot answer. Distinguishing `\"\"` from an absent key needs presence…",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D203",
+      "removeWhen": "Pi treats `\"\"` as missing in `configuredApiKey`, or the SDK API gains explicit presence for `apiKey` (a pointer or an option) and an owner decision asks for Pi's behaviour; then the three markers, the test and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "90ffbef9d1",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": [
+        "coding/register_provider_empty_apikey_test.go::TestRegisterProviderWithEmptyAPIKeyIsNotConfigured"
       ]
     },
     {
@@ -23919,6 +24172,25 @@
       ]
     },
     {
+      "id": "BF-b2b0c63",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "The lone-surrogate fidelity moves to the root: chordjson's default string unquote reads a surrogate escape as its unit, so delta.DecodeJson callers need no wrapper, durable/json.go and nested_result.go are back to main's calls (the nested result decodes with delta.DecodeJson and so keeps document order), NestedToolCallRecord is main's text again, and the stale any-trap entries are deleted.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b2b0c63c54",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b2c219f",
       "title": "fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes",
       "symptom": "fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes",
@@ -24958,6 +25230,28 @@
       "tests": [
         "coding/extension/host/subprocess/command_extra_option_test.go::TestNodeCommandWithAnUnknownOptionLoadsLikePi",
         "coding/extension/host/subprocess/register_declaration_fields_wiring_test.go::TestRegistrationDeclarationFieldsReachTheRegistry"
+      ]
+    },
+    {
+      "id": "BF-bb3d661",
+      "title": "An extension served in-process now refuses to serve a second connection while it serves one, with the error…",
+      "symptom": "A second serve of the same `sdk.Extension` used to overwrite the first one's state and leave the second host waiting for a registration that never came.",
+      "rootCause": "An Extension holds one connection, run context, tool lock and event bus. A second RunWithConn while the first ran overwrote that state and left the second host waiting for a register that never came: BenchmarkLoadInProcessProviders reused one Extension across a Host per iteration without waiting for the previous serve to end, and died with 'expected ready message, got shutdown' and then hung. The failure reproduces on origin/main with the same benchmark, so it is not the provider-queue change. The SDK now returns an error for the overlap; the benchmark waits for each serve to end.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension served in-process now refuses to serve a second connection while it serves one, with the error `this extension is already serving a connection; an Extension serves one connection at a time, so build a new one per connection`. A second serve of the same `sdk.Extension` used to overwrite the first one's state and leave the second host waiting for a registration that never came.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bb3d661967",
+          "date": "2026-10-25"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/extension_serve_overlap_test.go::TestExtensionRefusesASecondConcurrentServe"
       ]
     },
     {
@@ -28964,6 +29258,33 @@
       ]
     },
     {
+      "id": "BF-db1ee65",
+      "title": "A lone UTF-16 surrogate in a tool result's details, in a nested tool call's result, or in a code mode call's…",
+      "symptom": "It became three U+FFFD characters (`encoding/json` has no lone-surrogate string), so the preview bytes in a stored result differed from Pi's.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A lone UTF-16 surrogate in a tool result's details, in a nested tool call's result, or in a code mode call's argument or error preview now stays a lone surrogate through the Durable entry and its stored values, written as the `\\ud83d` escape that Pi's `JSON.stringify` writes, with `\u003c`, `\u003e` and `\u0026` left as they are. Before, it became three U+FFFD characters (`encoding/json` has no lone-surrogate string), so the preview bytes in a stored result differed from Pi's. The session file, JSON mode and RPC mode already wrote the escape and are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "db1ee65be2",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "ai/lone_surrogate_json_pi_oracle_test.go::TestMessagesKeepALoneSurrogateAsPiDoes",
+        "coding/cli/lone_surrogate_json_lines_pi_oracle_test.go::TestJSONLinesOfAMessageWithALoneSurrogateAreWhatPisJSONStringifyWrites",
+        "durable/codemode/lone_surrogate_preview_test.go::TestAPreviewCutInsideASurrogatePairKeepsItsEscapeLikePi",
+        "durable/codemode/lone_surrogate_tool_result_test.go::TestAToolResultWithALoneSurrogateKeepsItThroughTheHarnessAndTheEntry",
+        "durable/json_lone_surrogate_test.go::TestToJsonValueAndFromJsonValueKeepALoneSurrogate",
+        "internal/codingagent/lone_surrogate_session_pi_oracle_test.go::TestSessionLinesWithALoneSurrogateAreWhatPisJSONStringifyWrites"
+      ]
+    },
+    {
       "id": "BF-db7007d",
       "title": "A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed…",
       "symptom": "A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed catalog entry (Pi's `getRadiusModelsFromConfig` spreads each gateway model); it was dropped before.",
@@ -30927,6 +31248,32 @@
         "test/perfgate/process_test.go::TestRPCTurnProcessGate",
         "tui/perf_gate_norace_test.go::TestKeystrokeToFrameAllocationGate",
         "tui/perf_gate_norace_test.go::TestStreamingMarkdownFrameAllocationGate"
+      ]
+    },
+    {
+      "id": "BF-de38ce2",
+      "title": "fix(ai,durable): a lone UTF-16 surrogate survives the JSON of a tool result, a nested call result and a…",
+      "symptom": "fix(ai,durable): a lone UTF-16 surrogate survives the JSON of a tool result, a nested call result and a stored value, as in Pi",
+      "rootCause": "Fix-Commit:",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "de38ce2324",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": [
+        "ai/lone_surrogate_json_pi_oracle_test.go::TestMessagesKeepALoneSurrogateAsPiDoes",
+        "coding/cli/lone_surrogate_json_lines_pi_oracle_test.go::TestJSONLinesOfAMessageWithALoneSurrogateAreWhatPisJSONStringifyWrites",
+        "durable/codemode/lone_surrogate_preview_test.go::TestAPreviewCutInsideASurrogatePairKeepsItsEscapeLikePi",
+        "durable/codemode/lone_surrogate_tool_result_test.go::TestAToolResultWithALoneSurrogateKeepsItThroughTheHarnessAndTheEntry",
+        "durable/json_lone_surrogate_test.go::TestToJsonValueAndFromJsonValueKeepALoneSurrogate",
+        "internal/codingagent/lone_surrogate_session_pi_oracle_test.go::TestSessionLinesWithALoneSurrogateAreWhatPisJSONStringifyWrites"
       ]
     },
     {
@@ -34489,6 +34836,25 @@
       ]
     },
     {
+      "id": "BF-f992050",
+      "title": "fix(ai,durable): keep a value that is not JSON an error when a message or a nested result is encoded",
+      "symptom": "fix(ai,durable): keep a value that is not JSON an error when a message or a nested result is encoded",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f992050b6d",
+          "date": "2026-10-24"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-fa3da97",
       "title": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before…",
       "symptom": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.",
@@ -36353,9 +36719,23 @@
       "entry": "BF-D196"
     },
     {
+      "id": "D198",
+      "title": "The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`…",
+      "entry": "BF-D198"
+    },
+    {
+      "id": "D199",
+      "title": "PiG lists OpenRouter's :nitro and :floor routing variants beside every OpenRouter model, where Pi lists only…"
+    },
+    {
       "id": "D200",
       "title": "With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and…",
       "entry": "BF-D200"
+    },
+    {
+      "id": "D203",
+      "title": "registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as…",
+      "entry": "BF-D203"
     }
   ],
   "exemptCommits": {

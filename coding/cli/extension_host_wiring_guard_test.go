@@ -165,7 +165,7 @@ func TestBuildFlushesTheExtensionHostVirtualModels(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	diagnostics := flushExtensionHostVirtualModels(host, services.Registry())
+	diagnostics := flushExtensionHostRegistrations(host, services.Registry())
 	want := []codingagent.AgentSessionRuntimeDiagnostic{{Type: "error", Message: fmt.Sprintf(`Extension "/ext/router.ts" error: Virtual model %s/%s conflicts with a physical model.`, conflict.Provider, conflict.ID)}}
 	if !reflect.DeepEqual(diagnostics, want) {
 		t.Fatalf("diagnostics = %+v, want %+v", diagnostics, want)
@@ -190,7 +190,48 @@ func TestBuildFlushesTheExtensionHostVirtualModels(t *testing.T) {
 	if model := services.ModelRuntime().GetModel("router", "late"); model != nil {
 		t.Fatal("unregistering a virtual model after the flush left it in the model runtime")
 	}
-	if diagnostics := flushExtensionHostVirtualModels(nil, services.Registry()); diagnostics != nil {
+	if diagnostics := flushExtensionHostRegistrations(nil, services.Registry()); diagnostics != nil {
 		t.Fatalf("a build without a host reported %+v", diagnostics)
+	}
+}
+
+// A build flushes the provider registrations the host's extensions queued while they loaded the way Pi's createAgentSessionServices does (agent-session-services.ts:157-169): a registration the model registry rejects is the error diagnostic `Extension "<path>" error: <message>` and the others apply, whether or not the host bound the registry before the extensions loaded, as bindProviderRegistry binds it when the host is created. A registration an extension unregistered before the flush does not apply.
+func TestBuildFlushesTheExtensionHostProviderRegistrations(t *testing.T) {
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer services.Close()
+	host := subprocess.NewHost(t.TempDir())
+	defer host.Shutdown("test complete")
+	bindProviderRegistry(host, services.Registry().ModelRegistry)
+	model := []extension.ProviderModelConfig{{ID: "m", Name: "M"}}
+	queue := func(name, api string) {
+		host.Runtime().QueueProviderRegistration(name, extension.ProviderConfig{API: ai.API(api), BaseURL: "https://" + name + ".invalid/v1", APIKey: "key", Models: model}, "/ext/"+name+".ts", nil)
+	}
+	queue("good", "openai-completions")
+	queue("bad", "")
+	queue("withdrawn", "openai-completions")
+	host.Runtime().UnregisterProvider("withdrawn")
+	if services.Registry().Find("good", "m") != nil {
+		t.Fatal("a registration queued while an extension loaded reached the registry before the build flushed it")
+	}
+	diagnostics := flushExtensionHostRegistrations(host, services.Registry())
+	want := []codingagent.AgentSessionRuntimeDiagnostic{{Type: "error", Message: `Extension "/ext/bad.ts" error: Provider bad, model m: no "api" specified. Set it at model level or provider level.`}}
+	if !reflect.DeepEqual(diagnostics, want) {
+		t.Fatalf("diagnostics = %+v, want %+v", diagnostics, want)
+	}
+	if services.Registry().Find("good", "m") == nil {
+		t.Fatal("the accepted registration did not reach the registry")
+	}
+	if services.Registry().Find("bad", "m") != nil || services.Registry().Find("withdrawn", "m") != nil {
+		t.Fatal("a rejected or unregistered registration reached the registry")
+	}
+	if pending := host.Runtime().PendingProviderRegistrations(); len(pending) != 0 {
+		t.Fatalf("pending provider registrations after the build flushed them: %+v", pending)
+	}
+	// Later registrations apply at once and return their error to the extension (runner.ts:525-531).
+	if err := host.Runtime().RegisterProvider("late", extension.ProviderConfig{BaseURL: "https://late.invalid/v1", Models: model}, "/ext/late.ts"); err == nil {
+		t.Fatal("a rejected registration after the flush did not fail its caller")
 	}
 }

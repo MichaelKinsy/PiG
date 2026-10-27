@@ -355,6 +355,9 @@ func registerHostHelpersFixture(ext *sdk.Extension) {
 			Entries []struct {
 				Entry map[string]any `json:"entry"`
 			} `json:"entries"`
+			Contexts []struct {
+				Args []json.RawMessage `json:"args"`
+			} `json:"contexts"`
 			Images []struct {
 				Op       string `json:"op"`
 				Data     string `json:"data"`
@@ -402,6 +405,10 @@ func registerHostHelpersFixture(ext *sdk.Extension) {
 			}
 			entries[i] = messages
 		}
+		contexts := make([]any, len(golden.Contexts))
+		for i, c := range golden.Contexts {
+			contexts[i] = buildSessionContextReport(c.Args)
+		}
 		images := make([]any, len(golden.Images))
 		for i, c := range golden.Images {
 			var meta map[string]any
@@ -444,11 +451,59 @@ func registerHostHelpersFixture(ext *sdk.Extension) {
 		if err := ctx.CopyToClipboard(parts[2]); err != nil {
 			return err
 		}
-		wire, err := json.Marshal(map[string]any{"diffs": diffs, "entries": entries, "images": images, "creds": creds})
+		wire, err := json.Marshal(map[string]any{"diffs": diffs, "entries": entries, "contexts": contexts, "images": images, "creds": creds})
 		if err != nil {
 			return err
 		}
 		ctx.Notify("host_helpers:"+string(wire)+":end", "info")
 		return nil
 	})
+}
+
+// buildSessionContextReport runs sdk.BuildSessionContext over one vector call's arguments (entries, an optional leaf id that may be null, an optional index as id/entry pairs)
+// and reports {"result": ...} or {"throws": message} as Pi's vector does.
+func buildSessionContextReport(args []json.RawMessage) map[string]any {
+	fail := func(err error) map[string]any {
+		return map[string]any{"throws": strings.TrimPrefix(err.Error(), "TypeError: ")}
+	}
+	var entries []map[string]any
+	if err := json.Unmarshal(args[0], &entries); err != nil {
+		return fail(err)
+	}
+	leaf := sdk.SessionLeafLast
+	if len(args) > 1 {
+		var id *string
+		if err := json.Unmarshal(args[1], &id); err != nil {
+			return fail(err)
+		}
+		if id == nil {
+			leaf = sdk.SessionLeafNone
+		} else {
+			leaf = sdk.SessionLeafAt(*id)
+		}
+	}
+	var byID map[string]map[string]any
+	if len(args) > 2 {
+		var raw [][2]json.RawMessage
+		if err := json.Unmarshal(args[2], &raw); err != nil {
+			return fail(err)
+		}
+		byID = make(map[string]map[string]any, len(raw))
+		for _, pair := range raw {
+			var id string
+			var entry map[string]any
+			if err := json.Unmarshal(pair[0], &id); err != nil {
+				return fail(err)
+			}
+			if err := json.Unmarshal(pair[1], &entry); err != nil {
+				return fail(err)
+			}
+			byID[id] = entry
+		}
+	}
+	result, err := sdk.BuildSessionContext(entries, leaf, byID)
+	if err != nil {
+		return fail(err)
+	}
+	return map[string]any{"result": result}
 }

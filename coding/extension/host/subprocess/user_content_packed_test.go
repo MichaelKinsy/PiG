@@ -1,10 +1,8 @@
 package subprocess
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
-	"time"
 )
 
 // Packing is supported for Go, Rust and Python factories; Node is isolated,
@@ -41,7 +39,7 @@ func TestPackedUserMessageContentAcrossSDKs(t *testing.T) {
 				return nil
 			}})
 			host.SetUIBridge(bridge)
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+			ctx, cancel := buildContext(t)
 			defer cancel()
 			configs := tc.configs(t)
 			loaded, errs := host.LoadAll(ctx, configs)

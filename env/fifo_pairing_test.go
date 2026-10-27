@@ -44,11 +44,20 @@ func startFIFOWriter(t *testing.T, fifo, text string) <-chan struct{} {
 // exposed. Neither the product nor the writer can order the read after the close, because the read starts the moment
 // the open completes. So once the writer has exited and the read still has not returned, this signals end of file
 // again by opening and closing a write end. It never writes, so the bytes the read returns are the writer's.
+//
+// It returns only after the writer process was reaped. The exit of a writer shell makes the kernel send the test process SIGCHLD, which
+// the Go runtime handles, and a signal that arrives while the next step's reader sits in its blocking open ends that open early and
+// loses the next writer's bytes (see RerunWithoutAsyncPreemption); the steps of one test are ordered by their writers' exits.
 func readFIFO(t *testing.T, step, fifo string, exited <-chan struct{}, read func() outcome) outcome {
 	t.Helper()
 	value, err := readFIFOWithin(fifo, exited, read, fifoEOFRedeliveryInterval, fifoReadBound)
 	if err != nil {
 		t.Fatalf("%s of the FIFO: %v", step, err)
+	}
+	select {
+	case <-exited:
+	case <-time.After(fifoReadBound):
+		t.Fatalf("%s of the FIFO: its writer had not exited %s after the read returned", step, fifoReadBound)
 	}
 	return value
 }

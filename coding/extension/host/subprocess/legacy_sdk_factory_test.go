@@ -1,12 +1,10 @@
 package subprocess
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
 )
@@ -77,7 +75,7 @@ func TestHost_LegacySDKFactoryLoadsBesideCurrentSDKFactory(t *testing.T) {
 	h := NewHost(t.TempDir())
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return []ExtConfig{legacy, current}, nil })
 	t.Cleanup(func() { h.Shutdown("test done") })
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	if _, err := h.Reload(ctx); err != nil {
 		t.Fatalf("reload: %v", err)

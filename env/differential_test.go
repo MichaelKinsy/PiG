@@ -24,6 +24,7 @@ import (
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/env/node"
 	"github.com/MichaelKinsy/PiG/durable/tools"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // pair is a NodeExecutionEnv and a RemoteExecutionEnv over the same machine, each in its own root.
@@ -307,6 +308,9 @@ func TestRemoteExecutionEnvAgainstNodeExecutionEnv(t *testing.T) {
 		// upstream: packages/env/test/differential.test.ts:241
 		if runtime.GOOS == "windows" {
 			t.Skip("no FIFOs on Windows")
+		}
+		if testenv.RerunWithoutAsyncPreemption(t) {
+			return
 		}
 		local, remote, roots := pair(t, connection)
 		ctx := context.Background()

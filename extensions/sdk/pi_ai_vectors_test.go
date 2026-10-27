@@ -65,7 +65,7 @@ func vectorExports(t *testing.T, module string) []string {
 func loadGolden(t *testing.T) (cases []goldenCase, auth goldenAuth) {
 	t.Helper()
 	for _, export := range vectorExports(t, "pi-ai") {
-		if export == "envApiKeyAuth" || export == "createAssistantMessageEventStream" {
+		if export == "envApiKeyAuth" || export == "createAssistantMessageEventStream" || export == "Type" || export == "validateToolArguments" { // Type has its own vectors and tests (type_vectors_test.go); validateToolArguments is the host's (the Type.Refine conformance rows read its vectors; the SDKs have no counterpart)
 			continue
 		}
 		for _, c := range readVectors(t, "pi-ai", export) {

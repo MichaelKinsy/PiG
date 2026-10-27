@@ -139,6 +139,7 @@ func newScenarioRig(t *testing.T, sdk sdkscenarios.SDK, scenario sdkscenarios.Sc
 		return rig
 	}
 	rig.loaded = loaded
+	applyQueuedRegistrations(host)
 	return rig
 }
 

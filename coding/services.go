@@ -260,6 +260,11 @@ func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentia
 	}
 	services.modelRuntime = modelRuntime
 	services.registry = NewModelRegistry(modelRuntime)
+	if os.Getenv("PIG_TEST_FAUX") == "1" { //perf:ok once per Services construction, test-only registration
+		if err := registerHarnessTestFaux(reg); err != nil {
+			return nil, err
+		}
+	}
 	reg.SetAvailabilityRefresh(func(ctx context.Context, providers []string) ai.ModelsRefreshResult {
 		return modelRuntime.refreshAvailability(ctx, ai.ModelsRefreshOptions{Providers: providers}, ai.ModelsRefreshResult{})
 	})
@@ -582,10 +587,6 @@ func (runtime *ModelRuntime) knowsProvider(model *ai.Model, provider ai.Provider
 	if _, registryBuilt := provider.(*requestOptionsProvider); registryBuilt {
 		return true
 	}
-	// The PIG_TEST_FAUX provider stands for the provider Pi's parity harness registers from an extension, which Models knows.
-	if provider != nil && provider.ID() == "test-faux" && os.Getenv("PIG_TEST_FAUX") == "1" {
-		return true
-	}
 	id := model.ProviderMeta.ProviderID
 	if id == "" && provider != nil {
 		id = provider.ID()
@@ -737,7 +738,7 @@ func mergeRuntimeHeaders(base map[string]string, override ai.ProviderHeaders) ai
 // modelRuntimeRequiresAuth reports whether a provider without a registered auth contract needs configured auth. Amazon Bedrock needs it: its upstream auth (amazon-bedrock.ts bedrockAuth.resolve) requires a stored key or an AWS env signal.
 func modelRuntimeRequiresAuth(providerID string) bool {
 	switch providerID {
-	case "ollama", "test-faux":
+	case "ollama":
 		return false
 	default:
 		return true
@@ -766,4 +767,19 @@ func (runtime *ModelRuntime) fail(ctx context.Context, stream *ai.AssistantMessa
 		message.Model = model.ID
 	}
 	_ = stream.Push(ai.ErrorEvent{Reason: reason, Error: message})
+}
+
+// registerHarnessTestFaux registers the provider Pi's parity harness registers from an extension (test/parity/testdata/test-faux-provider.ts): one provider
+// with a configured key, so it is an available provider of the model snapshot as there, and every consumer of that snapshot (the footer's provider count,
+// the selectors, the model lists) sees what Pi's sees. The faux stream itself is built in (buildProviderForEntry).
+func registerHarnessTestFaux(reg *icodingagent.ModelRegistry) error {
+	return reg.RegisterExtensionProvider("test-faux", extension.ProviderConfig{
+		BaseURL: "http://localhost:0",
+		APIKey:  "unused",
+		API:     "test-faux",
+		Models: []extension.ProviderModelConfig{{
+			ID: "faux-1", Name: "Test Faux", API: "test-faux", Provider: "test-faux", BaseURL: "http://localhost:0",
+			Input: []string{"text", "image"}, ContextWindow: ai.TestFauxContextWindow, MaxTokens: ai.TestFauxMaxTokens,
+		}},
+	})
 }

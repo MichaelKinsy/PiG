@@ -1,7 +1,6 @@
 package subprocess
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -190,7 +189,7 @@ func TestPackedMemberStoppingDoesNotReleaseAnotherMembersFileMutationTurn(t *tes
 			// Packed toolchain builds are intentionally serial in this package: Go, Rust and Python cell builds together can exhaust CI process memory.
 			configs := lang.prepare(t)
 			tools := map[string]string{"fm-a": "hold_a", "fm-b": "hold_b"}
-			ctx, cancel := context.WithTimeout(context.Background(), 360*time.Second)
+			ctx, cancel := buildContext(t)
 			defer cancel()
 			h := NewHost(t.TempDir())
 			h.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })

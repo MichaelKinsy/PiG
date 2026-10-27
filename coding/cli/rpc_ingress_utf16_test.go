@@ -148,7 +148,7 @@ func newRPCIngressWireClient(t *testing.T) *rpcIngressWireClient {
 	root := t.TempDir()
 	// testing cancels t.Context before cleanup; the fixture owns cancellation until it has closed stdin and joined the child's graceful exit.
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), testbudget.Wait(t))
-	cmd := exec.CommandContext(ctx, binary, "--offline", "--no-session", "--mode", "rpc", "--model", "test-faux/echo", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-context-files")
+	cmd := exec.CommandContext(ctx, binary, "--offline", "--no-session", "--mode", "rpc", "--model", "test-faux/faux-1", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-context-files")
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(), "HOME="+root, "PIG_HOME="+root, "PIG_CODING_AGENT_DIR="+filepath.Join(root, "agent"), "PI_CODING_AGENT_DIR="+filepath.Join(root, "agent"), "PIG_TEST_FAUX=1")
 	stdin, err := cmd.StdinPipe()

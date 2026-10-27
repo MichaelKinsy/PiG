@@ -538,6 +538,9 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 		if p.Build.OutputName != "" {
 			_, _ = fmt.Fprintf(stdout, "  output: %s\n", p.Build.OutputName)
 		}
+		if p.Build.AllowOverlays {
+			_, _ = fmt.Fprintln(stdout, "  allowOverlays: true")
+		}
 	}
 	if p.Release != nil && p.Release.Version != "" {
 		_, _ = fmt.Fprintf(stdout, "\nRelease:\n  version: %s\n", p.Release.Version)
@@ -1901,6 +1904,12 @@ func formatActivePiglet(active *Piglet) string {
 	}
 	if source := active.SourcePath(); source != "" {
 		_, _ = fmt.Fprintf(&out, "\nSource: %s", source)
+	}
+	// pig additive (D202): an overlay's lineage starts with the Piglet Binary it is laid over.
+	if len(active.lineage) > 0 {
+		if binary, ok := strings.CutPrefix(active.lineage[0].Source, "binary:"); ok {
+			_, _ = fmt.Fprintf(&out, "\nOverlay of: %s (Piglet Binary)", binary)
+		}
 	}
 	return out.String()
 }

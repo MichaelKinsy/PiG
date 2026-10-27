@@ -94,7 +94,10 @@ func TestSyncedTreeHoldsExactlyTheBundleWithDocumentedModes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := append(slices.Clone(bundle.files), markerFile)
+			want := []string{markerFile}
+			for _, name := range bundle.files {
+				want = append(want, stagedName(name))
+			}
 			slices.Sort(got)
 			slices.Sort(want)
 			if !slices.Equal(got, want) {

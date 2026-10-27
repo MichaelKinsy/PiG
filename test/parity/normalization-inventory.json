@@ -2415,6 +2415,25 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/88-startup-provider-registration-failure.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A rejected provider registration is the services diagnostic, not a failed extension load",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/89-reload-provider-registration-failure.toml",
+      "transforms": [
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
@@ -2592,6 +2611,24 @@
             "capture_start_last": true
           },
           "reason": "Owned visible surface: Forking before the source name refreshes the footer from the unnamed destination.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/footer/12-footer-provider-prefix.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: The footer prefixes the model with its provider when two providers are available",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

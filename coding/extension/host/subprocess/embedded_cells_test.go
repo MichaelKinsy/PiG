@@ -214,7 +214,7 @@ func buildRustEmbeddedOwnerCell(t *testing.T) embeddedOwnerCellFixture {
 	ownerRoot := writePackedRustFactoryCrate(t, "owner_rust", owner, "owner-tool")
 	unrelatedRoot := writePackedRustFactoryCrate(t, "unrelated_rust", unrelated, "unrelated-tool")
 	addRustUnrelatedSentinel(t, filepath.Join(unrelatedRoot, "src", "lib.rs"))
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
+	ctx, cancel := buildContext(t)
 	defer cancel()
 	cell, err := runtimecell.BuildRustPackedCell(ctx, t.TempDir(), "owner-rust-cell", []runtimecell.RustExtension{
 		{Name: owner, Root: ownerRoot, Package: "owner_rust", Factory: "new_extension", Hash: "owner"},

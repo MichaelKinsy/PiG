@@ -303,14 +303,14 @@ type anthEventMessageStart struct {
 type anthEventContentBlockStart struct {
 	Index        int `json:"index"`
 	ContentBlock struct {
-		Type      string `json:"type"` // "text" | "thinking" | "redacted_thinking" | "tool_use"
-		ID        string `json:"id,omitempty"`
-		Name      string `json:"name,omitempty"`
-		Text      string `json:"text,omitempty"`
-		Thinking  string `json:"thinking,omitempty"`
-		Signature string `json:"signature,omitempty"`
-		Input     any    `json:"input,omitempty"`
-		Data      string `json:"data,omitempty"` // redacted_thinking
+		Type      string         `json:"type"` // "text" | "thinking" | "redacted_thinking" | "tool_use"
+		ID        string         `json:"id,omitempty"`
+		Name      string         `json:"name,omitempty"`
+		Text      string         `json:"text,omitempty"`
+		Thinking  string         `json:"thinking,omitempty"`
+		Signature string         `json:"signature,omitempty"`
+		Input     anthStartInput `json:"input"`
+		Data      string         `json:"data,omitempty"` // redacted_thinking
 	} `json:"content_block"`
 }
 
@@ -2074,7 +2074,7 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 				})
 				builder.push(ThinkingStartEvent{ContentIndex: len(output.Content) - 1, Partial: output})
 			case "tool_use":
-				arguments, _ := ev.ContentBlock.Input.(map[string]any)
+				arguments, _ := ev.ContentBlock.Input.value.(map[string]any)
 				if arguments == nil {
 					arguments = JsonObject{}
 				}

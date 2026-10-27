@@ -198,18 +198,21 @@ func queueOnLine(t *testing.T, harness Harness, start func() <-chan struct{}) {
 	eventually(t, func() bool { return impl.LineJobs() > jobs || settled(done) })
 }
 
-// queueOnLineIn runs start and waits until a goroutine running operation (a stack substring such as
-// "harnessImpl).Inspect") waits on the Session line behind a held job, or until the operation settled. Unlike
-// queueOnLine it cannot mistake other line work, such as the scheduler's, for the operation's own job.
+// waitingOnLine counts the goroutines running operation (a stack substring such as "harnessImpl).Inspect") that wait on the Session
+// line behind a held job. Unlike LineJobs it cannot mistake other line work, such as the scheduler's, for the operation's own job.
+func waitingOnLine(operation string) int {
+	return goroutinesMatching(func(stack string) bool {
+		header, _, _ := strings.Cut(stack, "\n")
+		return strings.Contains(header, "[chan receive") && strings.Contains(stack, "durable/session.enqueue[") && strings.Contains(stack, operation)
+	})
+}
+
+// queueOnLineIn runs start and waits until a goroutine running operation waits on the Session line behind a held job, or until the
+// operation settled.
 func queueOnLineIn(t *testing.T, operation string, start func() <-chan struct{}) {
 	t.Helper()
 	done := start()
-	eventually(t, func() bool {
-		return settled(done) || goroutinesMatching(func(stack string) bool {
-			header, _, _ := strings.Cut(stack, "\n")
-			return strings.Contains(header, "[chan receive") && strings.Contains(stack, "durable/session.enqueue[") && strings.Contains(stack, operation)
-		}) > 0
-	})
+	eventually(t, func() bool { return settled(done) || waitingOnLine(operation) > 0 })
 }
 
 func goroutinesMatching(match func(stack string) bool) int {

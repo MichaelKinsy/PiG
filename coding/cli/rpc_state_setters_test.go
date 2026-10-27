@@ -31,7 +31,7 @@ func TestRPCStateSettersReachGetState(t *testing.T) {
 	}, "\n") + "\n"
 
 	binary := buildPigBinaryForSignalTest(t)
-	cmd := exec.Command(binary, "--mode", "rpc", "--model", "test-faux/echo", "--no-extensions", "--offline", "--no-session")
+	cmd := exec.Command(binary, "--mode", "rpc", "--model", "test-faux/faux-1", "--no-extensions", "--offline", "--no-session")
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), "HOME="+home, "PIG_HOME="+home, "PI_HOME="+home, "PIG_CODING_AGENT_DIR="+agentDir, "PI_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1")
 	cmd.Stdin = strings.NewReader(input)

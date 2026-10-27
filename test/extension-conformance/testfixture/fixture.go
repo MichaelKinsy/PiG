@@ -318,6 +318,8 @@ func Extension() *sdk.Extension {
 	registerHostPathsFixture(ext)
 	registerHostHelpersFixture(ext)
 	schemaRejected := RejectInvalidToolSchema(ext)
+	registerTypeSchemaTool(ext)
+	registerRefineProbe(ext)
 	ext.Command("schema-probe", "Report schema rejection", func(ctx sdk.Context, _ string) error {
 		ctx.Notify(fmt.Sprintf("schema-rejected:%t", schemaRejected), "info")
 		return nil

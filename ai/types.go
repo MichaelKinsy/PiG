@@ -177,13 +177,14 @@ func (content ToolCall) wire(stringify bool) (toolCallWire, error) {
 			return toolCallWire{content.ID, content.Name, arguments, content.ThoughtSignature, content.Namespace, content.ArgumentsError, content.scratch.wire()}, nil
 		}
 	}
-	if err := validateJsonValue(content.Arguments); err != nil {
+	if err := validateArgumentsValue(content.Arguments); err != nil {
 		return toolCallWire{}, fmt.Errorf("tool call arguments: %w", err)
 	}
 	var arguments any = content.Arguments
 	if content.Arguments == nil && content.nonObjectArguments != nil {
 		arguments = content.nonObjectArguments
-	} else if content.argumentOrder != nil && content.Arguments != nil {
+	} else if content.Arguments != nil && (content.argumentOrder != nil || !stringify && hasNonFiniteNumber(content.Arguments)) {
+		// encoding/json refuses a non-finite number, which JSON.stringify writes as null: the ordered encoder writes it so.
 		if stringify {
 			arguments = orderedArguments{content.Arguments, content.argumentOrder}
 		} else {

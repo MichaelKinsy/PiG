@@ -1103,9 +1103,14 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 	defer func() { _ = nc.Close() }()
 
 	e.stopFactoryPump()
+	e.eventMu.Lock()
+	// One Extension serves one connection at a time: its connection, run context, tool lock and event bus are the running serve's, so a second serve would corrupt the first and hang its host's load.
+	if e.running {
+		e.eventMu.Unlock()
+		return errExtensionAlreadyServing
+	}
 	e.runCtx, e.runCancel = context.WithCancel(context.Background())
 	defer e.runCancel()
-	e.eventMu.Lock()
 	if started != nil {
 		e.conn = started
 	} else {
@@ -1470,6 +1475,15 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		prepared, err := prepare(params)
 		_ = e.conn.respond(id, prepared, err)
+
+	case "tool_refine_arguments":
+		// validation.ts validateToolArguments: TypeBox calls a refinement's check (and error) while it validates; the host's traversal asks for each call here.
+		if req.Refine == nil {
+			_ = e.conn.respond(id, nil, fmt.Errorf("tool_refine_arguments names no refinement"))
+			return
+		}
+		result, err := e.runRefinement(req.Tool, req.Refine)
+		_ = e.conn.respond(id, result, err)
 
 	case requestWithSession:
 		_ = e.conn.respond(id, nil, e.dispatchWithSession(ctx, req.Args))

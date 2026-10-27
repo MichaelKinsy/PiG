@@ -3,6 +3,7 @@
 package pigsdk
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"os/exec"
@@ -91,6 +92,37 @@ func TestSyncStagesAllLanguages(t *testing.T) {
 	for lang, dir := range dirs {
 		if _, err := os.Stat(filepath.Join(dir, markerFile)); err != nil {
 			t.Fatalf("missing %s marker: %v", lang, err)
+		}
+	}
+}
+
+// The Python and Rust bundles embed their unicode tables gzipped; the staged SDK holds the text the interpreter and cargo read, under the name without .gz.
+func TestSyncExpandsTheCompressedTables(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := Sync(root, false); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	for _, table := range []struct{ lang, rel, source string }{
+		{"python", "pig_sdk/tui/_tables.py", "../../../extensions/sdk-py/pig_sdk/tui/_tables.py"},
+		{"rust", "src/tui/tables.rs", "../../../extensions/sdk-rs/src/tui/tables.rs"},
+	} {
+		dir, err := SDKDirFor(root, table.lang)
+		if err != nil {
+			t.Fatal(err)
+		}
+		staged, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(table.rel)))
+		if err != nil {
+			t.Fatalf("staged %s/%s: %v", table.lang, table.rel, err)
+		}
+		want, err := os.ReadFile(filepath.FromSlash(table.source))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(staged, want) {
+			t.Errorf("staged %s/%s (%d bytes) is not the source file (%d bytes)", table.lang, table.rel, len(staged), len(want))
+		}
+		if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(table.rel)+".gz")); err == nil {
+			t.Errorf("%s/%s.gz was staged beside its expansion", table.lang, table.rel)
 		}
 	}
 }

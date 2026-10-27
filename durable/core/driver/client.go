@@ -114,17 +114,50 @@ func answer(body []byte) (json.RawMessage, error) {
 	return a.OK, nil
 }
 
-func merge(op string, args map[string]any) map[string]any {
+// ErrRequestTooLarge is the error of a request body over abi.MaxEventPayload, the largest event payload the core reads.
+var ErrRequestTooLarge = fmt.Errorf("request body is over the %d byte event payload limit", abi.MaxEventPayload)
+
+// merge returns args with the op field.
+func merge(op string, args map[string]any) (map[string]any, error) {
+	return mergeWithin(op, args, abi.MaxEventPayload)
+}
+
+// mergeWithin is merge for a body of at most limit bytes. Each field takes at least one byte of the body, so a field
+// count at limit is over it before the map is sized.
+func mergeWithin(op string, args map[string]any, limit int) (map[string]any, error) {
+	if len(args) >= limit {
+		return nil, ErrRequestTooLarge
+	}
 	out := make(map[string]any, len(args)+1)
 	maps.Copy(out, args)
 	out["op"] = op
-	return out
+	return out, nil
+}
+
+// marshalBody encodes one request body, which must fit one event payload.
+func marshalBody(body map[string]any) ([]byte, error) {
+	return marshalBodyWithin(body, abi.MaxEventPayload)
+}
+
+func marshalBodyWithin(body map[string]any, limit int) ([]byte, error) {
+	//portlint:allow mapkeyorder ABI 1 request bodies are read by field name by the core scanner; no reader depends on key order
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	if len(encoded) > limit {
+		return nil, ErrRequestTooLarge
+	}
+	return encoded, nil
 }
 
 // API runs one api request and returns the `ok` JSON. A core error is a *CoreError.
 func (c *Client) API(ctx context.Context, op string, args map[string]any) (json.RawMessage, error) {
-	//portlint:allow mapkeyorder ABI 1 request bodies are read by field name by the core scanner; no reader depends on key order
-	body, err := json.Marshal(merge(op, args))
+	merged, err := merge(op, args)
+	if err != nil {
+		return nil, err
+	}
+	body, err := marshalBody(merged)
 	if err != nil {
 		return nil, err
 	}
@@ -237,8 +270,12 @@ func remote(value json.RawMessage) error {
 // Begin opens a transaction. It returns at `ready`; a `waiting` answer only means the line is held and `ready` follows.
 // Options are `invocation` and `conversationId`.
 func (c *Client) Begin(ctx context.Context, options map[string]any) (*Tx, error) {
+	merged, err := merge("begin", options)
+	if err != nil {
+		return nil, err
+	}
 	tx := &Tx{client: c, id: c.txs.Add(1)}
-	body, err := tx.reply(ctx, merge("begin", options), isReady)
+	body, err := tx.reply(ctx, merged, isReady)
 	if err != nil {
 		if ctx.Err() != nil {
 			// The wait ended with the caller's context, but the begin event is queued or already ran: the core takes its turn on
@@ -268,8 +305,7 @@ func (c *Client) Begin(ctx context.Context, options map[string]any) (*Tx, error)
 func (c *Client) Bind(txID uint32) *Tx { return &Tx{client: c, id: txID} }
 
 func (t *Tx) reply(ctx context.Context, op map[string]any, accept func([]byte) bool) ([]byte, error) {
-	//portlint:allow mapkeyorder ABI 1 request bodies are read by field name by the core scanner; no reader depends on key order
-	encoded, err := json.Marshal(op)
+	encoded, err := marshalBody(op)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +319,11 @@ func (t *Tx) Op(ctx context.Context, op string, args map[string]any) (json.RawMe
 	if t.done {
 		return nil, ErrTxEnded
 	}
-	body, err := t.reply(ctx, merge(op, args), isFinal)
+	merged, err := merge(op, args)
+	if err != nil {
+		return nil, err
+	}
+	body, err := t.reply(ctx, merged, isFinal)
 	if err != nil {
 		return nil, err
 	}

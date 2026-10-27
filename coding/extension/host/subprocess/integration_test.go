@@ -46,7 +46,7 @@ func buildFixture(t *testing.T) string {
 	if p, ok := mustUsePrebuilt(t, envFixtureExtBin); ok {
 		return p
 	}
-	path, err := wireFixtureBinary()
+	path, err := wireFixtureBinary.Do(t, func(ctx context.Context) (string, error) { return compileGoFixture(ctx, "fixture-ext") })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1080,7 +1080,7 @@ func buildSDKFixture(t *testing.T) string {
 	if p, ok := mustUsePrebuilt(t, envSDKFixtureBin); ok {
 		return p
 	}
-	path, err := sdkFixtureBinary()
+	path, err := sdkFixtureBinary.Do(t, func(ctx context.Context) (string, error) { return compileGoFixture(ctx, "sdk-fixture", "GOWORK=off") })
 	if err != nil {
 		t.Fatal(err)
 	}

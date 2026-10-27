@@ -690,7 +690,7 @@ func TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi(t *testing.T) {
 					var p *rpcProcess
 					if impl == "pig" {
 						env = append(env, "PIG_HOME="+filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR="+filepath.Join(home, "agent"), "PIG_TEST_FAUX=1")
-						p = startRPCProcessAt(t, t.TempDir(), env, "--no-session", "--offline", "--model", "test-faux/echo", "-e", fixture)
+						p = startRPCProcessAt(t, t.TempDir(), env, "--no-session", "--offline", "--model", "test-faux/faux-1", "-e", fixture)
 					} else {
 						root, err := filepath.Abs("../..")
 						if err != nil {
