@@ -259,23 +259,25 @@ test("open rejects a registry without the built-in tasks, as Harness.open does",
 
 test("a report notice from the core reaches HarnessOptions.onReport as an Error", async () => {
   const reports: Error[] = []
-  const core = new ScriptedCore(ev => ev.kind === EVENT.api && ev.body.op !== "opened" ? { notices: [{ kind: NOTICE.report, payload: new TextEncoder().encode(JSON.stringify({ name: "RangeError", message: "no sandbox" })) }, apiResult(ev.id!, { ok: null })] } : undefined)
-  const h = await harness(core, { onReport: (error: Error) => reports.push(error) })
+  const infos: unknown[] = []
+  const core = new ScriptedCore(ev => ev.kind === EVENT.api && ev.body.op !== "opened" ? { notices: [{ kind: NOTICE.report, payload: new TextEncoder().encode(JSON.stringify({ name: "RangeError", message: "no sandbox", info: { type: "host_error", callback: "env" } })) }, apiResult(ev.id!, { ok: null })] } : undefined)
+  const h = await harness(core, { onReport: (error: Error, info: unknown) => { reports.push(error); infos.push(info) } })
   await h.snapshot(AgentDoc, 1, context)
   assert.equal(reports.length, 1)
+  assert.deepEqual(infos, [{ type: "host_error", callback: "env" }], "the notice's ReportInfo is the second argument")
   assert.ok(reports[0] instanceof Error)
   assert.equal(reports[0]!.message, "no sandbox")
   assert.equal(reports[0]!.name, "RangeError")
 })
 
-test("the resolved agent names the hooks of its selected extensions, in extension order, as handler indices", async () => {
+test("the resolved agent names the hooks of its selected extensions, in extension order, with the extension that registered each, as handler indices", async () => {
   const { agentJSON } = await import("../src/facade/agent.ts")
   const before = () => undefined, after = () => undefined
   const ids = new Map<unknown, number>()
   const id = (o: unknown) => { if (!ids.has(o)) ids.set(o, ids.size + 1); return ids.get(o)! }
   const agent: any = { thinkingLevel: "off", extensions: [{ name: "a", hooks: [{ task: "pi.tool", handlers: { beforeTool: before, ignored: 3 } }] }, { name: "b", hooks: [{ task: "pi.tool", handlers: { beforeTool: after } }] }, { name: "c" }], tools: [], callable: [], sections: [] }
   const json: any = agentJSON(agent, id)
-  assert.deepEqual(json.hooks, [{ task: "pi.tool", handlers: { beforeTool: id(before) } }, { task: "pi.tool", handlers: { beforeTool: id(after) } }])
+  assert.deepEqual(json.hooks, [{ extension: "a", task: "pi.tool", handlers: { beforeTool: id(before) } }, { extension: "b", task: "pi.tool", handlers: { beforeTool: id(after) } }])
 })
 
 test("the resolved agent's callable tools are encoded like its model tools, and a structuredOutputSchema flags the tool for the core (agent.ts resolveAgent callers)", async () => {
