@@ -152,7 +152,7 @@ func decodeRaw(t *testing.T, raw json.RawMessage) any {
 
 func TestMarkdownThemeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "getMarkdownTheme")
-	eachModelTypesPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
 		for _, c := range cases {
 			var want struct {
 				Palette   json.RawMessage
@@ -194,7 +194,7 @@ func TestMarkdownThemeAcrossSDKs(t *testing.T) {
 
 func TestSelectListThemeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "getSelectListTheme")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		for _, c := range cases {
 			var want struct {
 				Palette json.RawMessage
@@ -214,7 +214,7 @@ func TestSelectListThemeAcrossSDKs(t *testing.T) {
 
 func TestSettingsListThemeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "getSettingsListTheme")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		for _, c := range cases {
 			var want struct {
 				Palette json.RawMessage
@@ -237,7 +237,7 @@ func TestSettingsListThemeAcrossSDKs(t *testing.T) {
 // sent its palette with the call.
 func TestHighlightCodeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "highlightCode")
-	eachModelTypesPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
 		palettes := map[string]json.RawMessage{}
 		for _, c := range cases {
 			var want struct{ Palette json.RawMessage }
@@ -288,7 +288,7 @@ func TestHighlightCodeAcrossSDKs(t *testing.T) {
 // global theme is Pi's own, so the row runs the Go, Rust and Python SDKs.
 func TestInitThemeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "getMarkdownTheme")
-	eachModelTypesPlacementOf(t, []string{"go", "rust", "python"}, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacementAfter(t, []string{"go", "rust", "python", "lisp"}, nil, func(t *testing.T, r *modelTypesRig) {
 		palettes := map[string]json.RawMessage{}
 		wants := map[string]struct{ Bold, Heading any }{}
 		for _, c := range cases {
@@ -346,7 +346,7 @@ func vectorPlatform() string {
 // keyHint and keyText read the host's keybindings and theme; the platform is the one the SDK process runs on, so a vector for another platform is run by the unit tests.
 func TestKeyHintAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "keyHint")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		ran := 0
 		for _, c := range cases {
 			var want struct {
@@ -378,7 +378,7 @@ func TestKeyHintAcrossSDKs(t *testing.T) {
 
 func TestRawKeyHintAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "rawKeyHint")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachTuiPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		ran := 0
 		for _, c := range cases {
 			var want struct {

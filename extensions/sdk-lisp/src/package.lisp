@@ -39,6 +39,26 @@
    ;; ==== lane T: type engine, tool schema, pi-ai ====
    ;; ==== end lane T ====
    ;; ==== lane H: pi-tui helpers ====
+    #:tui-visible-width #:tui-strip-terminal-sequences #:tui-truncate-to-width #:tui-wrap-text-with-ansi #:tui-slice-by-column #:tui-slice-with-width
+    #:tui-extract-segments #:tui-get-osc8-link-at-column #:tui-get-active-background-ansi #:+tui-cursor-marker+ #:tui-key #:tui-matches-key
+    #:tui-parse-key #:tui-key-release-p #:tui-key-repeat-p #:tui-set-kitty-protocol-active #:tui-kitty-protocol-active-p #:tui-decode-kitty-printable
+    #:tui-decode-printable-key #:tui-fuzzy-match #:tui-fuzzy-filter #:tui-fuzzy-match-matches #:tui-fuzzy-match-score #:*tui-keybindings*
+    #:make-tui-keybinding-definition #:tui-keybinding-definition-default-keys #:tui-keybinding-definition-description #:tui-keybinding-conflict-key
+    #:tui-keybinding-conflict-keybindings #:tui-make-keybindings-manager #:tui-keybindings-from-wire #:tui-keybindings-matches
+    #:tui-keybindings-get-keys #:tui-keybindings-get-definition #:tui-keybindings-get-conflicts #:tui-keybindings-set-user-bindings
+    #:tui-keybindings-get-user-bindings #:tui-keybindings-get-resolved-bindings #:tui-get-keybindings #:tui-set-keybindings #:make-tui-capabilities
+    #:tui-capabilities-images #:tui-capabilities-true-color #:tui-capabilities-hyperlinks #:tui-hyperlink #:tui-detect-capabilities
+    #:tui-get-capabilities #:tui-get-terminal-color-mode #:tui-reset-capabilities-cache #:tui-set-capability-overrides #:tui-set-capabilities
+    #:tui-error #:tui-error-message #:tui-indexed-color #:tui-rgb-color #:tui-oklch-color #:tui-okhsl-color #:tui-parse-color #:tui-color-to-rgb
+    #:tui-color-to-oklch #:tui-color-to-okhsl #:tui-color-to-hex #:tui-mix-colors #:tui-foreground-ansi #:tui-background-ansi #:tui-style-text
+    #:tui-style-text-with-ansi #:tui-color-ansi #:tui-wire-color #:format-key-text #:key-text #:key-display-text #:key-hint #:raw-key-hint
+    #:get-markdown-theme #:get-select-list-theme #:get-settings-list-theme #:get-editor-theme #:highlight-code #:init-theme #:markdown-theme-heading
+    #:markdown-theme-link #:markdown-theme-link-url #:markdown-theme-code #:markdown-theme-code-block #:markdown-theme-code-block-border
+    #:markdown-theme-quote #:markdown-theme-quote-border #:markdown-theme-hr #:markdown-theme-list-bullet #:markdown-theme-bold #:markdown-theme-italic
+    #:markdown-theme-underline #:markdown-theme-strikethrough #:markdown-theme-highlight-code #:select-list-theme-selected-prefix
+    #:select-list-theme-selected-text #:select-list-theme-description #:select-list-theme-scroll-info #:select-list-theme-no-match
+    #:settings-list-theme-label #:settings-list-theme-value #:settings-list-theme-description #:settings-list-theme-cursor #:settings-list-theme-hint
+    #:editor-theme-border-color #:editor-theme-select-list
    ;; ==== end lane H ====
    ;; ==== lane C: pi-coding-agent pure helpers ====
    ;; ==== end lane C ====
