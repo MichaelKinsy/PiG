@@ -80,7 +80,7 @@ node = "read:f.type"
 go = "FlagOptions.Type"
 rust = "FlagOptions.flag_type"
 python = "Extension.flag(flag_type)"
-lisp = "pig:flag(flag-type)|pig:flag-p(flag-type)"
+lisp = "pig:flag(type)"
 
 [[row]]
 key = "pi.registerFlag(options.default)"
@@ -1955,3 +1955,7 @@ node = "read:list.selectedIndex"
 go = "kit.Lines.List"
 rust = "kit::List"
 python = "kit.List"
+
+[[row]]
+key = "ctx.scopedModels"
+lisp = "pig:ctx-get-scoped-models"

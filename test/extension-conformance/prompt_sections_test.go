@@ -164,6 +164,19 @@ def new_extension():
  e.on_event("before_agent_start",handler)
  return e
 `, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		source = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)))
+    (pig:on e "before_agent_start"
+      (lambda (ctx data) (declare (ignore ctx))
+        (setf (gethash "plan_mode" (pig:jget (pig:jget data "systemPromptOptions") "sections")) "Plan only.")
+        (cond ((equal (pig:jget data "prompt") "error") (error "section failure"))
+              ((equal (pig:jget data "prompt") "result") (pig:obj "systemPrompt" "Exact prompt.")))))
+    e))
+`, name, name, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
