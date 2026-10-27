@@ -74,7 +74,7 @@ EVENTS-EMIT while the host waits for its answer; its error fails only that deliv
   "Send DATA to every listener of CHANNEL and return after each listener's work. Signals for a payload without a JSON form, and for an emit on \"error\"
 that no listener handles, as EventEmitter throws."
   (unless (stringp channel) (error "event channel must be a string"))
-  (handler-case (encode-json data) (json-error () (error "event payload must be JSON-serializable")))
+  (handler-case (encode-json data) (error () (error "event payload must be JSON-serializable")))
   (let ((reply (event-bus-call bus "events.emit" (obj "channel" channel "json" data "value" t))))
     (when (and (hash-table-p reply) (eq (jget reply "unhandledError") t))
       (error "pi.events.emit ~S: unhandled error event: ~A" channel (to-json data)))
