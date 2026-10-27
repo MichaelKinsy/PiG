@@ -86,7 +86,7 @@ type handler struct {
 
 	txs    map[uint32]*hostTx
 	holder uint32             // the transaction that holds the Session line; 0 when free
-	queue  []uint32           // transactions waiting for the line, in begin order
+	queue  []lineWait         // Session mode: the transactions and line jobs waiting for the line, in arrival order
 	loop   *session.Loop      // Harness mode: the Session line's job queue
 	sched  *session.Scheduler // Harness mode: the task scheduler
 	snap   *registrySnapshot
@@ -474,7 +474,8 @@ func (a *adapter) Commit(writes []session.Write, nextID session.ID) (session.Seq
 	if err != nil {
 		return 0, err
 	}
-	if mseq != seq {
+	// The Storage adopted the batch at the sequence the commit takes (types.ts Storage: adopt(seq) names the committed sequence).
+	if mseq != seq || (a.h.cg.state == gateApplied && a.h.cg.seq != seq) {
 		return 0, errors.New("core: the mirror and the store disagree on the commit sequence")
 	}
 	if err := a.h.observeCommit(writes, seq); err != nil {

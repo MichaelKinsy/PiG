@@ -13,9 +13,9 @@ type Session = {
 
 export class SessionImpl {
   constructor(storage: Storage, now?: () => number, documentRetentionMs?: () => number | undefined, setTimer?: SetTimer, readOnly = false, persistWithinMs?: () => number | undefined) {
-    const session = createLazySession(storage, { now, documentRetentionMs, setTimer, readOnly, persistWithinMs }) as Session
-    // The descriptors, not the values: documentCacheSizes is a getter.
-    return Object.defineProperties(this, { ...Object.getOwnPropertyDescriptors(session), commitWith: { value: (change: (tx: never) => unknown, context: Context, _scope?: unknown, commitOptions?: unknown) => session.commit(change as never, context, commitOptions), writable: true, configurable: true, enumerable: true } })
+    // The Session is this object: the watches it hands out keep it alive (session.ts), so they must reference `this`.
+    const session = createLazySession(storage, { now, documentRetentionMs, setTimer, readOnly, persistWithinMs }, this) as Session
+    return Object.defineProperty(this, "commitWith", { value: (change: (tx: never) => unknown, context: Context, _scope?: unknown, commitOptions?: unknown) => session.commit(change as never, context, commitOptions), writable: true, configurable: true, enumerable: true })
   }
 }
 /** session.ts createSession: the options are values, read live by the core as callbacks. */

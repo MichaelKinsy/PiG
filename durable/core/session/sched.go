@@ -194,6 +194,9 @@ type Scheduler struct {
 	dirty              bool
 	draining           bool
 	reserveSkip        uint8 // the decision of the reservation job's first run, which a later run of the same job keeps (reserve)
+
+	// observing is set while the commit observer runs (it runs inside the Storage's adopt).
+	observing bool
 }
 
 // NewScheduler returns a scheduler over the Session, on the Loop.
@@ -440,8 +443,12 @@ func (s *Scheduler) Resume() {
 	s.kick()
 }
 
-// RegistryChanged is the registry subscription: a new snapshot may make blocked tasks runnable.
-func (s *Scheduler) RegistryChanged() { s.kick() }
+// RegistryChanged is the registry subscription (scheduler.ts open): a new snapshot may change the blocked reasons, which the graph derives
+// again at once, and may make blocked tasks runnable.
+func (s *Scheduler) RegistryChanged() {
+	s.notifyBlocked()
+	s.kick()
+}
 
 // Join calls then once every running invocation has ended.
 func (s *Scheduler) Join(then func()) {

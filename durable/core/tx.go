@@ -16,6 +16,13 @@ import (
 
 // hostTx is one extension transaction (ABI section 8): a Session transaction whose callback runs in the host, one
 // operation per tx event, from begin to end or abort.
+// lineWait is one waiter of the Session line in Session mode (no Loop): a host transaction, or a read job that waits its turn
+// behind the transactions queued before it (session.ts #enqueue is one FIFO).
+type lineWait struct {
+	tx  uint32
+	job func()
+}
+
 type hostTx struct {
 	id    uint32
 	scope session.TxScope
@@ -248,7 +255,7 @@ func (h *handler) txBegin(id uint32, op *jv.Object) error {
 		return nil
 	}
 	if h.holder != 0 {
-		h.queue = append(h.queue, id)
+		h.queue = append(h.queue, lineWait{tx: id})
 		h.txAnswer(id, []byte(`{"waiting":true}`))
 		return nil
 	}
@@ -301,10 +308,12 @@ func (h *handler) release(t *hostTx) {
 		return
 	}
 	for h.holder == 0 && len(h.queue) != 0 {
-		next := h.txs[h.queue[0]]
+		next := h.queue[0]
 		h.queue = h.queue[1:]
-		if next != nil {
-			_ = h.grant(next)
+		if next.job != nil {
+			next.job()
+		} else if t := h.txs[next.tx]; t != nil {
+			_ = h.grant(t)
 		}
 	}
 }
@@ -363,7 +372,28 @@ func (h *handler) txEndSettled(t *hostTx) {
 		h.txRejected(t.id, err)
 		return
 	}
+	if h.cg.state == gateApplied {
+		// The Storage adopted the batch: the commit is published inside the adoption, and the end is answered when the call settles.
+		for _, pub := range pubs {
+			h.sess.Publish(pub)
+		}
+		h.cg.applied = t
+		return
+	}
 	h.txCommitted(t, pubs)
+}
+
+// txAnswered ends the transaction whose adopted commit the Storage's call has now settled; a call that failed after adopting fails the
+// Session, and the transaction with it.
+func (h *handler) txAnswered(t *hostTx, err error) {
+	if err != nil {
+		h.sess.Fail(err)
+		h.sess.TakeTicks()
+		h.release(t)
+		h.txRejected(t.id, err)
+		return
+	}
+	h.txCommitted(t, nil)
 }
 
 // txCommitted ends a committed transaction. The commit resolves at the end of Pi's job (the change's awaits, settle,

@@ -47,6 +47,14 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	if !ok {
 		return &Rejection{"TypeError", "api: the request is not an object"}
 	}
+	if strOf(req, "op") == "adopt" {
+		// The host's Storage adopted the batch of the commit the gate asked it to take (gate.go).
+		if err := h.gateAdopt(session.Seq(numOf(req, "seq"))); err != nil {
+			return err
+		}
+		h.apiOK(ev.ID, nil)
+		return nil
+	}
 	if strOf(req, "op") == "opened" {
 		// Harness.open completes when the scheduler's open commit did: it waits for the host's Storage when it gates commits.
 		if h.openDone {
@@ -144,6 +152,17 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		})
 		return nil
 	}
+	if h.loop == nil && strOf(req, "op") == "watch.open" && (h.holder != 0 || len(h.queue) != 0) {
+		// Opening a watch is a job on the Session line (session.ts watchDoc, readOnLine): it waits behind the transactions queued
+		// before it, so a commit queued before the attachment is in its value.
+		h.queue = append(h.queue, lineWait{job: func() { _ = h.answerDirect(ev.ID, req) }})
+		return nil
+	}
+	return h.answerDirect(ev.ID, req)
+}
+
+// answerDirect serves an api request on the spot: its value, or its error, as the api_result of id.
+func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 	value, err := h.api(strOf(req, "op"), req)
 	if errors.Is(err, ErrNotImplemented) {
 		return err
@@ -151,31 +170,17 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	if session.IsNeedGate(err) && h.loop == nil {
 		// A read that stores held changes first (session/held.go): the host's Storage holds that commit, so the read runs again
 		// once it answered.
-		h.cg.retry, h.cg.retryID, h.cg.retryReq = retryAPI, ev.ID, req
+		h.cg.retry, h.cg.retryID, h.cg.retryReq = retryAPI, id, req
 		return nil
 	}
 	h.answerAfterReads(func() {
 		if err != nil {
-			h.apiError(ev.ID, err)
+			h.apiError(id, err)
 			return
 		}
-		h.apiOK(ev.ID, value)
+		h.apiOK(id, value)
 	})
 	return nil
-}
-
-// answerAPIAgain runs an api read again after the host's Storage answered the commit it held, and answers it.
-func (h *handler) answerAPIAgain(id uint32, req *jv.Object) {
-	value, err := h.api(strOf(req, "op"), req)
-	if session.IsNeedGate(err) {
-		h.cg.retry, h.cg.retryID, h.cg.retryReq = retryAPI, id, req
-		return
-	}
-	if err != nil {
-		h.apiError(id, err)
-		return
-	}
-	h.apiOK(id, value)
 }
 
 // onLine reports whether an api read is a job on the Session line in Pi: readOnLine reads, snapshotAsOf, and a
