@@ -19,8 +19,6 @@ RENDER-SHELL is \"default\" or \"self\"."
   (message-declarations '()) (message-handlers (make-hash-table :test 'equal)) (message-views (make-hash-table :test 'equal))
   (entry-declarations '()) (entry-handlers (make-hash-table :test 'equal)) (entry-views (make-hash-table :test 'equal))
   (markdown nil)
-  (call-lines (make-hash-table :test 'equal)) (result-lines (make-hash-table :test 'equal))
-  (call-views (make-hash-table :test 'equal)) (result-views (make-hash-table :test 'equal))
   (resolvers '()) (resolved (make-hash-table :test 'equal))
   (cards (make-hash-table :test 'equal))      ; card -> (lock . state)
   (lock (sb-thread:make-mutex :name "pig renderers")))
@@ -97,22 +95,27 @@ a signalled condition, keeps the input. A later registration replaces an earlier
   "Set the renderers of tool NAME and publish its updated declaration to a running session (see the tool-renderers struct for the
 function arguments). A tool this extension did not register is left alone."
   (unless (member render-shell '("default" "self") :test #'equal) (error "render-shell must be \"default\" or \"self\""))
-  (let ((rd (rd-of ext)))
-    (sb-thread:with-mutex ((extension-reg-lock ext))
-      (let ((declaration (find name (extension-tools ext) :key (lambda (d) (gethash "name" d)) :test #'equal)))
-        (when declaration
-          (setf (gethash "render_shell" declaration) render-shell
-                (gethash "renders_call" declaration) (prov-bool (or render-call call-view))
-                (gethash "renders_result" declaration) (prov-bool (or render-result result-view)))
-          (loop for (table value) in (list (list (rd-call-lines rd) render-call) (list (rd-result-lines rd) render-result)
-                                           (list (rd-call-views rd) call-view) (list (rd-result-views rd) result-view))
-                do (if value (setf (gethash name table) value) (remhash name table)))
-          (when (extension-live ext) (host-call ext "registerTool" declaration))))))
+  (sb-thread:with-mutex ((extension-reg-lock ext))
+    (let ((declaration (find name (extension-tools ext) :key (lambda (d) (gethash "name" d)) :test #'equal)))
+      (when declaration
+        (setf (gethash "render_shell" declaration) render-shell
+              (gethash "renders_call" declaration) (prov-bool (or render-call call-view))
+              (gethash "renders_result" declaration) (prov-bool (or render-result result-view)))
+        (let ((hooks (copy-list (gethash name (extension-tool-hooks ext)))))
+          (loop for (key value) in (list (list :render-call render-call) (list :render-result render-result)
+                                         (list :call-view call-view) (list :result-view result-view))
+                do (remf hooks key)
+                   (when value (setf (getf hooks key) value)))
+          (if hooks (setf (gethash name (extension-tool-hooks ext)) hooks) (remhash name (extension-tool-hooks ext))))
+        (when (extension-live ext) (host-call ext "registerTool" declaration)))))
   nil)
 
 (defun rd-card (rd card)
   (sb-thread:with-mutex ((rd-lock rd))
     (or (gethash card (rd-cards rd)) (setf (gethash card (rd-cards rd)) (cons (sb-thread:make-mutex :name "pig card") (obj))))))
+
+(defun tool-hook (ext name key)
+  (getf (sb-thread:with-mutex ((extension-reg-lock ext)) (gethash name (extension-tool-hooks ext))) key))
 
 (def-notify "tool_render_release" (ext args)
   (let ((rd (rd-of ext))) (sb-thread:with-mutex ((rd-lock rd)) (remhash (let ((c (jget args "card"))) (if (stringp c) c "")) (rd-cards rd)))))
@@ -140,8 +143,8 @@ function arguments). A tool this extension did not register is left alone."
             (cond (resolved (if result-phase
                                 (values (tool-renderers-result-view resolved) (tool-renderers-render-result resolved))
                                 (values (tool-renderers-call-view resolved) (tool-renderers-render-call resolved))))
-                  (result-phase (values (gethash name (rd-result-views rd)) (gethash name (rd-result-lines rd))))
-                  (t (values (gethash name (rd-call-views rd)) (gethash name (rd-call-lines rd)))))
+                  (result-phase (values (tool-hook ext name :result-view) (tool-hook ext name :render-result)))
+                  (t (values (tool-hook ext name :call-view) (tool-hook ext name :render-call))))
           (let ((handler (or view lines)))
             (unless handler (error "tool ~A has no ~A renderer" name (if result-phase "result" "call")))
             (rd-result ext
