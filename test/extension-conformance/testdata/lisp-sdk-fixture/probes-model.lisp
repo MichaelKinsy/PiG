@@ -352,7 +352,7 @@
   (pig:command ext "model-stream-cancel-report" "Report how the cancelled model stream ended"
                (lambda (ctx args) (declare (ignore args)) (mp-cancel-report ctx))))
 
-(def-fixture "model-types" (ext)
+(def-surface-fixture "model-types" (ext)
   (mp-register-providers ext)
   (loop for (name handler) in (list (list "typed_reads" #'mp-typed-reads) (list "classify_probe" #'mp-classify-probe)
                                     (list "images_probe" #'mp-images-probe) (list "virtual_probe" #'mp-virtual-probe)

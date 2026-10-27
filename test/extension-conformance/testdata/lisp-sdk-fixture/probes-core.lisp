@@ -492,8 +492,7 @@
               (if (equal (pig:jget data "toolName") "order_probe")
                   (progn (core-info ctx (format nil "order-result=~A" (core-py-str (pig:jget data "toolCallId")))) nil)
                   (let ((name (pig:jget data "toolName")))
-                    (core-info ctx (concatenate 'string "tool-result-guards="
-                                                (core-join (loop for g in '("bash" "powershell" "read" "edit" "write" "grep" "find" "ls") when (equal name g) collect g))))
+                    (core-info ctx (concatenate 'string "tool-result-guards=" (core-join (coding-accepting-guards data))))
                     (when (member name '("powershell" "bash") :test #'equal)
                       (let* ((details (or (pig:jget data "details") (pig:obj))) (content (let ((c (pig:jget data "content"))) (if (and c (plusp (length c))) c (vector (pig:obj))))))
                         (core-info ctx (format nil "tool-result=~A:~A:~A:~A" name (core-py-str (pig:jget details "fullOutputPath"))
@@ -734,3 +733,30 @@
                      (core-assert (null (pig:ctx-get-theme ctx "dark")))
                      (core-assert (equal (multiple-value-list (pig:ctx-set-theme ctx "dark")) '(nil "UI not available"))))
                    (pig:ctx-append-entry ctx "ui-availability" (format nil "hasUI=~A selected=~A" (core-bool (pig:ctx-has-ui-p ctx)) selected))))))
+
+;;; ---------------------------------------------------------------- file mutation order and width handlers
+
+(def-fixture "core-mutation-order" (ext)
+  ;; takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs)
+  (pig:tool ext "mutation_order_probe" "Take the file mutation queue and append a tag to the file"
+            (core-schema "properties" (pig:obj "file" (pig:obj "type" "string") "tag" (pig:obj "type" "string")))
+            (lambda (ctx params)
+              (declare (ignore ctx))
+              (let ((tag (pig:jget params "tag")))
+                (pig:with-file-mutation-queue
+                 (pig:jget params "file")
+                 (lambda ()
+                   (with-open-file (out (pig:jget params "file") :direction :output :if-exists :append :if-does-not-exist :create :external-format :utf-8)
+                     (write-string tag out) (write-char #\Newline out))))
+                (pig:obj "content" (concatenate 'string "mutated " tag))))))
+
+(def-fixture "core-width-probe" (ext)
+  ;; a width handler makes a host call the way any other handler does; the host's reply must reach it (TestConformance_WidthHandlerHostCall)
+  (let ((armed nil))
+    (pig:command ext "arm_width_probe" "Notify from a width handler"
+                 (lambda (ctx args)
+                   (declare (ignore args))
+                   (unless armed
+                     (setf armed (pig:ctx-on-width-change ctx (lambda (width)
+                                                               (core-info ctx (format nil "width-probe:~D" width))
+                                                               (core-info ctx (format nil "width-probe-returned:~D" width))))))))))

@@ -61,7 +61,7 @@
         (put "swapped" swapped)))
     (pig:to-json report)))
 
-(def-fixture "tui_probe" (ext)
+(def-surface-fixture "tui_probe" (ext)
   (pig:tool ext "tui_probe" "Runs pi-tui's keybinding, capability and Key helpers." (pig:obj "type" "object") #'tui-probe))
 
 ;;; tui_theme_probe: pi-coding-agent's theme helpers and key hints over the host's theme and keybindings (tui_theme_test.go).
@@ -116,5 +116,5 @@
           (pig:obj "rawKeyHint" (pig:raw-key-hint (pig:jget args "key") (pig:jget args "description"))))
          (t (error "unknown op ~A" op)))))))
 
-(def-fixture "tui_theme_probe" (ext)
+(def-surface-fixture "tui_theme_probe" (ext)
   (pig:tool ext "tui_theme_probe" "Runs pi-coding-agent's theme and key hint helpers." (pig:obj "type" "object") #'tui-theme-probe))

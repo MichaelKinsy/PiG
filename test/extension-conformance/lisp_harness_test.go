@@ -29,6 +29,16 @@ func lispFixtureConfig(t testing.TB, dir, name string) subprocess.ExtConfig {
 	}
 }
 
+// lispSurfaceFixtureConfig loads the surface extension of the same directory: the harness probes plus the tools of the model-types, pi-tui and host-surface rows,
+// which the harness extension leaves out because TestConformance_TransportsMatch compares its registered tools with the other SDKs'.
+func lispSurfaceFixtureConfig(t testing.TB) subprocess.ExtConfig {
+	t.Helper()
+	cfg := lispFixtureConfig(t, "lisp-sdk-fixture", lispFixtureName)
+	cfg.Package = "lisp-sdk-fixture-surface"
+	cfg.SourceInfo = hostSurfaceSource
+	return cfg
+}
+
 // requireSBCL fails the test when no SBCL is available: the Lisp rows cannot be skipped, as the Python rows cannot without an interpreter.
 func requireSBCL(t testing.TB) {
 	t.Helper()

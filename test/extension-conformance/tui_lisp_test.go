@@ -13,8 +13,7 @@ import (
 
 func loadTuiLisp(t *testing.T, r *modelTypesRig) {
 	t.Helper()
-	cfg := lispFixtureConfig(t, "lisp-sdk-fixture", lispFixtureName)
-	cfg.SourceInfo = hostSurfaceSource
+	cfg := lispSurfaceFixtureConfig(t)
 	loaded, failures := r.host.LoadAll(t.Context(), []subprocess.ExtConfig{cfg})
 	applyQueuedRegistrations(r.host)
 	if len(failures) != 0 || len(loaded) != 1 {
