@@ -75,7 +75,12 @@ func newHeldRig(t *testing.T, defaultWithin *float64) *heldRig {
 	store := sessiontest.New()
 	rig := &heldRig{t: t, store: store, clock: 1000}
 	rig.s = session.New(store, store.NextID(), func() float64 { return rig.clock })
-	rig.s.PersistWithin = func() *float64 { return defaultWithin }
+	rig.s.PersistWithin = func() (float64, bool) {
+		if defaultWithin == nil {
+			return 0, false
+		}
+		return *defaultWithin, true
+	}
 	rig.s.ArmForeground = func(at float64, fire func()) func() {
 		timer := &heldTimer{at: at, fire: fire}
 		rig.timers = append(rig.timers, timer)

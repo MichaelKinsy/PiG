@@ -148,6 +148,12 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	if errors.Is(err, ErrNotImplemented) {
 		return err
 	}
+	if session.IsNeedGate(err) && h.loop == nil {
+		// A read that stores held changes first (session/held.go): the host's Storage holds that commit, so the read runs again
+		// as a Session-mode job once it answered.
+		h.sweeps = append(h.sweeps, func() error { return h.answerAPIAgain(ev.ID, req) })
+		return nil
+	}
 	h.answerAfterReads(func() {
 		if err != nil {
 			h.apiError(ev.ID, err)
@@ -155,6 +161,20 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		}
 		h.apiOK(ev.ID, value)
 	})
+	return nil
+}
+
+// answerAPIAgain runs an api read again after the host's Storage answered the commit it held, and answers it.
+func (h *handler) answerAPIAgain(id uint32, req *jv.Object) error {
+	value, err := h.api(strOf(req, "op"), req)
+	if session.IsNeedGate(err) {
+		return err
+	}
+	if err != nil {
+		h.apiError(id, err)
+		return nil
+	}
+	h.apiOK(id, value)
 	return nil
 }
 

@@ -111,7 +111,9 @@ func (h *handler) gateAnswered(outcome uint8, payload []byte) {
 		resume()
 		return
 	}
-	h.loop.Ungate()
+	if h.loop != nil {
+		h.loop.Ungate()
+	}
 }
 
 // jobj builds an ordered object from alternating keys and values.

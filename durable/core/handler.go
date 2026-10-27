@@ -68,7 +68,9 @@ type handler struct {
 	mode    string // "harness" or "session"
 	// sweeps are the Session-mode sweep jobs waiting for the end of the step (sweep.go); cacheSent and cacheSizes are the last
 	// document cache sizes published.
-	sweeps []func()
+	sweeps []func() error
+	// unloadIDs are the unloadDocuments requests waiting for the store of held changes (sweep.go).
+	unloadIDs []uint32
 	// stepNo numbers the steps the handler ran; hops chains carry the number of the step that opened them.
 	stepNo     uint64
 	cacheSent  bool
@@ -198,67 +200,12 @@ func (h *handler) handle(ev *abi.Event) error {
 		// Close writes the tasks it stopped back as pending, on the line after the commits admitted before the seal (session.ts
 		// writeAtClose, read when its job runs); a Storage that holds the commit holds the job, which runs again after the answer.
 		// The close follows the job's completion: its statements are on a hops chain until then.
-		writeBack := func() error {
-			if h.sched == nil || h.sess.Failure() != nil {
-				return nil
-			}
-			if err := h.sched.WriteBack(h.sched.CloseWrites()); err != nil && session.IsNeedGate(err) {
-				return err
-			}
-			return nil
-		}
-		// Last, after the writes at close and while the trackers are still here, the held changes of deferred commits are stored: a
-		// failed Session writes nothing, a failing store fails it, and the close still ends (session.ts close, #storeHolds).
-		storeHolds := func() error {
-			if h.sess.Failure() != nil {
-				return nil
-			}
-			err := h.sess.StoreHolds()
-			if err != nil && !session.IsNeedGate(err) {
-				h.closeErr = err
-				return nil
-			}
-			return err
-		}
-		finish := func() {
-			if h.loop != nil && h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
-				h.loop.LineBare(func() error {
-					if err := storeHolds(); err != nil {
-						return err
-					}
-					h.flushHeld()
-					h.closeWhenQuiet()
-					return nil
-				})
-				return
-			}
-			if h.loop == nil && h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
-				var again func()
-				again = func() {
-					if err := storeHolds(); err != nil {
-						h.cg.resume = again
-						return
-					}
-					h.closeWhenQuiet()
-				}
-				again()
-				return
-			}
-			h.closeWhenQuiet()
-		}
 		if h.loop != nil && (h.loop.Busy() || (h.sched != nil && len(h.sched.CloseWrites()) > 0)) {
 			// A bare job: the write-back takes no job duration of its own, and its statements go out with the close.
-			h.loop.LineBare(func() error {
-				if err := writeBack(); err != nil {
-					return err
-				}
-				h.flushHeld()
-				finish()
-				return nil
-			})
+			h.loop.LineBare(h.closeJob)
 			return nil
 		}
-		finish()
+		h.closeFinish()
 		return nil
 	case abi.EventTx:
 		return h.onTx(ev)
@@ -285,6 +232,62 @@ func (h *handler) handle(ev *abi.Event) error {
 		return h.onHopped(ev)
 	}
 	return ErrNotImplemented
+}
+
+// closeJob is the close's line job: the write-back of the tasks it stopped, then the rest of the close.
+func (h *handler) closeJob() error {
+	if h.sched != nil && h.sess.Failure() == nil {
+		if err := h.sched.WriteBack(h.sched.CloseWrites()); err != nil && session.IsNeedGate(err) {
+			return err
+		}
+	}
+	h.flushHeld()
+	h.closeFinish()
+	return nil
+}
+
+// closeFinish is the last step of close: the held changes of deferred commits are stored after the writes at close and while the
+// trackers are still here (session.ts close, #storeHolds), then the close ends. A failed Session writes nothing, and a failing store
+// fails it and still ends the close.
+func (h *handler) closeFinish() {
+	if h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
+		if h.loop != nil {
+			h.loop.LineBare(h.closeHoldsJob)
+		} else {
+			h.closeHoldsSession()
+		}
+		return
+	}
+	h.closeWhenQuiet()
+}
+
+// closeHoldsJob is closeFinish's line job in Harness mode.
+func (h *handler) closeHoldsJob() error {
+	if err := h.closeStoreHolds(); err != nil {
+		return err
+	}
+	h.flushHeld()
+	h.closeWhenQuiet()
+	return nil
+}
+
+// closeHoldsSession is the same in Session mode, which runs again when the host's Storage answered the commit it holds.
+func (h *handler) closeHoldsSession() {
+	if err := h.closeStoreHolds(); err != nil {
+		h.cg.resume = h.closeHoldsSession
+		return
+	}
+	h.closeWhenQuiet()
+}
+
+// closeStoreHolds stores the held changes: a *NeedGate means the host's Storage holds the commit; any other failure is what close() rejects with.
+func (h *handler) closeStoreHolds() error {
+	err := h.sess.StoreHolds()
+	if err != nil && !session.IsNeedGate(err) {
+		h.closeErr = err
+		return nil
+	}
+	return err
 }
 
 // closeWhenQuiet closes once every hops chain the core parked has run: a line job's statements (and its completion) wait on one

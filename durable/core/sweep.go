@@ -20,37 +20,29 @@ func (h *handler) sweepMicrotask(fn func()) {
 		h.loop.Defer(fn)
 		return
 	}
-	h.sweeps = append(h.sweeps, fn)
+	h.sweeps = append(h.sweeps, func() error { fn(); return nil })
 }
 
 // enqueueSweep queues job on the Session line. A job that returns a *session.NeedGate (the store of held changes, while the
 // host's Storage holds the commit) runs again from the start once the host answered: the Loop reruns a line job, and a
-// Session-mode core reruns it on the answer.
+// Session-mode core keeps it first in its queue (runSessionSweeps).
 func (h *handler) enqueueSweep(job func() error) {
 	if h.loop != nil {
 		h.loop.LineAfterTail(job, nil)
 		return
 	}
-	h.sweeps = append(h.sweeps, h.sessionJob(job))
-}
-
-// sessionJob is job as a Session-mode sweep: it runs again when the host's Storage answered the commit it asked for.
-func (h *handler) sessionJob(job func() error) func() {
-	var run func()
-	run = func() {
-		if err := job(); session.IsNeedGate(err) {
-			h.cg.resume = run
-		}
-	}
-	return run
+	h.sweeps = append(h.sweeps, job)
 }
 
 // runSessionSweeps runs the sweeps a Session-mode core queued, unless a host transaction holds the line.
 func (h *handler) runSessionSweeps() {
 	for len(h.sweeps) > 0 && h.holder == 0 {
-		job := h.sweeps[0]
+		if err := h.sweeps[0](); session.IsNeedGate(err) {
+			// The host's Storage holds the commit the job made: it runs again, first, once the Storage answered.
+			h.cg.resume = h.runSessionSweeps
+			return
+		}
 		h.sweeps = h.sweeps[1:]
-		job()
 	}
 }
 
@@ -107,29 +99,30 @@ func (h *handler) publishIndexSizes() {
 	h.b.Notice(abi.NoticeIndexSizes, append(body, '}'))
 }
 
-// unloadHeld answers unloadDocuments for a Session with held changes: the store of those is a Storage commit, a job on the
-// Session line that the host's Storage may hold (a *NeedGate runs it again once the Storage answered).
+// unloadHeld answers unloadDocuments for a Session with held changes: the store of those is a Storage commit, a job on the Session
+// line that the host's Storage may hold (a *NeedGate runs it again once the Storage answered).
 func (h *handler) unloadHeld(id uint32) {
-	run := func() error { return h.sess.UnloadDocuments() }
-	done := func(err error) {
-		if err != nil {
-			h.apiError(id, err)
-			return
-		}
-		h.apiOK(id, nil)
-	}
-	if h.loop != nil {
-		h.loop.Line(run, done)
+	h.unloadIDs = append(h.unloadIDs, id)
+	h.enqueueSweep(h.unloadSession)
+}
+
+// unloadDone answers the oldest unload request.
+func (h *handler) unloadDone(err error) {
+	id := h.unloadIDs[0]
+	h.unloadIDs = h.unloadIDs[1:]
+	if err != nil {
+		h.apiError(id, err)
 		return
 	}
-	var again func()
-	again = func() {
-		err := run()
-		if session.IsNeedGate(err) {
-			h.cg.resume = again
-			return
-		}
-		done(err)
+	h.apiOK(id, nil)
+}
+
+// unloadSession is the unload job: it answers the oldest request once the held changes are stored, or returns the *NeedGate.
+func (h *handler) unloadSession() error {
+	err := h.sess.UnloadDocuments()
+	if session.IsNeedGate(err) {
+		return err
 	}
-	again()
+	h.unloadDone(err)
+	return nil
 }

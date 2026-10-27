@@ -67,13 +67,18 @@ type Session struct {
 	ArmTimer      func(at float64, fire func()) (cancel func())
 	ArmForeground func(at float64, fire func()) (cancel func())
 	// PersistWithin is the default window of a deferred commit in milliseconds, read at each use (settings.progress.persistWithinMs);
-	// nil or a nil result means the default.
-	PersistWithin func() *float64
+	// false means the default.
+	PersistWithin func() (float64, bool)
 	// holds is the documents with held changes, by incarnation (record ID), in the order they were first held; each is pinned in
 	// the cache until its changes are stored (held.go).
 	holds     map[ID]*heldDocument
 	holdOrder []*heldDocument
-	holdTimer *holdTimer
+	holdTimer holdTimer
+	holdArmed bool
+	// holdFiredFn and holdJobFn are the timer's callbacks, made once; scratchHolds is reused by each store of held changes.
+	holdFiredFn  func()
+	holdJobFn    func() error
+	scratchHolds []*heldDocument
 	// DocumentRetention is the document retention in milliseconds read at each use (HarnessSettings.documentRetentionMs); nil or
 	// a nil result means the default.
 	DocumentRetention func() *float64
@@ -171,10 +176,7 @@ func (s *Session) Seal() {
 		return
 	}
 	s.closed = true
-	if s.holdTimer != nil && s.holdTimer.cancel != nil {
-		s.holdTimer.cancel()
-		s.holdTimer.cancel = nil
-	}
+	s.cancelHoldTimer()
 	listeners := s.closeListeners
 	s.closeListeners = nil
 	for _, l := range listeners {
@@ -304,8 +306,8 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 		return nil, nil
 	}
 	if tx.scope.Deferred {
-		if held := tx.holdable(writes); held != nil {
-			return s.hold(tx, held)
+		if tx.holdable(writes) {
+			return s.hold(tx)
 		}
 	}
 	if !tx.settledTaken {
@@ -344,8 +346,7 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	changes = append(changes, docs...)
 	pub := &Publication{Seq: seq, Changes: changes}
 	if storedDocs != nil {
-		stored := make([]Change, 0, tables+len(storedDocs))
-		pub.Stored = append(append(stored, changes[:tables]...), storedDocs...)
+		pub.Stored = append(append([]Change(nil), changes[:tables]...), storedDocs...)
 		docs = storedDocs
 	}
 	for _, change := range docs {

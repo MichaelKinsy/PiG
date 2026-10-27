@@ -128,6 +128,12 @@ func (h *handler) txRun(t *hostTx, name string, op *jv.Object) {
 		return
 	}
 	t.mintDone, t.convDone = false, false
+	if session.IsNeedGate(err) {
+		// The operation stored held changes (session/held.go) and the host's Storage holds that commit: it runs again, from the
+		// start, once the Storage answered.
+		h.cg.resume = func() { h.txRun(t, name, op) }
+		return
+	}
 	if err != nil {
 		if need, ok := session.IsNeedRead(err); ok && len(need.Reads) != 0 {
 			h.txResultNeed(t.id, need.Reads[0].Kind, result)

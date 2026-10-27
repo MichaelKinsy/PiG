@@ -112,8 +112,10 @@ type docPlan struct {
 	content   *Write
 	change    *planChange
 	convID    ID
-	// held is set when this commit also stores held changes of the incarnation (held.go takeHeld).
-	held *heldPlan
+	// held is set (hasHeld) when this commit also stores held changes of the incarnation (held.go takeHeld), whose content is stored.
+	held    heldPlan
+	hasHeld bool
+	stored  Write
 }
 
 // Tx stages one atomic commit. Every method must run inside the callback that

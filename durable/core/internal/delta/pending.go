@@ -54,7 +54,7 @@ type PendingOps struct {
 	// received slices.
 	ops []Op
 	// leaves is the last pending leaf op of each path, by path key.
-	leaves map[string]*pendingLeaf
+	leaves map[string]pendingLeaf
 }
 
 // Push queues the ops of one commit.
@@ -73,7 +73,7 @@ func (pending *PendingOps) Push(ops []Op) {
 		pending.kind, pending.ops = pendingBatch, ops
 	case pendingBatch:
 		received := pending.ops
-		pending.kind, pending.ops, pending.leaves = pendingFolding, nil, map[string]*pendingLeaf{}
+		pending.kind, pending.ops, pending.leaves = pendingFolding, nil, map[string]pendingLeaf{}
 		if pending.fold(received) {
 			pending.fold(ops)
 		}
@@ -116,9 +116,9 @@ func (pending *PendingOps) Peek(extra []Op) PendingTake {
 	pending.flush()
 	copied := PendingOps{kind: pending.kind, ops: slices.Clone(pending.ops)}
 	if pending.leaves != nil {
-		copied.leaves = make(map[string]*pendingLeaf, len(pending.leaves))
+		copied.leaves = make(map[string]pendingLeaf, len(pending.leaves))
 		for key, leaf := range pending.leaves {
-			copied.leaves[key] = &pendingLeaf{at: leaf.at}
+			copied.leaves[key] = pendingLeaf{at: leaf.at}
 		}
 	}
 	copied.Push(extra)
@@ -131,7 +131,7 @@ func (pending *PendingOps) Peek(extra []Op) PendingTake {
 
 // flush writes the text of every growing leaf into its op.
 func (pending *PendingOps) flush() {
-	for _, leaf := range pending.leaves {
+	for key, leaf := range pending.leaves {
 		if !leaf.growing {
 			continue
 		}
@@ -144,6 +144,7 @@ func (pending *PendingOps) flush() {
 		}
 		pending.ops[leaf.at] = op
 		leaf.buf = nil
+		pending.leaves[key] = leaf
 	}
 }
 
@@ -199,15 +200,15 @@ func isPrimitive(value any) bool {
 // about to be pushed to. It reports whether it merged.
 func (pending *PendingOps) mergeLeaf(op Op) bool {
 	key := pathKey(op.Path)
-	leaf := pending.leaves[key]
-	if leaf == nil {
-		pending.leaves[key] = &pendingLeaf{at: len(pending.ops)}
+	leaf, indexed := pending.leaves[key]
+	if !indexed {
+		pending.leaves[key] = pendingLeaf{at: len(pending.ops)}
 		return false
 	}
 	// The index points at leaf ops only.
 	if op.Verb == Set {
 		pending.ops[leaf.at] = op
-		leaf.growing, leaf.buf = false, nil
+		pending.leaves[key] = pendingLeaf{at: leaf.at}
 		return true
 	}
 	if !leaf.growing {
@@ -219,12 +220,13 @@ func (pending *PendingOps) mergeLeaf(op Op) bool {
 			// Only a string set takes an append; the tracker never appends to another primitive.
 			text = s
 		} else {
-			pending.leaves[key] = &pendingLeaf{at: len(pending.ops)}
+			pending.leaves[key] = pendingLeaf{at: len(pending.ops)}
 			return false
 		}
 		leaf.buf, leaf.growing = append(leaf.buf[:0], text...), true
 	}
 	leaf.buf = appendText(leaf.buf, op.Text)
+	pending.leaves[key] = leaf
 	return true
 }
 
