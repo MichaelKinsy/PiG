@@ -120,7 +120,7 @@ func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Objec
 	}, func(err error) {
 		// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal: reported once the commit
 		// resolved, before its caller resumes (scheduler.ts runtime.commit).
-		if err == nil && ended.reason != "" {
+		if err == nil && ended.reason != nil {
 			r.reportInterrupted(ended)
 		}
 		then(err)
