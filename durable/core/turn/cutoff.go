@@ -7,7 +7,6 @@ import (
 	"errors"
 
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
-	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
 
 // The restart limit of the built-in tasks (src/harness/live.ts cutOffTooOften, salvageable, cutOffCount, LIMITS_RESTARTS): a
@@ -49,27 +48,18 @@ func strIn(o *jv.Object, key string) string {
 	return str(o, key)
 }
 
-// commitReporting is commitDone for a commit that may end the task for crashes: a terminal failure whose detail names the limit
-// or an interruption is reported as task_interrupted with the task's restart count (scheduler.ts commit).
-func (r *run) commitReporting(change func(tx *session.Tx, current *jv.Object) (*jv.Object, error)) {
-	var reason, message, restarts any
-	r.commit(func(tx *session.Tx, current *jv.Object) (*jv.Object, error) {
-		next, err := change(tx, current)
-		if err == nil && next != nil && strIn(next, "status") == "terminal" {
-			failure := objField(objField(next, "outcome"), "error")
-			if detail := objField(failure, "detail"); detail != nil {
-				if why, _ := detail.Get("reason"); why == "restart_limit" || why == "interrupted" {
-					reason = why
-					message, _ = failure.Get("message")
-					restarts, _ = current.Get("restarts")
-				}
-			}
-		}
-		return next, err
-	}, func() {
-		if reason != nil {
-			_ = r.rt.ReportInterrupted(errors.New(message.(string)), reason, restarts)
-		}
-		r.done(nil)
-	})
+// markEnded records, in the commit that ends the task for crashes (a terminal failure whose detail is restart_limit or
+// interrupted), what reportEnded reports as task_interrupted: the reason, the message and the task's restart count
+// (scheduler.ts commit).
+func (r *run) markEnded(current *jv.Object, reason, message string) {
+	r.endReason, r.endMessage = reason, message
+	r.endRestarts, _ = current.Get("restarts")
+}
+
+// reportEnded is the continuation of the commit that ended the task: it reports a task that ended for crashes, then ends the phase.
+func (r *run) reportEnded() {
+	if r.endReason != "" {
+		_ = r.rt.ReportInterrupted(errors.New(r.endMessage), r.endReason, r.endRestarts)
+	}
+	r.done(nil)
 }

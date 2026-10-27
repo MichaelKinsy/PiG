@@ -86,7 +86,7 @@ func (r *compactionRun) complete() {
 // failCutOff fails a compaction cut off settings.restartLimit times in a row (spec section 5.4) instead of running it again.
 func (r *compactionRun) failCutOff() {
 	message := "Compaction was interrupted " + cutOffCount(r.task)
-	r.commitReporting(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+	r.commit(func(tx *session.Tx, current *jv.Object) (*jv.Object, error) {
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
@@ -94,8 +94,9 @@ func (r *compactionRun) failCutOff() {
 		if err := FailCompactionStatus(live, r.rt.TaskID(), message); err != nil {
 			return nil, err
 		}
+		r.markEnded(current, "restart_limit", message)
 		return failedTerminal(message, "restart_limit"), nil
-	})
+	}, r.reportEnded)
 }
 
 func (r *compactionRun) failNoModel(ref *ModelRef) {

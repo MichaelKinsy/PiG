@@ -321,7 +321,7 @@ func (g *ToolTask) abort(rt *session.Runtime, task *jv.Object, done func(error))
 // the entry ID. build receives the slot so interruption and abort can report the durable partial output. then, when given,
 // runs after the commit instead of ending the phase.
 func (r *toolRun) settle(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64) {
-	r.settleThen(call, end, build, durationMs, func() { r.done(nil) })
+	r.settleThen(call, end, build, durationMs, r.reportEnded)
 }
 
 func (r *toolRun) settleThen(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64, then func()) {
@@ -349,9 +349,7 @@ func (r *toolRun) settleThen(call *jv.Object, end ending, build func(slot *delta
 }
 
 func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64, made bool, then func()) {
-	var restarts any
 	r.commit(func(tx *session.Tx, current *jv.Object) (*jv.Object, error) {
-		restarts, _ = current.Get("restarts")
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
@@ -409,16 +407,12 @@ func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *del
 			failure := jobj("message", end.message)
 			if end.reason != "" {
 				failure.Set("detail", jobj("reason", end.reason))
+				r.markEnded(current, end.reason, end.message)
 			}
 			return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", failure, "result", settled)), nil
 		}
 		return jobj("status", "terminal", "outcome", jobj("status", "completed", "result", settled)), nil
-	}, func() {
-		if end.reason != "" {
-			_ = r.rt.ReportInterrupted(errors.New(end.message), "restart_limit", restarts)
-		}
-		then()
-	})
+	}, then)
 }
 
 // toolDiagnostic and truncated build the Harness's diagnostics.
