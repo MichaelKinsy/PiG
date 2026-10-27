@@ -50,6 +50,7 @@
                (:file "create-provider")
                (:file "extension-runner")
                (:file "extension-factories")
+               (:file "mcp-options")
                (:file "event-bus")
                (:file "builtin-tool")
                ;; ==== end lane S3 ====
