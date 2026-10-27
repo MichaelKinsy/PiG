@@ -321,7 +321,7 @@ export class Harness {
       const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), documentState: (token: any, ...args: unknown[]) => harness.documentState(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
-        client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info, context),
+        client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info, context), now: options.now,
         hostApi: runtimeHostApi,
         readTarget: () => self.harness,
         spanContext: (span, base) => harness.telemetry.spanContext(span, base),
