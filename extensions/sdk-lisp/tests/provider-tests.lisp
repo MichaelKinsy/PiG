@@ -749,7 +749,7 @@ once the response arrives. A responder that returns (values nil message) answers
         (let ((wrap (resolve "wrap" (pig:obj "render_shell" "self"))))
           (check-equal "own" (pig:jget wrap "use"))
           (check-equal "self" (pig:jget wrap "render_shell")))
-        (check-equal "next" (pig:jget (resolve "other" (pig:obj)) "use")))))
+        (check-equal "next" (pig:jget (resolve "other" (pig:obj)) "use"))))))
 
 ;;; ---------------------------------------------------------------- login and sprite
 
