@@ -731,3 +731,75 @@ func (recording *opsRecording) batches() []viewFrame {
 	defer recording.mu.Unlock()
 	return slices.Clone(recording.changes)
 }
+
+// harness-view-run.test.ts "streamed partials" (Pi #9265).
+func TestStreamedPartials(t *testing.T) {
+	t.Run("streams a tool-call partial as appends at its argument paths", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-view-run.test.ts:530
+		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 500, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
+		setup.SetSettings(func(settings *HarnessSettings) {
+			settings.Progress = &ProgressPolicyPatch{PartialIntervalMs: new(20.0), OutputIntervalMs: new(100.0)}
+		})
+		args := map[string]any{"path": "src/file.ts", "content": strings.Repeat("const a = 1;\n", 150)}
+		setup.Faux.SetResponses([]ai.FauxResponseStep{
+			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("missing", args, &ai.FauxToolCallOptions{ID: "c1"})}, StopReason: "toolUse"}),
+			fauxAnswer("done"),
+		})
+		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
+		partials := partialsOf(harness)
+		recording := &opsRecording{}
+		observation := must(harness.ObserveConversation(testContext, root.Id(), recording, nil))
+		must(submit(t, root, inputDraft("go")).Wait(testContext))
+		observation.Detach()
+		message := []any{"docs", "pi.live", "generation", "message"}
+		// Operations on the in-flight message, with their paths relative to it.
+		type onMessage struct {
+			kind string
+			path []any
+		}
+		var ops []onMessage
+		for _, batch := range recording.batches() {
+			for _, op := range batch.ops {
+				var path []any
+				if op[0] != "r" {
+					path, _ = op[1].([]any)
+				}
+				if len(path) >= len(message) && reflect.DeepEqual(path[:len(message)], message) {
+					ops = append(ops, onMessage{kind: op[0].(string), path: path[len(message):]})
+				}
+			}
+		}
+		argumentAppends, blockSets := 0, 0
+		for _, op := range ops {
+			if op.kind == "a" && len(op.path) > 2 && op.path[2] == "arguments" {
+				argumentAppends++
+				if last := op.path[len(op.path)-1]; last != "path" && last != "content" {
+					t.Fatalf("an argument append at %v", op.path)
+				}
+			}
+			if op.kind != "a" && len(op.path) == 2 {
+				blockSets++
+			}
+		}
+		if argumentAppends <= 10 {
+			t.Fatalf("%d argument appends, want more than 10", argumentAppends)
+		}
+		// The call is set whole only when a member appears (at most once per argument); growing strings are appends. With the raw
+		// argument text on the block, every commit resent the whole call.
+		if blockSets > 2 {
+			t.Fatalf("%d block sets, want at most 2", blockSets)
+		}
+		// The committed partials carry only the parsed arguments, never the raw argument text.
+		for _, partial := range partials.all() {
+			for _, block := range jsonOf(t, partial.Content).([]any) {
+				var keys []string
+				for key := range block.(map[string]any) {
+					keys = append(keys, key)
+				}
+				slices.Sort(keys)
+				expectStrings(t, keys, []string{"arguments", "id", "name", "type"})
+			}
+		}
+		closeHarness(t, harness)
+	})
+}
