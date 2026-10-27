@@ -25,7 +25,7 @@ import { WatchHub } from "./watches.ts"
 import type { Observer } from "./watch-types.ts"
 import { runCommit, TxProxy, wireDefinition } from "./tx.ts"
 import { recordPublication } from "./publications.ts"
-import { overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
+import { adaptStorage, overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
 import { coreFromEnvironment } from "./core-env.ts"
 import { customTaskRunner } from "./taskruntime.ts"
 import { TimeoutTimers } from "../timers.ts"
@@ -177,8 +177,9 @@ export class Harness {
   }
 
   /** Open a Harness over a storage: a cold open of the core (ABI section 5, `open`). */
-  static async open(storage: Storage, rawOptions: FacadeOptions, context: Context = BACKGROUND_CONTEXT): Promise<Harness> {
+  static async open(given: Storage | object, rawOptions: FacadeOptions, context: Context = BACKGROUND_CONTEXT): Promise<Harness> {
     context.abortSignal?.throwIfAborted()
+    const storage = await adaptStorage(given)
     // harness.ts constructor: `onReport` cannot fail what reports to it, and a clock that throws falls back to Date.now (reported once).
     const reported = safeReport(rawOptions.onReport)
     const options: FacadeOptions = { ...rawOptions, onReport: reported, now: safeNow(rawOptions.now, reported) }

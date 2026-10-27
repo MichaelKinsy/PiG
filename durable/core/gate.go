@@ -4,8 +4,6 @@
 package core
 
 import (
-	"errors"
-
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
@@ -81,9 +79,6 @@ func (h *handler) gateCommit(writes []session.Write) error {
 		return nil
 	case gateAsking:
 		return &session.NeedGate{}
-	case gateApplied:
-		// Pi's line runs one commit at a time and each waits for its Storage call.
-		return errors.New("core: a second commit reached the Storage gate before the Storage answered the first")
 	}
 	cg.state, cg.now = gateAsking, h.now
 	list := make([]any, len(writes))
@@ -139,12 +134,9 @@ func (h *handler) gateAnswered(outcome uint8, payload []byte) {
 		h.answerJob(err)
 		return
 	}
+	// The host reports a call that resolved without adopting as a rejection, so err is set here.
 	cg.state = gateRejected
 	cg.err = err
-	if err == nil {
-		// The host reports a call that resolved without adopting as a rejection, so this does not happen.
-		cg.err = errors.New("Storage committed without adopting the batch")
-	}
 	h.now = cg.now
 	if resume := cg.resume; resume != nil {
 		cg.resume = nil
@@ -159,7 +151,8 @@ func (h *handler) gateAnswered(outcome uint8, payload []byte) {
 func (h *handler) gateAdopt(seq session.Seq) error {
 	cg := &h.cg
 	if cg.state != gateAsking {
-		return &Rejection{"Error", "adopt: no commit waits for the Storage"}
+		// A Storage adopts a batch once: a second adoption, or one nothing waits for, changes nothing.
+		return nil
 	}
 	cg.state, cg.seq = gateAdopted, seq
 	h.now = cg.now

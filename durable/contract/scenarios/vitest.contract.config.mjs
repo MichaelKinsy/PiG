@@ -23,6 +23,9 @@ const candidatePlugin = {
 		const resolved = await this.resolve(source, importer, { ...options, skipSelf: true })
 		const id = resolved?.id?.split("?")[0]
 		if (!id?.startsWith(durableSrc + "/")) return null
+		// The reference's JsonlStorage is Pi's own class (as for the skipped U-jsonl-storage rows): it drives its inner MemoryStorage through
+		// `prepareCommit`, which the core-backed MemoryStorage does not have, so it keeps the reference's memory.ts. Nothing else does.
+		if (id === join(durableSrc, "storage", "memory.ts") && importer?.startsWith(join(durableSrc, "storage", "jsonl") + "/")) return null
 		const mine = join(candidate, id.slice(durableSrc.length + 1))
 		return existsSync(mine) ? mine : null
 	},

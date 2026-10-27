@@ -146,6 +146,9 @@ type Env struct {
 	// counts, holds or fails it sees it (scheduler.ts #loadChain); nil asks nothing.
 	GateRead func(method string, id ID)
 	After    func(n int, then func())
+	// CommitListeners, when set, tells whether the host has `subscribeCommits` listeners: a microtask the scheduler queues in its commit
+	// observer then runs behind their dispatch (Scheduler.microtask).
+	CommitListeners *bool
 }
 
 // taskNode is the part of a task the ownership walk needs.

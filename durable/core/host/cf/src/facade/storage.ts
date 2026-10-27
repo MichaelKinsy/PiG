@@ -1,5 +1,6 @@
 // Storage handles for Harness.open: a synchronous SQL surface (ABI section 3) plus how to close it. The Durable Object host
 // passes `doStorage(ctx.storage)`; Node programs pass MemoryStorage or openNodeSqliteStorage.
+import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import { doStore } from "../store-do.ts"
 import { apply as applyOps } from "@earendil-works/chord/delta"
 import { zeroCounters, type Store } from "../store.ts"
@@ -149,4 +150,25 @@ const PI_STORAGE_METHODS = ["commit", "mintId", "conversation", "scanConversatio
 export function overriddenMethods(storage: object): string[] {
   if (!(storage instanceof SqlStorage) && typeof (storage as { commit?: unknown }).commit !== "function") return []
   return PI_STORAGE_METHODS.filter(name => (storage as Record<string, unknown>)[name] !== undefined && (storage as Record<string, unknown>)[name] !== (SqlStorage.prototype as unknown as Record<string, unknown>)[name])
+}
+
+/**
+ * A Pi Storage this host does not implement (pi-durable's own `JsonlStorage` or `IndexedDbStorage` object passed to `Harness.open` or
+ * `SessionImpl`): the core keeps its state in a private SQL store and every Storage method goes to the caller's object. Each commit takes
+ * the Storage gate (PROTOCOL.md): the object's `commit(writes, adopt, context)` adopts the batch and the core applies it inside the
+ * adoption, so the object must start empty, as the core's store does. An object that already holds records is refused: the core would not
+ * see them.
+ */
+export async function adaptStorage(storage: Storage | object): Promise<Storage> {
+  if (typeof (storage as Partial<Storage>).open === "function") return storage as Storage
+  const foreign = storage as Record<string, (...args: unknown[]) => unknown> & { close?(context?: unknown): unknown }
+  if (await foreign.conversation!.call(foreign, 1, BACKGROUND_CONTEXT) !== undefined) throw new Error("Harness.open: a Storage this host does not implement must start empty: the core keeps its own state")
+  class Adapted extends MemoryStorage {
+    seal() { this.closed = true }
+  }
+  const adapted = new Adapted()
+  const target = adapted as unknown as Record<string, unknown>
+  for (const name of PI_STORAGE_METHODS) target[name] = (...args: unknown[]) => foreign[name]!.apply(foreign, args)
+  adapted.close = async (context?: unknown) => { adapted.seal(); await foreign.close?.call(foreign, context) }
+  return adapted
 }
