@@ -907,6 +907,7 @@ func (s *tuiAltScreenState) opInFrame(call *tuiAltCall) (*CallResultPayload, err
 	s.deferDraining = true
 	s.deferMu.Unlock()
 	if start {
+		//portlint:allow golifetime the drain ends when the deferred queue is empty; each change waits only for the renderer's locks, which the frame that deferred it releases
 		go s.drainDeferred()
 	}
 	return tuiAltResult(map[string]any{})
