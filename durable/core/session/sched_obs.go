@@ -398,6 +398,7 @@ func (s *Scheduler) drain() {
 func (s *Scheduler) reserve(then func([]*reservation, error)) {
 	var reservations []*reservation
 	var abandoned []ID
+	var checked, idle bool
 	var faulted []faultedTask
 	cleanup := func() {
 		for _, r := range reservations {
@@ -411,7 +412,12 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		cleanup()
 		abandoned = nil
 		faulted = nil
-		if !s.enabled || s.closing {
+		// The job runs again from its start when a Storage gate or a read answers; Pi's callback runs once and decides at its start
+		// (scheduler.ts #reserve), so a close that sealed meanwhile does not undo a reservation the first run made.
+		if !checked {
+			checked, idle = true, !s.enabled || s.closing
+		}
+		if idle {
 			return nil
 		}
 		for _, id := range s.abandoned.Values() {

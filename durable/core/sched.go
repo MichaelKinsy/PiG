@@ -312,6 +312,15 @@ func (h *handler) documentRetentionMs() *float64 {
 	return nil
 }
 
+// persistWithinMs is settings.progress.persistWithinMs, the default window of a deferred commit; nil when the host set none, which
+// means the default (harness/agent.ts). The host sends Infinity as the largest finite number.
+func (h *handler) persistWithinMs() *float64 {
+	if v, ok := valueOf(objOf(objOf(h.open, "settings"), "progress"), "persistWithinMs").(float64); ok {
+		return &v
+	}
+	return nil
+}
+
 // publishWake offers the host the Harness's wake (HarnessOptions.onWake) in a wake notice after each recomputation: the host
 // delivers only a changed value, and delivers it again after a throw, so it keeps the last value it delivered.
 func (h *handler) publishWake(w session.Wake) {

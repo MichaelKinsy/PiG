@@ -3,8 +3,10 @@
 // task's phase or abort handler runs here, in response to the core's `phase` effect.
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context"
 import type { Context } from "@earendil-works/chord"
+import type { ReportFrom, ReportInfo, ReportTask } from "@earendil-works/pi-durable"
 import type { PhaseEffect } from "../protocol.ts"
 import type { HostRegistry } from "../registry.ts"
+import type { HostTimers } from "../timers.ts"
 import { documentReader, invocationApi, invocationBinding, invocationCommit, type HostApiOptions } from "./hostapi.ts"
 
 export interface TaskRuntimeSources {
@@ -13,12 +15,14 @@ export interface TaskRuntimeSources {
   models: unknown
   settings: () => unknown
   now: () => number
-  report: (error: unknown) => void
+  report: (error: unknown, info: ReportInfo) => void
   /** The registry snapshot object `runtime.registry` shows. */
   snapshot: () => unknown
   env?: (target: { conversationId: number; read: unknown }, context: Context) => unknown | Promise<unknown>
   /** The Harness itself (harness.ts buildEnv passes `read: this`). */
   readTarget?: () => unknown
+  /** The Harness's host timers (HarnessOptions.setTimer) that `runtime.setTimer` arms through. */
+  timers: HostTimers
 }
 
 type Handler = (task: unknown, runtime: unknown, context: Context) => Promise<void>
@@ -39,12 +43,15 @@ export function customTaskRunner(sources: TaskRuntimeSources) {
     const phase: Live["phase"] = {}
     const api = invocationApi(sources.hostApi, who, binding, phase)
     const own = withAbortSignal(abort.signal, BACKGROUND_CONTEXT)
+    // types.ts ReportTask: the task a report is about; its extension is the one that installed the definition this invocation runs (scheduler.ts installerOf).
+    const task = { id: effect.taskId, kind: effect.kind, conversationId } as unknown as ReportTask
+    const installer = effect.extension === undefined ? {} : { extension: effect.extension }
     const runtime = {
       ...api,
       // scheduler.ts hooks.each: the handlers of this task's hooks in the agent's selected extensions, in extension order; a throw is reported and the next runs, unless the invocation was aborted.
       hooks: {
         each: async (name: string, invoke: (handler: (...args: unknown[]) => unknown) => unknown) => {
-          const agent = await api.agent(own) as { extensions: { hooks?: { task: string; handlers: Record<string, unknown> }[] }[] }
+          const agent = await api.agent(own) as { extensions: { name?: string; hooks?: { task: string; handlers: Record<string, unknown> }[] }[] }
           for (const extension of agent.extensions) {
             for (const hook of extension.hooks ?? []) {
               if (hook.task !== effect.kind) continue
@@ -52,7 +59,7 @@ export function customTaskRunner(sources: TaskRuntimeSources) {
               if (typeof handler !== "function") continue
               try { await invoke(handler.bind(hook.handlers) as (...args: unknown[]) => unknown) } catch (error) {
                 if (abort.signal.aborted) throw error
-                sources.report(error)
+                sources.report(error, { type: "extension_error", task, ...(extension.name === undefined ? {} : { extension: extension.name }) })
               }
             }
           }
@@ -61,11 +68,26 @@ export function customTaskRunner(sources: TaskRuntimeSources) {
       signal: abort.signal,
       get registry() { return phase.snapshot },
       get settings() { return sources.settings() },
-      models: sources.models,
+      get models() { return sources.models },
       // The clock and the report channel are the invocation's: they throw once it has ended (scheduler.ts runtime).
       now: () => { binding.check(); return sources.now() },
-      report: (error: unknown) => { binding.check(); sources.report(error) },
+      report: (error: unknown, from?: ReportFrom) => {
+        binding.check()
+        sources.report(error, (from === undefined ? { type: "task_error", task, ...installer }
+          : from.type === "extension" ? { type: "extension_error", task, ...(from.extension === undefined ? {} : { extension: from.extension }) }
+          : { type: "host_error", callback: from.callback, task }) as ReportInfo)
+      },
       env: async (callContext: Context) => sources.env?.({ conversationId, read: sources.readTarget?.() ?? documentReader(sources.hostApi.client) }, callContext),
+      // scheduler.ts runtime.setTimer: a foreground host timer that ends with the invocation, so a late fire runs nothing.
+      setTimer: (callback: () => void, delayMs: number) => {
+        let ended = false
+        let disarm: (() => void) | undefined
+        const stop = () => { if (ended) return; ended = true; disarm?.() }
+        binding.onEnd(stop)
+        if (ended) return () => {}
+        disarm = sources.timers.foreground(() => { if (!ended) { ended = true; callback() } }, delayMs)
+        return stop
+      },
       commit: invocationCommit(sources.hostApi, { invocation: effect.invocation, conversationId }, binding),
     }
     return { runtime, phase, invocation, abort, effectIds: new Set(), active: 0 }

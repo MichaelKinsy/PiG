@@ -110,6 +110,11 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		h.loop.Line(run, done)
 		return nil
 	}
+	if strOf(req, "op") == "unloadDocuments" && h.sess.HeldDocuments() > 0 {
+		// Storing held changes is a Storage commit: a job on the Session line (session.ts unloadDocuments).
+		h.unloadHeld(ev.ID)
+		return nil
+	}
 	if strOf(req, "op") == "context" && h.runtimeContext(ev.ID, req) {
 		return nil
 	}
@@ -183,9 +188,9 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 	}
 	switch op {
 	case "unloadDocuments":
-		// session.ts unloadDocuments: the loaded-document cache is dropped; later reads load from the store (and migrate again).
-		h.sess.UnloadDocuments()
-		return nil, nil
+		// session.ts unloadDocuments: the loaded-document cache is dropped, held changes stored first; later reads load from the
+		// store (and migrate again).
+		return nil, h.sess.UnloadDocuments()
 	case "snapshot":
 		def, args, err := docDef(req)
 		if err != nil {

@@ -38,8 +38,10 @@ func (s *coreSession) commitNotice(n abi.Notice) {
 		WatchID *uint32           `json:"watchId"`
 		Seq     durable.Seq       `json:"seq"`
 		Changes []json.RawMessage `json:"changes"`
+		// Memory marks a deferred commit held in memory (session/held.go): it reaches the commit listeners once it is stored.
+		Memory bool `json:"memory"`
 	}
-	if json.Unmarshal(n.Payload, &p) != nil || p.WatchID != nil || p.Changes == nil {
+	if json.Unmarshal(n.Payload, &p) != nil || p.WatchID != nil || p.Memory || p.Changes == nil {
 		return
 	}
 	publication := durable.CommitPublication{Seq: p.Seq}

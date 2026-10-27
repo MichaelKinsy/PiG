@@ -94,9 +94,20 @@ type ReportFrom struct{ Extension, Callback string }
 // invocation ended, the Harness is closing or, in a run invocation, the task
 // carries an abort mark.
 func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
+	r.commit(false, change, then)
+}
+
+// CommitDeferred is Commit with CommitOptions{persistence: {kind: "deferred"}} (harness/live.ts PROGRESS_COMMIT): a commit that
+// changes only latest, initial-fork conversation documents is adopted in memory and stored later (held.go), by the Session's
+// default window. A commit that returns a state is stored at once.
+func (r *Runtime) CommitDeferred(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
+	r.commit(true, change, then)
+}
+
+func (r *Runtime) commit(deferred bool, change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
 	// runtime.commit is an async function that awaits `#gated` (scheduler.ts, Pi 6c384aa3: it adds the checkpoint event after the await), where it
 	// returned the promise itself: its caller resumes a tick after the commit's resolution (the late job).
-	r.gated(true, func(tx *Tx, current *jv.Object) error {
+	r.gatedWith(true, deferred, func(tx *Tx, current *jv.Object) error {
 		next, err := change(tx, current)
 		if err != nil {
 			return err
@@ -165,6 +176,11 @@ func (r *Runtime) AbandonHost(tx *Tx, err error) { r.s.sess.Abandon(tx, err) }
 
 // gated runs change as a job guarded by the invocation (scheduler.ts #gated).
 func (r *Runtime) gated(late bool, change func(tx *Tx, current *jv.Object) error, then func(error)) {
+	r.gatedWith(late, false, change, then)
+}
+
+// gatedWith is gated for a commit that may be deferred (CommitOptions.persistence).
+func (r *Runtime) gatedWith(late, deferred bool, change func(tx *Tx, current *jv.Object) error, then func(error)) {
 	s, inv := r.s, r.inv
 	if inv.ended {
 		s.loop.DeferDone(then, endedError(inv), late)
@@ -188,7 +204,7 @@ func (r *Runtime) gated(late bool, change func(tx *Tx, current *jv.Object) error
 			return errorf("Task %d has a durable abort mark", inv.taskID)
 		}
 		return change(tx, found)
-	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID}, then)
+	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Deferred: deferred, WithinMs: -1}, then)
 }
 
 // Memo stores candidate unless a memo of that name exists and returns the

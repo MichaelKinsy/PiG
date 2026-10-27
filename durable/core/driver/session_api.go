@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -59,10 +60,11 @@ func (i *invocation) Env() env.ExecutionEnv { return i.s.envs.Get(i.task) }
 func (i *invocation) Now() float64 { return i.s.now() }
 
 func (i *invocation) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
-	if _, err := durable.SingleCommitOptions(options); err != nil {
+	chosen, err := durable.SingleCommitOptions(options)
+	if err != nil {
 		return nil, err
 	}
-	return i.s.commit(ctx, map[string]any{"conversationId": i.conversation}, change)
+	return i.s.commitWith(ctx, map[string]any{"conversationId": i.conversation}, chosen, change)
 }
 
 func (i *invocation) Memo(ctx context.Context, name string) (durable.JsonValue, bool, error) {
@@ -167,6 +169,36 @@ func (s *coreSession) agent(ctx context.Context, id durable.ConversationId) (dur
 
 // commit runs one Session commit on the extension transaction channel; binding carries the invocation's conversation.
 func (s *coreSession) commit(ctx context.Context, binding map[string]any, change func(tx durable.Tx) (any, error)) (any, error) {
+	return s.commitWith(ctx, binding, durable.CommitOptions{}, change)
+}
+
+// persistenceBinding adds the commit's CommitPersistence to the options of a transaction's begin (ABI section 8, begin.persistence):
+// the core holds a deferred commit in memory when it may (spec section 4.1). withinMs travels as the largest finite number for +Inf,
+// which JSON cannot carry; absent, the core uses the Session's default window.
+func persistenceBinding(binding map[string]any, options durable.CommitOptions) map[string]any {
+	persistence := options.Persistence
+	if persistence == nil || persistence.Kind != durable.CommitDeferred {
+		return binding
+	}
+	out := make(map[string]any, len(binding)+1)
+	for key, value := range binding {
+		out[key] = value
+	}
+	wire := map[string]any{"kind": "deferred"}
+	if persistence.WithinMs != nil {
+		ms := *persistence.WithinMs
+		if math.IsInf(ms, 1) {
+			ms = math.MaxFloat64
+		}
+		wire["withinMs"] = ms
+	}
+	out["persistence"] = wire
+	return out
+}
+
+// commitWith is commit with the options of the call (CommitOptions, checked by durable.SingleCommitOptions).
+func (s *coreSession) commitWith(ctx context.Context, binding map[string]any, options durable.CommitOptions, change func(tx durable.Tx) (any, error)) (any, error) {
+	binding = persistenceBinding(binding, options)
 	release, err := s.admit()
 	if err != nil {
 		return nil, err
@@ -200,13 +232,15 @@ func (s *coreSession) WatchDocErased(ctx context.Context, token durable.AnyDocTo
 	return s.watchDoc(ctx, token, args)
 }
 
-// Commit runs one atomic transaction on the Session mutation line. The core stores every commit before it returns:
-// options.Persistence is a permission (spec §4.1), so a deferred commit is stored at once.
+// Commit runs one atomic transaction on the Session mutation line. options.Persistence is a permission (spec section 4.1): the core
+// holds a deferred commit in memory when it only changes existing latest, initial-fork conversation documents, and stores any other
+// commit before it returns.
 func (s *coreSession) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
-	if _, err := durable.SingleCommitOptions(options); err != nil {
+	chosen, err := durable.SingleCommitOptions(options)
+	if err != nil {
 		return nil, err
 	}
-	return s.commit(ctx, nil, change)
+	return s.commitWith(ctx, nil, chosen, change)
 }
 
 // SubscribeClose observes close when it begins (session.ts close: the close listeners run synchronously in close(), before
@@ -713,10 +747,11 @@ func (c *conversation) Compact(ctx context.Context, instructions *string) (durab
 }
 
 func (c *conversation) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
-	if _, err := durable.SingleCommitOptions(options); err != nil {
+	chosen, err := durable.SingleCommitOptions(options)
+	if err != nil {
 		return nil, err
 	}
-	return c.s.commit(ctx, map[string]any{"conversationId": c.id}, change)
+	return c.s.commitWith(ctx, map[string]any{"conversationId": c.id}, chosen, change)
 }
 
 func (c *conversation) Context(ctx context.Context, options *durable.ContextOptions) (durable.ContextView, error) {

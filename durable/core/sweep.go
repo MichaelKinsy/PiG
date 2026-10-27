@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
+	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
 
 // The Session's document sweep (session/retention.go) runs as a job on the Session line. In Harness mode that line is the Loop. A
@@ -22,13 +23,26 @@ func (h *handler) sweepMicrotask(fn func()) {
 	h.sweeps = append(h.sweeps, fn)
 }
 
-// enqueueSweep queues job on the Session line.
-func (h *handler) enqueueSweep(job func()) {
+// enqueueSweep queues job on the Session line. A job that returns a *session.NeedGate (the store of held changes, while the
+// host's Storage holds the commit) runs again from the start once the host answered: the Loop reruns a line job, and a
+// Session-mode core reruns it on the answer.
+func (h *handler) enqueueSweep(job func() error) {
 	if h.loop != nil {
-		h.loop.LineAfterTail(func() error { job(); return nil }, nil)
+		h.loop.LineAfterTail(job, nil)
 		return
 	}
-	h.sweeps = append(h.sweeps, job)
+	h.sweeps = append(h.sweeps, h.sessionJob(job))
+}
+
+// sessionJob is job as a Session-mode sweep: it runs again when the host's Storage answered the commit it asked for.
+func (h *handler) sessionJob(job func() error) func() {
+	var run func()
+	run = func() {
+		if err := job(); session.IsNeedGate(err) {
+			h.cg.resume = run
+		}
+	}
+	return run
 }
 
 // runSessionSweeps runs the sweeps a Session-mode core queued, unless a host transaction holds the line.
@@ -55,14 +69,16 @@ func (h *handler) publishDocCache() {
 	cached, idle := h.sess.DocumentCacheSizes()
 	sweeps := h.sess.SweepJobs
 	attached := h.sess.DocumentsAttached()
-	if h.cacheSent && h.cacheSizes == [4]int{cached, idle, attached, sweeps} {
+	held := h.sess.HeldDocuments()
+	if h.cacheSent && h.cacheSizes == [5]int{cached, idle, attached, sweeps, held} {
 		return
 	}
-	h.cacheSent, h.cacheSizes = true, [4]int{cached, idle, attached, sweeps}
+	h.cacheSent, h.cacheSizes = true, [5]int{cached, idle, attached, sweeps, held}
 	body := append([]byte(`{"cached":`), strconv.Itoa(cached)...)
 	body = append(append(body, `,"idle":`...), strconv.Itoa(idle)...)
 	body = append(append(body, `,"attached":`...), strconv.Itoa(attached)...)
 	body = append(append(body, `,"sweeps":`...), strconv.Itoa(sweeps)...)
+	body = append(append(body, `,"held":`...), strconv.Itoa(held)...)
 	h.b.Notice(abi.NoticeDocCache, append(body, '}'))
 }
 
@@ -89,4 +105,31 @@ func (h *handler) publishIndexSizes() {
 		body = append(append(append(append(body, '"'), name...), `":`...), strconv.Itoa(sizes[i])...)
 	}
 	h.b.Notice(abi.NoticeIndexSizes, append(body, '}'))
+}
+
+// unloadHeld answers unloadDocuments for a Session with held changes: the store of those is a Storage commit, a job on the
+// Session line that the host's Storage may hold (a *NeedGate runs it again once the Storage answered).
+func (h *handler) unloadHeld(id uint32) {
+	run := func() error { return h.sess.UnloadDocuments() }
+	done := func(err error) {
+		if err != nil {
+			h.apiError(id, err)
+			return
+		}
+		h.apiOK(id, nil)
+	}
+	if h.loop != nil {
+		h.loop.Line(run, done)
+		return
+	}
+	var again func()
+	again = func() {
+		err := run()
+		if session.IsNeedGate(err) {
+			h.cg.resume = again
+			return
+		}
+		done(err)
+	}
+	again()
 }

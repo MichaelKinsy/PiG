@@ -15,7 +15,7 @@ Code of record: `host/cf/src/protocol.ts` (shapes), `host/cf/src/effects.ts` (ef
 | `submit` | `{id, conversationId, type: "input" (content, and entry: the `{kind, data?}` it is placed as instead of `pi.user`) or "write" (entry), requestId, whenBusy?, invocation?}` | `id` is a number the host allocates; the core answers with an `api_result` notice for `id`: `{ok: {id: submissionId}}` once the admitting commit is applied (after that commit's `published` notice), or `{error: {name, message}}` (`ConversationBusy` for whenBusy `reject`). The core runs the admission when the Session line is free, so the answer may follow later steps. The host always sends a `requestId` (a minted UUID when the caller gave none); a known `requestId` returns its submission without a commit |
 | `abort` | `{requestId, conversationId?, background?}` or `{requestId, taskId, keepRestart?}` (`keepRestart`: a task marked with abortReason `restart` keeps its mark and waits on, as for an owner's own cleanup; otherwise a request replaces the mark) or `{requestId, submissionId, conversationId?}` (`requestId` here is the numeric api_result key) | the core answers with an `api_result` notice carrying `requestId`: `"marked" or "terminal"` for a task, `"aborted", "already_placed", "settled" or "not_found"` for a submission, `null` for a conversation |
 | `inspect` | `{query: "harness", requestId}` | `HarnessInspection`: scheduling state, live tasks with their scheduler state, unsettled submissions. Answer: `api_result` with `requestId` |
-| `tx` | `u32 txId` then `{op, ...}` | section 8. `begin` carries `{invocation?, conversationId?}` |
+| `tx` | `u32 txId` then `{op, ...}` | section 8. `begin` carries `{invocation?, conversationId?, persistence?}`: `persistence` is `{kind: "deferred", withinMs?}` (`CommitOptions`, spec section 4.1; `withinMs` is checked by the host and travels as the largest finite number for `Infinity`; absent, the core uses `settings.progress.persistWithinMs`) |
 
 ### Registry snapshot (`open.registry`, `registry.registry`)
 
@@ -64,6 +64,8 @@ The core runs the built-in conversation-creation hook inside `createRootConversa
 ## Notices
 
 `published` body: `{seq, submissions: [{id, conversationId, requestId?, status}], entries: [ids], tasks: [{id, kind, status}], documents?, watchId?, frame?}`; `seq` is the commit's sequence. A submission appears with its `id` when admitted and again on every status change. The host reads the settled record itself from `submissions`.
+
+A deferred commit the core holds in memory (spec section 4.1) has a `published` notice `{memory: true, changes}` only while a commit listener is subscribed: no `seq`, no tables, the document changes as memory adopted them. It is for the Session's own observers (`observeCommits`); `subscribeCommits` listeners, waiters and sequence bookkeeping skip it. The commit that stores held changes later has its own `published` notice, whose `changes` carry the held operations first, and a deadline's store has one with no tables. Open payload `settings.progress.persistWithinMs` is the default window of a deferred commit (`Infinity` as the largest finite number).
 
 ## Host-served reads (CONTRACT section 3.10)
 
