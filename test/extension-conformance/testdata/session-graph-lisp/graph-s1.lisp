@@ -137,7 +137,7 @@
                (let* ((id (pig:sm-get-session-id (current))) (fresh (not (member id seen :test #'equal))))
                  (pushnew id seen :test #'equal)
                  fresh))
-             (kinds () (s1-entry-kinds (current)))
+             (kinds () (map 'simple-vector (lambda (entry) (pig:jget entry "type")) (pig:sm-get-entries (current))))
              (roles () (map 'simple-vector (lambda (m) (pig:jget m "role")) (pig:agent-session-messages (pig:agent-session-runtime-session runtime))))
              (message-entry-p (entry role) (and (equal (pig:jget entry "type") "message") (equal (pig:jref entry "message" "role") role)))
              (user-entry (wanted)
