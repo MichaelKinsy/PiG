@@ -80,6 +80,8 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     close: async (context: Context) => { if (opened) await (await opened).close(context); else ended.resolve({ reason: "closed" }) },
     /** Internal (session.ts observeCommits): the Session components' commit listener, run before the host's `subscribeCommits` listeners. */
     observeCommits: later<(publication: unknown, context: Context) => void>((h, l) => h.observeCommits(l)),
+    /** Internal, for tests (session.ts fail): fail the Session. */
+    fail: (error: unknown) => { if (harness !== undefined) harness.fail(error); else void open().then(h => h.fail(error), () => {}) },
     subscribeCommits: later<(publication: unknown, context: Context) => void>((h, l) => h.subscribeCommits(l)),
     subscribeClose: later<() => void>((h, l) => h.subscribeClose(l)),
     snapshot: via("snapshot"), snapshotAsOf: via("snapshotAsOf"), documentState: via("documentState"), watchDoc, observeDoc: via("observeDoc"), unloadDocuments: via("unloadDocuments"),

@@ -281,7 +281,7 @@ export class Harness {
         // The host freed its session; a trap took the instance (pool.ts broken), and the lease is returned either way.
         if (error.cause2 instanceof CoreTrap) lease?.broke(error)
         lease?.release()
-        self.harness?.fail(error)
+        self.harness?.hostDiscarded(error)
       },
       onCancel: id => self.phases?.ended(id),
       renew: renewal,
@@ -550,12 +550,15 @@ export class Harness {
     if (body.changes !== undefined && body.seq !== undefined) recordPublication(this.client, body.seq, body.changes)
     if (body.watchId !== undefined) this.watches.deliver(body.watchId, body.frame as { value: unknown; ops: never[] })
     if (body.changes !== undefined) { for (const change of body.changes as never[]) substitutePublished(this.client, change); adoptTables(this.client, body.changes as never) }
+    // A storage transaction that also stored held changes (session/held.go): the Session's own observers see this commit's own changes, which the core sends as `observed`;
+    // a deadline's store shows them nothing (an empty `observed`).
+    if (body.observed !== undefined) for (const change of body.observed as never[]) substitutePublished(this.client, change)
     if (body.changes !== undefined) {
       const publication = { seq: body.seq, changes: body.changes }
-      const observed = { kind: "stored", ...publication }
+      const observed = { kind: "stored", seq: body.seq, changes: body.observed ?? body.changes }
       // session.ts #publish: the Session's own components run first, and a throw leaves their state behind storage, so it fails the Session; a host listener's throw is reported.
       let observerFailure: { error: unknown } | undefined
-      for (const l of [...this.internalCommitListeners]) { try { l(observed, BACKGROUND_CONTEXT) } catch (error) { observerFailure ??= { error } } }
+      if (body.observed === undefined || (body.observed as unknown[]).length > 0) for (const l of [...this.internalCommitListeners]) { try { l(observed, BACKGROUND_CONTEXT) } catch (error) { observerFailure ??= { error } } }
       // The commit is durable: a failing observer neither fails the commit nor skips the others, and the Session fails once Storage.commit() returned.
       if (observerFailure !== undefined) {
         if (this.inStorage > 0) this.adoptedFailure ??= observerFailure
@@ -592,6 +595,15 @@ export class Harness {
     if (this.options.mode === "session") this.closeAfterFailure()
   }
 
+  /** session.ts fail (internal): fail the Session with `error`: the core stores nothing more, watches end session_failed, and the Session closes, ending `closed` with `failed`. */
+  fail(error: unknown) {
+    if (this.failure !== undefined) return
+    this.client.api("fail", { message: errorMessage(error) }).catch(() => {})
+    this.storageFailed(error)
+    this.report(error, SESSION_FAILED)
+    this.closeAfterFailure()
+  }
+
   private closeAfterFailure() {
     if (this.failure === undefined || this.closing !== undefined) return
     // After the step that carried the report has delivered all of its notices, so the waits the core ended with SessionFailed reach their callers.
@@ -625,7 +637,7 @@ export class Harness {
   }
 
   /** The host discarded the core session: waits for publications can never end, so they reject with the cause. */
-  private fail(error: Error) {
+  private hostDiscarded(error: Error) {
     if (this.failed) return
     this.failed = error
     for (const w of [...this.waiters]) w.reject(error)
@@ -703,7 +715,7 @@ export class Harness {
     // Admitted work settles before the store closes (session.ts close enqueues the Storage close behind the line); the
     // close event is final, so open transactions end first.
     if (this.client.busy) await this.client.idle()
-    await this.host.closeAndJoin()
+    const unstored = await this.host.closeAndJoin()
     this.client.close()
     this.timers?.dispose?.()
     // Session.close awaits the Storage close with the caller's context; a close that fails rejects this one. A failing close of the Storage
@@ -718,6 +730,8 @@ export class Harness {
     } finally {
       this.end.resolve(this.failure === undefined ? { reason: "closed" } : { reason: "failed", error: this.failure.error })
     }
+    // The store of held changes at close failed (the Storage threw: the Session failed with that error): close() rejects with it, the backend closed all the same.
+    if (unstored && this.failure !== undefined) throw this.failure.error
   }
   /** session.ts: the close listeners run once, at the first of a failure and the close. */
   private runCloseListeners() {

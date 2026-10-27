@@ -201,6 +201,10 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		return h.storageAPI(method, req)
 	}
 	switch op {
+	case "fail":
+		// session.ts fail: the host failed the Session (a test's, or a Storage call of its own that threw): nothing more is stored.
+		h.sess.Fail(errors.New(strOf(req, "message")))
+		return nil, nil
 	case "unloadDocuments":
 		// session.ts unloadDocuments: the loaded-document cache is dropped, held changes stored first; later reads load from the
 		// store (and migrate again).

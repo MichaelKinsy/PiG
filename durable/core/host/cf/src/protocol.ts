@@ -91,6 +91,8 @@ export type PublishedNotice = {
   changes?: unknown[]
   /** A deferred commit adopted in memory only (CommitPersistence): `changes` are its document changes, and nothing was stored (session.ts ObservedCommit). */
   memory?: boolean
+  /** The changes the Session's own observers see when the transaction also stored held changes (`changes` is what Storage got, the held operations first); empty for a deadline's store. Absent: `changes`. */
+  observed?: unknown[]
   watchId?: number
   frame?: unknown
 }

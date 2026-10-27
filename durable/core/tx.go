@@ -523,6 +523,10 @@ func (h *handler) publish(pub *session.Publication) {
 	}
 	if h.changes {
 		out.Append(jv.Append(append(item[:0], `,"changes":`...), commitChanges(pub.StoredChanges())))
+		if pub.Stored != nil {
+			// The Session's own observers see this commit's own changes only (session.ts #publish `observed`); a deadline's store shows them none.
+			out.Append(jv.Append(append(item[:0], `,"observed":`...), commitChanges(pub.Changes)))
+		}
 	}
 	out.Append(append(item[:0], '}'))
 	h.b.NoticeChunks(abi.NoticePublished, out)

@@ -170,6 +170,13 @@ func (h *handler) gateAnswered(outcome uint8, payload []byte) {
 			h.txAnswered(t, err)
 			return
 		}
+		if h.loop == nil {
+			// A Session-mode job (the store of held changes, session/held.go) ran again at the adoption: a failure after it fails the Session.
+			if err != nil {
+				h.sess.Fail(err)
+			}
+			return
+		}
 		h.answerJob(err)
 		return
 	}
@@ -204,7 +211,11 @@ func (h *handler) gateAdopt(seq session.Seq) error {
 		resume()
 		return nil
 	}
-	h.loop.Ungate()
+	if h.loop != nil {
+		h.loop.Ungate()
+		return nil
+	}
+	h.regate()
 	return nil
 }
 
