@@ -348,6 +348,28 @@ struct Listeners {
     by_ptr: HashMap<usize, String>,
 }
 
+thread_local! {
+    /// How many frame callbacks (component `render`, overlay `visible`, the style and indicator options) this thread is running.
+    static FRAME_DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// Marks the thread as running a frame callback until dropped: its `tui.alt` calls carry `inFrame`, which tells the host the call comes from
+/// inside the frame being drawn.
+struct InFrame;
+
+impl InFrame {
+    fn enter() -> Self {
+        FRAME_DEPTH.with(|depth| depth.set(depth.get() + 1));
+        Self
+    }
+}
+
+impl Drop for InFrame {
+    fn drop(&mut self) {
+        FRAME_DEPTH.with(|depth| depth.set(depth.get() - 1));
+    }
+}
+
 type SchemeFn = Arc<dyn Fn(TerminalColorScheme) + Send + Sync>;
 
 struct Inner {
@@ -405,6 +427,9 @@ impl Inner {
         }
         if op != "dispose" {
             args.insert("terminal".into(), self.terminal_block());
+            if FRAME_DEPTH.with(std::cell::Cell::get) > 0 {
+                args.insert("inFrame".into(), Value::Bool(true));
+            }
         }
         Ok(self.ctx.call_host("tui.alt", Some(Value::Object(args)))?.unwrap_or(Value::Null))
     }
@@ -549,6 +574,7 @@ impl Inner {
         let text = |index: usize| positional.get(index).and_then(Value::as_str).unwrap_or("");
         let options = &self.options;
         let missing = || format!("option callback {name:?} is not set");
+        let _frame = matches!(name, "searchMatchStyle" | "searchCurrentMatchStyle" | "searchNavigationButtonStyle" | "scrollToEndIndicator").then(InFrame::enter);
         let value = match name {
             "copySelection" => match (options.copy_selection.as_ref().ok_or_else(missing)?)(text(0)) {
                 CopySelectionOutcome::Copied => Value::Bool(true),
@@ -582,7 +608,9 @@ impl Inner {
             "terminal" => self.terminal_callback(args),
             "render" => {
                 let width = args.get("width").and_then(Value::as_u64).unwrap_or(0) as u32;
-                Ok(json!({"lines": self.component(key)?.render(width)}))
+                let component = self.component(key)?;
+                let _frame = InFrame::enter();
+                Ok(json!({"lines": component.render(width)}))
             }
             "input" => {
                 self.component(key)?.handle_input(args.get("data").and_then(Value::as_str).unwrap_or(""));
@@ -647,6 +675,7 @@ impl Inner {
             "visible" => {
                 let size = |name: &str| args.get(name).and_then(Value::as_u64).unwrap_or(0) as u32;
                 let visible = self.visible.lock().unwrap().get(key).cloned();
+                let _frame = InFrame::enter();
                 Ok(json!({"value": visible.is_none_or(|visible| visible(size("termWidth"), size("termHeight")))}))
             }
             "option" => self.option_callback(args),
