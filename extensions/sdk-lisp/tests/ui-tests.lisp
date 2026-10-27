@@ -7,6 +7,7 @@
   (cond ((hash-table-p value)
          (sort (loop for k being the hash-keys of value using (hash-value v) collect (cons k (kt-canon v))) #'string< :key #'car))
         ((and (vectorp value) (not (stringp value))) (map 'list #'kt-canon value))
+        ((and (floatp value) (= value (ffloor value)) (< (abs value) 1d15)) (round value))
         (t value)))
 
 (defun kt-same-json (expected actual)
@@ -381,16 +382,17 @@
     (sb-thread:condition-broadcast (kth-queue kth))))
 
 (defun kth-take (kth predicate &optional (seconds 8))
-  "The first recorded event satisfying PREDICATE, removing everything before it (polls: a timed condition-wait may return without the lock)."
+  "The first recorded event satisfying PREDICATE, removing only it (polls: a timed condition-wait may return without the lock)."
   (let ((deadline (+ (get-internal-real-time) (* seconds internal-time-units-per-second))))
     (loop
       (let ((event (sb-thread:with-mutex ((kth-lock kth))
                      (let ((hit (position-if predicate (kth-events kth))))
                        (when hit
                          (prog1 (nth hit (kth-events kth))
-                           (setf (kth-events kth) (nthcdr (1+ hit) (kth-events kth)))))))))
+                           (setf (kth-events kth) (append (subseq (kth-events kth) 0 hit) (nthcdr (1+ hit) (kth-events kth))))))))))
         (when event (return event)))
-      (when (> (get-internal-real-time) deadline) (error "timed out waiting for an event"))
+      (when (> (get-internal-real-time) deadline)
+        (error "timed out waiting for an event; recorded ~S" (mapcar (lambda (e) (list (first e) (second e))) (kth-events kth))))
       (sleep 0.01))))
 
 (defun kth-next (kth kind method &optional (seconds 8))
