@@ -146,10 +146,9 @@ func restartJSON(t *testing.T, value any) string {
 	return string(text)
 }
 
-func restartOk[T any](t *testing.T, value T, err error) T {
-	t.Helper()
+func restartOk[T any](value T, err error) T {
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	return value
 }
@@ -227,7 +226,11 @@ func restartCheckpoint(t *testing.T, record *durable.TaskRecord[durable.JsonValu
 	if record.State.Checkpoint == nil {
 		return harness.GenerationCheckpoint{}
 	}
-	return restartOk(t, durable.FromJsonValue[harness.GenerationCheckpoint](*record.State.Checkpoint))
+	checkpoint, err := durable.FromJsonValue[harness.GenerationCheckpoint](*record.State.Checkpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return checkpoint
 }
 
 func restartSettled(t *testing.T, id durable.SubmissionId, h harness.Harness) durable.SubmissionRecord {
@@ -236,7 +239,7 @@ func restartSettled(t *testing.T, id durable.SubmissionId, h harness.Harness) du
 	if err != nil {
 		t.Fatal(err)
 	}
-	return restartOk(t, submission.Wait(t.Context()))
+	return restartOk(submission.Wait(t.Context()))
 }
 
 func expectRestartDone(t *testing.T, settled durable.SubmissionRecord) {
@@ -427,7 +430,7 @@ func TestCoreAGenerationInterruptedWhileTheModelAnswers(t *testing.T) {
 			text := "The host stopped while the model was answering, on attempt 2"
 			expectRestartUnanswered(t, restartSettled(t, id, h), "interrupted", text)
 			expectRestartRunFailure(t, restartLive(t, h, root), harness.RunFailure{TaskId: taskId, Inputs: []durable.SubmissionId{id}, Reason: harness.RunInterrupted, Detail: &text})
-			outcome := restartOk(t, h.WaitForTask(t.Context(), taskId)).State.Outcome
+			outcome := restartOk(h.WaitForTask(t.Context(), taskId)).State.Outcome
 			want := &durable.TaskOutcome[durable.JsonValue]{Status: durable.OutcomeFailed, Error: &durable.TaskOutcomeError{Message: text, Detail: map[string]any{"reason": "interrupted"}}}
 			if restartJSON(t, outcome) != restartJSON(t, want) {
 				t.Fatalf("outcome = %s, want %s", restartJSON(t, outcome), restartJSON(t, want))
@@ -675,7 +678,7 @@ func TestCoreOtherTasksCutOffRestartLimitTimesInARow(t *testing.T) {
 				t.Fatalf("result text %q lacks the partial output", text)
 			}
 			kind := "pi.tool"
-			toolTask := restartOk(t, durable.Commit(t.Context(), h, func(tx durable.Tx) (durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
+			toolTask := restartOk(durable.Commit(t.Context(), h, func(tx durable.Tx) (durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
 				page, err := tx.ScanTasks(durable.TaskQuery{Kind: &kind}, 10, nil)
 				return page.Items[0], err
 			}))
@@ -700,19 +703,19 @@ func TestCoreOtherTasksCutOffRestartLimitTimesInARow(t *testing.T) {
 			rig.faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("a1"), fauxAnswer("a2")})
 			h, root := rig.open()
 			h.Resume()
-			restartOk(t, submitInput(t, root, strings.Repeat("u1 ", 200)).Wait(t.Context()))
-			restartOk(t, submitInput(t, root, strings.Repeat("u2 ", 200)).Wait(t.Context()))
+			restartOk(submitInput(t, root, strings.Repeat("u1 ", 200)).Wait(t.Context()))
+			restartOk(submitInput(t, root, strings.Repeat("u2 ", 200)).Wait(t.Context()))
 			// The summary request never returns.
 			hanging := unanswered()
 			rig.faux.SetResponses([]ai.FauxResponseStep{hanging.step})
-			compaction := restartOk(t, root.Compact(t.Context(), nil))
+			compaction := restartOk(root.Compact(t.Context(), nil))
 			receiveWithin(t, hanging.reached, "the summary request")
 			rig.kill()
 
 			reopened, reopenedRoot := rig.open()
 			reopened.Resume()
 			message := "Compaction was interrupted once"
-			outcome := restartOk(t, reopened.WaitForTask(t.Context(), compaction)).State.Outcome
+			outcome := restartOk(reopened.WaitForTask(t.Context(), compaction)).State.Outcome
 			want := &durable.TaskOutcome[durable.JsonValue]{Status: durable.OutcomeFailed, Error: &durable.TaskOutcomeError{Message: message, Detail: map[string]any{"reason": "restart_limit"}}}
 			if restartJSON(t, outcome) != restartJSON(t, want) {
 				t.Fatalf("outcome = %s, want %s", restartJSON(t, outcome), restartJSON(t, want))
@@ -994,7 +997,7 @@ func TestCoreCrashEdges(t *testing.T) {
 			detail := fmt.Sprintf("Abort handler of task %d (pi.generation) was cut off 2 times", taskId)
 			expectRestartUnanswered(t, restartSettled(t, id, h), "aborted", detail)
 			expectRestartRunFailure(t, restartLive(t, h, root), harness.RunFailure{TaskId: taskId, Inputs: []durable.SubmissionId{id}, Reason: harness.RunAborted, Detail: &detail})
-			outcome := restartOk(t, h.WaitForTask(t.Context(), taskId)).State.Outcome
+			outcome := restartOk(h.WaitForTask(t.Context(), taskId)).State.Outcome
 			if outcome.Status != durable.OutcomeFaulted || restartJSON(t, outcome.Error.Detail) != `{"reason":"restart_limit"}` {
 				t.Fatalf("outcome = %s, want faulted with reason restart_limit", restartJSON(t, outcome))
 			}
@@ -1021,7 +1024,7 @@ func TestCoreReportsOfWorkCrashesEnded(t *testing.T) {
 			rig.infos = &infoLog{}
 			h, root := rig.open()
 			h.Resume()
-			restartOk(t, h.WaitForTask(t.Context(), taskId))
+			restartOk(h.WaitForTask(t.Context(), taskId))
 			pollUntil(t, "the report", func() bool { return len(rig.infos.infos()) > 0 })
 			want := []durable.ReportInfo{{Type: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: taskId, Kind: "pi.generation", ConversationId: root.Id()}, Reason: "interrupted", Restarts: 1}}
 			if got := rig.infos.infos(); !reflect.DeepEqual(got, want) {
@@ -1119,7 +1122,7 @@ func TestCoreDeferredToolOutputIsNotProgress(t *testing.T) {
 			h, root = rig.open()
 			h.Resume()
 			kind := "pi.tool"
-			tool := restartOk(t, durable.Commit(t.Context(), h, func(tx durable.Tx) (durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
+			tool := restartOk(durable.Commit(t.Context(), h, func(tx durable.Tx) (durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
 				page, err := tx.ScanTasks(durable.TaskQuery{Kind: &kind}, 1, nil)
 				return page.Items[0], err
 			}))
