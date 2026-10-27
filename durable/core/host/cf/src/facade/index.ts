@@ -13,9 +13,9 @@ import * as documents from "./documents.ts"
 import * as entries from "./entries.ts"
 import { Harness as Core } from "./harness.ts"
 import { createRegistry as createHostRegistry } from "./registry.ts"
-import { watchEvents as hostWatchEvents } from "./events.ts"
 import { createLazySession } from "./session.ts"
 import * as storage from "./storage.ts"
+import { ConversationTranscript as HostConversationTranscript } from "./transcript.ts"
 
 export type * from "@earendil-works/pi-durable"
 export { ConversationBusy, ReadAfterWrite, SessionFailed, StorageRequestError } from "../errors.ts"
@@ -46,6 +46,7 @@ export const UsageDoc = docs.UsageDoc as unknown as typeof P.UsageDoc
 export const defineDoc = documents.defineDoc as typeof P.defineDoc
 export const defineDocFamily = documents.defineDocFamily as typeof P.defineDocFamily
 
+export const ConversationTranscript = HostConversationTranscript as unknown as typeof P.ConversationTranscript
 export const defineEntry = entries.defineEntry as unknown as typeof P.defineEntry
 export const AssistantEntry = entries.AssistantEntry as unknown as typeof P.AssistantEntry
 export const CompactionEntry = entries.CompactionEntry as unknown as typeof P.CompactionEntry
@@ -68,5 +69,3 @@ export const createSession = ((store: P.Storage) => createLazySession(store as n
 /** Storage constructors of the subpath exports (`storage/sqlite/node`, `storage/cloudflare`): a store handle for `Harness.open`. */
 export const openNodeSqliteStorage = (path: string) => Promise.resolve(storage.openNodeSqliteStorage(path) as unknown as P.Storage)
 export const openDurableObjectSqliteStorage = (durableObjectStorage: DurableObjectStorage) => storage.openDurableObjectSqliteStorage(durableObjectStorage) as unknown as P.Storage
-
-export const watchEvents = hostWatchEvents as unknown as typeof P.watchEvents

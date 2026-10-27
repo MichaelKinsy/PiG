@@ -138,7 +138,8 @@ func TestLiveRunLifecycle(t *testing.T) {
 		t.Fatalf("settled %v, want %v", settled, inputs)
 	}
 	// A run that ended without an answer records why.
-	if got, want := liveValue(t, s), `{"runFailure":{"taskId":7,"inputs":[`+jv.Stringify(inputs[0])+`,`+jv.Stringify(inputs[1])+`],"reason":"aborted"}}`; got != want {
+	failure := `{"runFailure":{"taskId":7,"inputs":[` + jv.Stringify(inputs[0]) + `,` + jv.Stringify(inputs[1]) + `],"reason":"aborted"}`
+	if got, want := liveValue(t, s), failure+`}`; got != want {
 		t.Fatalf("after endRun:\n got %s\nwant %s", got, want)
 	}
 
@@ -160,7 +161,7 @@ func TestLiveRunLifecycle(t *testing.T) {
 	}, session.TxScope{}); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := liveValue(t, s), `{"compactions":[{"taskId":5,"reason":"threshold","blocking":false,"attempt":1}]}`; got != want {
+	if got, want := liveValue(t, s), failure+`,"compactions":[{"taskId":5,"reason":"threshold","blocking":false,"attempt":1}]}`; got != want {
 		t.Fatalf("compactions:\n got %s\nwant %s", got, want)
 	}
 	if _, err := s.Commit(func(tx *session.Tx) error {

@@ -261,7 +261,7 @@ An `api` event is `u32 requestId` then JSON `{op, ...args}`. The answer is an `a
 | `memo.put` | taskId, name, candidate | the durable winner | after the memo's commit is applied |
 | `snapshot` | doc | the document state or null | at once |
 | `snapshotAsOf` | doc, at | the document state at entry `at` (Pi's `snapshotAsOf(doc, at)`) or null | at once |
-| `watch.open` | doc, view (`{kind:"view", conversationId}`) or graph target, watchId | the first frame | at once; later frames arrive as `published` notices carrying watchId |
+| `watch.open` | doc, view (`{kind:"view", conversationId, window?: {from?, min?, max?}}`) or graph target, watchId | the first frame | at once; later frames arrive as `published` notices carrying watchId |
 | `watch.close` | watchId | null | at once |
 | `getTask` | taskId | the task record or null | at once |
 | `waitForTask` | taskId | the settled receipt | when the task is terminal and published |
