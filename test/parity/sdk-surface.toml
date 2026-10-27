@@ -28,17 +28,20 @@ key = "pi.registerTool"
 go = "Extension.RegisterTool"
 rust = "Extension::register_tool"
 python = "Extension.register_tool"
+lisp = "pig:register-tool|pig:register-tool-p"
 
 [[row]]
 key = "pi.registerCommand"
 rust = "Extension::command"
 python = "Extension.command"
+lisp = "pig:command|pig:command-p"
 
 [[row]]
 key = "pi.registerShortcut"
 go = "Extension.Shortcut"
 rust = "Extension::shortcut"
 python = "Extension.shortcut"
+lisp = "pig:shortcut|pig:shortcut-p"
 
 [[row]]
 key = "pi.registerShortcut(options.description)"
@@ -46,6 +49,7 @@ node = "read:s.description"
 go = "Extension.Shortcut"
 rust = "Extension::shortcut"
 python = "Extension.shortcut(description)"
+lisp = "pig:shortcut(description)|pig:shortcut-p(description)"
 
 [[row]]
 key = "pi.registerShortcut(options.handler)"
@@ -53,12 +57,14 @@ node = "read:shortcut.handler"
 go = "ShortcutFunc"
 rust = "ShortcutHandler"
 python = "Extension.shortcut(handler)"
+lisp = "pig:shortcut(handler)|pig:shortcut-p(handler)"
 
 [[row]]
 key = "pi.registerFlag"
 go = "Extension.Flag"
 rust = "Extension::flag"
 python = "Extension.flag"
+lisp = "pig:flag|pig:flag-p"
 
 [[row]]
 key = "pi.registerFlag(options.description)"
@@ -66,6 +72,7 @@ node = "read:f.description"
 go = "FlagOptions.Description"
 rust = "FlagOptions.description"
 python = "Extension.flag(description)"
+lisp = "pig:flag(description)|pig:flag-p(description)"
 
 [[row]]
 key = "pi.registerFlag(options.type)"
@@ -73,6 +80,7 @@ node = "read:f.type"
 go = "FlagOptions.Type"
 rust = "FlagOptions.flag_type"
 python = "Extension.flag(flag_type)"
+lisp = "pig:flag(type)"
 
 [[row]]
 key = "pi.registerFlag(options.default)"
@@ -80,12 +88,14 @@ node = "read:f.default"
 go = "FlagOptions.Default"
 rust = "FlagOptions.default"
 python = "Extension.flag(default)"
+lisp = "pig:flag(default)|pig:flag-p(default)"
 
 [[row]]
 key = "pi.registerMessageRenderer"
 go = "Extension.MessageRenderer"
 rust = "Extension::message_renderer"
 python = "Extension.message_renderer"
+lisp = "pig:message-renderer|pig:message-renderer-p"
 partial = "renders lines at the requested width: a Pi Component cannot cross the process boundary"
 node_partial = "the renderer's Component renders to lines at the requested width inside the extension process"
 
@@ -94,6 +104,7 @@ key = "pi.registerEntryRenderer"
 go = "Extension.EntryRenderer"
 rust = "Extension::entry_renderer"
 python = "Extension.entry_renderer"
+lisp = "pig:entry-renderer|pig:entry-renderer-p"
 partial = "renders lines at the requested width: a Pi Component cannot cross the process boundary"
 node_partial = "the renderer's Component renders to lines at the requested width inside the extension process"
 
@@ -103,6 +114,7 @@ node = "api.sendMessage"
 go = "CustomMessage.CustomType"
 rust = "CustomMessage.custom_type"
 python = "Context.send_message(custom_type)"
+lisp = "pig:ctx-send-message(custom-type)|pig:ctx-send-message-p(custom-type)"
 wire = "extension.CustomMessageRef.customType"
 
 [[row]]
@@ -111,6 +123,7 @@ node = "api.sendMessage"
 go = "CustomMessage.Content"
 rust = "CustomMessage.content"
 python = "Context.send_message(content)"
+lisp = "pig:ctx-send-message(content)|pig:ctx-send-message-p(content)"
 wire = "extension.CustomMessageRef.content"
 
 [[row]]
@@ -119,6 +132,7 @@ node = "api.sendMessage"
 go = "CustomMessage.Display"
 rust = "CustomMessage.display"
 python = "Context.send_message(display)"
+lisp = "pig:ctx-send-message(display)|pig:ctx-send-message-p(display)"
 wire = "extension.CustomMessageRef.display"
 
 [[row]]
@@ -127,6 +141,7 @@ node = "api.sendMessage"
 go = "CustomMessage.Details"
 rust = "CustomMessage.details"
 python = "Context.send_message(details)"
+lisp = "pig:ctx-send-message(details)|pig:ctx-send-message-p(details)"
 wire = "extension.CustomMessageRef.details"
 
 [[row]]
@@ -135,6 +150,7 @@ node = "api.sendMessage"
 go = "SendMessageOptions.TriggerTurn"
 rust = "SendMessageOptions.trigger_turn"
 python = "Context.send_message(trigger_turn)"
+lisp = "pig:ctx-send-message(trigger-turn)|pig:ctx-send-message-p(trigger-turn)"
 wire = "subprocess.SendMessageOptions.triggerTurn"
 
 [[row]]
@@ -143,6 +159,7 @@ node = "api.sendMessage"
 go = "SendMessageOptions.DeliverAs"
 rust = "SendMessageOptions.deliver_as"
 python = "Context.send_message(deliver_as)"
+lisp = "pig:ctx-send-message(deliver-as)|pig:ctx-send-message-p(deliver-as)"
 wire = "subprocess.SendMessageOptions.deliverAs"
 
 [[row]]
@@ -151,6 +168,7 @@ node = "api.sendUserMessage"
 go = "Context.SendUserMessage"
 rust = "Context::send_user_message"
 python = "Context.send_user_message(deliver_as)"
+lisp = "pig:ctx-send-user-message(deliver-as)|pig:ctx-send-user-message-p(deliver-as)"
 wire = "subprocess.SendUserMessageOptions.deliverAs"
 
 [[row]]
@@ -159,6 +177,7 @@ node = "api.sendUserMessage"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 wire = "subprocess.SendUserMessageOptions.expandPromptTemplates"
 
 [[row]]
@@ -167,6 +186,7 @@ node = "api.exec"
 go = "Context.ExecWithOptions|Context.Exec"
 rust = "Context::exec_with_options|Context::exec"
 python = "Context.exec"
+lisp = "pig:ctx-exec|pig:ctx-exec-p"
 
 [[row]]
 key = "pi.exec(options.signal)"
@@ -174,6 +194,7 @@ node = "api.exec"
 go = "ExecOptions.Signal"
 rust = "ExecOptions.signal"
 python = "Context.exec(signal)"
+lisp = "pig:ctx-exec(signal)|pig:ctx-exec-p(signal)"
 wire = "subprocess.ExecArgs.ownSignal"
 
 [[row]]
@@ -182,6 +203,7 @@ node = "api.exec"
 go = "ExecOptions.Timeout"
 rust = "ExecOptions.timeout"
 python = "Context.exec(timeout)"
+lisp = "pig:ctx-exec(timeout)|pig:ctx-exec-p(timeout)"
 wire = "extension.ExecOptions.timeout"
 
 [[row]]
@@ -190,6 +212,7 @@ node = "api.exec"
 go = "ExecOptions.Cwd"
 rust = "ExecOptions.cwd"
 python = "Context.exec(cwd)"
+lisp = "pig:ctx-exec(cwd)|pig:ctx-exec-p(cwd)"
 wire = "extension.ExecOptions.cwd"
 
 [[row]]
@@ -198,6 +221,7 @@ node = "api.exec"
 go = "ExecResult.Stdout"
 rust = "ExecResult.stdout"
 python = "ExecResult.stdout"
+lisp = "pig:exec-result-stdout|pig:exec-result-stdout-p"
 wire = "extension.ExecResult.stdout"
 
 [[row]]
@@ -206,6 +230,7 @@ node = "api.exec"
 go = "ExecResult.Stderr"
 rust = "ExecResult.stderr"
 python = "ExecResult.stderr"
+lisp = "pig:exec-result-stderr|pig:exec-result-stderr-p"
 wire = "extension.ExecResult.stderr"
 
 [[row]]
@@ -214,6 +239,7 @@ node = "api.exec"
 go = "ExecResult.ExitCode"
 rust = "ExecResult.exit_code"
 python = "ExecResult.exit_code"
+lisp = "pig:exec-result-exit-code|pig:exec-result-exit-code-p"
 wire = "extension.ExecResult.code"
 
 [[row]]
@@ -222,6 +248,7 @@ node = "api.exec"
 go = "ExecResult.Killed"
 rust = "ExecResult.killed"
 python = "ExecResult.killed"
+lisp = "pig:exec-result-killed|pig:exec-result-killed-p"
 wire = "extension.ExecResult.killed"
 
 [[row]]
@@ -230,6 +257,7 @@ node = "api.getAllTools"
 go = "ToolInfo.Name"
 rust = "ToolInfo.name"
 python = "Context.get_all_tools"
+lisp = "pig:ctx-get-all-tools|pig:ctx-get-all-tools-p|pig:ctx-all-tools-p|pig:ctx-all-tools"
 wire = "subprocess.ToolInfo.name"
 
 [[row]]
@@ -238,6 +266,7 @@ node = "api.getAllTools"
 go = "ToolInfo.Description"
 rust = "ToolInfo.description"
 python = "Context.get_all_tools"
+lisp = "pig:ctx-get-all-tools|pig:ctx-get-all-tools-p|pig:ctx-all-tools-p|pig:ctx-all-tools"
 wire = "subprocess.ToolInfo.description"
 
 [[row]]
@@ -246,6 +275,7 @@ node = "api.getAllTools"
 go = "ToolInfo.PromptGuidelines"
 rust = "ToolInfo.prompt_guidelines"
 python = "Context.get_all_tools"
+lisp = "pig:ctx-get-all-tools|pig:ctx-get-all-tools-p|pig:ctx-all-tools-p|pig:ctx-all-tools"
 wire = "subprocess.ToolInfo.promptGuidelines"
 
 [[row]]
@@ -254,6 +284,7 @@ node = "api.getAllTools"
 go = "ToolInfo.Parameters"
 rust = "ToolInfo.parameters"
 python = "Context.get_all_tools"
+lisp = "pig:ctx-get-all-tools|pig:ctx-get-all-tools-p|pig:ctx-all-tools-p|pig:ctx-all-tools"
 wire = "subprocess.ToolInfo.parameters"
 
 [[row]]
@@ -262,6 +293,7 @@ node = "api.getAllTools"
 go = "ToolInfo.SourceInfo"
 rust = "ToolInfo.source_info"
 python = "Context.get_all_tools"
+lisp = "pig:ctx-get-all-tools|pig:ctx-get-all-tools-p|pig:ctx-all-tools-p|pig:ctx-all-tools"
 wire = "subprocess.ToolInfo.sourceInfo"
 
 [[row]]
@@ -270,6 +302,7 @@ node = "api.getAllTools"
 go = "ToolInfo.Exposure"
 rust = "ToolInfo.exposure"
 python = "Context.get_all_tools"
+lisp = "pig:ctx-get-all-tools|pig:ctx-get-all-tools-p|pig:ctx-all-tools-p|pig:ctx-all-tools"
 wire = "subprocess.ToolInfo.exposure"
 
 [[row]]
@@ -278,6 +311,7 @@ node = "api.getAllTools"
 go = "ToolInfo.Namespace"
 rust = "ToolInfo.namespace"
 python = "Context.get_all_tools"
+lisp = "pig:ctx-get-all-tools|pig:ctx-get-all-tools-p|pig:ctx-all-tools-p|pig:ctx-all-tools"
 wire = "subprocess.ToolInfo.namespace"
 
 [[row]]
@@ -286,6 +320,7 @@ node = "api.getAllTools"
 go = "ToolInfo.Annotations"
 rust = "ToolInfo.annotations"
 python = "Context.get_all_tools"
+lisp = "pig:ctx-get-all-tools|pig:ctx-get-all-tools-p|pig:ctx-all-tools-p|pig:ctx-all-tools"
 wire = "subprocess.ToolInfo.annotations"
 
 [[row]]
@@ -294,6 +329,7 @@ node = "api.getAllTools"
 go = "ToolInfo.ReachesTools"
 rust = "ToolInfo.reaches_tools"
 python = "Context.get_all_tools"
+lisp = "pig:ctx-get-all-tools|pig:ctx-get-all-tools-p|pig:ctx-all-tools-p|pig:ctx-all-tools"
 wire = "subprocess.ToolInfo.reachesTools"
 
 [[row]]
@@ -302,6 +338,7 @@ node = "api.getCommands"
 go = "CommandInfo.Name"
 rust = "CommandInfo.name"
 python = "Context.get_commands"
+lisp = "pig:ctx-get-commands|pig:ctx-get-commands-p|pig:ctx-commands-p|pig:ctx-commands"
 wire = "subprocess.CommandInfo.name"
 
 [[row]]
@@ -310,6 +347,7 @@ node = "api.getCommands"
 go = "CommandInfo.Description"
 rust = "CommandInfo.description"
 python = "Context.get_commands"
+lisp = "pig:ctx-get-commands|pig:ctx-get-commands-p|pig:ctx-commands-p|pig:ctx-commands"
 wire = "subprocess.CommandInfo.description"
 
 [[row]]
@@ -318,6 +356,7 @@ node = "api.getCommands"
 go = "CommandInfo.Source"
 rust = "CommandInfo.source"
 python = "Context.get_commands"
+lisp = "pig:ctx-get-commands|pig:ctx-get-commands-p|pig:ctx-commands-p|pig:ctx-commands"
 wire = "subprocess.CommandInfo.source"
 
 [[row]]
@@ -326,6 +365,7 @@ node = "api.getCommands"
 go = "CommandInfo.SourceInfo"
 rust = "CommandInfo.source_info"
 python = "Context.get_commands"
+lisp = "pig:ctx-get-commands|pig:ctx-get-commands-p|pig:ctx-commands-p|pig:ctx-commands"
 wire = "subprocess.CommandInfo.sourceInfo"
 
 [[row]]
@@ -362,6 +402,7 @@ node = "read:event.signal"
 go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
+lisp = "pig:ctx-is-cancelled|pig:ctx-is-cancelled-p|pig:ctx-cancelled-p"
 wire = "none"
 partial = "the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary"
 node_partial = "event.signal is the handler request's AbortSignal, aborted when the host cancels the request"
@@ -372,6 +413,7 @@ node = "read:event.signal"
 go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
+lisp = "pig:ctx-is-cancelled|pig:ctx-is-cancelled-p|pig:ctx-cancelled-p"
 wire = "none"
 partial = "the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary"
 node_partial = "event.signal is the handler request's AbortSignal, aborted when the host cancels the request"
@@ -394,6 +436,7 @@ node = "-"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 
 # ── ctx (ExtensionContext) ─────────────────────────────────────────────────
 
@@ -402,18 +445,21 @@ key = "ctx.hasUI"
 go = "Context.HasUI"
 rust = "Context::has_ui"
 python = "Context.has_ui"
+lisp = "pig:ctx-has-ui|pig:ctx-has-ui-p|pig:ctx-ui-p"
 
 [[row]]
 key = "ctx.sessionManager"
 go = "Context.SessionManager"
 rust = "Context::session_manager"
 python = "Context.session_manager"
+lisp = "pig:ctx-session-manager|pig:ctx-session-manager-p"
 
 [[row]]
 key = "ctx.model"
 go = "Context.Model"
 rust = "Context::model"
 python = "Context.model"
+lisp = "pig:ctx-model|pig:ctx-model-p"
 go_partial = "the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through ModelProvider, the rest of the Model object through GetModelInfo"
 rust_partial = "the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info"
 python_partial = "the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info"
@@ -424,12 +470,14 @@ node = "RuntimeContext.thinkingLevel"
 go = "Context.GetThinkingLevel"
 rust = "Context::get_thinking_level"
 python = "Context.get_thinking_level"
+lisp = "pig:ctx-get-thinking-level|pig:ctx-get-thinking-level-p|pig:ctx-thinking-level-p|pig:ctx-thinking-level"
 
 [[row]]
 key = "ctx.signal"
 go = "Context.Signal"
 rust = "Context::signal"
 python = "Context.signal"
+lisp = "pig:ctx-signal|pig:ctx-signal-p"
 
 [[row]]
 key = "ctx.getContextUsage → tokens"
@@ -437,6 +485,7 @@ node = "RuntimeContext.getContextUsage"
 go = "ContextUsage.Tokens"
 rust = "ContextUsage.tokens"
 python = "Context.get_context_usage"
+lisp = "pig:ctx-get-context-usage|pig:ctx-get-context-usage-p|pig:ctx-context-usage-p|pig:ctx-context-usage"
 wire = "subprocess.extensionContextUsageDTO.tokens"
 
 [[row]]
@@ -445,6 +494,7 @@ node = "RuntimeContext.getContextUsage"
 go = "ContextUsage.ContextWindow"
 rust = "ContextUsage.context_window"
 python = "Context.get_context_usage"
+lisp = "pig:ctx-get-context-usage|pig:ctx-get-context-usage-p|pig:ctx-context-usage-p|pig:ctx-context-usage"
 wire = "subprocess.extensionContextUsageDTO.contextWindow"
 
 [[row]]
@@ -453,6 +503,7 @@ node = "RuntimeContext.getContextUsage"
 go = "ContextUsage.Percent"
 rust = "ContextUsage.percent"
 python = "Context.get_context_usage"
+lisp = "pig:ctx-get-context-usage|pig:ctx-get-context-usage-p|pig:ctx-context-usage-p|pig:ctx-context-usage"
 wire = "subprocess.extensionContextUsageDTO.percent"
 
 [[row]]
@@ -461,6 +512,7 @@ node = "RuntimeContext.compact"
 go = "CompactOptions.CustomInstructions"
 rust = "CompactOptions.custom_instructions"
 python = "Context.compact(custom_instructions)"
+lisp = "pig:ctx-compact(custom-instructions)|pig:ctx-compact-p(custom-instructions)"
 wire = "extension.CompactOptions.customInstructions"
 
 [[row]]
@@ -469,6 +521,7 @@ node = "RuntimeContext.compact"
 go = "CompactOptions.OnComplete"
 rust = "CompactOptions.on_complete"
 python = "Context.compact(on_complete)"
+lisp = "pig:ctx-compact(on-complete)|pig:ctx-compact-p(on-complete)"
 wire = "literal:awaitCompletion"
 
 [[row]]
@@ -477,6 +530,7 @@ node = "RuntimeContext.compact"
 go = "CompactOptions.OnError"
 rust = "CompactOptions.on_error"
 python = "Context.compact(on_error)"
+lisp = "pig:ctx-compact(on-error)|pig:ctx-compact-p(on-error)"
 wire = "literal:awaitCompletion"
 
 # ── ctx (ExtensionCommandContext) ──────────────────────────────────────────
@@ -498,6 +552,7 @@ node = "RuntimeContext.newSession"
 go = "Context.NewSession"
 rust = "Context::new_session"
 python = "Context.new_session"
+lisp = "pig:ctx-new-session|pig:ctx-new-session-p"
 wire = "extension.NewSessionOptions.parentSession"
 
 [[row]]
@@ -506,6 +561,7 @@ node = "-"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 
 [[row]]
 key = "ctx.newSession(options.withSession)"
@@ -521,6 +577,7 @@ node = "RuntimeContext.newSession"
 go = "CancelledResult.Cancelled"
 rust = "Context::new_session"
 python = "Context.new_session"
+lisp = "pig:ctx-new-session|pig:ctx-new-session-p"
 wire = "extension.CancelledResult.cancelled"
 
 [[row]]
@@ -529,6 +586,7 @@ node = "RuntimeContext.fork"
 go = "Context.Fork"
 rust = "Context::fork"
 python = "Context.fork"
+lisp = "pig:ctx-fork|pig:ctx-fork-p"
 wire = "literal:position"
 
 [[row]]
@@ -545,6 +603,7 @@ node = "RuntimeContext.fork"
 go = "CancelledResult.Cancelled"
 rust = "Context::fork"
 python = "Context.fork"
+lisp = "pig:ctx-fork|pig:ctx-fork-p"
 wire = "extension.CancelledResult.cancelled"
 
 [[row]]
@@ -553,6 +612,7 @@ node = "RuntimeContext.navigateTree"
 go = "Context.NavigateTree"
 rust = "Context::navigate_tree"
 python = "Context.navigate_tree"
+lisp = "pig:ctx-navigate-tree|pig:ctx-navigate-tree-p"
 wire = "extension.NavigateTreeOptions.summarize"
 
 [[row]]
@@ -561,6 +621,7 @@ node = "RuntimeContext.navigateTree"
 go = "Context.NavigateTree"
 rust = "Context::navigate_tree"
 python = "Context.navigate_tree"
+lisp = "pig:ctx-navigate-tree|pig:ctx-navigate-tree-p"
 wire = "extension.NavigateTreeOptions.customInstructions"
 
 [[row]]
@@ -569,6 +630,7 @@ node = "RuntimeContext.navigateTree"
 go = "Context.NavigateTree"
 rust = "Context::navigate_tree"
 python = "Context.navigate_tree"
+lisp = "pig:ctx-navigate-tree|pig:ctx-navigate-tree-p"
 wire = "extension.NavigateTreeOptions.replaceInstructions"
 
 [[row]]
@@ -577,6 +639,7 @@ node = "RuntimeContext.navigateTree"
 go = "Context.NavigateTree"
 rust = "Context::navigate_tree"
 python = "Context.navigate_tree"
+lisp = "pig:ctx-navigate-tree|pig:ctx-navigate-tree-p"
 wire = "extension.NavigateTreeOptions.label"
 
 [[row]]
@@ -585,6 +648,7 @@ node = "RuntimeContext.navigateTree"
 go = "CancelledResult.Cancelled"
 rust = "Context::navigate_tree"
 python = "Context.navigate_tree"
+lisp = "pig:ctx-navigate-tree|pig:ctx-navigate-tree-p"
 wire = "extension.CancelledResult.cancelled"
 
 [[row]]
@@ -601,6 +665,7 @@ node = "RuntimeContext.switchSession"
 go = "CancelledResult.Cancelled"
 rust = "Context::switch_session"
 python = "Context.switch_session"
+lisp = "pig:ctx-switch-session|pig:ctx-switch-session-p"
 wire = "extension.CancelledResult.cancelled"
 
 # ── ctx (ReplacedSessionContext): passed to withSession callbacks
@@ -611,6 +676,7 @@ node = "read:context.sendMessage"
 go = "Context.SendMessage"
 rust = "Context::send_message"
 python = "Context.send_message"
+lisp = "pig:ctx-send-message|pig:ctx-send-message-p"
 
 [[row]]
 key = "withSession ctx.sendMessage(message.customType)"
@@ -618,6 +684,7 @@ node = "read:context.sendMessage"
 go = "CustomMessage.CustomType"
 rust = "CustomMessage.custom_type"
 python = "Context.send_message(custom_type)"
+lisp = "pig:ctx-send-message(custom-type)|pig:ctx-send-message-p(custom-type)"
 wire = "extension.CustomMessageRef.customType"
 
 [[row]]
@@ -626,6 +693,7 @@ node = "read:context.sendMessage"
 go = "CustomMessage.Content"
 rust = "CustomMessage.content"
 python = "Context.send_message(content)"
+lisp = "pig:ctx-send-message(content)|pig:ctx-send-message-p(content)"
 wire = "extension.CustomMessageRef.content"
 
 [[row]]
@@ -634,6 +702,7 @@ node = "read:context.sendMessage"
 go = "CustomMessage.Display"
 rust = "CustomMessage.display"
 python = "Context.send_message(display)"
+lisp = "pig:ctx-send-message(display)|pig:ctx-send-message-p(display)"
 wire = "extension.CustomMessageRef.display"
 
 [[row]]
@@ -642,6 +711,7 @@ node = "read:context.sendMessage"
 go = "CustomMessage.Details"
 rust = "CustomMessage.details"
 python = "Context.send_message(details)"
+lisp = "pig:ctx-send-message(details)|pig:ctx-send-message-p(details)"
 wire = "extension.CustomMessageRef.details"
 
 [[row]]
@@ -650,6 +720,7 @@ node = "read:context.sendMessage"
 go = "SendMessageOptions.TriggerTurn"
 rust = "SendMessageOptions.trigger_turn"
 python = "Context.send_message(trigger_turn)"
+lisp = "pig:ctx-send-message(trigger-turn)|pig:ctx-send-message-p(trigger-turn)"
 wire = "subprocess.SendMessageOptions.triggerTurn"
 
 [[row]]
@@ -658,6 +729,7 @@ node = "read:context.sendMessage"
 go = "SendMessageOptions.DeliverAs"
 rust = "SendMessageOptions.deliver_as"
 python = "Context.send_message(deliver_as)"
+lisp = "pig:ctx-send-message(deliver-as)|pig:ctx-send-message-p(deliver-as)"
 wire = "subprocess.SendMessageOptions.deliverAs"
 
 [[row]]
@@ -666,6 +738,7 @@ node = "read:context.sendUserMessage"
 go = "Context.SendUserMessage"
 rust = "Context::send_user_message"
 python = "Context.send_user_message"
+lisp = "pig:ctx-send-user-message|pig:ctx-send-user-message-p"
 
 [[row]]
 key = "withSession ctx.sendUserMessage(options.deliverAs)"
@@ -673,6 +746,7 @@ node = "read:context.sendUserMessage"
 go = "Context.SendUserMessage"
 rust = "Context::send_user_message"
 python = "Context.send_user_message(deliver_as)"
+lisp = "pig:ctx-send-user-message(deliver-as)|pig:ctx-send-user-message-p(deliver-as)"
 wire = "subprocess.SendUserMessageOptions.deliverAs"
 
 [[row]]
@@ -681,6 +755,7 @@ node = "read:context.sendUserMessage"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 wire = "subprocess.SendUserMessageOptions.expandPromptTemplates"
 
 # ── ctx.ui (ExtensionUIContext) ────────────────────────────────────────────
@@ -691,6 +766,7 @@ node = "RuntimeUI.select"
 go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
+lisp = "pig:ctx-is-cancelled|pig:ctx-is-cancelled-p|pig:ctx-cancelled-p"
 wire = "none"
 go_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
 rust_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
@@ -702,6 +778,7 @@ node = "RuntimeUI.select"
 go = "DialogOptions.Timeout"
 rust = "DialogOptions.timeout"
 python = "Context.select(timeout)"
+lisp = "pig:ctx-select(timeout)|pig:ctx-select-p(timeout)"
 wire = "literal:timeout"
 partial = "RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions)"
 
@@ -711,6 +788,7 @@ node = "RuntimeUI.confirm"
 go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
+lisp = "pig:ctx-is-cancelled|pig:ctx-is-cancelled-p|pig:ctx-cancelled-p"
 wire = "none"
 go_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
 rust_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
@@ -722,6 +800,7 @@ node = "RuntimeUI.confirm"
 go = "DialogOptions.Timeout"
 rust = "DialogOptions.timeout"
 python = "Context.confirm(timeout)"
+lisp = "pig:ctx-confirm(timeout)|pig:ctx-confirm-p(timeout)"
 wire = "literal:timeout"
 partial = "RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions)"
 
@@ -731,6 +810,7 @@ node = "RuntimeUI.input"
 go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
+lisp = "pig:ctx-is-cancelled|pig:ctx-is-cancelled-p|pig:ctx-cancelled-p"
 wire = "none"
 go_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
 rust_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
@@ -742,6 +822,7 @@ node = "RuntimeUI.input"
 go = "DialogOptions.Timeout"
 rust = "DialogOptions.timeout"
 python = "Context.input(timeout)"
+lisp = "pig:ctx-input(timeout)|pig:ctx-input-p(timeout)"
 wire = "literal:timeout"
 partial = "RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions)"
 
@@ -751,6 +832,7 @@ node = "RuntimeUI.setWorkingIndicator"
 go = "Context.SetWorkingIndicator"
 rust = "Context::set_working_indicator"
 python = "Context.set_working_indicator"
+lisp = "pig:ctx-set-working-indicator|pig:ctx-set-working-indicator-p"
 wire = "literal:frames"
 
 [[row]]
@@ -759,6 +841,7 @@ node = "RuntimeUI.setWorkingIndicator"
 go = "Context.SetWorkingIndicator"
 rust = "Context::set_working_indicator"
 python = "Context.set_working_indicator"
+lisp = "pig:ctx-set-working-indicator|pig:ctx-set-working-indicator-p"
 wire = "literal:intervalMs"
 
 [[row]]
@@ -773,6 +856,7 @@ node = "RuntimeUI.setWidget"
 go = "Context.SetWidget"
 rust = "Context::set_widget_value"
 python = "Context.set_widget"
+lisp = "pig:ctx-set-widget|pig:ctx-set-widget-p"
 wire = "literal:placement"
 
 [[row]]
@@ -780,6 +864,7 @@ key = "ctx.ui.setFooter"
 go = "Context.SetFooter|Context.SetFooterRenderer"
 rust = "Context::set_footer|Context::set_footer_renderer"
 python = "Context.set_footer|Context.set_footer_renderer"
+lisp = "pig:ctx-set-footer|pig:ctx-set-footer-p|pig:ctx-set-footer-renderer|pig:ctx-set-footer-renderer-p"
 partial = "a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in footer; a live component factory cannot cross the process boundary"
 node_partial = "the factory's component renders to lines inside the extension process, with Pi's footer data provider"
 
@@ -788,6 +873,7 @@ key = "ctx.ui.setHeader"
 go = "Context.SetHeader|Context.SetHeaderRenderer"
 rust = "Context::set_header|Context::set_header_renderer"
 python = "Context.set_header|Context.set_header_renderer"
+lisp = "pig:ctx-set-header|pig:ctx-set-header-p|pig:ctx-set-header-renderer|pig:ctx-set-header-renderer-p"
 partial = "a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in header; a live component factory cannot cross the process boundary"
 node_partial = "the factory's component renders to lines inside the extension process"
 
@@ -796,6 +882,7 @@ key = "ctx.ui.custom"
 go = "Context.Custom"
 rust = "Context::custom_component"
 python = "Context.custom"
+lisp = "pig:ctx-custom|pig:ctx-custom-p"
 partial = "a RemoteComponent renders lines and handles input inside the extension; the host overlay owns focus"
 node_partial = "the factory's component runs inside the extension process and renders lines into a host overlay"
 
@@ -805,6 +892,7 @@ node = "RuntimeUI.custom"
 go = "RemoteOverlayOptions.Overlay"
 rust = "Context::custom_component"
 python = "Context.custom"
+lisp = "pig:ctx-custom|pig:ctx-custom-p"
 wire = "subprocess.RemoteOverlayOpenPayload.overlay"
 
 [[row]]
@@ -813,6 +901,7 @@ node = "RuntimeUI.custom"
 go = "RemoteOverlayOptions.OverlayOptions"
 rust = "Context::custom_component"
 python = "Context.custom"
+lisp = "pig:ctx-custom|pig:ctx-custom-p"
 wire = "subprocess.RemoteOverlayOpenPayload.overlayOptions"
 partial = "the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary"
 
@@ -841,6 +930,7 @@ key = "ctx.ui.theme"
 go = "Context.UITheme"
 rust = "Context::theme"
 python = "Context.theme"
+lisp = "pig:ctx-theme|pig:ctx-theme-p"
 
 [[row]]
 key = "ctx.ui.getAllThemes → name"
@@ -848,6 +938,7 @@ node = "RuntimeUI.getAllThemes"
 go = "ThemeMeta.Name"
 rust = "Context::get_all_themes"
 python = "Context.get_all_themes"
+lisp = "pig:ctx-get-all-themes|pig:ctx-get-all-themes-p|pig:ctx-all-themes-p|pig:ctx-all-themes"
 wire = "subprocess.themeMetaDTO.name"
 
 [[row]]
@@ -856,6 +947,7 @@ node = "RuntimeUI.getAllThemes"
 go = "ThemeMeta.Path"
 rust = "Context::get_all_themes"
 python = "Context.get_all_themes"
+lisp = "pig:ctx-get-all-themes|pig:ctx-get-all-themes-p|pig:ctx-all-themes-p|pig:ctx-all-themes"
 wire = "subprocess.themeMetaDTO.path"
 
 [[row]]
@@ -868,6 +960,7 @@ node = "RuntimeUI.setTheme"
 go = "Context.SetTheme"
 rust = "Context::set_theme"
 python = "Context.set_theme"
+lisp = "pig:ctx-set-theme|pig:ctx-set-theme-p"
 wire = "literal:success"
 node_partial = "returns { success: true } before the host applies the theme"
 
@@ -877,6 +970,7 @@ node = "-"
 go = "Context.SetTheme"
 rust = "Context::set_theme"
 python = "Context.set_theme"
+lisp = "pig:ctx-set-theme|pig:ctx-set-theme-p"
 wire = "literal:error"
 
 # ── ctx.ui.theme (Theme): the host's active theme palette ──────────────────
@@ -897,6 +991,7 @@ node = "-"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 
 [[row]]
 key = "ctx.ui.theme.appearance"
@@ -986,6 +1081,7 @@ node = "read:result.content"
 go = "ToolResult.Content"
 rust = "ToolResult::json"
 python = "Extension.tool"
+lisp = "pig:tool|pig:tool-p"
 wire = "literal:content"
 
 [[row]]
@@ -994,6 +1090,7 @@ node = "read:result.details"
 go = "ToolResult.Details"
 rust = "ToolResult::json"
 python = "Extension.tool"
+lisp = "pig:tool|pig:tool-p"
 wire = "subprocess.ToolResult.details"
 
 [[row]]
@@ -1002,6 +1099,7 @@ node = "read:result.usage"
 go = "ToolResult.Usage"
 rust = "ToolResult::json"
 python = "Extension.tool"
+lisp = "pig:tool|pig:tool-p"
 wire = "subprocess.ToolResult.usage"
 
 [[row]]
@@ -1010,6 +1108,7 @@ node = "read:result.terminate"
 go = "ToolResult.Terminate"
 rust = "ToolResult::json"
 python = "Extension.tool"
+lisp = "pig:tool|pig:tool-p"
 wire = "subprocess.ToolResult.terminate"
 
 [[row]]
@@ -1018,6 +1117,7 @@ node = "read:result.structuredContent"
 go = "ToolResult.StructuredContent"
 rust = "ToolResult::with_structured_content"
 python = "Extension.tool"
+lisp = "pig:tool|pig:tool-p"
 wire = "subprocess.ToolResult.structured_content"
 
 [[row]]
@@ -1026,6 +1126,7 @@ node = "read:result.isError"
 go = "ToolResult.IsError"
 rust = "ToolResult::with_is_error"
 python = "Extension.tool"
+lisp = "pig:tool|pig:tool-p"
 wire = "subprocess.ToolResult.is_error"
 
 [[row]]
@@ -1043,6 +1144,7 @@ key = "tool render context.invalidate"
 node = "read:payload.card"
 rust = "ToolRenderContext::invalidate"
 python = "ToolRenderContext.invalidate"
+lisp = "pig:tool-render-context-invalidate|pig:tool-render-context-invalidate-p"
 
 [[row]]
 key = "tool render context.lastComponent"
@@ -1050,6 +1152,7 @@ node = "read:card.state"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 node_partial = "the component this card's renderer last returned, kept inside the extension process"
 
 [[row]]
@@ -1100,12 +1203,14 @@ wire = "subprocess.RenderToolContext.outputPad"
 key = "tool renderResult options.expanded"
 node = "read:payload.options"
 python = "Extension.tool_renderers(render_result)"
+lisp = "pig:tool-renderers(render-result)|pig:tool-renderers-p(render-result)"
 wire = "extension.ToolRenderResultOptions.expanded"
 
 [[row]]
 key = "tool renderResult options.isPartial"
 node = "read:payload.options"
 python = "Extension.tool_renderers(render_result)"
+lisp = "pig:tool-renderers(render-result)|pig:tool-renderers-p(render-result)"
 wire = "extension.ToolRenderResultOptions.isPartial"
 
 # ── Command definition ──────────────────────────────────────────────────────
@@ -1114,16 +1219,19 @@ wire = "extension.ToolRenderResultOptions.isPartial"
 key = "command.description"
 rust = "Extension::command"
 python = "Extension.command(description)"
+lisp = "pig:command(description)|pig:command-p(description)"
 
 [[row]]
 key = "command.getArgumentCompletions"
 rust = "Extension::command_argument_completions"
 python = "Extension.command(get_argument_completions)"
+lisp = "pig:command(get-argument-completions)|pig:command-p(get-argument-completions)"
 
 [[row]]
 key = "command.handler"
 rust = "CommandHandler"
 python = "Extension.command(handler)"
+lisp = "pig:command(handler)|pig:command-p(handler)"
 
 # ── Provider definition ─────────────────────────────────────────────────────
 
@@ -1133,6 +1241,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderConfig.name"
 
 [[row]]
@@ -1141,6 +1250,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderConfig.baseUrl"
 
 [[row]]
@@ -1149,6 +1259,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderConfig.apiKey"
 
 [[row]]
@@ -1157,6 +1268,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderConfig.api"
 
 [[row]]
@@ -1165,6 +1277,7 @@ node = "-"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 
 [[row]]
 key = "provider.headers"
@@ -1172,6 +1285,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderConfig.headers"
 
 [[row]]
@@ -1180,6 +1294,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderConfig.authHeader"
 
 [[row]]
@@ -1188,6 +1303,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderConfig.models"
 
 [[row]]
@@ -1196,6 +1312,7 @@ node = "-"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 
 [[row]]
 key = "provider.images"
@@ -1203,6 +1320,7 @@ node = "read:config.images"
 go = "ProviderImagesFunc"
 rust = "ProviderOperations.images"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "subprocess.ProviderDecl.image_apis"
 
 [[row]]
@@ -1211,6 +1329,7 @@ node = "read:config.classifiers"
 go = "ProviderClassifyFunc"
 rust = "ProviderOperations.classifiers"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "subprocess.ProviderDecl.classifier_apis"
 
 [[row]]
@@ -1219,6 +1338,7 @@ node = "api.registerProvider"
 go = "OAuthProvider"
 rust = "Extension::register_oauth_provider"
 python = "Extension.register_oauth_provider"
+lisp = "pig:register-oauth-provider|pig:register-oauth-provider-p"
 wire = "extension.ProviderConfig.oauth"
 
 [[row]]
@@ -1243,6 +1363,7 @@ node = "-"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 
 [[row]]
 key = "provider.oauth.login"
@@ -1274,6 +1395,7 @@ node = "-"
 go = "-"
 rust = "-"
 python = "-"
+lisp = "-"
 
 [[row]]
 key = "provider model.id"
@@ -1281,6 +1403,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.id"
 
 [[row]]
@@ -1289,6 +1412,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.name"
 
 [[row]]
@@ -1297,6 +1421,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.api"
 
 [[row]]
@@ -1305,6 +1430,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.baseUrl"
 
 [[row]]
@@ -1313,6 +1439,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.reasoning"
 
 [[row]]
@@ -1321,6 +1448,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.thinkingLevelMap"
 
 [[row]]
@@ -1329,6 +1457,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.input"
 
 [[row]]
@@ -1337,6 +1466,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.inputLimits"
 
 [[row]]
@@ -1345,6 +1475,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.cost"
 
 [[row]]
@@ -1353,6 +1484,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.promptCache"
 
 [[row]]
@@ -1361,6 +1493,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.contextWindow"
 
 [[row]]
@@ -1369,6 +1502,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.type"
 
 [[row]]
@@ -1377,6 +1511,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.output"
 
 [[row]]
@@ -1385,6 +1520,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.samplingParams"
 
 [[row]]
@@ -1393,6 +1529,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.maxTokens"
 
 [[row]]
@@ -1401,6 +1538,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.headers"
 
 [[row]]
@@ -1409,6 +1547,7 @@ node = "api.registerProvider"
 go = "Extension.RegisterProvider"
 rust = "Extension::register_provider"
 python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
 wire = "extension.ProviderModelConfig.compat"
 
 # ── Renderers ───────────────────────────────────────────────────────────────
@@ -1419,6 +1558,7 @@ node = "api.registerMarkdownTransformer"
 go = "Extension.MarkdownTransformer"
 rust = "Extension::markdown_transformer"
 python = "Extension.markdown_transformer"
+lisp = "pig:markdown-transformer|pig:markdown-transformer-p"
 
 [[row]]
 key = "pi.registerToolRenderer"
@@ -1426,6 +1566,7 @@ node = "api.registerToolRenderer"
 go = "Extension.ToolRenderer"
 rust = "Extension::tool_renderer"
 python = "Extension.tool_renderer"
+lisp = "pig:tool-renderer|pig:tool-renderer-p"
 wire = "literal:resolve_tool_renderers"
 
 [[row]]
@@ -1434,6 +1575,7 @@ node = "api.registerMarkdownTransformer"
 go = "MarkdownTransformContext.MessageType"
 rust = "MarkdownTransformContext.message_type"
 python = "Extension.markdown_transformer"
+lisp = "pig:markdown-transformer|pig:markdown-transformer-p"
 wire = "literal:messageType"
 
 [[row]]
@@ -1442,6 +1584,7 @@ node = "api.registerMarkdownTransformer"
 go = "MarkdownTransformContext.IsStreaming"
 rust = "MarkdownTransformContext.is_streaming"
 python = "Extension.markdown_transformer"
+lisp = "pig:markdown-transformer|pig:markdown-transformer-p"
 wire = "literal:isStreaming"
 
 [[row]]
@@ -1450,6 +1593,7 @@ node = "api.registerMarkdownTransformer"
 go = "MarkdownTransformContext.AvailableWidth"
 rust = "MarkdownTransformContext.available_width"
 python = "Extension.markdown_transformer"
+lisp = "pig:markdown-transformer|pig:markdown-transformer-p"
 wire = "literal:availableWidth"
 
 [[row]]
@@ -1458,6 +1602,7 @@ node = "api.registerMarkdownTransformer"
 go = "MarkdownTransformContext.MessageID"
 rust = "MarkdownTransformContext.message_id"
 python = "Extension.markdown_transformer"
+lisp = "pig:markdown-transformer|pig:markdown-transformer-p"
 wire = "literal:messageId"
 
 [[row]]
@@ -1466,24 +1611,28 @@ node = "api.registerMarkdownTransformer"
 go = "MarkdownTransformContext.Timestamp"
 rust = "MarkdownTransformContext.timestamp"
 python = "Extension.markdown_transformer"
+lisp = "pig:markdown-transformer|pig:markdown-transformer-p"
 wire = "literal:timestamp"
 
 [[row]]
 key = "message renderer options.expanded"
 node = "read:payload.options"
 python = "Extension.message_renderer"
+lisp = "pig:message-renderer|pig:message-renderer-p"
 wire = "literal:expanded"
 
 [[row]]
 key = "message renderer options.outputPad"
 node = "read:payload.options"
 python = "Extension.message_renderer"
+lisp = "pig:message-renderer|pig:message-renderer-p"
 wire = "literal:outputPad"
 
 [[row]]
 key = "entry renderer options.expanded"
 node = "read:payload.options"
 python = "Extension.entry_renderer"
+lisp = "pig:entry-renderer|pig:entry-renderer-p"
 wire = "literal:expanded"
 
 # ── PiG additive: component kit (D107) ─────────────────────────────────────
@@ -1686,24 +1835,28 @@ key = "ReadonlyFooterDataProvider.getGitBranch"
 go = "FooterData.GitBranch"
 rust = "FooterData::git_branch"
 python = "FooterData.get_git_branch"
+lisp = "pig:footer-get-git-branch|pig:footer-get-git-branch-p|pig:footer-git-branch-p|pig:footer-git-branch"
 
 [[row]]
 key = "ReadonlyFooterDataProvider.getExtensionStatuses"
 go = "FooterData.ExtensionStatuses"
 rust = "FooterData::extension_statuses"
 python = "FooterData.get_extension_statuses"
+lisp = "pig:footer-get-extension-statuses|pig:footer-get-extension-statuses-p|pig:footer-extension-statuses-p|pig:footer-extension-statuses"
 
 [[row]]
 key = "ReadonlyFooterDataProvider.getAvailableProviderCount"
 go = "FooterData.AvailableProviderCount"
 rust = "FooterData::available_provider_count"
 python = "FooterData.get_available_provider_count"
+lisp = "pig:footer-get-available-provider-count|pig:footer-get-available-provider-count-p|pig:footer-available-provider-count-p|pig:footer-available-provider-count"
 
 [[row]]
 key = "ReadonlyFooterDataProvider.onBranchChange"
 go = "FooterData.OnBranchChange"
 rust = "FooterData::on_branch_change"
 python = "FooterData.on_branch_change"
+lisp = "pig:footer-on-branch-change|pig:footer-on-branch-change-p"
 
 [[row]]
 key = "kit view events"
@@ -1732,6 +1885,7 @@ node = "RuntimeUI.setWidget"
 go = "Context.SetWidget"
 rust = "Context::set_widget_view"
 python = "Context.set_widget"
+lisp = "pig:ctx-set-widget|pig:ctx-set-widget-p"
 
 [[row]]
 key = "kit ctx.ui.setHeader(view)"
@@ -1741,6 +1895,7 @@ node = "RuntimeUI.setHeader"
 go = "Context.SetHeaderView"
 rust = "Context::set_header_view"
 python = "Context.set_header_view"
+lisp = "pig:ctx-set-header-view|pig:ctx-set-header-view-p"
 
 [[row]]
 key = "kit ctx.ui.setFooter(view)"
@@ -1750,6 +1905,7 @@ node = "RuntimeUI.setFooter"
 go = "Context.SetFooterView"
 rust = "Context::set_footer_view"
 python = "Context.set_footer_view"
+lisp = "pig:ctx-set-footer-view|pig:ctx-set-footer-view-p"
 
 [[row]]
 key = "kit tool renderCall(view)"
@@ -1759,6 +1915,7 @@ node = "read:tool.renderCall"
 go = "ToolRenderers.CallView|ToolDefinition.RenderCallView"
 rust = "ToolRendererSet.call_view|ToolDefinition.render_call_view"
 python = "ToolRenderers.call_view|ToolDefinition.call_view"
+lisp = "pig:register-tool(call-view)"
 
 [[row]]
 key = "kit tool renderResult(view)"
@@ -1768,6 +1925,7 @@ node = "read:tool.renderResult"
 go = "ToolRenderers.ResultView|ToolDefinition.RenderResultView"
 rust = "ToolRendererSet.result_view|ToolDefinition.render_result_view"
 python = "ToolRenderers.result_view|ToolDefinition.result_view"
+lisp = "pig:register-tool(result-view)"
 
 [[row]]
 key = "kit message renderer(view)"
@@ -1777,6 +1935,7 @@ node = "api.registerMessageRenderer"
 go = "Extension.MessageViewRenderer"
 rust = "Extension::message_view_renderer"
 python = "Extension.message_view_renderer"
+lisp = "pig:message-view-renderer|pig:message-view-renderer-p"
 
 [[row]]
 key = "kit entry renderer(view)"
@@ -1786,6 +1945,7 @@ node = "api.registerEntryRenderer"
 go = "Extension.EntryViewRenderer"
 rust = "Extension::entry_view_renderer"
 python = "Extension.entry_view_renderer"
+lisp = "pig:entry-view-renderer|pig:entry-view-renderer-p"
 
 [[row]]
 key = "kit lines list annotation"
@@ -1795,3 +1955,7 @@ node = "read:list.selectedIndex"
 go = "kit.Lines.List"
 rust = "kit::List"
 python = "kit.List"
+
+[[row]]
+key = "ctx.scopedModels"
+lisp = "pig:ctx-get-scoped-models"

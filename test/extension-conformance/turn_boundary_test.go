@@ -31,7 +31,7 @@ func snapshotTurnBoundary(args ...any) (any, error) {
 // Pi runner.ts:928-980 retains the proposal after a throwing boundary handler, rebuilds its preview, and sends the complete turn metadata to the next handler.
 // Pi: packages/coding-agent/src/core/extensions/types.ts:1030 (TurnEndEvent.turnIndex); packages/coding-agent/src/core/extensions/types.ts:974 (BoundaryContextPreview.contextMessages); packages/coding-agent/src/core/extensions/types.ts:976 (BoundaryContextPreview.pendingMessages).
 func TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs(t *testing.T) {
-	for _, test := range allHarnessCases() {
+	for _, test := range append(allHarnessCases(), lispHarnessCase()) {
 		t.Run(test.name, func(t *testing.T) {
 			h := test.make(t)
 			t.Cleanup(func() {
