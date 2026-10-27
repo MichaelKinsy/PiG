@@ -226,7 +226,7 @@
           reply))
       value))
 
-(declaim (ftype function user-bash-operations-reply))
+(declaim (ftype function user-bash-operations-reply tool-start-begin tool-start-respond tool-start-end tool-start-release tool-batches-reserve))
 
 (defun messages-encoding (messages)
   (handler-case (to-json messages) (error () nil)))
@@ -308,7 +308,10 @@
                   (handler (gethash name (extension-tool-handlers ext))))
              (unless handler (error "unknown tool ~S" name))
              (ticket-begin (request-ticket request))
-             (respond ext id (normalize-tool-result (funcall handler ctx params)) nil)))
+             (when (ctx-tool-start ctx) (tool-start-begin (ctx-tool-start ctx)))
+             ;; a handler whose dialog was answered before another's responds after it, as Pi's continuations run in the order of the answers
+             (let ((payload (normalize-tool-result (funcall handler ctx params))))
+               (tool-start-respond (ctx-tool-start ctx) (lambda () (respond ext id payload nil))))))
           ((equal method "command")
            (let* ((name (jget req "tool" "")) (args (jget req "args" ""))
                   (handler (gethash name (extension-command-handlers ext))))
@@ -329,9 +332,10 @@
            (respond ext id (funcall (gethash method *request-handlers*) ext ctx req) nil))
           (t (respond ext id nil (format nil "unknown method: ~A" method))))
       (serious-condition (c)
-        (handler-case (respond ext id nil (condition-message c))
+        (handler-case (tool-start-respond (ctx-tool-start ctx) (lambda () (respond ext id nil (condition-message c))))
           (error () nil))))
-    (when request (ticket-begin (request-ticket request)))))
+    (when request (ticket-begin (request-ticket request)))
+    (tool-start-end (ctx-tool-start ctx))))
 
 (defun handle-request-thread (ext env ctx)
   (unwind-protect
@@ -347,6 +351,10 @@
     (sb-thread:with-mutex ((extension-state-lock ext))
       (setf (gethash id (extension-active ext)) request))
     (let ((ctx (make-ctx ext request env)))
+      (let ((batch (jget req "batch")))
+        ;; only the calls of one parallel batch take part in the dialog and continuation orders
+        (when (and (equal (jget req "method") "tool_call") (stringp batch) (plusp (length batch)))
+          (setf (ctx-tool-start ctx) (tool-batches-reserve ext batch))))
       (when (starts-in-arrival-order-p (jget req "method"))
         (setf (request-ticket request) (reserve-ticket ext)))
       (send-request-state ext id "started")
@@ -357,6 +365,7 @@
               (push thread (extension-request-threads ext))))
         (error (e)
           (when (request-ticket request) (latch-set (start-ticket-done (request-ticket request))))
+          (when (ctx-tool-start ctx) (tool-start-release (ctx-tool-start ctx)))
           (respond ext id nil (format nil "start extension handler: ~A" e)))))))
 
 (defun handle-cancel (ext env)

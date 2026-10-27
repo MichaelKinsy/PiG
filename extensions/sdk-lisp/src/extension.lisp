@@ -58,6 +58,7 @@
   (queue (sb-thread:make-waitqueue))
   (done nil)
   (cancelled nil)
+  (settle nil)                  ; a tool-order slot the reader settles when it reads this dialog's answer
   (result nil))
 
 (defstruct (request (:constructor make-request (id signal)))
