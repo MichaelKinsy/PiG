@@ -650,6 +650,33 @@ export default function (pi) {
       
     },
   });
+  // A component's render reads the screen, an overlay's visible callback decides its visibility, and invalidate reaches the overlays (Pi's own class here).
+  pi.registerCommand("tui-alt-frame-probe", {
+    description: "Read a TuiAltScreen from a component's render and exercise overlay visibility",
+    handler: async (_args, ctx) => {
+      const { TuiAltScreen } = piTui;
+      const term={columns:20,rows:6,kittyProtocolActive:false,start(){},stop(){},async drainInput(){},write(){},moveBy(){},hideCursor(){},showCursor(){},clearLine(){},clearFromCursor(){},clearScreen(){},setTitle(){},setProgress(){},setProgramStatus(){}};
+      const screen=new TuiAltScreen(term,false,undefined,{mouse:false});
+      const seen=[];let docInv=0,ovInv=0;
+      const doc={render(w){seen.push(`${screen.viewportTop}/${screen.isFollowingOutput}/${screen.getScreenLines().length}/${screen.hasActiveSelection()}/${screen.hasOverlay()}/${screen.getShowHardwareCursor()}`);return Array.from({length:12},(_,i)=>`row ${i+1}`)},invalidate(){docInv++}};
+      screen.addChild(doc);screen.start();screen.renderNow();screen.renderNow();
+      const f=[`frame1=${seen[0]}`,`frame2=${seen[seen.length-1]}`];
+      const widths=[];
+      const ov={render:()=>["OVER"],invalidate(){ovInv++}};
+      const hOn=screen.showOverlay(ov,{width:8,visible:(w,h)=>{widths.push(`${w}x${h}`);return w>=20}});
+      screen.renderNow();
+      f.push(`visibleOn=${screen.hasOverlay()}/${screen.hasOverlayEntries}/${widths.includes("20x6")}`);
+      hOn.hide();
+      const hOff=screen.showOverlay({render:()=>["X"],invalidate(){}},{visible:()=>false});
+      f.push(`visibleOff=${screen.hasOverlay()}/${screen.hasOverlayEntries}`);hOff.hide();
+      const ov2=screen.showOverlay(ov,{width:8});
+      docInv=0;ovInv=0;screen.invalidate();
+      f.push(`invalidate=${docInv>0}/${ovInv>0}`);
+      screen.stop();
+      ctx.ui.notify("tui-alt-frame: "+f.join("; "), "info");
+      
+    },
+  });
   // Pi hands a ui.custom factory its TUI: tui.showOverlay shows a raw panel whose handle works inside the factory (tui.ts:729-826).
   pi.registerCommand("overlay-show-probe", {
     description: "Show and focus a raw overlay from a ui.custom factory's tui",

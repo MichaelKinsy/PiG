@@ -144,6 +144,7 @@ type TuiAltScreen struct {
 	schemeHandler map[int]func(scheme string)
 	nextScheme    int
 	lateReply     map[string]func(TerminalColors)
+	visible       map[string]func(termWidth, termHeight int) bool
 	nextQuery     int
 }
 
@@ -562,14 +563,30 @@ func (s *TuiAltScreen) RequestRender(force bool) error {
 	return s.call("requestRender", map[string]any{"force": force}, nil)
 }
 
-// ShowOverlay is pi-tui's showOverlay; nil options are Pi's defaults. The options' `visible` callback has no serialisable form and is not offered.
-func (s *TuiAltScreen) ShowOverlay(component Component, options *OverlayOptions) (*TuiOverlayHandle, error) {
+// TuiOverlayOptions is pi-tui's OverlayOptions: the serialisable fields of [OverlayOptions] and Pi's `visible(termWidth, termHeight)` callback,
+// which the host calls whenever it decides whether the overlay shows (a nil Visible is always visible).
+type TuiOverlayOptions struct {
+	OverlayOptions
+	Visible func(termWidth, termHeight int) bool `json:"-"`
+}
+
+// ShowOverlay is pi-tui's showOverlay; nil options are Pi's defaults.
+func (s *TuiAltScreen) ShowOverlay(component Component, options *TuiOverlayOptions) (*TuiOverlayHandle, error) {
 	fields, err := s.componentFields(component)
 	if err != nil {
 		return nil, err
 	}
 	if options != nil {
-		fields["options"] = options
+		fields["options"] = options.OverlayOptions
+		if options.Visible != nil {
+			fields["visible"] = true
+			s.mu.Lock()
+			if s.visible == nil {
+				s.visible = map[string]func(int, int) bool{}
+			}
+			s.visible[fields["key"].(string)] = options.Visible
+			s.mu.Unlock()
+		}
 	}
 	if err := s.call("showOverlay", fields, nil); err != nil {
 		return nil, err
@@ -742,6 +759,8 @@ func (e *Extension) dispatchTuiAlt(raw json.RawMessage) (any, error) {
 		Method     string          `json:"method"`
 		Key        string          `json:"key"`
 		Width      int             `json:"width"`
+		TermWidth  int             `json:"termWidth"`
+		TermHeight int             `json:"termHeight"`
 		Data       string          `json:"data"`
 		Focused    bool            `json:"focused"`
 		Event      MouseEvent      `json:"event"`
@@ -906,6 +925,11 @@ func (e *Extension) dispatchTuiAlt(raw json.RawMessage) (any, error) {
 			callback(request.Colors)
 		}
 		return empty, nil
+	case "visible":
+		s.mu.Lock()
+		visible := s.visible[request.Key]
+		s.mu.Unlock()
+		return map[string]any{"value": visible == nil || visible(request.TermWidth, request.TermHeight)}, nil
 	case "option":
 		return s.runOption(request.Name, request.Args)
 	}

@@ -330,6 +330,7 @@ func Extension() *sdk.Extension {
 	ext.Flag("flag-string", sdk.FlagOptions{Type: sdk.FlagString, Default: "default"})
 	ext.Flag("flag-empty", sdk.FlagOptions{Type: sdk.FlagString, Default: ""})
 	ext.Flag("flag-unset", sdk.FlagOptions{Type: sdk.FlagString})
+	ext.Command("tui-alt-frame-probe", "Read a TuiAltScreen from a component's render and exercise overlay visibility", tuiAltFrameProbe)
 	ext.Command("tui-alt-screen-probe", "Drive a TuiAltScreen over a recording terminal", tuiAltProbe)
 	ext.Command("flag-probe", "Report registered flag values", func(ctx sdk.Context, _ string) error {
 		values := []any{}

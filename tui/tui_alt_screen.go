@@ -364,6 +364,28 @@ func (t *TuiAltScreen) CopyActiveSelectionToClipboard() bool {
 	return t.copyTextToClipboard(text)
 }
 
+// AltScreenFrameState is what a component reads from the screen while its Render runs inside a frame.
+type AltScreenFrameState struct {
+	ScreenLines        []string
+	HasActiveSelection bool
+	CopyOnSelect       bool
+	ShowHardwareCursor bool
+	ClearOnShrink      bool
+}
+
+// FrameState reads the state a component's Render may ask the screen for, without taking the frame lock, which the frame's own goroutine holds
+// (Pi's single thread lets render read these members). It reports false outside a frame, and is only for a Render the frame is running.
+func (t *TuiAltScreen) FrameState() (AltScreenFrameState, bool) {
+	if !t.frameActive.Load() {
+		return AltScreenFrameState{}, false
+	}
+	_, _, selected := t.getSelectionBounds()
+	return AltScreenFrameState{
+		ScreenLines: slices.Clone(t.previousScreen), HasActiveSelection: selected, CopyOnSelect: t.copyOnSelect,
+		ShowHardwareCursor: t.showHardwareCursor, ClearOnShrink: t.clearOnShrink,
+	}, true
+}
+
 // GetScreenLines returns the lines of the last rendered frame, one per terminal row, as written to the terminal. The slice is a copy (tui-alt-screen.ts:315-318).
 func (t *TuiAltScreen) GetScreenLines() []string {
 	t.mu.Lock()

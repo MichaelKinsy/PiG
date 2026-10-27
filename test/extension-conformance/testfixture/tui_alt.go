@@ -125,7 +125,7 @@ func tuiAltProbe(ctx sdk.Context, _ string) error {
 	}
 	add("flash=%t", flash)
 	ov := &tuiAltLines{render: func(int) []string { return []string{"OVER"} }}
-	h, err := screen.ShowOverlay(ov, &sdk.OverlayOptions{Width: sdk.OverlayCells(8), Anchor: "center"})
+	h, err := screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8), Anchor: "center"}})
 	must(err)
 	must(screen.RenderNow(false))
 	bounds, err := h.GetBounds()
@@ -210,3 +210,75 @@ func tuiAltProbe(ctx sdk.Context, _ string) error {
 	ctx.Notify("tui-alt: "+strings.Join(f[:len(f)-1], "; "), "info")
 	return nil
 }
+
+// tuiAltFrameProbe reads the screen from a component's render, shows overlays with visible callbacks and invalidates, as the Node fixture does.
+func tuiAltFrameProbe(ctx sdk.Context, _ string) error {
+	var failure error
+	must := func(err error) {
+		if err != nil && failure == nil {
+			failure = err
+		}
+	}
+	val := func(v any, err error) any { must(err); return v }
+	term := &tuiAltTerminal{}
+	hardware, mouse := false, false
+	screen, err := sdk.NewTuiAltScreen(ctx, term, &hardware, "", sdk.TuiAltScreenOptions{Mouse: &mouse})
+	if err != nil {
+		return err
+	}
+	var seen []string
+	docInv, ovInv := 0, 0
+	doc := &tuiAltCounting{invalidated: &docInv, render: func(int) []string {
+		seen = append(seen, fmt.Sprintf("%d/%t/%d/%t/%t/%t", val(screen.ViewportTop()), val(screen.IsFollowingOutput()), len(val(screen.GetScreenLines()).([]string)),
+			val(screen.HasActiveSelection()), val(screen.HasOverlay()), val(screen.GetShowHardwareCursor())))
+		lines := make([]string, 12)
+		for i := range lines {
+			lines[i] = fmt.Sprintf("row %d", i+1)
+		}
+		return lines
+	}}
+	must(screen.AddChild(doc))
+	must(screen.Start())
+	must(screen.RenderNow(false))
+	must(screen.RenderNow(false))
+	f := []string{"frame1=" + seen[0], "frame2=" + seen[len(seen)-1]}
+	var widths []string
+	ov := &tuiAltCounting{invalidated: &ovInv, render: func(int) []string { return []string{"OVER"} }}
+	hOn, err := screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8)}, Visible: func(w, h int) bool {
+		widths = append(widths, fmt.Sprintf("%dx%d", w, h))
+		return w >= 20
+	}})
+	must(err)
+	must(screen.RenderNow(false))
+	has20 := false
+	for _, w := range widths {
+		has20 = has20 || w == "20x6"
+	}
+	f = append(f, fmt.Sprintf("visibleOn=%t/%t/%t", val(screen.HasOverlay()), val(screen.HasOverlayEntries()), has20))
+	must(hOn.Hide())
+	off := &tuiAltCounting{invalidated: new(int), render: func(int) []string { return []string{"X"} }}
+	hOff, err := screen.ShowOverlay(off, &sdk.TuiOverlayOptions{Visible: func(int, int) bool { return false }})
+	must(err)
+	f = append(f, fmt.Sprintf("visibleOff=%t/%t", val(screen.HasOverlay()), val(screen.HasOverlayEntries())))
+	must(hOff.Hide())
+	_, err = screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8)}})
+	must(err)
+	docInv, ovInv = 0, 0
+	must(screen.Invalidate())
+	f = append(f, fmt.Sprintf("invalidate=%t/%t", docInv > 0, ovInv > 0))
+	must(screen.Stop(false))
+	if failure != nil {
+		return failure
+	}
+	ctx.Notify("tui-alt-frame: "+strings.Join(f, "; "), "info")
+	return nil
+}
+
+// tuiAltCounting counts the invalidations it receives.
+type tuiAltCounting struct {
+	invalidated *int
+	render      func(width int) []string
+}
+
+func (c *tuiAltCounting) Render(width int) []string { return c.render(width) }
+func (c *tuiAltCounting) Invalidate()               { *c.invalidated++ }
