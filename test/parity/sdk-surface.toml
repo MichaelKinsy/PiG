@@ -817,6 +817,14 @@ wire = "subprocess.RemoteOverlayOpenPayload.overlayOptions"
 partial = "the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary"
 
 [[row]]
+key = "ctx.ui.custom(options.blocked)"
+node = "RuntimeUI.custom"
+go = "RemoteOverlayOptions.Blocked"
+rust = "Context::custom_component"
+python = "Context.custom"
+wire = "subprocess.RemoteOverlayOpenPayload.blocked"
+
+[[row]]
 key = "ctx.ui.custom(options.onHandle)"
 node = "RuntimeUI.custom"
 node_partial = "mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73"

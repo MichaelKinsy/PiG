@@ -3110,8 +3110,14 @@
     },
     {
       "path": "packages/coding-agent/test/assistant-message.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:39b26856c014ffab6e7caf7358c84ba3b1bad45463200511a974ec6318148cff"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:39b26856c014ffab6e7caf7358c84ba3b1bad45463200511a974ec6318148cff",
+      "evidence": [
+        "tui/assistant_message_block_test.go",
+        "internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
+        "tui/assistant_mouse_upstream_test.go#TestAssistantThinkingClicksThroughTerminal"
+      ],
+      "rationale": "The complete pinned upstream case set is reviewed in gate-close-08 and its delivered tests are composed from e503bb258. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations. Delta at Pi a6a7bac8 (#11402): the two added cases are ported as TestAssistantMessageUpstream subtests with the same inputs and expectations (\"renders nothing for hidden thinking with an empty label\": no rows before a tool call, a spacer and the answer before text; \"keeps label row and spacing for hidden thinking with a label\": a spacer, Thinking..., a spacer, the answer). PiG's constructor reads an empty label as the default, so the empty label is set with SetHiddenThinkingLabel(\"\"), the call ctx.ui.setHiddenThinkingLabel(\"\") makes; one more case pins that a skipped run adds no spacing between text blocks. Red on the unfixed code: the empty-label case rendered the blank label row and the skipped-run case rendered two extra blank rows."
     },
     {
       "path": "packages/coding-agent/test/auth-check.test.ts",
@@ -4022,8 +4028,25 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-dialogs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f614c5b33464cf1d4c92a36c6a48e94b541a299cecb2b0c85a52d863acecb7c1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f614c5b33464cf1d4c92a36c6a48e94b541a299cecb2b0c85a52d863acecb7c1",
+      "evidence": [
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsStackConcurrentInlineCustomComponents",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowAConfirmOpenedFromACustomComponentThenRestoreIt",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+        "internal/codingagent/ext_ui_dialog_bridge_test.go#TestExtensionDialogsFromOneExtensionStackThroughTheHostBridge",
+        "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
+        "coding/cli/rpc_ui_concurrent_dialogs_test.go#TestRpcConcurrentExtensionDialogsResolveEachByItsOwnID",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsStayVisibleWhenTheEditorComponentIsReplaced",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestEditorComponentReplacementKeepsTheActiveSelectorWhileADialogIsOpen",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestEditorComponentReplacementDisposesTheActiveSelectorWithoutADialog",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsReportBlockedStatusForAnInlineCustomComponentThatOptsIn",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionCustomOverlayIgnoresTheBlockedOption",
+        "test/extension-conformance/custom_blocked_test.go#TestConformance_CustomBlockedOption"
+      ],
+      "rationale": "Pi 38847563 (#11166, #9909): all four cases are ported to the real InteractiveMode (earlier confirm shown again with the blocked status of each, hidden dialog removed when its signal aborts, stacked inline custom components, a confirm opened from a custom component). Extra: select/input/editor mix, hidden dialog timeout, session replacement and /reload disposing every dialog, remote editor-slot focus hand-back, and a cross-SDK conformance row over every realization (Node, Go, Python, Rust; isolated, packed, fused). Mutation: with the old displace-and-hide code 14 of the new tests fail. Delta at Pi 7853186d (#11431) and c1810bf7 (#11428): \"keeps an open dialog visible when the editor component is replaced\" is ported against the real InteractiveMode (the confirm stays visible and answerable, the replacement editor shows afterwards); PiG's editor widget is stable, so the part of the fix that bites is the selector shown over the dialog, which setCustomEditorComponent no longer disposes (red on the unfixed code: focus fell back to the editor). \"reports blocked status for an inline custom component that opts in\" is ported with the same sequence (opted-in component blocked, plain component stacked on it clears the status, closing it restores the status, closing the opted-in one clears it); the overlay-ignores-the-option rule and the wire carriage of the option for the Go, Node, packed Node, Rust, Python and fused Go realizations are covered by TestExtensionCustomOverlayIgnoresTheBlockedOption and TestConformance_CustomBlockedOption (red for Node before runtime.mjs forwarded options.blocked)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-import-command.test.ts",
