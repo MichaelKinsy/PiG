@@ -115,6 +115,8 @@ func (rig *restartRig) open() (harness.Harness, harness.Conversation) {
 func (rig *restartRig) crash() {
 	rig.t.Helper()
 	dead := rig.last
+	// Deferred progress commits (persistWithinMs: 0) reach the store before the crash.
+	time.Sleep(50 * time.Millisecond)
 	rig.kill()
 	if dead != nil {
 		go func() { _ = dead.Close(context.Background()) }()
