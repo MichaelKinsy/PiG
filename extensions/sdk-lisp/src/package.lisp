@@ -126,6 +126,67 @@
     #:trust-store-set-many
    ;; ==== end lane S2 ====
    ;; ==== lane S3: model runtime and registry, create-provider, extension runner and factories, MCP options, event bus, builtin tools ====
+    #:bash-tool-options #:builtin-tool #:builtin-tool-constrained-sampling #:builtin-tool-definition #:builtin-tool-definition-constrained-sampling
+    #:builtin-tool-definition-description #:builtin-tool-definition-execute #:builtin-tool-definition-execute-with
+    #:builtin-tool-definition-execution-mode #:builtin-tool-definition-label #:builtin-tool-definition-name #:builtin-tool-definition-output-schema
+    #:builtin-tool-definition-parameters #:builtin-tool-definition-prepare-arguments #:builtin-tool-definition-prompt-guidelines
+    #:builtin-tool-definition-prompt-snippet #:builtin-tool-definition-render-shell #:builtin-tool-description #:builtin-tool-execute
+    #:builtin-tool-execution-mode #:builtin-tool-label #:builtin-tool-name #:builtin-tool-output-schema #:builtin-tool-parameters
+    #:builtin-tool-prompt-guidelines #:builtin-tool-prompt-snippet #:copy-builtin-tool-definition #:create-bash-tool #:create-bash-tool-definition
+    #:create-codemode-extension #:create-coding-tools #:create-edit-tool #:create-edit-tool-definition #:create-extension-runtime #:create-find-tool
+    #:create-find-tool-definition #:create-grep-tool #:create-grep-tool-definition #:create-local-bash-operations #:create-local-powershell-operations
+    #:create-ls-tool #:create-ls-tool-definition #:create-mcp-extension #:create-powershell-tool #:create-powershell-tool-definition #:create-provider
+    #:create-read-only-tools #:create-read-tool #:create-read-tool-definition #:create-tool-search-extension #:create-write-tool
+    #:create-write-tool-definition #:ctx-events #:edit-operations #:edit-tool-options #:event-bus #:events-emit #:events-on #:extension-events
+    #:extension-factory #:extension-factory-p #:extension-factory-wire #:extension-runner #:extension-runtime #:extension-runtime-assert-active
+    #:extension-runtime-get-flag-values #:extension-runtime-invalidate #:extension-runtime-mcp-servers
+    #:extension-runtime-pending-native-provider-registrations #:extension-runtime-pending-provider-registrations
+    #:extension-runtime-pending-virtual-model-registrations #:extension-runtime-set-flag-value #:find-operations #:find-tool-options #:grep-operations
+    #:grep-tool-options #:loaded-extensions-runtime #:ls-operations #:ls-stat #:ls-tool-options #:make-bash-tool-options
+    #:make-builtin-tool-definition #:make-edit-operations #:make-edit-tool-options #:make-extension-runner #:make-find-operations
+    #:make-find-tool-options #:make-grep-operations #:make-grep-tool-options #:make-ls-operations #:make-ls-stat #:make-ls-tool-options
+    #:make-mcp-credential-store #:make-mcp-server-store #:make-mcp-transport #:make-model-image-resize-options #:make-power-shell-tool-options
+    #:make-provider-streams #:make-read-operations #:make-read-tool-options #:make-runtime-registry #:make-tools-options #:make-write-operations
+    #:make-write-tool-options #:mcp-auth-on-unauthorized #:mcp-auth-provider #:mcp-auth-token #:mcp-credential-store #:mcp-server-store
+    #:mcp-transport #:mcp-transport-emit-close #:mcp-transport-emit-error #:mcp-transport-emit-message #:mcp-transport-on-close
+    #:mcp-transport-on-error #:mcp-transport-on-message #:model-image-resize-options #:model-runtime #:power-shell-tool-options #:provider-streams
+    #:read-operations #:read-tool-options #:register-builtin-tool-definition #:runner-bind-command-context #:runner-bind-core #:runner-context
+    #:runner-context-abort #:runner-context-compact #:runner-context-cwd #:runner-context-execute-tool #:runner-context-fork
+    #:runner-context-get-context-usage #:runner-context-get-system-prompt #:runner-context-get-system-prompt-options
+    #:runner-context-has-pending-messages-p #:runner-context-has-ui-p #:runner-context-is-idle-p #:runner-context-is-project-trusted-p
+    #:runner-context-mode #:runner-context-model #:runner-context-model-registry #:runner-context-navigate-tree #:runner-context-new-session
+    #:runner-context-reload #:runner-context-scoped-models #:runner-context-session-manager #:runner-context-shutdown #:runner-context-signal
+    #:runner-context-switch-session #:runner-context-thinking-level #:runner-context-tools #:runner-context-ui #:runner-context-wait-for-idle
+    #:runner-create-command-context #:runner-create-context #:runner-create-tool-context #:runner-emit #:runner-emit-before-agent-start
+    #:runner-emit-before-provider-headers #:runner-emit-before-provider-request #:runner-emit-boundary #:runner-emit-cache-warming-decision
+    #:runner-emit-context #:runner-emit-error #:runner-emit-input #:runner-emit-message-end #:runner-emit-resources-discover #:runner-emit-tool-call
+    #:runner-emit-tool-result #:runner-emit-user-bash #:runner-get-active-tools #:runner-get-all-registered-tools #:runner-get-command
+    #:runner-get-command-diagnostics #:runner-get-entry-renderer-p #:runner-get-extension-paths #:runner-get-flag-values #:runner-get-flags
+    #:runner-get-markdown-transformers #:runner-get-message-renderer-p #:runner-get-model-registry #:runner-get-registered-commands
+    #:runner-get-shortcut-diagnostics #:runner-get-shortcuts #:runner-get-tool-definition #:runner-get-ui-context #:runner-has-handlers-p
+    #:runner-has-ui-p #:runner-invalidate #:runner-on-error #:runner-report-unhandled-mcp-servers #:runner-resolve-tool-renderers
+    #:runner-set-flag-value #:runner-set-ui-context #:runner-shutdown #:runner-ui #:runner-ui-confirm #:runner-ui-editor #:runner-ui-get-editor-text
+    #:runner-ui-get-tools-expanded-p #:runner-ui-input #:runner-ui-notify #:runner-ui-paste-to-editor #:runner-ui-select #:runner-ui-set-editor-text
+    #:runner-ui-set-hidden-thinking-label #:runner-ui-set-status #:runner-ui-set-title #:runner-ui-set-tools-expanded #:runner-ui-set-widget
+    #:runner-ui-set-working-message #:runner-ui-set-working-visible #:runtime-check-auth #:runtime-classify #:runtime-complete
+    #:runtime-complete-simple #:runtime-create #:runtime-generate-images #:runtime-get-all-available #:runtime-get-all-models #:runtime-get-auth
+    #:runtime-get-available #:runtime-get-available-of-type #:runtime-get-available-snapshot #:runtime-get-compatibility-request-config
+    #:runtime-get-error #:runtime-get-model #:runtime-get-model-of-type #:runtime-get-models #:runtime-get-models-of-type #:runtime-get-physical-model
+    #:runtime-get-provider #:runtime-get-provider-auth-status #:runtime-get-providers #:runtime-get-registered-native-provider
+    #:runtime-get-registered-provider-config #:runtime-get-registered-provider-ids #:runtime-has-configured-auth-p #:runtime-is-using-oauth-p
+    #:runtime-is-using-subscription-p #:runtime-list-credentials #:runtime-login #:runtime-logout #:runtime-provider-display-name #:runtime-refresh
+    #:runtime-register-native-provider #:runtime-register-provider #:runtime-register-virtual-model #:runtime-registry #:runtime-registry-classify
+    #:runtime-registry-complete #:runtime-registry-find #:runtime-registry-find-of-type #:runtime-registry-generate-images #:runtime-registry-get-all
+    #:runtime-registry-get-api-key-and-headers #:runtime-registry-get-api-key-for-provider #:runtime-registry-get-available
+    #:runtime-registry-get-available-of-type #:runtime-registry-get-error #:runtime-registry-get-model-of-type #:runtime-registry-get-models-of-type
+    #:runtime-registry-get-provider #:runtime-registry-get-provider-auth #:runtime-registry-get-provider-auth-status
+    #:runtime-registry-get-provider-display-name #:runtime-registry-get-registered-native-provider #:runtime-registry-get-registered-provider-config
+    #:runtime-registry-get-registered-provider-ids #:runtime-registry-has-configured-auth-p #:runtime-registry-is-using-oauth-p
+    #:runtime-registry-refresh #:runtime-registry-register-native-provider #:runtime-registry-register-provider
+    #:runtime-registry-register-virtual-model #:runtime-registry-stream #:runtime-registry-stream-simple #:runtime-registry-unregister-provider
+    #:runtime-registry-unregister-virtual-model #:runtime-remove-runtime-api-key #:runtime-resolve-model #:runtime-set-runtime-api-key
+    #:runtime-stream #:runtime-stream-simple #:runtime-unregister-provider #:runtime-unregister-virtual-model #:tools-options #:write-operations
+    #:write-tool-options
    ;; ==== end lane S3 ====
    ;; ==== lane S1: session operations, child sessions, agent session runtime and services ====
    ;; ==== end lane S1 ====
