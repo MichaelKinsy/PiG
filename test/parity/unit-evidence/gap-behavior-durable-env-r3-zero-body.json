@@ -918,7 +918,7 @@
    "TestLiveDeltas"
   ],
   "upstream_reference": "packages/durable/src/harness/tool.ts",
-  "mutation": "durable/harness/tool.go: replace 'func (api *toolApi) Output(chunk any, skipped ...env.ShellOutputSkip) {' with 'func (api *toolApi) Output(chunk any, skipped ...env.ShellOutputSkip) {\\n\\treturn'; compiling go test -overlay -run exact test -count=1 fails , TestLiveDeltas."
+  "mutation": "durable/harness/tool.go: replace 'func (api *toolApi) Output(chunk any, skipped ...env.ShellOutputSkip) {' with 'func (api *toolApi) Output(chunk any, skipped ...env.ShellOutputSkip) {\\n\\treturn'; compiling go test -overlay -run exact test -count=1 fails TestLiveDeltas."
  },
  {
   "upstream": "packages/durable/src/harness/tool.ts",
