@@ -595,6 +595,61 @@ export default function (pi) {
       ctx.ui.notify("overlay-focus=ok", "info");
     },
   });
+  // Pi's TuiAltScreen is served as Pi's own class; the Go, Rust and Python SDKs reach the host's port of it, and every SDK must report this text.
+  pi.registerCommand("tui-alt-screen-probe", {
+    description: "Drive a TuiAltScreen over a recording terminal",
+    handler: async (_args, ctx) => {
+      const { TuiAltScreen } = piTui;
+      const log=[]; let onInput, onResize, started=false;
+      const term={columns:20,rows:6,kittyProtocolActive:false,
+       start(i,r){onInput=i;onResize=r;started=true;log.push("start")},stop(){started=false;log.push("stop")},
+       async drainInput(){},write(d){log.push(d)},moveBy(){},hideCursor(){},showCursor(){},clearLine(){},clearFromCursor(){},clearScreen(){},setTitle(){},setProgress(){},setProgramStatus(){}};
+      const vis=s=>s.replace(/\x1b\[[0-9;?]*[A-Za-z]|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)?/g,"");
+      const lines=(name,fn)=>({name,render:fn,invalidate(){}});
+      const screen=new TuiAltScreen(term,false,undefined,{mouse:false,wheelScrollLines:3,copyOnSelect:true});
+      const doc=lines("doc",w=>Array.from({length:12},(_,i)=>`row ${i+1} w=${w}`));
+      screen.addChild(doc);
+      const f=[];
+      f.push(`mode=${screen.mode}`,`children=${screen.children.length}`,`terminal=${screen.terminal===term}`);
+      screen.start(); screen.renderNow();
+      const sl=()=>screen.getScreenLines().map(s=>vis(s).trimEnd());
+      f.push(`viewport=${screen.viewportTop}/${screen.isFollowingOutput}`,`first=${sl()[0]}`,`last=${sl()[5]}`,`redraws=${screen.fullRedraws>0}`,`entered=${log.some(l=>l.includes("\x1b[?1049h"))}`);
+      screen.scrollBy(-2);screen.renderNow();f.push(`up=${screen.viewportTop}/${screen.isFollowingOutput}`);
+      screen.scrollToTop();screen.renderNow();f.push(`top=${screen.viewportTop}/${screen.isFollowingOutput}`,`topfirst=${sl()[0]}`);
+      screen.scrollToBottom();screen.renderNow();f.push(`bottom=${screen.viewportTop}/${screen.isFollowingOutput}`);
+      screen.flash("hello",500);screen.renderNow();f.push(`flash=${sl().some(l=>l.includes("hello"))}`);
+      const ov=lines("ov",w=>["OVER"]);
+      const h=screen.showOverlay(ov,{width:8,anchor:"center"});screen.renderNow();
+      f.push(`overlay=${screen.hasOverlay()}/${screen.hasOverlayEntries}/${h.isFocused()}/${h.getBounds()?.width}`);
+      h.setHidden(true);f.push(`hidden=${h.isHidden()}`);h.setHidden(false);
+      screen.hideOverlay();f.push(`afterHide=${screen.hasOverlay()}/${screen.hasOverlayEntries}`);
+      const inputs=[];const foc={focused:false,render:()=>["foc"],invalidate(){},handleInput(d){inputs.push(d)}};
+      screen.setFocus(foc);f.push(`focus=${screen.getFocusedComponent()===foc}/${foc.focused}`);
+      onInput("k");
+      const lst=d=>d==="c"?{consume:true}:undefined;
+      const rm=screen.addInputListener(lst);onInput("c");rm();onInput("c");
+      screen.addInputListener(lst);screen.removeInputListener(lst);
+      f.push(`inputs=${inputs.join(",")}`);
+      let dbg=0;screen.onDebug=()=>{dbg++};onInput("\x1b[100;6u");f.push(`debug=${dbg}`);
+      screen.setShowHardwareCursor(true);screen.setClearOnShrink(true);
+      f.push(`flags=${screen.getShowHardwareCursor()}/${screen.getClearOnShrink()}`);
+      screen.setWheelScrollLines(2);screen.setCopyOnSelect(false);
+      f.push(`copy=${screen.getCopyOnSelect()}/${screen.hasActiveSelection()}/${await screen.copyActiveSelectionToClipboard()}`);screen.resetTextSelection();
+      const schemes=[];screen.onTerminalColorSchemeChange(s=>schemes.push(s));
+      screen.setTerminalColorSchemeNotifications(true);onInput("\x1b[?997;1n");onInput("\x1b[?997;2n");
+      f.push(`schemes=${schemes.join(",")}`);
+      const colors=await screen.queryTerminalColors({timeoutMs:20});f.push(`colors=${JSON.stringify(colors)}`);
+      const mr=screen.handleMouse?.({type:"wheel",button:"none",x:0,y:0,screenX:0,screenY:0,width:20,height:6,shift:false,alt:false,ctrl:false,wheelDelta:1});
+      f.push(`mouse=${JSON.stringify(mr??null)}`);
+      f.push(`render=${screen.render(10).slice(0,2).join("|")}`);
+      screen.invalidate();screen.requestRender();
+      const root=lines("root",w=>["ROOT"]);screen.setLayoutRoot(root);screen.renderNow();f.push(`root=${sl()[0].startsWith("ROOT")}`);screen.setLayoutRoot(undefined);
+      screen.removeChild(doc);f.push(`removed=${screen.children.length}`);screen.addChild(doc);screen.clear();f.push(`cleared=${screen.children.length}`);
+      screen.stop();f.push(`stopped=${!started}`);
+      ctx.ui.notify("tui-alt: "+f.join("; "), "info");
+      
+    },
+  });
   // Pi hands a ui.custom factory its TUI: tui.showOverlay shows a raw panel whose handle works inside the factory (tui.ts:729-826).
   pi.registerCommand("overlay-show-probe", {
     description: "Show and focus a raw overlay from a ui.custom factory's tui",

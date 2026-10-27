@@ -177,6 +177,7 @@ type Extension struct {
 	providers                []providerDef
 	providerMu               sync.RWMutex
 	autocomplete             autocompleteRegistry
+	tuiAlt                   tuiAltRegistry
 	nativeProviders          map[string]*Provider
 	// bashOperations holds the BashOperations objects a user_bash reply named by handle until the host releases them.
 	bashOperationsMu        sync.Mutex
@@ -1411,6 +1412,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	case methodOAuthLogin, methodOAuthRefresh, methodOAuthGetAPIKey,
 		methodOAuthCredentialStatus, methodOAuthStoreCredentials, methodOAuthDeleteCredentials:
 		e.dispatchOAuth(id, req)
+
+	case "tui.alt.cb":
+		result, err := e.dispatchTuiAlt(req.Args)
+		_ = e.conn.respond(id, result, err)
 
 	case "terminal_input":
 		e.dispatchTerminalInput(id, req)

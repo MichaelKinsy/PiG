@@ -887,6 +887,10 @@ const (
 	CallUICustomShowOverlay = "ui.custom.showOverlay"
 	CallUICustomHideOverlay = "ui.custom.hideOverlay"
 	CallUICustomSetFocus    = "ui.custom.setFocus"
+	// CallTuiAlt (ext→host) drives a TuiAltScreen the extension constructed (pi-tui's alternate-screen host, D204) and RequestTuiAltCallback
+	// (host→ext request) asks the extension for what it owns: its Terminal, its components and its listeners.
+	CallTuiAlt            = "tui.alt"
+	RequestTuiAltCallback = "tui.alt.cb"
 )
 
 type RemoteOverlayOpenPayload struct {

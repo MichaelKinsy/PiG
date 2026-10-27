@@ -61,6 +61,8 @@ type UIBridge struct {
 	// "<extName>:<key>" so render/close notifications from the TS
 	// shim runtime can be routed back to the originating overlay.
 	customOverlays map[string]extension.RemoteOverlayHandle
+	// tuiAlt holds the TuiAltScreens extensions constructed (CallTuiAlt).
+	tuiAlt tuiAltRegistry
 
 	// extConns holds the per-extension socket connection so the
 	// bridge can forward overlay input notifications back to the
@@ -1408,6 +1410,8 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleInput(ctx, ui, call.Args)
 	case CallUICustomControl:
 		return b.handleCustomControl(ctx, extName, owner, call.Args)
+	case CallTuiAlt:
+		return b.handleTuiAlt(owner, call.Args)
 	case CallUICustomShowOverlay:
 		return b.handleCustomShowOverlay(ctx, extName, owner, ui, call.Args)
 	case CallUICustomHideOverlay:
@@ -1812,6 +1816,11 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 		handle.Close(nil)
 	}
 	b.clearEditorConn(extName, owner, ownerOnly)
+	if ownerOnly {
+		b.disposeTuiAlt(owner, false)
+	} else {
+		b.disposeTuiAltOf(extName)
+	}
 }
 
 // SetModelCatalog installs equivalent value and JSON projections atomically. Publication uses the encoder without changing the value getter or its notification boundary. Replacing the getter through SetHostAction or SetActions clears the encoder.

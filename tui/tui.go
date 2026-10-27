@@ -1322,6 +1322,9 @@ func (t *tuiBase) hasOverlay() bool {
 	return visible
 }
 
+// HasVisibleOverlay is upstream hasOverlay: whether any overlay is visible.
+func (t *tuiBase) HasVisibleOverlay() bool { return t.hasOverlay() }
+
 // HasOverlay reports whether any overlay entry is mounted. The interactive
 // driver uses this for the upstream hasOverlayEntries renderer-switch guard.
 func (t *tuiBase) HasOverlay() bool {
