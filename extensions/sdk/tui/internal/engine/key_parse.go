@@ -178,7 +178,7 @@ func ParseKey(data string) (string, bool) {
 	if modified := parseModifiedFunc(data); modified != nil {
 		return formatParsedKey(modified.codepoint, modified.modifier, 0, false)
 	}
-	if modified := parseModifiedFKey(data); modified != nil {
+	if modified := parseBareFKey(data); modified != nil {
 		return formatParsedKey(modified.codepoint, modified.modifier, 0, false)
 	}
 
