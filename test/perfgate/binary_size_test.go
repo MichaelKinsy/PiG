@@ -7,6 +7,7 @@
 package perfgate
 
 import (
+	"bytes"
 	"encoding/binary"
 	"os"
 	"os/exec"
@@ -135,7 +136,7 @@ func dictionarySliceIn(binary, dictionary []byte) (offset, at int) {
 	}
 	for i := 0; i+dictionarySlice <= len(binary); i++ {
 		for _, candidate := range index[binaryLE(binary[i:])] {
-			if string(binary[i:i+dictionarySlice]) == string(dictionary[candidate:candidate+dictionarySlice]) {
+			if bytes.Equal(binary[i:i+dictionarySlice], dictionary[candidate:candidate+dictionarySlice]) {
 				return i, candidate
 			}
 		}
