@@ -55,9 +55,9 @@ snippet = "output.Diagnostics = append(output.Diagnostics, details.attach(Assist
 
 [[hit]]
 check = "clock"
-file = "ai/bedrock.go"
+file = "ai/providers/bedrock/bedrock.go"
 func = "appendBedrockFailureDiagnostic"
-snippet = "AppendAssistantMessageDiagnostic(message, details.attach(AssistantMessageDiagnostic{Type: \"bedrock_response_failure\", Timestamp: time.Now().UnixMilli()}))"
+snippet = "ai.AppendAssistantMessageDiagnostic(message, details.Attach(ai.AssistantMessageDiagnostic{Type: \"bedrock_response_failure\", Timestamp: time.Now().UnixMilli()}))"
 
 [[hit]]
 check = "clock"
@@ -4794,13 +4794,13 @@ snippet = "listener, err := net.Listen(\"unix\", socketPath)"
 
 [[hit]]
 check = "utf16units"
-file = "ai/bedrock.go"
+file = "ai/providers/bedrock/bedrock.go"
 func = "normalizeBedrockToolID"
 snippet = "if len(clean) > 64 {"
 
 [[hit]]
 check = "utf16units"
-file = "ai/bedrock.go"
+file = "ai/providers/bedrock/bedrock.go"
 func = "normalizeBedrockToolID"
 snippet = "clean = clean[:64]"
 

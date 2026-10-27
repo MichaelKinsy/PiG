@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
+	"github.com/MichaelKinsy/PiG/durable/core/session/hopcost"
 	"github.com/MichaelKinsy/PiG/durable/core/turn"
 )
 
@@ -369,7 +370,7 @@ func (h *handler) txCommitted(t *hostTx, pubs []*session.Publication) {
 		answer()
 		return
 	}
-	s := hostCommitSchedule(total)
+	s := hostCommitSchedule(total, hopcost.AdoptTail(h.hopProfile()))
 	steps := []holdStep{{s.publish, publish}, {s.answer, answer}}
 	if !h.holdSteps(s.release, steps, end) {
 		end()
@@ -380,13 +381,14 @@ func (h *handler) txCommitted(t *hostTx, pubs []*session.Publication) {
 // line, for a Pi job whose caller resumes total hops later (jobHops less the passes the host's callback already spent). Pi's job frees the line one hop
 // before its caller resumes, so the next line job starts with the caller, and publishes pubBeforeEnd hops before it frees the line, as a core line job
 // does (session.ts #runCommit :548-549 under #enqueue :647-654; stamped in Pi ea448f45 on F-ticks-node's root create: publication 137, root()'s caller
-// and the sweep job 140). The facade needs hostAnswerTicks passes from the core's answer to its caller, so the answer goes out that much earlier.
+// and the sweep job 140; since Pi 8b0caefc the publication is the Storage's adoption, adoptTail (hopcost.AdoptTail) hops before the session resumes from
+// Storage.commit, as for a core line job: publishAt). The facade needs hostAnswerTicks passes from the core's answer to its caller, so the answer goes out that much earlier.
 // F-ticks-{node,gate} (cold submit 89/103) and F-ticks-runtime-drift-{node,gate} (waitForTask on a live task 109/119) bind the publication and release.
 type hostCommitHops struct{ publish, answer, release int }
 
-func hostCommitSchedule(total int) hostCommitHops {
+func hostCommitSchedule(total, adoptTail int) hostCommitHops {
 	release := max(total-1, 0)
-	return hostCommitHops{publish: max(release-pubBeforeEnd, 0), answer: max(total-hostAnswerTicks, 0), release: release}
+	return hostCommitHops{publish: max(release-pubBeforeEnd-adoptTail, 0), answer: max(total-hostAnswerTicks, 0), release: release}
 }
 
 // hostAnswerTicks is the microtask passes the facade spends from the core's tx_result to its caller's resumption: end()'s one reaction and the adoption of

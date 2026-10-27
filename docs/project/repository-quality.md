@@ -589,7 +589,7 @@ internal/codingagent/interactive_turn.go
 internal/codingagent/interactive_commands.go
 internal/codingagent/event_bridge.go
 tui/keybinding_hints.go
-ai/bedrock.go
+ai/providers/bedrock/bedrock.go
 ```
 
 ### Review before public API commitment

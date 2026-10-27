@@ -260,7 +260,7 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "ai/bedrock_eventstream.go"
+file = "ai/providers/bedrock/bedrock_eventstream.go"
 func = "parseBedrockEventHeaders"
 pattern = "loop-format"
 detail = "fmt.Sprintf"

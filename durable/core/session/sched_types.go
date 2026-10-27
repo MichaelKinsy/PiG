@@ -230,6 +230,8 @@ type taskWaiter struct {
 type idleWaiter struct {
 	remove func()
 	done   func(error)
+	// late delivers a hop after the waiter's own job: the waiter's caller is an async function resuming after its await.
+	late bool
 }
 
 func cancellationIntent(rec *jv.Object) bool {

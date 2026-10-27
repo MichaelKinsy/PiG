@@ -696,16 +696,25 @@ func geminiConvertTools(tools []ToolSchema, useParameters, supportsStrictMode bo
 	return []geminiToolDecl{{FunctionDeclarations: decls}}, nil
 }
 
-// jsonSchemaNameMaps are the schema keywords whose values map names to subschemas, so their keys are not schema keywords (google-shared.ts
-// JSON_SCHEMA_NAME_MAPS).
-var jsonSchemaNameMaps = map[string]bool{"properties": true, "patternProperties": true, "$defs": true, "definitions": true, "dependentSchemas": true, "dependencies": true}
+// isJSONSchemaNameMap reports whether key is a schema keyword whose value maps names to subschemas, so its keys are not schema keywords
+// (google-shared.ts JSON_SCHEMA_NAME_MAPS). A switch rather than a package-level set: a set is built by an initializer on every start.
+func isJSONSchemaNameMap(key string) bool {
+	switch key {
+	case "properties", "patternProperties", "$defs", "definitions", "dependentSchemas", "dependencies":
+		return true
+	}
+	return false
+}
 
-// jsonSchemaSubschemas are the keywords containing a subschema or an array of subschemas, not literal data (google-shared.ts
-// JSON_SCHEMA_SUBSCHEMAS).
-var jsonSchemaSubschemas = map[string]bool{
-	"additionalProperties": true, "unevaluatedProperties": true, "propertyNames": true, "items": true, "prefixItems": true, "additionalItems": true,
-	"unevaluatedItems": true, "contains": true, "allOf": true, "anyOf": true, "oneOf": true, "not": true, "if": true, "then": true, "else": true,
-	"contentSchema": true,
+// isJSONSchemaSubschema reports whether key is a keyword containing a subschema or an array of subschemas, not literal data
+// (google-shared.ts JSON_SCHEMA_SUBSCHEMAS).
+func isJSONSchemaSubschema(key string) bool {
+	switch key {
+	case "additionalProperties", "unevaluatedProperties", "propertyNames", "items", "prefixItems", "additionalItems",
+		"unevaluatedItems", "contains", "allOf", "anyOf", "oneOf", "not", "if", "then", "else", "contentSchema":
+		return true
+	}
+	return false
 }
 
 // rewriteConstAsEnum is google-shared.ts rewriteConstAsEnum: it rewrites string and number const values of the schema, and of the schemas
@@ -732,9 +741,9 @@ func rewriteConstNode(schema any, order, rewritten schemaObjectOrder, path strin
 		for _, key := range keys {
 			value := schema[key]
 			switch {
-			case isNameMap || jsonSchemaSubschemas[key]:
+			case isNameMap || isJSONSchemaSubschema(key):
 				value = rewriteConstNode(value, order, rewritten, schemaPath(path, key), false)
-			case jsonSchemaNameMaps[key]:
+			case isJSONSchemaNameMap(key):
 				value = rewriteConstNode(value, order, rewritten, schemaPath(path, key), true)
 			}
 			result[key] = value

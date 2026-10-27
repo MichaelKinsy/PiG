@@ -27,14 +27,34 @@ func OptionsError(name string, err error) error {
 	return fmt.Errorf("options of the %s extension: %w", name, err)
 }
 
-// factories is written by Register during package initialization and only read after it.
-var factories = map[string]Factory{}
+// factories holds the registered factories, two at most, so a list is searched; a map would allocate its table at the first Register.
+var factories []registered
 
-// Register records the factory of the compiled-in extension name. It is for package initialization.
-func Register(name string, factory Factory) { factories[name] = factory }
+type registered struct {
+	name    string
+	factory Factory
+}
+
+// Register records the factory of the compiled-in extension name, replacing an earlier one of that name.
+func Register(name string, factory Factory) {
+	for i := range factories {
+		if factories[i].name == name {
+			factories[i].factory = factory
+			return
+		}
+	}
+	if factories == nil {
+		factories = make([]registered, 0, 2)
+	}
+	factories = append(factories, registered{name, factory})
+}
 
 // Lookup returns the factory of the compiled-in extension name.
 func Lookup(name string) (Factory, bool) {
-	factory, ok := factories[name]
-	return factory, ok
+	for _, r := range factories {
+		if r.name == name {
+			return r.factory, true
+		}
+	}
+	return nil, false
 }

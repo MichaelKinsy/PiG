@@ -87,9 +87,9 @@ test("a line job's statements ride on its hops chain: no hopped step carries a c
 test("warm turns run the same events: equal counts, under the ceilings of the hop work", async () => {
   const [, a, b, c] = await turns(4, true)
   for (const w of [b!, c!]) assert.deepEqual({ ...w, statements: w.statements.length }, { ...a!, statements: a!.statements.length })
-  assert.ok(a!.steps <= 980, `${a!.steps} steps per warm turn (1049 before)`)
-  assert.ok(a!.hopped <= 830, `${a!.hopped} hopped events per warm turn (898 before)`)
-  assert.equal(a!.hopTicks, 6776, "the chains spend the microtask hops Pi's awaits spend: fusing chains moves no tick (6,776 at Pi 1.3.0)")
+  assert.ok(a!.steps <= 1020, `${a!.steps} steps per warm turn (1049 before; 1018 with the span hops of Pi 6c384aa3)`)
+  assert.ok(a!.hopped <= 880, `${a!.hopped} hopped events per warm turn (898 before; 875 with the span hops of Pi 6c384aa3)`)
+  assert.equal(a!.hopTicks, 6900, "the chains spend the microtask hops Pi's awaits spend: fusing chains moves no tick (6,776 at Pi 1.3.0, 6,900 at Pi 6c384aa3: the spans of submit and of each task phase, and runtime.commit's return)")
 })
 
 test("the hop export answers an integer for a step the host would not decode, and the run is the same either way", async () => {

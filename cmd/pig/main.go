@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	_ "github.com/MichaelKinsy/PiG/ai/all"
 	"github.com/MichaelKinsy/PiG/coding/cli"
 )
 

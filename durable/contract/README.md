@@ -1,6 +1,10 @@
 # Durable core conformance gate
 
-The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E31, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN`, Pi 1.2.0 `06a46693`, which writes task `startedAt`/`endedAt` and message `durationMs`) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
+The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E31, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN` `main`, Pi 1.2.0 `06a46693`, which writes task `startedAt`/`endedAt` and message `durationMs`) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
+
+## References
+
+`PIN` names two Pi commits. `main` is the reference of the E, U, SC, I, W, X, H and F-gate/F-node/F-fail rows. `ticks` (Pi 1.4.0 `6c384aa3`, the commit PiG pins) is the reference of the tick rows (`reference = "ticks"` in `corpus.toml`: F-ticks-*, F-split-*) and of `tools/gen-hopticks.mjs`; the candidate runs over the same checkout as the reference of its row. The core follows Pi's await structure at the tick reference (the spans of `submit` and of each task phase, `runtime.commit`'s return, the async client methods, publication at Storage adoption). The other rows move to `ticks` when the core follows the rest of the commits between the two (sleeping tasks, deferred partial commits, observers, reports, telemetry, read-only open): the candidate facade imports modules of Pi 1.4 (`pi-ai/utils/identity`), so those rows do not run against `main` today.
 
 ## Run it
 
