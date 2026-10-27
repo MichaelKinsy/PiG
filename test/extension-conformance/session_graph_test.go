@@ -214,6 +214,9 @@ func sessionGraphSDKs() map[string]sessionGraphLoader {
 			}
 			r.load(t, cfg)
 		},
+		"lisp": func(t testing.TB, r *sessionGraphRig) {
+			r.load(t, sessionGraphLispConfig(t))
+		},
 		"node": func(t testing.TB, r *sessionGraphRig) {
 			source, err := filepath.Abs("testdata/session-graph.mjs")
 			if err != nil {
@@ -227,6 +230,14 @@ func sessionGraphSDKs() map[string]sessionGraphLoader {
 			r.load(t, cfg)
 		},
 	}
+}
+
+// sessionGraphLispConfig is the Lisp session-graph fixture (testdata/session-graph-lisp: the ASDF system "session-graph", one file of scripts per lane).
+func sessionGraphLispConfig(t testing.TB) subprocess.ExtConfig {
+	t.Helper()
+	cfg := lispFixtureConfig(t, "session-graph-lisp", sessiongraph.Name)
+	cfg.Package = "session-graph"
+	return cfg
 }
 
 func (r *sessionGraphRig) load(t testing.TB, cfg subprocess.ExtConfig) {
