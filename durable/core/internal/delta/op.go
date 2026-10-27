@@ -270,7 +270,8 @@ func DecodeOp(value any) (Op, error) {
 }
 
 func pathString(p Path) string {
-	b := []byte{'['}
+	var buf [64]byte
+	b := append(buf[:0], '[')
 	for i, s := range p {
 		if i > 0 {
 			b = append(b, ',')
