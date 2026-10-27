@@ -1,5 +1,5 @@
 {
-	".": 679,
+	".": 677,
 	"abi": 16,
 	"docs": 6,
 	"history": 109,
@@ -8,7 +8,7 @@
 	"jv": 43,
 	"rec": 9,
 	"session": 521,
-	"stdlib": 17,
+	"stdlib": 15,
 	"store": 61,
 	"turn": 709
 }
