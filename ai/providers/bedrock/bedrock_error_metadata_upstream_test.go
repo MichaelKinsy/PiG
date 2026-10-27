@@ -15,9 +15,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/smithy-go"
+
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
-	"github.com/aws/smithy-go"
 )
 
 const bedrockFailureRequestID = "11111111-2222-3333-4444-555555555555"

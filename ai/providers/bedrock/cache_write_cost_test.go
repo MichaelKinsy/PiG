@@ -11,8 +11,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // Upstream: packages/ai/test/bedrock-cache-write-1h-cost.test.ts. Separate 1h details surround a 5m detail; neither last-value assignment nor summing all TTLs is correct.

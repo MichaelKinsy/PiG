@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 )
 
 func TestBedrockErrorBodyRegressionUpstream(t *testing.T) {

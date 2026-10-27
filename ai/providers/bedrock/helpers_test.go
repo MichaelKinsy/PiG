@@ -2,6 +2,7 @@ package bedrock
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/json"
@@ -202,7 +203,7 @@ func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) 
 func equalArguments(a, b ai.JsonObject) bool {
 	left, _ := json.Marshal(a)
 	right, _ := json.Marshal(b)
-	return string(left) == string(right) || reflectJSONEqual(left, right)
+	return bytes.Equal(left, right) || reflectJSONEqual(left, right)
 }
 
 func compromisedTLSIntermediate(t *testing.T) *x509.Certificate {

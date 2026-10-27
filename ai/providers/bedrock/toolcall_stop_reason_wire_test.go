@@ -3,12 +3,12 @@
 package bedrock
 
 import (
-	"context"
 	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
-	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 func TestBedrockWireToolCallsPreserveSuccessfulStopReason(t *testing.T) {
@@ -33,28 +33,5 @@ func TestBedrockWireToolCallsPreserveSuccessfulStopReason(t *testing.T) {
 				t.Fatalf("terminal event = %#v, want stop done", events[len(events)-1])
 			}
 		})
-	}
-}
-
-func assertWireStopReason(t *testing.T, stream *ai.AssistantMessageEventStream, want ai.StopReason) {
-	t.Helper()
-	result := stream.Result()
-	if result.StopReason != want {
-		t.Fatalf("message stop reason = %q, want %q", result.StopReason, want)
-	}
-	if len(result.Content) != 1 {
-		t.Fatalf("message content = %#v, want one tool call", result.Content)
-	}
-	if _, ok := result.Content[0].(ai.ToolCall); !ok {
-		t.Fatalf("message content[0] = %T, want ToolCall", result.Content[0])
-	}
-	var terminal ai.StopReason
-	for event := range stream.Events(context.Background()) {
-		if done, ok := event.(ai.DoneEvent); ok {
-			terminal = done.Reason
-		}
-	}
-	if terminal != want {
-		t.Fatalf("terminal stop reason = %q, want %q", terminal, want)
 	}
 }

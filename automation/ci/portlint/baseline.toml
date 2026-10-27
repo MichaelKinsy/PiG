@@ -57,7 +57,7 @@ snippet = "output.Diagnostics = append(output.Diagnostics, details.attach(Assist
 check = "clock"
 file = "ai/providers/bedrock/bedrock.go"
 func = "appendBedrockFailureDiagnostic"
-snippet = "AppendAssistantMessageDiagnostic(message, details.attach(AssistantMessageDiagnostic{Type: \"bedrock_response_failure\", Timestamp: time.Now().UnixMilli()}))"
+snippet = "ai.AppendAssistantMessageDiagnostic(message, details.Attach(ai.AssistantMessageDiagnostic{Type: \"bedrock_response_failure\", Timestamp: time.Now().UnixMilli()}))"
 
 [[hit]]
 check = "clock"
