@@ -156,12 +156,13 @@ func TestStreamedPartialsKeepAWatchersMemoryProportionalToTheText(t *testing.T) 
 		}
 		return 0
 	}
-	var retained []uint64
+	// The heap before the stream may hold garbage the later collections free, so the difference is signed.
+	var retained []int64
 	// Measure while the text, then the tool call, is almost complete: the watcher's view holds the most then.
 	waitFor(t, func() bool { return float64(shown(0)) > float64(len(text))*0.95 }, 60*time.Second)
-	retained = append(retained, heapInUse(harness)-before)
+	retained = append(retained, int64(heapInUse(harness))-int64(before))
 	waitFor(t, func() bool { return float64(shown(1)) > float64(len(text))*0.95 }, 60*time.Second)
-	retained = append(retained, heapInUse(harness)-before)
+	retained = append(retained, int64(heapInUse(harness))-int64(before))
 	must(submission.Wait(testContext))
 	if commits := watcher.count(); commits <= 500 {
 		t.Fatalf("%d frames, want more than 500", commits)
