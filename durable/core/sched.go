@@ -86,11 +86,10 @@ func (h *handler) startScheduler() error {
 		ReadTicks:          func() int { return h.job.change },
 		GateRead:           func(method string, id session.ID) { _ = h.gateRead(method, float64(id)) },
 		After:              h.hopsThen,
-		ReportAt:           h.reportAt,
 	}
 	// HarnessOptions.telemetry: the core tells the host what to record (telemetry.go).
 	if on, _ := boolOf(h.open, "telemetry"); on {
-		env.Telemetry = &telHost{h}
+		env.Telemetry = h
 	}
 	h.sched = session.NewScheduler(h.sess, h.loop, env)
 	if onWake, _ := boolOf(h.open, "onWake"); onWake {
@@ -221,17 +220,16 @@ func (h *handler) onTimer(ev *abi.Event) error {
 
 // report forwards a non-fatal failure to HarnessOptions.onReport as a report notice: {name, message, info}, info being the
 // ReportInfo of types.ts (type, and task, extension, reason, callback or conversationId where they apply).
-func (h *handler) report(err error, info *jv.Object) { h.reportAt(err, info, 0) }
-
-// reportAt is report under the Context of a span (scheduler.ts #report's context): the notice names it, `span`, so the host
-// records the report event there.
-func (h *handler) reportAt(err error, info *jv.Object, span uint32) {
+func (h *handler) report(err error, info *jv.Object) {
 	body := errorJSON(err)
 	body = append(body[:len(body)-1], `,"info":`...)
 	body = jv.Append(body, info)
-	if span != 0 {
-		body = append(body, `,"span":`...)
-		body = jv.AppendNumber(body, float64(span))
+	// The scheduler's report under a span's Context (scheduler.ts #report's context): the host records the report event there.
+	if h.sched != nil {
+		if span := h.sched.ReportSpan(); span != 0 {
+			body = append(body, `,"span":`...)
+			body = jv.AppendNumber(body, float64(span))
+		}
 	}
 	body = append(body, '}')
 	h.b.Notice(abi.NoticeReport, body)

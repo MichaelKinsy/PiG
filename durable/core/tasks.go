@@ -127,9 +127,6 @@ func (h *handler) runPhase(rt *session.Runtime, task *jv.Object, registration an
 			}
 		}
 	}
-	if span := rt.Span(); span != 0 {
-		payload.Set("span", float64(span))
-	}
 	payload.Set("record", task)
 	payload.Set("invocation", float64(taskID))
 	if ext := rt.Extension(); ext != "" {
@@ -142,7 +139,7 @@ func (h *handler) runPhase(rt *session.Runtime, task *jv.Object, registration an
 		payload.Set("abort", true)
 	}
 	var remove func()
-	id := h.startEffect(abi.EffectPhase, jv.Append(nil, payload), &pending{done: func(outcome uint8, body []byte) {
+	id := h.startEffect(abi.EffectPhase, withSpan(jv.Append(nil, payload), rt.Span()), &pending{done: func(outcome uint8, body []byte) {
 		remove()
 		done(phaseOutcome(outcome, body))
 	}})

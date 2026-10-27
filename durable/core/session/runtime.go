@@ -96,9 +96,7 @@ type ReportFrom struct{ Extension, Callback string }
 func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
 	// runtime.commit is an async function that awaits `#gated` (scheduler.ts, Pi 6c384aa3: it adds the checkpoint event after the await), where it
 	// returned the promise itself: its caller resumes a tick after the commit's resolution (the late job).
-	s := r.s
 	r.gated(true, func(tx *Tx, current *jv.Object) error {
-		r.inv.moved = ""
 		next, err := change(tx, current)
 		if err != nil {
 			return err
@@ -109,14 +107,10 @@ func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Objec
 			return nil
 		}
 		overlay := stagedTasks(tx)
-		err = s.commitState(tx, r.inv, current, next)
+		err = r.s.commitState(tx, r.inv, current, next)
 		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
-		if err == nil {
-			r.inv.moved = movedCheckpoint(current, next)
-			s.noteMoved(r.inv)
-		}
 		return err
-	}, s.afterCommit(r.inv), then)
+	}, then)
 }
 
 // BeginHost opens a commit whose callback runs in the host, one operation per event (ABI section 8): the checks of Commit
@@ -160,40 +154,23 @@ func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, er
 	// The callback's Change is the wrappers of #gated (scheduler.ts :1147-1155, :1275-1297), as for Commit: the line job's Storage
 	// reads the core makes to take the line are not Pi's.
 	r.s.sess.lastTicks = tx.ticks
-	r.inv.moved = ""
-	if next != nil {
-		r.inv.moved = movedCheckpoint(current, next)
-	}
-	pub, err := r.s.sess.Finish(tx)
-	if err == nil {
-		r.s.checkpointed(r.inv)
-	}
-	return pub, err
+	return r.s.sess.Finish(tx)
 }
 
 // FinishHostSettled commits again the host transaction of BeginHost whose commit returned a *NeedGate (Session.FinishSettled).
-func (r *Runtime) FinishHostSettled(tx *Tx) (*Publication, error) {
-	pub, err := r.s.sess.FinishSettled(tx)
-	if err == nil {
-		r.s.checkpointed(r.inv)
-	}
-	return pub, err
-}
+func (r *Runtime) FinishHostSettled(tx *Tx) (*Publication, error) { return r.s.sess.FinishSettled(tx) }
 
 // AbandonHost ends the host transaction of BeginHost without a commit.
 func (r *Runtime) AbandonHost(tx *Tx, err error) { r.s.sess.Abandon(tx, err) }
 
 // gated runs change as a job guarded by the invocation (scheduler.ts #gated).
-func (r *Runtime) gated(late bool, change func(tx *Tx, current *jv.Object) error, after func(), then func(error)) {
+func (r *Runtime) gated(late bool, change func(tx *Tx, current *jv.Object) error, then func(error)) {
 	s, inv := r.s, r.inv
 	if inv.ended {
 		s.loop.DeferDone(then, endedError(inv), late)
 		return
 	}
-	if late {
-		s.loop.LateNext()
-	}
-	s.commitJobAfter(s.loop.LineAfterTail, nil, func(tx *Tx) error {
+	s.commitQueued(late, func(tx *Tx) error {
 		if inv.ended {
 			return endedError(inv)
 		}
@@ -211,7 +188,7 @@ func (r *Runtime) gated(late bool, change func(tx *Tx, current *jv.Object) error
 			return errorf("Task %d has a durable abort mark", inv.taskID)
 		}
 		return change(tx, found)
-	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Span: inv.span, Trace: inv.carrier}, after, then)
+	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Span: inv.span, Trace: inv.carrier}, then)
 }
 
 // Memo stores candidate unless a memo of that name exists and returns the
@@ -231,7 +208,7 @@ func (r *Runtime) Memo(name string, candidate any, then func(winner any, err err
 		winner = candidate
 		tx.ticks = hopcost.GatedSyncChange
 		return tx.stageTask(with(current, "memos", memos))
-	}, nil, func(err error) {
+	}, func(err error) {
 		if err != nil {
 			then(nil, err)
 			return
@@ -372,7 +349,7 @@ func (r *Runtime) SleepUntil(until float64, checkpoint any, then func(error)) {
 	r.gated(false, func(tx *Tx, current *jv.Object) error {
 		tx.ticks = hopcost.GatedChange(1)
 		return r.s.commitState(tx, r.inv, current, obj("status", StatusSleeping, "checkpoint", jv.Clone(checkpoint), "until", until))
-	}, nil, then)
+	}, then)
 }
 
 // Read runs job as a read-only job on the Session line (scheduler.ts #read with Session.readOnLine): it waits behind the

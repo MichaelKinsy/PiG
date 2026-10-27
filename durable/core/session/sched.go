@@ -40,12 +40,12 @@ type invocation struct {
 	fault   *jv.Object
 	info    PhaseInfo
 	start   func()
-	// moved is the phase the commit in flight moves the running checkpoint to, and after the job's hook that records it once the
-	// commit is published (scheduler.ts runtime.commit's `pi.durable.checkpoint` event).
-	moved string
 	// spanFirst makes the next afterSpan continuation start with the host's span for the phase (ask), which then runs the phase.
 	spanFirst bool
-	ask       func()
+	// spanAsk makes the phase continuation ask the host for the span first (start is that continuation, run again when the host answered).
+	spanAsk bool
+	s         *Scheduler
+	abort     abortRun
 	// links are the record's creation-time carriers, kept for the invocation that finds the task unstarted (invocation.links).
 	links any
 }
@@ -82,7 +82,7 @@ func (inv *invocation) Resume() {
 	inv.next, inv.stage = nil, 0
 	if inv.spanFirst {
 		inv.spanFirst = false
-		inv.start, then = then, inv.ask
+		inv.start, inv.spanAsk = then, true
 	}
 	if inv.tick {
 		inv.loop.NextTick(then)
@@ -204,10 +204,10 @@ type Scheduler struct {
 	// resumed holds the tasks found live at open that have not run a phase since: the span of the first invocation is
 	// `resumed` (scheduler.ts #resumed).
 	resumed []ID
-	// moved are the invocations whose runtime commit moved the running checkpoint, until the job's completion records the event
-	// (afterMoved, flushMoved).
-	moved      []*invocation
-	afterMoved func()
+	// idScratch is the list takeIDs lends.
+	idScratch []ID
+	// reportSpan is the span of the report being delivered (ReportSpan).
+	reportSpan uint32
 	// reconcilingWork counts the reconcile passes underway with work: their commits finalize held outcomes and mark
 	// cascades.
 	reconcilingWork int
@@ -236,9 +236,6 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](), parkedTasks: newOrderedSet[ID](),
 	}
 	sess.OnFail = func(err error) { s.report(err, obj("type", "session_failed")) }
-	if env.Telemetry != nil {
-		s.afterMoved = s.flushMoved
-	}
 	return s
 }
 
@@ -271,6 +268,10 @@ func (s *Scheduler) report(err error, info *jv.Object) {
 		s.env.Report(err, info)
 	}
 }
+
+// ReportSpan is the span of the Context the report being delivered is made under (scheduler.ts #report's context), 0 for none: the
+// host records the report event there. It is set only while Env.Report runs.
+func (s *Scheduler) ReportSpan() uint32 { return s.reportSpan }
 
 // restartLimit is settings.restartLimit, 5 unless the host set another.
 func (s *Scheduler) restartLimit() float64 {
@@ -878,7 +879,7 @@ func (s *Scheduler) WriteBack(records []*jv.Object) error { return s.sess.WriteT
 
 // signalInvocations aborts the signal of every running invocation, in task order (scheduler.ts join).
 func (s *Scheduler) signalInvocations() {
-	ids := make([]ID, 0, len(s.invocations))
+	ids := s.takeIDs()
 	for id := range s.invocations {
 		ids = append(ids, id)
 	}
@@ -886,6 +887,15 @@ func (s *Scheduler) signalInvocations() {
 	for _, id := range ids {
 		s.invocations[id].signal.Abort()
 	}
+	s.idScratch = ids
+}
+
+// takeIDs hands out the scheduler's scratch ID list, empty; the caller gives it back by setting s.idScratch, so a pass over the
+// IDs of a map allocates once for the life of the scheduler. A pass that runs inside another finds none and starts its own.
+func (s *Scheduler) takeIDs() []ID {
+	ids := s.idScratch[:0]
+	s.idScratch = nil
+	return ids
 }
 
 func (s *Scheduler) idle(conversationID ID) bool {

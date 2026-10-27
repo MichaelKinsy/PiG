@@ -223,16 +223,15 @@ func (h *handler) startTool(run *turn.ToolRun, io *turn.ToolIO, cancel *session.
 		}
 	}
 	body.Set("replay", replay)
-	if h.sched != nil {
-		if span := h.sched.SpanOf(run.Task); span != 0 {
-			body.Set("span", float64(span))
-		}
-	}
 	if handler >= 0 {
 		body.Set("handler", float64(handler))
 	}
 	var remove func()
-	id := h.startEffect(abi.EffectTool, jv.Append(nil, body), &pending{
+	var span uint32
+	if h.sched != nil {
+		span = h.sched.SpanOf(run.Task)
+	}
+	id := h.startEffect(abi.EffectTool, withSpan(jv.Append(nil, body), span), &pending{
 		progress: func(ev *abi.Event) bool {
 			payload := append([]byte(nil), ev.Payload...)
 			switch ev.Phase {
@@ -302,10 +301,6 @@ func (h *handler) hookEffect(name string, handler int, conv, task turn.ID, paylo
 // completion starts an effect answered by hook_done (outcome 0 a JSON value, 1 a thrown {name, message}); cancelling
 // the signal cancels the effect. The continuation runs on the Loop.
 func (h *handler) completion(kind abi.EffectKind, body *jv.Object, cancel *session.Cancel, then func(any, error)) {
-	// The invocation's phase span: the host runs the handler under its Context (Context.telemetry).
-	if cancel != nil && cancel.Span != 0 {
-		body.Set("span", float64(cancel.Span))
-	}
 	var remove func()
 	// runtime.env is `#read` (async, returns read()) over buildEnv (async) (scheduler.ts:1161, :1269; harness.ts:226): #read's
 	// promise adopts buildEnv's, which costs a resolve-thenable job a hop after the call and a reaction a hop after both that job
@@ -323,7 +318,11 @@ func (h *handler) completion(kind abi.EffectKind, body *jv.Object, cancel *sessi
 		left++
 		h.hopsThen(envCallHops, resume)
 	}
-	id := h.startEffect(kind, jv.Append(nil, body), &pending{done: func(outcome uint8, payload []byte) {
+	var span uint32
+	if cancel != nil {
+		span = cancel.Span
+	}
+	id := h.startEffect(kind, withSpan(jv.Append(nil, body), span), &pending{done: func(outcome uint8, payload []byte) {
 		if remove != nil {
 			remove()
 		}

@@ -24,9 +24,6 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
 
-// telHost is the session.Telemetry of a Harness opened with telemetry: its scheduler's phase spans and metrics, as notices.
-type telHost struct{ h *handler }
-
 // telOp starts the JSON of one op in a notice buffer: {"op":op,"span":span (when not zero).
 func (h *handler) telOp(op string, span uint32) []byte {
 	buf := append(h.payloadBuffer(192), `{"op":"`...)
@@ -88,8 +85,8 @@ func (h *handler) publishEvents(pub *session.Publication) {
 }
 
 // StartPhase asks the host for the span of a phase invocation (the `phaseSpan` hook, answered {span, carrier?}).
-func (t *telHost) StartPhase(p *session.PhaseInfo) {
-	buf := append(t.h.payloadBuffer(256), `{"task":`...)
+func (h *handler) StartPhase(p *session.PhaseInfo) {
+	buf := append(h.payloadBuffer(256), `{"task":`...)
 	buf = jv.AppendNumber(buf, float64(p.Task))
 	buf = telString(buf, "name", p.Kind)
 	buf = telString(buf, "phase", p.Phase)
@@ -110,21 +107,13 @@ func (t *telHost) StartPhase(p *session.PhaseInfo) {
 		buf = append(buf, `,"links":`...)
 		buf = jv.Append(buf, p.Links)
 	}
-	body := jv.Raw(append(buf, '}'))
-	t.h.hookEffect("phaseSpan", 0, 0, p.Task, body, nil, func(v any, err error) {
-		var span uint32
-		var carrier any
-		if o, ok := v.(*jv.Object); ok && err == nil {
-			span = uint32(numOf(o, "span"))
-			carrier, _ = o.Get("carrier")
-		}
-		p.Started(span, carrier)
-	})
+	h.telPayload = append(buf, '}')
+	h.hookEffect("phaseSpan", 0, 0, p.Task, &h.telPayload, nil, p.Answered)
 }
 
 // EndPhase ends a phase's span.
-func (t *telHost) EndPhase(span uint32, outcome session.PhaseOutcome, next, ended, message string) {
-	buf := t.h.telOp("end", span)
+func (h *handler) EndPhase(span uint32, outcome session.PhaseOutcome, next, ended, message string) {
+	buf := h.telOp("end", span)
 	buf = append(buf, `,"outcome":"`...)
 	switch outcome {
 	case session.PhaseNext:
@@ -149,25 +138,34 @@ func (t *telHost) EndPhase(span uint32, outcome session.PhaseOutcome, next, ende
 	if message != "" {
 		buf = telString(buf, "message", message)
 	}
-	t.h.telSend(buf)
+	h.telSend(buf)
 }
 
 // Checkpoint is the event of a commit that moved the running checkpoint.
-func (t *telHost) Checkpoint(span uint32, phase string) {
-	t.h.telSend(telString(t.h.telOp("checkpoint", span), "phase", phase))
+func (h *handler) Checkpoint(span uint32, phase string) {
+	h.telSend(telString(h.telOp("checkpoint", span), "phase", phase))
 }
 
 // ToolCall sets the called tool on the phase's span.
-func (t *telHost) ToolCall(span uint32, name, callID string) {
-	t.h.telSend(telString(telString(t.h.telOp("tool", span), "name", name), "callId", callID))
+func (h *handler) ToolCall(span uint32, name, callID string) {
+	h.telSend(telString(telString(h.telOp("tool", span), "name", name), "callId", callID))
 }
 
 // Replay is the event of a nested tool call answered from its stored result.
-func (t *telHost) Replay(span uint32, name string) {
-	t.h.telSend(telString(t.h.telOp("replay", span), "tool", name))
+func (h *handler) Replay(span uint32, name string) {
+	h.telSend(telString(h.telOp("replay", span), "tool", name))
 }
 
 // Active counts a task in or out of the active-task metric.
-func (t *telHost) Active(kind string, delta int) {
-	t.h.telSend(telNumber(telString(t.h.telOp("active", 0), "task", kind), "delta", float64(delta)))
+func (h *handler) Active(kind string, delta int) {
+	h.telSend(telNumber(telString(h.telOp("active", 0), "task", kind), "delta", float64(delta)))
+}
+
+// withSpan names the span of the phase an effect runs under in its JSON payload (`span`, the host's handle); zero is none.
+func withSpan(payload []byte, span uint32) []byte {
+	if span == 0 {
+		return payload
+	}
+	payload = append(payload[:len(payload)-1], `,"span":`...)
+	return append(jv.AppendNumber(payload, float64(span)), '}')
 }

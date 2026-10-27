@@ -516,6 +516,7 @@ func (s *Scheduler) track(prev *jv.Object, rec *jv.Object) {
 	id := mustInt(rec, "id")
 	if inv := s.invocations[id]; inv != nil {
 		inv.record = rec
+		s.checkpointMoved(inv, prev, rec)
 	}
 	s.trackActive(id, prev, rec)
 	if prev != nil && taskStatus(prev) == StatusWaiting {

@@ -58,7 +58,7 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 	}
 	draft.Entry = objOf(req, "entry")
 	// The submission's span (submissions.ts submit): its carrier is stored on the record, and the commit's events go to it.
-	span := uint32(numOf(req, "span"))
+	draft.Span = uint32(numOf(req, "span"))
 	if trace, has := req.Get("trace"); has {
 		draft.Trace = trace
 	}
@@ -74,7 +74,7 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 		}
 		_, err := h.sess.RunCommit(func(tx *session.Tx) error {
 			return inbox.AdmitStatus(tx, turn.Runs{}, conversationID, draft, h.now, h.queueModes(), &admitted)
-		}, session.TxScope{Span: span, Trace: draft.Trace})
+		}, session.TxScope{Span: draft.Span, Trace: draft.Trace})
 		return err
 	}, func(err error) {
 		if err != nil {
@@ -83,7 +83,7 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 		}
 		answer := jv.NewObject()
 		answer.Set("id", float64(admitted.ID))
-		if span != 0 {
+		if draft.Span != 0 {
 			// The span's result (`submission.id`, `result`) and the carrier of the run it links to.
 			// Constants: a status the core wrote is one of three.
 			switch admitted.Status {

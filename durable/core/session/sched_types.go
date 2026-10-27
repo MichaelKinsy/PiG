@@ -11,7 +11,7 @@ import (
 type Cancel struct {
 	// Span is the host's handle of the span of the phase an invocation's signal belongs to, 0 outside a phase: the host effects the
 	// phase starts run under it (Context.telemetry).
-	Span uint32
+	Span    uint32
 	aborted bool
 	reason  error // AbortSignal.reason: ErrAborted for abort(), else the reason passed to AbortWith
 	hooks   []func()
@@ -120,9 +120,6 @@ type Env struct {
 	// Report forwards a non-fatal failure to HarnessOptions.onReport; info says what happened (types.ts ReportInfo as
 	// an object: type, and task, extension, reason, callback or conversationId where they apply).
 	Report func(err error, info *jv.Object)
-	// ReportAt is Report for a failure reported under the Context of a span (scheduler.ts #report's context): the host records
-	// the report event there. Unset, Report takes every report.
-	ReportAt func(err error, info *jv.Object, span uint32)
 	// Telemetry records the spans and metrics of Pi's telemetry; nil when the Harness has none.
 	Telemetry Telemetry
 	// RestartLimit is settings.restartLimit, read at each use; nil selects the default.

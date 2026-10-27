@@ -77,6 +77,11 @@ func (s *Scheduler) run(r *reservation, finish func()) {
 			// The phase runs inside its span: a Harness with telemetry asks the host for it first (afterSpan, spanFirst), which runs the phase.
 			inv.spanFirst = s.env.Telemetry != nil
 			inv.afterSpan(prev != nil, func() {
+				if inv.spanAsk {
+					inv.spanAsk = false
+					s.startPhase(inv)
+					return
+				}
 				cp, _ := getObj(current, "state").Get("checkpoint")
 				rt.agentReset()
 				st.task.Phase(rt, current, func(err error) {
@@ -172,23 +177,32 @@ func (s *Scheduler) runAbort(r *reservation, finish func()) {
 			inv.afterSpan(true, finish, false)
 		})
 	}
-	// #runAbort wraps the abort handler and its step in a span of kind abort.
-	begin := func() {
-		r.task.Abort(rt, current, func(err error) {
-			if n := r.task.AbortReturnHops; n > 0 && s.env.After != nil {
-				s.env.After(n, func() { after(err) })
-				return
-			}
-			s.loop.Defer(func() { after(err) })
-		})
-	}
+	// #runAbort wraps the abort handler and its step in a span of kind abort: the host starts it, which runs the handler.
 	if s.env.Telemetry != nil {
-		// The abort handler runs inside its span: the host starts it, which runs begin.
-		inv.start = begin
+		inv.abort = abortRun{r, rt, current, after}
 		s.startPhase(inv)
 		return
 	}
-	begin()
+	s.abortHandler(r, rt, current, after)
+}
+
+// abortRun is an abort handler waiting for the host's span.
+type abortRun struct {
+	r       *reservation
+	rt      *Runtime
+	current *jv.Object
+	after   func(error)
+}
+
+// abortHandler runs the abort handler of a reservation; after is what follows it (its step).
+func (s *Scheduler) abortHandler(r *reservation, rt *Runtime, current *jv.Object, after func(error)) {
+	r.task.Abort(rt, current, func(err error) {
+		if n := r.task.AbortReturnHops; n > 0 && s.env.After != nil {
+			s.env.After(n, func() { after(err) })
+			return
+		}
+		s.loop.Defer(func() { after(err) })
+	})
 }
 
 // step runs one reservation step on the line: decide, then continue with the

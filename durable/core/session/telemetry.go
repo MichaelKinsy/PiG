@@ -50,7 +50,27 @@ func (p *PhaseInfo) Started(span uint32, carrier any) {
 	p.inv = nil
 	start := inv.start
 	inv.start = nil
+	if start == nil {
+		// An abort handler: the span was asked for before it ran.
+		a := inv.abort
+		inv.abort = abortRun{}
+		inv.s.abortHandler(a.r, a.rt, a.current, a.after)
+		return
+	}
 	start()
+}
+
+
+// Answered is Started for the host's answer to the span hook, `{span, carrier?}`: a failed hook starts the phase without a span.
+func (p *PhaseInfo) Answered(v any, err error) {
+	var span uint32
+	var carrier any
+	if o, ok := v.(*jv.Object); ok && err == nil {
+		n, _ := getNum(o, "span")
+		span = uint32(n)
+		carrier, _ = o.Get("carrier")
+	}
+	p.Started(span, carrier)
 }
 
 // Telemetry is the host's side of Pi's telemetry: the spans and metrics of `DURABLE_TELEMETRY_SCHEMA`. A scheduler without one
@@ -199,11 +219,9 @@ func (s *Scheduler) addResumed(id ID) {
 
 // reportAt is report with the span of the Context the failure is reported under (scheduler.ts #report's context).
 func (s *Scheduler) reportAt(err error, info *jv.Object, span uint32) {
-	if s.env.ReportAt != nil {
-		s.env.ReportAt(err, info, span)
-		return
-	}
+	s.reportSpan = span
 	s.report(err, info)
+	s.reportSpan = 0
 }
 
 // movedCheckpoint is the phase a running state moves the task's checkpoint to, empty when the state is not a running one or
@@ -218,37 +236,6 @@ func movedCheckpoint(current, next *jv.Object) string {
 		return ""
 	}
 	return to
-}
-
-// afterCommit is the hook of a runtime commit that records its `pi.durable.checkpoint` event once the commit is published; nil
-// when the Harness has no telemetry.
-func (s *Scheduler) afterCommit(inv *invocation) func() {
-	return s.afterMoved
-}
-
-// noteMoved queues the invocation's moved checkpoint for the event the job's completion records (flushMoved).
-func (s *Scheduler) noteMoved(inv *invocation) {
-	if s.env.Telemetry != nil && inv.moved != "" && !slices.Contains(s.moved, inv) {
-		s.moved = append(s.moved, inv)
-	}
-}
-
-// flushMoved records the checkpoint events of the runtime commits that just stored, in commit order.
-func (s *Scheduler) flushMoved() {
-	for _, inv := range s.moved {
-		s.checkpointed(inv)
-	}
-	clear(s.moved)
-	s.moved = s.moved[:0]
-}
-
-// checkpointed records the checkpoint event of the commit that just stored, when it moved the running checkpoint (inv.moved).
-func (s *Scheduler) checkpointed(inv *invocation) {
-	phase := inv.moved
-	inv.moved = ""
-	if phase != "" && s.env.Telemetry != nil {
-		s.env.Telemetry.Checkpoint(inv.span, phase)
-	}
 }
 
 // ToolCall sets the called tool's name and call ID on the phase's span (tool.ts readCall).
@@ -275,3 +262,14 @@ func (s *Scheduler) SpanOf(id ID) uint32 {
 
 // Span is the handle of the span of the phase the runtime's invocation is running, 0 when it is in none.
 func (r *Runtime) Span() uint32 { return r.inv.span }
+
+// checkpointMoved records `pi.durable.checkpoint` for a commit that moved the running task's checkpoint to another phase
+// (scheduler.ts runtime.commit): the invocation's own commits are the only ones that change a running checkpoint's phase.
+func (s *Scheduler) checkpointMoved(inv *invocation, prev, rec *jv.Object) {
+	if s.env.Telemetry == nil || prev == nil || inv.span == 0 {
+		return
+	}
+	if phase := movedCheckpoint(prev, getObj(rec, "state")); phase != "" {
+		s.env.Telemetry.Checkpoint(inv.span, phase)
+	}
+}

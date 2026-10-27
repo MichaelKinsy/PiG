@@ -41,8 +41,9 @@ type Draft struct {
 	Entry     *jv.Object
 	// WhenBusy is "steer", "followUp" or "reject"; empty queues as followUp.
 	WhenBusy string
-	// Trace is the carrier of the submission's span (propagation.inject(span)), stored on its record; nil: none.
+	// Span is the host's handle of the submission's span, which the commit's events go to (TxScope.Span); Trace is the carrier of the submission's span (propagation.inject(span)), stored on its record; nil: none.
 	Trace any
+	Span  uint32
 	// Propagation is set when that span's adapter propagates (span.propagation !== undefined).
 	Propagation bool
 }
@@ -70,9 +71,26 @@ func submissionRecord(conversationID session.ID, requestID *string, trace any, t
 	if trace != nil {
 		record.Set("trace", trace)
 	}
-	record.Set("type", typ)
-	record.Set("status", status)
+	record.Set("type", closedAny(typ))
+	record.Set("status", closedAny(status))
 	return record
+}
+
+// closedAny boxes a submission type or status, a closed set, without allocating: a constant converts to an interface for free, a variable string does not.
+func closedAny(s string) any {
+	switch s {
+	case TypeInput:
+		return TypeInput
+	case TypeWrite:
+		return TypeWrite
+	case "queued":
+		return "queued"
+	case "placed":
+		return "placed"
+	case "done":
+		return "done"
+	}
+	return "unanswered"
 }
 
 // Admit is admitSubmission: it admits a submission inside a commit (spec section 6); Conversation.submit() and
