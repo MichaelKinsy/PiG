@@ -225,8 +225,9 @@ extension's bare context); FORWARD-SIGNAL ties the call to CTX's request, otherw
   (ensure-jsonable params (format nil "arguments of tool ~A" (bt-spec-name spec)))
   (let* ((handle (and (or (plusp (hash-table-count (bt-spec-callbacks spec))) (bt-spec-bash-operations spec)) (bt-next-id "builtin-")))
          (execute-id (bt-next-id "e"))
-         (payload (obj "name" (bt-spec-name spec) "cwd" (bt-spec-cwd spec) "toolCallId" tool-call-id "params" params)))
+         (payload (obj "name" (bt-spec-name spec) "cwd" (bt-spec-cwd spec) "toolCallId" tool-call-id "params" params "executeId" execute-id)))
     (when (plusp (hash-table-count (bt-spec-options spec))) (setf (gethash "options" payload) (bt-spec-options spec)))
+    (when on-update (setf (gethash "wantsUpdates" payload) t))
     (when has-context (setf (gethash "context" payload) t))
     (when handle
       (sb-thread:with-mutex (*bt-lock*) (setf (gethash handle *bt-callbacks*) (bt-spec-callbacks spec)))
