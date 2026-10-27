@@ -26,6 +26,15 @@ func (s *Scheduler) microtask(fn func()) {
 	s.loop.Defer(fn)
 }
 
+// abortLater signals c, a hop later behind the host listeners' dispatch when there are any (microtask without a closure: the cancel itself is what
+// the hops chain resumes).
+func (s *Scheduler) abortLater(c *Cancel) {
+	if s.observing && s.env.CommitListeners != nil && *s.env.CommitListeners && s.loop.Hops != nil && s.loop.Hops(1, c) {
+		return
+	}
+	c.Abort()
+}
+
 // scheduleReconcileAfterRead is scheduleReconcile for a chain load: Pi's #loadChain schedules it after its Storage read
 // resolved, so the microtask runs once the job's reads so far have taken their ticks, not at the job's start.
 func (s *Scheduler) scheduleReconcileAfterRead() {
@@ -58,7 +67,11 @@ func (s *Scheduler) kick() {
 // observe is the scheduler's commit listener (scheduler.ts #observe).
 func (s *Scheduler) observe(pub *Publication) {
 	s.observing = true
-	defer func() { s.observing = false }()
+	s.observeCommit(pub)
+	s.observing = false
+}
+
+func (s *Scheduler) observeCommit(pub *Publication) {
 	var updated []*jv.Object
 	var failed []ID
 	changed := false
@@ -104,7 +117,7 @@ func (s *Scheduler) observe(pub *Publication) {
 			if inv := s.invocations[id]; inv != nil && !inv.abortMode {
 				// scheduler.ts #observe: `queueMicrotask(() => invocation.controller.abort())`, queued inside the Storage's adopt behind the
 				// host listeners' dispatch, so the run is signalled after they saw the mark and outside the adoption.
-				s.microtask(inv.signal.Abort)
+				s.abortLater(inv.signal)
 			}
 		}
 		// A request replacing a restart mark upgrades the marks of the work below.
