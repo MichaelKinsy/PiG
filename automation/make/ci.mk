@@ -23,7 +23,7 @@ ci-test-cli-1: test-cli-1
 ci-test-cli-2: test-cli-2
 ci-test-subprocess: test-subprocess
 ci-test-conformance: test-conformance
-ci-sdk: test-go-modules test-sdk-rs test-sdk-py test-sdk-ts
+ci-sdk: test-go-modules test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts
 ci-extensions: typescript-extension-corpus examples-check standard-check
 ci-race: test-race
 ci-integration: test-integration
