@@ -60,8 +60,10 @@ function copyStore(path: string, to: string): string {
 }
 
 let passes = 0, counting = false
-const spin = () => { if (counting) { passes++; queueMicrotask(spin) } }
-const measure = async <T,>(call: () => Promise<T>): Promise<[T, number]> => { passes = 0; counting = true; queueMicrotask(spin); try { return [await call(), passes] } finally { counting = false } }
+/** A call that needs a macrotask (a timer, a fetch) cannot be counted in passes: the count stops at this many and reads -1. */
+const LIMIT = 20000
+const spin = () => { if (counting && passes < LIMIT) { passes++; queueMicrotask(spin) } }
+const measure = async <T,>(call: () => Promise<T>): Promise<[T, number]> => { passes = 0; counting = true; queueMicrotask(spin); try { const value = await call(); return [value, passes >= LIMIT ? -1 : passes] } finally { counting = false } }
 
 const live = async (harness: any) => ((await harness.snapshot(Pi.LiveDoc, Pi.ROOT_CONVERSATION_ID, context)) ?? {}) as any
 
