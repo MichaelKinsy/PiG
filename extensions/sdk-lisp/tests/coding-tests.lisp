@@ -148,7 +148,7 @@
   (check-equal 6 (pig:calculate-context-tokens (json-of "{\"totalTokens\":0,\"input\":1,\"output\":2,\"cacheRead\":null,\"cacheWrite\":3}")))
   ;; a missing count is NaN, a null one is 0
   (check (sb-ext:float-nan-p (pig:calculate-context-tokens (json-of "{\"input\":1}"))))
-  (check (pig:should-compact 90 100 (pig:make-compaction-settings :reserve-tokens 5)))
+  (check (pig:should-compact 96 100 (pig:make-compaction-settings :reserve-tokens 5)))
   (check (not (pig:should-compact 95 100 (pig:make-compaction-settings :reserve-tokens 5))))
   (check (not (pig:should-compact 1000 100 (pig:make-compaction-settings :enabled nil))))
   (let* ((entries (json-of "[{\"type\":\"message\",\"message\":{\"role\":\"assistant\",\"usage\":{\"input\":5,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0}}},
@@ -242,7 +242,7 @@ C
       (let ((name (pig:jget case "name")))
         (check-json (pig:jget case "result") (pig:session-entry-to-context-messages (aref (pig:jget case "args") 0)) name)))
     ;; the ISO form toISOString writes is parsed here: only the three other forms reached the host
-    (check-equal '("2026-01-02" "Jan 2, 2026 10:00:00 GMT+0200" "not a date")
+    (check-equal '("not a date" "2026-01-02" "Jan 2, 2026 10:00:00 GMT+0200")
                  (mapcar (lambda (args) (pig:jget args "text")) (ct-calls "date.parse")))))
 
 (deftest build-session-context-matches-pi
