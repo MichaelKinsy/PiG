@@ -292,3 +292,61 @@ fn show_overlay_names_its_visible_callback_and_answers_the_hosts_size_asks() {
     assert_eq!(next(s)["type"], "response");
     rt.shutdown();
 }
+
+/// A component that asks the screen to render again from inside its own `render`.
+struct Probing {
+    screen: Arc<std::sync::OnceLock<std::sync::Weak<TuiAltScreen>>>,
+}
+
+impl Component for Probing {
+    fn render(&self, _width: u32) -> Vec<String> {
+        if let Some(screen) = self.screen.get().and_then(std::sync::Weak::upgrade) {
+            let _ = screen.request_render(false);
+        }
+        vec!["x".to_string()]
+    }
+}
+
+#[test]
+fn a_call_made_inside_a_callback_is_a_child_of_the_callback_request() {
+    let mut ext = Extension::new("tui-alt-lanes");
+    ext.tool("alt", "Add a component that calls the screen from render", empty_schema(), |ctx, _| {
+        let run = || -> std::io::Result<()> {
+            let screen = Arc::new(TuiAltScreen::new(ctx, Arc::new(Recording::default()), TuiAltScreenOptions::default())?);
+            let link = Arc::new(std::sync::OnceLock::new());
+            let component: ComponentRef = Arc::new(Probing { screen: link.clone() });
+            let _ = link.set(Arc::downgrade(&screen));
+            screen.add_child(&component)
+        };
+        match run() {
+            Ok(()) => ToolResult::text("ok"),
+            Err(err) => ToolResult::Error(err.to_string()),
+        }
+    });
+    let mut rt = Runtime::start("lanes", ext);
+    let s = &mut rt.stream;
+    request(s, "alt", "tool_call", "alt", json!({}));
+    let create = next(s);
+    assert_eq!(create["call"]["parent_request_id"], "alt");
+    assert!(create["call"]["args"].get("inFrame").is_none());
+    answer(s, &create, json!({}));
+
+    // The extension's thread waits for addChild; the host asks the component to render meanwhile.
+    let add = next(s);
+    assert_eq!(add["call"]["args"]["op"], "addChild");
+    request(s, "cbr", "tui.alt.cb", "", json!({"id": "t1", "kind": "render", "key": "c1", "width": 5}));
+    let inner = next(s);
+    assert_eq!(inner["call"]["args"]["op"], "requestRender", "{inner}");
+    assert_eq!(inner["call"]["parent_request_id"], "cbr", "a call inside a callback gets the callback's own lane: {inner}");
+    assert_eq!(inner["call"]["args"]["inFrame"], true);
+    answer(s, &inner, json!({}));
+    let response = next(s);
+    assert_eq!((response["id"].as_str(), &response["response"]["result"]), (Some("cbr"), &json!({"lines": ["x"]})));
+    answer(s, &add, json!({}));
+
+    let dispose = next(s);
+    assert_eq!(dispose["call"]["args"]["op"], "dispose");
+    answer(s, &dispose, json!({}));
+    assert_eq!(next(s)["type"], "response");
+    rt.shutdown();
+}

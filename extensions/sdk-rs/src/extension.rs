@@ -2217,7 +2217,8 @@ impl Extension {
             }
             "tui.alt.cb" => {
                 // The host sends it while the extension's own thread may be blocked in a tui.alt call: it runs on this request's thread.
-                let (value, error) = match crate::tui_alt_screen::dispatch_callback(&conn.tui_alt, req.args.as_ref().unwrap_or(&Value::Null)) {
+                let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                let (value, error) = match crate::tui_alt_screen::dispatch_callback(&conn.tui_alt, &ctx, req.args.as_ref().unwrap_or(&Value::Null)) {
                     Ok(value) => (Some(value), None),
                     Err(message) => (None, Some(ErrorInfo { code: None, message })),
                 };

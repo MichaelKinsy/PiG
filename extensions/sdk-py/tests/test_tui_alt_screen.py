@@ -98,10 +98,12 @@ class _Host:
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
         self.results: dict[str, Any] = {}
+        self.rests: list[tuple[Any, ...]] = []
 
-    def call(self, method: str, args: Any = None, *_rest: Any) -> dict[str, Any]:
+    def call(self, method: str, args: Any = None, *rest: Any) -> dict[str, Any]:
         assert method == "tui.alt"
         self.calls.append(args)
+        self.rests.append(rest)
         return {"result": self.results.get(args["op"], {})}
 
     def last(self) -> dict[str, Any]:
@@ -118,7 +120,7 @@ def _screen(**options: Any) -> tuple[pig_sdk.Extension, _Host, _Terminal, pig_sd
 
 
 def _cb(ext: pig_sdk.Extension, screen: pig_sdk.TuiAltScreen, **args: Any) -> Any:
-    return ext._tui_alt.dispatch({"id": screen._id, **args})
+    return ext._tui_alt.dispatch(pig_sdk.Context(ext), {"id": screen._id, **args})
 
 
 def test_create_carries_the_options_and_the_terminal_block() -> None:
@@ -367,7 +369,7 @@ def test_component_callbacks() -> None:
     with pytest.raises(RuntimeError):
         _cb(ext, screen, kind="render", key="c9", width=1)
     with pytest.raises(RuntimeError):
-        ext._tui_alt.dispatch({"id": "nope", "kind": "debug"})
+        ext._tui_alt.dispatch(pig_sdk.Context(ext), {"id": "nope", "kind": "debug"})
 
 
 def test_option_callbacks() -> None:
@@ -453,3 +455,30 @@ def test_calls_from_frame_callbacks_say_so() -> None:
     done.set()
     worker.join(5)
     assert "inFrame" not in seen[0]
+
+
+def test_calls_inside_a_callback_are_children_of_its_request() -> None:
+    ext, host, _, screen = _screen(search_match_style=lambda text: str(screen.has_overlay()))
+    ext._request_state = lambda *args, **kwargs: None  # type: ignore[method-assign]
+    parent = pig_sdk._RequestParent("r7", ext._sock)
+    cb_ctx = pig_sdk.Context(ext, None, "r7", threading.Event(), _parent=parent)
+    inside = _Lines("x")
+    inside.render = lambda width: [str(screen.viewport_top)]  # type: ignore[method-assign]
+    screen.add_child(inside)
+    screen.set_focus(inside)
+    assert ("r7", parent) not in host.rests
+    for args in (
+        {"kind": "render", "key": "c1", "width": 5}, {"kind": "option", "name": "searchMatchStyle", "args": ["m"]},
+        {"kind": "invalidate", "key": "c1"},
+    ):
+        start = len(host.rests)
+        ext._tui_alt.dispatch(cb_ctx, {"id": screen._id, **args})
+        assert host.rests[start:] == ([("r7", parent)] if args["kind"] != "invalidate" else []), args
+    # A callback that calls the host from its own code: the focus and listener callbacks of the user are the same path.
+    seen: list[Any] = []
+    inside.handle_input = lambda data: (screen.invalidate(), seen.append(host.rests[-1]))  # type: ignore[attr-defined]
+    ext._tui_alt.dispatch(cb_ctx, {"id": screen._id, "kind": "input", "key": "c1", "data": "k"})
+    assert seen == [("r7", parent)]
+    # Once the callback is answered, the thread's calls have no parent again.
+    screen.invalidate()
+    assert host.rests[-1] == ()

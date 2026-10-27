@@ -5495,7 +5495,7 @@ class Extension:
             if method in {"autocomplete.sync", "autocomplete.suggest"}:
                 self._respond(req_id, self._autocomplete.dispatch(ctx, req.get("args") or {}), None)
             elif method == "tui.alt.cb":
-                self._respond(req_id, self._tui_alt.dispatch(req.get("args") or {}), None)
+                self._respond(req_id, self._tui_alt.dispatch(ctx, req.get("args") or {}), None)
             elif method in {"provider_call", "provider_stream", "provider_sync"}:
                 self._respond(req_id, _dispatch_provider(self, ctx, req), None)
             elif method in {"provider_object_callback", "provider_object_callback_sync"}:

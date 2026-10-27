@@ -169,6 +169,10 @@ class TuiAltScreenOptions:
     copy_selection: Callable[[str], bool | str] | None = None
 
 
+# The context of the ``tui.alt.cb`` request this thread is answering, if any. Host calls are ordered per parent request, and a ``tui.alt`` call made
+# while the host waits for this very callback would queue behind the call that waits: while a callback runs, the thread's calls are children of its request.
+_CALLBACK = threading.local()
+
 _OVERLAY_OPTION_KEYS = frozenset(("width", "minWidth", "maxHeight", "anchor", "offsetX", "offsetY", "row", "col", "margin", "nonCapturing"))
 _NO_TARGET: Any = object()
 
@@ -252,13 +256,18 @@ class _TuiAltScreens:
             self._closed = True
             self._by_id.clear()
 
-    def dispatch(self, args: dict[str, Any]) -> Any:
-        """Answer one host ``tui.alt.cb`` request; the request's own thread calls it, so a callback may call the host."""
+    def dispatch(self, ctx: "Context", args: dict[str, Any]) -> Any:
+        """Answer one host ``tui.alt.cb`` request, whose context is ``ctx``; the request's own thread calls it, so a callback may call the host."""
         with self._lock:
             screen = self._by_id.get(str(args.get("id") or ""))
         if screen is None:
             raise RuntimeError(f"unknown TuiAltScreen {args.get('id')}")
-        return screen._callback(args)
+        previous = getattr(_CALLBACK, "ctx", None)
+        _CALLBACK.ctx = ctx
+        try:
+            return screen._callback(args)
+        finally:
+            _CALLBACK.ctx = previous
 
 
 class TuiAltOverlayHandle:
@@ -384,7 +393,8 @@ class TuiAltScreen:
         args["terminal"] = self._terminal_block()
         if getattr(self._frame, "depth", 0) > 0:
             args["inFrame"] = True
-        result = self._extension._call("tui.alt", args).get("result")
+        ctx = getattr(_CALLBACK, "ctx", None)
+        result = (self._extension._call if ctx is None else ctx._call)("tui.alt", args).get("result")
         return result if isinstance(result, dict) else {}
 
     def _state(self) -> dict[str, Any]:

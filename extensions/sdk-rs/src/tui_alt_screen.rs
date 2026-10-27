@@ -370,6 +370,28 @@ impl Drop for InFrame {
     }
 }
 
+thread_local! {
+    /// The context of the `tui.alt.cb` request this thread is serving, for as long as it runs user code.
+    static CALLBACK_CTX: std::cell::RefCell<Option<Context>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Marks the thread as serving a `tui.alt.cb` request until dropped. The host orders host calls by the request they belong to, so a `tui.alt`
+/// call the callback's user code makes must be a child of the callback's own request: made as the screen's own context it would wait behind
+/// the call that is waiting for this callback.
+struct InCallback(Option<Context>);
+
+impl InCallback {
+    fn enter(ctx: Context) -> Self {
+        Self(CALLBACK_CTX.replace(Some(ctx)))
+    }
+}
+
+impl Drop for InCallback {
+    fn drop(&mut self) {
+        CALLBACK_CTX.replace(self.0.take());
+    }
+}
+
 type SchemeFn = Arc<dyn Fn(TerminalColorScheme) + Send + Sync>;
 
 struct Inner {
@@ -431,7 +453,9 @@ impl Inner {
                 args.insert("inFrame".into(), Value::Bool(true));
             }
         }
-        Ok(self.ctx.call_host("tui.alt", Some(Value::Object(args)))?.unwrap_or(Value::Null))
+        let scoped = CALLBACK_CTX.with_borrow(Clone::clone);
+        let ctx = scoped.as_ref().unwrap_or(&self.ctx);
+        Ok(ctx.call_host("tui.alt", Some(Value::Object(args)))?.unwrap_or(Value::Null))
     }
 
     fn state(&self) -> io::Result<Value> {
@@ -688,10 +712,12 @@ fn screen_gone() -> io::Error {
     io::Error::new(io::ErrorKind::NotConnected, "the TuiAltScreen was dropped")
 }
 
-/// The host's `tui.alt.cb` request: runs a terminal, component, listener or option callback of the screen it names.
-pub(crate) fn dispatch_callback(registry: &TuiAltRegistry, args: &Value) -> Result<Value, String> {
+/// The host's `tui.alt.cb` request: runs a terminal, component, listener or option callback of the screen it names. `request` is the request's
+/// own context: the host calls the callback's user code makes belong to it.
+pub(crate) fn dispatch_callback(registry: &TuiAltRegistry, request: &Context, args: &Value) -> Result<Value, String> {
     let id = args.get("id").and_then(Value::as_str).unwrap_or("");
     let screen = registry.get(id).ok_or_else(|| format!("unknown TuiAltScreen {id:?}"))?;
+    let _callback = InCallback::enter(request.clone());
     screen.callback(args)
 }
 
