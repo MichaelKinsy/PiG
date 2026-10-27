@@ -14,6 +14,8 @@ import (
 type Publication struct {
 	Seq     Seq
 	Changes []Change
+	// Span is the host's handle of the span of the commit's Context: where the commit's entry and settlement events go (TxScope.Span).
+	Span uint32
 }
 
 // Session is the Session kernel: the mutation line's committed-state cache and
@@ -297,7 +299,7 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 		}
 	}
 	changes = append(changes, docs...)
-	pub := &Publication{Seq: seq, Changes: changes}
+	pub := &Publication{Seq: seq, Changes: changes, Span: tx.scope.Span}
 	for _, change := range docs {
 		s.touchDocument(addressID(recordAddress(change.Record)))
 	}

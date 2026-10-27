@@ -187,7 +187,7 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 					}
 				}
 			}
-			next, err := createGeneration(tx, r.conv)
+			next, err := createGeneration(tx, r.conv, nil)
 			if err != nil {
 				return nil, err
 			}

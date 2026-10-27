@@ -117,6 +117,11 @@ type Env struct {
 	// Report forwards a non-fatal failure to HarnessOptions.onReport; info says what happened (types.ts ReportInfo as
 	// an object: type, and task, extension, reason, callback or conversationId where they apply).
 	Report func(err error, info *jv.Object)
+	// ReportAt is Report for a failure reported under the Context of a span (scheduler.ts #report's context): the host records
+	// the report event there. Unset, Report takes every report.
+	ReportAt func(err error, info *jv.Object, span uint32)
+	// Telemetry records the spans and metrics of Pi's telemetry; nil when the Harness has none.
+	Telemetry Telemetry
 	// RestartLimit is settings.restartLimit, read at each use; nil selects the default.
 	RestartLimit func() float64
 	// BlockedChanged is told when blocked reasons may have changed without a commit: a registry change, a failed

@@ -220,6 +220,9 @@ func (h *handler) txBegin(id uint32, op *jv.Object) error {
 	}
 	t := &hostTx{id: id, docs: map[string]*hostDoc{}}
 	t.scope.ConversationID = session.ID(numOf(op, "conversationId"))
+	// The Context of the commit: the span its entry and settlement events go to, and its carrier, which a task it creates inherits.
+	t.scope.Span = uint32(numOf(op, "span"))
+	t.scope.Trace, _ = op.Get("trace")
 	if invocation := session.ID(numOf(op, "invocation")); invocation != 0 {
 		if t.rt = h.runtimes[invocation]; t.rt == nil {
 			return &Rejection{"Error", "transaction begin: no running invocation of task " + itoa(int64(invocation))}
@@ -252,7 +255,7 @@ func (h *handler) grant(t *hostTx) error {
 	var tx *session.Tx
 	var err error
 	if t.rt != nil {
-		tx, t.current, err = t.rt.BeginHost()
+		tx, t.current, err = t.rt.BeginHost(t.scope.Span, t.scope.Trace)
 	} else {
 		tx, err = h.sess.Begin(t.scope)
 	}
@@ -732,6 +735,17 @@ func (h *handler) createTaskWith(tx *session.Tx, def *session.TaskDef, op *jv.Ob
 	to.ConversationID = session.ID(numOf(opts, "conversationId"))
 	to.Background, _ = boolOf(opts, "background")
 	to.AbandonOnRestart, _ = boolOf(opts, "abandonOnRestart")
+	// TaskOptions.trace: `"root"` stores no carrier; an omitted one is the transaction's own, and a carrier is the host's.
+	if trace, ok := opts.Get("trace"); ok {
+		if s, isString := trace.(string); isString && s == "root" {
+			to.NoTrace = true
+		} else {
+			to.Trace = trace
+		}
+	}
+	if links, ok := opts.Get("links"); ok {
+		to.Links, _ = links.([]any)
+	}
 	input, _ := op.Get("input")
 	id, err := tx.CreateTask(def, input, to)
 	if err != nil {

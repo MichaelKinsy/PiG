@@ -29,6 +29,25 @@ type invocation struct {
 	next  func()
 	stage spanStage
 	tick  bool
+
+	// span is the host's handle of the span of the phase running, and carrier its carrier, which the tasks the phase creates
+	// inherit; span is zero outside a phase (invocation.context). record is the latest committed record of the task (#track),
+	// and fault the outcome the scheduler's own step gave a task that threw. info and start are a phase's span start waiting for
+	// the host.
+	span    uint32
+	carrier any
+	record  *jv.Object
+	fault   *jv.Object
+	info    PhaseInfo
+	start   func()
+	// moved is the phase the commit in flight moves the running checkpoint to, and after the job's hook that records it once the
+	// commit is published (scheduler.ts runtime.commit's `pi.durable.checkpoint` event).
+	moved string
+	after func()
+	// phased is set once the invocation asked the host for its phase's span, so the phase runs when the host answered, with a span or without.
+	phased bool
+	// links are the record's creation-time carriers, kept for the invocation that finds the task unstarted (invocation.links).
+	links any
 }
 
 type spanStage uint8
@@ -178,6 +197,9 @@ type Scheduler struct {
 	// parkedTasks holds the tasks a pass left out as parked; each pass checks them again, as settings.restartLimit may
 	// have risen.
 	parkedTasks *orderedSet[ID]
+	// resumed holds the tasks found live at open that have not run a phase since: the span of the first invocation is
+	// `resumed` (scheduler.ts #resumed).
+	resumed []ID
 	// reconcilingWork counts the reconcile passes underway with work: their commits finalize held outcomes and mark
 	// cascades.
 	reconcilingWork int
@@ -357,6 +379,7 @@ func (s *Scheduler) Open(done func(error)) {
 		for _, recs := range scans {
 			for _, rec := range recs {
 				s.track(nil, rec)
+				s.addResumed(mustInt(rec, "id"))
 				if getBool(rec, "abandonOnRestart") {
 					s.abandoned.Add(mustInt(rec, "id"))
 				}
@@ -783,6 +806,7 @@ func (s *Scheduler) Bound(taskID ID) *Cancel {
 
 // Seal stops scheduling: waiters reject, and the invocation signals abort in a microtask (signalInvocations).
 func (s *Scheduler) Seal() {
+	s.sealActive()
 	s.closing = true
 	// session.ts close queues `Promise.resolve().then(beforeClose)` before it runs the close listeners, and beforeClose is join(),
 	// which signals every invocation: one microtask on, ahead of the reactions of the waits this seal rejects, not inside it.

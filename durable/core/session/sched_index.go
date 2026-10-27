@@ -514,6 +514,10 @@ func (s *Scheduler) sweep() {
 // task above it: one holding its outcome finalizes, an abort-marked one runs its abort handler; its waiters may run.
 func (s *Scheduler) track(prev *jv.Object, rec *jv.Object) {
 	id := mustInt(rec, "id")
+	if inv := s.invocations[id]; inv != nil {
+		inv.record = rec
+	}
+	s.trackActive(id, prev, rec)
 	if prev != nil && taskStatus(prev) == StatusWaiting {
 		for _, on := range idsOf(getObj(prev, "state"), "on") {
 			deleteFromSet(s.waiters, on, id)

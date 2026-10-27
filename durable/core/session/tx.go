@@ -30,6 +30,15 @@ type TaskOptions struct {
 	Background     bool
 	// AbandonOnRestart marks a task its creator awaits only in memory: a later Harness abort-marks it with reason restart.
 	AbandonOnRestart bool
+	// Trace is the carrier the task's phase spans start under (types.ts TaskOptions.trace); nil inherits the creating
+	// transaction's carrier (TxScope.Trace), and NoTrace stores none (`trace: "root"`).
+	Trace   any
+	NoTrace bool
+	// Links are the immutable creation-time links of the task's first invocation (types.ts TaskOptions.links).
+	Links []any
+	// Submissions are the input submissions of a run (transaction.ts TaskCreationOptions.submissionIds): the first one's
+	// carrier is the task's trace, and the carriers of the others are its links.
+	Submissions []ID
 }
 
 // Ownership is how a created conversation is attributed.
@@ -43,6 +52,11 @@ type Ownership struct {
 type TxScope struct {
 	ConversationID ID
 	TaskID         ID
+	// Span is the host's handle of the span of the commit's Context (Context.telemetry): the commit's entry and settlement
+	// events go to it. Zero is the NOOP span, which takes none (src/session/session.ts #publish).
+	Span uint32
+	// Trace is the carrier of that span (propagation.inject(span)): the trace of a task the commit creates without one.
+	Trace any
 }
 
 type txTask struct {
@@ -471,6 +485,11 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 	if err := tx.write(); err != nil {
 		return 0, err
 	}
+	if len(opts.Submissions) != 0 {
+		if err := tx.traceOfRun(&opts); err != nil {
+			return 0, err
+		}
+	}
 	ownerStaged, ownerCached := tx.taskTicksState(opts.OwnerTask)
 	defer func() {
 		conv := opts.ConversationID
@@ -518,6 +537,17 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 	checkpoint := def.Initial(input)
 	id := tx.mint()
 	rec := obj("id", idv(id), "conversationId", idv(conv), "kind", def.Name, "version", float64(def.Version), "input", jv.Clone(input))
+	// transaction.ts createTask: `trace: "root"` stores none; an omitted one is the creating Context's carrier.
+	trace := opts.Trace
+	if trace == nil && !opts.NoTrace {
+		trace = tx.scope.Trace
+	}
+	if trace != nil {
+		rec.Set("trace", jv.Clone(trace))
+	}
+	if opts.Links != nil {
+		rec.Set("links", jv.Clone(opts.Links))
+	}
 	if owner != nil {
 		rec.Set("owner", idv(mustInt(owner, "id")))
 	}
@@ -530,6 +560,36 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 	t := tx.taskEntry(id)
 	t.write, t.writeIsNew = rec, true
 	return id, nil
+}
+
+// traceOfRun resolves a run's carriers from its input submissions (transaction.ts createTask, `submissionIds`): the first
+// submission's carrier is the task's trace (none: the task starts at the root), and the others' carriers are its links. A
+// submission the transaction did not stage is read from Storage.
+func (tx *Tx) traceOfRun(opts *TaskOptions) error {
+	opts.Trace, opts.NoTrace, opts.Links = nil, false, nil
+	for i, id := range opts.Submissions {
+		rec := tx.submissions[id]
+		if rec == nil {
+			tx.readTicks(hopcost.ReadRow)
+			var err error
+			if rec, err = tx.s.store.Submission(id); err != nil {
+				return err
+			}
+		}
+		var trace any
+		if rec != nil {
+			trace, _ = rec.Get("trace")
+		}
+		switch {
+		case i == 0 && trace == nil:
+			opts.NoTrace = true
+		case i == 0:
+			opts.Trace = trace
+		case trace != nil:
+			opts.Links = append(opts.Links, trace)
+		}
+	}
+	return nil
 }
 
 // CreateSubmission stages a submission; its record is {...create, id}.

@@ -50,11 +50,12 @@ type runState struct {
 	snapshot Snapshot
 	reported *TaskImpl
 	hasRep   bool
+	inv      *invocation
 }
 
 func (s *Scheduler) run(r *reservation, finish func()) {
 	inv := r.inv
-	st := &runState{task: r.task, snapshot: r.snapshot}
+	st := &runState{task: r.task, snapshot: r.snapshot, inv: inv}
 	rt := s.newRuntime(inv, func() *TaskImpl { return st.task }, func() Snapshot { return st.snapshot })
 	var previous *phaseResult
 	var next func()
@@ -63,21 +64,31 @@ func (s *Scheduler) run(r *reservation, finish func()) {
 		s.step(inv, func(tx *Tx, current *jv.Object) (decision, error) {
 			return s.decide(tx, current, prev, st, inv.extension)
 		}, func(current *jv.Object) {
-			// #run awaits #phase, which wraps the phase handler and the decision step that follows it in a span.
+			// #run awaits #phase, which wraps the phase handler and the decision step that follows it in a span: it ends with the step.
+			if prev != nil {
+				s.endPhase(inv)
+			}
 			if current == nil || s.closing {
 				inv.afterSpan(prev != nil, finish, false)
 				return
 			}
 			// #run awaits #step, an async function that awaited the step's commit: the phase starts a tick after the job resolved
 			// (scheduler.ts :919-926, :1000-1002).
-			inv.afterSpan(prev != nil, func() {
+			var begin func()
+			begin = func() {
+				// The phase runs inside its span: a Harness with telemetry asks the host for it first, which runs begin again.
+				if s.env.Telemetry != nil && !inv.phased {
+					s.startPhase(inv, current, begin)
+					return
+				}
 				cp, _ := getObj(current, "state").Get("checkpoint")
 				rt.agentReset()
 				st.task.Phase(rt, current, func(err error) {
 					previous = &phaseResult{checkpoint: cp, failure: err}
 					s.loop.Defer(next)
 				})
-			}, true)
+			}
+			inv.afterSpan(prev != nil, begin, true)
 		})
 	}
 	next()
@@ -133,7 +144,7 @@ func (s *Scheduler) decide(tx *Tx, current *jv.Object, previous *phaseResult, st
 				info.Set("extension", extension)
 			}
 			info.Set("reason", reason)
-			s.report(errorf("Task %d keeps running under its old %s definition", mustInt(current, "id"), kind), info)
+			s.reportAt(errorf("Task %d keeps running under its old %s definition", mustInt(current, "id"), kind), info, st.inv.span)
 		}
 	}
 	return decision{kind: decideContinue}, nil
@@ -161,15 +172,27 @@ func (s *Scheduler) runAbort(r *reservation, finish func()) {
 				return decision{kind: decideFault, fault: failure}, nil
 			}
 			return decision{kind: decideFault, fault: errorf("Abort handler of task %d returned without a terminal outcome", inv.taskID)}, nil
-		}, func(*jv.Object) { inv.afterSpan(true, finish, false) })
+		}, func(*jv.Object) {
+			s.endPhase(inv)
+			inv.afterSpan(true, finish, false)
+		})
 	}
-	r.task.Abort(rt, current, func(err error) {
-		if n := r.task.AbortReturnHops; n > 0 && s.env.After != nil {
-			s.env.After(n, func() { after(err) })
+	// #runAbort wraps the abort handler and its step in a span of kind abort.
+	var begin func()
+	begin = func() {
+		if s.env.Telemetry != nil && !inv.phased {
+			s.startPhase(inv, current, begin)
 			return
 		}
-		s.loop.Defer(func() { after(err) })
-	})
+		r.task.Abort(rt, current, func(err error) {
+			if n := r.task.AbortReturnHops; n > 0 && s.env.After != nil {
+				s.env.After(n, func() { after(err) })
+				return
+			}
+			s.loop.Defer(func() { after(err) })
+		})
+	}
+	begin()
 }
 
 // step runs one reservation step on the line: decide, then continue with the
@@ -182,7 +205,7 @@ func (s *Scheduler) step(inv *invocation, decide func(tx *Tx, current *jv.Object
 		if fault != nil {
 			info := aboutInvocation("task_faulted", inv)
 			info.Set("reason", "threw")
-			s.report(fault, info)
+			s.reportAt(fault, info, inv.span)
 		}
 	}
 	s.commitJobAfter(s.loop.LineAfterTail, nil, func(tx *Tx) error {
@@ -208,10 +231,12 @@ func (s *Scheduler) step(inv *invocation, decide func(tx *Tx, current *jv.Object
 		if d.kind == decideFault {
 			fault = d.fault
 			msg := faultText(d.fault)
-			return s.terminate(tx, current, obj("status", "faulted", "error", obj("message", msg)))
+			// invocation.fault: the outcome of a task that threw, which the phase's span reports once the task has left the live index.
+			inv.fault = obj("status", "faulted", "error", obj("message", msg))
+			return s.terminate(tx, current, inv.fault)
 		}
 		return nil
-	}, TxScope{}, reportFault, func(err error) {
+	}, TxScope{Span: inv.span, Trace: inv.carrier}, reportFault, func(err error) {
 		if err != nil {
 			s.endInvocation(inv)
 			s.failSession(err)

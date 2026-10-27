@@ -57,9 +57,15 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 		draft.Content = content
 	}
 	draft.Entry = objOf(req, "entry")
+	// The submission's span (submissions.ts submit): its carrier is stored on the record, and the commit's events go to it.
+	span := uint32(numOf(req, "span"))
+	if trace, has := req.Get("trace"); has {
+		draft.Trace = trace
+	}
+	draft.Propagation, _ = boolOf(req, "propagates")
 	conversationID := session.ID(numOf(req, "conversationId"))
 	bound := h.bound(req)
-	var submission session.ID
+	var admitted inbox.Admission
 	// Submissions.submit queues through Session.commitWith (submissions.ts :54-60), whose #enqueue starts the job a tick after the call on
 	// an idle line (session.ts :530-531).
 	h.loop.LineAfterTail(func() error {
@@ -68,9 +74,9 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 		}
 		_, err := h.sess.RunCommit(func(tx *session.Tx) error {
 			var e error
-			submission, e = inbox.Admit(tx, turn.Runs{}, conversationID, draft, h.now, h.queueModes())
+			admitted, e = inbox.AdmitStatus(tx, turn.Runs{}, conversationID, draft, h.now, h.queueModes())
 			return e
-		}, session.TxScope{})
+		}, session.TxScope{Span: span, Trace: draft.Trace})
 		return err
 	}, func(err error) {
 		if err != nil {
@@ -78,7 +84,14 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 			return
 		}
 		answer := jv.NewObject()
-		answer.Set("id", float64(submission))
+		answer.Set("id", float64(admitted.ID))
+		if span != 0 {
+			// The span's result (`submission.id`, `result`) and the carrier of the run it links to.
+			answer.Set("status", admitted.Status)
+			if admitted.Link != nil {
+				answer.Set("link", admitted.Link)
+			}
+		}
 		// Submissions.submit returns the span of "pi.durable.submit" (submissions.ts, Pi 2ec55d80): the no-op span's startSpan is an async
 		// function that returns the callback's promise, and the async submit returns that one, two adoptions on top of the commit's return.
 		h.holdLate(submitSpanHops, deferAnswer, id, answer)
