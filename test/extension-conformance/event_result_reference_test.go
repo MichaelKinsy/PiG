@@ -285,7 +285,7 @@ func TestConformance_EventResultsReachTheHost(t *testing.T) {
 		return jsonField(encoded, row.field)
 	}
 
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

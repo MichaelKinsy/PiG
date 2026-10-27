@@ -163,7 +163,7 @@ func TestConformance_EventPayloadsReachEverySDKUnchanged(t *testing.T) {
 			`{"type":"agent_before_settle",` + boundaryStateJSON + `}`},
 	}
 
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

@@ -22,7 +22,7 @@ func TestToolEventVariantsMatchAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	cases := allHarnessCases()
+	cases := append(allHarnessCases(), lispHarnessCase())
 	var want []string
 	for _, tool := range []string{"powershell", "bash"} {
 		want = append(want,

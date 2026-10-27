@@ -263,7 +263,7 @@ func TestConformance_ObservedEventPayloads(t *testing.T) {
 	// referenceFields are the paths of members in the Go struct's own encoding where it differs from the wire name (ai.Model has no JSON tags).
 	referenceFields := map[string]string{"model_select": "model.ID"}
 
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

@@ -47,7 +47,7 @@ func (a runnerFlagAPI) GetFlag(name string) any {
 // override differs from its SDK fallback; the empty override must not default.
 func TestFlagValuesAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	for _, tc := range allHarnessCases() {
+	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
