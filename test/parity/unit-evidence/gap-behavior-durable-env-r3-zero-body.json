@@ -1440,14 +1440,13 @@
   "package": "./durable/harness",
   "tests": [
    "TestCompactionEdgeCasesLater",
-   "TestCompactionEventsAndLiveStatus",
    "TestCompactionRecovery",
    "TestGeneration",
    "TestGenerationRecovery",
    "TestTaskRuntime"
   ],
   "upstream_reference": "packages/durable/src/harness/scheduler.ts",
-  "mutation": "durable/harness/scheduler.go: replace 'func (runtime *taskRuntime) Sleep(ctx context.Context, until float64) error {' with 'func (runtime *taskRuntime) Sleep(ctx context.Context, until float64) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestCompactionEdgeCasesLater, TestCompactionEventsAndLiveStatus, TestCompactionRecovery, TestGeneration, TestGenerationRecovery, TestTaskRuntime."
+  "mutation": "durable/harness/scheduler.go: replace 'func (runtime *taskRuntime) Sleep(ctx context.Context, until float64) error {' with 'func (runtime *taskRuntime) Sleep(ctx context.Context, until float64) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestCompactionEdgeCasesLater, TestCompactionRecovery, TestGeneration, TestGenerationRecovery, TestTaskRuntime."
  },
  {
   "upstream": "packages/durable/src/session/transaction.ts",
