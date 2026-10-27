@@ -8,7 +8,7 @@ use alacritty_terminal::{
     event::{Event, EventListener},
     grid::Dimensions,
     index::{Column, Line, Point},
-    term::{cell::Flags, Config, Term},
+    term::{cell::Flags, Config, Term, TermMode},
     vte::ansi::{Color, Processor},
 };
 use serde_json::{json, Value};
@@ -91,7 +91,36 @@ fn color(prefix: &str, color: Color) -> Option<String> {
     }
 }
 
-fn dump(term: &Term<Quiet>, cols: usize, rows: usize) -> Value {
+/// Whether the scroll region is the whole screen after the first `steps` of the variant. alacritty_terminal keeps the region private, so it is
+/// probed on a second terminal that replays the same bytes: a line feed on the last row scrolls only when the region ends there, and a reverse
+/// index on the first row only when it starts there. The probe changes the second terminal, never the one that is dumped.
+fn margins_full(scenario: &Scenario, data: &[u8], steps: &[Step]) -> bool {
+    let (mut cols, mut rows) = (scenario.cols, scenario.rows);
+    let mut term = Term::new(Config::default(), &Size { cols, rows }, Quiet);
+    let mut parser: Processor = Processor::new();
+    let mut start = 0;
+    for step in steps {
+        if let Some((c, r)) = step.resize {
+            (cols, rows) = (c, r);
+            term.resize(Size { cols, rows });
+        }
+        parser.advance(&mut term, &data[start..step.end]);
+        start = step.end;
+    }
+    // Origin mode off, so the cursor addresses the screen; every row marked with a letter.
+    let mut probe = String::from("\x1b[?6l");
+    for row in 0..rows {
+        probe.push_str(&format!("\x1b[{};1H{}", row + 1, (b'A' + (row % 26) as u8) as char));
+    }
+    probe.push_str(&format!("\x1b[{rows};1H\n"));
+    parser.advance(&mut term, probe.as_bytes());
+    let bottom_is_last_row = term.grid()[Point::new(Line(rows as i32 - 1), Column(0))].c == ' ';
+    parser.advance(&mut term, b"\x1b[1;1H\x1bM");
+    let top_is_first_row = term.grid()[Point::new(Line(0), Column(0))].c == ' ';
+    bottom_is_last_row && top_is_first_row
+}
+
+fn dump(term: &Term<Quiet>, cols: usize, rows: usize, full_margins: bool) -> Value {
     let grid = term.grid();
     let mut texts = Vec::new();
     let mut styles = Vec::new();
@@ -139,7 +168,8 @@ fn dump(term: &Term<Quiet>, cols: usize, rows: usize) -> Value {
         styles.push(runs.into_iter().map(|(x, n, s)| json!([x, n, s])).collect::<Vec<_>>());
     }
     let cursor = grid.cursor.point;
-    json!({ "cursor": [cursor.column.0, cursor.line.0], "rows": texts, "styles": styles })
+    let margins = json!({ "top": null, "bottom": null, "origin": term.mode().contains(TermMode::ORIGIN), "full": full_margins });
+    json!({ "cursor": [cursor.column.0, cursor.line.0], "rows": texts, "styles": styles, "margins": margins })
 }
 
 fn main() {
@@ -154,14 +184,14 @@ fn main() {
             let mut parser: Processor = Processor::new();
             let mut checkpoints = Vec::new();
             let mut start = 0;
-            for step in &variant.steps {
+            for (index, step) in variant.steps.iter().enumerate() {
                 if let Some((c, r)) = step.resize {
                     (cols, rows) = (c, r);
                     term.resize(Size { cols, rows });
                 }
                 parser.advance(&mut term, &data[start..step.end]);
                 start = step.end;
-                checkpoints.push(dump(&term, cols, rows));
+                checkpoints.push(dump(&term, cols, rows, margins_full(&scenario, &data, &variant.steps[..=index])));
             }
             println!("{}", json!({ "scenario": scenario.name, "variant": variant.name, "checkpoints": checkpoints }));
         }

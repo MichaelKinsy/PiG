@@ -135,8 +135,11 @@ func checkAltScreenOracle(t *testing.T, screens bool) {
 // judging what the steps show to the engines (recordOnly), so a step that shows other rows than Pi's reaches them instead of failing here.
 type oracleTap struct {
 	recordOnly bool
-	start      func(scenario, cols, rows int, images string, out string)
-	step       func(scenario int, resize []int, overWide bool, out string)
+	// closeClipped closes every rendered line wider than the screen before the replay uses it: the line is clipped to the screen and ends with a
+	// reset, as the line a width-aware component renders. The bytes are then not Pi's, so they are not compared with Pi's.
+	closeClipped bool
+	start        func(scenario, cols, rows int, images string, out string)
+	step         func(scenario int, resize []int, overWide bool, out string)
 }
 
 // checkAltScreenOracleIn is checkAltScreenOracle in a terminal whose environment sets env over the oracle's (TERM=xterm-256color
@@ -276,8 +279,24 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 				handles[len(handles)-1].Hide()
 				handles, overlays = handles[:len(handles)-1], overlays[:len(overlays)-1]
 			}
+			if spec.Resize != nil {
+				cols = spec.Resize[0]
+			}
+			closed := func(lines []string) []string {
+				if tap == nil || !tap.closeClipped {
+					return lines
+				}
+				result := make([]string, len(lines))
+				for i, line := range lines {
+					if widthx.VisibleWidth(line) > cols {
+						line = widthx.TruncateToWidth(line, cols, "", false) + "\x1b[0m"
+					}
+					result[i] = line
+				}
+				return result
+			}
 			for i, rendered := range sc.Log[step].Overlays {
-				overlays[i].lines = rendered
+				overlays[i].lines = closed(rendered)
 			}
 			for k, raw := range spec.Set {
 				index := 0
@@ -297,7 +316,7 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 			}
 			for i, rendered := range sc.Log[step].Rendered {
 				if parts[i].image == nil {
-					parts[i].lines.lines = rendered
+					parts[i].lines.lines = closed(rendered)
 				}
 			}
 			if spec.Resize != nil {
@@ -338,9 +357,6 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 				break
 			}
 			if tap != nil {
-				if spec.Resize != nil {
-					cols = spec.Resize[0]
-				}
 				overWide := false
 				for _, lines := range append(slices.Clone(sc.Log[step].Rendered), sc.Log[step].Overlays...) {
 					for _, line := range lines {
@@ -369,14 +385,14 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 				if out.String() != sc.Log[step].Out {
 					scrolledSteps++
 				}
-			} else if got, want := out.String(), sc.Log[step].Out; !screens && got != want {
+			} else if got, want := out.String(), sc.Log[step].Out; !screens && !(tap != nil && tap.closeClipped) && got != want {
 				report("scenario %d (%dx%d, images %q) step %d %+v\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, step, spec, got, want)
 				break
 			}
 		}
 		out.Reset()
 		ui.StopWithOptions(StopOptions{PreserveScreen: sc.Preserve})
-		if got, want := out.String(), strings.ReplaceAll(sc.StopOut, altScreenOracleStopMarker, ""); got != want {
+		if got, want := out.String(), strings.ReplaceAll(sc.StopOut, altScreenOracleStopMarker, ""); !(tap != nil && tap.closeClipped) && got != want {
 			report("scenario %d (%dx%d, images %q, preserve %v) stop\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, sc.Preserve, got, want)
 		}
 		if got := string(GetCapabilities().Images); got != sc.ImagesAfterStop {

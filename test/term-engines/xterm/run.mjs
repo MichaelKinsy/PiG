@@ -45,7 +45,12 @@ function dump(term) {
     rows.push(text);
     styles.push(runs);
   }
-  return { cursor: [buffer.cursorX, buffer.cursorY], rows, styles };
+  // The scroll margins and origin mode are not public API; they are read from the parser's own state, and a build that moves them fails here.
+  const { scrollTop, scrollBottom } = term._core._bufferService.buffer;
+  const origin = term._core.coreService.decPrivateModes.origin;
+  if (!Number.isInteger(scrollTop) || !Number.isInteger(scrollBottom) || typeof origin !== "boolean") throw new Error("xterm.js no longer exposes scrollTop, scrollBottom and decPrivateModes.origin");
+  const margins = { top: scrollTop, bottom: scrollBottom, origin, full: scrollTop === 0 && scrollBottom === term.rows - 1 };
+  return { cursor: [buffer.cursorX, buffer.cursorY], rows, styles, margins };
 }
 
 const scenarios = [];

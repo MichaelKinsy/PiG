@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -79,11 +80,13 @@ func readPlan(t *testing.T, dir string) []*planScenario {
 	return scenarios
 }
 
-// checkpoint is the screen after a step: the rows' text, the style runs ([column, width, style] per row) and the cursor.
+// checkpoint is the screen after a step: the rows' text, the style runs ([column, width, style] per row), the cursor, and the scroll margins
+// ({top, bottom, origin, full}: the region's rows when the engine exposes them, null otherwise, DECOM, and whether the region is the whole screen).
 type checkpoint struct {
-	Cursor [2]int
-	Rows   []string
-	Styles json.RawMessage
+	Cursor  [2]int
+	Rows    []string
+	Styles  json.RawMessage
+	Margins json.RawMessage
 }
 
 type runnerLine struct {
@@ -214,6 +217,9 @@ func describe(a, b checkpoint, visibleA, visibleB bool) string {
 	} else if visibleA && a.Cursor != b.Cursor {
 		fmt.Fprintf(&d, "\n  cursor (x,y): A %v, B %v", a.Cursor, b.Cursor)
 	}
+	if !bytes.Equal(a.Margins, b.Margins) {
+		fmt.Fprintf(&d, "\n  scroll margins: A %s\n                  B %s", a.Margins, b.Margins)
+	}
 	var styleA, styleB [][]json.RawMessage
 	_ = json.Unmarshal(a.Styles, &styleA)
 	_ = json.Unmarshal(b.Styles, &styleB)
@@ -280,6 +286,14 @@ func stepBytes(v *planVariant, i int) []byte {
 	return v.data[start:v.steps[i].end]
 }
 
+// pisMargins reports whether the engine printed the scroll margins of a step of B (Pi's bytes) and they are the whole screen with origin mode
+// off, which Pi's bytes always leave them as: that anchors the A == B comparison of the margins, which would hold vacuously if no engine
+// printed any.
+func pisMargins(raw json.RawMessage) (ok bool) {
+	var m struct{ Full, Origin bool }
+	return json.Unmarshal(raw, &m) == nil && m.Full && !m.Origin
+}
+
 // TestScrollRegionsShowTheSameScreenAsPisBytes replays A and B of every scenario through each engine and requires the same screen after every
 // step. A mismatch is reported with the first differing step's bytes, which is the minimal sequence that makes the engine disagree with itself.
 // A scenario named known-* is a recorded finding: it must differ in every engine, and fails once it no longer does, so that a fix deletes it.
@@ -289,45 +303,72 @@ func TestScrollRegionsShowTheSameScreenAsPisBytes(t *testing.T) {
 		t.Fatal("PIG_TERM_ENGINE_CORPUS_DIR is not set: run make test-term-engines, which generates the corpus")
 	}
 	plan := readPlan(t, dir)
-	for _, e := range engines {
-		t.Run(e.name, func(t *testing.T) {
-			t.Parallel()
-			version, screens := e.run(t, dir)
-			compared, mismatched, known, nonBlank := 0, 0, 0, 0
-			for _, sc := range plan {
-				got := screens[sc.name]
-				a, b := got["A"], got["B"]
-				pa, pb := sc.variants["A"], sc.variants["B"]
-				if len(a) != len(pa.steps) || len(b) != len(pb.steps) {
-					t.Errorf("%s: %d/%d screens printed for %d/%d steps", sc.name, len(a), len(b), len(pa.steps), len(pb.steps))
-					continue
-				}
-				for i := range a {
-					if !blank(a[i]) {
-						nonBlank++
+	var mu sync.Mutex
+	leakDiffers := map[string]int{} // fixture scenarios left out for a clipped line, by the number of engines that show other screens for them
+	t.Run("engines", func(t *testing.T) {
+		for _, e := range engines {
+			t.Run(e.name, func(t *testing.T) {
+				t.Parallel()
+				version, screens := e.run(t, dir)
+				compared, mismatched, known, nonBlank := 0, 0, 0, 0
+				var leakDiffer []string
+				leakTotal := 0
+				for _, sc := range plan {
+					got := screens[sc.name]
+					a, b := got["A"], got["B"]
+					pa, pb := sc.variants["A"], sc.variants["B"]
+					if len(a) != len(pa.steps) || len(b) != len(pb.steps) {
+						t.Errorf("%s: %d/%d screens printed for %d/%d steps", sc.name, len(a), len(b), len(pa.steps), len(pb.steps))
+						continue
+					}
+					for i := range a {
+						if !blank(a[i]) {
+							nonBlank++
+						}
+						if !pisMargins(b[i].Margins) {
+							t.Errorf("%s step %d: %s printed margins %s for B (Pi's bytes), want the whole screen with origin mode off", sc.name, i, e.name, b[i].Margins)
+							break
+						}
+					}
+					step, difference := firstMismatch(a, b, pa, pb)
+					if strings.HasPrefix(sc.name, "leak-") {
+						// A fixture scenario left out of the equality for a clipped line; its closed twin (oracle-NNN-closed) is in it.
+						leakTotal++
+						mu.Lock()
+						leakDiffers[sc.name] += 0
+						if step >= 0 {
+							leakDiffers[sc.name]++
+							leakDiffer = append(leakDiffer, sc.name)
+						}
+						mu.Unlock()
+						continue
+					}
+					switch isKnown := strings.HasPrefix(sc.name, "known-"); {
+					case step < 0 && isKnown:
+						t.Errorf("%s: %s shows the same screens for A and B after all %d steps: the finding is fixed, delete the scenario", sc.name, e.name, len(a))
+					case step < 0:
+						compared += len(a)
+					case isKnown:
+						known++
+						t.Logf("finding %s (%dx%d) step %d: %s shows other screens for A and B:%s\nstep bytes A: %s\nstep bytes B: %s",
+							sc.name, sc.cols, sc.rows, step, e.name, difference, quoteTail(stepBytes(pa, step)), quoteTail(stepBytes(pb, step)))
+					default:
+						compared += step
+						mismatched++
+						t.Errorf("%s (%dx%d) step %d (resize %v): %s shows other screens for A (scroll regions) and B (Pi's bytes):%s\nstep bytes A: %s\nstep bytes B: %s",
+							sc.name, sc.cols, sc.rows, step, pa.steps[step].resize, e.name, difference, quoteTail(stepBytes(pa, step)), quoteTail(stepBytes(pb, step)))
 					}
 				}
-				step, difference := firstMismatch(a, b, pa, pb)
-				switch isKnown := strings.HasPrefix(sc.name, "known-"); {
-				case step < 0 && isKnown:
-					t.Errorf("%s: %s shows the same screens for A and B after all %d steps: the finding is fixed, delete the scenario", sc.name, e.name, len(a))
-				case step < 0:
-					compared += len(a)
-				case isKnown:
-					known++
-					t.Logf("finding %s (%dx%d) step %d: %s shows other screens for A and B:%s\nstep bytes A: %s\nstep bytes B: %s",
-						sc.name, sc.cols, sc.rows, step, e.name, difference, quoteTail(stepBytes(pa, step)), quoteTail(stepBytes(pb, step)))
-				default:
-					compared += step
-					mismatched++
-					t.Errorf("%s (%dx%d) step %d (resize %v): %s shows other screens for A (scroll regions) and B (Pi's bytes):%s\nstep bytes A: %s\nstep bytes B: %s",
-						sc.name, sc.cols, sc.rows, step, pa.steps[step].resize, e.name, difference, quoteTail(stepBytes(pa, step)), quoteTail(stepBytes(pb, step)))
+				t.Logf("%s %s: %d scenarios, %d checkpoints per variant identical, %d scenarios differ, %d known findings reproduce; %d of %d fixture scenarios left out for a clipped line differ as they are: %v", e.name, version, len(plan), compared, mismatched, known, len(leakDiffer), leakTotal, leakDiffer)
+				if compared == 0 || nonBlank < compared/4 {
+					t.Errorf("%s showed text after only %d of %d steps: the replay did not draw the frames", e.name, nonBlank, compared)
 				}
-			}
-			t.Logf("%s %s: %d scenarios, %d checkpoints per variant identical, %d scenarios differ, %d known findings reproduce", e.name, version, len(plan), compared, mismatched, known)
-			if compared == 0 || nonBlank < compared/4 {
-				t.Errorf("%s showed text after only %d of %d steps: the replay did not draw the frames", e.name, nonBlank, compared)
-			}
-		})
+			})
+		}
+	})
+	for name, count := range leakDiffers {
+		if count == 0 {
+			t.Errorf("%s shows the same screens for A and B in every engine as it is: it is not left out of the equality for a reason, delete it from termLeakingOracleScenarios", name)
+		}
 	}
 }

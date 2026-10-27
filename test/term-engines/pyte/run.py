@@ -5,6 +5,7 @@ import sys
 from importlib.metadata import version
 
 import pyte
+from pyte import modes
 
 
 def style(char):
@@ -35,7 +36,10 @@ def dump(screen):
                 runs.append([x, 1, s])
         rows.append(text)
         styles.append(runs)
-    return {"cursor": [screen.cursor.x, screen.cursor.y], "rows": rows, "styles": styles}
+    # pyte keeps no margins until DECSTBM sets them, and DECSTBM with the whole screen resets them.
+    top, bottom = (0, screen.lines - 1) if screen.margins is None else (screen.margins.top, screen.margins.bottom)
+    margins = {"top": top, "bottom": bottom, "origin": modes.DECOM in screen.mode, "full": top == 0 and bottom == screen.lines - 1}
+    return {"cursor": [screen.cursor.x, screen.cursor.y], "rows": rows, "styles": styles, "margins": margins}
 
 
 def main():

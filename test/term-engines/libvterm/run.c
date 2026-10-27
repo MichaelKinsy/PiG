@@ -111,7 +111,22 @@ static void dump(FILE *out, VTerm *vt, VTermScreen *screen, int cols, int rows) 
   }
   VTermPos cursor;
   vterm_state_get_cursorpos(vterm_obtain_state(vt), &cursor);
-  fprintf(out, "],\"cursor\":[%d,%d]}", cursor.col, cursor.row);
+  // The scroll region and origin mode are read with the terminal's own status reports (DECRQSS for DECSTBM, DECRQM for DECOM), which
+  // change no state.
+  static const char query[] = "\x1bP$qr\x1b\\\x1b[?6$p";
+  vterm_input_write(vt, query, sizeof query - 1);
+  char reply[128];
+  size_t n = vterm_output_read(vt, reply, sizeof reply - 1);
+  reply[n] = 0;
+  int top = 0, bottom = 0, origin = 0;
+  char *region = strstr(reply, "$r");
+  char *mode = strstr(reply, "?6;");
+  if (!region || sscanf(region, "$r%d;%dr", &top, &bottom) != 2 || !mode || sscanf(mode, "?6;%d$y", &origin) != 1) {
+    fprintf(stderr, "libvterm answered the margin queries with %s\n", reply);
+    exit(1);
+  }
+  fprintf(out, "],\"cursor\":[%d,%d],\"margins\":{\"top\":%d,\"bottom\":%d,\"origin\":%s,\"full\":%s}}", cursor.col, cursor.row, top - 1, bottom - 1,
+          origin == 1 ? "true" : "false", top == 1 && bottom == rows ? "true" : "false");
 }
 
 static unsigned char *read_file(const char *path, size_t *size) {

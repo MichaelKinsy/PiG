@@ -337,6 +337,11 @@ var termKnownScenarios = []termScenario{
 	}},
 }
 
+// termLeakingOracleScenarios are the fixture scenarios (indexes in testdata/alt-screen-oracle.json.gz) left out of the A == B equality: a
+// component renders a line wider than the screen in each, the clipped line leaks its SGR, and some engine shows other screens for A and B
+// as a result. TestAltScreenTermEngineCorpus records how each is shown to differ only by the leak.
+var termLeakingOracleScenarios = []int{173, 485}
+
 // termRandomMix is a seeded mix of the edits TestAltScreenScrolledFramesShowEveryRow makes: lines added, extended, deleted, inserted and
 // changed (with wide text), the viewport scrolled, and the rows below the transcript changed.
 func termRandomMix(seed uint64) termScenario {
@@ -395,7 +400,7 @@ func playTermScenario(t *testing.T, sc termScenario, rec *termRecorder, scrollRo
 	t.Helper()
 	t.Setenv("PIG_TUI_SCROLL_ROWS", map[bool]string{true: "", false: "0"}[scrollRows])
 	var out strings.Builder
-	text, dock := &termLines{unclipped: sc.unclipped}, &termLines{}
+	text, dock := &termLines{unclipped: sc.unclipped}, &termLines{unclipped: sc.unclipped}
 	components := []Component{text}
 	if sc.dock != nil {
 		dock.lines = slices.Clone(sc.dock.lines)
@@ -423,6 +428,15 @@ func TestAltScreenTermEngineCorpus(t *testing.T) {
 	for seed := range uint64(6) {
 		scenarios = append(scenarios, termRandomMix(seed))
 	}
+	// The scenarios that once showed other screens in A than in B, played again with the components rendering lines as they are, wider than the
+	// screen or not: the renderer clips those, and the leaked SGR makes A and B differ in every engine. Their clipped-and-closed twins above are
+	// equal, which is how each is shown to differ only by that leak.
+	for _, name := range []string{"stream-follow", "resize-mid-stream", "wide-styled", "random-mix-2"} {
+		index := slices.IndexFunc(scenarios, func(sc termScenario) bool { return sc.name == name })
+		unclipped := scenarios[index]
+		unclipped.name, unclipped.unclipped = "known-unclipped-"+name, true
+		scenarios = append(scenarios, unclipped)
+	}
 	for _, sc := range scenarios {
 		recorded := add(sc.name, sc.cols, sc.rows)
 		t.Run(sc.name+"/A", func(t *testing.T) { playTermScenario(t, sc, &termRecorder{recorded.Variants["A"]}, true) })
@@ -431,34 +445,56 @@ func TestAltScreenTermEngineCorpus(t *testing.T) {
 
 	// The fixture's scenarios: the frames of the pinned Pi's TuiAltScreen run, replayed as A (scroll regions) and B (Pi's bytes, which the
 	// replay also compares with Pi's). A scenario on a screen narrower or lower than 2 cells, or resized to one, is left out: emulators
-	// do not give a terminal that size. So is one whose components render a line wider than the screen: the clipped line leaks its attributes
-	// into the rows after it (known-clipped-sgr-leak), so its A and B differ by that, not by what D205 scrolls.
-	oracle := map[string]map[int]*termCorpusScenario{"A": {}, "B": {}}
+	// do not give a terminal that size.
+	//
+	// Scenarios whose components render a line wider than the screen leak SGR (known-clipped-sgr-leak), and most of them still show the same
+	// screen in A and B and stay in the equality as they are. The two that show other screens in some engine (termLeakingOracleScenarios) are
+	// left out of it, and each is shown to differ only by the leak:
+	//   - oracle-NNN-closed: the same scenario with every rendered line wider than the screen clipped to it and closed with a reset,
+	//     identically in A and B (a test-only transform of the lines the components render). It is in the equality: A and B are equal in all
+	//     five engines once the leak is closed, and a difference left over would be a finding.
+	//   - leak-oracle-NNN: the scenario as it is, compared by every engine; it must differ in at least one (else it is not left out for a
+	//     reason and is deleted from the list), and is reported, not asserted equal.
+	type oracleKey struct {
+		variant string
+		closed  bool
+	}
+	oracle := map[oracleKey]map[int]*termCorpusScenario{}
 	clipped := map[int]bool{} // scenarios in which a component rendered a line wider than the screen
-	for _, variant := range []string{"A", "B"} {
-		t.Run("oracle/"+variant, func(t *testing.T) {
-			tap := &oracleTap{
-				recordOnly: true,
-				start: func(scenario, cols, rows int, _ string, out string) {
-					recorded := &termCorpusScenario{Name: fmt.Sprintf("oracle-%03d", scenario), Cols: cols, Rows: rows, Variants: map[string]*termCorpusVariant{variant: {File: fmt.Sprintf("oracle-%03d.%s.bin", scenario, variant)}}}
-					oracle[variant][scenario] = recorded
-					(&termRecorder{recorded.Variants[variant]}).add(nil, out)
-				},
-				step: func(scenario int, resize []int, overWide bool, out string) {
-					clipped[scenario] = clipped[scenario] || overWide
-					(&termRecorder{oracle[variant][scenario].Variants[variant]}).add(resize, out)
-				},
+	for _, closed := range []bool{false, true} {
+		for _, variant := range []string{"A", "B"} {
+			key := oracleKey{variant, closed}
+			oracle[key] = map[int]*termCorpusScenario{}
+			suffix := ""
+			if closed {
+				suffix = "-closed"
 			}
-			if variant == "A" {
-				checkAltScreenOracleIn(t, true, nil, tap)
-			} else {
-				checkAltScreenOracleIn(t, false, map[string]string{"PIG_TUI_SCROLL_ROWS": "0"}, tap)
-			}
-		})
+			t.Run("oracle/"+variant+suffix, func(t *testing.T) {
+				tap := &oracleTap{
+					recordOnly:   true,
+					closeClipped: closed,
+					start: func(scenario, cols, rows int, _ string, out string) {
+						name := fmt.Sprintf("oracle-%03d%s", scenario, suffix)
+						recorded := &termCorpusScenario{Name: name, Cols: cols, Rows: rows, Variants: map[string]*termCorpusVariant{variant: {File: name + "." + variant + ".bin"}}}
+						oracle[key][scenario] = recorded
+						(&termRecorder{recorded.Variants[variant]}).add(nil, out)
+					},
+					step: func(scenario int, resize []int, overWide bool, out string) {
+						clipped[scenario] = clipped[scenario] || overWide
+						(&termRecorder{oracle[key][scenario].Variants[variant]}).add(resize, out)
+					},
+				}
+				if variant == "A" {
+					checkAltScreenOracleIn(t, true, nil, tap)
+				} else {
+					checkAltScreenOracleIn(t, false, map[string]string{"PIG_TUI_SCROLL_ROWS": "0"}, tap)
+				}
+			})
+		}
 	}
 	leaking := 0
-	for scenario := range len(oracle["A"]) {
-		a, b := oracle["A"][scenario], oracle["B"][scenario]
+	for scenario := range len(oracle[oracleKey{"A", false}]) {
+		a, b := oracle[oracleKey{"A", false}][scenario], oracle[oracleKey{"B", false}][scenario]
 		if a == nil || b == nil {
 			t.Fatalf("oracle scenario %d was not replayed in both variants", scenario)
 		}
@@ -466,17 +502,26 @@ func TestAltScreenTermEngineCorpus(t *testing.T) {
 		for _, step := range a.Variants["A"].Steps {
 			usable = usable && (step.Resize == nil || step.Resize[0] >= 2 && step.Resize[1] >= 2)
 		}
-		if !usable || clipped[scenario] {
-			if usable {
-				leaking++
+		switch {
+		case !usable:
+		case slices.Contains(termLeakingOracleScenarios, scenario):
+			if !clipped[scenario] {
+				t.Errorf("oracle scenario %d is left out for a clipped line, but no component renders a line wider than the screen in it", scenario)
 			}
-			continue
+			leaking++
+			closedA, closedB := oracle[oracleKey{"A", true}][scenario], oracle[oracleKey{"B", true}][scenario]
+			closedScenario := add(closedA.Name, closedA.Cols, closedA.Rows)
+			closedScenario.Variants["A"], closedScenario.Variants["B"] = closedA.Variants["A"], closedB.Variants["B"]
+			leak := add("leak-"+a.Name, a.Cols, a.Rows)
+			leak.Variants["A"], leak.Variants["B"] = a.Variants["A"], b.Variants["B"]
+		default:
+			merged := add(a.Name, a.Cols, a.Rows)
+			merged.Variants["A"], merged.Variants["B"] = a.Variants["A"], b.Variants["B"]
 		}
-		merged := add(a.Name, a.Cols, a.Rows)
-		merged.Variants["A"], merged.Variants["B"] = a.Variants["A"], b.Variants["B"]
 	}
-
-	t.Logf("%d fixture scenarios render lines wider than the screen and are left out", leaking)
+	if leaking != len(termLeakingOracleScenarios) {
+		t.Fatalf("%d of the %d fixture scenarios in termLeakingOracleScenarios were replayed", leaking, len(termLeakingOracleScenarios))
+	}
 
 	// Every scenario has as many frames in A as in B, and the corpus exercises the feature: B (Pi's bytes) sets no scroll region, A sets
 	// one in many frames, and the two write other bytes there.

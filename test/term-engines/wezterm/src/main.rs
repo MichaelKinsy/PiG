@@ -137,7 +137,10 @@ fn dump(term: &Terminal, cols: usize, rows: usize) -> Value {
         styles.push(runs.into_iter().map(|(x, n, s)| json!([x, n, s])).collect::<Vec<_>>());
     }
     let cursor = term.cursor_pos();
-    json!({ "cursor": [cursor.x, cursor.y], "rows": texts, "styles": styles })
+    let margins = term.get_top_and_bottom_margins();
+    let (top, bottom) = (margins.start, margins.end - 1);
+    let margins = json!({ "top": top, "bottom": bottom, "origin": term.dec_origin_mode_enabled(), "full": top == 0 && bottom == rows as i64 - 1 });
+    json!({ "cursor": [cursor.x, cursor.y], "rows": texts, "styles": styles, "margins": margins })
 }
 
 fn main() {
