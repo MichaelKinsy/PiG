@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // oracleSlot is one top-level part: either the lines Pi returned or a real Image component, as the step's set chose.
@@ -91,7 +92,7 @@ func TestAltScreenScrollFallsBackToPisBytes(t *testing.T) {
 		{"PIG_TUI_SCROLL_ROWS=0 in xterm", map[string]string{"PIG_TUI_SCROLL_ROWS": "0"}},
 		{"PIG_TUI_SCROLL_ROWS=0 with COLORTERM=truecolor", map[string]string{"PIG_TUI_SCROLL_ROWS": "0", "COLORTERM": "truecolor"}},
 	} {
-		t.Run(tc.name, func(t *testing.T) { checkAltScreenOracleIn(t, false, tc.env) })
+		t.Run(tc.name, func(t *testing.T) { checkAltScreenOracleIn(t, false, tc.env, nil) })
 	}
 }
 
@@ -125,12 +126,22 @@ func TestScrollRegionsUsableIn(t *testing.T) {
 // checkAltScreenOracle runs the fixture's scenarios and compares each step's bytes with Pi's, or with screens set, the rows
 // they show.
 func checkAltScreenOracle(t *testing.T, screens bool) {
-	checkAltScreenOracleIn(t, screens, nil)
+	checkAltScreenOracleIn(t, screens, nil, nil)
+}
+
+// oracleTap observes the bytes a replay of the oracle's scenarios writes: start is called with the bytes Start wrote and step with the
+// bytes of each step, the size the step resized the screen to (nil when it did not), and whether a line the step's components rendered is wider
+// than the screen (the renderer clips such a line, which drops its closing SGR reset). The terminal-engine corpus records them, and leaves
+// judging what the steps show to the engines (recordOnly), so a step that shows other rows than Pi's reaches them instead of failing here.
+type oracleTap struct {
+	recordOnly bool
+	start func(scenario, cols, rows int, images string, out string)
+	step  func(scenario int, resize []int, overWide bool, out string)
 }
 
 // checkAltScreenOracleIn is checkAltScreenOracle in a terminal whose environment sets env over the oracle's (TERM=xterm-256color
-// and no multiplexer variables).
-func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string) {
+// and no multiplexer variables). A non-nil tap sees every scenario's bytes.
+func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, tap *oracleTap) {
 	file, err := os.Open("testdata/alt-screen-oracle.json.gz")
 	if err != nil {
 		t.Fatal(err)
@@ -195,6 +206,7 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string) {
 	// the images earlier tests or an earlier -count run registered, and leave none behind.
 	resetKittyRegistry(t)
 	t.Cleanup(func() { resetKittyRegistry(t) })
+	recordOnly := tap != nil && tap.recordOnly
 	failures, scrolledSteps := 0, 0
 	report := func(format string, args ...any) {
 		if failures++; failures <= 6 {
@@ -243,6 +255,10 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string) {
 		if got := string(GetCapabilities().Images); got != sc.ImagesAfterStart {
 			report("scenario %d: images %q after start, Pi %q", index, got, sc.ImagesAfterStart)
 		}
+		if tap != nil {
+			tap.start(index, sc.Cols, sc.Rows, sc.Images, out.String())
+		}
+		cols := sc.Cols
 		pigVT, piVT := newRowsVT(max(1, sc.Rows)), newRowsVT(max(1, sc.Rows))
 		pigVT.apply(out.String())
 		piVT.apply(strings.ReplaceAll(sc.StartOut, altScreenOracleStartMarker, ""))
@@ -321,7 +337,19 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string) {
 				report("scenario %d (%dx%d) step %d: %d full redraws, Pi %d", index, sc.Cols, sc.Rows, step, got, want)
 				break
 			}
-			if screens {
+			if tap != nil {
+				if spec.Resize != nil {
+					cols = spec.Resize[0]
+				}
+				overWide := false
+				for _, lines := range append(slices.Clone(sc.Log[step].Rendered), sc.Log[step].Overlays...) {
+					for _, line := range lines {
+						overWide = overWide || widthx.VisibleWidth(line) > cols
+					}
+				}
+				tap.step(index, spec.Resize, overWide, out.String())
+			}
+			if screens && !recordOnly {
 				// A new height redraws the whole screen; a resize to the same size draws nothing.
 				if spec.Resize != nil && max(1, spec.Resize[1]) != len(pigVT.rows) {
 					pigVT, piVT = newRowsVT(max(1, spec.Resize[1])), newRowsVT(max(1, spec.Resize[1]))
@@ -341,7 +369,7 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string) {
 				if out.String() != sc.Log[step].Out {
 					scrolledSteps++
 				}
-			} else if got, want := out.String(), sc.Log[step].Out; got != want {
+			} else if got, want := out.String(), sc.Log[step].Out; !screens && got != want {
 				report("scenario %d (%dx%d, images %q) step %d %+v\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, step, spec, got, want)
 				break
 			}
@@ -358,7 +386,7 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string) {
 	if failures > 0 {
 		t.Errorf("%d of %d scenarios differ from Pi", failures, len(scenarios))
 	}
-	if screens {
+	if screens && !recordOnly {
 		t.Logf("%d steps scrolled rows and wrote other bytes than Pi", scrolledSteps)
 		if scrolledSteps == 0 {
 			t.Error("no step scrolled rows, so no step was compared by what it shows")

@@ -354,6 +354,14 @@ test-sdk-lisp: ## Run the Lisp extension SDK's own tests with the pinned SBCL
 
 .PHONY: test-sdk-lisp
 
+# D205's terminal-engine A/B test: the scroll-region frames and Pi's bytes (PIG_TUI_SCROLL_ROWS=0) of a corpus the tui package generates,
+# replayed through xterm.js, alacritty_terminal, wezterm-term, libvterm and pyte, which must show the same screen after every frame.
+# Builds the pinned engines from their locks (docs/testing/term-engines.md); a missing toolchain fails, never skips.
+test-term-engines: ## Replay D205's scroll-region and Pi-byte frames through five terminal emulators and require equal screens
+	@./automation/ci/test-term-engines.sh
+
+.PHONY: test-term-engines
+
 # The SDK scenario table (test/extension-conformance/sdkscenarios) runs once per SDK through the real host, with the Go, Node, Python, Rust and Lisp scenario drivers, and each SDK must produce the observation the table gives. A row in a scenario's Red map must still produce exactly its recorded Got, so the lane that fixes it deletes the entry and a regression inside a red row still fails. CI runs it in the test-conformance shard and in the Windows and macOS extension-conformance shards, because it is a test of ./test/extension-conformance; this target runs it alone, with the wiring checks that tie the table to the wire methods the code derives.
 test-sdk-conformance: ## Run the SDK conformance scenario table against every extension SDK through the real host
 	@go test ./test/extension-conformance -run '^TestSDKScenarios$$' $(GO_TEST_CI_COUNT)
