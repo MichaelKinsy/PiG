@@ -13,7 +13,18 @@ func (s *Scheduler) scheduleReconcile() {
 		return
 	}
 	s.reconcileScheduled = true
-	s.loop.Defer(s.reconcile)
+	s.microtask(s.reconcile)
+}
+
+// microtask is `queueMicrotask(fn)` as the scheduler's code calls it. Inside the commit observer (scheduler.ts #observe, which runs in the
+// Storage's adopt) it queues behind the dispatch to the host's `subscribeCommits` listeners (session.ts #notifyHosts), which a listener
+// registered at adoption has queued first: it runs a hop later, so a commit such a listener makes is admitted to the line before it.
+func (s *Scheduler) microtask(fn func()) {
+	if s.observing && s.env.CommitListeners != nil && *s.env.CommitListeners && s.env.After != nil {
+		s.env.After(1, fn)
+		return
+	}
+	s.loop.Defer(fn)
 }
 
 // abortLater signals the run of inv: scheduler.ts #observe queues `invocation.controller.abort()` as a microtask inside the Storage's adopt, behind
@@ -52,7 +63,7 @@ func (s *Scheduler) kick() {
 		return
 	}
 	s.draining = true
-	s.loop.Defer(s.drain)
+	s.microtask(s.drain)
 }
 
 // observe is the scheduler's commit listener (scheduler.ts #observe).
