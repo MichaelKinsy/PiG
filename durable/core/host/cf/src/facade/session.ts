@@ -27,18 +27,28 @@ function watchingVia(open: () => Promise<Harness>, owner: object) {
   }
 }
 
+/**
+ * HarnessOptions.onReport of a Session: the report goes to the `report(error, info)` the owner defines (session.ts: a Session subclass
+ * overrides it, the plain one drops reports). The owner is held weakly, so the Harness keeps nothing of the object that holds it.
+ */
+function reportingTo(owner: object): (error: unknown, info?: unknown) => void {
+  const ref = new WeakRef(owner as { report?: (error: unknown, info?: unknown) => void })
+  return (error, info) => { ref.deref()?.report?.(error, info) }
+}
+
 /** `owner` is the object the caller holds as the Session (SessionImpl's `this`); a bare Session is its own owner. */
 export function createLazySession(storage: Storage, options: { now?: () => number; documentRetentionMs?: () => number | undefined } = {}, owner: object = {}): unknown {
   let opened: Promise<Harness> | undefined
   // types.ts Session.closed: why the Session ended. A Session nobody used closes without opening the core.
   const ended = Promise.withResolvers<unknown>()
   let harness: Harness | undefined
+  const reported = reportingTo(owner)
   const open = () => {
     if (opened === undefined) {
       const { now, documentRetentionMs } = options
       // The retention is read live at each use, as Session reads its callback.
       const settings = documentRetentionMs === undefined ? undefined : { get documentRetentionMs() { return documentRetentionMs() } }
-      opened = Harness.open(storage, { models: NO_MODELS, registry: NO_REGISTRY as never, mode: "session", ...(now === undefined ? {} : { now }), ...(settings === undefined ? {} : { settings }) }, BACKGROUND_CONTEXT)
+      opened = Harness.open(storage, { models: NO_MODELS, registry: NO_REGISTRY as never, mode: "session", onReport: reported, ...(now === undefined ? {} : { now }), ...(settings === undefined ? {} : { settings }) }, BACKGROUND_CONTEXT)
       void opened.then(h => { harness = h })
       void opened.then(h => h.closed).then(r => ended.resolve(r), () => {})
     }
