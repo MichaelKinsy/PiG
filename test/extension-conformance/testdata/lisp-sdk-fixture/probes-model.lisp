@@ -160,7 +160,8 @@
                                 "approved" (pig:obj "type" "bool" "instructions" "Does this express approval?"
                                                     "criteria" (pig:obj "true" "Approval" "false" "No approval")))))
 
-(defun mp-typed-reads (ctx)
+(defun mp-typed-reads (ctx params)
+  (declare (ignore params))
   (let* ((registry (pig:ctx-model-registry ctx))
          (found (pig:registry-find-of-type registry "classifier" "typesafe" "jev-latest"))
          (of-type (pig:registry-get-model-of-type registry "classifier" "typesafe" "jev-latest")))
@@ -174,7 +175,8 @@
               "foundWindow" (pig:jget found "contextWindow")
               "missing" (pig:registry-find-of-type registry "classifier" "typesafe" "missing")))))
 
-(defun mp-classify-probe (ctx)
+(defun mp-classify-probe (ctx params)
+  (declare (ignore params))
   (let* ((registry (pig:ctx-model-registry ctx))
          (model (pig:registry-find-of-type registry "classifier" "typesafe" "jev-latest"))
          (result (pig:registry-classify registry model (mp-approval "Looks good") (pig:obj "apiKey" "sk-conf")))
@@ -190,7 +192,8 @@
               "model" (pig:jget result "model")
               "failedStop" (pig:jget failed "stopReason") "failedMessage" (pig:jget failed "errorMessage") "failedProvider" (pig:jget failed "provider")))))
 
-(defun mp-images-probe (ctx)
+(defun mp-images-probe (ctx params)
+  (declare (ignore params))
   (let* ((registry (pig:ctx-model-registry ctx))
          (model (pig:registry-find-of-type registry "image" "openrouter" "flux"))
          (prompt (pig:obj "input" (pig:arr (pig:obj "type" "text" "text" "a red circle"))))
@@ -209,7 +212,8 @@
   (declare (ignore ctx request))
   (pig:obj "model" (pig:obj "provider" "p" "id" "m") "thinkingLevel" "off"))
 
-(defun mp-virtual-probe (ctx)
+(defun mp-virtual-probe (ctx params)
+  (declare (ignore params))
   (let ((registry (pig:ctx-model-registry ctx)) (refused ""))
     (pig:registry-register-virtual-model registry (mp-virtual-model :provider "router" :id "late" :name "Late" :route #'mp-route :context-window 1000))
     (handler-case (pig:registry-register-virtual-model registry (mp-virtual-model :provider "router" :id "claimed" :name "Claimed" :route #'mp-route))
@@ -217,7 +221,8 @@
     (pig:registry-unregister-virtual-model registry "router" "late")
     (pig:to-json (pig:obj "first" t "refused" refused))))
 
-(defun mp-virtual-visible (ctx)
+(defun mp-virtual-visible (ctx params)
+  (declare (ignore params))
   (let ((registry (pig:ctx-model-registry ctx)))
     (flet ((listed () (if (find-if (lambda (model) (and (equal (pig:jget model "provider") "router") (equal (pig:jget model "id") "seen")))
                                    (pig:registry-get-all registry))
@@ -236,9 +241,100 @@
   (pig:command ext "model-stream-fetch-probe" "Exercise the fetch option of model_registry.stream"
                (lambda (ctx args) (declare (ignore args)) (mp-model-stream-fetch-probe ctx))))
 
+;;; the provider operations of the model-types rows: image and classifier implementations, a provider config, a Provider object and a late registration
+
+(defvar *mp-cancelled* 0 "How many hung classifications ended because their request was cancelled.")
+
+(defun mp-zero-rates () (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0))
+
+(defun mp-operation-key (options)
+  (pig:jget (pig:provider-operation-options-values options) "apiKey"))
+
+(defun mp-image-impl (model request options)
+  (let ((prompt (pig:jget (aref (pig:jget request "input") 0) "text")))
+    (when (equal prompt "fail") (error "image failed"))
+    (pig:obj "api" (pig:jget model "api") "provider" (pig:jget model "provider") "model" (pig:jget model "id")
+             "responseId" (mp-operation-key options)
+             "output" (pig:arr (pig:obj "type" "image" "data" (format nil "img:~A:~A" (pig:jget model "id") prompt) "mimeType" "image/png"))
+             "stopReason" "stop" "timestamp" 1)))
+
+(defun mp-classify-impl (model request options)
+  (let ((state (pig:jget (pig:jget request "state") "text")))
+    (cond ((equal state "fail") (error "classifier failed"))
+          ((equal state "hang")
+           (pig:abort-signal-wait (pig:provider-operation-options-signal options))
+           (incf *mp-cancelled*)
+           (error "classifier cancelled")))
+    (let ((answers (pig:obj)) (images (pig:jget request "images")))
+      (dolist (key (reverse (loop for key being the hash-keys of (pig:jget request "questions") collect key)))
+        (setf (gethash key answers)
+              (pig:obj "type" "bool" "probability" (/ (+ (length state) (* 10 (if (vectorp images) (length images) 0))) 100d0))))
+      (pig:obj "api" (pig:jget model "api") "provider" (pig:jget model "provider") "model" (pig:jget model "id")
+               "answers" answers "stopReason" "stop" "timestamp" 2))))
+
+(defun mp-late-stream (ctx model request options)
+  (declare (ignore ctx request))
+  (let ((stream (pig:make-model-event-stream)))
+    (pig:model-stream-push
+     stream
+     (pig:obj "type" "done" "reason" "stop"
+              "message" (pig:obj "role" "assistant" "api" (pig:jget model "api") "provider" (pig:jget model "provider") "model" (pig:jget model "id")
+                                 "content" (pig:arr (pig:obj "type" "text" "text" (format nil "late:~A:~A" (pig:jget model "id") (pig:jget options "apiKey"))))
+                                 "stopReason" "stop" "timestamp" 1)))
+    stream))
+
+(defun mp-late-provider (ctx params)
+  (let ((registry (pig:ctx-model-registry ctx)) (mode (pig:jget params "mode")))
+    (pig:registry-register-provider
+     registry "late"
+     (pig:obj "api" "late-chat-api" "baseUrl" "https://late.test/v1" "apiKey" "late-key"
+              "models" (pig:arr (pig:obj "id" "chat" "name" "Chat" "reasoning" :false "input" (pig:arr "text") "cost" (mp-zero-rates)
+                                         "contextWindow" 1000 "maxTokens" 100)
+                                (pig:obj "id" "flux" "name" "Flux" "type" "image" "api" "late-images" "input" (pig:arr "text")
+                                         "output" (pig:arr "image") "cost" (mp-zero-rates))
+                                (pig:obj "id" "cls" "name" "Cls" "type" "classifier" "api" "late-classifier" "input" (pig:arr "text")
+                                         "contextWindow" 1000 "cost" (mp-zero-rates)))
+              "images" (pig:obj "late-images" #'mp-image-impl) "classifiers" (pig:obj "late-classifier" #'mp-classify-impl)
+              "streamSimple" #'mp-late-stream))
+    (when (equal mode "again") (pig:registry-register-provider registry "late" (pig:obj "baseUrl" "https://late.test/v2")))
+    (when (equal mode "gone") (pig:registry-unregister-provider registry "late"))
+    (pig:to-json (pig:obj "mode" mode))))
+
+(defun mp-ops-status (ctx params)
+  (declare (ignore ctx params))
+  (pig:to-json (pig:obj "cancelled" *mp-cancelled*)))
+
+(defun mp-register-providers (ext)
+  (pig:register-provider
+   ext "ops"
+   (pig:obj "baseUrl" "https://ops.test/v1" "apiKey" "ops-key"
+            "models" (pig:arr (pig:obj "id" "flux" "name" "Flux" "type" "image" "api" "test-images" "input" (pig:arr "text")
+                                       "output" (pig:arr "image" "text") "cost" (mp-zero-rates))
+                              (pig:obj "id" "cls" "name" "Cls" "type" "classifier" "api" "test-classifier" "input" (pig:arr "text")
+                                       "contextWindow" 1000 "cost" (mp-zero-rates)))
+            "images" (pig:obj "test-images" #'mp-image-impl)
+            "classifiers" (pig:obj "test-classifier" #'mp-classify-impl)))
+  (pig:register-provider
+   ext
+   (pig:make-provider
+    :id "pixels" :name "Pixels"
+    :auth (pig:make-provider-auth
+           :api-key (pig:make-api-key-auth :name "Pixels key"
+                                           :resolve (lambda (input) (declare (ignore input)) (pig:make-auth-result :auth (pig:obj "apiKey" "pixels-key")))))
+    :get-models (lambda ()
+                  (pig:arr (pig:obj "id" "flux" "name" "Flux" "type" "image" "api" "test-images" "input" (pig:arr "text") "output" (pig:arr "image")
+                                    "cost" (mp-zero-rates) "baseUrl" "https://pixels.test/v1")
+                           (pig:obj "id" "cls" "name" "Cls" "type" "classifier" "api" "test-classifier" "input" (pig:arr "text")
+                                    "contextWindow" 1000 "cost" (mp-zero-rates) "baseUrl" "https://pixels.test/v1")))
+    :stream (lambda (&rest arguments) (declare (ignore arguments)) nil)
+    :stream-simple (lambda (&rest arguments) (declare (ignore arguments)) nil)
+    :generate-images #'mp-image-impl :classify #'mp-classify-impl)))
+
 (def-fixture "model-types" (ext)
+  (mp-register-providers ext)
   (loop for (name handler) in (list (list "typed_reads" #'mp-typed-reads) (list "classify_probe" #'mp-classify-probe)
                                     (list "images_probe" #'mp-images-probe) (list "virtual_probe" #'mp-virtual-probe)
-                                    (list "virtual_visible" #'mp-virtual-visible))
+                                    (list "virtual_visible" #'mp-virtual-visible)
+                                    (list "late_provider" #'mp-late-provider) (list "ops_status" #'mp-ops-status))
         do (let ((handler handler))
-             (pig:tool ext name name (pig:obj "type" "object") (lambda (ctx params) (declare (ignore params)) (funcall handler ctx))))))
+             (pig:tool ext name name (pig:obj "type" "object") (lambda (ctx params) (funcall handler ctx params))))))

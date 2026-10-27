@@ -374,3 +374,21 @@
     (let ((octets (sb-ext:string-to-octets text :external-format :utf-8)))
       (check-equal text (sb-ext:octets-to-string (pig::ms-base64-decode (pig::ms-base64-encode octets)) :external-format :utf-8))))
   (check-equal "cGluZy1ib2R5" (pig::ms-base64-encode (sb-ext:string-to-octets "ping-body" :external-format :utf-8))))
+
+(deftest registry-registration-members-delegate-to-the-context
+  (let* ((names '(pig::ctx-register-provider pig::ctx-unregister-provider pig::ctx-register-virtual-model pig::ctx-unregister-virtual-model))
+         (saved (mapcar (lambda (name) (cons name (and (fboundp name) (fdefinition name)))) names))
+         (calls '()))
+    (unwind-protect
+         (progn
+           (dolist (name names)
+             (let ((name name)) (setf (fdefinition name) (lambda (&rest arguments) (push (cons name arguments) calls) nil))))
+           (let ((registry (pig::make-model-registry :ctx)) (config (pig:obj "baseUrl" "u")))
+             (pig:registry-register-provider registry "ops" config)
+             (pig:registry-unregister-provider registry "ops")
+             (pig:registry-register-virtual-model registry :model)
+             (pig:registry-unregister-virtual-model registry "router" "late"))
+           (check-equal `((pig::ctx-unregister-virtual-model :ctx "router" "late") (pig::ctx-register-virtual-model :ctx :model)
+                          (pig::ctx-unregister-provider :ctx "ops") (pig::ctx-register-provider :ctx "ops" ,(pig:obj "baseUrl" "u")))
+                        calls))
+      (loop for (name . function) in saved do (if function (setf (fdefinition name) function) (fmakunbound name))))))
