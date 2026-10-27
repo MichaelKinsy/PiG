@@ -59,6 +59,8 @@ export interface EffectRuntime {
   /** The Harness itself: harness.ts buildEnv passes `read: this` to the environment builder. */
   readTarget?: () => unknown
   hostApi: HostApiOptions
+  /** The Context of a host effect under the span of a phase, by the host's handle (Context.telemetry); absent without telemetry. */
+  spanContext?: (span: number, base: Context) => Context
 }
 
 const thrown = (error: unknown) => wireError(error)
@@ -114,7 +116,11 @@ export function withSignal(options: Record<string, unknown> | undefined, signal:
 export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, EffectHandler>> {
   const kept = new KeptLists()
   const envs = new Map<number, unknown>()
-  const contextOf = (signal: AbortSignal): Context => withAbortSignal(signal, BACKGROUND_CONTEXT)
+  // The Context of a host effect: its invocation's signal, and the span of the phase that started it (Context.telemetry).
+  const contextOf = (signal: AbortSignal, span?: number): Context => {
+    const base = withAbortSignal(signal, BACKGROUND_CONTEXT)
+    return span === undefined ? base : rt.spanContext?.(span, base) ?? base
+  }
   const bytes = (v: Uint8Array | string) => typeof v === "string" ? enc.encode(v) : v
 
   const modelContext: EffectHandler = async (effect, { host, signal }) => {
@@ -145,7 +151,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     try {
       // Each request gets its own copy of the list, as Pi's generation does (generation.ts streamSimple call): the kept list grows
       // in place when a later request of the conversation extends it.
-      const stream = rt.models.streamSimple(model, { messages: [...messages] }, withSignal(p.options, signal, contextOf(signal).telemetry))
+      const stream = rt.models.streamSimple(model, { messages: [...messages] }, withSignal(p.options, signal, contextOf(signal, p.span).telemetry))
       let terminal = false
       // Pi stores the final message through a strict-JSON copy in the answer commit; one that is not JSON faults the run there.
       const checked = (event: any): unknown => {
@@ -198,7 +204,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
 
   const tool: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<ToolEffect>(effect)
-    const context = contextOf(signal)
+    const context = contextOf(signal, p.span)
     const registration = rt.registry.tool(p.toolName, p.handler)
     let ended = false
     const live = () => { if (ended) throw new Error(`Tool call ${p.callId} has settled`) }
@@ -284,7 +290,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
 
   const hook: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<HookEffect>(effect)
-    const context = contextOf(signal)
+    const context = contextOf(signal, p.span)
     const own = rt.hostHooks?.[p.name]
     if (own) {
       // A host hook that returns its answer answers in the tick it was asked: the core's caller is Pi code that runs the same
@@ -313,7 +319,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
 
   const section: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<SectionEffect & { handler?: number }>(effect)
-    const context = contextOf(signal)
+    const context = contextOf(signal, p.span)
     try {
       const target = p.handler !== undefined ? rt.registry.at<{ render: (...a: unknown[]) => unknown }>(p.handler) : await sectionOf(rt, p)
       // types.ts PromptInput: the section renders with the request's resolved agent (the codemode section lists its callable
@@ -328,7 +334,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
 
   const env: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<EnvEffect>(effect)
-    const context = contextOf(signal)
+    const context = contextOf(signal, p.span)
     try {
       const built = rt.env ? await rt.env({ conversationId: p.conversationId, ...(p.cwd === undefined ? {} : { cwd: p.cwd }), read: rt.readTarget?.() ?? documentReader(rt.client) }, context) : undefined
       if (p.taskId !== undefined) { if (built === undefined) envs.delete(p.taskId); else envs.set(p.taskId, built) }
@@ -344,11 +350,11 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
       const model = rt.models.getModel(p.model.provider, p.model.modelId)
       if (model === undefined) throw new Error(`Model ${p.model.provider}/${p.model.modelId} is not available`)
       if (p.op === "cancel") {
-        await rt.models.cancelDeferred?.(model, p.handle, { signal, telemetry: contextOf(signal).telemetry })
+        await rt.models.cancelDeferred?.(model, p.handle, { signal, telemetry: contextOf(signal, p.span).telemetry })
         return host.hookDone(effect.id, 0, null)
       }
       if (!rt.models.fetchDeferred) throw new Error("the models object has no fetchDeferred")
-      const message = await rt.models.fetchDeferred(model, p.handle, { signal, telemetry: contextOf(signal).telemetry })
+      const message = await rt.models.fetchDeferred(model, p.handle, { signal, telemetry: contextOf(signal, p.span).telemetry })
       host.hookDone(effect.id, 0, message)
     } catch (error) {
       host.hookDone(effect.id, 1, thrown(error))
@@ -379,7 +385,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
       if (failure) host.phaseDone(effect.id, 1, thrown(failure.error)); else host.phaseDone(effect.id, 0, null)
     }
     try {
-      await rt.phase(p, contextOf(signal), effect.id, settled)
+      await rt.phase(p, contextOf(signal, p.span), effect.id, settled)
       if (!sent) settled()
     } catch (error) {
       if (!sent) settled({ error })

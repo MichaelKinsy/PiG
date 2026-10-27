@@ -43,9 +43,9 @@ type invocation struct {
 	// moved is the phase the commit in flight moves the running checkpoint to, and after the job's hook that records it once the
 	// commit is published (scheduler.ts runtime.commit's `pi.durable.checkpoint` event).
 	moved string
-	after func()
-	// phased is set once the invocation asked the host for its phase's span, so the phase runs when the host answered, with a span or without.
-	phased bool
+	// spanFirst makes the next afterSpan continuation start with the host's span for the phase (ask), which then runs the phase.
+	spanFirst bool
+	ask       func()
 	// links are the record's creation-time carriers, kept for the invocation that finds the task unstarted (invocation.links).
 	links any
 }
@@ -80,6 +80,10 @@ func (inv *invocation) Resume() {
 	}
 	then := inv.next
 	inv.next, inv.stage = nil, 0
+	if inv.spanFirst {
+		inv.spanFirst = false
+		inv.start, then = then, inv.ask
+	}
 	if inv.tick {
 		inv.loop.NextTick(then)
 		return
@@ -200,6 +204,10 @@ type Scheduler struct {
 	// resumed holds the tasks found live at open that have not run a phase since: the span of the first invocation is
 	// `resumed` (scheduler.ts #resumed).
 	resumed []ID
+	// moved are the invocations whose runtime commit moved the running checkpoint, until the job's completion records the event
+	// (afterMoved, flushMoved).
+	moved      []*invocation
+	afterMoved func()
 	// reconcilingWork counts the reconcile passes underway with work: their commits finalize held outcomes and mark
 	// cascades.
 	reconcilingWork int
@@ -227,6 +235,9 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](), parkedTasks: newOrderedSet[ID](),
 	}
 	sess.OnFail = func(err error) { s.report(err, obj("type", "session_failed")) }
+	if env.Telemetry != nil {
+		s.afterMoved = s.flushMoved
+	}
 	return s
 }
 

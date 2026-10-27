@@ -74,21 +74,16 @@ func (s *Scheduler) run(r *reservation, finish func()) {
 			}
 			// #run awaits #step, an async function that awaited the step's commit: the phase starts a tick after the job resolved
 			// (scheduler.ts :919-926, :1000-1002).
-			var begin func()
-			begin = func() {
-				// The phase runs inside its span: a Harness with telemetry asks the host for it first, which runs begin again.
-				if s.env.Telemetry != nil && !inv.phased {
-					s.startPhase(inv, current, begin)
-					return
-				}
+			// The phase runs inside its span: a Harness with telemetry asks the host for it first (afterSpan, spanFirst), which runs the phase.
+			inv.spanFirst = s.env.Telemetry != nil
+			inv.afterSpan(prev != nil, func() {
 				cp, _ := getObj(current, "state").Get("checkpoint")
 				rt.agentReset()
 				st.task.Phase(rt, current, func(err error) {
 					previous = &phaseResult{checkpoint: cp, failure: err}
 					s.loop.Defer(next)
 				})
-			}
-			inv.afterSpan(prev != nil, begin, true)
+			}, true)
 		})
 	}
 	next()
@@ -178,12 +173,7 @@ func (s *Scheduler) runAbort(r *reservation, finish func()) {
 		})
 	}
 	// #runAbort wraps the abort handler and its step in a span of kind abort.
-	var begin func()
-	begin = func() {
-		if s.env.Telemetry != nil && !inv.phased {
-			s.startPhase(inv, current, begin)
-			return
-		}
+	begin := func() {
 		r.task.Abort(rt, current, func(err error) {
 			if n := r.task.AbortReturnHops; n > 0 && s.env.After != nil {
 				s.env.After(n, func() { after(err) })
@@ -191,6 +181,12 @@ func (s *Scheduler) runAbort(r *reservation, finish func()) {
 			}
 			s.loop.Defer(func() { after(err) })
 		})
+	}
+	if s.env.Telemetry != nil {
+		// The abort handler runs inside its span: the host starts it, which runs begin.
+		inv.start = begin
+		s.startPhase(inv)
+		return
 	}
 	begin()
 }

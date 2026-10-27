@@ -89,21 +89,28 @@ func (h *handler) publishEvents(pub *session.Publication) {
 
 // StartPhase asks the host for the span of a phase invocation (the `phaseSpan` hook, answered {span, carrier?}).
 func (t *telHost) StartPhase(p *session.PhaseInfo) {
-	body := jv.NewObject()
-	body.Set("task", float64(p.Task))
-	body.Set("name", p.Kind)
-	body.Set("phase", p.Phase)
-	body.Set("abort", p.Abort)
-	body.Set("resumed", p.Resumed)
+	buf := append(t.h.payloadBuffer(256), `{"task":`...)
+	buf = jv.AppendNumber(buf, float64(p.Task))
+	buf = telString(buf, "name", p.Kind)
+	buf = telString(buf, "phase", p.Phase)
+	if p.Abort {
+		buf = append(buf, `,"abort":true`...)
+	}
+	if p.Resumed {
+		buf = append(buf, `,"resumed":true`...)
+	}
 	if p.HasAttempt {
-		body.Set("attempt", p.Attempt)
+		buf = telNumber(buf, "attempt", p.Attempt)
 	}
 	if p.Trace != nil {
-		body.Set("trace", p.Trace)
+		buf = append(buf, `,"trace":`...)
+		buf = jv.Append(buf, p.Trace)
 	}
 	if p.Links != nil {
-		body.Set("links", p.Links)
+		buf = append(buf, `,"links":`...)
+		buf = jv.Append(buf, p.Links)
 	}
+	body := jv.Raw(append(buf, '}'))
 	t.h.hookEffect("phaseSpan", 0, 0, p.Task, body, nil, func(v any, err error) {
 		var span uint32
 		var carrier any

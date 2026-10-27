@@ -223,6 +223,11 @@ func (h *handler) startTool(run *turn.ToolRun, io *turn.ToolIO, cancel *session.
 		}
 	}
 	body.Set("replay", replay)
+	if h.sched != nil {
+		if span := h.sched.SpanOf(run.Task); span != 0 {
+			body.Set("span", float64(span))
+		}
+	}
 	if handler >= 0 {
 		body.Set("handler", float64(handler))
 	}
@@ -297,6 +302,10 @@ func (h *handler) hookEffect(name string, handler int, conv, task turn.ID, paylo
 // completion starts an effect answered by hook_done (outcome 0 a JSON value, 1 a thrown {name, message}); cancelling
 // the signal cancels the effect. The continuation runs on the Loop.
 func (h *handler) completion(kind abi.EffectKind, body *jv.Object, cancel *session.Cancel, then func(any, error)) {
+	// The invocation's phase span: the host runs the handler under its Context (Context.telemetry).
+	if cancel != nil && cancel.Span != 0 {
+		body.Set("span", float64(cancel.Span))
+	}
 	var remove func()
 	// runtime.env is `#read` (async, returns read()) over buildEnv (async) (scheduler.ts:1161, :1269; harness.ts:226): #read's
 	// promise adopts buildEnv's, which costs a resolve-thenable job a hop after the call and a reaction a hop after both that job
@@ -502,6 +511,9 @@ func (h *handler) renderSections(conv, task turn.ID, agent *turn.Agent, shown *t
 // forwarded as the text the host sent (the request keeps only the last one it commits), and only the message that ends the
 // request is built.
 func (h *handler) stream(req *turn.StreamRequest, onPartial func(jv.Raw), cancel *session.Cancel, then func(*jv.Object, error)) {
+	if cancel != nil {
+		req.Span = cancel.Span
+	}
 	out := h.modelContextPayload(req)
 	h.keepPayload(out)
 	var remove func()

@@ -33,6 +33,8 @@ import { TimeoutTimers } from "../timers.ts"
 import type { TimerDriver } from "../host.ts"
 import { errorMessage, reviveError, SessionFailed, StorageRequestError, type WireErrorBody } from "../errors.ts"
 import { contained } from "./session/session.ts"
+import { HarnessTelemetry, spansOf } from "./telemetry.ts"
+import type { TelemetryContext } from "@earendil-works/pi-telemetry"
 import { structuredOutputError } from "./structured.ts"
 import { validateToolArguments } from "@earendil-works/pi-ai/utils/validation"
 import { type ClientIdentity, mergeClientIdentity, PI_ATTRIBUTION } from "@earendil-works/pi-ai/utils/identity"
@@ -95,6 +97,8 @@ export interface FacadeOptions {
   conversationCreated?: (tx: TxProxy, record: any) => unknown | Promise<unknown>
   now?: () => number
   onReport?: (error: unknown, info: ReportInfo) => void
+  /** The telemetry adapter whose spans and metrics the Harness records (harness.ts HarnessOptions.telemetry); omitted, nothing is recorded. */
+  telemetry?: TelemetryContext
   /** PiG addition: the timer driver (a Durable Object passes its alarm timers). Default: setTimeout timers, cancelled at close. */
   timers?: TimerDriver
   /** PiG addition: the compiled core module (default: `useCore()`). */
@@ -158,6 +162,8 @@ export class Harness {
   readonly client: CoreClient
   private timers?: TimerDriver
   private readonly watches: WatchHub
+  /** The spans and metrics of HarnessOptions.telemetry, driven by the core's notices (telemetry.ts). */
+  readonly telemetry: HarnessTelemetry
   readonly registry: HostRegistry
   private readonly options: FacadeOptions
   private readonly store: Store
@@ -198,6 +204,7 @@ export class Harness {
     if (options.mode === "session") trackColdLoads(client, storage, this.gate)
     this.watches = new WatchHub(client, error => (options.onReport ?? (() => {}))(error, LISTENER), BACKGROUND_CONTEXT)
     this.now = options.now ?? Date.now
+    this.telemetry = new HarnessTelemetry(options.telemetry, spansOf(client), (error, info, context) => this.report(error, info, context))
   }
 
   /** Open a Harness over a storage: a cold open of the core (ABI section 5, `open`). */
@@ -205,7 +212,9 @@ export class Harness {
     context.abortSignal?.throwIfAborted()
     // harness.ts constructor: `onReport` cannot fail what reports to it, and a clock that throws falls back to Date.now (reported once).
     const reported = safeReport(rawOptions.onReport)
-    const options: FacadeOptions = { ...rawOptions, onReport: reported, now: safeNow(rawOptions.now, reported) }
+    // A clock that throws is reported under the Harness's telemetry (a counter) once the Harness exists.
+    const owner: { harness?: Harness } = {}
+    const options: FacadeOptions = { ...rawOptions, onReport: reported, now: safeNow(rawOptions.now, (error, info) => owner.harness === undefined ? reported(error, info) : owner.harness.report(error, info)) }
     const currentModels = currentModelsOf(options)
     // A Session has no built-in tasks: only a Harness needs them in its registry.
     const missing = options.mode === "session" ? [] : ["pi.generation", "pi.tool", "pi.compaction"].filter(name => options.registry.snapshot().task(name) === undefined)
@@ -289,7 +298,7 @@ export class Harness {
       host.onRecycled(() => self.harness?.recycled())
       if (options.conversationCreated) client.onConversationCreated = (tx, record) => options.conversationCreated!(tx as TxProxy, record)
       self.host = host
-      const harness = self.harness = new Harness(storage, store, host, client, registry, options)
+      const harness = owner.harness = self.harness = new Harness(storage, store, host, client, registry, options)
       harness.timers = timers
       harness.currentModels = currentModels
       const report = options.onReport ?? (() => {})
@@ -297,12 +306,13 @@ export class Harness {
       const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), documentState: (token: any, ...args: unknown[]) => harness.documentState(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
-        client, registry, get models() { return currentModels() }, env: options.env, report,
+        client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info, context),
         hostApi: runtimeHostApi,
         readTarget: () => self.harness,
+        spanContext: (span, base) => harness.telemetry.spanContext(span, base),
         snapshot: () => options.registry.snapshot(),
         phase: self.phases = customTaskRunner({
-          registry, hostApi: runtimeHostApi, get models() { return currentModels() }, settings: () => harness.settings, now: () => (options.now ?? Date.now)(), report,
+          registry, hostApi: runtimeHostApi, get models() { return currentModels() }, settings: () => harness.settings, now: () => (options.now ?? Date.now)(), report: (error, info, context) => harness.report(error, info, context),
           snapshot: () => options.registry.snapshot(), env: options.env as never, readTarget: () => self.harness,
         }),
         hostHooks: {
@@ -314,6 +324,8 @@ export class Harness {
             return { input: migrated.input, checkpoint: migrated.checkpoint }
           },
           // scheduler.ts #decide (:955): the step line job calls registry.snapshot() synchronously; the reader may run user code (even close()). The core asks the host to call it at that point and refreshes from the answer.
+          // The span of a phase invocation (telemetry.ts): started when the core asks, answered with its handle and carrier.
+          phaseSpan: (payload: Parameters<HarnessTelemetry["phaseSpan"]>[0]) => harness.telemetry.phaseSpan(payload),
           registrySnapshot: () => registry.snapshot(),
           resolveAgent: (payload, _context, effect) => agentJSON(resolveAgent(payload.state, options.registry.snapshot(), harness.settings, reportWrap(effect.conversationId as ConversationId)), o => registry.id(o)),
           // harness/tool.ts prepare and validate: the arguments, or {error} with the text of what the repair or validation threw.
@@ -479,6 +491,7 @@ export class Harness {
       settings: this.settingsWire(),
       mode: this.options.mode ?? "harness", models, registry: this.registry.snapshot(), sidecar: this.options.sidecar ?? "index", delta: true,
       hasEnv: this.options.env !== undefined,
+      ...(this.options.telemetry === undefined ? {} : { telemetry: true }),
       ...(this.gate.length === 0 ? {} : { storageGate: this.gate }),
       ...(this.profile() === undefined ? {} : { storageProfile: this.profile() }),
 
@@ -488,11 +501,12 @@ export class Harness {
   private onNotice(kind: number, payload: Uint8Array) {
     // A failure the core absorbed (a throwing section or environment, a rejected hook) reaches HarnessOptions.onReport.
     if (kind === NOTICE.report) {
-      const body = JSON.parse(decoder.decode(payload)) as WireErrorBody & { info?: ReportInfo }
-      this.report(reviveError(body, this.client.storageFailure), body.info ?? LISTENER)
+      const body = JSON.parse(decoder.decode(payload)) as WireErrorBody & { info?: ReportInfo; span?: number }
+      this.report(reviveError(body, this.client.storageFailure), body.info ?? LISTENER, body.span === undefined ? undefined : this.telemetry.spanContext(body.span, BACKGROUND_CONTEXT))
       this.closeAfterFailure()
       return
     }
+    if (kind === NOTICE.telemetry) { this.telemetry.notice(JSON.parse(decoder.decode(payload))); return }
     if (kind !== NOTICE.published) return
     const body = JSON.parse(decoder.decode(payload)) as PublishedNotice
     if ((body.tasks?.length ?? 0) > 0) this.taskPublications++
@@ -503,7 +517,9 @@ export class Harness {
       const publication = { seq: body.seq, changes: body.changes }
       // session.ts #publish: the Session's own components run first, and a throw leaves their state behind storage, so it fails the Session; a host listener's throw is reported.
       for (const l of [...this.internalCommitListeners]) { try { l(publication, BACKGROUND_CONTEXT) } catch (error) { this.failedByListener(error) } }
-      for (const l of [...this.commitListeners]) contained(() => l(publication, BACKGROUND_CONTEXT), error => this.report(error))
+      // session.ts #notifyHosts: a synchronous listener's throw is reported under the Context of the commit that published.
+      const committing = body.span === undefined ? undefined : this.telemetry.spanContext(body.span, BACKGROUND_CONTEXT)
+      for (const l of [...this.commitListeners]) contained(() => l(publication, BACKGROUND_CONTEXT), error => this.report(error, LISTENER, committing))
     }
     for (const w of [...this.waiters]) if (w.match(body)) { this.waiters.delete(w); w.resolve() }
     // submissions.ts #observe: a settled submission resolves the waits registered for it.
@@ -645,6 +661,7 @@ export class Harness {
     if (this.client.busy) await this.client.idle()
     await this.host.closeAndJoin()
     this.client.close()
+    this.telemetry.endAll()
     if (this.timers instanceof TimeoutTimers) this.timers.dispose()
     // Session.close awaits the Storage close with the caller's context; a close that fails rejects this one. A failing close of the Storage
     // fails the Session unless it failed already (session.ts close), and `closed` settles after the Storage is closed.
@@ -660,7 +677,11 @@ export class Harness {
     }
   }
   /** session.ts report: a failure or a listener's error goes to HarnessOptions.onReport, which never fails what ran it. */
-  report(error: unknown, info: ReportInfo = LISTENER, _context?: Context) { contained(() => this.options.onReport?.(error, info), () => {}) }
+  report(error: unknown, info: ReportInfo = LISTENER, context?: Context) {
+    contained(() => this.options.onReport?.(error, info), () => {})
+    // harness.ts safeReport: then count it and record its event on the span of the Context it is reported under.
+    this.telemetry.reported(info, context)
+  }
 
   /** A Session component's listener threw: the Session fails, reports the error once and closes. */
   private failedByListener(error: unknown) {
@@ -860,6 +881,10 @@ export class Harness {
     // The core answers the submit by the client's request id; a requestId reaches the record only when the caller gave one, as in pi-durable.
     // The handle is built as the answer routes: that is the tick Pi's `submit` resumes from `await commitWith` and returns, so the caller resumes one tick later as it does in Pi.
     const invocation = invocationOf(context)
+    const admit = (fields: Record<string, unknown>) => this.client.submit<{ id: number; status?: string; link?: Record<string, string> }>({ conversationId, ...draft, ...fields, ...(invocation === undefined ? {} : { invocation }) }, placed => placed as never)
+    // A recording span (submissions.ts): the admission runs inside `pi.durable.submit`, and the handle is built after it.
+    const spanned = this.telemetry.submit(conversationId, draft, context, admit)
+    if (spanned !== undefined) return awaitWithContext(spanned.then(placed => new Submission(this, placed.id)), context)
     return awaitWithContext(this.client.submit({ conversationId, ...draft, ...(invocation === undefined ? {} : { invocation }) }, placed => new Submission(this, placed.id)), context)
   }
 

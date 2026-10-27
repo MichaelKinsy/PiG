@@ -14,7 +14,7 @@ export interface TaskRuntimeSources {
   models: unknown
   settings: () => unknown
   now: () => number
-  report: (error: unknown, info: ReportInfo) => void
+  report: (error: unknown, info: ReportInfo, context?: Context) => void
   /** The registry snapshot object `runtime.registry` shows. */
   snapshot: () => unknown
   env?: (target: { conversationId: number; read: unknown }, context: Context) => unknown | Promise<unknown>
@@ -25,7 +25,7 @@ export interface TaskRuntimeSources {
 type Handler = (task: unknown, runtime: unknown, context: Context) => Promise<void>
 
 /** A runtime lives from a task's first phase to the invocation's end (scheduler.ts: one Runtime for every phase of an invocation). The core ends it by cancelling the invocation's latest phase effect. */
-type Live = { runtime: Record<string, unknown>; phase: { resetAgent?: () => void; snapshot?: unknown }; invocation: ReturnType<typeof invocationBinding>; abort: AbortController; effectIds: Set<number>; active: number; ending?: boolean }
+type Live = { runtime: Record<string, unknown>; phase: { resetAgent?: () => void; snapshot?: unknown; context?: Context }; invocation: ReturnType<typeof invocationBinding>; abort: AbortController; effectIds: Set<number>; active: number; ending?: boolean }
 
 export function customTaskRunner(sources: TaskRuntimeSources) {
   const live = new Map<string, Live>()
@@ -56,7 +56,7 @@ export function customTaskRunner(sources: TaskRuntimeSources) {
               if (typeof handler !== "function") continue
               try { await invoke(handler.bind(hook.handlers) as (...args: unknown[]) => unknown) } catch (error) {
                 if (abort.signal.aborted) throw error
-                sources.report(error, { type: "extension_error", task, ...(extension.name === undefined ? {} : { extension: extension.name }) })
+                sources.report(error, { type: "extension_error", task, ...(extension.name === undefined ? {} : { extension: extension.name }) }, phase.context)
               }
             }
           }
@@ -72,7 +72,7 @@ export function customTaskRunner(sources: TaskRuntimeSources) {
         binding.check()
         sources.report(error, (from === undefined ? { type: "task_error", task, ...installer }
           : from.type === "extension" ? { type: "extension_error", task, ...(from.extension === undefined ? {} : { extension: from.extension }) }
-          : { type: "host_error", callback: from.callback, task }) as ReportInfo)
+          : { type: "host_error", callback: from.callback, task }) as ReportInfo, phase.context)
       },
       env: async (callContext: Context) => sources.env?.({ conversationId, read: sources.readTarget?.() ?? documentReader(sources.hostApi.client) }, callContext),
       commit: invocationCommit(sources.hostApi, { invocation: effect.invocation, conversationId }, binding),
@@ -90,6 +90,8 @@ export function customTaskRunner(sources: TaskRuntimeSources) {
     entry.effectIds.add(effectId)
     // Each phase sees the registry as it is at its start and resolves its agent anew.
     entry.phase.snapshot = sources.snapshot()
+    // The Context the phase runs under (its span): what its reports are recorded on (scheduler.ts: invocation.context).
+    entry.phase.context = context
     entry.phase.resetAgent?.()
     byEffect.set(effectId, key)
     // The invocation's signal follows the phase whose effect the core cancels when the invocation aborts.

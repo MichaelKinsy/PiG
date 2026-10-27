@@ -401,9 +401,18 @@ const hostAnswerTicks = 3
 // publish emits the published notice of one commit (durable/core/host/PROTOCOL.md, Notices). The notice is written an
 // item at a time into abi.Chunks, so a 20,000-task commit's (megabytes) needs no block of its size.
 func (h *handler) publish(pub *session.Publication) {
+	if pub.Span != 0 {
+		h.publishEvents(pub)
+	}
 	var out abi.Chunks
 	item := append(make([]byte, 0, 128), `{"seq":`...)
-	out.Append(jv.AppendNumber(item, float64(pub.Seq)))
+	item = jv.AppendNumber(item, float64(pub.Seq))
+	if pub.Span != 0 {
+		// The span of the commit's Context: where the host's commit listeners' reports go (session.ts #notifyHosts).
+		item = append(item, `,"span":`...)
+		item = jv.AppendNumber(item, float64(pub.Span))
+	}
+	out.Append(item)
 	for _, kind := range [...]session.WriteKind{session.WriteSubmission, session.WriteEntry, session.WriteTask} {
 		item = append(item[:0], `,"`...)
 		switch kind {

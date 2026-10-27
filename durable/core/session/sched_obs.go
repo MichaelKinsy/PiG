@@ -694,6 +694,9 @@ func (s *Scheduler) createInvocation(rec *jv.Object, abortMode bool, extension s
 	if _, started := rec.Get("startedAt"); !started {
 		inv.links, _ = rec.Get("links")
 	}
+	if s.env.Telemetry != nil {
+		inv.ask = func() { s.startPhase(inv) }
+	}
 	s.invocations[inv.taskID] = inv
 	return inv
 }

@@ -9,6 +9,9 @@ import (
 // Cancel is a cancellation signal: the AbortSignal of an invocation or of a
 // caller's context.
 type Cancel struct {
+	// Span is the host's handle of the span of the phase an invocation's signal belongs to, 0 outside a phase: the host effects the
+	// phase starts run under it (Context.telemetry).
+	Span uint32
 	aborted bool
 	reason  error // AbortSignal.reason: ErrAborted for abort(), else the reason passed to AbortWith
 	hooks   []func()

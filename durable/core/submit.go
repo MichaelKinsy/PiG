@@ -73,9 +73,7 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 			return err
 		}
 		_, err := h.sess.RunCommit(func(tx *session.Tx) error {
-			var e error
-			admitted, e = inbox.AdmitStatus(tx, turn.Runs{}, conversationID, draft, h.now, h.queueModes())
-			return e
+			return inbox.AdmitStatus(tx, turn.Runs{}, conversationID, draft, h.now, h.queueModes(), &admitted)
 		}, session.TxScope{Span: span, Trace: draft.Trace})
 		return err
 	}, func(err error) {
@@ -87,7 +85,15 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 		answer.Set("id", float64(admitted.ID))
 		if span != 0 {
 			// The span's result (`submission.id`, `result`) and the carrier of the run it links to.
-			answer.Set("status", admitted.Status)
+			// Constants: a status the core wrote is one of three.
+			switch admitted.Status {
+			case "queued":
+				answer.Set("status", "queued")
+			case "placed":
+				answer.Set("status", "placed")
+			default:
+				answer.Set("status", "done")
+			}
 			if admitted.Link != nil {
 				answer.Set("link", admitted.Link)
 			}

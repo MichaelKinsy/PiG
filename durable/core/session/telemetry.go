@@ -46,6 +46,7 @@ type PhaseInfo struct {
 func (p *PhaseInfo) Started(span uint32, carrier any) {
 	inv := p.inv
 	inv.span, inv.carrier = span, carrier
+	inv.signal.Span = span
 	p.inv = nil
 	start := inv.start
 	inv.start = nil
@@ -74,11 +75,8 @@ type Telemetry interface {
 
 // startPhase starts the span of the phase the invocation is about to run and then runs start (scheduler.ts #phase: the handler
 // runs inside the span's callback). Without a Telemetry the phase starts at once.
-func (s *Scheduler) startPhase(inv *invocation, task *jv.Object, start func()) {
-	if s.env.Telemetry == nil {
-		start()
-		return
-	}
+func (s *Scheduler) startPhase(inv *invocation) {
+	task := inv.record
 	cp := getObj(getObj(task, "state"), "checkpoint")
 	info := &inv.info
 	*info = PhaseInfo{Task: inv.taskID, Kind: inv.kind, Abort: inv.abortMode, Resumed: s.wasResumed(inv.taskID), inv: inv}
@@ -88,7 +86,6 @@ func (s *Scheduler) startPhase(inv *invocation, task *jv.Object, start func()) {
 	}
 	info.Trace, _ = task.Get("trace")
 	info.Links = inv.links
-	inv.start, inv.phased = start, true
 	s.env.Telemetry.StartPhase(info)
 }
 
@@ -106,7 +103,8 @@ func (s *Scheduler) wasResumed(id ID) bool {
 // endPhase ends the span of the phase the invocation ran, after its decision step (scheduler.ts #phase, its `finally`).
 func (s *Scheduler) endPhase(inv *invocation) {
 	span := inv.span
-	inv.span, inv.carrier, inv.phased = 0, nil, false
+	inv.span, inv.carrier = 0, nil
+	inv.signal.Span = 0
 	if span == 0 || s.env.Telemetry == nil {
 		return
 	}
@@ -225,13 +223,23 @@ func movedCheckpoint(current, next *jv.Object) string {
 // afterCommit is the hook of a runtime commit that records its `pi.durable.checkpoint` event once the commit is published; nil
 // when the Harness has no telemetry.
 func (s *Scheduler) afterCommit(inv *invocation) func() {
-	if s.env.Telemetry == nil {
-		return nil
+	return s.afterMoved
+}
+
+// noteMoved queues the invocation's moved checkpoint for the event the job's completion records (flushMoved).
+func (s *Scheduler) noteMoved(inv *invocation) {
+	if s.env.Telemetry != nil && inv.moved != "" && !slices.Contains(s.moved, inv) {
+		s.moved = append(s.moved, inv)
 	}
-	if inv.after == nil {
-		inv.after = func() { s.checkpointed(inv) }
+}
+
+// flushMoved records the checkpoint events of the runtime commits that just stored, in commit order.
+func (s *Scheduler) flushMoved() {
+	for _, inv := range s.moved {
+		s.checkpointed(inv)
 	}
-	return inv.after
+	clear(s.moved)
+	s.moved = s.moved[:0]
 }
 
 // checkpointed records the checkpoint event of the commit that just stored, when it moved the running checkpoint (inv.moved).
@@ -256,3 +264,14 @@ func (r *Runtime) Replay(name string) {
 		t.Replay(r.inv.span, name)
 	}
 }
+
+// SpanOf is the handle of the span of the phase task's invocation is running, 0 when it is in none.
+func (s *Scheduler) SpanOf(id ID) uint32 {
+	if inv := s.invocations[id]; inv != nil {
+		return inv.span
+	}
+	return 0
+}
+
+// Span is the handle of the span of the phase the runtime's invocation is running, 0 when it is in none.
+func (r *Runtime) Span() uint32 { return r.inv.span }

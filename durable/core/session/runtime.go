@@ -113,6 +113,7 @@ func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Objec
 		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
 		if err == nil {
 			r.inv.moved = movedCheckpoint(current, next)
+			s.noteMoved(r.inv)
 		}
 		return err
 	}, s.afterCommit(r.inv), then)

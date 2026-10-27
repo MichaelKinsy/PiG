@@ -103,12 +103,12 @@ func (a *Admission) set(status string) {
 	}
 }
 
-// AdmitStatus is Admit that also reports how the submission was admitted.
-func AdmitStatus(tx *session.Tx, runs Runs, conversationID session.ID, draft Draft, now float64, modes QueueModes) (Admission, error) {
-	var a Admission
-	id, err := admit(tx, runs, conversationID, draft, now, modes, &a)
+// AdmitStatus is Admit that also reports how the submission was admitted, in a.
+func AdmitStatus(tx *session.Tx, runs Runs, conversationID session.ID, draft Draft, now float64, modes QueueModes, a *Admission) error {
+	*a = Admission{}
+	id, err := admit(tx, runs, conversationID, draft, now, modes, a)
 	a.ID = id
-	return a, err
+	return err
 }
 
 func admit(tx *session.Tx, runs Runs, conversationID session.ID, draft Draft, now float64, modes QueueModes, a *Admission) (session.ID, error) {

@@ -127,6 +127,9 @@ func (h *handler) runPhase(rt *session.Runtime, task *jv.Object, registration an
 			}
 		}
 	}
+	if span := rt.Span(); span != 0 {
+		payload.Set("span", float64(span))
+	}
 	payload.Set("record", task)
 	payload.Set("invocation", float64(taskID))
 	if ext := rt.Extension(); ext != "" {

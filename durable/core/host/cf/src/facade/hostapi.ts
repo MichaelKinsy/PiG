@@ -7,6 +7,7 @@ import { BACKGROUND_CONTEXT, awaitWithContext, withAbortSignal } from "@earendil
 import type { CoreClient } from "../client.ts"
 import { migrateRetry, runCommit, wireDefinition, type TxProxy } from "./tx.ts"
 import { enterCommit } from "./commit-context.ts"
+import { spanFields } from "./telemetry.ts"
 import { loadedTracker, keepTracker, settleRevision, shareSnapshot, snapshotStamp, stageRevision, unstageRevision } from "./snapshots.ts"
 import { resolveAddress, wireAddress, type AnyDocToken } from "./documents.ts"
 import type { Context } from "@earendil-works/chord"
@@ -170,7 +171,8 @@ export function invocationApi(options: HostApiOptions, who: InvocationIdentity &
 
 /** `commit(change, context)` bound to an invocation: the transaction carries the invocation so the core can reject it once the invocation ends. */
 export function invocationCommit(options: HostApiOptions, who: { invocation?: number; conversationId?: number }, binding: InvocationBinding = UNBOUND) {
-  const begin = () => options.client.begin({ ...(who.invocation === undefined ? {} : { invocation: who.invocation }), ...(who.conversationId === undefined ? {} : { conversationId: who.conversationId }) })
+  // The commit's Context (Context.telemetry): its span and carrier go to the core, which records the commit's events there and gives a task it creates the carrier.
+  const begin = (context: Context) => options.client.begin({ ...(who.invocation === undefined ? {} : { invocation: who.invocation }), ...(who.conversationId === undefined ? {} : { conversationId: who.conversationId }), ...spanFields(options.client, context) })
   // Not async, and no cancellable wait: Pi's commitWith checks the signal when the job starts and then ignores it (session.ts:411), so the caller's
   // promise is the commit's own and settles the hops after the core's ack that Pi's `run` does. A commit of an invocation that has ended rejects as
   // 'invocation has ended', also when the core refused it for that reason (`onError`).
@@ -178,7 +180,7 @@ export function invocationCommit(options: HostApiOptions, who: { invocation?: nu
     try { binding.check(); context.abortSignal?.throwIfAborted() } catch (error) { return Promise.reject(error) }
     let leave: (() => void) | undefined
     // The commit holds the line from `begin` until its answer settles: publications that arrive meanwhile are its own (commit-context.ts).
-    const held = () => { const ready = begin(); ready.then(() => { leave = enterCommit(options.client, context) }, () => {}); return ready }
+    const held = () => { const ready = begin(context); ready.then(() => { leave = enterCommit(options.client, context) }, () => {}); return ready }
     const done = runCommit(held, change,
       // Only a task invocation's commit returns the next task state; a Session commit hands its result (a draft that the commit revokes) back unread.
       who.invocation === undefined ? undefined : result => result, () => binding.check(),

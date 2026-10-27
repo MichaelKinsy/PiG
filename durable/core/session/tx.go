@@ -486,7 +486,8 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 		return 0, err
 	}
 	if len(opts.Submissions) != 0 {
-		if err := tx.traceOfRun(&opts); err != nil {
+		var err error
+		if opts.Trace, opts.NoTrace, opts.Links, err = tx.traceOfRun(opts.Submissions); err != nil {
 			return 0, err
 		}
 	}
@@ -565,31 +566,29 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 // traceOfRun resolves a run's carriers from its input submissions (transaction.ts createTask, `submissionIds`): the first
 // submission's carrier is the task's trace (none: the task starts at the root), and the others' carriers are its links. A
 // submission the transaction did not stage is read from Storage.
-func (tx *Tx) traceOfRun(opts *TaskOptions) error {
-	opts.Trace, opts.NoTrace, opts.Links = nil, false, nil
-	for i, id := range opts.Submissions {
+func (tx *Tx) traceOfRun(submissions []ID) (trace any, noTrace bool, links []any, err error) {
+	for i, id := range submissions {
 		rec := tx.submissions[id]
 		if rec == nil {
 			tx.readTicks(hopcost.ReadRow)
-			var err error
 			if rec, err = tx.s.store.Submission(id); err != nil {
-				return err
+				return nil, false, nil, err
 			}
 		}
-		var trace any
+		var carrier any
 		if rec != nil {
-			trace, _ = rec.Get("trace")
+			carrier, _ = rec.Get("trace")
 		}
 		switch {
-		case i == 0 && trace == nil:
-			opts.NoTrace = true
+		case i == 0 && carrier == nil:
+			noTrace = true
 		case i == 0:
-			opts.Trace = trace
-		case trace != nil:
-			opts.Links = append(opts.Links, trace)
+			trace = carrier
+		case carrier != nil:
+			links = append(links, carrier)
 		}
 	}
-	return nil
+	return trace, noTrace, links, nil
 }
 
 // CreateSubmission stages a submission; its record is {...create, id}.
