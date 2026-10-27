@@ -119,7 +119,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/auth/oauth/openai-codex.ts` | `ai/oauth_openai_codex.go` | ✅ |
 | `packages/ai/src/auth/oauth/pkce.ts` | `ai/pkce.go` | ✅ |
 | `packages/ai/src/auth/oauth/radius.ts` | `ai/oauth_radius.go + internal/codingagent/interactive_auth.go (ai/oauth_radius_test.go, internal/codingagent/radius_login_test.go)` | ✅ |
-| `packages/ai/src/auth/oauth/trusted-url.ts` | `ai/oauth_trusted_url.go trustedHTTPURL (shared by ai/githubcopilot.go via ai/copilot_verification_uri.go, ai/oauth_kimi.go, ai/oauth_meta.go and ai/oauth_radius.go; ai/trusted_url_oracle_test.go compares it with Pi's trustedHttpUrl over the verification-URI corpus)` | ✅ |
+| `packages/ai/src/auth/oauth/trusted-url.ts` | `ai/oauth_trusted_url.go trustedHTTPURL (shared by ai/githubcopilot.go, ai/oauth_kimi.go, ai/oauth_meta.go and ai/oauth_radius.go; ai/trusted_url_oracle_test.go compares it with Pi's trustedHttpUrl over the verification-URI corpus)` | ✅ |
 | `packages/ai/src/auth/oauth/xai.ts` | `ai/oauth_xai.go (device-code login, polling, refresh, response validation, and owner-context cancellation; ai/oauth_xai_test.go including LoginContext/RefreshTokenContext cancellation, coding/cli/model_oauth_refresh_test.go caller cancellation, oauth/09 behavioral scenario)` | ✅ |
 | `packages/ai/src/bun-oauth.ts` | `(Bun-only OAuth flow registration; Go links OAuth implementations directly)` | n/a |
 | `packages/ai/src/compat.ts` | `ai/types.go`, `ai/compat.go`, `ai/builtin_providers.go`, `ai/registry.go`, `ai/faux.go` | ✅ |
