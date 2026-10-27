@@ -395,14 +395,18 @@ func (s *coreSession) Close(ctx context.Context) error {
 	s.closeListeners = nil
 	drained := s.drained
 	s.mu.Unlock()
+	// Harness.close()'s synchronous part (session.ts close, #notifyClose): the scheduler's seal and the close listeners run in one
+	// synchronous pass, so nothing a listener frees can reach the scheduler before its seal. The seal is posted first for that reason:
+	// a listener cancels the waits of calls in flight (closeAware), the goroutines it frees post their completions at once (a tool
+	// that ends because the close cancelled its nested call posts toolDone), and a seal posted after the listeners can queue behind
+	// them. The core would then settle the caller as if the Harness stayed open and abort its nested calls, and the store would keep
+	// those marks for the next Harness. The seal queues behind the events that arrived before the call, as the microtasks that ran
+	// before close() did in Pi, so a step the owner has queued already (a failed phase's) sees the closing flag and writes no fault.
+	s.host.Post(abi.Event{Kind: abi.EventSeal})
 	// A close listener's panic is reported and the others still run (session.ts subscribeClose).
 	for _, call := range calls {
 		session.Contained(call, s.reportListener)
 	}
-	// Harness.close()'s synchronous part (session.ts close :352-366): the scheduler seals at the call, so a step the owner has queued
-	// already (a failed phase's) sees the closing flag and writes no fault. The seal queues behind the events that arrived before
-	// the call, as the microtasks that ran before close() did in Pi.
-	s.host.Post(abi.Event{Kind: abi.EventSeal})
 	// Admission is sealed; work admitted before it settles before the core and the store close (session.ts close :351-368,
 	// where the close job is enqueued behind the line). The caller's context bounds only the wait, as awaitWithContext does:
 	// the close itself finishes on its own.

@@ -37,7 +37,8 @@ export abstract class SqlStorage implements Storage {
   protected closed = false
   protected abstract openStore(): Promise<Store & { close(): void }>
   async open() { return this.store ??= await this.openStore() }
-  close() { this.closed = true; this.store?.close() }
+  /** Pi's `Storage.close(context): Promise<void>`, idempotent as SqliteStorage.close is. */
+  async close(_context?: unknown): Promise<void> { if (this.closed) return; this.closed = true; this.store?.close() }
   /** Pi's Storage reads over the committed rows (storage-reads.ts); every one rejects once the storage is closed, as MemoryStorage's does. */
   private async reads(): Promise<StorageReads> {
     if (this.closed) throw new Error(`${this.constructor.name} is closed`)
@@ -111,7 +112,7 @@ export class MemoryStorage extends SqlStorage {
     return nodeStore(":memory:", { wal: false })
   }
   /** memory.ts close: the Storage stops answering, and what it committed survives for a reopen (a test's `reopen()` clears `closed`); the database is released with the object. */
-  override close() { this.closed = true }
+  override async close(_context?: unknown): Promise<void> { this.closed = true }
 }
 
 /** A SQLite file (node:sqlite): the store pi-durable's `openNodeSqliteStorage` opens. Its `commit` and reads are Pi's Storage methods, so a caller can wrap them. */

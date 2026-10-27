@@ -6,6 +6,7 @@ import type { Context } from "@earendil-works/chord"
 import type { ReportFrom, ReportInfo, ReportTask } from "@earendil-works/pi-durable"
 import type { PhaseEffect } from "../protocol.ts"
 import type { HostRegistry } from "../registry.ts"
+import type { HostTimers } from "../timers.ts"
 import { documentReader, invocationApi, invocationBinding, invocationCommit, type HostApiOptions } from "./hostapi.ts"
 
 export interface TaskRuntimeSources {
@@ -20,6 +21,8 @@ export interface TaskRuntimeSources {
   env?: (target: { conversationId: number; read: unknown }, context: Context) => unknown | Promise<unknown>
   /** The Harness itself (harness.ts buildEnv passes `read: this`). */
   readTarget?: () => unknown
+  /** The Harness's host timers (HarnessOptions.setTimer) that `runtime.setTimer` arms through. */
+  timers: HostTimers
 }
 
 type Handler = (task: unknown, runtime: unknown, context: Context) => Promise<void>
@@ -75,6 +78,16 @@ export function customTaskRunner(sources: TaskRuntimeSources) {
           : { type: "host_error", callback: from.callback, task }) as ReportInfo)
       },
       env: async (callContext: Context) => sources.env?.({ conversationId, read: sources.readTarget?.() ?? documentReader(sources.hostApi.client) }, callContext),
+      // scheduler.ts runtime.setTimer: a foreground host timer that ends with the invocation, so a late fire runs nothing.
+      setTimer: (callback: () => void, delayMs: number) => {
+        let ended = false
+        let disarm: (() => void) | undefined
+        const stop = () => { if (ended) return; ended = true; disarm?.() }
+        binding.onEnd(stop)
+        if (ended) return () => {}
+        disarm = sources.timers.foreground(() => { if (!ended) { ended = true; callback() } }, delayMs)
+        return stop
+      },
       commit: invocationCommit(sources.hostApi, { invocation: effect.invocation, conversationId }, binding),
     }
     return { runtime, phase, invocation, abort, effectIds: new Set(), active: 0 }

@@ -29,7 +29,7 @@ import { recordPublication } from "./publications.ts"
 import { overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
 import { coreFromEnvironment } from "./core-env.ts"
 import { customTaskRunner } from "./taskruntime.ts"
-import { TimeoutTimers } from "../timers.ts"
+import { hostTimers, SetTimerTimers, TimeoutTimers, type SetTimer } from "../timers.ts"
 import type { TimerDriver } from "../host.ts"
 import { errorMessage, ReadOnlySession, reviveError, SessionFailed, StorageRequestError, type WireErrorBody } from "../errors.ts"
 import { contained } from "./session/session.ts"
@@ -97,6 +97,10 @@ export interface FacadeOptions {
   onReport?: (error: unknown, info: ReportInfo) => void
   /** PiG addition: the timer driver (a Durable Object passes its alarm timers). Default: setTimeout timers, cancelled at close. */
   timers?: TimerDriver
+  /** types.ts HarnessOptions.setTimer: arms the Harness's timers (pacing, sleeping tasks without `onWake`, `TaskRuntime.setTimer`); a background timer may be declined (returns undefined). Ignored for the core's own timers when `timers` is given. */
+  setTimer?: SetTimer
+  /** types.ts HarnessOptions.onWake: wakes the process for sleeping tasks instead of a timer; called after open and whenever `wake()` changes. */
+  onWake?: (wake: { active: boolean; at?: number }) => void
   /** PiG addition: the compiled core module (default: `useCore()`). */
   core?: CoreSource
   /** PiG addition: the pool of Wasm instances this Harness's session lives in (default: the module's own, shared by every Harness of the isolate). Its high-water mark decides when an instance is recycled at a quiet point. */
@@ -268,7 +272,9 @@ export class Harness {
     track(core)
     const registry = new HostRegistry(options.registry)
     const handlers: Record<number, any> = {}
-    const timers = options.timers ?? new TimeoutTimers(id => host.timerFired(id), options.now)
+    // harness.ts: `hostTimers(options.setTimer, ...)` serves the scheduler's and the tasks' timers, with one "declined" report between them.
+    const hosted = hostTimers(options.setTimer, error => (options.onReport as (error: unknown, info?: unknown) => void)(error, { type: "host_error", callback: "setTimer" }))
+    const timers = options.timers ?? (options.setTimer === undefined ? new TimeoutTimers(id => host.timerFired(id), options.now) : new SetTimerTimers(hosted, id => host.timerFired(id), options.now))
     const host: HostSession = new HostSession({
       core: session, sqlTable: core.sqlTable, store, clock: options.now, handlers, timers,
       onNotice: n => self.harness?.onNotice(n.kind, n.payload),
@@ -301,6 +307,15 @@ export class Harness {
       const report = options.onReport ?? (() => {})
       // harness.ts resolveAgent: a wrapper that fails reports the extension that installed it and the conversation whose agent was resolved.
       const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
+      if (options.onWake !== undefined) {
+        // scheduler.ts #scheduleWake: only a changed value is offered; one whose delivery threw is reported and offered again at the next change.
+        const onWake = options.onWake
+        let last: { active: boolean; at?: number } | undefined
+        client.onWake = wake => {
+          if (last !== undefined && last.active === wake.active && last.at === wake.at) return
+          try { onWake(wake); last = wake } catch (error) { (report as (error: unknown, info?: unknown) => void)(error, { type: "host_error", callback: "onWake" }) }
+        }
+      }
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), documentState: (token: any, ...args: unknown[]) => harness.documentState(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
         client, registry, get models() { return currentModels() }, env: options.env, report,
@@ -309,7 +324,7 @@ export class Harness {
         snapshot: () => options.registry.snapshot(),
         phase: self.phases = customTaskRunner({
           registry, hostApi: runtimeHostApi, get models() { return currentModels() }, settings: () => harness.settings, now: () => (options.now ?? Date.now)(), report,
-          snapshot: () => options.registry.snapshot(), env: options.env as never, readTarget: () => self.harness,
+          snapshot: () => options.registry.snapshot(), env: options.env as never, readTarget: () => self.harness, timers: hosted,
         }),
         hostHooks: {
           // scheduler.ts #resolve: a custom task's migrate(input, checkpoint, from) runs in the host when the scheduler reserves an older record.
@@ -486,6 +501,7 @@ export class Harness {
       mode: this.options.mode ?? "harness", models, registry: this.registry.snapshot(), sidecar: this.options.sidecar ?? "index", delta: true,
       hasEnv: this.options.env !== undefined,
       ...(this.options.readOnly === true ? { readOnly: true } : {}),
+      onWake: this.options.onWake !== undefined,
       ...(this.gate.length === 0 ? {} : { storageGate: this.gate }),
       ...(this.profile() === undefined ? {} : { storageProfile: this.profile() }),
 
@@ -652,7 +668,7 @@ export class Harness {
     if (this.client.busy) await this.client.idle()
     await this.host.closeAndJoin()
     this.client.close()
-    if (this.timers instanceof TimeoutTimers) this.timers.dispose()
+    this.timers?.dispose?.()
     // Session.close awaits the Storage close with the caller's context; a close that fails rejects this one. A failing close of the Storage
     // fails the Session unless it failed already (session.ts close), and `closed` settles after the Storage is closed.
     try { await (this.storage.close as ((context: Context) => unknown) | undefined)?.call(this.storage, context) } catch (error) {
