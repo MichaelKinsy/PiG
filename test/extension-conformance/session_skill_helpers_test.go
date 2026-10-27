@@ -124,7 +124,7 @@ func TestConformance_SessionAndSkillHelpersAgreeAcrossSDKs(t *testing.T) {
 		t.Fatalf("reference parseSkillBlock of a block followed by two newlines and nothing = %v, want null", reference[10])
 	}
 
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...) {
 		if tc.name == "subprocess-node" {
 			continue
 		}

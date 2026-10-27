@@ -19,26 +19,34 @@
                (:file "context-extra")
                (:file "tool-order")
                ;; ==== lane T ====
+               (:file "host-helper")
+               (:file "type-schema")
                (:file "type-engine")
                (:file "tool-schema")
                (:file "pi-ai")
                ;; ==== end lane T ====
                ;; ==== lane H ====
+               (:file "tui-tables")
                (:file "tui-width")
-               (:file "tui-keys")
                (:file "tui-text")
+               (:file "tui-fuzzy")
+               (:file "tui-keys")
+               (:file "tui-state")
+               (:file "tui-keybindings")
+               (:file "tui-terminal")
+               (:file "tui-colors")
                (:file "tui-theme")
                ;; ==== end lane H ====
                ;; ==== lane C ====
                (:file "compaction")
                (:file "truncate")
-               (:file "conversation")
                (:file "coding-helpers")
+               (:file "conversation")
                ;; ==== end lane C ====
                ;; ==== lane M ====
+               (:file "event-stream")
                (:file "model-stream")
                (:file "model-types")
-               (:file "event-stream")
                ;; ==== end lane M ====
                ;; ==== lane S2 ====
                (:file "session-manager")
@@ -53,6 +61,7 @@
                (:file "create-provider")
                (:file "extension-runner")
                (:file "extension-factories")
+               (:file "mcp-options")
                (:file "event-bus")
                (:file "builtin-tool")
                ;; ==== end lane S3 ====

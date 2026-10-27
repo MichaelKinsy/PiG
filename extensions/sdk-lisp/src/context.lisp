@@ -445,7 +445,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 (defun session-get-children (m parent-id) (session-read m "getChildren" (obj "parentId" (or parent-id :null))))
 (defun session-get-tree (m) (session-read m "getTree"))
 
-;;; model registry reads ---------------------------------------------------------
+;;; model registry (Python ModelRegistry) -----------------------------------------------
 
 (defstruct (model-registry (:constructor make-model-registry (ctx))) ctx)
 
@@ -454,10 +454,33 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 (defun registry-state (registry)
   (ctx-call-host (model-registry-ctx registry) "getModelRegistryState"))
 
+(defun registry-provider-states (registry)
+  (let ((providers (jget (registry-state registry) "providers")))
+    (if (hash-table-p providers) providers (obj))))
+
 (defun registry-provider-state (registry model)
-  (let* ((providers (jget (registry-state registry) "providers"))
-         (provider (and (hash-table-p model) (jget model "provider"))))
-    (or (and (stringp provider) (hash-table-p providers) (jget providers provider)) (obj))))
+  "The registry state of MODEL's provider. A model with no string provider has none (model-runtime.ts:543-553)."
+  (let ((provider (and (hash-table-p model) (jget model "provider"))))
+    (or (and (stringp provider) (jget (registry-provider-states registry) provider)) (obj))))
+
+(defun registry-get-all (registry)
+  "Every model the registry knows, a vector."
+  (jget (registry-state registry) "models"))
+
+(defun registry-get-available (registry)
+  "The models whose provider has credentials and, where the provider lists them, whose id it offers."
+  (let* ((state (registry-state registry))
+         (providers (jget state "providers")))
+    (coerce (loop for model across (jget state "models")
+                  for provider = (let ((p (jget providers (jget model "provider")))) (if (hash-table-p p) p (obj)))
+                  for ids = (jget provider "availableModelIds")
+                  when (and (eq (jget provider "configured") t)
+                            (or (not (simple-vector-p ids)) (find (jget model "id") ids :test #'equal)))
+                    collect model)
+            'simple-vector)))
+
+(defun registry-get-error (registry)
+  (let ((error-text (jget (registry-state registry) "error"))) (and (stringp error-text) error-text)))
 
 (defun registry-has-configured-auth (registry model)
   "Whether MODEL's provider has configured credentials."
@@ -467,12 +490,36 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   (eq (jget (registry-provider-state registry model) "usingOAuth") t))
 
 (defun registry-get-registered-native-provider (registry provider)
-  (declare (ignore registry provider))
-  (error 'unsupported-capability :member "registry-get-registered-native-provider (Provider objects)"))
+  "The Provider object registered under the provider name PROVIDER, or NIL: this extension's own, else a proxy of the extension's that registered it."
+  (let ((ctx (model-registry-ctx registry)))
+    (loop for entry across (or (jget (registry-state registry) "registered") (vector))
+          do (when (and (equal (jget entry "name") provider) (hash-table-p (jget entry "native")))
+               (return (provider-from-declaration ctx (jget entry "native")))))))
+
+(defun registry-get-provider (registry provider)
+  "The Provider object of the provider name PROVIDER, or NIL. A builtin or composed provider has no Provider object here: that signals."
+  (or (registry-get-registered-native-provider registry provider)
+      (let ((providers (jget (registry-state registry) "providers")))
+        (when (and (hash-table-p providers) (nth-value 1 (gethash provider providers)))
+          (error "builtin/composed Provider object carrier is unavailable (D78)")))))
 
 (defun registry-get-provider-name (registry provider)
-  (declare (ignore registry provider))
-  (error 'unsupported-capability :member "registry-get-provider-name (Provider objects)"))
+  "The name of the Provider object of PROVIDER, or NIL."
+  (let ((found (registry-get-provider registry provider))) (and found (provider-name found))))
+
+(defun registry-get-provider-auth-status (registry provider)
+  (or (jget (jget (registry-provider-states registry) provider) "authStatus") (obj "configured" :false)))
+
+(defun registry-get-provider-display-name (registry provider)
+  (or (jget (jget (registry-provider-states registry) provider) "name") provider))
+
+(defun registry-get-registered-provider-ids (registry)
+  (map 'simple-vector (lambda (entry) (jget entry "name")) (jget (registry-state registry) "registered")))
+
+(defun registry-get-registered-provider-config (registry provider)
+  "The config the extension registered PROVIDER with, or NIL."
+  (let ((entry (find provider (jget (registry-state registry) "registered") :key (lambda (e) (jget e "name")) :test #'equal)))
+    (and entry (let ((config (jget entry "config"))) (and (hash-table-p config) config)))))
 
 ;;; model registry host calls
 
@@ -484,9 +531,25 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 (defun registry-get-provider-auth (registry provider-id)
   (call-result (model-registry-ctx registry) "getProviderAuth" (obj "provider" provider-id)))
 
+(defun registry-get-api-key-for-provider (registry provider-id)
+  "The API key of PROVIDER-ID, or NIL when it has none or resolving it failed (Pi's getApiKeyForProvider catches that)."
+  (handler-case (let ((auth (registry-get-provider-auth registry provider-id)))
+                  (and (hash-table-p auth) (jget (jget auth "auth") "apiKey")))
+    (error () nil)))
+
+(defun registry-get-api-key-and-headers (registry model)
+  "The request authentication of MODEL: ok, apiKey, headers, baseUrl and env as the host resolved them."
+  (flet ((text (value) (if (stringp value) value "")))
+    (let* ((provider (jget model "provider"))
+           (model-id (let ((id (text (jget model "modelId")))) (if (plusp (length id)) id (text (jget model "id"))))))
+      (or (call-result (model-registry-ctx registry) "getModelAuth"
+                       (obj "provider" (text (if (hash-table-p provider) (jget provider "id") provider)) "modelId" model-id))
+          (obj)))))
+
 (defun registry-refresh (registry &optional options)
-  "Refresh the registry; the result carries aborted and errors."
-  (call-result (model-registry-ctx registry) "refreshModelRegistry" (or options (obj))))
+  "Refresh the registry; (aborted, errors) of the host's answer."
+  (let ((result (call-result (model-registry-ctx registry) "refreshModelRegistry" (or options (obj)))))
+    (obj "aborted" (jget result "aborted") "errors" (jget result "errors"))))
 
 (defun registry-get-available-of-type (registry model-type &optional provider)
   "The models of MODEL-TYPE whose provider has working credentials."

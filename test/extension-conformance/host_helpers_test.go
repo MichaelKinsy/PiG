@@ -90,7 +90,7 @@ func TestConformance_HostHelpersAgreeAcrossSDKs(t *testing.T) {
 	mustWrite(filepath.Join(agentDir, "auth.json"), "\ufeff"+`{"anthropic":`+defaultCredential+`}`)
 	const clipboardText = "copied \U0001F600 \u2028 text\n"
 
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.name == "fused-go" {
 				// The fused extension runs in this process, so the host must put the entry in this process's environment before the factory runs.
