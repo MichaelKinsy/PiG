@@ -20,46 +20,48 @@ const E = {
 	"01-documents": ["session", "documents next to transcript entries"],
 	"02-forks": ["store", "fork a conversation"],
 	"03-owned-conversations": ["session", "a background task that owns a child conversation"],
-	"04-chord-state": ["session", "a document exposed through Chord"],
-	"05-watches": ["session", "serialize asynchronous document work with a watch"],
-	"06-harness": ["loop", "open a Harness with a registry of extensions"],
-	"07-configuration": ["loop", "per-conversation agent choices and Harness settings"],
-	"08-harness-conversations": ["session", "conversation handles, typed entries, created conversations, forks"],
-	"09-context": ["store", "transcript history and model context"],
-	"10-registry-reload": ["loop", "reload extension code through the registry"],
-	"11-extension-state": ["loop", "an extension's per-conversation document"],
-	"12-tasks": ["session", "run a durable task"],
-	"13-recovery": ["session", "close, reopen, continue where a task stopped"],
-	"14-chat": ["loop", "a chat turn"],
-	"15-system-prompt": ["loop", "system prompt sections and instructions"],
-	"16-real-model": ["loop", "a real model (OpenAI); no key, no cassette: skipped"],
-	"17-coding-tools": ["loop", "a coding-agent tool turn"],
-	"18-print": ["loop", "print mode, faux path"],
-	"19-json": ["loop", "JSON mode, faux path"],
-	"20-inbox": ["session", "the inbox while a conversation is busy"],
-	"21-late-join": ["session", "a client attaches mid-run"],
-	"22-subagent-foreground": ["session", "a foreground subagent tool"],
-	"23-subagent-background": ["session", "persistent background subagents"],
-	"24-child-tasks": ["session", "a task that owns child tasks"],
-	"25-compaction": ["store", "compaction of a long chat"],
-	"26-coding-agent": ["loop", "a small coding agent"],
-	"27-plan-mode": ["loop", "plan mode"],
-	"28-reviewer": ["loop", "a reviewer agent"],
-	"29-sandbox-per-conversation": ["loop", "one sandbox per conversation"],
-	"30-tool-override": ["loop", "replace and decorate a tool"],
-	"31-reload-and-restart": ["session", "reload an extension while a call runs, then restart"],
+	"04-watches": ["session", "serialize asynchronous document work with a watch"],
+	"05-harness": ["loop", "open a Harness with a registry of extensions"],
+	"06-configuration": ["loop", "per-conversation agent choices and Harness settings"],
+	"07-harness-conversations": ["session", "conversation handles, typed entries, created conversations, forks"],
+	"08-context": ["store", "transcript history and model context"],
+	"09-registry-reload": ["loop", "reload extension code through the registry"],
+	"10-extension-state": ["loop", "an extension's per-conversation document"],
+	"11-tasks": ["session", "run a durable task"],
+	"12-recovery": ["session", "close, reopen, continue where a task stopped"],
+	"13-chat": ["loop", "a chat turn"],
+	"14-system-prompt": ["loop", "system prompt sections and instructions"],
+	"15-real-model": ["loop", "a real model (OpenAI); no key, no cassette: skipped"],
+	"16-coding-tools": ["loop", "a coding-agent tool turn"],
+	"17-print": ["loop", "print mode, faux path"],
+	"18-json": ["loop", "JSON mode, faux path"],
+	"19-inbox": ["session", "the inbox while a conversation is busy"],
+	"20-late-join": ["session", "a client attaches mid-run"],
+	"21-subagent-foreground": ["session", "a foreground subagent tool"],
+	"22-subagent-background": ["session", "persistent background subagents"],
+	"23-child-tasks": ["session", "a task that owns child tasks"],
+	"24-compaction": ["store", "compaction of a long chat"],
+	"25-coding-agent": ["loop", "a small coding agent"],
+	"26-plan-mode": ["loop", "plan mode"],
+	"27-reviewer": ["loop", "a reviewer agent"],
+	"28-sandbox-per-conversation": ["loop", "one sandbox per conversation"],
+	"29-tool-override": ["loop", "replace and decorate a tool"],
+	"30-reload-and-restart": ["session", "reload an extension while a call runs, then restart"],
 }
 const U = {
+	"codemode-checkpoints": "loop", "harness-blocked": "session", "harness-deferred-progress": "session", "harness-failed-run-inbox": "session", "harness-host-inputs": "session",
+	"harness-json": "loop", "harness-observers": "session", "harness-partial-changes": "session", "harness-read-only": "session", "harness-reports": "session", "harness-sleep": "session",
+	"harness-telemetry": "session", "harness-telemetry-options": "host", "indexeddb-storage": "host", "session-adoption": "session", "session-deferred-commits": "session", "session-observers": "session",
 	"codemode-describe": "loop", "codemode-models": "loop", "codemode": "loop", "tool-search": "loop", "env-line-scan": "host", "env-node-conformance": "host", "env-node-spill": "host", "env-node": "host", "env-truncate": "host",
 	"images-wasm-module": "host", "tools-images": "loop", "harness-callers": "loop", "harness-cancellation-barrier": "session", "harness-scheduler-indexes": "session", "harness-scheduler-retention": "session", "harness-nested-tools-restart": "loop", "harness-nested-tools": "loop",
 	"harness-storage-failure": "session", "harness-structured-output": "loop",
 	"harness-compaction": "store", "harness-context": "store", "harness-conversations": "session", "harness-events": "session", "harness-generation-recovery": "loop",
 	"harness-generation": "loop", "harness-inbox": "session", "harness-input-entries": "session", "session-document-retention": "session", "harness-inspect": "session", "harness-lifecycle": "session", "harness-live-deltas": "loop",
-	"harness-output-skip": "loop", "harness-output": "loop", "harness-ownership": "session", "harness-prompt": "loop", "harness-registry": "loop",
+	"harness-ownership": "session", "harness-prompt": "loop", "harness-registry": "loop",
 	"harness-structured": "session", "harness-submissions": "session", "harness-task-graph": "session", "harness-tasks-recovery": "session", "harness-tasks": "session",
 	"harness-tools-recovery": "loop", "harness-tools": "loop", "harness-view": "session", "jsonl-storage": "host", "memory-storage": "host",
 	"provider-session-cache-e2e": "loop", "session-checkpoints-migrations": "session", "session-definitions": "session", "session-documents": "session",
-	"session-forks": "store", "session-states": "session", "session-tables": "store", "session-watches": "session", "spec-usage": "store",
+	"session-forks": "store", "session-tables": "store", "session-watches": "session", "spec-usage": "store",
 	"sqlite-cloudflare": "host", "sqlite-facade": "host", "sqlite-migrations": "store", "sqlite-storage": "store", "storage-runtime-boundary": "store",
 	"system-order-cache-e2e": "loop", "tools-read-differential": "loop", "tools": "loop", "types": "store",
 }
@@ -76,12 +78,12 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("06a466935536f8c9bcacb2d5efc0fc021be1bdff")}`, `ticks_commit = ${q("6c384aa30f619d7b28963f2bab24d8dacbe73cb6")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("6c384aa30f619d7b28963f2bab24d8dacbe73cb6")}`, `ticks_commit = ${q("6c384aa30f619d7b28963f2bab24d8dacbe73cb6")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
 	const [owner, about] = E[name]
-	const skip = name === "16-real-model"
+	const skip = name === "15-real-model"
 	emit("[[scenario]]", `id = ${q("E" + name.slice(0, 2))}`, `family = "example"`, `runner = "example"`, `source = ${q("packages/durable/test/examples/" + f)}`,
 		`sha256 = ${q(sha("packages/durable/test/examples/" + f))}`, `owner = ${q("dcore-" + owner)}`, `about = ${q(about)}`,
 		`levels = ["store", "commit", "context", "output", "order"]`, `normalisers = []`, ...(skip ? [`status = "pending"`, `reason = "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"`] : [`status = "ready"`]))
@@ -97,6 +99,7 @@ for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f
 const REFERENCE_STORAGE = "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
 const NOT_THE_CORE = {
 	"memory-storage": REFERENCE_STORAGE, "jsonl-storage": REFERENCE_STORAGE, "sqlite-facade": REFERENCE_STORAGE, "sqlite-storage": REFERENCE_STORAGE, "sqlite-migrations": REFERENCE_STORAGE,
+	"indexeddb-storage": REFERENCE_STORAGE,
 }
 // A row's real-time tests, with the measurement that shows the window binds the reference as well (gate.mjs reads real_time_tests).
 // Read-only: assigned once at initialization.
@@ -113,7 +116,7 @@ for (const f of readdirSync(join(pi, "packages/durable/test")).filter(f => f.end
 		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...(NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : [`status = "ready"`]), ...(REAL_TIME[name] ?? []))
 }
 emit("[[scenario]]", `id = "SC"`, `family = "storage-conformance"`, `runner = "storage-conformance"`, `source = "packages/durable/src/testing/storage-conformance.ts"`, `sha256 = ${q(sha("packages/durable/src/testing/storage-conformance.ts"))}`,
-	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare and sqlite-facade"`, `levels = ["tests"]`, `status = "ready"`)
+	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"`, `levels = ["tests"]`, `status = "ready"`)
 emit("[[scenario]]", `id = "I"`, `family = "interop"`, `runner = "interop"`, `source = "durable/interop/scenario.mjs"`, `owner = "dcore-host"`,
 	`about = "documents, a task-starting tool, a fork with init, compaction and a reset, then the Go port reads the store"`, `levels = ["store", "commit", "output", "order"]`, `status = "ready"`)
 // F: differential ordering. Each seed draws a random schedule of parallel tools, hooks, observers and inbox arrivals
