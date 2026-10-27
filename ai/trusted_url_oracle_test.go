@@ -16,6 +16,8 @@ import (
 type trustedURLAnswer struct {
 	Trusted *string `json:"trusted"`
 	Xai     *string `json:"xai"`
+	// Copilot is PiG's startDeviceFlow check of verification_uri; Pi runs trustedHttpUrl there, so it must answer as Trusted does.
+	Copilot *string `json:"-"`
 }
 
 // trustedURLInputs are verification URIs a server could send: schemes and cases, missing or extra slashes, backslashes, userinfo, ports, IDNA and
@@ -74,13 +76,16 @@ func TestTrustedVerificationURLsMatchPi(t *testing.T) {
 		if href, err := xaiValidateHTTPSURL(input); err == nil {
 			got.Xai = &href
 		}
+		if href, err := normalizeCopilotVerificationURI(input); err == nil {
+			got.Copilot = &href
+		}
 		want := expected[i]
 		if want.Trusted != nil {
 			accepted++
 		}
-		if str(got.Trusted) != str(want.Trusted) || str(got.Xai) != str(want.Xai) {
+		if str(got.Trusted) != str(want.Trusted) || str(got.Xai) != str(want.Xai) || str(got.Copilot) != str(want.Trusted) {
 			if differing++; differing <= 15 {
-				t.Errorf("%q differs from Pi:\n  Pig trusted %s, xai %s\n  Pi  trusted %s, xai %s", input, str(got.Trusted), str(got.Xai), str(want.Trusted), str(want.Xai))
+				t.Errorf("%q differs from Pi:\n  Pig trusted %s, xai %s, copilot %s\n  Pi  trusted %s, xai %s", input, str(got.Trusted), str(got.Xai), str(got.Copilot), str(want.Trusted), str(want.Xai))
 			}
 		}
 	}
