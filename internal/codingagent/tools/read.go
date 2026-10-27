@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 // ─── Read Tool ────────────────────────────────────────────────────────────────
@@ -275,7 +276,7 @@ func readThroughOperations(ops *ReadOperations, path string) ([]byte, string, st
 // file: opening is the access check, the first read is the detection's read and the rest completes readFile, each failure reported
 // as that step reports it.
 func readLocalFile(path string) ([]byte, string, string) {
-	f, err := os.Open(path)
+	f, err := nodefs.OpenFile(path, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, "", NodeFSError(err, "access", path)
 	}
