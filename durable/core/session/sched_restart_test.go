@@ -192,7 +192,7 @@ func TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit(t *testing.T
 			}
 			var abortHops []int
 			for _, n := range got {
-				if n != 0 && n != 3 { // 3 is the phase span (phaseSpanHops)
+				if n != 0 {
 					abortHops = append(abortHops, n)
 				}
 			}

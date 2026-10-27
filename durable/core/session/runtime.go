@@ -95,10 +95,8 @@ type ReportFrom struct{ Extension, Callback string }
 // carries an abort mark.
 func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
 	// runtime.commit is an async function that awaits `#gated` (scheduler.ts, Pi 6c384aa3: it adds the checkpoint event after the await), where it
-	// returned the promise itself: its caller resumes a tick after the commit's resolution.
-	inner := then
-	then = func(err error) { r.s.loop.NextTick(func() { inner(err) }) }
-	r.gated(func(tx *Tx, current *jv.Object) error {
+	// returned the promise itself: its caller resumes a tick after the commit's resolution (the late job).
+	r.gated(true, func(tx *Tx, current *jv.Object) error {
 		next, err := change(tx, current)
 		if err != nil {
 			return err
@@ -166,13 +164,13 @@ func (r *Runtime) FinishHostSettled(tx *Tx) (*Publication, error) { return r.s.s
 func (r *Runtime) AbandonHost(tx *Tx, err error) { r.s.sess.Abandon(tx, err) }
 
 // gated runs change as a job guarded by the invocation (scheduler.ts #gated).
-func (r *Runtime) gated(change func(tx *Tx, current *jv.Object) error, then func(error)) {
+func (r *Runtime) gated(late bool, change func(tx *Tx, current *jv.Object) error, then func(error)) {
 	s, inv := r.s, r.inv
 	if inv.ended {
-		s.loop.Defer(func() { then(endedError(inv)) })
+		s.loop.DeferDone(then, endedError(inv), late)
 		return
 	}
-	s.commitQueued(func(tx *Tx) error {
+	s.commitQueued(late, func(tx *Tx) error {
 		if inv.ended {
 			return endedError(inv)
 		}
@@ -197,7 +195,7 @@ func (r *Runtime) gated(change func(tx *Tx, current *jv.Object) error, then func
 // durable winner.
 func (r *Runtime) Memo(name string, candidate any, then func(winner any, err error)) {
 	var winner any
-	r.gated(func(tx *Tx, current *jv.Object) error {
+	r.gated(false, func(tx *Tx, current *jv.Object) error {
 		if w, ok := memoOf(current, name); ok {
 			winner = w
 			return nil
@@ -348,7 +346,7 @@ func (r *Runtime) Outcomes(ids []ID, then func([]*jv.Object, error)) {
 // SleepUntil commits a sleep: the task holds no invocation until the Harness clock reaches until, then resumes at checkpoint.
 // then runs once the sleep is stored, not when the time comes (scheduler.ts sleepUntil, a #gated #commitState).
 func (r *Runtime) SleepUntil(until float64, checkpoint any, then func(error)) {
-	r.gated(func(tx *Tx, current *jv.Object) error {
+	r.gated(false, func(tx *Tx, current *jv.Object) error {
 		tx.ticks = hopcost.GatedChange(1)
 		return r.s.commitState(tx, r.inv, current, obj("status", StatusSleeping, "checkpoint", jv.Clone(checkpoint), "until", until))
 	}, then)

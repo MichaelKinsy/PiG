@@ -24,6 +24,49 @@ type invocation struct {
 	finished       bool
 	doneWaiters    []func()
 	watches        []func()
+	loop           *Loop
+	// next is what afterSpan resumes, and stage where it is on the way: the span's hops, the microtask after them, then next itself.
+	next  func()
+	stage spanStage
+	tick  bool
+}
+
+type spanStage uint8
+
+const (
+	spanHops spanStage = iota + 1
+	spanDeferred
+)
+
+// afterSpan runs then once the span of a phase that just ended has returned (span: it has one), a tick later still when tick: the
+// phaseSpanHops hops and the microtask after them are the invocation's own Resume, so no closure is made for them.
+func (inv *invocation) afterSpan(span bool, then func(), tick bool) {
+	inv.next, inv.tick = then, tick
+	if span && inv.loop.Hops != nil {
+		inv.stage = spanHops
+		if inv.loop.Hops(phaseSpanHops, inv) {
+			return
+		}
+	}
+	inv.stage = 0
+	inv.Resume()
+}
+
+// Resume is the Resumer of afterSpan.
+func (inv *invocation) Resume() {
+	switch inv.stage {
+	case spanHops:
+		inv.stage = spanDeferred
+		inv.loop.DeferResumer(inv)
+		return
+	}
+	then := inv.next
+	inv.next, inv.stage = nil, 0
+	if inv.tick {
+		inv.loop.NextTick(then)
+		return
+	}
+	then()
 }
 
 func (inv *invocation) finish() {
@@ -253,7 +296,10 @@ func (s *Scheduler) commitWith(cancel *Cancel, change func(tx *Tx) error, scope 
 
 // commitQueued is commit for a call a caller makes through `Session.commitWith` (session.ts :95-102): on an idle line the job starts
 // a tick after the call.
-func (s *Scheduler) commitQueued(change func(tx *Tx) error, scope TxScope, then func(error)) {
+func (s *Scheduler) commitQueued(late bool, change func(tx *Tx) error, scope TxScope, then func(error)) {
+	if late {
+		s.loop.LateNext()
+	}
 	s.commitJob(s.loop.LineAfterTail, nil, change, scope, then)
 }
 

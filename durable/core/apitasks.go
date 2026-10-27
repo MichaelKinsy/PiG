@@ -43,11 +43,13 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 		// closed rejects, otherwise the waiter settles with the scope's last live task.
 		// The client methods (Harness.waitForIdle, Conversation.waitForIdle) are async functions that return the scheduler's promise (Pi 6c384aa3,
 		// harness.ts). The handle an invocation gets is bound and returns it as it is.
-		bound := req.Has("invocation")
 		scope := session.ID(numOf(req, "conversationId"))
-		settled := h.sched.IsIdle(scope)
+		hops := 0
+		if !req.Has("invocation") {
+			hops = asyncReturnHops(h.sched.IsIdle(scope))
+		}
 		h.sched.WaitForIdle(scope, nil, func(err error) {
-			if err != nil || bound || !h.holdFor(asyncReturnHops(settled), func() { reply(nil, nil) }) {
+			if err != nil || !h.holdLate(hops, answerOK, id, nil) {
 				reply(nil, err)
 			}
 		})
@@ -85,7 +87,7 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 			if rt == nil {
 				hops += asyncReturnHops(false)
 			}
-			if err != nil || !h.holdFor(hops, func() { reply(record, err) }) {
+			if err != nil || !h.holdLate(hops, answerOK, id, record) {
 				reply(record, err)
 			}
 		}
@@ -124,6 +126,9 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 	}
 	return true
 }
+
+// answerOK is the work parked on a hops chain (holdLate) that answers the api request id with val.
+func answerOK(h *handler, id uint32, val any) { h.apiOK(id, val) }
 
 // asyncReturnHops is the ticks an async function adds when it returns a promise another function made, to the caller that awaits it: the thenable job
 // registers the function's promise on the inner one a tick after the return, and the reaction that settles it runs a tick after the inner promise

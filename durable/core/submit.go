@@ -81,10 +81,35 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 		answer.Set("id", float64(submission))
 		// Submissions.submit returns the span of "pi.durable.submit" (submissions.ts, Pi 2ec55d80): the no-op span's startSpan is an async
 		// function that returns the callback's promise, and the async submit returns that one, two adoptions on top of the commit's return.
-		h.hopsThen(submitSpanHops, func() { h.apiOK(id, answer) })
+		h.holdLate(submitSpanHops, deferAnswer, id, answer)
 	})
 	return nil
 }
+
+// lateAnswer is an answer to an api request that waits for its microtask (deferAnswer).
+type lateAnswer struct {
+	id  uint32
+	val any
+}
+
+// deferAnswer is the work parked on a hops chain (holdLate) that answers the api request id with val as a microtask: hopsThen for an
+// answer, without a closure. The handler is the Resumer of every such microtask, and they run in the order they were queued.
+func deferAnswer(h *handler, id uint32, val any) {
+	h.lateAnswers = append(h.lateAnswers, lateAnswer{id, val})
+	h.loop.DeferResumer(h)
+}
+
+// Resume answers the oldest request deferAnswer queued.
+func (h *handler) Resume() {
+	a := h.lateAnswers[0]
+	n := copy(h.lateAnswers, h.lateAnswers[1:])
+	h.lateAnswers[n] = lateAnswer{}
+	h.lateAnswers = h.lateAnswers[:n]
+	h.apiOK(a.id, a.val)
+}
+
+// resumeHop is the work parked on a hops chain (holdLate) that resumes the Resumer val where the chain ended (Loop.Hops).
+func resumeHop(_ *handler, _ uint32, val any) { val.(session.Resumer).Resume() }
 
 // submitSpanHops is the ticks the "pi.durable.submit" span adds to the return of Submissions.submit (Pi 6c384aa3, F-ticks-gate: cold submit 105
 // against 103).

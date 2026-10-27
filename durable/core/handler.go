@@ -114,6 +114,8 @@ type handler struct {
 	inTxOp  bool                // a host transaction operation runs: it reads the host's Storage itself (tx.go)
 	shadow  shadowReads         // the host Storage reads the running job or request issued (ctxread.go)
 	cg      commitGate          // the commit waiting for the host's Storage.commit
+
+	lateAnswers []lateAnswer // the answers deferAnswer queued as microtasks that have not run (submit.go)
 	// openDone, openErr and openWaiters are how the scheduler's open ended and the "opened" requests waiting for it.
 	openDone    bool
 	openErr     error

@@ -31,15 +31,6 @@ const (
 // promise (another adoption) which `#run` awaits. Measured on Pi 6c384aa3 over F-ticks-tools-gate (the commit that follows a phase's decision step comes 3 ticks later, and the 4th tick of the model call is runtime.commit's return).
 const phaseSpanHops = 3
 
-// afterSpan runs then once the span of a phase that just ended has returned.
-func (s *Scheduler) afterSpan(then func()) {
-	if s.env.After != nil {
-		s.env.After(phaseSpanHops, then)
-		return
-	}
-	then()
-}
-
 func (s *Scheduler) start(r *reservation) {
 	inv := r.inv
 	finish := func() {
@@ -73,29 +64,20 @@ func (s *Scheduler) run(r *reservation, finish func()) {
 			return s.decide(tx, current, prev, st, inv.extension)
 		}, func(current *jv.Object) {
 			// #run awaits #phase, which wraps the phase handler and the decision step that follows it in a span.
-			phaseEnd := func(then func()) {
-				if prev != nil {
-					s.afterSpan(then)
-					return
-				}
-				then()
-			}
 			if current == nil || s.closing {
-				phaseEnd(finish)
+				inv.afterSpan(prev != nil, finish, false)
 				return
 			}
 			// #run awaits #step, an async function that awaited the step's commit: the phase starts a tick after the job resolved
 			// (scheduler.ts :919-926, :1000-1002).
-			phaseEnd(func() {
-				s.loop.NextTick(func() {
-					cp, _ := getObj(current, "state").Get("checkpoint")
-					rt.agentReset()
-					st.task.Phase(rt, current, func(err error) {
-						previous = &phaseResult{checkpoint: cp, failure: err}
-						s.loop.Defer(next)
-					})
+			inv.afterSpan(prev != nil, func() {
+				cp, _ := getObj(current, "state").Get("checkpoint")
+				rt.agentReset()
+				st.task.Phase(rt, current, func(err error) {
+					previous = &phaseResult{checkpoint: cp, failure: err}
+					s.loop.Defer(next)
 				})
-			})
+			}, true)
 		})
 	}
 	next()
@@ -179,7 +161,7 @@ func (s *Scheduler) runAbort(r *reservation, finish func()) {
 				return decision{kind: decideFault, fault: failure}, nil
 			}
 			return decision{kind: decideFault, fault: errorf("Abort handler of task %d returned without a terminal outcome", inv.taskID)}, nil
-		}, func(*jv.Object) { s.afterSpan(finish) })
+		}, func(*jv.Object) { inv.afterSpan(true, finish, false) })
 	}
 	r.task.Abort(rt, current, func(err error) {
 		if n := r.task.AbortReturnHops; n > 0 && s.env.After != nil {
