@@ -48,9 +48,12 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     if (opened === undefined) {
       const { now, documentRetentionMs, setTimer, readOnly, persistWithinMs } = options
       // The retention and the default window of a deferred commit are read live at each use, as Session reads its callbacks.
-      const settings = documentRetentionMs === undefined && persistWithinMs === undefined ? undefined : {
-        ...(documentRetentionMs === undefined ? {} : { get documentRetentionMs() { return documentRetentionMs() } }),
-        ...(persistWithinMs === undefined ? {} : { progress: { get persistWithinMs() { return persistWithinMs() } } }),
+      // Live getters (a spread would read them once).
+      let settings: Record<string, unknown> | undefined
+      if (documentRetentionMs !== undefined || persistWithinMs !== undefined) {
+        settings = {}
+        if (documentRetentionMs !== undefined) Object.defineProperty(settings, "documentRetentionMs", { get: () => documentRetentionMs(), enumerable: true })
+        if (persistWithinMs !== undefined) Object.defineProperty(settings, "progress", { value: Object.defineProperty({}, "persistWithinMs", { get: () => persistWithinMs(), enumerable: true }), enumerable: true })
       }
       opened = Harness.open(storage, { models: NO_MODELS, registry: NO_REGISTRY as never, mode: "session", onReport: reported, ...(now === undefined ? {} : { now }), ...(settings === undefined ? {} : { settings }), ...(setTimer === undefined ? {} : { setTimer }), ...(readOnly === true ? { readOnly } : {}) } as never, BACKGROUND_CONTEXT)
       void opened.then(h => { harness = h })
