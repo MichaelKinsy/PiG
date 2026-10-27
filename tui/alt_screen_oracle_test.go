@@ -135,8 +135,8 @@ func checkAltScreenOracle(t *testing.T, screens bool) {
 // judging what the steps show to the engines (recordOnly), so a step that shows other rows than Pi's reaches them instead of failing here.
 type oracleTap struct {
 	recordOnly bool
-	start func(scenario, cols, rows int, images string, out string)
-	step  func(scenario int, resize []int, overWide bool, out string)
+	start      func(scenario, cols, rows int, images string, out string)
+	step       func(scenario int, resize []int, overWide bool, out string)
 }
 
 // checkAltScreenOracleIn is checkAltScreenOracle in a terminal whose environment sets env over the oracle's (TERM=xterm-256color

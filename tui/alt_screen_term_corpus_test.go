@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -498,7 +499,7 @@ func TestAltScreenTermEngineCorpus(t *testing.T) {
 			if termRegionRe.Match(frameA) {
 				scrolledFrames++
 			}
-			if string(frameA) != string(frameB) {
+			if !bytes.Equal(frameA, frameB) {
 				differing++
 			}
 			start = [2]int{stepA.End, stepB.End}
