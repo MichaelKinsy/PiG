@@ -109,7 +109,8 @@ func (h *handler) StartPhase(p *session.PhaseInfo) {
 		buf = append(buf, `,"links":`...)
 		buf = jv.Append(buf, p.Links)
 	}
-	h.telPayload = append(buf, '}')
+	buf = append(buf, '}')
+	h.telPayload = buf
 	h.hookEffect("phaseSpan", 0, 0, p.Task, &h.telPayload, nil, p.Answered)
 }
 
