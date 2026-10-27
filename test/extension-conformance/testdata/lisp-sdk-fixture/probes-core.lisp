@@ -646,7 +646,7 @@
                         (let* ((name (substitute #\_ #\: kind)) (path (format nil "~A/state-push-~A" directory name)) (temp (concatenate 'string path ".tmp")))
                           (with-open-file (out temp :direction :output :if-exists :supersede :external-format :utf-8)
                             (write-string (concatenate 'string armed "=>" current) out))
-                          (rename-file temp path))))))
+                          (sb-posix:rename temp path))))))
                  nil)))
 
 (def-fixture "core-rw" (ext)
