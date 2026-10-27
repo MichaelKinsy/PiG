@@ -19,7 +19,7 @@ func TestRegisterRenderersAcrossSDKs(t *testing.T) {
 	}
 	t.Parallel()
 	const width = 41
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

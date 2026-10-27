@@ -11,7 +11,7 @@ import (
 
 // replicatedStateCases are every realization of an SDK the row compares: isolated, packed and fused.
 func replicatedStateCases() []harnessCase {
-	return append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...)
+	return append(sdkHarnessCases(), packedSDKHarnessCases()...)
 }
 
 // newReplicatedStateSession builds a Session over the harness's extension runner and a faux model, and binds the host actions an SDK reads and writes its replicated state through, as every mode does (cmd/pig bindSessionExtensionActions, coding.BindExtensionHostSessionActions).

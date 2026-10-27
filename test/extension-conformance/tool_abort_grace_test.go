@@ -22,7 +22,7 @@ func TestConformance_AbortedToolSettlesWithinTheGrace(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	cases := append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...)
+	cases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)

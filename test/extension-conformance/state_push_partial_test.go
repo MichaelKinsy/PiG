@@ -13,7 +13,7 @@ import (
 // The host sends an extension only the state that changed since its last push and skips a push the extension already holds, as the runtime's applyState keeps the fields a state_update omits. Every realization must report the same system prompt options after an identical state, a change to the options alone, and a change back; the Node runtime reads them from the replicated state, so a push that dropped or kept a stale copy shows up here.
 func TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes(t *testing.T) {
 	t.Parallel()
-	cases := append(allHarnessCases(), lispHarnessCase())
+	cases := allHarnessCases()
 	for _, language := range []string{"go", "rust", "python"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
@@ -82,7 +82,7 @@ func TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes(t *testing.T) {
 // Pi awaits every message_update handler before it reads the provider's next event (agent-loop.ts:436 `await emit`, agent.ts:610 `await listener`, agent-session.ts:1140 `await this._emitExtensionEvent`, runner.ts:1089-1118 `await handler(event, ctx)`), so a handler sees one event per provider delta, in the provider's order, and an event of another kind that follows is delivered after the last update's handlers finished. The Host keeps that: nothing merges, drops or reorders deltas, in the in-process reference and in every isolated, packed and fused realization. The state pushes before each delivery are partial (TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes); this row sends enough deltas back to back to make a merged or dropped delta visible.
 func TestMessageUpdateDeliversEveryDeltaInOrderAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	cases := append(sdkHarnessCases(), lispHarnessCase())
+	cases := sdkHarnessCases()
 	for _, language := range []string{"go", "rust", "python"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}

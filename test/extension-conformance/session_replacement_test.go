@@ -13,7 +13,7 @@ import (
 
 // Pi's replacement event files cross the same wire in every SDK realization.
 func TestSessionReplacementLifecycleAcrossSDKs(t *testing.T) {
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

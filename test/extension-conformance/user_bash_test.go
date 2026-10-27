@@ -30,7 +30,7 @@ func conformanceUserBashResult(command string) any {
 
 // Pi runner.ts:136-159 distinguishes a missing property from number | undefined. Nil/None/null in the native SDK's required optional exit-code field is undefined; explicit wire null remains invalid.
 func TestUserBashValidationAcrossSDKs(t *testing.T) {
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

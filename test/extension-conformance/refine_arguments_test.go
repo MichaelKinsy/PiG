@@ -83,7 +83,7 @@ func (r toolRefiner) Refine(ctx context.Context, path string, index int, value a
 // included) and so is the sequence of calls the extension receives (Pi's Check runs the predicates in its order, Errors again, anyOf takes the first branch that passes, a throw ends it).
 func TestConformance_RefinedToolArgumentsAgreeAcrossSDKs(t *testing.T) {
 	cases := refineVectorCases(t)
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

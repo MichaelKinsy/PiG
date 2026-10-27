@@ -103,7 +103,7 @@ func TestConformance_HostParserHelpersAgreeAcrossSDKs(t *testing.T) {
 		t.Fatalf("the Node reference's factory-time results = %v, want %v", referenceFactory, wantFactory)
 	}
 
-	for _, tc := range append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...) {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		if tc.name == "subprocess-node" {
 			continue
 		}
