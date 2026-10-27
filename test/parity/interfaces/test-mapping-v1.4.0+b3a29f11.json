@@ -499,8 +499,14 @@
     },
     {
       "path": "packages/ai/test/classifier-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9f4c34792441dccf4a7d5f74998e67c292dd2bc67183322a0538d478a88bc265"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9f4c34792441dccf4a7d5f74998e67c292dd2bc67183322a0538d478a88bc265",
+      "evidence": [
+        "ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "coding/extension_model_types_wire_test.go#TestExtensionClassifyAction",
+        "ai/opencode_endpoints_upstream_test.go#TestOpenCodeCatalogUsesProtocolSpecificEndpoints"
+      ],
+      "rationale": "Pi 7f225f25 changes the 'routes OpenRouter classifier models through the System One API' case (:248) to expect compat {imageInput: state-image-urls, sendImageOptInHeader: false}, explicit so images keep OpenRouter's form when the baseUrl is overridden. The Go subtest of the same name asserts model.Compat.ImageInput == SystemOneImageInputStateImageURLs and a false SendImageOptInHeader on the catalog models, which the regenerated classifier catalog (ai/classifier_models_generated.go) now carries. Earlier review, retained: All 5 cases. 'keeps chat and classifier entries...', 'exposes Jev only through classifier catalog accessors', the three 'routes <provider> Jev' rows and 'routes OpenRouter classifier models' are TestClassifierModelsUpstream subtests. 'rejects chat models at the classifier entry point at runtime' (:94) casts a chat model to ClassifierModel; ai.Models.Classify takes *ClassifierModel so the cast cannot compile in Go, and the reachable runtime entry that accepts any model (the extension classify action, coding.ModelRuntime via ai.AssertClassifierModel) is covered by TestExtensionClassifyAction asserting an error result containing 'is not a classifier model'. 1.1.0 adds three cases, all subtests of TestClassifierModelsUpstream (ai/classifier_models_upstream_test.go): images rejected before the provider call for text-only classifier models, GPT-6 Luna routed through the Decisions API with images (chat entry stays separate), and Decisions models listed only for API key credentials. Pi 3daa2028→b06c1f2c: Pi 195120a9 moves the OpenCode classifier base URLs from /zen/v1 to /inference/v1; TestClassifierModelsUpstream carries the new URLs. Pi 177e2ad7 (#11434) changes the 'routes opencode Jev' rows (:132-134) to expect https://opencode.ai/inference/systemone/v1/systemone (was /inference/v1/systemone) for jev-1.13 and jev-1.13-free; the Go rows follow and failed before the change against the regenerated classifier catalog (ai/classifier_models_generated.go, from the pinned provider data). TestOpenCodeCatalogUsesProtocolSpecificEndpoints walks every OpenCode and OpenCode Go chat and classifier model and checks its baseUrl against the endpoint of its API: openai-completions and openai-responses at /openai/v1, anthropic-messages at /anthropic, google-generative-ai at /google/v1beta, typesafe-system-one at /systemone/v1, under https://opencode.ai/inference and https://opencode.ai/inference/go."
     },
     {
       "path": "packages/ai/test/cloudflare-ai-binding.test.ts",
