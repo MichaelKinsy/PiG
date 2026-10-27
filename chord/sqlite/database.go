@@ -15,12 +15,16 @@ type SqliteRow = map[string]any
 
 // SqliteExecutor is the SQL surface shared by a database and its transaction handles.
 //
-// Exec runs SQL text without bindings and may contain several statements. Run, Get, and All execute one statement
-// with positional bindings. Adapters may cache prepared statements by SQL text, so callers pass values as bindings
-// instead of interpolating them. Get returns a nil row when the statement yields none.
+// Exec runs SQL text without bindings and may contain several statements. Run, RunCounted, Get, and All execute one
+// statement with positional bindings. RunCounted runs one like Run and returns the rows it inserted, updated or
+// deleted, as SQLite's changes() counts them (index writes and rows changed by triggers do not count); it may cost a
+// statement more than Run, so callers that need no count use Run. Adapters may cache prepared statements by SQL text,
+// so callers pass values as bindings instead of interpolating them. Get returns a nil row when the statement yields
+// none.
 type SqliteExecutor interface {
 	Exec(sql string) error
 	Run(sql string, params ...SqliteValue) error
+	RunCounted(sql string, params ...SqliteValue) (int64, error)
 	Get(sql string, params ...SqliteValue) (SqliteRow, error)
 	All(sql string, params ...SqliteValue) ([]SqliteRow, error)
 }

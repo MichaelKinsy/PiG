@@ -1670,16 +1670,16 @@ rationale = "New in 1.2.0. chord/host/schema.go ports CanonicalJSON (schema.ts:1
 [[files]]
 path = "packages/chord/src/sqlite/cloudflare.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver"]
+rationale = "Read against Pi cloudflare.ts at Pi 8025c414: chord/sqlite/cloudflare/cloudflare.go durableObjectExecutor.RunCounted runs the statement and then reads SELECT changes() AS changes from the same storage (the cursor's rows written is a billing count that includes index writes), returning 0 when the cursor yields no row; DurableObjectSqliteDatabase.RunCounted queues it behind earlier operations and a running transaction like Run, and a transaction handle checks that it is active before either statement. The subtest 'reports the rows a statement changed, without index writes' runs the shared runChanges probe (sqlitetest.RunChanges: a STRICT WITHOUT ROWID table with two indexes; insert 1, update 1, no match 0, bulk update 10, upsert 1, delete 1, bulk delete 10) and a RunCounted inside Transaction over the native-connection stand-in."
 
 [[files]]
 path = "packages/chord/src/sqlite/database.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver", "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver"]
+rationale = "Read against Pi database.ts at Pi 8025c414: the SqliteExecutor interface gains runCounted(sql, ...params): Promise<number>, the rows the statement inserted, updated or deleted as SQLite's changes() counts them; Go's chord/sqlite/database.go SqliteExecutor gains RunCounted(sql, params...) (int64, error) with the same doc comment, and the wrappers in bench/durableperf/dbg.go forward it."
 
 [[files]]
 path = "packages/chord/src/sqlite/index.ts"
@@ -1698,9 +1698,9 @@ rationale = "Read against Pi migrations.ts: chord/sqlite/migrations.go ApplySqli
 [[files]]
 path = "packages/chord/src/sqlite/node.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver", "test:chord/sqlite/node/statement_cache_test.go#TestNodeSqliteStatementCache"]
+rationale = "Read against Pi node.ts at Pi 8025c414 and db14038b. 8025c414: nodeSqliteExecutor.RunCounted runs the cached statement through the same runOperation bracket as Run and returns the statement result's rows affected (node:sqlite's changes); the subtest 'reports the rows a statement changed, without index writes' runs the shared probe and a RunCounted inside Transaction. db14038b: the statement cache keeps the 256 most recently used statements per connection (statementCacheLimit), moves a hit to the most recent end only once the cache holds more than half the limit, evicts the least recently used entry after a prepare and closes its sql.Stmt (a Map's first key in Pi; container/list order here); TestNodeSqliteStatementCache prepares 300 distinct statements, reads the newest again without a prepare and the first again with exactly one."
 
 [[files]]
 path = "packages/chord/src/sqlite/schema.ts"
@@ -4253,9 +4253,9 @@ rationale = ""
 [[files]]
 path = "packages/env/src/connection.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:env/connection_start_stderr_test.go#TestConnectionStartFailures", "test:env/connection_start_stderr_test.go#TestConnectionOfAReadyDaemonFailsPendingRequestsWhenItExitsWhilePipesStayOpen"]
+rationale = "Read against Pi connection.ts at Pi 479d6e5e: env/connection.go keeps the last 20 lines / 2000 UTF-16 units of the daemon's stderr in session.stderrTail until `hello` (cleared by markReady), decodes stderr as UTF-8 across reads (utf8Stream, an incomplete tail at the end becomes one U+FFFD, as setEncoding('utf8')), still forwards every decoded chunk to onLog unchanged, and withStderr strips terminal escapes (Node's stripVTControlCharacters pattern) and control characters (all but \\n, \\t and 0x20-0x7e / above 0x9f), trims line ends, drops empty lines and appends '\\nremote stderr:\\n' + the tail lines to the message of a RemoteError that ends a start (a copy keeping code, path and fields; no tail leaves the message unchanged). The daemon's exit before `hello` waits for stdout and stderr to end (Node's `close`) before it fails the start; once ready the exit still tears the session down at once, even while a process the daemon started keeps a pipe open."
 
 [[files]]
 path = "packages/env/src/errors.ts"

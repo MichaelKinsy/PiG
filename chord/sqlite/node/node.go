@@ -6,6 +6,7 @@ package node
 // Ports packages/chord/src/sqlite/node.ts
 
 import (
+	"container/list"
 	"context"
 	"database/sql"
 	"errors"
@@ -157,6 +158,18 @@ func (statement *StatementSync) Run(params ...any) error {
 	return err
 }
 
+// RunCounted executes the statement and returns the rows it changed.
+func (statement *StatementSync) RunCounted(params ...any) (int64, error) {
+	if err := statement.open(); err != nil {
+		return 0, err
+	}
+	result, err := statement.statement.ExecContext(context.Background(), params...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // EachText passes the first column of every result row to fn as it is read; the bytes are valid until fn returns.
 func (statement *StatementSync) EachText(params []any, fn func(text []byte) error) (err error) {
 	if err := statement.open(); err != nil {
@@ -271,7 +284,8 @@ func (queue *serialOperationQueue) queued() int {
 }
 
 // nodeSqliteExecutor executes SQL on one connection. Prepared statements are cached per connection by SQL text, so the
-// database and its transaction handles share them across transactions.
+// database and its transaction handles share them across transactions. The cache keeps the statementCacheLimit most
+// recently used statements, so callers generating SQL of unbounded shapes cannot grow it without bound.
 type nodeSqliteExecutor struct {
 	database   connection
 	statements *statementCache
@@ -279,23 +293,49 @@ type nodeSqliteExecutor struct {
 	runOperation func(operation func() error) error
 }
 
+// statementCacheLimit is how many prepared statements one connection keeps.
+const statementCacheLimit = 256
+
+// statementCache holds prepared statements by SQL text, least recently used first.
 type statementCache struct {
 	mu         sync.Mutex
-	statements map[string]*StatementSync
+	statements map[string]*list.Element
+	order      list.List
+}
+
+type cachedStatement struct {
+	sqlText   string
+	statement *StatementSync
+}
+
+func newStatementCache() *statementCache {
+	return &statementCache{statements: map[string]*list.Element{}}
 }
 
 func (executor *nodeSqliteExecutor) statement(sqlText string) (*StatementSync, error) {
 	cache := executor.statements
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-	if statement := cache.statements[sqlText]; statement != nil {
-		return statement, nil
+	if element := cache.statements[sqlText]; element != nil {
+		// Recency matters only once evictions come near: a small cache keeps one lookup per statement.
+		if len(cache.statements) > statementCacheLimit/2 {
+			cache.order.MoveToBack(element)
+		}
+		return element.Value.(*cachedStatement).statement, nil
 	}
 	statement, err := executor.database.Prepare(sqlText)
 	if err != nil {
 		return nil, err
 	}
-	cache.statements[sqlText] = statement
+	cache.statements[sqlText] = cache.order.PushBack(&cachedStatement{sqlText: sqlText, statement: statement})
+	if len(cache.statements) > statementCacheLimit {
+		oldest := cache.order.Front()
+		cache.order.Remove(oldest)
+		evicted := oldest.Value.(*cachedStatement)
+		delete(cache.statements, evicted.sqlText)
+		// Operations run serially, so the evicted statement is not executing; the one being returned is the newest.
+		_ = evicted.statement.close()
+	}
 	return statement, nil
 }
 
@@ -311,6 +351,19 @@ func (executor *nodeSqliteExecutor) Run(sqlText string, params ...chordsqlite.Sq
 		}
 		return statement.Run(params...)
 	})
+}
+
+// RunCounted executes one statement and returns the rows it changed.
+func (executor *nodeSqliteExecutor) RunCounted(sqlText string, params ...chordsqlite.SqliteValue) (changed int64, err error) {
+	err = executor.runOperation(func() error {
+		statement, prepareErr := executor.statement(sqlText)
+		if prepareErr != nil {
+			return prepareErr
+		}
+		changed, prepareErr = statement.RunCounted(params...)
+		return prepareErr
+	})
+	return changed, err
 }
 
 // EachText runs a query whose first column is text and passes each value to fn without building result rows.
@@ -380,7 +433,7 @@ func newNodeSqliteDatabase(database connection) *NodeSqliteDatabase {
 	adapter := &NodeSqliteDatabase{access: newSerialOperationQueue()}
 	adapter.nodeSqliteExecutor = nodeSqliteExecutor{
 		database:     database,
-		statements:   &statementCache{statements: map[string]*StatementSync{}},
+		statements:   newStatementCache(),
 		runOperation: adapter.run,
 	}
 	return adapter
@@ -450,10 +503,11 @@ func (adapter *NodeSqliteDatabase) Close() error {
 	adapter.closed = true
 	adapter.statements.mu.Lock()
 	var errs []error
-	for sqlText, statement := range adapter.statements.statements {
-		errs = append(errs, statement.close())
+	for sqlText, element := range adapter.statements.statements {
+		errs = append(errs, element.Value.(*cachedStatement).statement.close())
 		delete(adapter.statements.statements, sqlText)
 	}
+	adapter.statements.order.Init()
 	adapter.statements.mu.Unlock()
 	checkpointErr := adapter.database.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	// Pi closes in a finally block, so a close failure replaces the checkpoint failure.
