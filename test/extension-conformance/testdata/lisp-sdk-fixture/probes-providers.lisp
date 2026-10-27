@@ -59,14 +59,6 @@
                                               (pig:make-tool-renderers :render-call (pv-resolved-line "late" tool))
                                               (funcall next)))))))
 
-(def-fixture "provider-response" (ext)
-  (pig:on ext "after_provider_response"
-          (lambda (ctx data)
-            (pig:ctx-notify ctx (format nil "provider-response=~A:~A:~A" (pig:jget data "type") (pig:jget data "status") (pig:jref data "headers" "x-probe")) "info")
-            (pig:obj "cancel" t)))
-  (pig:on ext "after_provider_response"
-          (lambda (ctx data) (declare (ignore data)) (pig:ctx-notify ctx "provider-response=second" "info") nil)))
-
 (def-fixture "provider-late-registrations" (ext)
   (pig:command ext "provider_probe_register" "Register a provider with one model"
                (lambda (ctx args)
@@ -156,7 +148,7 @@
                    (pig:ctx-set-login ctx definition)
                    (setf (first (pig:login-definition-brand definition)) (subseq (first (pig:login-definition-brand definition)) 0 40))
                    (handler-case (pig:ctx-set-login ctx definition)
-                     (pig:host-call-error (e) (pig:ctx-notify ctx (pig:host-call-error-message e) "error") (return-from probe nil)))
+                     (pig:host-call-error (e) (pig:ctx-notify ctx (format nil "~A: ~A" (pig:host-call-error-code e) (pig:host-call-error-message e)) "error") (return-from probe nil)))
                    (error "invalid login definition was accepted")))))
   (pig:command ext "sprite-probe" "Exercise sprite registration and host errors"
                (lambda (ctx args)
@@ -166,7 +158,7 @@
                    (pig:ctx-register-sprite ctx definition)
                    (setf (first (pig:sprite-definition-mascot definition)) (subseq (first (pig:sprite-definition-mascot definition)) 0 15))
                    (handler-case (pig:ctx-register-sprite ctx definition)
-                     (pig:host-call-error (e) (pig:ctx-notify ctx (pig:host-call-error-message e) "error") (return-from probe nil)))
+                     (pig:host-call-error (e) (pig:ctx-notify ctx (format nil "~A: ~A" (pig:host-call-error-code e) (pig:host-call-error-message e)) "error") (return-from probe nil)))
                    (error "invalid sprite definition was accepted"))))))
 
 ;;; an OAuth login that asks the host for every kind of interaction (lisp_provider_api_test.go: TestLispOAuthLoginCallbacksReachTheHost)

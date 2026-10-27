@@ -18,20 +18,6 @@
                                         (error (e) (format nil "reload=error:~A" e)))))
                     "info")))))
 
-(def-fixture "session-replacement-events" (ext)
-  (pig:on ext "session_start"
-          (lambda (ctx data)
-            (pig:ctx-notify ctx (format nil "session_start:~A" (let ((r (pig:jget data "reason"))) (if (stringp r) r "")))  "info")
-            (let ((previous (pig:jget data "previousSessionFile")))
-              (when (and (stringp previous) (plusp (length previous)))
-                (pig:ctx-notify ctx (concatenate 'string "previous:" previous) "info")))))
-  (pig:on ext "session_shutdown"
-          (lambda (ctx data)
-            (pig:ctx-notify ctx (format nil "session_shutdown:~A" (let ((r (pig:jget data "reason"))) (if (stringp r) r "")))  "info")
-            (let ((target (pig:jget data "targetSessionFile")))
-              (when (and (stringp target) (plusp (length target)))
-                (pig:ctx-notify ctx (concatenate 'string "target:" target) "info"))))))
-
 (def-fixture "session_actions_bound" (ext)
   (pig:command ext "session_actions_bound" "Report what the host's bound session actions answer"
                (lambda (ctx args)
