@@ -70,6 +70,9 @@ type Session struct {
 	// HostAdmits: the host admits calls itself, so the seal does not reject a call it admitted before the seal (assertUsable).
 	HostAdmits bool
 	heldPubs   []*Publication
+	// ReadOnly refuses every commit with writes and every scheduling call (HarnessOptions.readOnly): ReadOnlyError, before the store,
+	// so the Session stays healthy.
+	ReadOnly bool
 
 	// ConversationCreated runs inside every transaction that creates or forks a
 	// conversation, after the conversation record is staged. A plain Session
@@ -270,6 +273,12 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 		tx.abortChanges()
 		s.sweepDocuments()
 		return nil, nil
+	}
+	if s.ReadOnly {
+		// Refused before the store: the Session stays healthy, and the caller sees why (session.ts #runCommit).
+		tx.abortChanges()
+		s.sweepDocuments()
+		return nil, &ReadOnlyError{What: "a commit with writes"}
 	}
 	seq, err := s.store.Commit(writes, s.nextID)
 	if err != nil {

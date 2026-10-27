@@ -77,6 +77,25 @@ func (c *Client) poisonedOr(err error) error {
 	return &SessionFailedError{durable.NewSessionFailed(fatal)}
 }
 
+// rejection is a step the core rejected, as the typed Pi error its name says: errors.As finds the host's *sqlhost.RejectedError
+// through Unwrap and Pi's ReadOnlySession, ReadAfterWrite and the other classes through As (CoreError.As), as for an error the
+// core answered in an api result.
+type rejection struct{ *sqlhost.RejectedError }
+
+func (e *rejection) Unwrap() error { return e.RejectedError }
+
+func (e *rejection) As(target any) bool {
+	return (&CoreError{Name: e.Name, Message: e.Message}).As(target)
+}
+
+// typedRejection wraps a rejected step so that a caller matches Pi's error classes on it; any other error is unchanged.
+func typedRejection(err error) error {
+	if rejected, ok := err.(*sqlhost.RejectedError); ok {
+		return &rejection{rejected}
+	}
+	return err
+}
+
 // NewClient returns a client of one host.
 func NewClient(host *sqlhost.Host) *Client { return &Client{host: host} }
 
@@ -88,7 +107,7 @@ func (c *Client) request(ctx context.Context, kind abi.NoticeKind, id uint32, ev
 	}
 	if err := c.host.Send(ctx, ev); err != nil {
 		expect.Cancel()
-		return nil, c.poisonedOr(causeOr(ctx, err))
+		return nil, c.poisonedOr(causeOr(ctx, typedRejection(err)))
 	}
 	notice, err := expect.Wait(ctx)
 	if err != nil {
