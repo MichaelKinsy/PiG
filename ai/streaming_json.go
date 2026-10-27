@@ -109,10 +109,6 @@ type partialJSONParser struct {
 	input string
 	index int
 	order schemaObjectOrder
-	// readBeyond records that a result depended on text after the value it was read from: parseNum's lastIndexOf("e") looks at the whole input.
-	readBeyond bool
-	// strings, when set, resumes the decoding of an unterminated string across calls on a growing input.
-	strings *resumableString
 	// objectProtoNull is the protoNull state of the object parseMembers returned last; parseMembers reads it right after a member value that is an object.
 	objectProtoNull bool
 }
@@ -261,14 +257,6 @@ func (parser *partialJSONParser) parseAny(path string) (any, bool) {
 }
 
 func (parser *partialJSONParser) parseStr() (any, bool) {
-	if parser.strings != nil && parser.strings.start == parser.index {
-		return parser.strings.resume(parser, parser.index)
-	}
-	return parser.parseStrText()
-}
-
-// parseStrText reads the string that begins at parser.index from its whole text.
-func (parser *partialJSONParser) parseStrText() (any, bool) {
 	text := parser.input
 	start := parser.index
 	escape := false
@@ -281,11 +269,6 @@ func (parser *partialJSONParser) parseStrText() (any, bool) {
 		parser.index++
 		value, ok := jsonParseValue(jsSubstring(text, start, parser.index-boolToInt(escape)))
 		return value, ok
-	}
-	if parser.strings != nil && parser.strings.poisoned != start && text[start] == '"' {
-		// An unterminated string is the one a growing input extends next. Like parseStr, the decoder takes the first byte for the opening quote; it resumes only a real one.
-		parser.strings.begin(start)
-		return parser.strings.resume(parser, start)
 	}
 	return parser.unterminatedStr(start, escape)
 }
@@ -309,12 +292,12 @@ func boolToInt(value bool) int {
 func (parser *partialJSONParser) parseObj(path string) (any, bool) {
 	parser.index++
 	parser.skipBlank()
-	return parser.parseMembers(path, map[string]any{}, nil, false, nil)
+	return parser.parseMembers(path, map[string]any{}, nil, false)
 }
 
-// parseMembers reads the members of the object at path from parser.index, adding them to object and keys. onMember, when set, runs after each member that a ',' follows, unless a value read beyond its own text: nothing appended to the input changes that member or the parser state at that point.
+// parseMembers reads the members of the object at path from parser.index, adding them to object and keys.
 // partial-json assigns obj[key] = value, so a "__proto__" member runs Object.prototype's setter while the object's prototype chain reaches it: null makes the object's prototype null, an object or array replaces the prototype, and any other value is ignored; none of these makes a property. The setter is out of reach once the prototype is null, or is an object whose own chain ends without it (its prototype was set to null, or to such an object) or that holds an own "__proto__" member; a later "__proto__" member is then an ordinary member. An array's chain always reaches the setter. protoNull is that state; it is true on entry when the object was resumed after such a member.
-func (parser *partialJSONParser) parseMembers(path string, object map[string]any, keys []string, protoNull bool, onMember func(object map[string]any, keys []string, protoNull bool)) (any, bool) {
+func (parser *partialJSONParser) parseMembers(path string, object map[string]any, keys []string, protoNull bool) (any, bool) {
 	defer func() {
 		parser.objectProtoNull = protoNull
 		if enumerated := unsortedKeyOrder(keys); enumerated != nil {
@@ -368,9 +351,6 @@ func (parser *partialJSONParser) parseMembers(path string, object map[string]any
 		parser.skipBlank()
 		if character, ok := parser.charAt(parser.index); ok && character == ',' {
 			parser.index++
-			if onMember != nil && !parser.readBeyond {
-				onMember(object, keys, protoNull)
-			}
 		}
 	}
 	parser.index++
@@ -407,7 +387,6 @@ func (parser *partialJSONParser) parseNum() (any, bool) {
 		if value, ok := jsonParseValue(text); ok {
 			return value, true
 		}
-		parser.readBeyond = true
 		return jsonParseValue(jsSubstring(text, 0, strings.LastIndex(text, "e")))
 	}
 	start := parser.index
@@ -424,7 +403,6 @@ func (parser *partialJSONParser) parseNum() (any, bool) {
 	if literal == "-" {
 		return nil, false
 	}
-	parser.readBeyond = true
 	return jsonParseValue(jsSubstring(text, start, strings.LastIndex(text, "e")))
 }
 

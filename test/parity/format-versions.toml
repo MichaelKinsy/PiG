@@ -53,6 +53,15 @@ classification = "release-content"
 rationale = "The product version a detailed User-Agent names (pi-ai's ClientIdentity.version); a request identity value, not a schema discriminator and not read to select a format."
 
 [[fields]]
+id = "ai/streaming_json_parser.go#StreamingJSONSnapshot.Version:go:-"
+path = "ai/streaming_json_parser.go"
+owner = "StreamingJSONSnapshot"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "Pi's StreamingJsonSnapshot.version (packages/ai/src/utils/streaming-json.ts): a counter that changes whenever snapshot() made a fresh copy, which a reader compares to tell whether the value it holds is current; it is never persisted or read to select a format."
+
+[[fields]]
 id = "automation/ci/bugledger/changelog.go#bullet.Version:go:-"
 path = "automation/ci/bugledger/changelog.go"
 owner = "bullet"

@@ -16,7 +16,7 @@ import (
 // partialJson with parseStreamingJson for each toolcall_delta, so a call of N deltas costs N times its length. The converter's state for a block
 // only grows, so its cost per delta must follow the delta, not the block. The converted message is unchanged.
 //
-// mutation-checked: `+=` on the content or on toolJSON, or SetStreamingArguments on the whole text, makes the allocation grow with deltas x length.
+// mutation-checked: `+=` on the content, or a parse of the whole text per delta, makes the allocation grow with deltas x length.
 func TestProxyEventConverterCostPerDeltaFollowsTheDeltaNotTheBlock(t *testing.T) {
 	const deltas, chunk = 2000, 40
 	piece := strings.Repeat("x", chunk)
@@ -67,7 +67,7 @@ func TestProxyEventConverterCostPerDeltaFollowsTheDeltaNotTheBlock(t *testing.T)
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolJSON: map[int]string{}}
+			converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolArguments: map[proxyArgumentsKey]*ai.ToolCallArgumentsStream{}}
 			for _, event := range []ProxyAssistantMessageEvent{{Type: "start"}, tc.start} {
 				if _, err := converter.process(event); err != nil {
 					t.Fatal(err)
@@ -111,7 +111,7 @@ func TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta(t
 	rng := rand.New(rand.NewPCG(7, 9))
 	for _, text := range texts {
 		for range 40 {
-			converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolJSON: map[int]string{}}
+			converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolArguments: map[proxyArgumentsKey]*ai.ToolCallArgumentsStream{}}
 			for round := range 2 { // the second call reuses the index and must not inherit the first
 				if _, err := converter.process(ProxyAssistantMessageEvent{Type: "toolcall_start", ContentIndex: 0, ID: "c", ToolName: "t"}); err != nil {
 					t.Fatal(err)
@@ -123,8 +123,7 @@ func TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta(t
 					}
 					sent = next
 					want := ai.ToolCall{ID: "c", Name: "t"}
-					want.SetStreamingArguments(text[:sent])
-					want.DefaultFalsyArguments()
+					want.AppendStreamedArguments(ai.NewToolCallArgumentsStream(), text[:sent])
 					got := converter.partial.Content[0].(ai.ToolCall)
 					gotJSON, _ := json.Marshal(got.Arguments)
 					wantJSON, _ := json.Marshal(want.Arguments)
@@ -146,7 +145,7 @@ func TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta(t
 func TestProxyEventConverterInterleavedToolCallsEachContinueTheirOwnParse(t *testing.T) {
 	const deltas, chunk = 1000, 40
 	piece := strings.Repeat("y", chunk)
-	converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolJSON: map[int]string{}}
+	converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolArguments: map[proxyArgumentsKey]*ai.ToolCallArgumentsStream{}}
 	for _, event := range []ProxyAssistantMessageEvent{
 		{Type: "start"},
 		{Type: "toolcall_start", ContentIndex: 0, ID: "a", ToolName: "write"},

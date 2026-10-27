@@ -61,7 +61,8 @@ func TestStartupDiagnosticOrderMatchesPi(t *testing.T) {
 	for _, metadata := range []string{"--help", "--list-models"} {
 		t.Run(metadata, func(t *testing.T) {
 			run := runStartupDiagnosticProcess(t, binary, root, agentDir, metadata, "--models", "missing-scope-rv-rpc", "--model", "missing-model-rv-rpc", "-e", missing)
-			if run.err != nil || run.stderr != scopeWarning+settingsWarning || run.stdout == "" {
+			// Pi 6dfb54678 main.ts reports startupDiagnostics, runtime diagnostics included, before the help text and the model listing.
+			if run.err != nil || run.stderr != scopeWarning+settingsWarning+extensionError+modelError || run.stdout == "" {
 				t.Fatalf("exit=%v stdout=%q stderr=%q", run.err, run.stdout, run.stderr)
 			}
 		})

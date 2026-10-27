@@ -43,12 +43,17 @@ func newGraphObject(c Context, kind, op string, args ...any) (*graphObject, erro
 	if reply.Handle == "" {
 		return nil, errors.New("host returned no session graph handle")
 	}
-	object := &graphObject{context: c, handle: reply.Handle}
+	return adoptGraphObject(c, reply.Handle), nil
+}
+
+// adoptGraphObject is the extension's reference to the host object handle names, which the host made without a sessionGraph.new call (the log of a child session).
+func adoptGraphObject(c Context, handle string) *graphObject {
+	object := &graphObject{context: c, handle: handle}
 	// Pi frees an object when it is unreachable; the host keeps its reference until the extension's connection closes or the object is released.
 	runtime.AddCleanup(object, func(release graphRelease) {
 		go func() { _, _ = release.context.callHost(graphReleaseCall, map[string]any{"handle": release.handle}) }()
-	}, graphRelease{context: c, handle: reply.Handle})
-	return object, nil
+	}, graphRelease{context: c, handle: handle})
+	return object
 }
 
 // Handle is the host's name for the object, which an option that takes the object (createAgentSession) puts on the wire.
@@ -96,6 +101,13 @@ func (r *graphCallbackRegistry) add(callback graphCallback) string {
 	id := "cb" + strconv.FormatUint(r.next, 10)
 	r.callbacks[id] = callback
 	return id
+}
+
+// remove forgets a function that will not be called again (the callbacks of a closed transport).
+func (r *graphCallbackRegistry) remove(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.callbacks, id)
 }
 
 func (r *graphCallbackRegistry) get(id string) graphCallback {

@@ -213,3 +213,21 @@ func TestSettleOwnersMatchPi(t *testing.T) {
 		t.Errorf("no owners: settle = %d, want %d", got, want)
 	}
 }
+
+// A commit is published when Storage adopts it, right before its commit promise resolves: AdoptTail is the ticks from there to the
+// Session's resumption from Storage.commit. MemoryStorage's resolves at the call (the whole guarded call is 4 ticks); a
+// storage that adopts after its transaction ends leaves the caller's await and the guard's two (3), and the lazy proxy's adoption
+// of the method's promise adds one.
+func TestAdoptTail(t *testing.T) {
+	for _, c := range []struct {
+		profile Profile
+		want    int
+	}{{Memory, 4}, {GateCapsql, 3}, {Node, 3}, {Gate, 4}} {
+		if got := AdoptTail(c.profile); got != c.want {
+			t.Errorf("AdoptTail(%s) = %d, want %d", c.profile, got, c.want)
+		}
+		if tail := CommitTail(c.profile); c.profile != Memory && AdoptTail(c.profile) >= tail {
+			t.Errorf("%s: adoption %d ticks before the resumption, but the COMMIT is only %d before it", c.profile, AdoptTail(c.profile), tail)
+		}
+	}
+}

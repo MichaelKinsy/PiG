@@ -248,9 +248,12 @@ func (s *server) dispatch(id uint32, request any, payload []byte, ctl *control) 
 		if handle.failed.Load() {
 			return nil, nil, newFailure("EBADF", "an earlier write failed")
 		}
-		if _, err := handle.file.Write(payload); err != nil {
-			handle.failed.Store(true)
-			return nil, nil, ioFailure(err, "write", handle.path)
+		// write_all of nothing makes no system call, which a full device would fail.
+		if len(payload) > 0 {
+			if _, err := handle.file.Write(payload); err != nil {
+				handle.failed.Store(true)
+				return nil, nil, ioFailure(err, "write", handle.path)
+			}
 		}
 		return plain(Object{}, nil)
 	case "truncate":
@@ -474,16 +477,7 @@ func (s *server) opPread(request Object) (Object, []byte, *Failure) {
 }
 
 func (s *server) opOpendir(p string) (Object, []byte, *Failure) {
-	file, err := os.Open(p)
-	if err == nil {
-		var stats os.FileInfo
-		if stats, err = file.Stat(); err == nil && !stats.IsDir() {
-			err = synthetic("ENOTDIR")
-		}
-		if err != nil {
-			_ = file.Close()
-		}
-	}
+	file, err := openDirectory(p)
 	if err != nil {
 		return nil, nil, ioFailure(err, "opendir", p)
 	}
@@ -801,6 +795,10 @@ func (s seen) Read(buffer []byte) (int, error) {
 
 // Serve runs one connection: it writes the sync line `PI-ENV <token>`, then answers frames from input on output until
 // input ends. Everything the client started is killed when it returns.
+//
+// pig divergence (D197): the Go runtime raised this process's soft limit of open files (RLIMIT_NOFILE) to the hard limit
+// (one below it on Linux) before main, where Pi's daemon keeps the soft limit it inherited, so an open that Pi's daemon
+// refuses with EMFILE at about 1020 handles on a default shell succeeds here up to the hard limit or maxHandles.
 func Serve(input io.Reader, output io.Writer, token string, options Options) error {
 	defaultChildSignals()
 	if _, err := fmt.Fprintf(output, "PI-ENV %s\n", token); err != nil {

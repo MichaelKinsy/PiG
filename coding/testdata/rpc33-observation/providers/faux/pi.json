@@ -1,5 +1,5 @@
 {
- "pi": "1.4.0+74f46864",
+ "pi": "1.4.0+6c384aa3",
  "node": "v24.19.0",
  "results": [
   {
@@ -70,11 +70,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 6,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1010,
+         "totalTokens": 508,
          "cost": {
           "input": 0,
           "output": 0,
@@ -111,11 +111,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -136,11 +136,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -162,11 +162,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -188,11 +188,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -214,11 +214,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -240,11 +240,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -266,11 +266,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -292,11 +292,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -329,11 +329,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 6,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1010,
+         "totalTokens": 508,
          "cost": {
           "input": 0,
           "output": 0,
@@ -3502,11 +3502,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 7,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1011,
+         "totalTokens": 509,
          "cost": {
           "input": 0,
           "output": 0,
@@ -3549,11 +3549,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3574,11 +3574,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3600,11 +3600,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3626,11 +3626,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3652,11 +3652,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3678,11 +3678,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3704,11 +3704,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3729,11 +3729,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3755,11 +3755,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3781,11 +3781,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3807,11 +3807,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3848,11 +3848,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 7,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1011,
+         "totalTokens": 509,
          "cost": {
           "input": 0,
           "output": 0,
@@ -8148,11 +8148,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 10,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1014,
+         "totalTokens": 512,
          "cost": {
           "input": 0,
           "output": 0,
@@ -8207,11 +8207,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8234,11 +8234,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8260,11 +8260,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8286,11 +8286,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8312,11 +8312,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8338,11 +8338,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8364,11 +8364,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8390,11 +8390,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8416,11 +8416,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8442,11 +8442,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8468,11 +8468,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8516,11 +8516,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 10,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1014,
+         "totalTokens": 512,
          "cost": {
           "input": 0,
           "output": 0,
@@ -8576,11 +8576,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 21,
+         "input": 0,
          "output": 1,
          "cacheRead": 502,
-         "cacheWrite": 22,
-         "totalTokens": 546,
+         "cacheWrite": 21,
+         "totalTokens": 524,
          "cost": {
           "input": 0,
           "output": 0,
@@ -8600,11 +8600,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 21,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
-        "cacheWrite": 22,
-        "totalTokens": 546,
+        "cacheWrite": 21,
+        "totalTokens": 524,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8625,11 +8625,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 21,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
-        "cacheWrite": 22,
-        "totalTokens": 546,
+        "cacheWrite": 21,
+        "totalTokens": 524,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8651,11 +8651,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 21,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
-        "cacheWrite": 22,
-        "totalTokens": 546,
+        "cacheWrite": 21,
+        "totalTokens": 524,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8688,11 +8688,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 21,
+         "input": 0,
          "output": 1,
          "cacheRead": 502,
-         "cacheWrite": 22,
-         "totalTokens": 546,
+         "cacheWrite": 21,
+         "totalTokens": 524,
          "cost": {
           "input": 0,
           "output": 0,
@@ -8793,7 +8793,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -8831,7 +8833,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -8869,7 +8873,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -8907,7 +8913,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -8945,7 +8953,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -8983,7 +8993,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -9369,7 +9381,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-"
+            }
            }
           ],
           "api": "faux-probe",
@@ -9400,7 +9414,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -9440,7 +9456,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read"
+            }
            }
           ],
           "api": "faux-probe",
@@ -9471,7 +9489,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -9511,7 +9531,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target."
+            }
            }
           ],
           "api": "faux-probe",
@@ -9542,7 +9564,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -9582,7 +9606,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target.txt"
+            }
            }
           ],
           "api": "faux-probe",
@@ -9613,7 +9639,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -10181,7 +10209,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -10219,7 +10249,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -10257,7 +10289,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -10295,7 +10329,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -10333,7 +10369,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -10371,7 +10409,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -10726,7 +10766,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-"
+            }
            }
           ],
           "api": "faux-probe",
@@ -10757,7 +10799,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -10797,7 +10841,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read"
+            }
            }
           ],
           "api": "faux-probe",
@@ -10828,7 +10874,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -10868,7 +10916,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target."
+            }
            }
           ],
           "api": "faux-probe",
@@ -10899,7 +10949,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -10939,7 +10991,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target.txt"
+            }
            }
           ],
           "api": "faux-probe",
@@ -10970,7 +11024,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -11613,7 +11669,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -11651,7 +11709,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -11689,7 +11749,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -11727,7 +11789,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -12162,7 +12226,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read"
+            }
            }
           ],
           "api": "faux-probe",
@@ -12193,7 +12259,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -12233,7 +12301,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target."
+            }
            }
           ],
           "api": "faux-probe",
@@ -12264,7 +12334,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -12304,7 +12376,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target.txt"
+            }
            }
           ],
           "api": "faux-probe",
@@ -12335,7 +12409,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -13203,11 +13279,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 14,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1018,
+         "totalTokens": 516,
          "cost": {
           "input": 0,
           "output": 0,
@@ -13287,11 +13363,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13312,11 +13388,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13338,11 +13414,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13364,11 +13440,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13390,11 +13466,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13415,11 +13491,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13441,11 +13517,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13467,11 +13543,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13493,11 +13569,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13520,11 +13596,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13546,11 +13622,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13572,11 +13648,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13598,11 +13674,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13624,11 +13700,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13650,11 +13726,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13676,11 +13752,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13702,11 +13778,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13728,11 +13804,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13754,11 +13830,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13810,11 +13886,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 14,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1018,
+         "totalTokens": 516,
          "cost": {
           "input": 0,
           "output": 0,
@@ -13871,11 +13947,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 26,
+         "input": 0,
          "output": 1,
          "cacheRead": 502,
          "cacheWrite": 26,
-         "totalTokens": 555,
+         "totalTokens": 529,
          "cost": {
           "input": 0,
           "output": 0,
@@ -13895,11 +13971,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 26,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
         "cacheWrite": 26,
-        "totalTokens": 555,
+        "totalTokens": 529,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13920,11 +13996,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 26,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
         "cacheWrite": 26,
-        "totalTokens": 555,
+        "totalTokens": 529,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13946,11 +14022,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 26,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
         "cacheWrite": 26,
-        "totalTokens": 555,
+        "totalTokens": 529,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13983,11 +14059,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 26,
+         "input": 0,
          "output": 1,
          "cacheRead": 502,
          "cacheWrite": 26,
-         "totalTokens": 555,
+         "totalTokens": 529,
          "cost": {
           "input": 0,
           "output": 0,
@@ -14369,7 +14445,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -14416,7 +14494,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -14463,7 +14543,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -17041,7 +17123,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -17088,7 +17172,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -22172,11 +22258,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 0,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1004,
+         "totalTokens": 502,
          "cost": {
           "input": 0,
           "output": 0,
@@ -22196,11 +22282,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1004,
+        "totalTokens": 502,
         "cost": {
          "input": 0,
          "output": 0,
@@ -22221,11 +22307,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1004,
+        "totalTokens": 502,
         "cost": {
          "input": 0,
          "output": 0,
@@ -22247,11 +22333,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1004,
+        "totalTokens": 502,
         "cost": {
          "input": 0,
          "output": 0,
@@ -22284,11 +22370,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 0,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1004,
+         "totalTokens": 502,
          "cost": {
           "input": 0,
           "output": 0,
@@ -23902,11 +23988,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 4,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1008,
+         "totalTokens": 506,
          "cost": {
           "input": 0,
           "output": 0,
@@ -23926,11 +24012,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -23951,11 +24037,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -23977,11 +24063,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24003,11 +24089,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24029,11 +24115,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24055,11 +24141,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24092,11 +24178,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 4,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1008,
+         "totalTokens": 506,
          "cost": {
           "input": 0,
           "output": 0,
@@ -26605,7 +26691,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689253398,
+        "timestamp": 1793072943912,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -26638,7 +26724,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689253398,
+        "timestamp": 1793072943912,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -26678,7 +26764,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689253404,
+         "timestamp": 1793072943918,
          "durationMs": 0
         }
        }
@@ -26707,7 +26793,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689253404,
+        "timestamp": 1793072943918,
         "durationMs": 0
        }
       }
@@ -26743,7 +26829,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689253405,
+         "timestamp": 1793072943919,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -26775,7 +26861,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689253405,
+         "timestamp": 1793072943919,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -26814,7 +26900,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689253405,
+         "timestamp": 1793072943919,
          "durationMs": 0
         }
        }
@@ -26843,7 +26929,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689253405,
+        "timestamp": 1793072943919,
         "durationMs": 0
        }
       }
@@ -26879,7 +26965,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689253405,
+         "timestamp": 1793072943919,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -26911,7 +26997,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689253405,
+         "timestamp": 1793072943919,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -26950,7 +27036,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689253405,
+         "timestamp": 1793072943919,
          "durationMs": 0
         }
        }
@@ -26979,7 +27065,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689253405,
+        "timestamp": 1793072943919,
         "durationMs": 0
        }
       }
@@ -27015,7 +27101,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689253405,
+         "timestamp": 1793072943919,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -27047,7 +27133,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689253405,
+         "timestamp": 1793072943919,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -27219,11 +27305,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 4,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1008,
+         "totalTokens": 506,
          "cost": {
           "input": 0,
           "output": 0,
@@ -27244,11 +27330,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27269,11 +27355,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27295,11 +27381,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27321,11 +27407,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27347,11 +27433,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27373,11 +27459,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27410,11 +27496,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 4,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1008,
+         "totalTokens": 506,
          "cost": {
           "input": 0,
           "output": 0,
@@ -30020,11 +30106,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 3,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1007,
+         "totalTokens": 505,
          "cost": {
           "input": 0,
           "output": 0,
@@ -30044,11 +30130,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30069,11 +30155,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30095,11 +30181,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30121,11 +30207,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30147,11 +30233,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30194,7 +30280,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1792689254586,
+        "timestamp": 1793072945044,
         "durationMs": 2,
         "thinkingLevel": "off"
        }
@@ -30232,8 +30318,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1792689256595,
-        "durationMs": 0,
+        "timestamp": 1793072947055,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -30265,8 +30351,8 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1792689256595,
-        "durationMs": 0,
+        "timestamp": 1793072947055,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -30513,7 +30599,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689256599,
+         "timestamp": 1793072947059,
          "durationMs": 0
         }
        }
@@ -30542,7 +30628,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1792689256599,
+        "timestamp": 1793072947059,
         "durationMs": 0
        }
       }
@@ -30941,7 +31027,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689256599,
+         "timestamp": 1793072947060,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -31188,7 +31274,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689256599,
+         "timestamp": 1793072947060,
          "durationMs": 0
         }
        }
@@ -31217,7 +31303,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1792689256599,
+        "timestamp": 1793072947060,
         "durationMs": 0
        }
       }
@@ -31616,7 +31702,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689256599,
+         "timestamp": 1793072947060,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -31863,7 +31949,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689256600,
+         "timestamp": 1793072947061,
          "durationMs": 0
         }
        }
@@ -31892,7 +31978,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1792689256600,
+        "timestamp": 1793072947061,
         "durationMs": 0
        }
       }
@@ -32291,7 +32377,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689256600,
+         "timestamp": 1793072947061,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -32426,11 +32512,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 6,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1010,
+         "totalTokens": 508,
          "cost": {
           "input": 0,
           "output": 0,
@@ -32450,11 +32536,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32481,11 +32567,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32513,11 +32599,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32545,11 +32631,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32577,11 +32663,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32609,11 +32695,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32652,11 +32738,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32678,11 +32764,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 6,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1010,
+        "totalTokens": 508,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32715,11 +32801,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 6,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1010,
+         "totalTokens": 508,
          "cost": {
           "input": 0,
           "output": 0,
@@ -35847,11 +35933,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 7,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1011,
+         "totalTokens": 509,
          "cost": {
           "input": 0,
           "output": 0,
@@ -35871,11 +35957,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -35902,11 +35988,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -35934,11 +36020,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -35966,11 +36052,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36010,11 +36096,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36036,11 +36122,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36062,11 +36148,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36093,11 +36179,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36125,11 +36211,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36168,11 +36254,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36194,11 +36280,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 7,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1011,
+        "totalTokens": 509,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36235,11 +36321,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 7,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1011,
+         "totalTokens": 509,
          "cost": {
           "input": 0,
           "output": 0,
@@ -40506,11 +40592,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 10,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1014,
+         "totalTokens": 512,
          "cost": {
           "input": 0,
           "output": 0,
@@ -40530,11 +40616,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40563,11 +40649,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40595,11 +40681,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40627,11 +40713,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40659,11 +40745,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40691,11 +40777,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40723,11 +40809,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40755,11 +40841,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40787,11 +40873,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40830,11 +40916,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40856,11 +40942,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 10,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1014,
+        "totalTokens": 512,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40904,11 +40990,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 10,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1014,
+         "totalTokens": 512,
          "cost": {
           "input": 0,
           "output": 0,
@@ -40947,11 +41033,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 21,
+         "input": 0,
          "output": 1,
          "cacheRead": 502,
-         "cacheWrite": 22,
-         "totalTokens": 546,
+         "cacheWrite": 21,
+         "totalTokens": 524,
          "cost": {
           "input": 0,
           "output": 0,
@@ -40971,11 +41057,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 21,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
-        "cacheWrite": 22,
-        "totalTokens": 546,
+        "cacheWrite": 21,
+        "totalTokens": 524,
         "cost": {
          "input": 0,
          "output": 0,
@@ -41013,11 +41099,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 21,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
-        "cacheWrite": 22,
-        "totalTokens": 546,
+        "cacheWrite": 21,
+        "totalTokens": 524,
         "cost": {
          "input": 0,
          "output": 0,
@@ -41039,11 +41125,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 21,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
-        "cacheWrite": 22,
-        "totalTokens": 546,
+        "cacheWrite": 21,
+        "totalTokens": 524,
         "cost": {
          "input": 0,
          "output": 0,
@@ -41076,11 +41162,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 21,
+         "input": 0,
          "output": 1,
          "cacheRead": 502,
-         "cacheWrite": 22,
-         "totalTokens": 546,
+         "cacheWrite": 21,
+         "totalTokens": 524,
          "cost": {
           "input": 0,
           "output": 0,
@@ -41257,7 +41343,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -41295,7 +41383,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -41333,7 +41423,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -41371,7 +41463,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -41409,7 +41503,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -41447,7 +41543,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -41895,7 +41993,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "par"
+            }
            }
           ],
           "api": "faux-probe",
@@ -41926,7 +42026,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -41966,7 +42068,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-"
+            }
            }
           ],
           "api": "faux-probe",
@@ -41997,7 +42101,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -42037,7 +42143,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read"
+            }
            }
           ],
           "api": "faux-probe",
@@ -42068,7 +42176,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -42108,7 +42218,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-tar"
+            }
            }
           ],
           "api": "faux-probe",
@@ -42139,7 +42251,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -42179,7 +42293,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target."
+            }
            }
           ],
           "api": "faux-probe",
@@ -42210,7 +42326,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -42250,7 +42368,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target.txt"
+            }
            }
           ],
           "api": "faux-probe",
@@ -42281,7 +42401,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -42663,7 +42785,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -42701,7 +42825,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -42739,7 +42865,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -42777,7 +42905,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -42815,7 +42945,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -42853,7 +42985,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -43301,7 +43435,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "par"
+            }
            }
           ],
           "api": "faux-probe",
@@ -43332,7 +43468,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -43372,7 +43510,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-"
+            }
            }
           ],
           "api": "faux-probe",
@@ -43403,7 +43543,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -43443,7 +43585,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read"
+            }
            }
           ],
           "api": "faux-probe",
@@ -43474,7 +43618,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -43514,7 +43660,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-tar"
+            }
            }
           ],
           "api": "faux-probe",
@@ -43545,7 +43693,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -43585,7 +43735,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target."
+            }
            }
           ],
           "api": "faux-probe",
@@ -43616,7 +43768,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -43656,7 +43810,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target.txt"
+            }
            }
           ],
           "api": "faux-probe",
@@ -43687,7 +43843,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44069,7 +44227,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44107,7 +44267,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44145,7 +44307,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44183,7 +44347,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44221,7 +44387,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -44259,7 +44427,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44707,7 +44877,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "par"
+            }
            }
           ],
           "api": "faux-probe",
@@ -44738,7 +44910,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44778,7 +44952,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-"
+            }
            }
           ],
           "api": "faux-probe",
@@ -44809,7 +44985,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44849,7 +45027,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read"
+            }
            }
           ],
           "api": "faux-probe",
@@ -44880,7 +45060,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44920,7 +45102,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-tar"
+            }
            }
           ],
           "api": "faux-probe",
@@ -44951,7 +45135,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -44991,7 +45177,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target."
+            }
            }
           ],
           "api": "faux-probe",
@@ -45022,7 +45210,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -45062,7 +45252,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target.txt"
+            }
            }
           ],
           "api": "faux-probe",
@@ -45093,7 +45285,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -45458,11 +45652,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 14,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1018,
+         "totalTokens": 516,
          "cost": {
           "input": 0,
           "output": 0,
@@ -45483,11 +45677,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45514,11 +45708,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45558,11 +45752,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45584,11 +45778,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45610,11 +45804,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45641,11 +45835,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45685,11 +45879,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45711,11 +45905,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45737,11 +45931,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45770,11 +45964,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45802,11 +45996,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45834,11 +46028,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45866,11 +46060,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45898,11 +46092,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45930,11 +46124,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45962,11 +46156,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45994,11 +46188,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46037,11 +46231,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46063,11 +46257,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 14,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1018,
+        "totalTokens": 516,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46119,11 +46313,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 14,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1018,
+         "totalTokens": 516,
          "cost": {
           "input": 0,
           "output": 0,
@@ -46163,11 +46357,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 26,
+         "input": 0,
          "output": 1,
          "cacheRead": 502,
          "cacheWrite": 26,
-         "totalTokens": 555,
+         "totalTokens": 529,
          "cost": {
           "input": 0,
           "output": 0,
@@ -46187,11 +46381,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 26,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
         "cacheWrite": 26,
-        "totalTokens": 555,
+        "totalTokens": 529,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46229,11 +46423,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 26,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
         "cacheWrite": 26,
-        "totalTokens": 555,
+        "totalTokens": 529,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46255,11 +46449,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 26,
+        "input": 0,
         "output": 1,
         "cacheRead": 502,
         "cacheWrite": 26,
-        "totalTokens": 555,
+        "totalTokens": 529,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46292,11 +46486,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 26,
+         "input": 0,
          "output": 1,
          "cacheRead": 502,
          "cacheWrite": 26,
-         "totalTokens": 555,
+         "totalTokens": 529,
          "cost": {
           "input": 0,
           "output": 0,
@@ -46819,7 +47013,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -46866,7 +47062,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -46913,7 +47111,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -46960,7 +47160,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -47007,7 +47209,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -47054,7 +47258,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -48184,7 +48390,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "par"
+            }
            }
           ],
           "api": "faux-probe",
@@ -48224,7 +48432,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -48273,7 +48483,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-"
+            }
            }
           ],
           "api": "faux-probe",
@@ -48313,7 +48525,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -48362,7 +48576,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read"
+            }
            }
           ],
           "api": "faux-probe",
@@ -48402,7 +48618,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -48451,7 +48669,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-tar"
+            }
            }
           ],
           "api": "faux-probe",
@@ -48491,7 +48711,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -48540,7 +48762,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target."
+            }
            }
           ],
           "api": "faux-probe",
@@ -48580,7 +48804,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -48629,7 +48855,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target.txt"
+            }
            }
           ],
           "api": "faux-probe",
@@ -48669,7 +48897,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -49443,7 +49673,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -49490,7 +49722,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -49537,7 +49771,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -49584,7 +49820,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -49631,7 +49869,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -49678,7 +49918,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -50808,7 +51050,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "par"
+            }
            }
           ],
           "api": "faux-probe",
@@ -50848,7 +51092,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -50897,7 +51143,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-"
+            }
            }
           ],
           "api": "faux-probe",
@@ -50937,7 +51185,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -50986,7 +51236,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read"
+            }
            }
           ],
           "api": "faux-probe",
@@ -51026,7 +51278,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -51075,7 +51329,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-tar"
+            }
            }
           ],
           "api": "faux-probe",
@@ -51115,7 +51371,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -51164,7 +51422,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target."
+            }
            }
           ],
           "api": "faux-probe",
@@ -51204,7 +51464,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -51253,7 +51515,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target.txt"
+            }
            }
           ],
           "api": "faux-probe",
@@ -51293,7 +51557,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -52067,7 +52333,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -52114,7 +52382,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -52161,7 +52431,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -52208,7 +52480,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -52255,7 +52529,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -52302,7 +52578,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -53432,7 +53710,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "par"
+            }
            }
           ],
           "api": "faux-probe",
@@ -53472,7 +53752,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "par"
+           }
           }
          ],
          "api": "faux-probe",
@@ -53521,7 +53803,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-"
+            }
            }
           ],
           "api": "faux-probe",
@@ -53561,7 +53845,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-"
+           }
           }
          ],
          "api": "faux-probe",
@@ -53610,7 +53896,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read"
+            }
            }
           ],
           "api": "faux-probe",
@@ -53650,7 +53938,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read"
+           }
           }
          ],
          "api": "faux-probe",
@@ -53699,7 +53989,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-tar"
+            }
            }
           ],
           "api": "faux-probe",
@@ -53739,7 +54031,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-tar"
+           }
           }
          ],
          "api": "faux-probe",
@@ -53788,7 +54082,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target."
+            }
            }
           ],
           "api": "faux-probe",
@@ -53828,7 +54124,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target."
+           }
           }
          ],
          "api": "faux-probe",
@@ -53877,7 +54175,9 @@
             "type": "toolCall",
             "id": "fauxread1",
             "name": "read",
-            "arguments": {}
+            "arguments": {
+             "path": "parity-read-target.txt"
+            }
            }
           ],
           "api": "faux-probe",
@@ -53917,7 +54217,9 @@
            "type": "toolCall",
            "id": "fauxread1",
            "name": "read",
-           "arguments": {}
+           "arguments": {
+            "path": "parity-read-target.txt"
+           }
           }
          ],
          "api": "faux-probe",
@@ -54313,11 +54615,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 0,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1004,
+         "totalTokens": 502,
          "cost": {
           "input": 0,
           "output": 0,
@@ -54337,11 +54639,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1004,
+        "totalTokens": 502,
         "cost": {
          "input": 0,
          "output": 0,
@@ -54379,11 +54681,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1004,
+        "totalTokens": 502,
         "cost": {
          "input": 0,
          "output": 0,
@@ -54405,11 +54707,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 0,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1004,
+        "totalTokens": 502,
         "cost": {
          "input": 0,
          "output": 0,
@@ -54442,11 +54744,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 0,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1004,
+         "totalTokens": 502,
          "cost": {
           "input": 0,
           "output": 0,
@@ -56026,11 +56328,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 4,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1008,
+         "totalTokens": 506,
          "cost": {
           "input": 0,
           "output": 0,
@@ -56050,11 +56352,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56081,11 +56383,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56113,11 +56415,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56145,11 +56447,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56188,11 +56490,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56214,11 +56516,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56251,11 +56553,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 4,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1008,
+         "totalTokens": 506,
          "cost": {
           "input": 0,
           "output": 0,
@@ -58765,7 +59067,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689261106,
+        "timestamp": 1793072951364,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -58798,7 +59100,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689261106,
+        "timestamp": 1793072951364,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -58838,7 +59140,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689261112,
+         "timestamp": 1793072951371,
          "durationMs": 0
         }
        }
@@ -58867,7 +59169,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689261112,
+        "timestamp": 1793072951371,
         "durationMs": 0
        }
       }
@@ -58903,7 +59205,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689261112,
+         "timestamp": 1793072951372,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -58935,7 +59237,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689261112,
+         "timestamp": 1793072951372,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -58974,7 +59276,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689261112,
+         "timestamp": 1793072951372,
          "durationMs": 0
         }
        }
@@ -59003,7 +59305,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689261112,
+        "timestamp": 1793072951372,
         "durationMs": 0
        }
       }
@@ -59039,7 +59341,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689261112,
+         "timestamp": 1793072951372,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59071,7 +59373,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689261112,
+         "timestamp": 1793072951372,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59110,7 +59412,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689261112,
+         "timestamp": 1793072951372,
          "durationMs": 0
         }
        }
@@ -59139,7 +59441,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1792689261112,
+        "timestamp": 1793072951372,
         "durationMs": 0
        }
       }
@@ -59175,7 +59477,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689261113,
+         "timestamp": 1793072951372,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59207,7 +59509,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1792689261113,
+         "timestamp": 1793072951372,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59345,11 +59647,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 4,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1008,
+         "totalTokens": 506,
          "cost": {
           "input": 0,
           "output": 0,
@@ -59370,11 +59672,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59401,11 +59703,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59433,11 +59735,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59465,11 +59767,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59508,11 +59810,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59534,11 +59836,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 4,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1008,
+        "totalTokens": 506,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59571,11 +59873,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 4,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1008,
+         "totalTokens": 506,
          "cost": {
           "input": 0,
           "output": 0,
@@ -62153,11 +62455,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 3,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1007,
+         "totalTokens": 505,
          "cost": {
           "input": 0,
           "output": 0,
@@ -62177,11 +62479,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62208,11 +62510,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62240,11 +62542,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62283,11 +62585,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62309,11 +62611,11 @@
       "record": {
        "type": "message_update",
        "usage": {
-        "input": 502,
+        "input": 0,
         "output": 3,
         "cacheRead": 0,
         "cacheWrite": 502,
-        "totalTokens": 1007,
+        "totalTokens": 505,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62356,7 +62658,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1792689262345,
+        "timestamp": 1793072952554,
         "durationMs": 5,
         "thinkingLevel": "off"
        }
@@ -62394,7 +62696,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1792689264353,
+        "timestamp": 1793072954564,
         "durationMs": 0,
         "thinkingLevel": "off"
        }
@@ -62427,7 +62729,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1792689264353,
+        "timestamp": 1793072954564,
         "durationMs": 0,
         "thinkingLevel": "off"
        }
@@ -62675,7 +62977,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689264360,
+         "timestamp": 1793072954571,
          "durationMs": 4
         }
        }
@@ -62704,7 +63006,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1792689264360,
+        "timestamp": 1793072954571,
         "durationMs": 4
        }
       }
@@ -63103,7 +63405,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689264363,
+         "timestamp": 1793072954574,
          "durationMs": 3,
          "thinkingLevel": "off"
         }
@@ -63350,8 +63652,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689264367,
-         "durationMs": 3
+         "timestamp": 1793072954577,
+         "durationMs": 2
         }
        }
       },
@@ -63379,8 +63681,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1792689264367,
-        "durationMs": 3
+        "timestamp": 1793072954577,
+        "durationMs": 2
        }
       }
      ]
@@ -63778,7 +64080,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689264370,
+         "timestamp": 1793072954580,
          "durationMs": 3,
          "thinkingLevel": "off"
         }
@@ -64025,7 +64327,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689264373,
+         "timestamp": 1793072954583,
          "durationMs": 3
         }
        }
@@ -64054,7 +64356,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1792689264373,
+        "timestamp": 1793072954583,
         "durationMs": 3
        }
       }
@@ -64453,8 +64755,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1792689264376,
-         "durationMs": 3,
+         "timestamp": 1793072954587,
+         "durationMs": 4,
          "thinkingLevel": "off"
         }
        }
@@ -64576,11 +64878,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 0,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1004,
+         "totalTokens": 502,
          "cost": {
           "input": 0,
           "output": 0,
@@ -64591,7 +64893,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1792689264974,
+        "timestamp": 1793072955158,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -64609,11 +64911,11 @@
         "provider": "faux-probe",
         "model": "faux-1",
         "usage": {
-         "input": 502,
+         "input": 0,
          "output": 0,
          "cacheRead": 0,
          "cacheWrite": 502,
-         "totalTokens": 1004,
+         "totalTokens": 502,
          "cost": {
           "input": 0,
           "output": 0,
@@ -64624,7 +64926,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1792689264974,
+        "timestamp": 1793072955158,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -64664,7 +64966,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1792689264980,
+         "timestamp": 1793072955165,
          "durationMs": 0
         }
        }
@@ -64693,7 +64995,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1792689264980,
+        "timestamp": 1793072955165,
         "durationMs": 0
        }
       }
@@ -64729,7 +65031,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1792689264981,
+         "timestamp": 1793072955165,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -64761,7 +65063,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1792689264981,
+         "timestamp": 1793072955165,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -64800,7 +65102,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1792689264981,
+         "timestamp": 1793072955165,
          "durationMs": 0
         }
        }
@@ -64829,7 +65131,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1792689264981,
+        "timestamp": 1793072955165,
         "durationMs": 0
        }
       }
@@ -64865,7 +65167,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1792689264981,
+         "timestamp": 1793072955166,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -64897,7 +65199,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1792689264981,
+         "timestamp": 1793072955166,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -64936,7 +65238,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1792689264981,
+         "timestamp": 1793072955166,
          "durationMs": 0
         }
        }
@@ -64965,7 +65267,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1792689264981,
+        "timestamp": 1793072955166,
         "durationMs": 0
        }
       }
@@ -65001,7 +65303,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1792689264981,
+         "timestamp": 1793072955166,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -65033,7 +65335,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1792689264981,
+         "timestamp": 1793072955166,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -65329,10 +65631,10 @@
      "provider": "faux-probe",
      "modelId": "faux-1",
      "api": "faux-probe",
-     "id": "deferred:1792689264981:7rc7i9vdij8",
+     "id": "deferred:1793072955166:lh8n7nflijs",
      "pollAfterMs": 5
     },
-    "timestamp": 1792689264982,
+    "timestamp": 1793072955166,
     "durationMs": 0
    },
    {
@@ -65360,10 +65662,10 @@
      "provider": "faux-probe",
      "modelId": "faux-1",
      "api": "faux-probe",
-     "id": "deferred:1792689264981:7rc7i9vdij8",
+     "id": "deferred:1793072955166:lh8n7nflijs",
      "pollAfterMs": 5
     },
-    "timestamp": 1792689264982,
+    "timestamp": 1793072955167,
     "durationMs": 0
    },
    {
@@ -65416,7 +65718,7 @@
     },
     "stopReason": "error",
     "errorMessage": "Unknown faux deferred response: unknown",
-    "timestamp": 1792689264982,
+    "timestamp": 1793072955167,
     "durationMs": 0
    }
   ]

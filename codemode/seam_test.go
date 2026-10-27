@@ -106,7 +106,7 @@ func TestBrokenMessagesAndFailuresEndTheExecutionAsSandboxErrors(t *testing.T) {
 		message string
 	}{
 		{"unknown message", func(e vmEvents) { e.message(vmMessage{}) }, "Sandbox bridge broken: unknown message from the worker. The script may have modified built-ins such as a prototype's toJSON."},
-		{"done without writes", func(e vmEvents) { e.message(vmMessage{kind: vmMessageDone, ok: true, value: "1", valueDefined: true}) }, "Sandbox bridge broken: unknown message from the worker. The script may have modified built-ins such as a prototype's toJSON."},
+		{"done without writes", func(e vmEvents) { e.message(vmMessage{kind: vmMessageDone, ok: true, value: "1", valueDefined: true}) }, "Sandbox bridge broken: store writes is not valid JSON. The script may have modified built-ins such as a prototype's toJSON."},
 		{"crash", func(e vmEvents) { e.message(vmMessage{kind: vmMessageCrash, message: "Error: boom"}) }, "Error: boom"},
 		{"failure", func(e vmEvents) {
 			e.failure(&Error{Kind: ErrorSandbox, Message: "Worker exited with code 1 before the script settled"})

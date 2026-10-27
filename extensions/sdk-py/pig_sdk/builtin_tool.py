@@ -34,6 +34,7 @@ from . import _NestedCall, _NestedCallEvent, _ensure_jsonable, host_helpers, Too
 from .provider import ProviderSignal
 
 _CALL_DEFINITION = "builtinTool.definition"
+_CALL_PREPARE_ARGUMENTS = "builtinTool.prepareArguments"
 _CALL_EXECUTE = "builtinTool.execute"
 _CALL_LOCAL_EXEC = "builtinTool.localExec"
 _CALL_EXECUTE_CANCEL = "executeTool.cancel"
@@ -385,6 +386,16 @@ def _definition_reply(spec: _Spec) -> dict[str, Any]:
     return host_helpers._helper_call(_CALL_DEFINITION, args)
 
 
+def _prepare_arguments(spec: _Spec, params: dict[str, Any]) -> dict[str, Any]:
+    """``prepareArguments(args)`` of a built-in tool's definition, which the host runs: edit's accepts ``edits`` as a JSON string or as a single edit and the
+    legacy top-level ``oldText`` and ``newText``. Like Pi's synchronous hook it takes no signal."""
+    _ensure_jsonable(params, f"arguments of tool {spec.name}")
+    args: dict[str, Any] = {"name": spec.name, "cwd": spec.cwd, "args": params}
+    if spec.options:
+        args["options"] = spec.options
+    return host_helpers._helper_call(_CALL_PREPARE_ARGUMENTS, args)
+
+
 def _execute(ext: Any, ctx: Any, spec: _Spec, tool_call_id: str, params: Any, signal: ProviderSignal | None, forward_signal: bool, on_update: Callable[[dict[str, Any]], None] | None) -> dict[str, Any]:
     """``execute(toolCallId, params, signal, onUpdate, ctx)`` of a built-in tool's definition. ``ctx`` None is an undefined context."""
     _ensure_jsonable(params, f"arguments of tool {spec.name}")
@@ -473,8 +484,8 @@ def dispatch_exec_data(args: dict[str, Any]) -> None:
 @dataclass(kw_only=True)
 class BuiltinToolDefinition(ToolDefinition):
     """The ToolDefinition Pi's create<Tool>ToolDefinition returns for a built-in tool: its name, label, description, prompt snippet and guidelines, schemas and
-    execution mode, with an ``execute`` that runs the built-in tool on the host. Register it with ``Extension.register_tool`` to override the built-in, using
-    ``dataclasses.replace`` to change fields or ``execute`` first to wrap it.
+    execution mode and ``prepare_arguments`` (edit's, which the host runs), with an ``execute`` that runs the built-in tool on the host. Register it with
+    ``Extension.register_tool`` to override the built-in, using ``dataclasses.replace`` to change fields or ``execute`` first to wrap it.
 
     The host draws the built-in tool's call and result itself, so a definition that sets no renderers keeps the built-in's, as an override of a built-in does
     in Pi."""
@@ -537,6 +548,8 @@ def _create_definition(spec: _Spec) -> Any:
         fields["output_schema"] = reply["outputSchema"]
     if reply.get("renderShell") == "self":
         fields["render_shell"] = "self"
+    if reply.get("preparesArguments") is True:
+        fields["prepare_arguments"] = lambda params: _prepare_arguments(spec_copy, params)
     return BuiltinToolDefinition(**fields)
 
 

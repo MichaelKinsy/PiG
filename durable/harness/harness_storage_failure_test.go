@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -241,7 +243,7 @@ func TestAFailedStorageCall(t *testing.T) {
 		go func() { idle <- harness.WaitForIdle(testContext) }()
 		watch := must(harness.WatchDocErased(testContext, LiveDoc, root.Id()))
 		stream := must(WatchEvents(testContext, harness, root.Id()))
-		stream.Start(func(context.Context, []AgentEvent) error { return nil })
+		stream.Start(func(context.Context, chord.NativeWatchChange[[]AgentEvent]) error { return nil })
 		flush()
 
 		failure := errors.New("disk gone")
@@ -576,7 +578,7 @@ func TestAFailedStorageCall(t *testing.T) {
 	t.Run("fails it for a throw in its own commit listeners, which would leave memory behind storage", func(t *testing.T) {
 		harness, root, reports := sfStarted(t, newControlledStorage(), &signalLog{})
 		bug := errors.New("listener bug")
-		harness.(*harnessImpl).ObserveCommits(func(context.Context, durable.CommitPublication) { panic(bug) })
+		harness.(*harnessImpl).ObserveCommits(func(context.Context, session.ObservedCommit) { panic(bug) })
 		// The commit itself is durable and returns; the Session fails behind it.
 		if err := sfAppendNote(root); err != nil {
 			t.Fatalf("the commit returned %v, want success", err)

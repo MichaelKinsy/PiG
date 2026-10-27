@@ -1519,18 +1519,28 @@ func modelStreamErrorEvent(err error, model map[string]any) map[string]any {
 
 // ModelRegistry exposes Session model discovery, request authentication, and
 // model operations through the host-owned runtime.
-type ModelRegistry struct{ context Context }
+type ModelRegistry struct {
+	context Context
+	// runtime is the ModelRuntime this registry forwards to ([NewModelRegistry]); nil is the Session's registry.
+	runtime *ModelRuntime
+}
 
 // ModelRegistry returns the current Session model registry facade.
 func (c Context) ModelRegistry() ModelRegistry { return ModelRegistry{context: c} }
 
 // Find resolves a model by exact provider and model ID through the host registry. It returns a nil map and a nil error when no model matches, as Pi's find returns undefined (model-registry.ts:72); a host or transport failure is the error, never a model that is absent.
 func (r ModelRegistry) Find(providerID, modelID string) (map[string]any, error) {
+	if r.runtime != nil {
+		return r.runtime.GetModel(providerID, modelID)
+	}
 	return hostValue[map[string]any](r.context, "getModel", map[string]string{"provider": providerID, "modelId": modelID})
 }
 
 // GetApiKeyAndHeaders resolves request authentication through the host.
 func (r ModelRegistry) GetApiKeyAndHeaders(model map[string]any) (map[string]any, error) {
+	if r.runtime != nil {
+		return r.runtime.requestAuth(model), nil
+	}
 	provider, _ := model["provider"].(string)
 	if provider == "" {
 		if value, ok := model["provider"].(map[string]any); ok {
@@ -1556,6 +1566,9 @@ func (r ModelRegistry) GetApiKeyAndHeaders(model map[string]any) (map[string]any
 }
 
 func (r ModelRegistry) Stream(model, request, options map[string]any) *ModelEventStream {
+	if r.runtime != nil {
+		return r.runtime.Stream(model, request, options)
+	}
 	return r.stream(model, request, options, false)
 }
 
@@ -1614,10 +1627,16 @@ func (r ModelRegistry) streamOn(runtime string, model, request, options map[stri
 }
 
 func (r ModelRegistry) StreamSimple(model, request, options map[string]any) *ModelEventStream {
+	if r.runtime != nil {
+		return r.runtime.StreamSimple(model, request, options)
+	}
 	return r.stream(model, request, options, true)
 }
 
 func (r ModelRegistry) Complete(model, request, options map[string]any) map[string]any {
+	if r.runtime != nil {
+		return r.runtime.Complete(model, request, options)
+	}
 	return r.Stream(model, request, options).Result()
 }
 

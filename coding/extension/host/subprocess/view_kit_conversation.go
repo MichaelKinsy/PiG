@@ -141,7 +141,7 @@ func (inst *viewInstance) remember(n *ViewNode) {
 }
 
 func (b *viewBuilder) userMessage(n *ViewNode, out *frontend.ViewNode) tui.Component {
-	block := tui.NewUserMessageComponent(n.Text, nil, intOr(n.OutputPad, 1), nil)
+	block := tui.NewUserMessageComponent(n.Text, nil, intOr(n.OutputPad, 1), nil, "", "")
 	out.Text = n.Text
 	b.f.conversations = append(b.f.conversations, &viewConversation{component: block, node: out})
 	return block
@@ -150,7 +150,7 @@ func (b *viewBuilder) userMessage(n *ViewNode, out *frontend.ViewNode) tui.Compo
 func (b *viewBuilder) assistantMessage(n *ViewNode, out *frontend.ViewNode) tui.Component {
 	inst, fresh := b.conversationInstance(n, nil, nil)
 	if fresh {
-		inst.assistant = tui.NewAssistantMessageComponent(nil, n.HideThinkingBlock, nil, "", nil, nil)
+		inst.assistant = tui.NewAssistantMessageComponent(nil, n.HideThinkingBlock, nil, "", nil, nil, "", "")
 	}
 	block, sent := inst.assistant, inst.sent
 	if !fresh && sent.HideThinkingBlock != n.HideThinkingBlock {

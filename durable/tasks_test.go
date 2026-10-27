@@ -14,7 +14,7 @@ type fakeErasedRuntime struct {
 	commits []NextTaskState[JsonValue, JsonValue]
 }
 
-func (runtime *fakeErasedRuntime) Commit(_ context.Context, change func(Tx, ErasedRunningTask) (*NextTaskState[JsonValue, JsonValue], error)) error {
+func (runtime *fakeErasedRuntime) Commit(_ context.Context, change func(Tx, ErasedRunningTask) (*NextTaskState[JsonValue, JsonValue], error), _ ...CommitOptions) error {
 	next, err := change(nil, runtime.current)
 	if err != nil {
 		return err

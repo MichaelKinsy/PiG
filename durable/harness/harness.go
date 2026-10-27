@@ -89,11 +89,11 @@ func (conversation *conversationImpl) Reset(ctx context.Context, handoff *string
 	return err
 }
 
-func (conversation *conversationImpl) Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error) {
+func (conversation *conversationImpl) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
 	id := conversation.id
 	return conversation.host.harness.CommitWith(ctx, func(tx *session.Transaction) (any, error) {
 		return change(tx)
-	}, session.TransactionScope{ConversationId: &id})
+	}, session.TransactionScope{ConversationId: &id}, options...)
 }
 
 func (conversation *conversationImpl) Context(ctx context.Context, options *durable.ContextOptions) (durable.ContextView, error) {
@@ -161,6 +161,18 @@ func (harness *harnessImpl) documentRetentionMs() *float64 {
 	}
 	if settings := harness.options.Settings(); settings != nil {
 		return settings.DocumentRetentionMs
+	}
+	return nil
+}
+
+// persistWithinMs is settings.progress.persistWithinMs, read at each use, as all settings are, but only this field: the Session
+// reads it for each deferred commit without a window of its own (harness.ts: `() => hostSettings()?.progress?.persistWithinMs`).
+func (harness *harnessImpl) persistWithinMs() *float64 {
+	if harness.options.Settings == nil {
+		return nil
+	}
+	if settings := harness.options.Settings(); settings != nil && settings.Progress != nil {
+		return settings.Progress.PersistWithinMs
 	}
 	return nil
 }
@@ -306,6 +318,20 @@ func (harness *harnessImpl) Usage(ctx context.Context) (UsageState, error) {
 		}
 	}
 	return total, nil
+}
+
+func (harness *harnessImpl) ObserveTaskGraph(ctx context.Context, observer durable.Observer[TaskGraph]) (durable.Observation[TaskGraph], error) {
+	if err := harness.checkOpen(); err != nil {
+		return nil, err
+	}
+	return harness.taskGraph.Observe(ctx, observer)
+}
+
+func (harness *harnessImpl) ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[ConversationView]) (durable.Observation[ConversationView], error) {
+	if err := harness.checkOpen(); err != nil {
+		return nil, err
+	}
+	return harness.host.views.Observe(ctx, id, observer)
 }
 
 func (harness *harnessImpl) WatchTaskGraph(ctx context.Context) (TaskGraphWatch, error) {
@@ -585,10 +611,11 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 	harness.SessionImpl = session.NewSessionImpl(storage, session.Hooks{
 		ConversationCreated: harness.conversationCreated,
 		// Join task invocations after admission is sealed and before Storage closes; writes no task outcome.
-		BeforeClose: func() { harness.tasks.Join() },
-		Report:      harness.report,
-		SetTimer:    options.SetTimer,
-		ReadOnly:    options.ReadOnly,
+		BeforeClose:     func() { harness.tasks.Join() },
+		Report:          harness.report,
+		SetTimer:        options.SetTimer,
+		ReadOnly:        options.ReadOnly,
+		PersistWithinMs: harness.persistWithinMs,
 	}, now, harness.documentRetentionMs)
 	// Every component reads and writes through the Session's failure guard (session.ts: the Harness uses `this.storage`).
 	storage = harness.Storage()

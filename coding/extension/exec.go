@@ -116,8 +116,9 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		_ = stderrRead.Close()
 		// Like upstream, a program that cannot start (missing program or
 		// working directory) resolves with code 1 instead of failing, and an
-		// abort that came first has already set killed.
-		return ExecResult{Code: 1, Killed: ctx.Err() != nil}, nil
+		// abort that came first has already set killed. Nothing ran, so stderr carries the spawn error's message
+		// (exec.ts `stderr || error.message`, Pi #11085).
+		return ExecResult{Stderr: nodespawn.SpawnMessage(command, err), Code: 1, Killed: ctx.Err() != nil}, nil
 	}
 
 	// exec.ts:75 starts the timer once spawn has returned, with the child

@@ -29,7 +29,15 @@ process.stdout.write(
 					return settle(() => sampling.getGrammarToolInput(p.tool.name, p.args, p.property));
 				default: {
 					const buffer = { input: "", started: false, closed: false };
-					return { steps: p.steps.map((step) => settle(() => sampling.appendGrammarToolInputJsonDelta(buffer, p.property, step.next, step.close))) };
+					return {
+						steps: p.steps.map((step) =>
+							settle(() =>
+								step.kind === "append"
+									? sampling.appendGrammarToolInputJsonDelta(buffer, p.property, step.text)
+									: sampling.closeGrammarToolInputJson(buffer, p.property, step.kind === "closeNone" ? undefined : step.text),
+							),
+						),
+					};
 				}
 			}
 		}),

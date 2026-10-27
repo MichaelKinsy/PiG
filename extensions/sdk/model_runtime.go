@@ -9,7 +9,7 @@ import (
 
 // ModelRuntime is Pi's `ModelRuntime` class (core/model-runtime.ts): the configured model collection an extension builds over its own credential and model files, for models, provider auth, completions and the registrations a Session shares. The host owns the object for the extension's connection; this value names it. Models are Pi's Model objects as JSON maps.
 //
-// The Provider objects of Pi's class (GetProviders, GetProvider, GetRegisteredNativeProvider, RegisterNativeProvider) are not on this type: a Provider holds functions the host cannot run on the extension's behalf (the Provider surface D78 records). RegisterProvider takes a configuration without functions. StreamDeferred, FetchDeferred and CancelDeferred are not on it either.
+// The Provider objects of Pi's class (GetProviders, GetProvider, GetRegisteredNativeProvider, RegisterNativeProvider) are in model_runtime_providers.go: the Provider object the extension registered here stays in this process, and a builtin or composed provider has no carrier (the Provider surface D78 records). RegisterProvider takes a configuration without functions. StreamDeferred, FetchDeferred and CancelDeferred are not on this type.
 type ModelRuntime struct{ object *graphObject }
 
 // ModelRuntimeCreateOptions is Pi's CreateModelRuntimeOptions. A zero member is Pi's undefined. The credential store option of Pi (an object of the extension's own) is not served: AuthPath names the file.

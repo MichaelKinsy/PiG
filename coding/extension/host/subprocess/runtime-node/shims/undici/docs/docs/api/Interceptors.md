@@ -163,9 +163,10 @@ Follows HTTP redirects (3xx responses) automatically.
   * `maxRedirections` {number} Maximum number of redirects to follow. Passing
     `0` disables redirect following entirely. **Default:** `undefined`
     (inherits from the per-request `maxRedirections` option).
-  * `throwOnMaxRedirect` {boolean} When `true`, throws an error once the
-    redirect limit is reached instead of returning the final redirect response.
-    **Default:** `false`.
+  * `throwOnMaxRedirect` {boolean} When `true`, throws an error when a
+    redirect would be followed but the redirect limit has been reached, instead
+    of returning that redirect response. A non-redirect response after exactly
+    `maxRedirections` redirects is returned normally. **Default:** `false`.
   * `stripHeadersOnRedirect` {string[]} List of header names to remove from
     the request when following any redirect. **Default:** `[]`.
   * `stripHeadersOnCrossOriginRedirect` {string[]} List of header names to
@@ -198,7 +199,10 @@ const agent = new Agent().compose(
 ## `interceptors.decompress([opts])`
 
 Automatically decompresses response bodies encoded with `gzip`, `x-gzip`,
-`br` (Brotli), `deflate`, `compress`, `x-compress`, or `zstd`.
+`br` (Brotli), `deflate`, or `zstd`. Any other coding, including `compress`
+and `x-compress`, is left untouched, matching `fetch()`. As required by
+[RFC 9659](https://www.rfc-editor.org/rfc/rfc9659.html), a `zstd` frame that
+requires a window size larger than 8 MB fails to decode.
 
 > **Experimental:** This interceptor is experimental and subject to change.
 > A one-time `ExperimentalWarning` is emitted on first use.
@@ -210,9 +214,10 @@ Automatically decompresses response bodies encoded with `gzip`, `x-gzip`,
     skipped. **Default:** `[204, 304]`.
   * `skipErrorResponses` {boolean} When `true`, responses with a status code
     >= 400 are not decompressed. **Default:** `true`.
-  * `maxSize` {number} Maximum decompressed response size in bytes. The request
-    fails with a `ResponseExceededMaxSizeError` if the decoded body exceeds
-    this limit. **Default:** `67108864` (64 MiB).
+  * `maxSize` {number} Maximum decompressed response size in bytes for each
+    decompression stage. The request fails with a
+    `ResponseExceededMaxSizeError` if a stage exceeds this limit. Set to `0` to
+    disable the limit. **Default:** `0`.
 
 **Returns:** {Dispatcher.DispatcherComposeInterceptor}
 
@@ -243,8 +248,11 @@ The error body is automatically decoded for `application/json` and
 
 **Parameters**
 
-* `opts` {Object} (optional) — currently reserved for future use; may be
-  omitted.
+* `opts` {Object} (optional)
+  * `maxSize` {number} Maximum number of response body bytes to include in the
+    error. If the body exceeds this limit, the resulting `ResponseError`
+    contains the retained prefix with `bodyTruncated` set to `true`. Set to `0`
+    to disable the limit. **Default:** `1048576` (1 MiB).
 
 **Returns:** {Dispatcher.DispatcherComposeInterceptor}
 
@@ -333,8 +341,21 @@ backing store.
 
 **Parameters**
 
-* `opts` {CacheHandler.CacheOptions} (optional) See the
-  [`CacheStore`](./CacheStore.md) documentation for accepted fields.
+* `opts` {Object} (optional)
+  * `store` {CacheStore} The store that cached responses are kept in. See
+    [`CacheStore`](./CacheStore.md). **Default:** a new `MemoryCacheStore`.
+  * `methods` {string[]} The HTTP methods to cache. Only safe methods are
+    allowed (`GET`, `HEAD`, `OPTIONS`, `TRACE`) and at least one is required.
+    **Default:** `['GET']`.
+  * `cacheByDefault` {number} RFC 9111 allows caching responses that are not
+    explicitly marked as cacheable or not cacheable. Set this to cache such
+    responses. **Default:** `undefined`.
+  * `type` {string} Whether the cache is `'shared'` or `'private'`, which
+    decides how directives such as `s-maxage` and `private` are applied.
+    **Default:** `'shared'`.
+  * `origins` {(string|RegExp)[]} Only requests to these origins are cached.
+    Strings are compared case-insensitively. **Default:** `undefined` (all
+    origins are cached).
 
 **Returns:** {Dispatcher.DispatcherComposeInterceptor}
 

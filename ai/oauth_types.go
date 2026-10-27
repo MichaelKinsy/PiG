@@ -55,10 +55,14 @@ type OAuthAuthInfo struct {
 // device-code (RFC 8628) login flow. Mirrors upstream OAuthDeviceCodeInfo
 // (types.ts:26-31).
 type OAuthDeviceCodeInfo struct {
-	UserCode         string
-	VerificationURI  string
-	IntervalSeconds  float64
-	ExpiresInSeconds float64
+	UserCode        string
+	VerificationURI string
+	// OpenBrowserOnConfirm offers best-effort browser opening on user confirmation; nil (Pi's undefined) means true, and clients may ignore it.
+	OpenBrowserOnConfirm *bool
+	// CopyCodeOnConfirm offers copying UserCode on user confirmation, replacing the clipboard; nil (Pi's undefined) means true.
+	CopyCodeOnConfirm *bool
+	IntervalSeconds   float64
+	ExpiresInSeconds  float64
 }
 
 // OAuthSelectOption is one selectable choice in an OAuth flow.

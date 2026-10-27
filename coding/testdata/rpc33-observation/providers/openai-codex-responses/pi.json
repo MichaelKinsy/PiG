@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0+74f46864",
+  "piVersion": "1.4.0+6c384aa3",
   "api": "openai-codex-responses",
   "node": "v24.19.0",
   "runs": 8,
@@ -53,8 +53,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -74,8 +73,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -97,8 +95,7 @@
               "name": "read",
               "arguments": {
                 "path": "parity-read-target.txt"
-              },
-              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+              }
             }
           ],
           "stopReason": "pending",
@@ -120,8 +117,7 @@
               "name": "read",
               "arguments": {
                 "path": "parity-read-target.txt"
-              },
-              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+              }
             }
           ],
           "stopReason": "pending",
@@ -479,8 +475,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -500,8 +495,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -594,8 +588,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -615,8 +608,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -714,8 +706,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -735,8 +726,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -758,8 +748,7 @@
               "name": "read",
               "arguments": {
                 "path": "parity-read-target.txt"
-              },
-              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+              }
             }
           ],
           "stopReason": "pending",
@@ -781,8 +770,7 @@
               "name": "read",
               "arguments": {
                 "path": "parity-read-target.txt"
-              },
-              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+              }
             }
           ],
           "stopReason": "pending",
@@ -1150,8 +1138,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -1171,8 +1158,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -1270,8 +1256,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -1291,8 +1276,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -1395,8 +1379,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -1416,8 +1399,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -1444,8 +1426,7 @@
               "name": "read",
               "arguments": {
                 "path": "parity-read-target.txt"
-              },
-              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+              }
             }
           ],
           "stopReason": "pending",
@@ -1467,8 +1448,7 @@
               "name": "read",
               "arguments": {
                 "path": "parity-read-target.txt"
-              },
-              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+              }
             }
           ],
           "stopReason": "pending",
@@ -1876,8 +1856,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -1897,8 +1876,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -2006,8 +1984,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",
@@ -2027,8 +2004,7 @@
               "type": "toolCall",
               "id": "call_1|fc_1",
               "name": "read",
-              "arguments": {},
-              "partialJson": ""
+              "arguments": {}
             }
           ],
           "stopReason": "pending",

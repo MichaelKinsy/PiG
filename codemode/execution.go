@@ -240,7 +240,7 @@ func (e *execution) startDeadline() {
 
 // finish records the outcome; only the first call counts. It cancels every pending nested call and stops the VM.
 //
-// Ports packages/codemode/src/runtime/host.ts (Execution.finish).
+// Ports packages/codemode/src/runtime/execution.ts (Execution.finish).
 func (e *execution) finish(failure *Error, value json.RawMessage, writes StoreWrites) {
 	e.mu.Lock()
 	if e.finished {
@@ -294,7 +294,7 @@ func millisSince(start, now time.Time) float64 {
 // script that patches built-ins (for example Array.prototype.toJSON) could make it send malformed data; the execution
 // then fails as a sandbox error.
 //
-// Ports packages/codemode/src/runtime/host.ts (BridgeError).
+// Ports packages/codemode/src/runtime/execution.ts (BridgeError).
 type bridgeError string
 
 func (b bridgeError) Error() string { return string(b) }
@@ -306,7 +306,7 @@ func bridgeBroken(reason string) *Error {
 
 // parseBridgeJSON validates a JSON payload.
 //
-// Ports packages/codemode/src/runtime/host.ts (parseBridgeJson).
+// Ports packages/codemode/src/runtime/execution.ts (parseBridgeJson).
 func parseBridgeJSON(text, what string) (json.RawMessage, error) {
 	if !json.Valid([]byte(text)) {
 		return nil, bridgeError(what + " is not valid JSON")
@@ -321,7 +321,7 @@ func isJSONString(raw json.RawMessage) bool {
 
 // parseStoreWrites decodes the prelude's list of [key, jsonText?] pairs and checks every entry.
 //
-// Ports packages/codemode/src/runtime/host.ts (parseStoreWrites).
+// Ports packages/codemode/src/runtime/execution.ts (parseStoreWrites).
 func parseStoreWrites(writes string) (StoreWrites, error) {
 	result := StoreWrites{Set: map[string]json.RawMessage{}}
 	parsed, err := parseBridgeJSON(writes, "store writes")
@@ -360,7 +360,7 @@ func parseStoreWrites(writes string) (StoreWrites, error) {
 		if err != nil {
 			return StoreWrites{}, err
 		}
-		// host.ts assigns `writes.set[key] = value`, which sets the prototype of `set` for `__proto__` and creates no property.
+		// execution.ts assigns `writes.set[key] = value`, which sets the prototype of `set` for `__proto__` and creates no property.
 		if key != "__proto__" {
 			if _, ok := result.Set[key]; !ok {
 				result.setOrder = append(result.setOrder, key)
@@ -373,7 +373,7 @@ func parseStoreWrites(writes string) (StoreWrites, error) {
 
 // parseScriptError decodes the prelude's description of a thrown error.
 //
-// Ports packages/codemode/src/runtime/host.ts (parseScriptError).
+// Ports packages/codemode/src/runtime/execution.ts (parseScriptError).
 func parseScriptError(text string) (*Error, error) {
 	parsed, err := parseBridgeJSON(text, "script error")
 	if err != nil {
@@ -409,7 +409,7 @@ func parseScriptError(text string) (*Error, error) {
 	return failure, nil
 }
 
-// serializeStore is host.ts serializeStore: each value becomes JSON.stringify of itself. host.ts assigns
+// serializeStore is execution.ts serializeStore: each value becomes JSON.stringify of itself. execution.ts assigns
 // `serialized[key] = json`, which never creates an own `__proto__` property, so that key does not reach the script.
 func serializeStore(store map[string]json.RawMessage) map[string]string {
 	serialized := make(map[string]string, len(store))
@@ -473,10 +473,6 @@ func (e *execution) handleDone(message vmMessage) {
 		e.finish(failure, nil, StoreWrites{})
 		return
 	}
-	if !message.writesDefined {
-		e.finish(bridgeBroken("unknown message from the worker"), nil, StoreWrites{})
-		return
-	}
 	var raw json.RawMessage
 	if message.valueDefined {
 		var err error
@@ -496,7 +492,7 @@ func (e *execution) handleDone(message vmMessage) {
 // startCall runs a nested tool call in its own goroutine, started in message order, and sends its result back to
 // the goroutine that owns the VM.
 //
-// Ports packages/codemode/src/runtime/host.ts (Execution.handleCall).
+// Ports packages/codemode/src/runtime/execution.ts (Execution.handleCall).
 func (e *execution) startCall(id int, isTool bool, name, args string, argsDefined bool) {
 	var record *Call
 	e.mu.Lock()
@@ -545,7 +541,7 @@ func (e *execution) startCall(id int, isTool bool, name, args string, argsDefine
 			if isTool {
 				kind = "tool"
 			}
-			err = fmt.Errorf("Unknown %s %q", kind, name)
+			err = fmt.Errorf("Unknown %s \"%s\"", kind, name)
 		case tool.Execute == nil:
 			err = fmt.Errorf("Tool %q has no Execute function", name)
 		default:
@@ -651,7 +647,7 @@ func (e *execution) deliver(seq int, now float64, id int, outcome Outcome) error
 		}
 	}
 	// Serialized before anything is recorded, so a value JSON cannot hold leaves the call waiting for another answer.
-	reply := callResult{id: id, ok: outcome.OK, seq: seq, now: now, hasNow: true}
+	reply := callResult{id: id, ok: outcome.OK, seq: seq, hasSeq: true, now: now, hasNow: true}
 	if outcome.OK {
 		if len(outcome.Value) > 0 {
 			if !json.Valid(outcome.Value) {

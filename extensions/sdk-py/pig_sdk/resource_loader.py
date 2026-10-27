@@ -4,11 +4,26 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from ._graph import _GraphObject, _callback_id
+from .extension_factories import ExtensionFactory
+from .extension_runtime import ExtensionRuntime
 
-_UNSUPPORTED = (
-    ("extension_factories", "an inline factory runs in this process but the child session's extensions load in the host"),
-    ("extensions_override", "it returns live extension objects, which live in the host"),
-)
+_UNSUPPORTED = (("extensions_override", "it returns live extension objects, which live in the host"),)
+
+
+class LoadedExtension(dict):
+    """One extension of a load: its ``path``, ``resolvedPath``, ``sourceInfo`` and ``tools`` as data (the extension object holds functions that live in the host), and the loader it was read from. It reads as that data; ``ExtensionRunner`` takes it."""
+
+    _loader: str = ""
+
+
+class LoadExtensionsResult(dict):
+    """Pi's ``LoadExtensionsResult``: ``{extensions, errors, warnings}`` as data, with the ``runtime`` the extensions share. ``extensions`` holds ``LoadedExtension`` values."""
+
+    runtime: ExtensionRuntime
+
+    @property
+    def extensions(self) -> list[LoadedExtension]:
+        return self["extensions"]
 
 
 class DefaultResourceLoader(_GraphObject):
@@ -19,6 +34,8 @@ class DefaultResourceLoader(_GraphObject):
         cwd: str,
         agent_dir: str,
         settings_manager: Any = None,
+        # pig additive (D201): the runtime the loader loads its extensions against; Pi's loader takes none (its loadExtensions does).
+        runtime: ExtensionRuntime | None = None,
         additional_extension_paths: list[str] | None = None,
         additional_skill_paths: list[str] | None = None,
         additional_prompt_template_paths: list[str] | None = None,
@@ -41,10 +58,16 @@ class DefaultResourceLoader(_GraphObject):
         append_system_prompt_override: Callable[[list[str]], list[str]] | None = None,
     ) -> None:
         """``new DefaultResourceLoader(options)``; every option is Pi's under its snake_case name and ``None`` is Pi's undefined. ``extension_factories`` and ``extensions_override`` raise: they are not supported yet (an owner decision is pending, gap ``SdkSessionGraph`` in test/parity/sdk-exports.toml); use ``additional_extension_paths``, or ``create_agent_session`` custom tools."""
-        given = {"extension_factories": extension_factories, "extensions_override": extensions_override}
+        given = {"extensions_override": extensions_override}
         for name, why in _UNSUPPORTED:
             if given[name]:
                 raise RuntimeError(f"DefaultResourceLoader option {name} is not supported by the Python SDK: {why} (decision pending, gap SdkSessionGraph)")
+        for factory in extension_factories or []:
+            if not isinstance(factory, ExtensionFactory):
+                raise RuntimeError(
+                    "DefaultResourceLoader option extension_factories takes only the references create_codemode_extension, create_tool_search_extension and create_mcp_extension return: an inline factory runs in this process "
+                    "but the child session's extensions load in the host (decision pending, gap SdkSessionGraph); use additional_extension_paths, or create_agent_session custom tools"
+                )
         wire = {
             "cwd": cwd, "agentDir": agent_dir,
             "additionalExtensionPaths": additional_extension_paths, "additionalSkillPaths": additional_skill_paths,
@@ -55,13 +78,28 @@ class DefaultResourceLoader(_GraphObject):
             "themesOverride": _callback_id(context, themes_override), "agentsFilesOverride": _callback_id(context, agents_files_override),
             "systemPromptOverride": _callback_id(context, system_prompt_override), "appendSystemPromptOverride": _callback_id(context, append_system_prompt_override),
         }
+        if extension_factories:
+            wire["extensionFactories"] = [factory._wire(context) for factory in extension_factories]
         if settings_manager is not None:
             wire["settingsManager"] = settings_manager.handle
+        if runtime is not None:
+            wire["runtime"] = runtime.handle
         super().__init__(context, "DefaultResourceLoader", "new", wire)
 
-    def get_extensions(self) -> dict[str, Any]:
-        """The extensions of the last ``reload``, as data."""
-        return self._invoke("getExtensions")
+    def _extensions_result(self, data: dict[str, Any]) -> LoadExtensionsResult:
+        result = LoadExtensionsResult(data)
+        extensions = []
+        for extension in data.get("extensions") or []:
+            loaded = LoadedExtension(extension)
+            loaded._loader = self.handle
+            extensions.append(loaded)
+        result["extensions"] = extensions
+        result.runtime = ExtensionRuntime._of_loader(self._context, self.handle)
+        return result
+
+    def get_extensions(self) -> LoadExtensionsResult:
+        """The extensions of the last ``reload``, as data, with the runtime they share (``result.runtime``)."""
+        return self._extensions_result(self._invoke("getExtensions"))
 
     def get_skills(self) -> dict[str, Any]:
         """``{"skills", "diagnostics"}`` of the last ``reload``."""
@@ -96,9 +134,9 @@ class DefaultResourceLoader(_GraphObject):
         """Add the skills, prompt templates and themes extensions contributed: ``{"skillPaths", "promptPaths", "themePaths"}`` lists of ``{"path", "metadata": {"source", "scope", "origin", "baseDir"?}}``."""
         self._invoke("extendResources", paths)
 
-    def load_project_trust_extensions(self) -> dict[str, Any]:
+    def load_project_trust_extensions(self) -> LoadExtensionsResult:
         """The bootstrap extension set, loaded with project settings untrusted, that project trust is decided with."""
-        return self._invoke_async("loadProjectTrustExtensions")
+        return self._extensions_result(self._invoke_async("loadProjectTrustExtensions"))
 
     def reload(self, options: dict[str, Any] | None = None) -> None:
         """Rediscover every resource. ``options["resolveProjectTrust"]`` is a callable taking the bootstrap extension set and returning whether the project is trusted."""

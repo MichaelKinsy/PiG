@@ -2,6 +2,8 @@ package durable
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord"
@@ -254,8 +256,9 @@ type TaskRuntime[I, S, R any, H any] interface {
 	// Commit commits on the Session line after rereading the task. It fails when the task is terminal, the
 	// invocation ended, the Harness is closing, or, in a run invocation, the task carries an abort mark. A returned
 	// state replaces the task's state in the same commit; nil leaves it unchanged. tx.CreateTask defaults to the task's
-	// conversation.
-	Commit(ctx context.Context, change func(tx Tx, current RunningTask[I, S, R]) (*NextTaskState[S, R], error)) error
+	// conversation. options.Persistence may defer storing a commit that changes only documents (CommitPersistence); one
+	// that returns a state is stored at once.
+	Commit(ctx context.Context, change func(tx Tx, current RunningTask[I, S, R]) (*NextTaskState[S, R], error), options ...CommitOptions) error
 	// Memo reads a durable memo of this task; ok is false when absent.
 	Memo(ctx context.Context, name string) (value JsonValue, ok bool, err error)
 	// MemoCandidate stores candidate unless a memo already exists and returns the durable winner.
@@ -632,7 +635,8 @@ type ReportTask struct {
 	ConversationId ConversationId `json:"conversationId"`
 }
 
-// HostCallback is a host callback, by its HarnessOptions name; env is the environment builder, models a provider call.
+// HostCallback is a host callback, by its HarnessOptions name; env is the environment builder, models a provider call,
+// and telemetry a telemetry adapter call made while a commit is published, which must not fail it.
 type HostCallback string
 
 // The host callbacks a report can name.
@@ -644,6 +648,8 @@ const (
 	HostCallbackModels   HostCallback = "models"
 	HostCallbackSetTimer HostCallback = "setTimer"
 	HostCallbackOnWake   HostCallback = "onWake"
+	// HostCallbackTelemetry names a telemetry adapter that panicked while a commit was published.
+	HostCallbackTelemetry HostCallback = "telemetry"
 )
 
 // ReportType is what a report to HarnessOptions.OnReport is about.
@@ -1039,7 +1045,10 @@ func (DocumentCopyChange) documentCommitChange() {}
 // CommitChangeType returns the upstream `type` discriminator of a change.
 func CommitChangeType(change CommitChange) string { return change.commitChangeType() }
 
-// CommitPublication holds every immutable change from one successful Session commit.
+// CommitPublication holds every immutable change one Session storage transaction stored, with its Seq. Change order is
+// unspecified. A commit held in memory (CommitPersistence) is published once it is stored: by the next commit that reads
+// or writes its document, alone (the Seq of its own), or with that commit, whose document change then carries the held
+// operations followed by its own.
 type CommitPublication struct {
 	Seq     Seq
 	Changes []CommitChange
@@ -1105,7 +1114,6 @@ type WatchEndReason = chord.WatchEndReason
 const (
 	WatchStopped       = chord.WatchStopped
 	WatchCancelled     = chord.WatchCancelled
-	WatchRetired       = chord.WatchRetired
 	WatchEnded         = chord.WatchEnded
 	WatchListenerError = chord.WatchListenerError
 	// WatchFailed ends a watch when the Session failed; Error is the failure, usually a Storage error (see SessionFailed).
@@ -1115,13 +1123,46 @@ const (
 // WatchEnd is the terminal result of one watch.
 type WatchEnd = chord.WatchEnd
 
-// WatchHandle is a serialized exact-frame observation of an immutable value with bounded pending delivery.
+// WatchHandle is a serialized observation of an immutable value: one listener call at a time; changes made meanwhile arrive folded into the next call.
 type WatchHandle[T any] = chord.WatchHandle[T]
 
-// DocumentWatch is a watch of one committed document incarnation. A retirement delivers [["r", null]] with a nil value,
-// then ends the watch as retired; the Session's close ends it as ended, its failure as failed with the error that failed
+// WatchChange is one call of a JSON watch's listener: the newest value, the ops that turn the previous value into it,
+// and whether the document the watch follows was retired since the previous call; it is Chord's.
+type WatchChange[T any] = chord.WatchChange[T]
+
+// NativeWatchChange is one call of a native watch's listener: the new value; it is Chord's.
+type NativeWatchChange[T any] = chord.NativeWatchChange[T]
+
+// DocumentWatch is a watch of one document address (kind, scope, and key), from the incarnation found at acquisition on.
+// A retirement is a call with Retired set, the last value the watch was given and no ops (a change made in the retiring
+// commit itself is not shown: that commit publishes the retirement only); the watch goes on, and a document created at
+// the address later arrives as [["r", value]], folded with what is pending. It ends ended when its scope's owner ends: a
+// task document's watch once the retirement call of the commit that makes its task terminal returned, every watch at
+// Session close (a pending retirement dropped); failed with the error that failed the Session.
+type DocumentWatch[T any] = WatchHandle[T]
+
+// Observer is a synchronous observer of committed Durable state, for adapters such as a Chord source
+// (Session.ObserveDocErased, Harness.ObserveConversation, Harness.ObserveTaskGraph). Advance gets every change, unfolded, as
+// memory adopts it: for a stored commit inside Storage's adopt, for a deferred one before it is stored. A view or the
+// graph gets at most one call per commit, a document observer one per change at its address (two for a commit that
+// retires and recreates it); the task graph also advances outside any commit and adopt, on the Session line, when a
+// registry change or a failed migration changes a blocked reason. Calls may come before the attaching call returns; their
+// ops apply from Observation.Value. Advance must only record the change, synchronously and quickly, never wait, call the
+// Session, or panic. A panic is reported as listener_error, detaches the observer, and ends it with the error. End is
+// called once, when the Session closes (failure nil) or fails (failure is the error), or when the observed scope's owner
+// ends (a task document's task, after its retirement change, inside that commit's adopt), and never after Detach.
+type Observer[T any] interface {
+	Advance(ctx context.Context, change WatchChange[T])
+	End(failure error)
+}
+
+// Observation is an attached Observer: the value at attachment, which every later Advance starts from, and how to detach
 // it.
-type DocumentWatch[T any] = WatchHandle[*T]
+type Observation[T any] interface {
+	Value() T
+	// Detach is idempotent: no Advance or End follows it, not even for the rest of a commit underway.
+	Detach()
+}
 
 // DocumentReader holds committed document reads (Session.snapshot and snapshotAsOf).
 type DocumentReader interface {
@@ -1153,16 +1194,74 @@ type SessionEnd struct {
 	Error  error
 }
 
+// CommitPersistenceKind is when a commit reaches Storage.
+type CommitPersistenceKind string
+
+const (
+	// CommitImmediate, the default, stores a commit before Commit returns.
+	CommitImmediate CommitPersistenceKind = "immediate"
+	// CommitDeferred lets the Session adopt a commit in memory, show it to watches and views, and return, but store it
+	// later (CommitPersistence).
+	CommitDeferred CommitPersistenceKind = "deferred"
+)
+
+// CommitPersistence is when a commit reaches Storage. Immediate, the default: before the commit returns. Deferred: when
+// every write of the commit changes an existing conversation document with History latest and Fork initial (no
+// creation, migration, or retirement), the Session adopts it in memory, shows it to watches and views, and returns, but
+// stores it later: with the next commit that reads (tx.Doc) or writes that document, before the document leaves memory or
+// retires, at Close, and at the latest about WithinMs after the commit (default Settings.Progress.PersistWithinMs,
+// 1,000 ms; +Inf waits for one of the others). A commit that writes anything else is immediate. A crash loses what is
+// held, so only state whose loss is acceptable, such as streamed progress, should be deferred, and nothing durable may
+// depend on it without reading it in a commit.
+type CommitPersistence struct {
+	Kind CommitPersistenceKind
+	// WithinMs is how long a deferred commit may stay in memory, a number of milliseconds, 0 or more; nil selects the
+	// default. Anything else makes the commit return an error (upstream rejects with a TypeError).
+	WithinMs *float64
+}
+
+// CommitOptions are the options of one Session commit; the zero value is an immediate commit.
+type CommitOptions struct {
+	Persistence *CommitPersistence
+}
+
+// SingleCommitOptions is the options value of a Commit call, which takes at most one: upstream's optional argument,
+// variadic in Go so that a call without it is unchanged. More than one is an error, as is a deferred commit whose WithinMs
+// is not a number of milliseconds, 0 or more (upstream rejects with a TypeError).
+func SingleCommitOptions(options []CommitOptions) (CommitOptions, error) {
+	if len(options) > 1 {
+		return CommitOptions{}, fmt.Errorf("Commit takes at most one CommitOptions, got %d", len(options))
+	}
+	if len(options) == 0 {
+		return CommitOptions{}, nil
+	}
+	if persistence := options[0].Persistence; persistence != nil && persistence.Kind == CommitDeferred && persistence.WithinMs != nil && !(*persistence.WithinMs >= 0) {
+		return CommitOptions{}, errors.New("CommitPersistence.withinMs must be a number of milliseconds, 0 or more")
+	}
+	return options[0], nil
+}
+
 // Session owns one mutation line, its records, and its tracked documents.
 type Session interface {
 	DocumentObserver
 	DocumentReader
-	// Commit runs one atomic transaction on the Session mutation line. Inside the callback read only through tx: Snapshot, WatchDoc, GetTask and the other Session and runtime reads may queue on the line the callback holds, and then never return.
-	Commit(ctx context.Context, change func(tx Tx) (any, error)) (any, error)
+	// ObserveDocErased attaches a synchronous Observer to one document address, atomically on the Session line, as
+	// WatchDocErased acquires a watch: the observation's value includes every commit before it, and Advance gets every
+	// later one, retirements and later incarnations included. The observation is nil when the address is absent. ctx
+	// governs only the attachment: cancelled while attaching, the call fails and nothing stays attached. args are the
+	// owner ID and family key as for WatchDocErased. Typed observers use ObserveDoc.
+	ObserveDocErased(ctx context.Context, token AnyDocToken, observer Observer[JsonObject], args ...any) (Observation[JsonObject], error)
+	// Commit runs one atomic transaction on the Session mutation line. Inside the callback read only through tx: Snapshot, WatchDoc, GetTask and the other Session and runtime reads may queue on the line the callback holds, and then never return. At most one options value may follow; Persistence may defer storing it (CommitPersistence).
+	Commit(ctx context.Context, change func(tx Tx) (any, error), options ...CommitOptions) (any, error)
 	// Close seals admission, settles admitted commits, then closes storage.
 	Close(ctx context.Context) error
-	// SubscribeCommits observes complete commits synchronously after adoption. The listener must not panic, block,
-	// or call Session APIs.
+	// SubscribeCommits observes stored commits, each with exactly what it stored, except that a document the commit
+	// retires is published as its retirement only; a commit held in memory is published when it is stored
+	// (CommitPublication). Storage's adoption of the commit queues one dispatch, which runs once adopt returned (when the
+	// storage then waits, at once; otherwise when Storage.Commit returns, before the Session sees it resolve), before
+	// every wait the commit resolves and every abort it queues, and calls the listeners registered by then; a commit
+	// adopted while none was registered has no dispatch. There is no order relative to watch listeners. The
+	// listener runs synchronously and must not panic, block, or call Session APIs.
 	SubscribeCommits(listener func(ctx context.Context, publication CommitPublication)) func()
 	// SubscribeClose observes close synchronously when it begins. The listener must not panic, block, or call
 	// Session APIs.
@@ -1175,12 +1274,12 @@ type Session interface {
 
 // Committer runs one atomic Session commit: a Session, a Conversation, or a tool's ToolExecutionApi.
 type Committer interface {
-	Commit(ctx context.Context, change func(tx Tx) (any, error)) (any, error)
+	Commit(ctx context.Context, change func(tx Tx) (any, error), options ...CommitOptions) (any, error)
 }
 
 // Commit runs change in one commit and returns its typed result.
-func Commit[T any](ctx context.Context, committer Committer, change func(tx Tx) (T, error)) (T, error) {
-	result, err := committer.Commit(ctx, func(tx Tx) (any, error) { return change(tx) })
+func Commit[T any](ctx context.Context, committer Committer, change func(tx Tx) (T, error), options ...CommitOptions) (T, error) {
+	result, err := committer.Commit(ctx, func(tx Tx) (any, error) { return change(tx) }, options...)
 	if err != nil {
 		var zero T
 		return zero, err
@@ -1203,9 +1302,9 @@ type EntryAt struct {
 type Storage interface {
 	// Commit atomically persists one batch and returns its sequence. Once the batch is durable, call adopt(seq)
 	// exactly once, synchronously and before this storage's next commit starts, then return seq; a commit that fails
-	// before it is durable never calls adopt. adopt is the caller's in-memory adoption of the batch, so memory always
-	// shows a complete prefix of the log; it must not panic. Once it returns, later reads through this storage observe
-	// the batch.
+	// before it is durable never calls adopt. adopt is the caller's in-memory adoption and publication of the batch, so
+	// memory and the Session's views always show a complete prefix of the log; it runs the Session's own observers, which
+	// call no Storage method, and never panics. Once it returns, later reads through this storage observe the batch.
 	Commit(ctx context.Context, writes []StorageWrite, adopt func(seq Seq)) (Seq, error)
 	// MintId returns a fresh candidate from the Session-global numeric ID namespace, greater than every ID minted since
 	// this storage was opened and every ID stored, also across reopen.

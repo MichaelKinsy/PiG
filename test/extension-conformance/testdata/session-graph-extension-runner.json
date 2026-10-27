@@ -1,0 +1,742 @@
+{
+	"bound": {
+		"activeTools": [
+			"alpha",
+			"beta"
+		],
+		"errors": []
+	},
+	"contexts": {
+		"command": {
+			"fork": {
+				"cancelled": true
+			},
+			"navigateTree": {
+				"cancelled": false
+			},
+			"newSession": {
+				"cancelled": false
+			},
+			"reload": null,
+			"switchSession": {
+				"cancelled": false
+			},
+			"systemPromptOptions": {
+				"customPrompt": "custom",
+				"cwd": "\u003croot\u003e/project"
+			},
+			"waitForIdle": null
+		},
+		"contextUsage": {
+			"contextWindow": 100,
+			"percent": 10,
+			"tokens": 10
+		},
+		"cwd": "\u003croot\u003e/project",
+		"hasPendingMessages": true,
+		"hasUI": false,
+		"isIdle": false,
+		"isProjectTrusted": true,
+		"mode": "print",
+		"model": "m1",
+		"scopedModels": [
+			[
+				"m1",
+				"low"
+			]
+		],
+		"signal": null,
+		"systemPrompt": "bound system prompt",
+		"thinkingLevel": "medium",
+		"tool": {
+			"executeTool": {
+				"isError": false,
+				"result": {
+					"content": [
+						{
+							"text": "ran alpha",
+							"type": "text"
+						}
+					],
+					"details": {}
+				},
+				"toolCall": {
+					"arguments": {
+						"text": "x"
+					},
+					"id": "call-1/1",
+					"name": "alpha",
+					"type": "toolCall"
+				}
+			},
+			"tools": [
+				"alpha"
+			]
+		}
+	},
+	"emits": {
+		"beforeAgentStart": {
+			"customPrompt": "base",
+			"forced": {
+				"endsWithA": true,
+				"startsWithBase": true
+			},
+			"messages": [
+				{
+					"content": "a:do it",
+					"customType": "probe",
+					"display": false
+				},
+				{
+					"content": "b-saw:true",
+					"customType": "probe",
+					"display": true
+				}
+			]
+		},
+		"boundary": {
+			"context": {
+				"canContinue": true,
+				"contextEntries": [],
+				"contextMessages": [],
+				"llmMessages": [],
+				"pendingMessages": []
+			},
+			"continue": true,
+			"entries": [
+				{
+					"customType": "drafted",
+					"data": {
+						"n": 1
+					},
+					"type": "custom"
+				}
+			],
+			"valid": true
+		},
+		"boundaryBuilt": [
+			0,
+			1,
+			1
+		],
+		"cacheWarming": "stop",
+		"context": [
+			{
+				"content": "keep",
+				"role": "user",
+				"timestamp": 1
+			},
+			{
+				"content": "from a",
+				"role": "user",
+				"timestamp": 3
+			}
+		],
+		"inputContinue": {
+			"action": "continue"
+		},
+		"inputHandled": {
+			"action": "handled"
+		},
+		"inputTransform": {
+			"action": "transform",
+			"text": "t:x!"
+		},
+		"messageEnd": {
+			"content": "A-end",
+			"role": "user",
+			"timestamp": 1
+		},
+		"providerHeaders": {
+			"x-a": "1",
+			"x-keep": "k"
+		},
+		"providerRequest": {
+			"a": 1,
+			"b": 2,
+			"model": "m"
+		},
+		"resourcesDiscover": {
+			"promptPaths": [
+				{
+					"extensionPath": "\u003croot\u003e/probe/runner-b.mjs",
+					"path": "/prompts/b"
+				}
+			],
+			"skillPaths": [
+				{
+					"extensionPath": "\u003croot\u003e/probe/runner-a.mjs",
+					"path": "/skills/a"
+				}
+			],
+			"themePaths": []
+		},
+		"sessionBeforeSwitch": {
+			"cancel": true
+		},
+		"toolCallBlocked": {
+			"block": true,
+			"reason": "blocked by b"
+		},
+		"toolResult": {
+			"content": [
+				{
+					"text": "A(out)",
+					"type": "text"
+				}
+			],
+			"details": {
+				"b": "A(out)"
+			},
+			"isError": false
+		},
+		"userBash": {
+			"result": {
+				"cancelled": false,
+				"exitCode": 0,
+				"output": "intercepted",
+				"truncated": false
+			}
+		}
+	},
+	"errors": [
+		{
+			"error": "MCP server \"probe-mcp\" is registered, but no loaded extension connects MCP servers; another extension may have replaced the built-in MCP support",
+			"event": "register_mcp_server",
+			"extensionPath": "\u003croot\u003e/probe/runner-a.mjs"
+		},
+		{
+			"error": "a failed",
+			"event": "agent_start",
+			"extensionPath": "\u003croot\u003e/probe/runner-a.mjs"
+		},
+		{
+			"error": "reported by hand",
+			"event": "manual",
+			"extensionPath": "/x/ext.mjs"
+		}
+	],
+	"loaded": {
+		"errors": [
+			{
+				"error": "Tool \"shared\" conflicts with \u003croot\u003e/probe/runner-a.mjs",
+				"path": "\u003croot\u003e/probe/runner-b.mjs"
+			}
+		],
+		"paths": [
+			"\u003croot\u003e/probe/runner-a.mjs",
+			"\u003croot\u003e/probe/runner-b.mjs"
+		],
+		"runtime": {
+			"flagValues": {
+				"b-flag": true,
+				"probe-flag": "dflt"
+			},
+			"mcpServers": 1,
+			"nativeProviders": 0,
+			"providers": 0,
+			"virtualModels": 0
+		},
+		"sources": [
+			"cli",
+			"cli"
+		],
+		"tools": [
+			[
+				"alpha",
+				"shared"
+			],
+			[
+				"beta",
+				"shared"
+			]
+		]
+	},
+	"log": [
+		[
+			"appendEntry",
+			"a_session_start",
+			{
+				"active": [
+					"alpha",
+					"beta"
+				],
+				"cwd": "\u003croot\u003e/project",
+				"hasUI": false,
+				"idle": false,
+				"model": "m1",
+				"name": "session-name",
+				"prompt": "bound system prompt",
+				"reason": "startup",
+				"thinking": "medium",
+				"tools": [
+					"alpha"
+				],
+				"trusted": true
+			}
+		],
+		[
+			"appendEntry",
+			"b_session_start",
+			{
+				"reason": "startup"
+			}
+		],
+		[
+			"appendEntry",
+			"b_agent_start",
+			{}
+		],
+		[
+			"appendEntry",
+			"b_tool_call",
+			{
+				"command": "ls #a"
+			}
+		],
+		[
+			"appendEntry",
+			"b_tool_call",
+			{
+				"command": "forbidden #a"
+			}
+		],
+		[
+			"appendEntry",
+			"b_tool_result",
+			{
+				"text": "A(out)"
+			}
+		],
+		[
+			"appendEntry",
+			"b_input",
+			{
+				"text": "t:x!"
+			}
+		],
+		[
+			"appendEntry",
+			"b_input",
+			{
+				"text": "handled-me"
+			}
+		],
+		[
+			"appendEntry",
+			"b_input",
+			{
+				"text": "plain"
+			}
+		],
+		[
+			"appendEntry",
+			"b_context",
+			{
+				"count": 3
+			}
+		],
+		[
+			"appendEntry",
+			"b_turn_end",
+			{
+				"continue": true,
+				"entries": 1
+			}
+		],
+		[
+			"abort"
+		],
+		[
+			"shutdown"
+		],
+		[
+			"compact",
+			"short"
+		],
+		[
+			"shutdown"
+		],
+		[
+			"waitForIdle"
+		],
+		[
+			"newSession",
+			"parent.jsonl"
+		],
+		[
+			"fork",
+			"e1",
+			"at"
+		],
+		[
+			"navigateTree",
+			"e2",
+			"l"
+		],
+		[
+			"switchSession",
+			"other.jsonl"
+		],
+		[
+			"reload"
+		],
+		[
+			"appendEntry",
+			"a_ui",
+			{
+				"kind": "select",
+				"title": "Pick",
+				"type": "ui_prompt_start"
+			}
+		],
+		[
+			"appendEntry",
+			"a_ui",
+			{
+				"kind": "select",
+				"title": "Pick",
+				"type": "ui_prompt_end"
+			}
+		],
+		[
+			"appendEntry",
+			"a_ui",
+			{
+				"kind": "confirm",
+				"title": "Sure?",
+				"type": "ui_prompt_start"
+			}
+		],
+		[
+			"appendEntry",
+			"a_ui",
+			{
+				"kind": "confirm",
+				"title": "Sure?",
+				"type": "ui_prompt_end"
+			}
+		],
+		[
+			"appendEntry",
+			"a_ui",
+			{
+				"kind": "input",
+				"title": "Name",
+				"type": "ui_prompt_start"
+			}
+		],
+		[
+			"appendEntry",
+			"a_ui",
+			{
+				"kind": "input",
+				"title": "Name",
+				"type": "ui_prompt_end"
+			}
+		],
+		[
+			"appendEntry",
+			"a_ui",
+			{
+				"kind": "editor",
+				"title": "Edit",
+				"type": "ui_prompt_start"
+			}
+		],
+		[
+			"appendEntry",
+			"a_ui",
+			{
+				"kind": "editor",
+				"title": "Edit",
+				"type": "ui_prompt_end"
+			}
+		]
+	],
+	"reads": {
+		"activeTools": "error: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+		"commandByName": {
+			"hello": "hello",
+			"nope": null,
+			"twin": null,
+			"twin:2": "Twin from B"
+		},
+		"commandContextBeforeBind": {
+			"newSession": {
+				"cancelled": false
+			}
+		},
+		"commandDiagnostics": [],
+		"commands": [
+			{
+				"description": "Hello from A",
+				"invocationName": "hello",
+				"name": "hello",
+				"path": "\u003croot\u003e/probe/runner-a.mjs"
+			},
+			{
+				"description": "Twin from A",
+				"invocationName": "twin:1",
+				"name": "twin",
+				"path": "\u003croot\u003e/probe/runner-a.mjs"
+			},
+			{
+				"description": "Twin from B",
+				"invocationName": "twin:2",
+				"name": "twin",
+				"path": "\u003croot\u003e/probe/runner-b.mjs"
+			}
+		],
+		"cwd": "\u003croot\u003e/project",
+		"extensionPaths": [
+			"\u003croot\u003e/probe/runner-a.mjs",
+			"\u003croot\u003e/probe/runner-b.mjs"
+		],
+		"flagValues": {
+			"b-flag": true,
+			"probe-flag": "dflt"
+		},
+		"flagValuesAfterBool": {
+			"b-flag": true,
+			"probe-bool": true,
+			"probe-flag": "changed"
+		},
+		"flagValuesAfterSet": {
+			"b-flag": true,
+			"probe-flag": "changed"
+		},
+		"flags": {
+			"b-flag": {
+				"default": true,
+				"description": "A boolean flag",
+				"extensionPath": "\u003croot\u003e/probe/runner-b.mjs",
+				"name": "b-flag",
+				"type": "boolean"
+			},
+			"probe-bool": {
+				"description": "A flag without a default",
+				"extensionPath": "\u003croot\u003e/probe/runner-a.mjs",
+				"name": "probe-bool",
+				"type": "boolean"
+			},
+			"probe-flag": {
+				"default": "dflt",
+				"description": "A string flag",
+				"extensionPath": "\u003croot\u003e/probe/runner-a.mjs",
+				"name": "probe-flag",
+				"type": "string"
+			}
+		},
+		"hasHandlers": {
+			"session_shutdown": false,
+			"tool_call": true
+		},
+		"hasUI": false,
+		"missingTool": null,
+		"mode": "print",
+		"modelRegistryIsSame": true,
+		"noUI": {
+			"confirm": false,
+			"editorText": "",
+			"input": null,
+			"select": null
+		},
+		"registryIsSame": true,
+		"renderers": {
+			"entry": "function",
+			"markdownTransformers": 1,
+			"message": "function",
+			"missingEntry": "undefined",
+			"missingMessage": "undefined"
+		},
+		"sessionManagerIsSame": true,
+		"shortcutDiagnostics": [
+			{
+				"message": "Extension shortcut 'ctrl+c' from \u003croot\u003e/probe/runner-a.mjs conflicts with built-in shortcut. Skipping.",
+				"path": "\u003croot\u003e/probe/runner-a.mjs",
+				"type": "warning"
+			},
+			{
+				"message": "Extension shortcut conflict: 'ctrl+k' is built-in shortcut for app.other and \u003croot\u003e/probe/runner-a.mjs. Using \u003croot\u003e/probe/runner-a.mjs.",
+				"path": "\u003croot\u003e/probe/runner-a.mjs",
+				"type": "warning"
+			},
+			{
+				"message": "Extension shortcut conflict: 'ctrl+shift+p' registered by both \u003croot\u003e/probe/runner-a.mjs and \u003croot\u003e/probe/runner-b.mjs. Using \u003croot\u003e/probe/runner-b.mjs.",
+				"path": "\u003croot\u003e/probe/runner-b.mjs",
+				"type": "warning"
+			}
+		],
+		"shortcuts": [
+			{
+				"description": "Probe shortcut B",
+				"extensionPath": "\u003croot\u003e/probe/runner-b.mjs",
+				"key": "ctrl+shift+p"
+			},
+			{
+				"description": "Soft conflict",
+				"extensionPath": "\u003croot\u003e/probe/runner-a.mjs",
+				"key": "ctrl+k"
+			}
+		],
+		"toolContextBeforeBind": "Nested tool calls are not available in this context",
+		"toolDefinition": "Shared tool from A",
+		"toolRenderers": {
+			"alpha": {
+				"renderCall": "function",
+				"renderResult": "undefined",
+				"renderShell": "self"
+			},
+			"none": null,
+			"other": {
+				"renderCall": "undefined",
+				"renderResult": "function",
+				"renderShell": null
+			}
+		},
+		"tools": [
+			{
+				"description": "Alpha tool",
+				"name": "alpha",
+				"origin": "top-level",
+				"path": "\u003croot\u003e/probe/runner-a.mjs",
+				"scope": "temporary"
+			},
+			{
+				"description": "Shared tool from A",
+				"name": "shared",
+				"origin": "top-level",
+				"path": "\u003croot\u003e/probe/runner-a.mjs",
+				"scope": "temporary"
+			},
+			{
+				"description": "Beta tool",
+				"name": "beta",
+				"origin": "top-level",
+				"path": "\u003croot\u003e/probe/runner-b.mjs",
+				"scope": "temporary"
+			}
+		]
+	},
+	"runtime": {
+		"active": "no error",
+		"afterSet": {
+			"flagValues": {
+				"a": "b",
+				"x": true
+			},
+			"mcpServers": 0,
+			"nativeProviders": 0,
+			"providers": 0,
+			"virtualModels": 0
+		},
+		"initial": {
+			"flagValues": {},
+			"mcpServers": 0,
+			"nativeProviders": 0,
+			"providers": 0,
+			"virtualModels": 0
+		},
+		"stale": "error: runtime is stale"
+	},
+	"stale": {
+		"activeTools": "error: runner is stale",
+		"commandContext": "error: runner is stale",
+		"cwd": "error: runner is stale",
+		"emit": "no error",
+		"isIdle": "error: runner is stale",
+		"toolContext": "error: runner is stale",
+		"ui": "error: runner is stale"
+	},
+	"ui": {
+		"afterClear": {
+			"hasUI": false,
+			"mode": "print"
+		},
+		"calls": [
+			[
+				"select",
+				"Pick",
+				[
+					"x",
+					"y"
+				]
+			],
+			[
+				"confirm",
+				"Sure?",
+				"really"
+			],
+			[
+				"input",
+				"Name",
+				"placeholder"
+			],
+			[
+				"editor",
+				"Edit",
+				"pre"
+			],
+			[
+				"notify",
+				"hello",
+				"info"
+			],
+			[
+				"setStatus",
+				"k",
+				"v"
+			],
+			[
+				"setWorkingMessage",
+				"working"
+			],
+			[
+				"setWorkingVisible",
+				false
+			],
+			[
+				"setHiddenThinkingLabel",
+				"hidden"
+			],
+			[
+				"setWidget",
+				"w",
+				[
+					"line"
+				],
+				"belowEditor"
+			],
+			[
+				"setTitle",
+				"title"
+			],
+			[
+				"pasteToEditor",
+				"pasted"
+			],
+			[
+				"setEditorText",
+				"set"
+			],
+			[
+				"setToolsExpanded",
+				false
+			]
+		],
+		"contextHasUI": true,
+		"dialogs": {
+			"confirm": true,
+			"editor": "pre!",
+			"input": "typed",
+			"select": "y"
+		},
+		"hasUI": true,
+		"mode": "tui",
+		"reads": {
+			"editorText": "editor text",
+			"toolsExpanded": true
+		}
+	}
+}

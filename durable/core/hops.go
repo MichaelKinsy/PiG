@@ -227,6 +227,9 @@ func (h *handler) holdJobNow(release func()) bool {
 			// The end and the tail that follows it would each run nothing: one chain of both.
 			return h.holdFor(n+tailHops, h.loop.QuietRelease())
 		}
+		if h.loop.HasPubs() {
+			return h.holdSteps(n, []holdStep{{h.publishAt(n), h.loop.Publish}}, release)
+		}
 		return h.holdFor(n, release)
 	}
 	if h.opening {
@@ -240,9 +243,10 @@ func (h *handler) holdJobNow(release func()) bool {
 	// reaches Pi's line during the job is admitted before the COMMIT, so the statements wait for that hop and not for the
 	// step that ran the job body.
 	tail := hopcost.CommitTail(h.hopProfile()) + pubBeforeEnd
-	// The commit is published when #runCommit resumes from Storage.commit, two hops before the job's run resolves
-	// (session.ts :446-449): commit listeners and publication waiters see it there, the job's caller resumes at its end.
-	p := max(n-pubBeforeEnd, 0)
+	// The commit is published when Storage adopts it (session.ts #runCommit publishes inside `adopt`), hopcost.AdoptTail before
+	// #runCommit resumes from Storage.commit and that many plus pubBeforeEnd before the job's run resolves: commit listeners
+	// and publication waiters see it there, the job's caller resumes at its end.
+	p := h.publishAt(n)
 	if n-tail < 1 {
 		h.flush(held)
 		return h.holdSteps(n, []holdStep{{p, h.loop.Publish}}, release)
@@ -255,6 +259,12 @@ func (h *handler) holdJobNow(release func()) bool {
 			release()
 		}
 	})
+}
+
+// publishAt is the hop of a commit job of n hops at which its commit is published: the Storage's adoption (hopcost.AdoptTail
+// before #runCommit's resumption, pubBeforeEnd before the job's end).
+func (h *handler) publishAt(n int) int {
+	return max(n-pubBeforeEnd-hopcost.AdoptTail(h.hopProfile()), 0)
 }
 
 // tailHops is the tick a finished line job's tail holds the line for (session.ts #enqueue :530-537; Loop.Tail).

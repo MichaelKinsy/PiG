@@ -41,7 +41,8 @@ func TestCoreAStreamedMessageStartsAtItsFirstPartialAndEndsOnceWithTheConvertedE
 	if err != nil {
 		t.Fatal(err)
 	}
-	stream.Start(func(_ context.Context, batch []harness.AgentEvent) error {
+	stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
+		batch := change.Value
 		mu.Lock()
 		defer mu.Unlock()
 		events = append(events, batch...)

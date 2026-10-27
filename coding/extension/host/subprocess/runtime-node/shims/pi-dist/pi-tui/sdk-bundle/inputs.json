@@ -47,7 +47,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/markdown.js",
-      "sha256": "5f92e4210616833897dd33a837c64ef4b84ed7daf193f4fed781382fd5727765"
+      "sha256": "947386f2f8721ca1694b17ee2a816ce3a5836b36f6bc012aaac005ed2302c289"
     },
     {
       "path": "pi-dist/pi-tui/components/mouse-region.js",
@@ -87,11 +87,11 @@
     },
     {
       "path": "pi-dist/pi-tui/fuzzy.js",
-      "sha256": "f873c8e2d808d215e57942ac325b9e635bde9632526d25b56b4eef253362b91b"
+      "sha256": "52cb2831cee3b36cdeb3daadcb9f65a9045cfdcd1711e27657eab1fb4aeb8e13"
     },
     {
       "path": "pi-dist/pi-tui/index.js",
-      "sha256": "12e6f8237f13e261557c4e57b2a2744744fc2c48e714dfb5fe7d8d28b56bb0a4"
+      "sha256": "9bf1a011b86c040430b82a401e3c46d97b9fbfb853cff0e64ef5355af45df416"
     },
     {
       "path": "pi-dist/pi-tui/kill-ring.js",
@@ -107,7 +107,7 @@
     },
     {
       "path": "pi-dist/pi-tui/layout.js",
-      "sha256": "b20cb0b156e506b4639b789be8688fe9dd38d42d15746ae82e69fcd250e42147"
+      "sha256": "a7ec821fbf0c7ce20c1e4ae65d59e5babfa94790f8c58c90f65660eb722aefbb"
     },
     {
       "path": "pi-dist/pi-tui/native-modifiers.js",
@@ -119,7 +119,7 @@
     },
     {
       "path": "pi-dist/pi-tui/program-status.js",
-      "sha256": "e38a5f11b3cbfc3bcd66a56252f9ab3fcfdd1fac5d997cbd2db2393ce4d85acf"
+      "sha256": "b1b2e70b8b4b41f79470cd6f616e92507395311d769f1bba2d45b7b6710132fe"
     },
     {
       "path": "pi-dist/pi-tui/stdin-buffer.js",
@@ -131,11 +131,11 @@
     },
     {
       "path": "pi-dist/pi-tui/terminal.js",
-      "sha256": "e70c20799ef55ae4606c72f96658731d85921f5987a0d8edc0e8ef010bb51466"
+      "sha256": "6aecdaab22f938c98a301f228fbcf7c496c862373c73090a18da6553dd13f27e"
     },
     {
       "path": "pi-dist/pi-tui/tui-alt-screen.js",
-      "sha256": "cf8473e092e8f9909e7772f83814022becf8c6dfd0c7e2d042c945053d679906"
+      "sha256": "d1e07b1ff0bb22d19bb4b4ebb7ece018616feaf8d25753240419a0aa96e53182"
     },
     {
       "path": "pi-dist/pi-tui/tui-main-screen.js",

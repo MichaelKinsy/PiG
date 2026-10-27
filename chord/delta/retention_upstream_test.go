@@ -361,6 +361,46 @@ func TestDeltaTrackerRetentionAcrossGCJobs(t *testing.T) {
 		replace(t, tracker, jsonObject(t, `{"value":1}`))
 		expectJSONText(t, tracker.Value(), `{"value":1}`)
 	})
+
+	t.Run("validates adopted-changes-flat retention semantics", func(t *testing.T) {
+		// retention.worker.ts "adopted-changes-flat": each change registers its context with the tracker, and adoption must drop every registration, so a long run of small changes keeps only the document, not a record per change. Upstream measures heap bytes per change; the registry bound is the observable Go form, with the retained heap checked beside it.
+		tracker := Track(jsonObject(t, `{"entries":[{"id":0,"text":""}]}`))
+		commit := func() {
+			change := tracker.BeginChange()
+			block := change.State().Array("entries").Object(0)
+			mustNoErr(t, AppendText(block, "text", " tok"))
+			prepared, err := change.Prepare()
+			mustNoErr(t, err)
+			mustNoErr(t, tracker.Adopt(prepared))
+		}
+		for range 1_000 {
+			commit()
+		}
+		settledHeap := func() uint64 {
+			var stats runtime.MemStats
+			for range 5 {
+				runtime.GC()
+			}
+			runtime.ReadMemStats(&stats)
+			return stats.HeapAlloc
+		}
+		ready := settledHeap()
+		for range 10_000 {
+			commit()
+		}
+		if live := len(tracker.owner.contexts); live > 256 {
+			t.Fatalf("the tracker still registers %d adopted changes", live)
+		}
+		// The text itself grows 4 bytes per change; every earlier revision is released, and the allowance is Pi's 48 bytes.
+		perChange := (float64(settledHeap()) - float64(ready)) / 10_000
+		if perChange > 4+48 {
+			t.Fatalf("each adopted change retained %.1f bytes", perChange)
+		}
+		text := tracker.Value().Value("entries").([]any)[0].(*JsonObject).Value("text").(string)
+		if len(text) != 4*11_000 {
+			t.Fatalf("text has %d bytes, want %d", len(text), 4*11_000)
+		}
+	})
 }
 
 func itoa(value int) string {

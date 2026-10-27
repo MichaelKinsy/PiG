@@ -58,7 +58,7 @@ func TestCoreDropsAThrowingOnReportForAFailingListener(t *testing.T) {
 	}
 	defer func() { _, _ = watch.Stop() }()
 	failure := errors.New("view watch listener failed")
-	watch.Start(func(context.Context, harness.ConversationView, []durable.Op) error { return failure })
+	watch.Start(func(_ context.Context, change durable.WatchChange[harness.ConversationView]) error { return failure })
 	appendCoreNote(t, root)
 	expectReport(t, reported, failure)
 	appendCoreNote(t, root)

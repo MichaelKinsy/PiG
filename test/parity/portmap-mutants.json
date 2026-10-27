@@ -1,4 +1,16 @@
 {
+ "packages/ai/src/auth/oauth/trusted-url.ts": [
+  {
+   "file": "ai/copilot_verification_uri.go",
+   "old": "\tif href == \"\" {\n",
+   "new": "\tif href == \"\\x00\" {\n"
+  },
+  {
+   "file": "ai/oauth_trusted_url.go",
+   "old": "(httpsOnly && parsed.Protocol != \"https:\")",
+   "new": "(httpsOnly && parsed.Protocol == \"https:\")"
+  }
+ ],
  "packages/codemode/src/cloudflare.ts": [
   {
    "file": "codemode/cloudflare/cloudflare.go",
@@ -767,6 +779,18 @@
    "file": "chord/telemetrysqlite/store.go",
    "old": "ORDER BY started_ms, id\", string(encoded))",
    "new": "ORDER BY started_ms DESC, id\", string(encoded))"
+  }
+ ],
+ "packages/durable/src/harness/partial-changes.ts": [
+  {
+   "file": "durable/harness/partial_changes.go",
+   "old": "\t\tpending.text = append(pending.text, delta...)\n",
+   "new": "\t\tpending.text = []byte(delta)\n"
+  },
+  {
+   "file": "durable/harness/partial_changes.go",
+   "old": "\t\t\tcall.changes = append(call.changes, change)\n",
+   "new": "\t\t\tcall.changes = append(call.changes[:0], change)\n"
   }
  ]
 }

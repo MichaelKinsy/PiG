@@ -1,6 +1,6 @@
 //! Pi's `ModelRuntime` class (core/model-runtime.ts): the configured model collection an extension builds over its own credential and model files, for models, provider auth, completions and the registrations a Session shares. The host owns the object for the extension's connection; this value names it. Models are Pi's Model objects as JSON and every result is Pi's in the JSON shape of Pi's types.
 //!
-//! The Provider objects of Pi's class (`getProviders`, `getProvider`, `getRegisteredNativeProvider`, `registerNativeProvider`) are not here: a Provider holds functions the host cannot run on the extension's behalf (the Provider surface D78 records). `register_provider` takes a configuration without functions. `streamDeferred`, `fetchDeferred` and `cancelDeferred` are not here either.
+//! The Provider objects of Pi's class (`getProviders`, `getProvider`, `getRegisteredNativeProvider`, `registerNativeProvider`): the Provider object this extension registers here stays in this process and the host's runtime calls it over the connection; a builtin or composed provider has no carrier (the Provider surface D78 records). `register_provider` takes a configuration without functions. `streamDeferred`, `fetchDeferred` and `cancelDeferred` are not here.
 
 use crate::context::{Context, ModelEventStream};
 use crate::graph::{callback_id, GraphCallback, GraphObject};
@@ -81,6 +81,10 @@ impl ModelRuntime {
             wire.insert("refreshOnCreate".into(), json!(refresh));
         }
         Ok(ModelRuntime { object: GraphObject::construct(context, "ModelRuntime", "create", vec![Value::Object(wire)])? })
+    }
+
+    pub(crate) fn context(&self) -> &Context {
+        self.object.context()
     }
 
     /// The host's name for the runtime, which an option that takes the runtime (`create_agent_session`) puts on the wire.
@@ -279,5 +283,83 @@ impl ModelRuntime {
 
     pub fn complete_simple(&self, model: Value, request: Value, options: Value) -> Option<Value> {
         self.stream_simple(model, request, options).result()
+    }
+
+    /// `registerNativeProvider(provider)`: the provider's catalog, authentication and API run in this process, for this runtime.
+    pub fn register_native_provider(&self, provider: Arc<crate::Provider>) -> io::Result<()> {
+        let context = self.object.context();
+        let state = context.conn.provider_objects.get().ok_or_else(|| io::Error::other("Provider runtime unavailable"))?;
+        let definition = state.register(provider).map_err(io::Error::other)?;
+        let declaration = definition.native.ok_or_else(|| io::Error::other("Provider declaration is absent"))?;
+        self.object.call("registerNativeProvider", vec![declaration]).map(|_| ())
+    }
+
+    fn provider_object(&self, declaration: Value) -> io::Result<Arc<crate::Provider>> {
+        let context = self.object.context();
+        let state = context.conn.provider_objects.get().ok_or_else(|| io::Error::other("Provider runtime unavailable"))?;
+        state.get(context.conn.clone(), declaration).map_err(io::Error::other)
+    }
+
+    /// `getRegisteredNativeProvider(providerName)`: the Provider object registered for the name, `None` when there is none.
+    pub fn get_registered_native_provider(&self, provider_name: &str) -> io::Result<Option<Arc<crate::Provider>>> {
+        let declaration = self.object.call("getRegisteredNativeProvider", vec![json!(provider_name)])?;
+        if declaration.is_null() { Ok(None) } else { self.provider_object(declaration).map(Some) }
+    }
+
+    /// `getProvider(provider)`: the Provider object of the provider, `None` when the runtime has none by that id. A builtin or composed provider fails with the D78 error.
+    pub fn get_provider(&self, provider: &str) -> io::Result<Option<Arc<crate::Provider>>> {
+        let declaration = self.object.call("getProvider", vec![json!(provider)])?;
+        if declaration.is_null() { Ok(None) } else { self.provider_object(declaration).map(Some) }
+    }
+
+    /// `getProviders()`: the Provider object of every provider of the runtime.
+    pub fn get_providers(&self) -> io::Result<Vec<Arc<crate::Provider>>> {
+        let declarations = self.object.call("getProviders", vec![])?;
+        declarations.as_array().into_iter().flatten().map(|declaration| self.provider_object(declaration.clone())).collect()
+    }
+
+    /// `runtime.getProvider(provider)?.name ?? provider` as `ModelRegistry.getProviderDisplayName` reads it, asked of the host without the Provider object a builtin provider has no carrier for.
+    pub(crate) fn provider_display_name(&self, provider: &str) -> io::Result<String> {
+        Ok(self.object.call("providerName", vec![json!(provider)])?.as_str().unwrap_or(provider).to_string())
+    }
+
+    /// `ModelRegistry.getApiKeyAndHeaders` over this runtime (model-registry.ts:80-119): `{"ok": true, "apiKey"?, "headers"?, "baseUrl"?, "env"?}` or `{"ok": false, "error"}`; never fails.
+    pub(crate) fn request_auth(&self, model: &Value) -> Value {
+        let provider = model["provider"].as_str().unwrap_or_default();
+        let failed = |message: String| {
+            let message = if message == "authHeader requires a resolved API key" { format!("No API key found for \"{provider}\"") } else { message };
+            json!({"ok": false, "error": message})
+        };
+        let resolution = match self.get_auth(model.clone(), None) {
+            Ok(resolution) => resolution,
+            Err(error) => return failed(error.to_string()),
+        };
+        if resolution.is_null() {
+            let compat = match self.get_compatibility_request_config(model) {
+                Ok(compat) => compat,
+                Err(error) => return failed(error.to_string()),
+            };
+            if compat["authHeader"] == json!(true) {
+                return json!({"ok": false, "error": format!("No API key found for \"{provider}\"")});
+            }
+            let mut out = json!({"ok": true});
+            if !compat["headers"].is_null() {
+                out["headers"] = compat["headers"].clone();
+            }
+            return out;
+        }
+        let mut out = json!({"ok": true});
+        for key in ["apiKey", "headers"] {
+            if !resolution["auth"][key].is_null() {
+                out[key] = resolution["auth"][key].clone();
+            }
+        }
+        if resolution["auth"]["baseUrl"].as_str().is_some_and(|url| !url.is_empty()) {
+            out["baseUrl"] = resolution["auth"]["baseUrl"].clone();
+        }
+        if !resolution["env"].is_null() {
+            out["env"] = resolution["env"].clone();
+        }
+        out
     }
 }

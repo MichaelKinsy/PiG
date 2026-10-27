@@ -24,7 +24,7 @@ func TestUpdateAssistantMessageBlockAllocationsIgnoreArguments(t *testing.T) {
 			ai.TextContent{Text: "writing the file"},
 			ai.ToolCall{ID: "call_0", Name: "write", Arguments: args},
 		}}
-		block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+		block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 		return testing.AllocsPerRun(100, func() { updateAssistantMessageBlock(block, message) })
 	}
 	small, large := allocs(1), allocs(256)

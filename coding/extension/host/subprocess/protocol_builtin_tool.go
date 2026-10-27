@@ -19,6 +19,12 @@ import (
 // factory that dialled lazily.
 const CallBuiltinToolDefinition = "builtinTool.definition"
 
+// CallBuiltinToolPrepareArguments (ext→host) is `prepareArguments(args)` of the definition create<Tool>ToolDefinition(cwd, options) returns, for a tool whose
+// BuiltinToolDefinitionResult.PreparesArguments is set (edit: prepareEditArguments, edit.ts:103). Args is a BuiltinToolPrepareArgumentsArgs and the result the
+// prepared arguments as JSON. An override built from the definition carries the hook as `{ ...definition, execute }` does in Pi, and the host runs it
+// (RequestPrepareArguments) before it validates the override's arguments; the extension answers by asking the host for the built-in's own.
+const CallBuiltinToolPrepareArguments = "builtinTool.prepareArguments"
+
 // CallBuiltinToolExecute (ext→host) runs `execute(toolCallId, params, signal, onUpdate, ctx)` of the definition create<Tool>ToolDefinition(cwd, options)
 // returns. Args is a BuiltinToolExecuteArgs; the result is the AgentToolResult the tool resolved to, in Pi's shape. A tool that throws is an error reply
 // carrying the thrown message, and a tool that returns `isError: true` is a result, as in Pi.
@@ -85,6 +91,17 @@ type BuiltinToolDefinitionResult struct {
 	ExecutionMode       string          `json:"executionMode,omitempty"`
 	// RenderShell is "self" for a tool that draws its own framing (edit).
 	RenderShell string `json:"renderShell,omitempty"`
+	// PreparesArguments reports that the definition has a `prepareArguments` (edit); CallBuiltinToolPrepareArguments runs it.
+	PreparesArguments bool `json:"preparesArguments,omitempty"`
+}
+
+// BuiltinToolPrepareArgumentsArgs are the arguments of CallBuiltinToolPrepareArguments: the tool as BuiltinToolDefinitionArgs names it, and Args, the
+// model's arguments as JSON.
+type BuiltinToolPrepareArgumentsArgs struct {
+	Name    string              `json:"name"`
+	Cwd     string              `json:"cwd"`
+	Options *BuiltinToolOptions `json:"options,omitempty"`
+	Args    json.RawMessage     `json:"args"`
 }
 
 // BuiltinToolExecuteArgs are the arguments of CallBuiltinToolExecute.

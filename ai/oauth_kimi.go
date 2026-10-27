@@ -259,9 +259,10 @@ func (p kimiOAuthProvider) startDeviceAuthorization(ctx context.Context) (kimiDe
 	payload := readKimiJSON(body)
 	deviceCode, okDevice := payload.str("device_code")
 	userCode, okUser := payload.str("user_code")
-	verificationURI, okURI := payload.str("verification_uri")
-	verificationURIComplete, okComplete := payload.str("verification_uri_complete")
-	if !okDevice || !okUser || !okURI || !okComplete || !trustedHTTPURL(verificationURIComplete) || !trustedHTTPURL(verificationURI) {
+	// Both URIs are used as their normalized hrefs (kimi-coding.ts:77-80).
+	verificationURI := trustedHTTPURL(payload.members["verification_uri"])
+	verificationURIComplete := trustedHTTPURL(payload.members["verification_uri_complete"])
+	if !okDevice || !okUser || verificationURI == "" || verificationURIComplete == "" {
 		return kimiDeviceAuthorization{}, fmt.Errorf("Invalid Kimi Code device authorization response: %s", payload.text)
 	}
 	device := kimiDeviceAuthorization{DeviceCode: deviceCode, UserCode: userCode, VerificationURI: verificationURI, VerificationURIComplete: verificationURIComplete, Interval: kimiDefaultPollSeconds, ExpiresIn: kimiDeviceTimeoutSeconds}
@@ -363,13 +364,4 @@ func kimiCredentials(token kimiTokenResponse) (OAuthCredentials, error) {
 	creds := OAuthCredentials{Access: token.AccessToken, Refresh: token.RefreshToken, order: credentialKeyOrder{keys: accessFirstCredentialMembers}}
 	creds.SetExpiresMillis(float64(nowMillis()) + float64(token.ExpiresIn*1000))
 	return creds, nil
-}
-
-// trustedHTTPURL is `trustedHttpUrl(value) !== null` (kimi-coding.ts:59): the verification URI is opened in the user's browser, so only http(s) URLs.
-func trustedHTTPURL(value string) bool {
-	if value == "" {
-		return false
-	}
-	_, ok := trustedURLHref(value, false)
-	return ok
 }

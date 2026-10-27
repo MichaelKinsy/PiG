@@ -38,6 +38,7 @@ import (
 // Wire names of the built-in tool calls (coding/extension/host/subprocess/protocol_builtin_tool.go).
 const (
 	callBuiltinToolDefinition  = "builtinTool.definition"
+	callBuiltinToolPrepareArgs = "builtinTool.prepareArguments"
 	callBuiltinToolExecute     = "builtinTool.execute"
 	callBuiltinToolLocalExec   = "builtinTool.localExec"
 	callExecuteToolCancel      = "executeTool.cancel"
@@ -368,8 +369,8 @@ func powershellSpec(cwd string, options *PowerShellToolOptions) (builtinSpec, er
 }
 
 // BuiltinToolDefinition is the ToolDefinition Pi's create<Tool>ToolDefinition returns for a built-in tool: its name, label, description, prompt snippet and
-// guidelines, schemas and execution mode, with an Execute that runs the built-in tool on the host. Register the embedded [ToolDefinition] to override the
-// built-in, changing fields or Execute first to wrap it.
+// guidelines, schemas, execution mode and PrepareArguments (edit's, which the host runs), with an Execute that runs the built-in tool on the host. Register the
+// embedded [ToolDefinition] to override the built-in, changing fields or Execute first to wrap it.
 //
 // The host draws the built-in tool's call and result itself, so a definition that sets no renderers keeps the built-in's, as an override of a built-in does in Pi.
 type BuiltinToolDefinition struct {
@@ -422,6 +423,7 @@ type builtinDefinitionReply struct {
 	ConstrainedSampling json.RawMessage `json:"constrainedSampling"`
 	ExecutionMode       string          `json:"executionMode"`
 	RenderShell         string          `json:"renderShell"`
+	PreparesArguments   bool            `json:"preparesArguments"`
 }
 
 // definition asks the host for the tool's metadata. It may run before Run, like [ParseFrontmatter].
@@ -460,6 +462,52 @@ func (s builtinSpec) definition() (builtinDefinitionReply, error) {
 	return reply, nil
 }
 
+// builtinPrepareCall is the arguments of builtinTool.prepareArguments, and the JSON [HostHelpers.BuiltinToolPrepareArguments] takes.
+type builtinPrepareCall struct {
+	Name    string              `json:"name"`
+	Cwd     string              `json:"cwd"`
+	Options *builtinWireOptions `json:"options,omitempty"`
+	Args    json.RawMessage     `json:"args"`
+}
+
+// prepareArguments is `prepareArguments(args)` of a built-in tool's definition, which the host runs: edit's accepts `edits` as a JSON string or as a single edit and
+// the legacy top-level `oldText` and `newText`. Like Pi's synchronous hook it takes no signal.
+func (s builtinSpec) prepareArguments(params map[string]any) (map[string]any, error) {
+	rawParams, err := json.MarshalJS(params)
+	if err != nil {
+		return nil, fmt.Errorf("encode arguments of %s: %w", s.name, err)
+	}
+	args := builtinPrepareCall{s.name, s.cwd, &s.options, rawParams}
+	var encoded []byte
+	if hook := installedHelpers(); hook != nil && hook.BuiltinToolPrepareArguments != nil {
+		raw, err := json.MarshalJS(args)
+		if err != nil {
+			return nil, err
+		}
+		if encoded, err = hook.BuiltinToolPrepareArguments(raw); err != nil {
+			return nil, err
+		}
+	} else {
+		c, err := helperConnection()
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.call(callBuiltinToolPrepareArgs, args)
+		if err := callResultError(result, err); err != nil {
+			return nil, err
+		}
+		if result == nil {
+			return nil, errors.New("host returned no result for builtinTool.prepareArguments")
+		}
+		encoded = result.Result
+	}
+	var prepared map[string]any
+	if err := json.Unmarshal(encoded, &prepared); err != nil {
+		return nil, fmt.Errorf("host reply to builtinTool.prepareArguments: %w", err)
+	}
+	return prepared, nil
+}
+
 func (s builtinSpec) toolDefinition() (BuiltinToolDefinition, error) {
 	reply, err := s.definition()
 	if err != nil {
@@ -481,6 +529,9 @@ func (s builtinSpec) toolDefinition() (BuiltinToolDefinition, error) {
 		def.ConstrainedSampling = &sampling
 	}
 	spec := s
+	if reply.PreparesArguments {
+		def.PrepareArguments = spec.prepareArguments
+	}
 	def.Execute = func(ctx Context, params map[string]any) (any, error) {
 		var forward func(AgentToolResult)
 		if ctx.toolCallID != "" && ctx.requestID != "" {

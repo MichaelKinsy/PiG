@@ -1,5 +1,6 @@
 'use strict'
 
+const { AsyncResource } = require('node:async_hooks')
 const { PoolStats } = require('../util/stats.js')
 const DispatcherBase = require('./dispatcher-base')
 const FixedQueue = require('./fixed-queue')
@@ -13,10 +14,48 @@ const kOnDrain = Symbol('onDrain')
 const kOnConnect = Symbol('onConnect')
 const kOnDisconnect = Symbol('onDisconnect')
 const kOnConnectionError = Symbol('onConnectionError')
+const kOnClientBusy = Symbol('on client busy')
+const kOnClientDrain = Symbol('on client drain')
+const kDrainQueue = Symbol('drain queue')
 const kGetDispatcher = Symbol('get dispatcher')
 const kHasDispatcher = Symbol('has dispatcher')
 const kAddClient = Symbol('add client')
 const kRemoveClient = Symbol('remove client')
+const kRetireClient = Symbol('retire client')
+const kRetiring = Symbol('retiring clients')
+
+// Closes every live client, including clients that have been
+// taken out of rotation but are still finishing their own
+// requests.
+// Requests that wait in the Pool queue are dispatched later from whichever
+// callback drains the queue (another request's connect, drain, ...). Capture
+// the caller's async context so Client#dispatch, and the diagnostics channel
+// events it publishes, still run in it.
+class QueuedRequest extends AsyncResource {
+  constructor (opts, handler) {
+    super('UNDICI_POOL_QUEUED_REQUEST')
+    this.opts = opts
+    this.handler = handler
+  }
+
+  dispatch (dispatcher) {
+    return this.runInAsyncScope(dispatcher.dispatch, dispatcher, this.opts, this.handler)
+  }
+}
+
+function closeClients (pool) {
+  const closeAll = []
+  for (let i = 0; i < pool[kClients].length; i++) {
+    const client = pool[kClients][i]
+    if (!client.destroyed) {
+      closeAll.push(client.close())
+    }
+  }
+  for (const closed of pool[kRetiring].values()) {
+    closeAll.push(closed)
+  }
+  return Promise.all(closeAll)
+}
 
 class PoolBase extends DispatcherBase {
   [kQueue] = new FixedQueue();
@@ -25,12 +64,21 @@ class PoolBase extends DispatcherBase {
 
   [kClients] = [];
 
+  // Clients removed from kClients that have not finished closing,
+  // mapped to a promise that settles once they have.
+  [kRetiring] = new Map();
+
   [kNeedDrain] = false;
 
   [kOnDrain] (client, origin, targets) {
-    const queue = this[kQueue]
+    if (client.closed || client.destroyed) {
+      return
+    }
 
+    const queue = this[kQueue]
     let needDrain = false
+
+    this[kOnClientDrain](client)
 
     while (!needDrain) {
       const item = queue.shift()
@@ -38,10 +86,22 @@ class PoolBase extends DispatcherBase {
         break
       }
       this[kQueued]--
-      needDrain = !client.dispatch(item.opts, item.handler)
+      needDrain = !item.dispatch(client)
     }
 
     client[kNeedDrain] = needDrain
+    if (needDrain) {
+      this[kOnClientBusy](client)
+
+      // This client is full but requests are still queued, e.g. an h2
+      // client that has just released everything queued while ALPN was
+      // negotiated and hit maxConcurrentStreams. Hand the rest to other
+      // clients, creating new ones up to the connection limit, instead of
+      // leaving them for this client to drain one batch at a time.
+      if (!queue.isEmpty()) {
+        return this[kDrainQueue](origin, targets)
+      }
+    }
 
     if (!needDrain && this[kNeedDrain]) {
       this[kNeedDrain] = false
@@ -49,15 +109,45 @@ class PoolBase extends DispatcherBase {
     }
 
     if (this[kClosedResolve] && queue.isEmpty()) {
-      const closeAll = []
-      for (let i = 0; i < this[kClients].length; i++) {
-        const client = this[kClients][i]
-        if (!client.destroyed) {
-          closeAll.push(client.close())
+      return closeClients(this).then(this[kClosedResolve])
+    }
+  }
+
+  [kOnClientBusy] () {}
+
+  [kOnClientDrain] () {}
+
+  [kDrainQueue] (origin, targets) {
+    const queue = this[kQueue]
+    let hasDispatcher = true
+
+    while (!queue.isEmpty()) {
+      const dispatcher = this[kGetDispatcher]()
+      if (!dispatcher) {
+        hasDispatcher = false
+        break
+      }
+
+      const item = queue.shift()
+      this[kQueued]--
+
+      if (!item.dispatch(dispatcher)) {
+        dispatcher[kNeedDrain] = true
+        this[kOnClientBusy](dispatcher)
+        hasDispatcher = this[kHasDispatcher]()
+        if (!hasDispatcher) {
+          break
         }
       }
-      return Promise.all(closeAll)
-        .then(this[kClosedResolve])
+    }
+
+    if (hasDispatcher && this[kNeedDrain]) {
+      this[kNeedDrain] = false
+      this.emit('drain', origin, [this, ...targets])
+    }
+
+    if (this[kClosedResolve] && queue.isEmpty()) {
+      return closeClients(this).then(this[kClosedResolve])
     }
   }
 
@@ -123,14 +213,7 @@ class PoolBase extends DispatcherBase {
 
   [kClose] () {
     if (this[kQueue].isEmpty()) {
-      const closeAll = []
-      for (let i = 0; i < this[kClients].length; i++) {
-        const client = this[kClients][i]
-        if (!client.destroyed) {
-          closeAll.push(client.close())
-        }
-      }
-      return Promise.all(closeAll)
+      return closeClients(this)
     } else {
       return new Promise((resolve) => {
         this[kClosedResolve] = resolve
@@ -151,6 +234,9 @@ class PoolBase extends DispatcherBase {
     for (let i = 0; i < this[kClients].length; i++) {
       destroyAll[i] = this[kClients][i].destroy(err)
     }
+    for (const client of this[kRetiring].keys()) {
+      destroyAll.push(client.destroy(err))
+    }
     return Promise.all(destroyAll)
   }
 
@@ -159,10 +245,11 @@ class PoolBase extends DispatcherBase {
 
     if (!dispatcher) {
       this[kNeedDrain] = true
-      this[kQueue].push({ opts, handler })
+      this[kQueue].push(new QueuedRequest(opts, handler))
       this[kQueued]++
     } else if (!dispatcher.dispatch(opts, handler)) {
       dispatcher[kNeedDrain] = true
+      this[kOnClientBusy](dispatcher)
       this[kNeedDrain] = !this[kHasDispatcher]()
     }
 
@@ -196,7 +283,7 @@ class PoolBase extends DispatcherBase {
 
     if (this[kNeedDrain]) {
       queueMicrotask(() => {
-        if (this[kNeedDrain]) {
+        if (this[kNeedDrain] && !client[kNeedDrain]) {
           this[kOnDrain](client, client[kUrl], [client, this])
         }
       })
@@ -205,13 +292,37 @@ class PoolBase extends DispatcherBase {
     return this
   }
 
-  [kRemoveClient] (client) {
+  // Takes a client out of rotation. A closed client no longer takes requests
+  // from the pool queue (see kOnDrain), but it finishes the requests it
+  // already has. Until it has, pool.close() waits for it and pool.destroy()
+  // destroys it.
+  [kRetireClient] (client) {
     const idx = this[kClients].indexOf(client)
     if (idx !== -1) {
       this[kClients].splice(idx, 1)
     }
 
-    client.close(() => {})
+    if (client.destroyed || this[kRetiring].has(client)) {
+      return
+    }
+
+    // Use the callback form: custom dispatchers from `factory` are not
+    // required to return a promise, and may call back synchronously.
+    let done = false
+    let resolveClosed
+    const closed = new Promise((resolve) => { resolveClosed = resolve })
+    this[kRetiring].set(client, closed)
+    client.close(() => {
+      if (!done) {
+        done = true
+        this[kRetiring].delete(client)
+        resolveClosed()
+      }
+    })
+  }
+
+  [kRemoveClient] (client) {
+    this[kRetireClient](client)
 
     this[kNeedDrain] = !this[kClients].some(dispatcher => (
       !dispatcher[kNeedDrain] &&
@@ -227,6 +338,10 @@ module.exports = {
   kNeedDrain,
   kAddClient,
   kRemoveClient,
+  kRetireClient,
+  kDrainQueue,
+  kOnClientBusy,
+  kOnClientDrain,
   kGetDispatcher,
   kHasDispatcher
 }

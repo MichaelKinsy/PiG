@@ -11,11 +11,10 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// Upstream's #kick queues a microtask in the publishing turn, so the reservation pass takes its place on the Session
-// line before any other code runs: a commit that code starts after the publication, such as a handler's or a host's,
-// lines up behind the pass. Pi Durable 1.0.4 on a task created and then, from a subscriber of that publication, a
-// second task created, commits "x pending", "x running", "m pending", "m running"; if the second creation overtook the
-// pass, one reservation commit would start both tasks.
+// Upstream publishes a commit inside Storage's adopt: the dispatch to subscribeCommits() listeners is queued first, then the
+// Session's own observers queue the scheduler's #kick microtask. A commit that a host listener starts therefore lines up
+// ahead of the reservation pass, which then finds both tasks and starts them in one reservation commit ("x pending",
+// "m pending", "x running, m running").
 func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 	for run := range 50 {
 		complete := func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
@@ -47,8 +46,8 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 			if len(writes) != 1 || writes[0] != "test.line-first:pending" || !started.CompareAndSwap(false, true) {
 				return
 			}
-			// Still in the publishing turn: hold the scheduler's own goroutine back, start the second creation, and
-			// return once it is queued. Whatever the scheduler took on the line before this point stays ahead of it.
+			// The scheduler takes its line position once the host listeners ran: hold its own goroutine back, start the second
+			// creation, and return once it is queued, ahead of the pass.
 			impl.tasks.mu.Lock()
 			defer impl.tasks.mu.Unlock()
 			jobs := impl.LineJobs()
@@ -82,7 +81,7 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 		mu.Lock()
 		got := strings.Join(commits, " | ")
 		mu.Unlock()
-		want := "test.line-first:pending | test.line-first:running | test.line-second:pending | test.line-second:running"
+		want := "test.line-first:pending | test.line-second:pending | test.line-first:running,test.line-second:running"
 		if got != want {
 			t.Fatalf("run %d: task commits %s\nwant %s", run, got, want)
 		}

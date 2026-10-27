@@ -121,11 +121,16 @@ func (r *ModelRegistry) GetTypedProvider(id string, fallback ai.ModelsStreamFunc
 		base = &ai.ModelsProvider{ID: id, Name: id, GetModels: func() ([]*ai.Model, error) { return nil, nil }, Stream: fallback, StreamSimple: fallback}
 	}
 	var input *ProviderConfigInput
+	compose := r.composeNativeProvider
 	if registered {
-		input = new(providerModelInput(id, dynamic))
+		if r.NativeProvider(id) != nil {
+			input, compose = new(carrierModelInput(id, dynamic)), r.composeCarrierProvider
+		} else {
+			input = new(providerModelInput(id, dynamic))
+		}
 	}
 	base = r.withNativeAuth(id, base)
-	provider, err := r.composeNativeProvider(base, input)
+	provider, err := compose(base, input)
 	if err != nil {
 		return nil
 	}

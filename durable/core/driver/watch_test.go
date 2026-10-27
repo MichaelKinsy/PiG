@@ -60,7 +60,8 @@ func TestWatchDocDeliversExactFramesInCommitOrder(t *testing.T) {
 		t.Fatalf("the acquisition revision is the committed value: %v", got)
 	}
 	frames := make(chan delivery, 8)
-	watch.Start(func(_ context.Context, value durable.JsonObject, ops []durable.Op) error {
+	watch.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		value, ops := change.Value, change.Ops
 		frames <- delivery{value, ops}
 		return nil
 	})
@@ -184,7 +185,8 @@ func TestConversationWatchFollowsCommits(t *testing.T) {
 	}
 	before := len(watch.Value().Entries)
 	frames := make(chan int, 4)
-	watch.Start(func(_ context.Context, value harness.ConversationView, ops []durable.Op) error {
+	watch.Start(func(_ context.Context, change durable.WatchChange[harness.ConversationView]) error {
+		value := change.Value
 		frames <- len(value.Entries)
 		return nil
 	})
@@ -241,7 +243,7 @@ func TestDocumentWatchValueFollowsCommitsUntilStopped(t *testing.T) {
 		t.Fatalf("hydrated value: %v", got)
 	}
 	// A started watch keeps its value current.
-	watch.Start(func(context.Context, durable.JsonObject, []durable.Op) error { return nil })
+	watch.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error { return nil })
 	writeNotes(t, s, "b")
 	deadline := time.Now().Add(5 * time.Second)
 	for watch.Value().Value("text") != "b" {

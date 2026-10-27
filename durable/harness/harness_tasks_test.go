@@ -2,9 +2,10 @@
 //
 // Go mappings forced by language mechanics. A TypeScript test that runs two calls "at once" with Promise.all or
 // void-calls relies on the event loop's FIFO queueing; Go goroutines have no such order, so the tests either wait for
-// the first call to reach storage before starting the second, or assert only what the order cannot change. Each
-// such site says so. Abort reasons are context causes: the scheduler's signal is context.Canceled where upstream's
-// is an AbortError.
+// the first call to reach storage before starting the second, or assert only what the order cannot change. A call
+// whose synchronous part upstream relies on (a waitForTask() that has taken its place on the Session line before the
+// test resolves a gate) runs through callAsync. Each such site says so. Abort reasons are context causes: the
+// scheduler's signal is context.Canceled where upstream's is an AbortError.
 
 package harness
 
@@ -13,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -20,7 +22,9 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // syncList is a slice that handlers on several goroutines append to.
@@ -137,6 +141,8 @@ type tkOptions struct {
 	settings func() *HarnessSettings
 	onWake   func(Wake)
 	setTimer durable.SetTimer
+	// telemetry is HarnessOptions.Telemetry.
+	telemetry telemetry.TelemetryContext
 }
 
 type tkOpened struct {
@@ -156,7 +162,7 @@ func tkOpenRoot(t *testing.T, tasks []durable.AnyTask, options ...tkOptions) tkO
 	if store == nil {
 		store = storage.NewMemoryStorage()
 	}
-	harness, registry, reports := openTasks(t, store, tasks, openTasksOptions{now: option.now, settings: option.settings, onWake: option.onWake, setTimer: option.setTimer})
+	harness, registry, reports := openTasks(t, store, tasks, openTasksOptions{now: option.now, settings: option.settings, onWake: option.onWake, setTimer: option.setTimer, telemetry: option.telemetry})
 	return tkOpened{harness: harness, registry: registry, reports: reports, root: mustRoot(t, harness, nil)}
 }
 
@@ -991,3 +997,609 @@ type atomicCounter struct{ value atomic.Int64 }
 func (counter *atomicCounter) add() int64 { return counter.value.Add(1) }
 
 func (counter *atomicCounter) get() int64 { return counter.value.Load() }
+
+// publicationTerminal reports whether publication makes task id terminal.
+func publicationTerminal(publication durable.CommitPublication, id durable.TaskId) bool {
+	for _, change := range publication.Changes {
+		if write, ok := change.(durable.TaskWrite); ok && write.Value.Id == id && write.Value.State.Status == durable.TaskTerminal {
+			return true
+		}
+	}
+	return false
+}
+
+// writesEndTask reports whether writes make a task terminal.
+func writesEndTask(writes []durable.StorageWrite) bool {
+	for _, write := range writes {
+		if task, ok := write.(durable.TaskWrite); ok && task.Value.State.Status == durable.TaskTerminal {
+			return true
+		}
+	}
+	return false
+}
+
+// activeCounts are the values recorded for pi.durable.tasks.active, in order.
+func activeCounts(recorder *telemetry.InMemoryTelemetryContext) []float64 {
+	var values []float64
+	for _, measurement := range measurements(recorder, "pi.durable.tasks.active") {
+		values = append(values, measurement.Value)
+	}
+	return values
+}
+
+// harness-tasks.test.ts "publication at adoption".
+func TestPublicationAtAdoption(t *testing.T) {
+	// Both storages: one that resolves right after adopting, one that still works after it (JSONL's sidecar reclaim).
+	type storageCase struct {
+		name      string
+		open      func() durable.Storage
+		adopting  func(durable.Storage) bool
+		committed func(durable.Storage) bool
+	}
+	cases := []storageCase{
+		{"memory", func() durable.Storage { return newControlledStorage() }, func(s durable.Storage) bool { return s.(*controlledStorage).adopting.Load() }, nil},
+		{"work after adopt", func() durable.Storage { return newLateResolvingStorage() }, func(s durable.Storage) bool { return s.(*lateResolvingStorage).adopting.Load() }, nil},
+	}
+
+	t.Run("resumes task and idle waits only once subscribeCommits() listeners saw the terminal commit", func(t *testing.T) {
+		gate := deferred()
+		gated := tkGated("test.wake-gated", gate)
+		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: newLateResolvingStorage()})
+		var seen syncList[durable.TaskId]
+		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range publication.Changes {
+				if write, ok := change.(durable.TaskWrite); ok && write.Value.State.Status == durable.TaskTerminal {
+					seen.add(write.Value.Id)
+				}
+			}
+		})
+		id := tkStart(t, opened.root, gated.Erased())
+		opened.harness.Resume()
+		sawIt := func() bool { return slices.Contains(seen.all(), id) }
+		type resumed struct {
+			wait string
+			saw  bool
+		}
+		results := make(chan resumed, 3)
+		// Pi calls the three waits, each of which registers in its synchronous part, before it resolves the gate; here each
+		// goroutine has entered before the gate resolves, so the terminal commit cannot overtake a wait.
+		callAsync(func() { _, _ = opened.harness.WaitForTask(testContext, id); results <- resumed{"WaitForTask", sawIt()} })
+		callAsync(func() {
+			_ = opened.harness.WaitForIdle(testContext)
+			results <- resumed{"Harness.WaitForIdle", sawIt()}
+		})
+		callAsync(func() {
+			_ = opened.root.WaitForIdle(testContext)
+			results <- resumed{"Conversation.WaitForIdle", sawIt()}
+		})
+		gate.resolve()
+		for range 3 {
+			if got := <-results; !got.saw {
+				t.Fatalf("%s resumed before the subscribeCommits() listeners saw the terminal commit", got.wait)
+			}
+		}
+		mustClose(t, opened.harness)
+	})
+
+	for _, c := range cases {
+		t.Run("runs host listeners before the waits a terminal commit resolves ("+c.name+")", func(t *testing.T) {
+			store := c.open()
+			gate := deferred()
+			gated := tkGated("test.order-gated", gate)
+			opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: store})
+			var order syncList[string]
+			id := tkStart(t, opened.root, gated.Erased())
+			opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+				if publicationTerminal(publication, id) {
+					order.add(fmt.Sprintf("host adopting=%v", c.adopting(store)))
+				}
+			})
+			opened.harness.Resume()
+			waited := make(chan struct{})
+			callAsync(func() {
+				_, _ = opened.harness.WaitForTask(testContext, id)
+				order.add("wait")
+				close(waited)
+			})
+			gate.resolve()
+			<-waited
+			if got := order.all(); !reflect.DeepEqual(got, []string{"host adopting=false", "wait"}) {
+				t.Fatalf("order %v", got)
+			}
+			mustClose(t, opened.harness)
+		})
+
+		// Upstream checks the order in the microtask after `await abortTask()`, when only the mark has been published, and its
+		// abort listener runs inside controller.abort(). Here context.AfterFunc runs the observer on a goroutine of its own, so
+		// it can follow AbortTask's return, and by then the aborted task's terminal commit, which carries the same mark, can be
+		// published too. The host listener therefore counts only the commit that marks the task, and the test waits for the
+		// observer, not for a count of entries.
+		t.Run("signals a newly marked run after host listeners saw the mark, outside the storage's adopt ("+c.name+")", func(t *testing.T) {
+			store := c.open()
+			reached := deferred()
+			signalled := deferred()
+			var order syncList[string]
+			task := tkOneStep("test.order-signalled", func(ctx context.Context, _ stepRecord, _ stepRuntime) error {
+				context.AfterFunc(ctx, func() {
+					order.add(fmt.Sprintf("abort adopting=%v", c.adopting(store)))
+					signalled.resolve()
+				})
+				reached.resolve()
+				return abortedBy(ctx)
+			})
+			opened := tkOpenRoot(t, []durable.AnyTask{task.Erased()}, tkOptions{storage: store})
+			id := tkStart(t, opened.root, task.Erased())
+			opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+				for _, change := range publication.Changes {
+					if write, ok := change.(durable.TaskWrite); ok && write.Value.Id == id && write.Value.AbortRequested && write.Value.State.Status != durable.TaskTerminal {
+						order.add("host")
+					}
+				}
+			})
+			opened.harness.Resume()
+			_ = reached.wait(testContext)
+			if result := must(opened.harness.AbortTask(testContext, id)); result != "marked" {
+				t.Fatalf("abort result %q", result)
+			}
+			if err := signalled.wait(testContext); err != nil {
+				t.Fatal(err)
+			}
+			if got := order.all(); !reflect.DeepEqual(got, []string{"host", "abort adopting=false"}) {
+				t.Fatalf("order %v", got)
+			}
+			mustClose(t, opened.harness)
+		})
+	}
+
+	t.Run("resolves a waitForIdle() called after adoption, before the storage resolved, after host listeners", func(t *testing.T) {
+		store := newLateResolvingStorage()
+		gate := deferred()
+		gated := tkGated("test.gap-idle", gate)
+		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: store})
+		var order syncList[string]
+		id := tkStart(t, opened.root, gated.Erased())
+		hosted := deferred()
+		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			if publicationTerminal(publication, id) {
+				order.add("host")
+				hosted.resolve()
+			}
+		})
+		idle := make(chan struct{})
+		store.setGap(func(writes []durable.StorageWrite) bool {
+			if !writesEndTask(writes) {
+				return false
+			}
+			// Upstream runs the gap a macrotask after adoption, when the microtask that dispatched the host listeners has run,
+			// and what the gap started runs before the commit resolves. Here the Session publishes once the storage's goroutine
+			// is parked in a wait, which under load can take longer than the storage's own work, so the gap waits for the
+			// listeners' effect and for the continuation it started.
+			_ = hosted.wait(testContext)
+			go func() {
+				_ = opened.harness.WaitForIdle(testContext)
+				order.add(fmt.Sprintf("idle committing=%v", store.committing.Load()))
+				close(idle)
+			}()
+			<-idle
+			return true
+		})
+		opened.harness.Resume()
+		gate.resolve()
+		<-idle
+		if got := order.all(); !reflect.DeepEqual(got, []string{"host", "idle committing=true"}) {
+			t.Fatalf("order %v", got)
+		}
+		mustClose(t, opened.harness)
+	})
+
+	t.Run("publishes a commit the storage rejects after adopting it, resolves its waits, then fails the Session", func(t *testing.T) {
+		store := newLateResolvingStorage()
+		recorder := telemetry.NewInMemoryTelemetryContext()
+		gate := deferred()
+		gated := tkGated("test.reject-after-adopt", gate)
+		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: store, telemetry: recorder})
+		id := tkStart(t, opened.root, gated.Erased())
+		var seen syncList[string]
+		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			if publicationTerminal(publication, id) {
+				seen.add("terminal")
+			}
+		})
+		store.setRejectAfterAdopt(writesEndTask)
+		opened.harness.Resume()
+		waited := make(chan durable.SettledTask[durable.JsonValue], 1)
+		callAsync(func() {
+			receipt, _ := opened.harness.WaitForTask(testContext, id)
+			waited <- receipt
+		})
+		gate.resolve()
+		receipt := <-waited
+		if receipt.State.Outcome == nil || receipt.State.Outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("receipt %+v", receipt.State)
+		}
+		if got := seen.all(); !reflect.DeepEqual(got, []string{"terminal"}) {
+			t.Fatalf("seen %v", got)
+		}
+		<-opened.harness.Closed()
+		if end := opened.harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, errReclaimFailed) {
+			t.Fatalf("end %+v", end)
+		}
+		if !slices.Contains(opened.reports.allInfos(), durable.ReportInfo{Type: durable.ReportSessionFailed}) {
+			t.Fatalf("infos %v", opened.reports.allInfos())
+		}
+		if got := activeCounts(recorder); !reflect.DeepEqual(got, []float64{1, -1}) {
+			t.Fatalf("active %v", got)
+		}
+	})
+
+	t.Run("counts a task created by a commit the storage rejects after adopting it, and its close balances it", func(t *testing.T) {
+		store := newLateResolvingStorage()
+		recorder := telemetry.NewInMemoryTelemetryContext()
+		idle := tkOneStep("test.reject-created", func(context.Context, stepRecord, stepRuntime) error { return nil })
+		opened := tkOpenRoot(t, []durable.AnyTask{idle.Erased()}, tkOptions{storage: store, telemetry: recorder})
+		store.setRejectAfterAdopt(func(writes []durable.StorageWrite) bool {
+			for _, write := range writes {
+				if _, ok := write.(durable.TaskWrite); ok {
+					return true
+				}
+			}
+			return false
+		})
+		_, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.TaskId, error) {
+			return tx.CreateTaskErased(idle.Erased(), nil, durable.TaskOptions{Ownership: conversationOwned})
+		})
+		if err == nil || !strings.Contains(err.Error(), "reclaim failed") {
+			t.Fatalf("error %v", err)
+		}
+		<-opened.harness.Closed()
+		if end := opened.harness.End(); end.Reason != durable.SessionEndFailed {
+			t.Fatalf("end %+v", end)
+		}
+		if got := activeCounts(recorder); !reflect.DeepEqual(got, []float64{1, -1}) {
+			t.Fatalf("active %v", got)
+		}
+	})
+
+	t.Run("keeps a task wait resolved when a host listener closes the Harness on the terminal commit", func(t *testing.T) {
+		gate := deferred()
+		gated := tkGated("test.close-in-listener", gate)
+		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()})
+		id := tkStart(t, opened.root, gated.Erased())
+		closing := make(chan struct{})
+		var once sync.Once
+		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			if publicationTerminal(publication, id) {
+				once.Do(func() { go func() { _ = opened.harness.Close(testContext); close(closing) }() })
+			}
+		})
+		opened.harness.Resume()
+		waited := make(chan durable.SettledTask[durable.JsonValue], 1)
+		callAsync(func() {
+			receipt, err := opened.harness.WaitForTask(testContext, id)
+			if err != nil {
+				t.Error(err)
+			}
+			waited <- receipt
+		})
+		gate.resolve()
+		receipt := <-waited
+		if receipt.State.Outcome == nil || receipt.State.Outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("receipt %+v", receipt.State)
+		}
+		<-closing
+	})
+
+	// Upstream's listener calls close(), whose seal runs inside the listener, before the publication wakes the waits: the wait
+	// the terminal commit settled keeps its receipt. A Go listener closes on a goroutine of its own, so this one waits until the
+	// seal has rejected what it rejects, which it learns from a Harness wait under a key no settle resolves (the seal rejects
+	// the Harness waits last), and only then returns for the publication to wake the waits.
+	t.Run("keeps a task wait resolved when a host listener's close has sealed the Harness before the publication wakes the waits", func(t *testing.T) {
+		gate := deferred()
+		gated := tkGated("test.seal-in-listener", gate)
+		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()})
+		id := tkStart(t, opened.root, gated.Erased())
+		sealed := opened.harness.(*harnessImpl).tasks.idleHarness.Add(testContext, false)
+		closing := make(chan struct{})
+		var once sync.Once
+		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			if publicationTerminal(publication, id) {
+				once.Do(func() {
+					go func() { _ = opened.harness.Close(testContext); close(closing) }()
+					<-sealed.Done()
+				})
+			}
+		})
+		opened.harness.Resume()
+		waited := make(chan durable.SettledTask[durable.JsonValue], 1)
+		callAsync(func() {
+			receipt, err := opened.harness.WaitForTask(testContext, id)
+			if err != nil {
+				t.Error(err)
+			}
+			waited <- receipt
+		})
+		gate.resolve()
+		receipt := <-waited
+		if receipt.State.Outcome == nil || receipt.State.Outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("receipt %+v", receipt.State)
+		}
+		<-closing
+	})
+
+	// A reconcile pass ends with an idle settle, on its own goroutine, after it left the Session line. Upstream's continuation
+	// there runs before the next job on the line, so it never sees a commit adopted and not yet published to the host
+	// listeners; this goroutine can run while such a commit is published. The listener plays that settle: it runs one on the
+	// state its commit changed, and the idle waits registered before the commit must not be awake until the listener returned.
+	t.Run("keeps an idle wait asleep when an idle settle outside the publication runs on a commit before its host listeners returned", func(t *testing.T) {
+		gate := deferred()
+		gated := tkGated("test.settle-in-listener", gate)
+		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()})
+		id := tkStart(t, opened.root, gated.Erased())
+		tasks := opened.harness.(*harnessImpl).tasks
+		conversationWait := tasks.idleWaiters.Add(testContext, opened.root.Id())
+		harnessWait := tasks.idleHarness.Add(testContext, true)
+		awake := make(chan int, 1)
+		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			if publicationTerminal(publication, id) {
+				tasks.resolveIdleWaiters()
+				count := 0
+				for _, wait := range []*Waiter[struct{}]{conversationWait, harnessWait} {
+					select {
+					case <-wait.Done():
+						count++
+					default:
+					}
+				}
+				awake <- count
+			}
+		})
+		opened.harness.Resume()
+		gate.resolve()
+		if count := <-awake; count != 0 {
+			t.Fatalf("%d idle waits woke before the host listeners returned", count)
+		}
+		for _, wait := range []*Waiter[struct{}]{conversationWait, harnessWait} {
+			if _, err := wait.Wait(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		mustClose(t, opened.harness)
+	})
+
+	// Upstream settles an idle wait inside the observer, at the commit that made its scope idle, so a close whose seal runs
+	// before the code awaiting it resumes cannot reject it. A Go listener closes on a goroutine of its own, so this one
+	// waits until the seal has rejected what it rejects, which it learns from a Harness wait under a key no settle resolves
+	// (the seal rejects the Harness waits last), and only then returns for the publication to wake the waits.
+	t.Run("keeps an idle wait resolved when a host listener's close has sealed the Harness before the publication wakes the waits", func(t *testing.T) {
+		gate := deferred()
+		gated := tkGated("test.seal-idle-in-listener", gate)
+		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()})
+		id := tkStart(t, opened.root, gated.Erased())
+		sealed := opened.harness.(*harnessImpl).tasks.idleHarness.Add(testContext, false)
+		closing := make(chan struct{})
+		var once sync.Once
+		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			if publicationTerminal(publication, id) {
+				once.Do(func() {
+					go func() { _ = opened.harness.Close(testContext); close(closing) }()
+					<-sealed.Done()
+				})
+			}
+		})
+		opened.harness.Resume()
+		idled := make(chan error, 2)
+		callAsync(func() { idled <- opened.harness.WaitForIdle(testContext) })
+		callAsync(func() { idled <- opened.root.WaitForIdle(testContext) })
+		gate.resolve()
+		for range 2 {
+			if err := <-idled; err != nil {
+				t.Error(err)
+			}
+		}
+		<-closing
+	})
+
+	t.Run("keeps a task wait resolved when the Harness closes after adoption, before the storage resolved", func(t *testing.T) {
+		store := newLateResolvingStorage()
+		gate := deferred()
+		gated := tkGated("test.close-in-gap", gate)
+		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: store})
+		id := tkStart(t, opened.root, gated.Erased())
+		gapped := deferred()
+		closing := make(chan struct{})
+		store.setGap(func(writes []durable.StorageWrite) bool {
+			if !writesEndTask(writes) {
+				return false
+			}
+			callAsync(func() { _ = opened.harness.Close(testContext); close(closing) })
+			gapped.resolve()
+			return true
+		})
+		opened.harness.Resume()
+		type waitResult struct {
+			receipt durable.SettledTask[durable.JsonValue]
+			err     error
+		}
+		waited := make(chan waitResult, 1)
+		callAsync(func() {
+			receipt, err := opened.harness.WaitForTask(testContext, id)
+			waited <- waitResult{receipt, err}
+		})
+		gate.resolve()
+		_ = gapped.wait(testContext)
+		<-closing
+		result := <-waited
+		if result.err != nil || result.receipt.State.Outcome == nil || result.receipt.State.Outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("wait %+v %v", result.receipt.State, result.err)
+		}
+		<-opened.harness.Closed()
+		if end := opened.harness.End(); end.Reason != durable.SessionEndClosed {
+			t.Fatalf("end %+v", end)
+		}
+	})
+
+	t.Run("fails the Session with the storage error when it rejects after adopting, and reports an observer's throw", func(t *testing.T) {
+		store := newLateResolvingStorage()
+		opened := tkOpenRoot(t, nil, tkOptions{storage: store})
+		bug := errors.New("observer bug")
+		observeCommits(opened.harness, func(_ context.Context, publication session.ObservedCommit) {
+			if publication.Memory {
+				return
+			}
+			for _, change := range publication.Changes {
+				if _, ok := change.(durable.EntryWrite); ok {
+					panic(bug)
+				}
+			}
+		})
+		store.setRejectAfterAdopt(func(writes []durable.StorageWrite) bool {
+			for _, write := range writes {
+				if _, ok := write.(durable.EntryWrite); ok {
+					return true
+				}
+			}
+			return false
+		})
+		_, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.EntryRecord, error) {
+			return tx.AppendEntry(opened.root.Id(), durable.EntryDraft{Kind: "note", Data: map[string]any{}})
+		})
+		if err == nil || !strings.Contains(err.Error(), "reclaim failed") {
+			t.Fatalf("error %v", err)
+		}
+		<-opened.harness.Closed()
+		if end := opened.harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, errReclaimFailed) {
+			t.Fatalf("end %+v", end)
+		}
+		reports, infos := opened.reports.all(), opened.reports.allInfos()
+		at := slices.IndexFunc(reports, func(err error) bool { return errors.Is(err, bug) })
+		if at < 0 || infos[at].Type != durable.ReportListenerError {
+			t.Fatalf("reports %v infos %v", reports, infos)
+		}
+		if !slices.Contains(infos, durable.ReportInfo{Type: durable.ReportSessionFailed}) {
+			t.Fatalf("infos %v", infos)
+		}
+	})
+
+	t.Run("stores a host listener's own commit before the reconcile commit that the same publication asks for", func(t *testing.T) {
+		store := newControlledStorage()
+		gate := deferred()
+		child := tkGated("test.order-child", gate)
+		parent := tkOneStep("test.order-parent", func(ctx context.Context, task stepRecord, runtime stepRuntime) error {
+			if err := runtime.Commit(ctx, func(tx durable.Tx, _ stepRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
+				_, err := tx.CreateTaskErased(child.Erased(), nil, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: task.Id}})
+				return nil, err
+			}); err != nil {
+				return err
+			}
+			// The child is still live, so the outcome is held as completing until a reconcile pass finalizes it.
+			return tkComplete(ctx, runtime)
+		})
+		opened := tkOpenRoot(t, []durable.AnyTask{parent.Erased(), child.Erased()}, tkOptions{storage: store})
+		parentId := tkStart(t, opened.root, parent.Erased())
+		opened.harness.Resume()
+		eventually(t, func() bool {
+			record, _ := opened.harness.GetTask(testContext, parentId)
+			return record != nil && record.State.Status == durable.TaskCompleting
+		})
+		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range publication.Changes {
+				if write, ok := change.(durable.TaskWrite); ok && write.Value.Id != parentId && write.Value.State.Status == durable.TaskTerminal {
+					// Upstream's void commit takes its line position in this turn; goroutines have no such order, so the
+					// position is taken here and the commit made at it.
+					impl := opened.harness.(*harnessImpl)
+					ticket := impl.TakeLineTicket()
+					go func() {
+						_, _ = impl.CommitWithTicket(ticket, testContext, func(tx *session.Transaction) (any, error) {
+							return tx.AppendEntry(opened.root.Id(), durable.EntryDraft{Kind: "note", Data: map[string]any{}})
+						}, session.TransactionScope{})
+					}()
+					return
+				}
+			}
+		})
+		before := store.commitCount()
+		gate.resolve()
+		_, _ = opened.harness.WaitForTask(testContext, parentId)
+		eventually(t, func() bool {
+			for index := before; index < store.commitCount(); index++ {
+				if writesHaveEntry(store.commitAt(index)) {
+					return true
+				}
+			}
+			return false
+		})
+		var kinds []string
+		for index := before; index < store.commitCount(); index++ {
+			writes := store.commitAt(index)
+			if writesHaveEntry(writes) {
+				kinds = append(kinds, "host entry")
+				continue
+			}
+			for _, write := range writes {
+				task, ok := write.(durable.TaskWrite)
+				if !ok || task.Value.State.Status != durable.TaskTerminal {
+					continue
+				}
+				if task.Value.Id == parentId {
+					kinds = append(kinds, "parent terminal")
+				} else {
+					kinds = append(kinds, "child terminal")
+				}
+				break
+			}
+		}
+		if !reflect.DeepEqual(kinds, []string{"child terminal", "host entry", "parent terminal"}) {
+			t.Fatalf("commits %v", kinds)
+		}
+		mustClose(t, opened.harness)
+	})
+
+	t.Run("calls a host listener added on a Harness between adopt and the dispatch only when one was registered at adopt", func(t *testing.T) {
+		store := newControlledStorage()
+		opened := tkOpenRoot(t, nil, tkOptions{storage: store})
+		note := func() {
+			_, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.EntryRecord, error) {
+				return tx.AppendEntry(opened.root.Id(), durable.EntryDraft{Kind: "note", Data: map[string]any{}})
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		var late syncList[durable.Seq]
+		stopLate := func() {}
+		// No host listener at adopt, although the Harness's own observers run: no dispatch, so the late one misses it.
+		store.setAfterAdopt(func() {
+			stopLate = opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) { late.add(publication.Seq) })
+		})
+		note()
+		flush()
+		if late.len() != 0 {
+			t.Fatalf("late listener got %v", late.all())
+		}
+		note()
+		if late.len() != 1 {
+			t.Fatalf("late listener got %v", late.all())
+		}
+		stopLate()
+		// One registered at adopt: the dispatch reads the listeners when it runs, the late one included.
+		opened.harness.SubscribeCommits(func(context.Context, durable.CommitPublication) {})
+		var second syncList[durable.Seq]
+		store.setAfterAdopt(func() {
+			opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) { second.add(publication.Seq) })
+		})
+		note()
+		if second.len() != 1 {
+			t.Fatalf("second late listener got %v", second.all())
+		}
+		mustClose(t, opened.harness)
+	})
+}
+
+func writesHaveEntry(writes []durable.StorageWrite) bool {
+	for _, write := range writes {
+		if _, ok := write.(durable.EntryWrite); ok {
+			return true
+		}
+	}
+	return false
+}

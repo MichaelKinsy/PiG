@@ -15,7 +15,7 @@ import (
 
 func TestAssistantThinkingUsesThinkingTransformContext(t *testing.T) {
 	m := resumeThinkingMode(t, false, userMsg("question"), assistantMsg(""))
-	block := m.newAssistantMessageBlock()
+	block := m.newAssistantMessageBlock(messageMeta{})
 	// Pi emits a final partial-parse warning for this flowchart, but never transforms the thinking block.
 	const diagram = "```mermaid\nflowchart LR\n  A[Foo] invalid\n```"
 	block.SetContent([]tui.AssistantSegment{{Thinking: true, Text: diagram}, {Text: diagram}})
@@ -32,7 +32,7 @@ func TestInteractiveUserMessageRunsBuiltinMarkdownTransform(t *testing.T) {
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	m := &InteractiveMode{outputPad: 1}
-	block := m.newUserMessageBlock("```mermaid\nflowchart LR\nA --> B\n```")
+	block := m.newUserMessageBlock("```mermaid\nflowchart LR\nA --> B\n```", messageMeta{})
 	plain := widthx.StripAnsi(strings.Join(block.Render(80), "\n"))
 	if strings.Contains(plain, "```mermaid") || !strings.Contains(plain, "┌") || !strings.Contains(plain, "A") || !strings.Contains(plain, "B") {
 		t.Fatalf("user Mermaid transform missing: %q", plain)

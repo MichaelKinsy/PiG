@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -208,6 +210,9 @@ func resolveType(node any) (any, error) {
 		}
 		return out, nil
 	case *OrderedObject:
+		if bigint, isBig := bigIntNode(node); isBig {
+			return bigint, nil
+		}
 		if name, isFn := node.values["$fn"].(string); isFn {
 			return predicateSpec{name: name, spec: node}, nil
 		}
@@ -234,6 +239,16 @@ func resolveType(node any) (any, error) {
 		return out, nil
 	}
 	return node, nil
+}
+
+// bigIntNode reads the vector tag {"$": "bigint", "value": "<digits>"}, the JavaScript bigint the generator's encode wrote.
+func bigIntNode(node *OrderedObject) (BigInt, bool) {
+	if tag, _ := node.values["$"].(string); tag != "bigint" {
+		return BigInt{}, false
+	}
+	digits, _ := node.values["value"].(string)
+	value, ok := new(big.Int).SetString(digits, 10)
+	return BigInt{value}, ok
 }
 
 // callType runs a member, turning its panic into the error message Pi throws.
@@ -266,10 +281,19 @@ func TestTypeMatchesPi(t *testing.T) {
 	if len(file.Cases) == 0 {
 		t.Fatal("Type.json has no cases")
 	}
+	engineCases := 0
 	for _, c := range file.Cases {
 		node, err := decodeOrdered(c.Args[0])
 		if err != nil {
 			t.Fatalf("%s: %v", c.Name, err)
+		}
+		if top, isNode := node.(*OrderedObject); isNode {
+			if name, _ := top.values["$call"].(string); typeEngineMembers[name] || recordWithEngineKey(top) || c.Name == "conformance engine tool parameters" {
+				// Served by the host's type engine, which this module cannot link: the same cases run through the SDK in the root module (coding/extension/host/fusepack,
+				// TestTypeEngineMembersMatchPi) and through the host socket (TestConformance_TypeEngineMembersAgreeAcrossSDKs).
+				engineCases++
+				continue
+			}
 		}
 		got, err := resolveType(node)
 		if c.Throws != nil {
@@ -283,20 +307,26 @@ func TestTypeMatchesPi(t *testing.T) {
 			continue
 		}
 		var want struct {
-			JSON   *string        `json:"json"`
-			Hidden map[string]any `json:"hidden"`
+			JSON            *string        `json:"json"`
+			StringifyThrows *string        `json:"stringifyThrows"`
+			Hidden          map[string]any `json:"hidden"`
 		}
 		if schema, isSchema := got.(*TSchema); isSchema {
-			if err := json.Unmarshal(c.Result, &want); err != nil || want.JSON == nil {
+			if err := json.Unmarshal(c.Result, &want); err != nil || (want.JSON == nil && want.StringifyThrows == nil) {
 				t.Errorf("%s: the SDK answers a schema, Pi %s", c.Name, c.Result)
 				continue
 			}
 			text, err := schema.MarshalJSON()
-			if err != nil {
+			switch {
+			case want.StringifyThrows != nil:
+				// The value holds a bigint, which only writing it as JSON refuses, with Pi's message.
+				if err == nil || !strings.Contains(err.Error(), *want.StringifyThrows) {
+					t.Errorf("%s: MarshalJSON gave %q, %v; Pi's JSON.stringify throws %q", c.Name, text, err, *want.StringifyThrows)
+				}
+			case err != nil:
 				t.Errorf("%s: %v", c.Name, err)
 				continue
-			}
-			if string(text) != *want.JSON {
+			case string(text) != *want.JSON:
 				t.Errorf("%s:\n got  %s\n Pi   %s", c.Name, text, *want.JSON)
 			}
 			have := maps.Clone(schema.hidden)
@@ -316,6 +346,33 @@ func TestTypeMatchesPi(t *testing.T) {
 			t.Errorf("%s: %v, Pi %v", c.Name, got, wantValue)
 		}
 	}
+	t.Logf("%d cases are served by the host's type engine and run elsewhere", engineCases)
+}
+
+// recordWithEngineKey reports a Type.Record whose key is of a kind TypeBox evaluates with its type engine (an enum, an intersection or a template literal).
+func recordWithEngineKey(node *OrderedObject) bool {
+	if name, _ := node.values["$call"].(string); name != "Record" {
+		return false
+	}
+	args, _ := node.values["args"].([]any)
+	if len(args) == 0 {
+		return false
+	}
+	key, _ := args[0].(*OrderedObject)
+	if key == nil {
+		return false
+	}
+	kind, _ := key.values["$call"].(string)
+	return kind == "Enum" || kind == "Intersect" || kind == "TemplateLiteral"
+}
+
+// typeEngineMembers are the members of Type the host's type engine serves (type_engine_members.go): calling one needs a host.
+var typeEngineMembers = map[string]bool{
+	"Call": true, "Capitalize": true, "Conditional": true, "Constructor": true, "ConstructorParameters": true, "Cyclic": true, "Dependent": true, "Evaluate": true, "Exclude": true,
+	"Extends": true, "Extract": true, "Function": true, "Generic": true, "Identifier": true, "Index": true, "Infer": true, "InstanceType": true, "Instantiate": true, "Interface": true,
+	"KeyOf": true, "Lowercase": true, "Mapped": true, "Module": true, "NonNullable": true, "Omit": true, "Parameter": true, "Parameters": true, "Partial": true, "Pick": true,
+	"ReadonlyObject": true, "ReadonlyType": true, "RecordKey": true, "RecordPattern": true, "RecordValue": true, "Required": true, "Rest": true, "ReturnType": true, "Script": true,
+	"TemplateLiteral": true, "This": true, "Tuple": true, "Uncapitalize": true, "Uppercase": true,
 }
 
 // TestTypeOmitsTheCodecFamily is the evidence of divergence D198: the Codec family of Pi's Type is not served, so none of its members exists.

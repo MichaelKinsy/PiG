@@ -49,7 +49,7 @@ type ToolBackend interface {
 	Env() env.ExecutionEnv
 	// Now is the Harness clock.
 	Now() float64
-	Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error)
+	Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error)
 	Memo(ctx context.Context, name string) (value durable.JsonValue, ok bool, err error)
 	MemoCandidate(ctx context.Context, name string, candidate durable.JsonValue) (durable.JsonValue, error)
 	CreateTaskErased(ctx context.Context, task durable.AnyTask, input durable.JsonValue, options durable.TaskOptions) (durable.TaskId, error)

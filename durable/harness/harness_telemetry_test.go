@@ -4,11 +4,14 @@ package harness
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -189,4 +192,123 @@ func TestDurableTelemetryRecordsAttributesInPisKeyOrder(t *testing.T) {
 		}
 	}
 	mustClose(t, harness)
+}
+
+// throwingTelemetry is the no-op telemetry context with its own metrics capability.
+type throwingTelemetry struct {
+	telemetry.TelemetrySpan
+	metrics telemetry.TelemetryMetrics
+}
+
+func (adapter throwingTelemetry) Metrics() telemetry.TelemetryMetrics { return adapter.metrics }
+
+// throwingMetrics is the no-op metrics with one instrument kind that panics when written.
+type throwingMetrics struct {
+	telemetry.TelemetryMetrics
+	upDown bool
+	counts bool
+}
+
+type throwingCounter struct{}
+
+func (throwingCounter) Add(float64, telemetry.SpanAttributes) { panic(errors.New("metrics down")) }
+
+func (metrics throwingMetrics) UpDownCounter(name string, options telemetry.InstrumentOptions) telemetry.TelemetryUpDownCounter {
+	if metrics.upDown {
+		return throwingCounter{}
+	}
+	return metrics.TelemetryMetrics.UpDownCounter(name, options)
+}
+
+func (metrics throwingMetrics) Counter(name string, options telemetry.InstrumentOptions) telemetry.TelemetryCounter {
+	if metrics.counts {
+		return throwingCounter{}
+	}
+	return metrics.TelemetryMetrics.Counter(name, options)
+}
+
+// failingEvents is the no-op span whose events panic.
+type failingEvents struct{ telemetry.TelemetrySpan }
+
+func (failingEvents) AddEvent(string, telemetry.SpanAttributes) { panic(errors.New("telemetry down")) }
+
+func TestDurableTelemetryReportsTelemetryAdaptersThatThrowWhileACommitIsPublishedAndTheCommitStands(t *testing.T) {
+	// harness-telemetry.test.ts: "reports telemetry adapters that throw while a commit is published, and the commit stands"
+	idle := tkOneStep("test.telemetry-idle", func(context.Context, stepRecord, stepRuntime) error { return nil })
+	adapter := throwingTelemetry{TelemetrySpan: telemetry.NoopTelemetryContext, metrics: throwingMetrics{TelemetryMetrics: telemetry.NoopTelemetryMetrics, upDown: true}}
+	opened := tkOpenRoot(t, []durable.AnyTask{idle.Erased()}, tkOptions{telemetry: adapter})
+	harness, root := opened.harness, opened.root
+	view := must(root.Watch(testContext))
+	var mu sync.Mutex
+	var shown []durable.EntryId
+	view.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+		mu.Lock()
+		defer mu.Unlock()
+		shown = append(shown, change.Value.Entries[len(change.Value.Entries)-1].Id)
+		return nil
+	})
+	var hosts []durable.Seq
+	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		mu.Lock()
+		defer mu.Unlock()
+		hosts = append(hosts, publication.Seq)
+	})
+	failing := chordctx.WithTelemetry(testContext, failingEvents{telemetry.NoopTelemetryContext})
+	type committed struct {
+		entry durable.EntryId
+		task  durable.TaskId
+	}
+	result, err := durable.Commit(failing, root, func(tx durable.Tx) (committed, error) {
+		entry, err := tx.AppendEntry(root.Id(), durable.EntryDraft{Kind: "note", Data: map[string]any{}})
+		if err != nil {
+			return committed{}, err
+		}
+		task, err := tx.CreateTaskErased(idle.Erased(), nil, durable.TaskOptions{Ownership: conversationOwned})
+		return committed{entry.Id, task}, err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The entry event, then the active-task metric; the report's own event throws too and is dropped.
+	telemetryInfo := durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackTelemetry}
+	if infos := opened.reports.allInfos(); !reflect.DeepEqual(infos, []durable.ReportInfo{telemetryInfo, telemetryInfo}) {
+		t.Fatalf("infos %v", infos)
+	}
+	eventually(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(hosts) == 1 })
+	eventually(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(shown) == 1 })
+	mu.Lock()
+	if shown[0] != result.entry {
+		t.Fatalf("shown %v, want %d", shown, result.entry)
+	}
+	mu.Unlock()
+	if record := must(harness.GetTask(testContext, result.task)); record == nil || record.State.Status != durable.TaskPending {
+		t.Fatalf("task %+v", record)
+	}
+	must(view.Stop())
+	mustClose(t, harness)
+	if end := harness.End(); end.Reason != durable.SessionEndClosed {
+		t.Fatalf("end %+v", end)
+	}
+}
+
+func TestDurableTelemetryDropsAReportsOwnMetricThatThrowsAfterOnReportGotTheReport(t *testing.T) {
+	// harness-telemetry.test.ts: "drops a report's own metric that throws, after onReport got the report"
+	adapter := throwingTelemetry{TelemetrySpan: telemetry.NoopTelemetryContext, metrics: throwingMetrics{TelemetryMetrics: telemetry.NoopTelemetryMetrics, counts: true}}
+	opened := tkOpenRoot(t, nil, tkOptions{telemetry: adapter})
+	harness, root := opened.harness, opened.root
+	bug := errors.New("listener bug")
+	harness.SubscribeCommits(func(context.Context, durable.CommitPublication) { panic(bug) })
+	appendPlainNote(t, root)
+	// The listener runs in the commit's dispatch; a panic escaping its report would crash the process.
+	flush()
+	if reports := opened.reports.all(); len(reports) != 1 || !errors.Is(reports[0], bug) {
+		t.Fatalf("reports %v", reports)
+	}
+	if infos := opened.reports.allInfos(); !reflect.DeepEqual(infos, []durable.ReportInfo{{Type: durable.ReportListenerError}}) {
+		t.Fatalf("infos %v", infos)
+	}
+	mustClose(t, harness)
+	if end := harness.End(); end.Reason != durable.SessionEndClosed {
+		t.Fatalf("end %+v", end)
+	}
 }

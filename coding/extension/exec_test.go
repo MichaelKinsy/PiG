@@ -46,6 +46,15 @@ func TestExecHelperProcess(t *testing.T) {
 	case "pwd":
 		wd, _ := os.Getwd()
 		fmt.Println(wd)
+	case "split":
+		// The euro sign is e2 82 ac: the writes end between its bytes.
+		for _, out := range []*os.File{os.Stdout, os.Stderr} {
+			_, _ = out.Write([]byte{0xe2, 0x82})
+		}
+		time.Sleep(100 * time.Millisecond)
+		for _, out := range []*os.File{os.Stdout, os.Stderr} {
+			_, _ = out.Write([]byte{0xac})
+		}
 	default:
 		if run, ok := treeHelpers[args[0]]; ok {
 			run(args[1:])
@@ -79,6 +88,20 @@ func TestExecCommand_Basic(t *testing.T) {
 	}
 }
 
+// Pi 36be9c612 packages/coding-agent/src/core/exec.ts decodes stdout and stderr across chunk boundaries (#11312): a multi-byte
+// character that two writes split is one character, not two replacement characters. Go collects the bytes before it makes the
+// string, so the split costs nothing; the test pins that.
+func TestExecCommand_DecodesAMultiByteCharacterSplitAcrossWrites(t *testing.T) {
+	command, args := helper(t, "split")
+	result, err := extension.ExecCommand(context.Background(), t.TempDir(), command, args, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Stdout != "€" || result.Stderr != "€" {
+		t.Errorf("stdout = %q, stderr = %q, want a euro sign on each", result.Stdout, result.Stderr)
+	}
+}
+
 func TestExecCommand_NonZeroExit(t *testing.T) {
 	command, args := helper(t, "exit", "42")
 	result, err := extension.ExecCommand(context.Background(), t.TempDir(), command, args, nil)
@@ -93,28 +116,43 @@ func TestExecCommand_NonZeroExit(t *testing.T) {
 	}
 }
 
-// Upstream execCommand never rejects: when the program cannot start, the
-// child's error event settles it as {stdout: "", stderr: "", code: 1,
-// killed: false}.
+// Upstream execCommand never rejects: when the program cannot start, the child's error event settles it as
+// {stdout: "", stderr: error.message, code: 1, killed: false} (exec.ts `stderr || error.message`, Pi #11085).
 func TestExecCommand_SpawnFailureResolvesWithCodeOne(t *testing.T) {
 	command, args := helper(t, "echo", "unreachable")
-	for name, run := range map[string]func() (extension.ExecResult, error){
-		"missing program": func() (extension.ExecResult, error) {
-			return extension.ExecCommand(context.Background(), t.TempDir(), filepath.Join(t.TempDir(), "missing-program"), nil, nil)
-		},
-		"missing cwd": func() (extension.ExecResult, error) {
+	missing := filepath.Join(t.TempDir(), "missing-program")
+	for name, tc := range map[string]struct {
+		program string
+		run     func() (extension.ExecResult, error)
+	}{
+		"missing program": {missing, func() (extension.ExecResult, error) {
+			return extension.ExecCommand(context.Background(), t.TempDir(), missing, nil, nil)
+		}},
+		"missing cwd": {command, func() (extension.ExecResult, error) {
 			return extension.ExecCommand(context.Background(), filepath.Join(t.TempDir(), "missing-dir"), command, args, nil)
-		},
+		}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			result, err := run()
+			result, err := tc.run()
 			if err != nil {
 				t.Fatalf("ExecCommand error = %v, want a result", err)
 			}
-			if want := (extension.ExecResult{Code: 1}); result != want {
+			if want := (extension.ExecResult{Stderr: "spawn " + tc.program + " ENOENT", Code: 1}); result != want {
 				t.Fatalf("result = %+v, want %+v", result, want)
 			}
 		})
+	}
+}
+
+// Ports packages/coding-agent/test/exec.test.ts: a command that exits silently keeps stderr empty.
+func TestExecCommand_SilentExitKeepsStderrEmpty(t *testing.T) {
+	command, args := helper(t, "exit", "1")
+	result, err := extension.ExecCommand(context.Background(), t.TempDir(), command, args, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := (extension.ExecResult{Code: 1}); result != want {
+		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 }
 

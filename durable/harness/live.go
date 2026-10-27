@@ -168,6 +168,11 @@ var LiveDoc = durable.DefineDoc(durable.DocDefinition[LiveState]{
 	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 })
 
+// ProgressCommit is how the progress throttles commit a partial answer and running tool output into pi.live: deferred, so
+// storage gets them together, at the next commit that reads or writes pi.live or after Settings.Progress.PersistWithinMs.
+// Every commit that consumes or clears streamed fields reads pi.live, so it stores them with its own changes (spec §8.2).
+var ProgressCommit = durable.CommitOptions{Persistence: &durable.CommitPersistence{Kind: durable.CommitDeferred}}
+
 // Built-in task kinds that can own pi.live.run (live.ts:80-82).
 var runTaskKinds = map[string]bool{"pi.generation": true}
 

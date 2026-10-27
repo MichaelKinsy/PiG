@@ -86,6 +86,8 @@ type LoadedExtension struct {
 	ResolvedPath string     `json:"resolvedPath"`
 	SourceInfo   SourceInfo `json:"sourceInfo"`
 	Tools        []string   `json:"tools"`
+	// loader is the loader the extension was read from, which [NewExtensionRunner] names to the host as the extension's source.
+	loader string
 }
 
 // LoadExtensionsResult is Pi's LoadExtensionsResult as data: the extensions of a load with its errors and warnings.
@@ -99,6 +101,8 @@ type LoadExtensionsResult struct {
 		Path    string `json:"path"`
 		Warning string `json:"warning"`
 	} `json:"warnings"`
+	// Runtime is Pi's `runtime`: the runtime the extensions of the load share. It is set by [DefaultResourceLoader.GetExtensions] and [DefaultResourceLoader.LoadProjectTrustExtensions], and nil in the result a callback receives.
+	Runtime *ExtensionRuntime `json:"-"`
 }
 
 // PathMetadata is Pi's PathMetadata: where a resource path came from.
@@ -134,11 +138,13 @@ type ResourceLoaderReloadOptions struct {
 
 // DefaultResourceLoaderOptions is Pi's DefaultResourceLoaderOptions. A nil pointer, nil slice or nil function is Pi's undefined.
 //
-// ExtensionFactories and ExtensionsOverride exist so code that sets them fails loudly instead of losing behavior: an inline factory runs in the extension process but the child session's extensions load in the host, and an override returns live extension objects. They are not supported yet (an owner decision is pending, gap "SdkSessionGraph" in test/parity/sdk-exports.toml); NewDefaultResourceLoader returns an error when either is set. AdditionalExtensionPaths loads extension sources, and CreateAgentSession's custom tools serve tools from the parent extension.
+// ExtensionFactories takes the [ExtensionFactory] references [CreateCodemodeExtension], [CreateToolSearchExtension] and [CreateMcpExtension] return; a function of this process is an error, because the child session's extensions load in the host. ExtensionsOverride exists so code that sets them fails loudly instead of losing behavior: an inline factory runs in the extension process but the child session's extensions load in the host, and an override returns live extension objects. They are not supported yet (an owner decision is pending, gap "SdkSessionGraph" in test/parity/sdk-exports.toml); NewDefaultResourceLoader returns an error when either is set. AdditionalExtensionPaths loads extension sources, and CreateAgentSession's custom tools serve tools from the parent extension.
 type DefaultResourceLoaderOptions struct {
-	Cwd                           string
-	AgentDir                      string
-	SettingsManager               *SettingsManager
+	Cwd             string
+	AgentDir        string
+	SettingsManager *SettingsManager
+	// Runtime is the runtime the loader loads its extensions against, which [CreateExtensionRuntime] made. pig additive (D201): Pi's loader takes none (its loadExtensions does); this is how a runtime made first reaches the extensions. Nil: each reload makes its own, as Pi's does.
+	Runtime                       *ExtensionRuntime
 	AdditionalExtensionPaths      []string
 	AdditionalSkillPaths          []string
 	AdditionalPromptTemplatePaths []string
@@ -182,8 +188,9 @@ func graphFunc[In, Out any](override func(In) Out) graphCallback {
 
 // NewDefaultResourceLoader is `new DefaultResourceLoader(options)`.
 func NewDefaultResourceLoader(c Context, options DefaultResourceLoaderOptions) (*DefaultResourceLoader, error) {
-	if len(options.ExtensionFactories) > 0 {
-		return nil, errors.New("DefaultResourceLoader option extensionFactories is not supported by the Go SDK: an inline factory runs in this process but the child session's extensions load in the host (decision pending, gap SdkSessionGraph); use AdditionalExtensionPaths, or CreateAgentSession CustomTools")
+	factories, err := extensionFactoriesWire(c, options.ExtensionFactories)
+	if err != nil {
+		return nil, err
 	}
 	if options.ExtensionsOverride != nil {
 		return nil, errors.New("DefaultResourceLoader option extensionsOverride is not supported by the Go SDK: it returns live extension objects, which live in the host (decision pending, gap SdkSessionGraph)")
@@ -201,8 +208,14 @@ func NewDefaultResourceLoader(c Context, options DefaultResourceLoaderOptions) (
 		"systemPromptOverride":       c.callbackID(graphFunc(options.SystemPromptOverride)),
 		"appendSystemPromptOverride": c.callbackID(graphFunc(options.AppendSystemPromptOverride)),
 	}
+	if len(factories) > 0 {
+		wire["extensionFactories"] = factories
+	}
 	if options.SettingsManager != nil {
 		wire["settingsManager"] = options.SettingsManager.Handle()
+	}
+	if options.Runtime != nil {
+		wire["runtime"] = options.Runtime.Handle()
 	}
 	object, err := newGraphObject(c, "DefaultResourceLoader", "new", wire)
 	if err != nil {
@@ -216,7 +229,19 @@ func (l *DefaultResourceLoader) Handle() string { return l.object.Handle() }
 
 // GetExtensions is the extensions of the last Reload, as data.
 func (l *DefaultResourceLoader) GetExtensions() (LoadExtensionsResult, error) {
-	return graphMethodCall[LoadExtensionsResult](l.object, "getExtensions")
+	return l.extensionsResult(graphMethodCall[LoadExtensionsResult](l.object, "getExtensions"))
+}
+
+// extensionsResult completes a load result the host answered: each extension names this loader, and Runtime is the runtime of the load.
+func (l *DefaultResourceLoader) extensionsResult(result LoadExtensionsResult, err error) (LoadExtensionsResult, error) {
+	if err != nil {
+		return result, err
+	}
+	for i := range result.Extensions {
+		result.Extensions[i].loader = l.object.Handle()
+	}
+	result.Runtime, err = extensionRuntimeOf(l.object.context, l.object)
+	return result, err
 }
 
 // GetSkills is the skills of the last Reload.
@@ -267,7 +292,7 @@ func (l *DefaultResourceLoader) ExtendResources(paths ResourceExtensionPaths) er
 
 // LoadProjectTrustExtensions loads the bootstrap extension set, with project settings untrusted, that project trust is decided with.
 func (l *DefaultResourceLoader) LoadProjectTrustExtensions() (LoadExtensionsResult, error) {
-	return graphMethodAsync[LoadExtensionsResult](l.object, "loadProjectTrustExtensions")
+	return l.extensionsResult(graphMethodAsync[LoadExtensionsResult](l.object, "loadProjectTrustExtensions"))
 }
 
 // Reload rediscovers every resource. A nil options is Pi's undefined.
@@ -279,3 +304,6 @@ func (l *DefaultResourceLoader) Reload(options *ResourceLoaderReloadOptions) err
 	_, err := graphMethodAsync[graphDone](l.object, "reload", wire)
 	return err
 }
+
+// errExtensionFactoryNotServed is the error of an inline factory: it would run in this process but the child session's extensions load in the host. Use an [ExtensionFactory] reference, AdditionalExtensionPaths, or CreateAgentSession CustomTools.
+var errExtensionFactoryNotServed = errors.New("DefaultResourceLoader option extensionFactories takes only the references CreateCodemodeExtension, CreateToolSearchExtension and CreateMcpExtension return: an inline factory runs in this process but the child session's extensions load in the host (decision pending, gap SdkSessionGraph); use AdditionalExtensionPaths, or CreateAgentSession CustomTools")

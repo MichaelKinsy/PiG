@@ -69,6 +69,8 @@ type HostHelpers struct {
 	ResizeImage func(input []byte, mimeType string, options *ImageResizeOptions) (ResizedImage, bool, error)
 	// BuiltinToolDefinition answers builtinTool.definition: the JSON of its arguments in, the JSON of its reply out.
 	BuiltinToolDefinition func(args []byte) ([]byte, error)
+	// BuiltinToolPrepareArguments answers builtinTool.prepareArguments: the JSON of its arguments in, the JSON of the prepared tool arguments out.
+	BuiltinToolPrepareArguments func(args []byte) ([]byte, error)
 	// LocalExec answers builtinTool.localExec in the host's own process: the JSON of its arguments in (the executeId is unused), the JSON of Pi's `{ exitCode }` out.
 	// The command ends with ctx. Each output chunk goes to onData in order before LocalExec returns, and an error from onData ends the command and is LocalExec's.
 	// The call has no Context, so a connection of its own would be any running extension's, which ends when that extension does, whichever made the call.
@@ -81,6 +83,9 @@ type HostHelpers struct {
 	// HighlightCode is highlightCode (markdown false) or getMarkdownTheme().highlightCode (markdown true), drawn with the palette of the theme initTheme installed, or with the
 	// host's active theme when palette is empty.
 	HighlightCode func(code, lang string, markdown bool, palette []byte) ([]string, error)
+	// TypeEngine answers one type.engine request, `{"member": ..., "args": [...]}`, with the engine's reply (see type_engine.go); a fused extension runs TypeBox's type engine in the
+	// host's own process.
+	TypeEngine func(request []byte) []byte
 	// LoadTheme is the palette of the theme initTheme(name) installs; a nil name is initTheme(undefined).
 	LoadTheme func(name *string) ([]byte, error)
 	// WithFileMutationQueue runs fn in the host's file mutation queue for the absolute path (the host's WithFileMutationQueue) and returns the resolve error or fn's error.

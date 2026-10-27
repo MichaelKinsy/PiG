@@ -1,5 +1,5 @@
 // Run Pi's GitHub Copilot OAuth response handling (packages/ai/src/auth/oauth/github-copilot.ts) over raw HTTP responses from stdin: [{flow, status, statusText, raw}] -> [{ok} | {err, syntax}].
-// The private functions are cut out of the source (each starts at "function <name>" or "async function <name>" and ends at the first "}" in column 0), stripped of types and evaluated with the file's constants (lines 10-19); fetch answers every request with the probe's raw bytes, status and status text, and pollOAuthDeviceCodeFlow runs poll once.
+// The private functions are cut out of the source (each starts at "function <name>" or "async function <name>" and ends at the first "}" in column 0), stripped of types and evaluated with the file's constants; fetch answers every request with the probe's raw bytes, status and status text, and pollOAuthDeviceCodeFlow runs poll once.
 // flow: "ids" (the ids of the GITHUB_COPILOT_MODELS catalog), "catalog" (fetchGitHubCopilotModels with probe.token, no retries; the answer is {availableModelIds, policyModelIds}), "device" (startDeviceFlow), "poll" (pollForGitHubAccessToken's poll step), "token" (refreshGitHubCopilotAccessToken).
 // `syntax` is true when response.json() threw a SyntaxError: the V8 text of that error is not compared.
 // usage: node copilot_responses.mjs <path to github-copilot.ts>
@@ -12,11 +12,13 @@ const cut = (name) => {
 	if (!match) throw new Error(`${name} not found`);
 	return match[0];
 };
-const constants = source.split("\n").slice(9, 19).join("\n");
+const lines = source.split("\n");
+const constants = lines.slice(lines.findIndex((line) => line.startsWith("const decode")), lines.findIndex((line) => line.startsWith("const COPILOT_API_VERSION")) + 1).join("\n");
 // Resolve as a URL, not by string replacement, so Windows backslash paths work too: src/auth/oauth/github-copilot.ts -> src/providers/github-copilot.models.ts.
 const { GITHUB_COPILOT_MODELS } = await import(new URL("../../providers/github-copilot.models.ts", pathToFileURL(process.argv[2])).href);
 const names = ["getUrls", "fetchJson", "startDeviceFlow", "pollForGitHubAccessToken", "refreshGitHubCopilotAccessToken", "getBaseUrlFromToken", "getGitHubCopilotBaseUrl", "asRecord", "parseGitHubCopilotModelCatalog", "fetchWithRateLimitRetry", "fetchGitHubCopilotModels"];
-const body = stripTypeScriptTypes(`${constants}\n${names.map(cut).join("\n")}`);
+const trustedUrl = readFileSync(new URL("trusted-url.ts", pathToFileURL(process.argv[2])), "utf8").match(/^export (function trustedHttpUrl[\s\S]*?\n}\n)/m)[1];
+const body = stripTypeScriptTypes(`${constants}\n${trustedUrl}\n${names.map(cut).join("\n")}`);
 const fns = new Function("pollOAuthDeviceCodeFlow", "GITHUB_COPILOT_MODELS", "sleep", `${body}; return { startDeviceFlow, pollForGitHubAccessToken, refreshGitHubCopilotAccessToken, fetchGitHubCopilotModels };`)((options) => options.poll(), GITHUB_COPILOT_MODELS, async () => {});
 let input = "";
 process.stdin.setEncoding("utf8");

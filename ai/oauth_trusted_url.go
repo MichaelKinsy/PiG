@@ -14,3 +14,15 @@ func trustedURLHref(value string, httpsOnly bool) (href string, ok bool) {
 	}
 	return parsed.Href, true
 }
+
+// trustedHTTPURL is trusted-url.ts trustedHttpUrl, shared by every login flow that opens a server-supplied URL: the normalized href of the http: or https:
+// URL a string value names, or "" for any other value, a string that is not a URL, and a URL of another protocol (which the platform URL handler would
+// launch as a file or a custom protocol).
+func trustedHTTPURL(value any) string {
+	raw, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	href, _ := trustedURLHref(raw, false)
+	return href
+}

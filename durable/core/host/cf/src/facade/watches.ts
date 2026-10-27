@@ -1,8 +1,9 @@
 // Watches and attached states over the core's `watch.open` / `watch.close` api requests (ABI section 8.1). The core answers
 // `watch.open` with the first frame and then publishes every later frame in a `published` notice carrying the `watchId`
-// (host/PROTOCOL.md). A frame is `{value, ops}`; a `null` value retires the document or view.
+// (host/PROTOCOL.md). A frame is `{value, ops}`, `{retired: true}` for the retirement of the document a watch follows, or `{end: true}`
+// once the owner task of a task document ended; a watch follows its address across retirements (session.ts #observeDocument).
 import { withColdLoad } from "./coldload.ts"
-import { replicatedState, type AttachedReplicatedState, type Context } from "@earendil-works/chord"
+import { replicatedState, Watch, type AttachedReplicatedState, type Context, type WatchChange } from "@earendil-works/chord"
 import { BACKGROUND_CONTEXT, awaitWithContext } from "@earendil-works/chord/context"
 import { applyImmutable, type Op } from "@earendil-works/chord/delta"
 import type { CoreClient } from "../client.ts"
@@ -10,7 +11,8 @@ import { migrateRead } from "./tx.ts"
 import { currentCommit } from "./commit-context.ts"
 import { rememberSnapshot, revisionAt, sameContent, shareSnapshot } from "./snapshots.ts"
 import { sharedChange } from "./publications.ts"
-import { CommittedStateSource, CommittedWatch } from "./observation.ts"
+import { CommittedStateSource, guardObserver, observation, RETIREMENT_OPERATIONS } from "./observation.ts"
+import type { Observation, Observer } from "./watch-types.ts"
 
 /** What a watch observes. */
 export type WatchTarget =
@@ -18,14 +20,17 @@ export type WatchTarget =
   | { kind: "view"; conversationId: number; changes?: boolean; completing?: boolean }
   | { kind: "graph" }
 
-/** `value` is absent in a view frame: the host applies `ops` to the value it holds. `changes` (view targets opened with `changes`) are the commit's entry, task and submission records of the conversation. */
-export type Frame = { value?: unknown; ops: readonly Op[]; changes?: { entries: unknown[]; tasks: unknown[]; submissions: unknown[] } }
+/** `value` is absent in a view frame: the host applies `ops` to the value it holds. A retirement and an end frame carry neither. `changes` (view targets opened with `changes`) are the commit's entry, task and submission records of the conversation. */
+export type Frame = { value?: unknown; ops?: readonly Op[]; changes?: { entries: unknown[]; tasks: unknown[]; submissions: unknown[] }; retired?: boolean; end?: boolean }
 
+/** An `Observer` of the mount's value, with what the host adds: the publication of a view frame and the end of a task document's owner. */
 type Sink = {
-  advance(value: unknown, ops: readonly Op[], context: Context): void
+  advance(change: WatchChange<unknown>, context: Context): void
+  /** The owner task of the task document ended, after the retirement change (session.ts endWatch, endGuarded). */
+  ownerEnded?(): void
   /** Called for every frame of a view watch, after `advance`, with the value before and after (view.ts ViewObserver.publication). */
   publication?(before: unknown, after: unknown, ops: readonly Op[], changes: Frame["changes"], context: Context): void
-  closeSession(failure?: { readonly error: unknown }): void
+  end(failure?: { readonly error: unknown }): void
 }
 
 type Mount = { watchId: number; creating?: boolean; answeredMount?: boolean; request?: Promise<unknown>; result?: { value: unknown } | undefined; first?: unknown; completing?: readonly number[]; frames?: Frame[]; waiting: number; members: Set<Sink>; ready: Promise<{ value: unknown } | undefined> }
@@ -54,23 +59,27 @@ export class WatchHub {
   deliver(watchId: number, frame: Frame) {
     const sink = this.sinks.get(watchId)
     // The frame of a document watch repeats a change of the commit's publication: it holds that change's objects.
-    const change = this.targets.get(watchId)?.kind === "doc" ? sharedChange(this.client, frame) : undefined
+    const change = this.targets.get(watchId)?.kind === "doc" && frame.ops !== undefined ? sharedChange(this.client, frame as { value?: unknown; ops: readonly Op[] }) : undefined
     if (change !== undefined) frame = { ...frame, ...(frame.value === undefined ? {} : { value: change.value }), ops: change.ops as never }
     if (!sink) { this.early.get(watchId)?.push(frame); return }
     this.apply(watchId, sink, frame, currentCommit(this.client) ?? this.context)
   }
 
   private apply(watchId: number, sink: Sink, frame: Frame, context: Context) {
+    if (frame.end === true) { sink.ownerEnded?.(); return }
     const before = this.values.get(watchId)
+    // A retirement repeats the last value the watch was given, with no ops.
+    if (frame.retired === true) { sink.advance({ value: before, ops: [], retired: true }, context); return }
+    const frameOps = frame.ops ?? []
     const target = this.targets.get(watchId)
     // The frame of a commit this host wrote carries the revision its draft prepared (snapshots.ts Revision), as the Storage write and the publication do.
     const revision = target?.kind === "doc" ? revisionAt(this.client, target.address as never) : undefined
     const value = revision !== undefined && frame.value !== undefined && frame.value !== null && sameContent(frame.value, revision.value) ? revision.value : frame.value
-    const ops = revision !== undefined && sameContent(frame.ops, revision.ops) ? revision.ops as never[] : frame.ops
+    const ops = revision !== undefined && sameContent(frameOps, revision.ops) ? revision.ops as never[] : frameOps
     const after = value !== undefined ? value : ops.length > 0 ? applyImmutable(before as never, ops as never) : before
     this.values.set(watchId, after)
     if (target?.kind === "doc" && after !== undefined && after !== null ) rememberSnapshot(this.client, target.address, target.def as { kind?: unknown } | undefined, after)
-    if (ops.length > 0 || value !== undefined) sink.advance(after, ops, context)
+    if (ops.length > 0 || value !== undefined) sink.advance({ value: after, ops, retired: false }, context)
     sink.publication?.(before, after, ops, frame.changes, context)
   }
 
@@ -212,9 +221,10 @@ export class WatchHub {
   private fanOut(mount: Mount): Sink {
     const each = (call: (sink: Sink) => void) => { for (const sink of [...mount.members]) { try { call(sink) } catch (error) { this.report(error as Error) } } }
     return {
-      advance: (value, ops, context) => each(sink => sink.advance(value, ops, context)),
+      advance: (change, context) => each(sink => sink.advance(change, context)),
+      ownerEnded: () => each(sink => sink.ownerEnded?.()),
       publication: (before, after, ops, changes, context) => each(sink => sink.publication?.(before, after, ops, changes, context)),
-      closeSession: failure => each(sink => sink.closeSession(failure)),
+      end: failure => each(sink => sink.end(failure)),
     }
   }
 
@@ -231,23 +241,46 @@ export class WatchHub {
   }
 
   /** A serialized exact-frame watch, or undefined when the target is absent (upstream: `watchDoc` resolves undefined). */
-  async watch<T>(target: WatchTarget, context: Context): Promise<CommittedWatch<T> | undefined> {
-    let watch: CommittedWatch<T> | undefined
+  async watch<T>(target: WatchTarget, context: Context): Promise<Watch<T> | undefined> {
+    let watch: Watch<T> | undefined
     await this.open<T>(target, context, (value, release) => {
-      watch = new CommittedWatch<T>(value, release, error => this.report(error as Error))
-      return watch as unknown as Sink
+      const made = watch = new Watch<T>(value, release, error => this.report(error as Error))
+      // A task document's watch delivers the retirement that ends its task, then ends (session.ts endWatch).
+      return { advance: (change, context) => made.advance(change as WatchChange<T>, context), ownerEnded: () => made.endAfterDelivery(), end: failure => made.end(failure) }
     })
-    // A document watch ends as cancelled when its caller's context is cancelled later (session.ts watchDoc: observeCancellation).
-    if (watch !== undefined && target.kind === "doc" && context.abortSignal !== undefined) watch.observeCancellation(context.abortSignal)
+    // A watch ends as cancelled when its caller's context is cancelled later (session.ts watchDoc, view.ts watch: observeCancellation).
+    if (watch !== undefined && context.abortSignal !== undefined) watch.observeCancellation(context.abortSignal)
     return watch
+  }
+
+  /**
+   * Attach `observer` to the target, behind `guardObserver()`: `undefined` when the target is absent. The attachment's `context`
+   * governs only the attachment: cancelled while attaching, the promise rejects and nothing stays attached.
+   */
+  async observe<T>(target: WatchTarget, observer: Observer<T>, context: Context): Promise<Observation<T> | undefined> {
+    let value!: T
+    let guarded!: ReturnType<typeof guardObserver<T>>
+    const sink = await this.open<T>(target, context, (current, release) => {
+      value = current
+      guarded = guardObserver(observer, release, error => this.report(error as Error))
+      return { advance: (change, context) => guarded.advance(change as WatchChange<T>, context), ownerEnded: () => guarded.end(undefined), end: failure => guarded.end(failure) }
+    })
+    if (sink === undefined) return undefined
+    const signal = context.abortSignal
+    if (signal?.aborted) {
+      guarded.detach()
+      throw signal.reason
+    }
+    return observation(value, guarded)
   }
 
   /** Disposable read-only Chord state of the target, or undefined when absent. */
   async state<T>(target: WatchTarget, context: Context): Promise<AttachedReplicatedState<T> | undefined> {
     let source: CommittedStateSource<T> | undefined
     await this.open<T>(target, context, (value, release) => {
-      source = new CommittedStateSource<T>(value, release)
-      return source as unknown as Sink
+      const made = source = new CommittedStateSource<T>(value, release)
+      // The source is retired by a null value: the host's state does not follow the address (a Chord source has no such state).
+      return { advance: (change, context) => change.retired ? made.advance(null as never, RETIREMENT_OPERATIONS, context) : made.advance(change.value as T, change.ops, context), ownerEnded: () => made.closeSession(), end: () => made.closeSession() }
     })
     return source ? replicatedState(source as never) as AttachedReplicatedState<T> : undefined
   }
@@ -280,6 +313,6 @@ export class WatchHub {
     const sinks = [...this.sinks.values()]
     this.sinks.clear()
     this.mounts.clear()
-    for (const sink of sinks) sink.closeSession(failure)
+    for (const sink of sinks) sink.end(failure)
   }
 }

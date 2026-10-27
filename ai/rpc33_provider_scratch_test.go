@@ -80,9 +80,9 @@ func TestProviderScratchFunctionLifecycle(t *testing.T) {
 					"data: [DONE]\n\n",
 				}
 				want = []string{
-					`[{"type":"toolCall","id":"call-a","name":"read","arguments":{},"partialArgs":""}]`,
-					`[{"type":"toolCall","id":"call-a","name":"read","arguments":{"path":"tar"},"partialArgs":"{\"path\":\"tar","streamIndex":0}]`,
-					`[{"type":"toolCall","id":"call-a","name":"read","arguments":{"path":"target","count":2},"partialArgs":"{\"path\":\"target\",\"count\":2,","streamIndex":0}]`,
+					`[{"type":"toolCall","id":"call-a","name":"read","arguments":{}}]`,
+					`[{"type":"toolCall","id":"call-a","name":"read","arguments":{"path":"tar"}}]`,
+					`[{"type":"toolCall","id":"call-a","name":"read","arguments":{"path":"target","count":2}}]`,
 				}
 			} else {
 				frames = []string{
@@ -93,9 +93,9 @@ func TestProviderScratchFunctionLifecycle(t *testing.T) {
 					responseScratchFrame("completed", `"response":{"status":"completed"}`),
 				}
 				want = []string{
-					`[{"type":"toolCall","id":"call-a|item-a","name":"read","arguments":{},"partialJson":"{\"path\":"}]`,
-					`[{"type":"toolCall","id":"call-a|item-a","name":"read","arguments":{"path":"tar"},"partialJson":"{\"path\":\"tar"}]`,
-					`[{"type":"toolCall","id":"call-a|item-a","name":"read","arguments":{"other":true},"partialJson":"{\"other\":true}"}]`,
+					`[{"type":"toolCall","id":"call-a|item-a","name":"read","arguments":{}}]`,
+					`[{"type":"toolCall","id":"call-a|item-a","name":"read","arguments":{"path":"tar"}}]`,
+					`[{"type":"toolCall","id":"call-a|item-a","name":"read","arguments":{"other":true}}]`,
 					`[{"type":"toolCall","id":"call-a|item-a","name":"read","arguments":{"other":true},"namespace":"final"}]`,
 				}
 			}
@@ -208,8 +208,8 @@ func TestProviderScratchCustomLifecycle(t *testing.T) {
 						"data: [DONE]\n\n",
 					}
 					want = []string{
-						`[{"type":"toolCall","id":"call","name":"grammar","arguments":{"payload":""},"streamIndex":0,"customInput":{"property":"payload","jsonBuffer":{"input":"","started":false,"closed":false}}}]`,
-						`[{"type":"toolCall","id":"call","name":"grammar","arguments":{"payload":"a\"\n"},"streamIndex":0,"customInput":{"property":"payload","jsonBuffer":{"input":"a\"\n","started":true,"closed":false}}}]`,
+						`[{"type":"toolCall","id":"call","name":"grammar","arguments":{"payload":""}}]`,
+						`[{"type":"toolCall","id":"call","name":"grammar","arguments":{"payload":"a\"\n"}}]`,
 					}
 				} else {
 					frames = []string{
@@ -220,9 +220,9 @@ func TestProviderScratchCustomLifecycle(t *testing.T) {
 						responseScratchFrame("completed", `"response":{"status":"completed"}`),
 					}
 					want = []string{
-						`[{"type":"toolCall","id":"call|item","name":"grammar","arguments":{"payload":"a"},"customInput":{"property":"payload","jsonBuffer":{"input":"","started":false,"closed":false}}}]`,
-						`[{"type":"toolCall","id":"call|item","name":"grammar","arguments":{"payload":"a\"\n"},"customInput":{"property":"payload","jsonBuffer":{"input":"a\"\n","started":true,"closed":false}}}]`,
-						`[{"type":"toolCall","id":"call|item","name":"grammar","arguments":{"payload":"a\"\n"},"customInput":{"property":"payload","jsonBuffer":{"input":"a\"\n","started":true,"closed":true}}}]`,
+						`[{"type":"toolCall","id":"call|item","name":"grammar","arguments":{"payload":"a"}}]`,
+						`[{"type":"toolCall","id":"call|item","name":"grammar","arguments":{"payload":"a\"\n"}}]`,
+						`[{"type":"toolCall","id":"call|item","name":"grammar","arguments":{"payload":"a\"\n"}}]`,
 						`[{"type":"toolCall","id":"call|item","name":"grammar","arguments":{"payload":"a\"\n"}}]`,
 					}
 				}
@@ -484,11 +484,11 @@ func TestProviderScratchThroughStream(t *testing.T) {
 				resume := sync.OnceFunc(func() { close(release) })
 				first := completionToolFrame(`[{"id":"call","index":0,"function":{"name":"read","arguments":"{\"path\":\"tar"}}]`, `null`)
 				last := completionToolFrame(`[{"index":0,"function":{"arguments":"get\"}"}}]`, `"tool_calls"`) + "data: [DONE]\n\n"
-				want := `[{"type":"toolCall","id":"call","name":"read","arguments":{"path":"tar"},"partialArgs":"{\"path\":\"tar","streamIndex":0}]`
+				want := `[{"type":"toolCall","id":"call","name":"read","arguments":{"path":"tar"}}]`
 				if api == APIOpenAIResponses {
 					first = responseScratchFrame("output_item.added", `"output_index":0,"item":{"type":"function_call","id":"item","call_id":"call","name":"read","arguments":""}`) + responseScratchFrame("function_call_arguments.delta", `"output_index":0,"delta":"{\"path\":\"tar"`)
 					last = responseScratchFrame("output_item.done", `"output_index":0,"item":{"type":"function_call","arguments":"{\"path\":\"target\"}"}`) + responseScratchFrame("completed", `"response":{"status":"completed"}`)
-					want = `[{"type":"toolCall","id":"call|item","name":"read","arguments":{"path":"tar"},"partialJson":"{\"path\":\"tar"}]`
+					want = `[{"type":"toolCall","id":"call|item","name":"read","arguments":{"path":"tar"}}]`
 				}
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 					if request.Header.Get("Authorization") != "Bearer scratch-key" {

@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0+74f46864",
+  "piVersion": "1.4.0+6c384aa3",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -115,7 +115,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 27
+        "durationMs": 32
       }
     },
     {
@@ -1325,7 +1325,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -1622,7 +1622,7 @@
         },
         "stopReason": "error",
         "errorMessage": "p stream ended without a terminal event",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -1763,7 +1763,7 @@
         "stopReason": "error",
         "errorMessage": "backend failed",
         "responseId": "r2",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -2159,7 +2159,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -2234,7 +2234,7 @@
         },
         "stopReason": "error",
         "errorMessage": "body failed",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {

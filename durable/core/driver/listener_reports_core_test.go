@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
 
-// Pi reports a failing watch listener through the Session: every CommittedWatch is built with the Session's report
+// Pi reports a failing watch listener through the Session: every Watch is built with the Session's report
 // (session.ts watchDoc, view.ts watch, task-graph.ts watch), which also ends the watch. The Harness over the core reports
 // them the same way.
 
@@ -66,7 +66,7 @@ func TestCoreReportsAFailingWatchListenerAndEndsTheWatch(t *testing.T) {
 			t.Fatal(err)
 		}
 		failure := errors.New("view watch listener failed")
-		watch.Start(func(context.Context, harness.ConversationView, []durable.Op) error { return failure })
+		watch.Start(func(_ context.Context, change durable.WatchChange[harness.ConversationView]) error { return failure })
 		appendCoreNote(t, root)
 		expectWatchListenerError(t, watch.Closed(), watch.End, failure)
 		expectReport(t, reports, failure)
@@ -80,7 +80,7 @@ func TestCoreReportsAFailingWatchListenerAndEndsTheWatch(t *testing.T) {
 			t.Fatalf("watch: %v %v", watch, err)
 		}
 		failure := errors.New("document watch listener failed")
-		watch.Start(func(context.Context, durable.JsonObject, []durable.Op) error { return failure })
+		watch.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error { return failure })
 		commitCoreDoc(t, h, increment(stateDoc))
 		expectWatchListenerError(t, watch.Closed(), watch.End, failure)
 		expectReport(t, reports, failure)
@@ -88,7 +88,7 @@ func TestCoreReportsAFailingWatchListenerAndEndsTheWatch(t *testing.T) {
 }
 
 func TestCoreReportsAFailingAgentEventListenerAndEndsTheStream(t *testing.T) {
-	// Pi events.ts watchEvents builds its CommittedWatch with `(error) => views.report(error)`.
+	// Pi events.ts watchEvents builds its Watch with `(error) => views.report(error)`.
 	reports := make(chan error, 16)
 	h, root, submit := nestedCoreOpen(t, &durable.Extension{Name: "nested", Tools: []*durable.ToolRegistration{
 		nestedCoreTool("batch", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -100,7 +100,7 @@ func TestCoreReportsAFailingAgentEventListenerAndEndsTheStream(t *testing.T) {
 		t.Fatal(err)
 	}
 	failure := errors.New("event listener failed")
-	stream.Start(func(context.Context, []harness.AgentEvent) error { return failure })
+	stream.Start(func(_ context.Context, _ durable.NativeWatchChange[[]harness.AgentEvent]) error { return failure })
 	submit()
 	expectWatchListenerError(t, stream.Closed(), stream.End, failure)
 	expectReport(t, reports, failure)

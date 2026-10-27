@@ -1,6 +1,6 @@
 """Pi's ``ModelRuntime`` class (core/model-runtime.ts): the configured model collection an extension builds over its own credential and model files, for models, provider auth, completions and the registrations a Session shares. The host owns the object for the extension's connection; this object holds its name. Models are Pi's Model objects as dicts and every result is Pi's in the JSON shape of Pi's types.
 
-The Provider objects of Pi's class (``getProviders``, ``getProvider``, ``getRegisteredNativeProvider``, ``registerNativeProvider``) are not here: a Provider holds functions the host cannot run on the extension's behalf (the Provider surface D78 records). ``register_provider`` takes a configuration without functions. ``streamDeferred``, ``fetchDeferred`` and ``cancelDeferred`` are not here either."""
+The Provider objects of Pi's class (``getProviders``, ``getProvider``, ``getRegisteredNativeProvider``, ``registerNativeProvider``): the Provider object this extension registers here stays in this process and the host's runtime calls it over the connection; a builtin or composed provider has no carrier (the Provider surface D78 records). ``register_provider`` takes a configuration without functions. ``streamDeferred``, ``fetchDeferred`` and ``cancelDeferred`` are not here."""
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -203,3 +203,33 @@ class ModelRuntime(_GraphObject):
 
     def complete_simple(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> dict[str, Any] | None:
         return self.stream_simple(model, request, options).result()
+
+    def register_native_provider(self, provider: Any) -> None:
+        """``registerNativeProvider(provider)``: the provider's catalog, authentication and API run in this process, for this runtime."""
+        from .provider import register_native
+
+        declaration = register_native(self._context.extension, provider)
+        self._invoke("registerNativeProvider", declaration)
+
+    def _provider_object(self, declaration: dict[str, Any] | None) -> Any:
+        if declaration is None:
+            return None
+        from . import _provider_from_declaration
+
+        return _provider_from_declaration(self._context, declaration)
+
+    def get_registered_native_provider(self, provider_name: str) -> Any:
+        """``getRegisteredNativeProvider(providerName)``: the Provider object registered for the name, ``None`` when there is none."""
+        return self._provider_object(self._invoke("getRegisteredNativeProvider", provider_name))
+
+    def get_provider(self, provider: str) -> Any:
+        """``getProvider(provider)``: the Provider object of the provider, ``None`` when the runtime has none by that id. A builtin or composed provider raises the D78 error."""
+        return self._provider_object(self._invoke("getProvider", provider))
+
+    def get_providers(self) -> list[Any]:
+        """``getProviders()``: the Provider object of every provider of the runtime."""
+        return [self._provider_object(declaration) for declaration in self._invoke("getProviders")]
+
+    def _provider_display_name(self, provider: str) -> str:
+        name = self._invoke("providerName", provider)
+        return provider if name is None else name

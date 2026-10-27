@@ -90,6 +90,18 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "echo hi"}, "ops": "custom", "noContext": true},
 			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "echo one; sleep 0.4; echo two"}, "updates": true, "noContext": true},
 			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "echo original"}, "hook": true, "noContext": true},
+			// The definition's prepareArguments (edit.ts:103): the legacy shapes a model sends, and the tools that have none
+			{"kind": "prepare", "tool": "edit", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "oldText": "x", "newText": "y"}},
+			{"kind": "prepare", "tool": "edit", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "edits": `[{"oldText":"x","newText":"y"},{"oldText":"p","newText":"q"}]`}},
+			{"kind": "prepare", "tool": "edit", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "edits": ` {"oldText":"x","newText":"y"}`}},
+			{"kind": "prepare", "tool": "edit", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "edits": tcase{"oldText": "x", "newText": "y"}}},
+			{"kind": "prepare", "tool": "edit", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "edits": []tcase{{"oldText": "a", "newText": "b"}}, "oldText": "x", "newText": "y"}},
+			{"kind": "prepare", "tool": "edit", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "edits": []tcase{{"oldText": "a", "newText": "b"}}}},
+			{"kind": "prepare", "tool": "edit", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "edits": "not json"}},
+			{"kind": "prepare", "tool": "edit", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "oldText": "x", "newText": 5}},
+			{"kind": "prepare", "tool": "write", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "content": "c"}},
+			{"kind": "prepare", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt"}},
+			{"kind": "prepare", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "true"}},
 			// A truncated read's details, whose members Pi writes in an order a sorted map would lose
 			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "big.txt"}},
 			// createCodingTools and createReadOnlyTools
@@ -262,6 +274,30 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		{32, definitionField("promptGuidelines"), `null`},
 		{33, definitionField("promptSnippet"), `"Search file contents for patterns (respects .gitignore)"`},
 	}
+	prepared := func(report map[string]any) string {
+		if has, _ := report["has"].(bool); !has {
+			return "no prepareArguments"
+		}
+		encoded, _ := json.Marshal(report["prepared"])
+		return string(encoded)
+	}
+	// Pi's createEditToolDefinition carries prepareArguments (edit.ts:158) and no other built-in's definition does.
+	const firstPrepare = 47
+	for i, want := range []string{
+		`{"edits":[{"newText":"y","oldText":"x"}],"path":"a.txt"}`,
+		`{"edits":[{"newText":"y","oldText":"x"},{"newText":"q","oldText":"p"}],"path":"a.txt"}`,
+		`{"edits":[{"newText":"y","oldText":"x"}],"path":"a.txt"}`,
+		`{"edits":[{"newText":"y","oldText":"x"}],"path":"a.txt"}`,
+		`{"edits":[{"newText":"b","oldText":"a"},{"newText":"y","oldText":"x"}],"path":"a.txt"}`,
+		`{"edits":[{"newText":"b","oldText":"a"}],"path":"a.txt"}`,
+		`{"edits":"not json","path":"a.txt"}`,
+		`{"newText":5,"oldText":"x","path":"a.txt"}`,
+		"no prepareArguments", "no prepareArguments", "no prepareArguments",
+	} {
+		if got := prepared(reference[firstPrepare+i]); got != want {
+			t.Fatalf("Pi's own prepareArguments reported %s for case %d (%v), want %s: the reference is not Pi's behavior", got, firstPrepare+i, referenceCases[firstPrepare+i], want)
+		}
+	}
 	if got, _ := json.Marshal(reference[len(reference)-1]); string(got) != `{"coding":["read","bash","edit","write"],"readOnly":["read","grep","find","ls"]}` {
 		t.Fatalf("Pi's own createCodingTools and createReadOnlyTools reported %s", got)
 	}
@@ -380,6 +416,87 @@ func TestConformance_BuiltinToolOverrideDelegatesAcrossSDKs(t *testing.T) {
 			// The built-in throws for a missing file; the override does not catch it, so the model sees Pi's error.
 			if !results[2].IsError || !strings.Contains(results[2].Text(), "ENOENT: no such file or directory, access") {
 				t.Errorf("read of a missing file = %q (error %t), want the built-in's thrown error", results[2].Text(), results[2].IsError)
+			}
+		})
+	}
+}
+
+// TestConformance_BuiltinEditOverrideNormalisesLegacyArgumentsAcrossSDKs: an override built as `{ ...createEditToolDefinition(cwd), execute }` carries the built-in's
+// prepareArguments (edit.ts:103,158), so a model that sends `edits` as a JSON string, a single edit object or the legacy top-level `{path, oldText, newText}` still
+// has its edit applied. The host runs the override's hook before it validates the arguments (agent-loop.ts:707-716); an SDK whose definition drops the hook hands the
+// override the legacy shape, the edit is not applied and the file keeps its content, which is read from the host's disk. The override runs the built-in on the host,
+// so the sentinel around its result cannot come from an SDK that never made the call.
+func TestConformance_BuiltinEditOverrideNormalisesLegacyArgumentsAcrossSDKs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	t.Parallel()
+	harnessCases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
+	for _, tc := range harnessCases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			probe := func(c map[string]any) map[string]any {
+				args, _ := json.Marshal(c)
+				before := len(h.ui.Recorded())
+				if !h.runner.ExecuteCommand(context.Background(), "builtin_probe", string(args)) {
+					t.Fatal("fixture has no builtin_probe command")
+				}
+				var reported string
+				pollUntilConformance(t, "builtin_probe: no report", func() bool {
+					for _, n := range h.ui.Recorded()[before:] {
+						if rest, ok := strings.CutPrefix(n, "builtin:"); ok {
+							reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
+							return true
+						}
+					}
+					return false
+				})
+				var got map[string]any
+				if err := json.Unmarshal([]byte(reported), &got); err != nil {
+					t.Fatal(err)
+				}
+				return got
+			}
+			hostCwd := probe(map[string]any{"kind": "cwd"})["cwd"].(string)
+			files := map[string]string{"legacy.txt": "alpha\n", "string.txt": "beta\n", "single.txt": "gamma\n", "plain.txt": "delta\n"}
+			for name, content := range files {
+				if err := os.WriteFile(filepath.Join(hostCwd, name), []byte(content), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			registered := probe(map[string]any{"kind": "registerEdit", "factoryCwd": t.TempDir()})["registered"]
+			if !reflect.DeepEqual(registered, []any{"edit"}) {
+				t.Fatalf("registered = %v, want the edit override", registered)
+			}
+			results := dispatchToolCalls(t, h, []ai.FauxContentBlock{
+				ai.FauxToolCall("edit", map[string]any{"path": "legacy.txt", "oldText": "alpha", "newText": "ALPHA"}, &ai.FauxToolCallOptions{ID: "edit-legacy"}),
+				ai.FauxToolCall("edit", map[string]any{"path": "string.txt", "edits": `[{"oldText":"beta","newText":"BETA"}]`}, &ai.FauxToolCallOptions{ID: "edit-string"}),
+				ai.FauxToolCall("edit", map[string]any{"path": "single.txt", "edits": map[string]any{"oldText": "gamma", "newText": "GAMMA"}}, &ai.FauxToolCallOptions{ID: "edit-single"}),
+				ai.FauxToolCall("edit", map[string]any{"path": "plain.txt", "edits": []any{map[string]any{"oldText": "delta", "newText": "DELTA"}}}, &ai.FauxToolCallOptions{ID: "edit-plain"}),
+			})
+			if len(results) != 4 {
+				t.Fatalf("%d results, want 4: %s", len(results), describeToolResults(results))
+			}
+			for i, name := range []string{"legacy.txt", "string.txt", "single.txt", "plain.txt"} {
+				want := "«edited:Successfully replaced 1 block(s) in " + name + ".»"
+				if results[i].IsError || results[i].Text() != want {
+					t.Errorf("edit override of %s = %q (error %t), want %q", name, results[i].Text(), results[i].IsError, want)
+				}
+				content, err := os.ReadFile(filepath.Join(hostCwd, name))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if want := strings.ToUpper(files[name]); string(content) != want {
+					t.Errorf("%s = %q after the override ran, want %q: the model's arguments reached the override unnormalised", name, content, want)
+				}
 			}
 		})
 	}

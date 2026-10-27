@@ -118,12 +118,17 @@ func TestWatchDocRejectsAnAddressItCannotResolveBeforeQueueing(t *testing.T) {
 	must(t, <-committed)
 }
 
-func TestWatchReleasesItsCommitSubscriptionWhenItEnds(t *testing.T) {
+func TestWatchReleasesItsObserverSubscriptionWhenItEnds(t *testing.T) {
 	harness := createWatchHarness(t)
-	baseline, closeBaseline := harness.Session.CommitSubscriptions(), session.CloseSubscriptions(harness.Session)
+	baseline, closeBaseline := harness.Session.ObserverSubscriptions(), session.CloseSubscriptions(harness.Session)
+	commitBaseline := harness.Session.CommitSubscriptions()
 	stopped := watchDoc(t, harness, context.Background(), watchStateDoc)
-	if got := harness.Session.CommitSubscriptions(); got != baseline+1 {
-		t.Fatalf("a live watch holds %d commit subscriptions, want %d", got, baseline+1)
+	if got := harness.Session.ObserverSubscriptions(); got != baseline+1 {
+		t.Fatalf("a live watch holds %d observer subscriptions, want %d", got, baseline+1)
+	}
+	// A watch follows memory, so it does not wait for a stored publication: it holds no host subscription.
+	if got := harness.Session.CommitSubscriptions(); got != commitBaseline {
+		t.Fatalf("a live watch holds %d commit subscriptions, want %d", got, commitBaseline)
 	}
 	if _, err := stopped.Stop(); err != nil {
 		t.Fatal(err)
@@ -131,14 +136,14 @@ func TestWatchReleasesItsCommitSubscriptionWhenItEnds(t *testing.T) {
 	if got := session.CloseSubscriptions(harness.Session); got != closeBaseline {
 		t.Fatalf("a stopped watch holds %d close subscriptions, want %d", got, closeBaseline)
 	}
-	if got := harness.Session.CommitSubscriptions(); got != baseline {
-		t.Fatalf("a stopped watch holds %d commit subscriptions, want %d", got, baseline)
+	if got := harness.Session.ObserverSubscriptions(); got != baseline {
+		t.Fatalf("a stopped watch holds %d observer subscriptions, want %d", got, baseline)
 	}
 	child, cancel := context.WithCancel(context.Background())
 	cancelled := watchDoc(t, harness, child, watchStateDoc)
 	cancel()
 	closedEnd(t, cancelled)
-	if got := harness.Session.CommitSubscriptions(); got != baseline {
-		t.Fatalf("a cancelled watch holds %d commit subscriptions, want %d", got, baseline)
+	if got := harness.Session.ObserverSubscriptions(); got != baseline {
+		t.Fatalf("a cancelled watch holds %d observer subscriptions, want %d", got, baseline)
 	}
 }

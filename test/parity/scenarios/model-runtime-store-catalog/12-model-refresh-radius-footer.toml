@@ -42,7 +42,7 @@ capture_end = "catalog-providers:2"
 
 [[tmux.steps]]
 keys = ["/model", "Enter"]
-wait_contains = ["→ ✓ current [fixture]", "auto [radius-dev]", "Model catalogs refreshed."]
+wait_contains = ["→ ✓ current [fixture]", "auto (Radius Metadata) [radius-dev]", "Model catalogs refreshed."]
 wait_timeout_seconds = 20
 
 [[tmux.steps]]

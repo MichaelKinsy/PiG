@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -200,7 +201,8 @@ func TestExample04Watches(t *testing.T) {
 		t.Fatalf("watch baseline: %q", baseline)
 	}
 	updates := make(chan string, 1)
-	notesWatch.Start(func(_ context.Context, value durable.JsonObject, _ []durable.Op) error {
+	notesWatch.Start(func(_ context.Context, change chord.WatchChange[durable.JsonObject]) error {
+		value := change.Value
 		text, _ := value.Value("text").(string)
 		select {
 		case updates <- text:

@@ -1,0 +1,73 @@
+pkg:ai/.#JsonChange	ai	no-go-symbol	
+pkg:ai/.#JsonPath	ai	no-go-symbol	
+pkg:ai/.#StreamingJsonParser	ai	no-go-symbol	
+pkg:ai/.#StreamingJsonParser::construct:0	ai	child-gap	
+pkg:ai/.#StreamingJsonParser::property:append	ai	child-gap	
+pkg:ai/.#StreamingJsonParser::property:append::call:0	ai	child-gap	
+pkg:ai/.#StreamingJsonParser::property:snapshot	ai	child-gap	
+pkg:ai/.#StreamingJsonParser::property:snapshot::call:0	ai	child-gap	
+pkg:ai/.#ToolCallArgumentsStream	ai	no-go-symbol	
+pkg:ai/.#ToolCallArgumentsStream::construct:0	ai	child-gap	
+pkg:ai/.#ToolCallArgumentsStream::property:append	ai	child-gap	
+pkg:ai/.#ToolCallArgumentsStream::property:append::call:0	ai	child-gap	
+pkg:ai/.#ToolCallArgumentsStream::property:finish	ai	child-gap	
+pkg:ai/.#ToolCallArgumentsStream::property:finish::call:0	ai	child-gap	
+pkg:ai/.#ToolCallArgumentsStream::property:replace	ai	child-gap	
+pkg:ai/.#ToolCallArgumentsStream::property:replace::call:0	ai	child-gap	
+pkg:ai/.#ToolCallArgumentsStream::property:text	ai	child-gap	
+pkg:ai/api/constrained-sampling#appendGrammarToolInputJsonDelta	ai	child-gap	ai/constrained_sampling.go#appendGrammarToolInputJSONDelta
+pkg:ai/api/constrained-sampling#appendGrammarToolInputJsonDelta::call:0	ai	signature-mismatch	ai/constrained_sampling.go#appendGrammarToolInputJSONDelta
+pkg:ai/api/constrained-sampling#closeGrammarToolInputJson	ai	no-go-symbol	
+pkg:ai/api/constrained-sampling#closeGrammarToolInputJson::call:0	ai	child-gap	
+pkg:ai/compat#JsonChange	ai	no-go-symbol	
+pkg:ai/compat#JsonPath	ai	no-go-symbol	
+pkg:ai/compat#StreamingJsonParser	ai	no-go-symbol	
+pkg:ai/compat#StreamingJsonParser::construct:0	ai	child-gap	
+pkg:ai/compat#StreamingJsonParser::property:append	ai	child-gap	
+pkg:ai/compat#StreamingJsonParser::property:append::call:0	ai	child-gap	
+pkg:ai/compat#StreamingJsonParser::property:snapshot	ai	child-gap	
+pkg:ai/compat#StreamingJsonParser::property:snapshot::call:0	ai	child-gap	
+pkg:ai/compat#ToolCallArgumentsStream	ai	no-go-symbol	
+pkg:ai/compat#ToolCallArgumentsStream::construct:0	ai	child-gap	
+pkg:ai/compat#ToolCallArgumentsStream::property:append	ai	child-gap	
+pkg:ai/compat#ToolCallArgumentsStream::property:append::call:0	ai	child-gap	
+pkg:ai/compat#ToolCallArgumentsStream::property:finish	ai	child-gap	
+pkg:ai/compat#ToolCallArgumentsStream::property:finish::call:0	ai	child-gap	
+pkg:ai/compat#ToolCallArgumentsStream::property:replace	ai	child-gap	
+pkg:ai/compat#ToolCallArgumentsStream::property:replace::call:0	ai	child-gap	
+pkg:ai/compat#ToolCallArgumentsStream::property:text	ai	child-gap	
+pkg:ai/utils/streaming-json#JsonChange	ai	no-go-symbol	
+pkg:ai/utils/streaming-json#JsonPath	ai	no-go-symbol	
+pkg:ai/utils/streaming-json#StreamingJsonParser	ai	no-go-symbol	
+pkg:ai/utils/streaming-json#StreamingJsonParser::construct:0	ai	child-gap	
+pkg:ai/utils/streaming-json#StreamingJsonParser::property:append	ai	child-gap	
+pkg:ai/utils/streaming-json#StreamingJsonParser::property:append::call:0	ai	child-gap	
+pkg:ai/utils/streaming-json#StreamingJsonParser::property:snapshot	ai	child-gap	
+pkg:ai/utils/streaming-json#StreamingJsonParser::property:snapshot::call:0	ai	child-gap	
+pkg:ai/utils/streaming-json#ToolCallArgumentsStream	ai	no-go-symbol	
+pkg:ai/utils/streaming-json#ToolCallArgumentsStream::construct:0	ai	child-gap	
+pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:append	ai	child-gap	
+pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:append::call:0	ai	child-gap	
+pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:finish	ai	child-gap	
+pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:finish::call:0	ai	child-gap	
+pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:replace	ai	child-gap	
+pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:replace::call:0	ai	child-gap	
+pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:text	ai	child-gap	
+pkg:ai/utils/text#ownedSlice	ai	no-go-symbol	
+pkg:ai/utils/text#ownedSlice::call:0	ai	child-gap	
+pkg:chord/.#NativeWatch	chord	child-gap	chord/watch_impl.go#NativeWatch
+pkg:chord/.#NativeWatch::construct:0	chord	signature-mismatch	chord/watch_impl.go#NewNativeWatch
+pkg:chord/.#Watch	chord	child-gap	chord/watch_impl.go#Watch
+pkg:chord/.#Watch::construct:0	chord	signature-mismatch	chord/watch_impl.go#NewWatch
+pkg:chord/delta#PendingOps	chord	no-go-symbol	
+pkg:chord/delta#PendingOps::construct:0	chord	child-gap	
+pkg:chord/delta#PendingOps::property:push	chord	child-gap	
+pkg:chord/delta#PendingOps::property:push::call:0	chord	child-gap	
+pkg:chord/delta#PendingOps::property:size	chord	child-gap	
+pkg:chord/delta#PendingOps::property:take	chord	child-gap	
+pkg:chord/delta#PendingOps::property:take::call:0	chord	child-gap	
+pkg:chord/delta#PendingTake	chord	no-go-symbol	
+pkg:chord/delta#appendText	chord	no-go-symbol	
+pkg:chord/delta#appendText::call:0	chord	child-gap	
+pkg:chord/delta#ownedSlice	chord	no-go-symbol	
+pkg:chord/delta#ownedSlice::call:0	chord	child-gap	

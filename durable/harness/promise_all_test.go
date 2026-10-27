@@ -22,3 +22,12 @@ func promiseAll(calls ...func()) {
 	}
 	wg.Wait()
 }
+
+// callAsync is a call to one of Pi's async functions whose Promise the test awaits later: JavaScript runs the call
+// synchronously up to its first await, so by the time it returns, a waitForTask() has taken its place on the Session line
+// and no commit the test starts next can overtake it. call runs on its own goroutine, and callAsync returns once it has
+// entered (returned or waits, internal/entered); the test collects what call produces itself.
+func callAsync(call func()) {
+	wait := entered.Go(call)
+	wait()
+}

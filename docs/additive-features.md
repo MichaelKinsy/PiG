@@ -1590,6 +1590,25 @@ Remove when: Pi installs Packages with lifecycle scripts disabled, or Pi gives i
 Approval: owner, Piglet builder port decision D8 (`PIGLETS-BUILDER-PORT-REQUESTS.md`, section 5.3, approved as recommended 2026-10-22).
 SCRUTINIZED:approved
 
+## D201 The SDK resource loader takes the runtime its extensions register against
+
+Stock disposition: required substrate. It is an optional argument of the SDK loaders that a program building an ExtensionRunner needs, and a load without it behaves as Pi's does.
+
+What: The `DefaultResourceLoader` of the Go, Rust and Python SDKs takes an optional `runtime` (Go `Runtime`, Rust `runtime`, Python `runtime`), a value `createExtensionRuntime()` returned. The extensions the loader loads register against that runtime, so an `ExtensionRunner` built over them with the same runtime sees their flags, provider registrations and MCP servers. Without it each reload makes its own runtime, as Pi's does, and `getExtensions().runtime` returns the runtime of the load.
+
+Pi source: `packages/coding-agent/src/core/resource-loader.ts` `DefaultResourceLoader` has no `runtime` option; `core/extensions/loader.ts` `loadExtensions(paths, cwd, eventBus, runtime?)` takes one and is not exported from the package index, and `createExtensionRuntime` (`loader.ts:160`) is.
+
+Why: an extension that builds a runner needs the runtime of the extensions it runs, and Pi reaches it by calling `loadExtensions` directly, which an SDK on the far side of the wire cannot do.
+
+Call-site markers: `extensions/sdk/resource_loader.go`, `extensions/sdk-rs/src/resource_loader.rs`, `extensions/sdk-py/pig_sdk/resource_loader.py`.
+
+Locked by: `TestSessionGraphExtensionRunnerAcrossSDKs` (the runtime made first holds the flag defaults of the extensions the loader loaded).
+
+Remove when: Pi's `DefaultResourceLoader` takes a runtime, or Pi exports `loadExtensions`.
+
+Approval: owner decision (3) on the extension runner spec (2026-10-24), recorded by Main as D201.
+SCRUTINIZED:approved
+
 ## D202 A Piglet Binary can declare that it accepts overlay Piglets (`build.allowOverlays`)
 
 Stock disposition: inert capability. Stock PiG runs one Piglet per process and has no baked Piglet, so `build.allowOverlays` does nothing for `pig --piglet`; it only changes what a Piglet Binary built from the Piglet does with a Piglet selected at launch. The default is off, and a Binary built without it behaves exactly as before.

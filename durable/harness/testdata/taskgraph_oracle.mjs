@@ -66,7 +66,7 @@ async function runProgram(program) {
 	const live = await new TaskGraphView(session, storage, blocking).watch(ctx);
 	// Each step reports the operations of the frames the long-lived watch's listener received: a commit that changes nothing in the graph delivers nothing.
 	let deliveries = [];
-	live.start(async (_value, ops) => {
+	live.start(async ({ ops }) => {
 		deliveries.push({ ops });
 	});
 	const convs = [];

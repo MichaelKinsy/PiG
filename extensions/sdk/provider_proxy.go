@@ -16,6 +16,9 @@ type providerCallbacks map[string]func(json.RawMessage) (any, error)
 var providerStreamCallbackNames = []string{"onPayload", "onResponse", "onProviderStreamEvent"}
 
 func (r ModelRegistry) GetRegisteredNativeProvider(id string) (*Provider, error) {
+	if r.runtime != nil {
+		return r.runtime.GetRegisteredNativeProvider(id)
+	}
 	state, err := r.state()
 	if err != nil {
 		return nil, err
@@ -24,30 +27,38 @@ func (r ModelRegistry) GetRegisteredNativeProvider(id string) (*Provider, error)
 		if entry.Name != id || entry.Native == nil {
 			continue
 		}
-		e := r.context.ext
-		e.providerMu.Lock()
-		defer e.providerMu.Unlock()
-		if local := e.nativeProviders[entry.Native.Key]; local != nil {
-			return local, nil
-		}
-		if cached := e.providerObjectCache[entry.Native.ID]; cached != nil && cached.handle == entry.Native.Handle {
-			return cached, nil
-		}
-		provider, err := newProviderProxy(r.context, *entry.Native)
-		if err != nil {
-			return nil, err
-		}
-		if e.providerObjectCache == nil {
-			e.providerObjectCache = map[string]*Provider{}
-		}
-		e.providerObjectCache[entry.Native.ID] = provider
-		return provider, nil
+		return providerFromDeclaration(r.context, *entry.Native)
 	}
 	return nil, nil
 }
 
+// providerFromDeclaration is the Provider object a declaration of the host names: the extension's own object when it registered it, else a proxy that calls the extension that did, cached by the host's handle.
+func providerFromDeclaration(c Context, decl providerObjectDeclaration) (*Provider, error) {
+	e := c.ext
+	e.providerMu.Lock()
+	defer e.providerMu.Unlock()
+	if local := e.nativeProviders[decl.Key]; local != nil {
+		return local, nil
+	}
+	if cached := e.providerObjectCache[decl.ID]; cached != nil && cached.handle == decl.Handle {
+		return cached, nil
+	}
+	provider, err := newProviderProxy(c, decl)
+	if err != nil {
+		return nil, err
+	}
+	if e.providerObjectCache == nil {
+		e.providerObjectCache = map[string]*Provider{}
+	}
+	e.providerObjectCache[decl.ID] = provider
+	return provider, nil
+}
+
 // pig divergence (D78): builtin/composed Provider object methods still need a native SDK carrier.
 func (r ModelRegistry) GetProvider(id string) (*Provider, error) {
+	if r.runtime != nil {
+		return r.runtime.GetProvider(id)
+	}
 	provider, err := r.GetRegisteredNativeProvider(id)
 	if provider != nil || err != nil {
 		return provider, err
@@ -64,6 +75,9 @@ func (r ModelRegistry) GetProvider(id string) (*Provider, error) {
 
 // RegisterNativeProvider applies the native overload to the live registry and waits for publication.
 func (r ModelRegistry) RegisterNativeProvider(provider *Provider) error {
+	if r.runtime != nil {
+		return r.runtime.RegisterNativeProvider(provider)
+	}
 	decl, err := providerDeclaration(provider, rand.Text())
 	if err != nil {
 		return err

@@ -5,6 +5,7 @@
 // usage: node radius_responses.mjs <path to radius.ts>
 import { readFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
+import { pathToFileURL } from "node:url";
 const source = readFileSync(process.argv[2], "utf8");
 const cut = (name) => {
 	const match = new RegExp(`^(?:async function|function|class) ${name}[\\s\\S]*?\\n}\\n`, "m").exec(source);
@@ -13,7 +14,8 @@ const cut = (name) => {
 };
 const constants = source.match(/^const [A-Z_]+ = .*;$/gm).join("\n");
 const names = ["loadRadiusOAuthDiscovery", "OAuthResponseError", "readOAuthResponseError", "requestOAuthToken", "requestDeviceAuthorization", "loginWithDeviceCode"];
-const body = stripTypeScriptTypes(`${constants}\n${names.map(cut).join("\n")}`);
+const trustedUrl = readFileSync(new URL("trusted-url.ts", pathToFileURL(process.argv[2])), "utf8").match(/^export (function trustedHttpUrl[\s\S]*?\n}\n)/m)[1];
+const body = stripTypeScriptTypes(`${constants}\n${trustedUrl}\n${names.map(cut).join("\n")}`);
 const fns = new Function("pollOAuthDeviceCodeFlow", `${body}; return { loadRadiusOAuthDiscovery, requestOAuthToken, requestDeviceAuthorization, loginWithDeviceCode };`)((options) => options.poll());
 Date.now = () => 1_700_000_000_000;
 const gateway = "https://gw.example";

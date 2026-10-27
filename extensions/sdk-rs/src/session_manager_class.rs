@@ -166,6 +166,11 @@ impl SessionManager {
         session_infos(call_static_async(context, KIND, "listAll", vec![opt(session_dir), progress_id(context, on_progress)])?)
     }
 
+    /// The log the host made for a child session (`AgentSession::session_manager`).
+    pub(crate) fn adopt(context: &Context, handle: String) -> SessionManager {
+        SessionManager { object: GraphObject::adopt(context, handle) }
+    }
+
     /// The host's name for the log, which `create_agent_session` puts on the wire.
     pub fn handle(&self) -> &str {
         self.object.handle()

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -71,14 +72,21 @@ type TaskGraph struct {
 	Tasks map[string]TaskGraphNode `json:"tasks"`
 }
 
-// TaskGraphWatch is a serialized exact-frame watch of the task graph.
+// TaskGraphWatch is a serialized watch of the task graph.
 type TaskGraphWatch = durable.WatchHandle[TaskGraph]
 
-// taskGraphObserver is a CommittedWatch of the graph.
+// taskGraphObserver is a chord.Watch of the graph or a guarded host observer (ObserveTaskGraph).
 type taskGraphObserver interface {
-	Advance(ctx context.Context, value TaskGraph, ops []durable.Op)
+	Advance(ctx context.Context, change chord.WatchChange[TaskGraph])
 	SourceEnded(failure error)
 }
+
+// guardedGraphObserver adapts a session.GuardedObserver to the mount's observer interface.
+type guardedGraphObserver struct {
+	*session.GuardedObserver[TaskGraph]
+}
+
+func (observer guardedGraphObserver) SourceEnded(failure error) { observer.End(failure) }
 
 type taskGraphMount struct {
 	value     TaskGraph
@@ -99,7 +107,7 @@ var taskGraphLiveStatuses = []durable.TaskStatus{durable.TaskPending, durable.Ta
 
 const taskGraphScanPageSize = 256
 
-// TaskGraphView is the Harness's task graph mount: built on the Session line by its first observer and dropped with its last. It advances from the Session's commit publications, which are durable.
+// TaskGraphView is the Harness's task graph mount: built on the Session line by its first observer and dropped with its last. It advances from the Session's commit publications as memory adopts them.
 type TaskGraphView struct {
 	session  *session.SessionImpl
 	storage  durable.Storage
@@ -113,7 +121,11 @@ type TaskGraphView struct {
 // NewTaskGraphView subscribes the mount to the Session's commits and close.
 func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage, blocking TaskGraphBlocking) *TaskGraphView {
 	view := &TaskGraphView{session: sessionImpl, storage: storage, blocking: blocking}
-	sessionImpl.ObserveCommits(func(ctx context.Context, publication durable.CommitPublication) {
+	sessionImpl.ObserveCommits(func(ctx context.Context, publication session.ObservedCommit) {
+		// A commit held in memory changes documents only, which the graph does not show.
+		if publication.Memory {
+			return
+		}
 		view.mu.Lock()
 		mount := view.mount
 		var observers []taskGraphObserver
@@ -143,11 +155,31 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage,
 	return view
 }
 
-// Watch returns a serialized exact-frame watch of the graph; cancelling ctx stops it.
+// Observe attaches a synchronous observer of the graph (Harness.ObserveTaskGraph), behind session.GuardObserver; ctx governs
+// only the attachment.
+func (view *TaskGraphView) Observe(ctx context.Context, observer durable.Observer[TaskGraph]) (durable.Observation[TaskGraph], error) {
+	var value TaskGraph
+	var guarded *session.GuardedObserver[TaskGraph]
+	detach, err := view.attach(ctx, func(current TaskGraph, release func()) taskGraphObserver {
+		value = current
+		guarded = session.GuardObserver(observer, release, view.session.Report)
+		return guardedGraphObserver{guarded}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Err() != nil {
+		detach()
+		return nil, context.Cause(ctx)
+	}
+	return session.NewObservation(value, guarded), nil
+}
+
+// Watch returns a serialized watch of the graph, an observer of its mount; cancelling ctx stops it.
 func (view *TaskGraphView) Watch(ctx context.Context) (TaskGraphWatch, error) {
-	var watch *session.CommittedWatch[TaskGraph]
+	var watch *chord.Watch[TaskGraph]
 	if _, err := view.attach(ctx, func(value TaskGraph, release func()) taskGraphObserver {
-		watch = session.NewCommittedWatch(view.session, value, release, nil)
+		watch = session.NewSessionWatch(view.session, value, release)
 		return watch
 	}); err != nil {
 		return nil, err
@@ -285,7 +317,7 @@ func (view *TaskGraphView) build(ctx context.Context) (*taskGraphMount, error) {
 func taskKey(id durable.TaskId) string { return strconv.FormatInt(int64(id), 10) }
 
 // advanceTaskGraph derives the mount's operations from one publication, applies them, and hands the revision to every observer.
-func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []taskGraphObserver, publication durable.CommitPublication, blocked func(BlockedSubject) durable.BlockedReason, report func(error)) {
+func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []taskGraphObserver, publication session.ObservedCommit, blocked func(BlockedSubject) durable.BlockedReason, report func(error)) {
 	var ops []durable.Op
 	// Nodes this publication set (non-nil) or deleted (nil), over the mount's value.
 	changed := map[string]*TaskGraphNode{}
@@ -389,8 +421,9 @@ func publishChanged(ctx context.Context, mount *taskGraphMount, observers []task
 	}
 	mount.value = TaskGraph{Tasks: tasks}
 	frameContext := context.WithoutCancel(ctx)
+	change := chord.WatchChange[TaskGraph]{Value: mount.value, Ops: ops}
 	for _, observer := range observers {
-		session.Contained(func() { observer.Advance(frameContext, mount.value, ops) }, report)
+		session.Contained(func() { observer.Advance(frameContext, change) }, report)
 	}
 }
 

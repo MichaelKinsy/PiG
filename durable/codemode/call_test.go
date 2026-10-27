@@ -3,11 +3,13 @@ package codemode
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"runtime"
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -251,4 +253,137 @@ func TestAReplayedCallEntersBeforeTheNextOneIsStarted(t *testing.T) {
 	if got := api.enteredCalls(); !slices.Equal(got, []string{"hold", "echo"}) {
 		t.Fatalf("after replaying echo, the calls that entered are %v, want [hold echo]", got)
 	}
+}
+
+// commitApi is a tool execution API whose commits record that they ran and store nothing.
+type commitApi struct {
+	durable.ToolExecutionApi
+	commits atomic.Int32
+}
+
+func (a *commitApi) Commit(context.Context, func(durable.Tx) (any, error), ...durable.CommitOptions) (any, error) {
+	a.commits.Add(1)
+	return nil, nil
+}
+
+func decidingCall(t *testing.T) (*call, *commitApi) {
+	t.Helper()
+	api := &commitApi{}
+	c := newCall(ToolOptions{}, api, testContext)
+	c.controller, c.abort = context.WithCancelCause(testContext)
+	t.Cleanup(func() {
+		c.abort(nil)
+		c.spawned.Wait()
+	})
+	return c, api
+}
+
+// settle waits for what the call spawned, then handles the events it posted.
+func settle(c *call) {
+	c.spawned.Wait()
+	for {
+		c.events.mu.Lock()
+		pending := len(c.events.items)
+		c.events.mu.Unlock()
+		if pending == 0 {
+			return
+		}
+		c.events.next()()
+	}
+}
+
+// codemode.ts:538-542 (fail) and diverge's `ended`/`failure` guard: a call ends with the first divergence or failure that decides it; what follows
+// decides nothing, so no outcome is stored for it and the script's end is the first one's.
+func TestOnlyTheFirstDivergenceOrFailureOfACallDecidesItsEnd(t *testing.T) {
+	t.Run("a divergence after a divergence", func(t *testing.T) {
+		c, api := decidingCall(t)
+		c.diverge("first")
+		c.diverge("second")
+		settle(c)
+		if got := c.ended.Output[0].Text; !strings.Contains(got, "first") || strings.Contains(got, "second") {
+			t.Fatalf("the call ended with %q, want its first divergence", got)
+		}
+		if got := api.commits.Load(); got != 1 {
+			t.Fatalf("%d outcomes were stored, want 1", got)
+		}
+	})
+	t.Run("a divergence after a failure", func(t *testing.T) {
+		c, api := decidingCall(t)
+		failure := errors.New("failure")
+		c.fail(failure)
+		c.diverge("late")
+		settle(c)
+		if c.ended != nil || !errors.Is(c.failure, failure) || api.commits.Load() != 0 {
+			t.Fatalf("a divergence after a failure ended the call with %v (failure %v, %d outcomes stored)", c.ended, c.failure, api.commits.Load())
+		}
+	})
+	t.Run("a failure after a failure", func(t *testing.T) {
+		c, _ := decidingCall(t)
+		first := errors.New("first")
+		c.fail(first)
+		c.fail(errors.New("second"))
+		if !errors.Is(c.failure, first) || !errors.Is(context.Cause(c.controller), first) {
+			t.Fatalf("the call failed with %v and stopped the run with %v, want its first failure", c.failure, context.Cause(c.controller))
+		}
+	})
+	t.Run("both stop the call before the run has its outcome", func(t *testing.T) {
+		for name, decide := range map[string]func(c *call){
+			"a divergence": func(c *call) { c.diverge("x") },
+			"a failure":    func(c *call) { c.fail(errors.New("x")) },
+		} {
+			c, _ := decidingCall(t)
+			if c.stopped() || c.decided() {
+				t.Fatalf("%s: a call that decided nothing is stopped", name)
+			}
+			decide(c)
+			if !c.stopped() || !c.decided() {
+				t.Fatalf("%s: the call that decided is not stopped (stopped %v, decided %v)", name, c.stopped(), c.decided())
+			}
+			settle(c)
+		}
+	})
+}
+
+// codemode.ts:477 and :671-687 (callTool :822-843): the script's end reaches the call after the calls it made were issued and their nested
+// calls settled (a replayed call finishes its row before it resolves the result the VM waits for), so the end waits for the
+// replayed calls the VM issued; a call that stops meanwhile (failure, divergence) ends with its own outcome, not the script's.
+func TestAScriptsEndWaitsForTheReplayedCallsItIssued(t *testing.T) {
+	waiting := func(t *testing.T) *call {
+		c, _ := decidingCall(t)
+		c.replayCalls = 1
+		c.onResult(cm.Result{OK: true})
+		if c.finished || c.pendingResult == nil {
+			t.Fatalf("the script's end was handled while a replayed call was settling (finished %v)", c.finished)
+		}
+		return c
+	}
+	t.Run("it waits for every one of them", func(t *testing.T) {
+		c, _ := decidingCall(t)
+		c.replayCalls = 2
+		c.onResult(cm.Result{OK: true})
+		c.replayCalls--
+		c.resumeResult(false)
+		if c.finished || c.pendingResult == nil {
+			t.Fatalf("the script's end was handled while a replayed call was still settling (finished %v)", c.finished)
+		}
+	})
+	t.Run("a failure ends the call", func(t *testing.T) {
+		c := waiting(t)
+		failure := errors.New("failure")
+		c.fail(failure)
+		if !c.finished || !errors.Is(c.outErr, failure) {
+			t.Fatalf("after a failure the call finished %v with %v, want its failure", c.finished, c.outErr)
+		}
+	})
+	t.Run("a divergence ends the call once its outcome is stored", func(t *testing.T) {
+		c := waiting(t)
+		c.diverge("diverged")
+		if c.finished {
+			t.Fatal("the call ended before the divergence's outcome was stored")
+		}
+		settle(c)
+		if !c.finished || c.outErr != nil || len(c.out.Output) != 1 || !strings.Contains(c.out.Output[0].(ai.TextContent).Text, "diverged") {
+			t.Fatalf("after a divergence the call finished %v with %+v, %v, want its divergence", c.finished, c.out, c.outErr)
+		}
+	})
 }

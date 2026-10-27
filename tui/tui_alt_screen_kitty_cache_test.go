@@ -164,3 +164,50 @@ func TestAltScreenEvictsOffscreenKittyImagesOverDecodedMemoryQuota(t *testing.T)
 		t.Errorf("evicting the oldest raster restores the quota, so only one delete is expected; got %q", lastStep)
 	}
 }
+
+// kittyScrolledImageHarness starts a 20x3 alt-screen with Kitty images enabled, as upstream RecordingTerminal(20, 3).
+func kittyScrolledImageHarness(t *testing.T) *altHarness {
+	t.Helper()
+	SetCapabilities(TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true})
+	t.Cleanup(ResetCapabilitiesCache)
+	return newAltHarness(t, 20, 3, TuiAltScreenOptions{})
+}
+
+// Upstream (Pi 4464442f9): "crops a Kitty image in a padded, colored box whose first line is above the viewport".
+func TestAltScreenCropsAKittyImageInAPaddedColoredBoxWhoseFirstLineIsAboveTheViewport(t *testing.T) {
+	h := kittyScrolledImageHarness(t)
+	const imageID = 11271
+	imageLine := EncodeKitty("AAAA", 2, 3, imageID, false)
+	RegisterKittyImageMetadata(KittyImageMetadata{ImageID: imageID, Columns: 2, Rows: 3, WidthPx: 100, HeightPx: 100})
+	box := NewPaddedBox(1, 0, func(text string) string { return "\x1b[44m" + text + "\x1b[49m" })
+	box.AddChild(&stubComponent{lines: []string{imageLine, "", ""}})
+	h.tui.Add(&stubComponent{lines: []string{"before"}})
+	h.tui.Add(box)
+	h.tui.Add(&stubComponent{lines: []string{"after", "end"}})
+	h.start()
+	h.render()
+	if top := h.tui.ViewportTop(); top != 3 {
+		t.Fatalf("viewportTop = %d, want 3", top)
+	}
+	if !h.wrote("i=11271") || !h.wrote("y=66,h=34,r=1") {
+		t.Fatalf("no crop of image %d to y=66,h=34,r=1 was written:\n%q", imageID, h.out.String())
+	}
+}
+
+// Upstream (Pi 1c8cb1781, #11271): "crops a Kitty image whose placeholder rows contain text when its first line is above the viewport".
+func TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText(t *testing.T) {
+	h := kittyScrolledImageHarness(t)
+	const imageID = 11272
+	imageLine := EncodeKitty("AAAA", 2, 3, imageID, false)
+	RegisterKittyImageMetadata(KittyImageMetadata{ImageID: imageID, Columns: 2, Rows: 3, WidthPx: 100, HeightPx: 100})
+	h.tui.Add(&stubComponent{lines: []string{"before", imageLine, "   | side", "   | side"}})
+	h.tui.Add(&stubComponent{lines: []string{"after", "end"}})
+	h.start()
+	h.render()
+	if top := h.tui.ViewportTop(); top != 3 {
+		t.Fatalf("viewportTop = %d, want 3", top)
+	}
+	if !h.wrote("i=11272") || !h.wrote("y=66,h=34,r=1") {
+		t.Fatalf("no crop of image %d to y=66,h=34,r=1 was written:\n%q", imageID, h.out.String())
+	}
+}

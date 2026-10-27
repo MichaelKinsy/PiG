@@ -40,7 +40,7 @@ const (
 //     preparation committed; a resend after recovery uses them unchanged), and Cutoff, the newest entry included in
 //     the request.
 //   - retry: Attempt, Compacted, Until.
-//   - poll: Attempt, Compacted, Model, Cutoff, Handle, PollAt.
+//   - poll: Attempt, Compacted, Model, ThinkingLevel (absent in checkpoints of earlier versions), Cutoff, Handle, PollAt.
 //   - tools: Assistant (the tool-calling answer), Tools (tool tasks created so far, in call order) and Pending (calls of
 //     a sequential round not started yet, in call order). The generation owns the tool tasks (spec §8.5).
 type GenerationCheckpoint struct {
@@ -88,7 +88,9 @@ type generationRequestInfo struct {
 	attempt   int
 	compacted *durable.TaskId
 	model     durable.ModelRef
-	cutoff    durable.EntryId
+	// thinkingLevel is the level the request asked for, "" when the checkpoint has none (a record of an earlier version).
+	thinkingLevel ai.ModelThinkingLevel
+	cutoff        durable.EntryId
 	// messages is the committed model context through cutoff, when the phase already derived it.
 	messages []ai.Message
 	// pollAt is set when the message came from polling, so a still deferred result polls strictly later.
@@ -357,7 +359,7 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 	if err != nil {
 		return err
 	}
-	request := generationRequestInfo{attempt: checkpoint.Attempt, compacted: checkpoint.Compacted, model: ref, cutoff: *checkpoint.Cutoff, messages: view.Messages}
+	request := generationRequestInfo{attempt: checkpoint.Attempt, compacted: checkpoint.Compacted, model: ref, thinkingLevel: checkpoint.ThinkingLevel, cutoff: *checkpoint.Cutoff, messages: view.Messages}
 	return classify(ctx, runtime, request, message)
 }
 
@@ -396,7 +398,7 @@ func generationPollHandler(ctx context.Context, task durable.RunningTask[Generat
 	if message == nil {
 		return errors.New("deferred fetch returned no message")
 	}
-	request := generationRequestInfo{attempt: checkpoint.Attempt, compacted: checkpoint.Compacted, model: ref, cutoff: *checkpoint.Cutoff, pollAt: checkpoint.PollAt}
+	request := generationRequestInfo{attempt: checkpoint.Attempt, compacted: checkpoint.Compacted, model: ref, thinkingLevel: checkpoint.ThinkingLevel, cutoff: *checkpoint.Cutoff, pollAt: checkpoint.PollAt}
 	return classify(ctx, runtime, request, *message)
 }
 
@@ -659,7 +661,7 @@ func ConvertPartial(tx durable.Tx, live *delta.Object, conversationId durable.Co
 // trailing writes at most every Settings.Progress.PartialIntervalMs (default 100 ms) with one commit in flight; stopping the throttle waits for that commit, so no
 // stale partial lands after the outcome.
 func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Model, messages []ai.Message, frozen bool, options ai.StreamOptions, attempt int) (ai.AssistantMessage, error) {
-	throttle := &partialThrottle{runtime: runtime, ctx: ctx, attempt: attempt, interval: runtime.Settings().Progress.PartialIntervalMs}
+	throttle := &partialThrottle{runtime: runtime, ctx: ctx, attempt: attempt, interval: runtime.Settings().Progress.PartialIntervalMs, changes: NewPartialChanges()}
 	defer throttle.stop()
 	signal := runtime.Signal()
 	if !frozen {
@@ -677,7 +679,7 @@ func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Mo
 		if partial == nil || len(partial.Content) == 0 {
 			continue
 		}
-		throttle.offer(partial)
+		throttle.observe(event, partial)
 	}
 	result, err := stream.ResultContext(signal)
 	if err != nil {
@@ -721,31 +723,58 @@ type partialThrottle struct {
 	ctx      context.Context
 	attempt  int
 	interval float64
-	mu       sync.Mutex
-	pending  *ai.AssistantMessage
+	// changes is what the response's events changed in the partial since the last commit.
+	changes *PartialChanges
+	mu      sync.Mutex
+	// partial is the newest partial as it was when its event was observed, and pending whether it is yet to be committed.
+	partial  ai.ShallowCapture
+	pending  bool
 	disarm   func()
 	inFlight chan struct{}
 	stopped  bool
 }
 
-// offer records the newest partial. Holding it until the flush is race-free: a partial from a producer outside the
-// executor is an immutable emission-time snapshot, and a live view encodes the stream's current publication under
-// its cell lock, as generation.ts:378 copies the provider's mutable partial at flush time. The flush copies it once.
-func (throttle *partialThrottle) offer(partial *ai.AssistantMessage) {
+// observe records event and its partial as the newest, in one step under the lock flush takes the pair under. generation.ts:378 copies
+// the provider's partial at flush time and takes the changes in the same tick, when no event is between the partial and the changes. Here an
+// event can be observed between any two steps of a flush, and a live view encodes the stream's current publication, which may be newer than
+// the event: a commit of a partial that is not the one the changes are the difference to appends their characters to its text, which
+// have its length and not its content. The capture pins the publication the event was observed at (a partial from a producer outside the
+// executor is an immutable emission-time snapshot already) and costs no copy of the message; the flush copies it once.
+func (throttle *partialThrottle) observe(event ai.AssistantMessageEvent, partial *ai.AssistantMessage) {
 	throttle.mu.Lock()
 	defer throttle.mu.Unlock()
-	throttle.pending = partial
+	throttle.changes.Observe(event)
+	throttle.partial.Capture(partial)
+	throttle.pending = true
 	if throttle.disarm == nil && throttle.inFlight == nil && !throttle.stopped {
 		throttle.disarm = throttle.runtime.SetTimer(throttle.flush, throttle.interval)
 	}
 }
 
+// pinned is the partial a capture holds, as an owned message that no publication of its stream changes.
+func pinned(capture *ai.ShallowCapture) *ai.AssistantMessage {
+	if cell, _ := capture.Publication(); cell != 0 {
+		return capture.Observe()
+	}
+	return capture.ShallowCopy()
+}
+
+// takeLocked takes the newest partial with the changes of every event observed, which are the changes of the events up to that partial; the
+// commit of the pair writes the one and applies the other. ok is false when there is nothing to commit. The caller holds throttle.mu.
+func (throttle *partialThrottle) takeLocked() (partial ai.ShallowCapture, cut *PartialCut, ok bool) {
+	if !throttle.pending || throttle.stopped {
+		return partial, nil, false
+	}
+	partial, cut = throttle.partial, throttle.changes.Cut()
+	throttle.partial, throttle.pending = ai.ShallowCapture{}, false
+	return partial, cut, true
+}
+
 func (throttle *partialThrottle) flush() {
 	throttle.mu.Lock()
 	throttle.disarm = nil
-	partial := throttle.pending
-	throttle.pending = nil
-	if partial == nil || throttle.stopped {
+	partial, cut, ok := throttle.takeLocked()
+	if !ok {
 		throttle.mu.Unlock()
 		return
 	}
@@ -755,8 +784,11 @@ func (throttle *partialThrottle) flush() {
 	go func() {
 		defer close(done)
 		runtime := throttle.runtime
-		message, err := durable.ToJsonObject(partial)
-		if err == nil {
+		message, err := durable.ToJsonObject(pinned(&partial))
+		if err != nil {
+			throttle.changes.Uncut(cut)
+		} else {
+			taken := throttle.changes.Bind(cut, message)
 			err = runtime.Commit(throttle.ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
 				live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 				if err != nil {
@@ -769,8 +801,11 @@ func (throttle *partialThrottle) flush() {
 					}
 					generation = live.Object("generation")
 				}
-				return nil, AssignJson(generation, "message", message)
-			})
+				return nil, throttle.changes.Commit(generation, message, taken)
+			}, ProgressCommit)
+			if err != nil {
+				throttle.changes.Restore(taken)
+			}
 		}
 		// Rejections after an abort mark or close are expected; the committed state stays consistent.
 		if err != nil && runtime.Signal().Err() == nil {
@@ -778,7 +813,7 @@ func (throttle *partialThrottle) flush() {
 		}
 		throttle.mu.Lock()
 		throttle.inFlight = nil
-		if throttle.pending != nil && !throttle.stopped {
+		if throttle.pending && !throttle.stopped {
 			throttle.disarm = throttle.runtime.SetTimer(throttle.flush, throttle.interval)
 		}
 		throttle.mu.Unlock()
@@ -807,7 +842,11 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 		return context.Cause(runtime.Signal())
 	}
 	conversationId := runtime.ConversationId()
-	attempt, compacted, ref, cutoff := request.attempt, request.compacted, request.model, request.cutoff
+	attempt, compacted, ref, thinkingLevel, cutoff := request.attempt, request.compacted, request.model, request.thinkingLevel, request.cutoff
+	// Record the requested level, as pi-agent-core's agent loop does (generation.ts classify).
+	if thinkingLevel != "" {
+		message.ThinkingLevel = thinkingLevel
+	}
 	if message.StopReason == ai.StopReasonDeferred && message.Deferred != nil {
 		handle := *message.Deferred
 		pollAfter := float64(defaultPollAfter)
@@ -827,7 +866,7 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 			if err := live.Set("generation", delta.JsonObjectOf("attempt", float64(attempt), "deferred", delta.JsonObjectOf("pollAt", pollAt))); err != nil {
 				return nil, err
 			}
-			next := GenerationCheckpoint{Phase: generationPoll, Attempt: attempt, Compacted: compacted, Model: &ref, Cutoff: &cutoff, Handle: &handle, PollAt: &pollAt}
+			next := GenerationCheckpoint{Phase: generationPoll, Attempt: attempt, Compacted: compacted, Model: &ref, ThinkingLevel: thinkingLevel, Cutoff: &cutoff, Handle: &handle, PollAt: &pollAt}
 			return sleepingState[GenerationCheckpoint, GenerationResult](next, pollAt), nil
 		})
 	}
@@ -1071,9 +1110,9 @@ func startToolRound(ctx context.Context, runtime generationRuntime, request gene
 	})
 }
 
-// finishToolRound applies the controls of a round whose tools are terminal and either ends the run at the final
-// boundary (terminate, handoff, or a queued reset) or hands it to the next generation at the postTools boundary (spec
-// §8.5, generation.ts:584-635).
+// finishToolRound applies the controls of a round whose tools are terminal, appends a handoff's reset, and then ends the
+// run at the final boundary (terminate), ends it at a queued reset, or hands it to the next generation at the postTools
+// boundary, in the handoff's new context when there is one (spec §8.5, generation.ts finishToolRound).
 func finishToolRound(ctx context.Context, runtime generationRuntime, assistant durable.EntryId, tools []durable.TaskId) error {
 	conversationId := runtime.ConversationId()
 	controls := make(map[durable.TaskId]*durable.ToolControl, len(tools))
@@ -1157,16 +1196,17 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 		}
 		now := runtime.Now()
 		taskId := runtime.TaskId()
-		if terminate || handoff != nil {
-			if handoff != nil {
-				message := ai.UserMessage{Content: ai.UserText(*handoff), Timestamp: int64(now)}
-				entry, err := durable.TxAppendEntry(tx, durable.ResetEntry, conversationId, durable.TypedEntryDraft[durable.Never]{HeadSelf: true, Model: []ai.Message{message}})
-				if err != nil {
-					return nil, err
-				}
-				head := entry.Id
-				boundary.Head = &head
+		if handoff != nil {
+			// The handoff's reset precedes every queued item, so queued writes and selected steers land in its context.
+			message := ai.UserMessage{Content: ai.UserText(*handoff), Timestamp: int64(now)}
+			entry, err := durable.TxAppendEntry(tx, durable.ResetEntry, conversationId, durable.TypedEntryDraft[durable.Never]{HeadSelf: true, Model: []ai.Message{message}})
+			if err != nil {
+				return nil, err
 			}
+			head := entry.Id
+			boundary.Head = &head
+		}
+		if terminate {
 			placed, err := ApplyBoundary(tx, boundary, BoundaryFinal, now)
 			if err != nil {
 				return nil, err

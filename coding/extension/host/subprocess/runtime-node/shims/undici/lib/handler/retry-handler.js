@@ -4,6 +4,7 @@ const assert = require('node:assert')
 const { kRetryHandlerDefaultRetry } = require('../core/symbols')
 const { RequestRetryError, RequestAbortedError } = require('../core/errors')
 const {
+  hasSafeIterator,
   isDisturbed,
   parseRangeHeader,
   wrapRequestBody
@@ -47,34 +48,51 @@ function validatePartialResponseContentLength (headers, range, statusCode, retry
 // so nothing outside the handler can trigger it.
 class RetryController {
   #onAbort
+  #paused = false
+  #target = null
 
   constructor (onAbort) {
     this.#onAbort = onAbort
-    this.target = null
   }
 
-  pause () { this.target?.pause() }
-  resume () { this.target?.resume() }
-
-  abort (reason) {
-    this.target?.abort(reason)
-    this.#onAbort(reason)
-  }
-
-  get paused () { return this.target?.paused ?? false }
-  get aborted () { return this.target?.aborted ?? false }
-  get reason () { return this.target?.reason ?? null }
-  get rawHeaders () { return this.target?.rawHeaders ?? null }
-  set rawHeaders (value) {
-    if (this.target) {
-      this.target.rawHeaders = value
+  set target (target) {
+    this.#target = target
+    if (this.#paused) {
+      target?.pause()
     }
   }
 
-  get rawTrailers () { return this.target?.rawTrailers ?? null }
+  get target () { return this.#target }
+
+  pause () {
+    this.#paused = true
+    this.#target?.pause()
+  }
+
+  resume () {
+    this.#paused = false
+    this.#target?.resume()
+  }
+
+  abort (reason) {
+    this.#target?.abort(reason)
+    this.#onAbort(reason)
+  }
+
+  get paused () { return this.#paused || (this.#target?.paused ?? false) }
+  get aborted () { return this.#target?.aborted ?? false }
+  get reason () { return this.#target?.reason ?? null }
+  get rawHeaders () { return this.#target?.rawHeaders ?? null }
+  set rawHeaders (value) {
+    if (this.#target) {
+      this.#target.rawHeaders = value
+    }
+  }
+
+  get rawTrailers () { return this.#target?.rawTrailers ?? null }
   set rawTrailers (value) {
-    if (this.target) {
-      this.target.rawTrailers = value
+    if (this.#target) {
+      this.#target.rawTrailers = value
     }
   }
 }
@@ -142,6 +160,12 @@ class RetryHandler {
     // Backoff timer returned by the retry policy, so #onAbort can cancel it.
     // Null for custom policies that do not return their timer.
     this.retryTimer = null
+    // A response can complete while its controller is paused if the peer closes
+    // the connection. Hold its body until the retry policy decides whether to
+    // discard it for a retry or forward it as the final response.
+    this.pendingResponseData = null
+    this.pendingResponseTrailers = null
+    this.pendingResponseEnded = false
     // Set once an abort during the backoff delivered the terminal error
     // downstream; late policy callbacks and connection errors are then moot.
     this.aborted = false
@@ -183,6 +207,13 @@ class RetryHandler {
       this.retryPending = false
       this.retryTimer = null
 
+      const pendingData = this.pendingResponseData
+      const pendingTrailers = this.pendingResponseTrailers
+      const pendingEnd = this.pendingResponseEnded
+      this.pendingResponseData = null
+      this.pendingResponseTrailers = null
+      this.pendingResponseEnded = false
+
       if (passedErr) {
         if (this.headersSent) {
           // The downstream handler already received the response from an
@@ -193,6 +224,15 @@ class RetryHandler {
           this.headersSent = true
           this.checkpointResponseEnd(headers)
           this.handler.onResponseStart?.(this.controllerProxy, statusCode, headers, statusMessage)
+          controller.resume()
+
+          if (pendingEnd) {
+            for (const chunk of pendingData) {
+              this.onResponseData(controller, chunk)
+            }
+            this.onResponseEnd(controller, pendingTrailers)
+          }
+          return
         }
         controller.resume()
         return
@@ -200,6 +240,9 @@ class RetryHandler {
 
       this.error = err
       controller.resume()
+      if (pendingEnd) {
+        this.onResponseEnd(controller, pendingTrailers)
+      }
     }
 
     // The pause()/resume() pair (here and in shouldRetry) acts on THIS
@@ -213,6 +256,9 @@ class RetryHandler {
     // The default policy returns its backoff timer so an abort can cancel it;
     // a custom policy may return anything (or nothing), which is ignored.
     this.retryPending = true
+    this.pendingResponseData = []
+    this.pendingResponseTrailers = null
+    this.pendingResponseEnded = false
     this.retryTimer = this.retryOpts.retry(
       err,
       {
@@ -464,6 +510,11 @@ class RetryHandler {
   }
 
   onResponseData (_controller, chunk) {
+    if (this.pendingResponseData !== null) {
+      this.pendingResponseData.push(chunk)
+      return
+    }
+
     if (this.error) {
       return
     }
@@ -474,6 +525,12 @@ class RetryHandler {
   }
 
   onResponseEnd (_controller, trailers) {
+    if (this.pendingResponseData !== null) {
+      this.pendingResponseTrailers = trailers
+      this.pendingResponseEnded = true
+      return
+    }
+
     if (this.error && this.retryOpts.throwOnError) {
       throw this.error
     }
@@ -498,19 +555,9 @@ class RetryHandler {
 
   retry () {
     if (this.start !== 0) {
-      const headers = { range: `bytes=${this.start}-${this.end ?? ''}` }
-
-      // Weak etag check - weak etags will make comparison algorithms never match
-      if (this.etag != null) {
-        headers['if-match'] = this.etag
-      }
-
       this.opts = {
         ...this.opts,
-        headers: {
-          ...this.opts.headers,
-          ...headers
-        }
+        headers: buildResumeHeaders(this.opts.headers, `bytes=${this.start}-${this.end ?? ''}`, this.etag)
       }
     }
 
@@ -587,8 +634,53 @@ class RetryHandler {
     this.retryPending = false
     clearTimeout(this.retryTimer)
     this.retryTimer = null
+    this.pendingResponseData = null
+    this.pendingResponseTrailers = null
+    this.pendingResponseEnded = false
     this.handler.onResponseError?.(this.controllerProxy, reason ?? new RequestAbortedError())
   }
+}
+
+function isReplacedHeader (key, etag) {
+  const name = key.toLowerCase()
+  return name === 'range' || (etag != null && name === 'if-match')
+}
+
+function buildResumeHeaders (headers, range, etag) {
+  if (Array.isArray(headers) || (headers && typeof headers === 'object' && hasSafeIterator(headers))) {
+    const ret = []
+    if (Array.isArray(headers)) {
+      for (let i = 0; i < headers.length; i += 2) {
+        if (!isReplacedHeader(headers[i], etag)) {
+          ret.push(headers[i], headers[i + 1])
+        }
+      }
+    } else {
+      for (const [key, value] of headers) {
+        if (!isReplacedHeader(key, etag)) {
+          ret.push(key, value)
+        }
+      }
+    }
+    ret.push('range', range)
+    // Weak etag check - weak etags will make comparison algorithms never match
+    if (etag != null) {
+      ret.push('if-match', etag)
+    }
+    return ret
+  }
+
+  const ret = {}
+  for (const key in headers) {
+    if (Object.hasOwn(headers, key) && !isReplacedHeader(key, etag)) {
+      ret[key] = headers[key]
+    }
+  }
+  ret.range = range
+  if (etag != null) {
+    ret['if-match'] = etag
+  }
+  return ret
 }
 
 module.exports = RetryHandler

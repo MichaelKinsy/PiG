@@ -2,9 +2,9 @@ package ai
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"reflect"
 	"slices"
 	"strings"
@@ -296,18 +296,23 @@ func TestKimiOAuthRefreshUnauthorizedDoesNotRetry(t *testing.T) {
 
 func TestTrustedHTTPURL(t *testing.T) {
 	for _, test := range []struct {
-		value string
-		want  bool
+		value any
+		want  string
 	}{
-		{"https://example.test/path", true},
-		{"http://127.0.0.1/callback", true},
-		{"file:///tmp/token", false},
-		{"javascript:alert(1)", false},
-		{"not a URL", false},
+		{"https://example.test/path", "https://example.test/path"},
+		{"http://127.0.0.1/callback", "http://127.0.0.1/callback"},
+		{"HTTPS://Example.test", "https://example.test/"},
+		{"https://example.test/a\x07b", "https://example.test/a%07b"},
+		{"file:///tmp/token", ""},
+		{"javascript:alert(1)", ""},
+		{"not a URL", ""},
+		{"", ""},
+		{nil, ""},
+		{42.0, ""},
 	} {
-		t.Run(url.PathEscape(test.value), func(t *testing.T) {
+		t.Run(fmt.Sprint(test.value), func(t *testing.T) {
 			if got := trustedHTTPURL(test.value); got != test.want {
-				t.Fatalf("trustedHTTPURL(%q) = %v, want %v", test.value, got, test.want)
+				t.Fatalf("trustedHTTPURL(%#v) = %q, want %q", test.value, got, test.want)
 			}
 		})
 	}

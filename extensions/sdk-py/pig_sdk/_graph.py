@@ -12,9 +12,18 @@ def _callback_id(context: Any, callback: Any) -> str | None:
     extension = context.extension
     with extension._state_lock:
         callbacks = extension.__dict__.setdefault("_graph_callbacks", {})
-        callback_id = f"cb{len(callbacks) + 1}"
+        sequence = extension.__dict__.get("_graph_callback_sequence", 0) + 1
+        extension.__dict__["_graph_callback_sequence"] = sequence
+        callback_id = f"cb{sequence}"
         callbacks[callback_id] = callback
     return callback_id
+
+
+def _drop_callback(context: Any, callback_id: str) -> None:
+    """Forget a function the host will not call again (the callbacks of a closed transport)."""
+    extension = context.extension
+    with extension._state_lock:
+        extension.__dict__.setdefault("_graph_callbacks", {}).pop(callback_id, None)
 
 
 class _GraphObject:

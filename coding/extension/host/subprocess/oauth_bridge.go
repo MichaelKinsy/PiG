@@ -429,10 +429,12 @@ func (h *Host) handleOAuthCallback(ctx context.Context, extName string, call *Ca
 		}
 		if cb.OnDeviceCode != nil {
 			cb.OnDeviceCode(ai.OAuthDeviceCodeInfo{
-				UserCode:         w.UserCode,
-				VerificationURI:  w.VerificationURI,
-				IntervalSeconds:  w.IntervalSeconds,
-				ExpiresInSeconds: w.ExpiresInSeconds,
+				UserCode:             w.UserCode,
+				VerificationURI:      w.VerificationURI,
+				OpenBrowserOnConfirm: w.OpenBrowserOnConfirm,
+				CopyCodeOnConfirm:    w.CopyCodeOnConfirm,
+				IntervalSeconds:      w.IntervalSeconds,
+				ExpiresInSeconds:     w.ExpiresInSeconds,
 			})
 		}
 		return &CallResultPayload{}, nil

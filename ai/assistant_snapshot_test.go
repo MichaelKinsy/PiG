@@ -30,14 +30,9 @@ func TestCloneAssistantContentFromMatchesCloneAssistantContent(t *testing.T) {
 		"nested in place": func(blocks []AssistantContentBlock) {
 			blocks[2].(ToolCall).Arguments["obj"].(map[string]any)["k"] = "w"
 		},
-		"nested list":   func(blocks []AssistantContentBlock) { blocks[2].(ToolCall).Arguments["list"].([]any)[0] = "y" },
-		"negative zero": func(blocks []AssistantContentBlock) { blocks[2].(ToolCall).Arguments["n"] = math.Copysign(0, -1) },
-		"type changes":  func(blocks []AssistantContentBlock) { blocks[2].(ToolCall).Arguments["flag"] = "true" },
-		"scratch changes": func(blocks []AssistantContentBlock) {
-			call := blocks[3].(ToolCall)
-			call.scratch.partialJson = `{"a"`
-			blocks[3] = call
-		},
+		"nested list":    func(blocks []AssistantContentBlock) { blocks[2].(ToolCall).Arguments["list"].([]any)[0] = "y" },
+		"negative zero":  func(blocks []AssistantContentBlock) { blocks[2].(ToolCall).Arguments["n"] = math.Copysign(0, -1) },
+		"type changes":   func(blocks []AssistantContentBlock) { blocks[2].(ToolCall).Arguments["flag"] = "true" },
 		"text signature": func(blocks []AssistantContentBlock) { blocks[0] = TextContent{Text: "hello", TextSignature: "other"} },
 		"nil becomes empty": func(blocks []AssistantContentBlock) {
 			call := blocks[4].(ToolCall)
@@ -58,7 +53,7 @@ func TestCloneAssistantContentFromMatchesCloneAssistantContent(t *testing.T) {
 			earlier := cloneAssistantContent(source)
 			change(source)
 			want := cloneAssistantContent(source)
-			got := cloneAssistantContentFrom(source, earlier, nil)
+			got := cloneAssistantContentFrom(source, earlier)
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("snapshot from earlier = %#v, want %#v", got, want)
 			}
@@ -73,8 +68,8 @@ func TestCloneAssistantContentFromMatchesCloneAssistantContent(t *testing.T) {
 // Unchanged arguments are shared between snapshots rather than copied, and a snapshot never shares a map with its source.
 func TestCloneAssistantContentFromSharesOnlyImmutableSnapshots(t *testing.T) {
 	source := snapshotSource()
-	first := cloneAssistantContentFrom(source, cloneAssistantContent(source), nil)
-	second := cloneAssistantContentFrom(source, first, nil)
+	first := cloneAssistantContentFrom(source, cloneAssistantContent(source))
+	second := cloneAssistantContentFrom(source, first)
 	firstArguments, secondArguments := first[2].(ToolCall).Arguments, second[2].(ToolCall).Arguments
 	if reflect.ValueOf(firstArguments).Pointer() != reflect.ValueOf(secondArguments).Pointer() {
 		t.Fatal("unchanged arguments were copied again")
@@ -86,7 +81,7 @@ func TestCloneAssistantContentFromSharesOnlyImmutableSnapshots(t *testing.T) {
 	if second[2].(ToolCall).Arguments["path"] != "a.go" {
 		t.Fatal("source mutation reached a snapshot")
 	}
-	third := cloneAssistantContentFrom(source, second, nil)
+	third := cloneAssistantContentFrom(source, second)
 	if third[2].(ToolCall).Arguments["path"] != "changed" || second[2].(ToolCall).Arguments["path"] != "a.go" {
 		t.Fatalf("third = %#v, second = %#v", third[2], second[2])
 	}
@@ -146,7 +141,7 @@ func BenchmarkCloneAssistantContent(b *testing.B) {
 	b.Run("from-earlier-snapshot", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			cloneAssistantContentFrom(source, earlier, nil)
+			cloneAssistantContentFrom(source, earlier)
 		}
 	})
 }

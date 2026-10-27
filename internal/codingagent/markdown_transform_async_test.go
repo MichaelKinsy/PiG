@@ -25,7 +25,7 @@ func TestMarkdownTransformFirstPaintWaitsForWholeChain(t *testing.T) {
 	}}, {MarkdownTransformer: func(text string, _ extension.MarkdownTransformContext) string {
 		return "FINAL " + text
 	}}}, "")
-	block := m.newUserMessageBlock("private")
+	block := m.newUserMessageBlock("private", messageMeta{})
 	chat := tui.NewContainer()
 	chat.Add(block)
 	rendered := make(chan []string, 1)

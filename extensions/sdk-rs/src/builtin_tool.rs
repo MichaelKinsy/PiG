@@ -37,6 +37,7 @@ use crate::provider::ProviderSignal;
 use crate::user_bash::{BashOperations, base64, base64_decode};
 
 const CALL_DEFINITION: &str = "builtinTool.definition";
+const CALL_PREPARE_ARGUMENTS: &str = "builtinTool.prepareArguments";
 const CALL_EXECUTE: &str = "builtinTool.execute";
 const CALL_LOCAL_EXEC: &str = "builtinTool.localExec";
 
@@ -427,7 +428,7 @@ impl AgentToolResult {
 }
 
 /// The `ToolDefinition` Pi's `create<Tool>ToolDefinition` returns for a built-in tool, and the way to run it. `definition` carries its name, label, description,
-/// prompt snippet and guidelines, schemas and execution mode, with an `execute` that runs the built-in tool on the host: register it with
+/// prompt snippet and guidelines, schemas, execution mode and `prepare_arguments` (edit's, which the host runs), with an `execute` that runs the built-in tool on the host: register it with
 /// [`crate::Extension::register_tool`] to override the built-in, assigning another `execute` first to wrap it ([`BuiltinToolDefinition::executor`] is the
 /// handle that runs the built-in).
 ///
@@ -516,6 +517,18 @@ fn definition_reply(spec: &Spec) -> io::Result<Value> {
     host_helpers::helper_call(CALL_DEFINITION, args)?.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "host returned no result for builtinTool.definition"))
 }
 
+/// `prepareArguments(args)` of a built-in tool's definition, which the host runs: edit's accepts `edits` as a JSON string or as a single edit and the legacy
+/// top-level `oldText` and `newText`. Like Pi's synchronous hook it takes no signal.
+fn prepare_arguments(spec: &Spec, params: Value) -> Result<Value, String> {
+    let mut args = json!({"name": spec.name, "cwd": spec.cwd, "args": params});
+    if !spec.options.is_empty() {
+        args["options"] = Value::Object(spec.options.clone());
+    }
+    host_helpers::helper_call(CALL_PREPARE_ARGUMENTS, args)
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "host returned no result for builtinTool.prepareArguments".to_string())
+}
+
 fn text_field(reply: &Value, field: &str) -> String {
     text_of(reply, field).to_string()
 }
@@ -532,6 +545,7 @@ fn create_definition(spec: Spec) -> io::Result<BuiltinToolDefinition> {
     let reply = definition_reply(&spec)?;
     let spec = Arc::new(spec);
     let executor = BuiltinToolExecutor { spec: spec.clone() };
+    let preparer = spec.clone();
     let mut definition = ToolDefinition::new(
         text_field(&reply, "name"),
         text_field(&reply, "label"),
@@ -550,6 +564,9 @@ fn create_definition(spec: Spec) -> io::Result<BuiltinToolDefinition> {
     definition.execution_mode = (!mode.is_empty()).then_some(mode);
     if text_field(&reply, "renderShell") == "self" {
         definition.render_shell = crate::ToolRenderShell::SelfShell;
+    }
+    if reply.get("preparesArguments").and_then(Value::as_bool) == Some(true) {
+        definition.prepare_arguments = Some(Box::new(move |params| prepare_arguments(&preparer, params)));
     }
     if let Some(sampling) = present(&reply, "constrainedSampling") {
         definition.constrained_sampling = serde_json::from_value::<crate::ConstrainedSampling>(sampling).ok().map(crate::ToolConstrainedSampling::Config);

@@ -686,46 +686,34 @@ func parseSearchQuery(query string) parsedSearchQuery {
 	return parsedSearchQuery{mode: "tokens", tokens: tokens}
 }
 
-func sessionSearchText(session SessionInfo) string {
-	return fmt.Sprintf("%s %s %s %s", session.ID, session.Name, session.AllMessagesText, session.CWD)
-}
-
-// sessionSearch is a session's search text (session-selector-search.ts getSessionSearchText) with the forms the query modes
-// read, each prepared when a query first needs it.
+// sessionSearch is a session's searchable fields (session-selector-search.ts). Each field is matched on its own, so a token never
+// matches across a field boundary. The lowercased message text, which can be megabytes, is prepared once per session.
 type sessionSearch struct {
 	id, name, cwd, messages string
-	text                    string
-	fuzzy                   *tui.FuzzyText
-	normalized              *string
-	runes                   []rune
+	lowerMessages           *string
+	normalizedMessages      *string
+	// unitRunes are the fields' UTF-16 units, one rune each, so a regex sees a code point outside the BMP as two units as RegExp.test does.
+	unitRunes [4][]rune
 }
 
-func (s *sessionSearch) fuzzyText() tui.FuzzyText {
-	if s.fuzzy == nil {
-		fuzzy := tui.NewFuzzyText(s.text)
-		s.fuzzy = &fuzzy
-	}
-	return *s.fuzzy
+func newSessionSearch(session SessionInfo) *sessionSearch {
+	return &sessionSearch{id: session.ID, name: session.Name, cwd: session.CWD, messages: session.AllMessagesText}
 }
 
-func (s *sessionSearch) normalizedText() string {
-	if s.normalized == nil {
-		normalized := normalizeWhitespaceLower(s.text)
-		s.normalized = &normalized
+func (s *sessionSearch) lowerMessageText() string {
+	if s.lowerMessages == nil {
+		lower := jsstring.ToLower(s.messages)
+		s.lowerMessages = &lower
 	}
-	return *s.normalized
+	return *s.lowerMessages
 }
 
-// unitRunes is the text's UTF-16 units, one rune each, so a regex match index counts units as text.search does.
-func (s *sessionSearch) unitRunes() []rune {
-	if s.runes == nil {
-		units := jsstring.ToUTF16(s.text)
-		s.runes = make([]rune, len(units))
-		for i, unit := range units {
-			s.runes[i] = rune(unit)
-		}
+func (s *sessionSearch) normalizedMessageText() string {
+	if s.normalizedMessages == nil {
+		normalized := strings.Join(strings.FieldsFunc(s.lowerMessageText(), isJSWhitespace), " ")
+		s.normalizedMessages = &normalized
 	}
-	return s.runes
+	return *s.normalizedMessages
 }
 
 type sessionSearchKey struct{ path, id string }
@@ -743,7 +731,7 @@ func (c *sessionSearches) search(session SessionInfo) *sessionSearch {
 		found, ok = c.last[key]
 	}
 	if !ok || found.id != session.ID || found.name != session.Name || found.cwd != session.CWD || found.messages != session.AllMessagesText {
-		found = &sessionSearch{id: session.ID, name: session.Name, cwd: session.CWD, messages: session.AllMessagesText, text: sessionSearchText(session)}
+		found = newSessionSearch(session)
 	}
 	if c.next == nil {
 		c.next = map[sessionSearchKey]*sessionSearch{}
@@ -765,9 +753,7 @@ func (c *sessionSearches) filterAndSort(sessions []SessionInfo, query string, so
 
 // filterAndSortSessions preserves incoming order for empty queries and Recent mode; otherwise it ranks by Pi's fuzzy/phrase scores, with stable modified-time ties.
 func filterAndSortSessions(sessions []SessionInfo, query string, sortMode sessionSortMode) []SessionInfo {
-	return filterAndSortSessionsWith(sessions, query, sortMode, func(session SessionInfo) *sessionSearch {
-		return &sessionSearch{text: sessionSearchText(session)}
-	})
+	return filterAndSortSessionsWith(sessions, query, sortMode, newSessionSearch)
 }
 
 func filterAndSortSessionsWith(sessions []SessionInfo, query string, sortMode sessionSortMode, search func(SessionInfo) *sessionSearch) []SessionInfo {
@@ -815,7 +801,91 @@ func filterAndSortSessionsWith(sessions []SessionInfo, query string, sortMode se
 }
 
 func matchSession(session SessionInfo, parsed parsedSearchQuery) (bool, float64) {
-	return matchSessionSearch(&sessionSearch{text: sessionSearchText(session)}, parsed, parsed.fuzzyQueries())
+	return matchSessionSearch(newSessionSearch(session), parsed, parsed.fuzzyQueries())
+}
+
+// Match tiers, best first (session-selector-search.ts). Each token is scored by the best field it matches; tiers dominate fuzzy
+// scores, so an exact hit anywhere beats a scattered subsequence in a short field.
+const (
+	sessionTierName  = 0 // the query text appears in the session name
+	sessionTierText  = 1 // the query text appears in the session id, messages, or cwd
+	sessionTierFuzzy = 2 // the query characters appear scattered in the session name or cwd
+	sessionTierScale = 1_000_000
+)
+
+// float64() forces the product to round before the add: arm64 fuses x*y+z into one FMA rounding, which JS never does.
+func sessionTierScore(tier int, score float64) float64 {
+	return float64(float64(tier)*sessionTierScale) + score
+}
+
+// matchLiteralToken is an exact, case-insensitive text match. Messages and ids are only matched exactly: scattered matches in them are noise.
+func matchLiteralToken(search *sessionSearch, value string) (float64, bool) {
+	name := jsstring.ToLower(search.name)
+	if strings.Contains(name, value) {
+		return sessionTierScore(sessionTierName, tui.FuzzyMatchScore(value, name).Score), true
+	}
+	if strings.Contains(jsstring.ToLower(search.id), value) || strings.Contains(search.lowerMessageText(), value) || strings.Contains(jsstring.ToLower(search.cwd), value) {
+		return sessionTierScore(sessionTierText, 0), true
+	}
+	return 0, false
+}
+
+func matchFuzzyToken(search *sessionSearch, value string, query tui.FuzzyQuery) (float64, bool) {
+	if score, ok := matchLiteralToken(search, jsstring.ToLower(value)); ok {
+		return score, true
+	}
+	best, found := 0.0, false
+	for _, field := range [2]string{search.name, search.cwd} {
+		if m := tui.NewFuzzyText(field).Match(query); m.Matches && (!found || m.Score < best) {
+			best, found = m.Score, true
+		}
+	}
+	if !found {
+		return 0, false
+	}
+	return sessionTierScore(sessionTierFuzzy, best), true
+}
+
+func matchPhraseToken(search *sessionSearch, phrase string) (float64, bool) {
+	name := normalizeWhitespaceLower(search.name)
+	if strings.Contains(name, phrase) {
+		return sessionTierScore(sessionTierName, tui.FuzzyMatchScore(phrase, name).Score), true
+	}
+	if strings.Contains(jsstring.ToLower(search.id), phrase) || strings.Contains(search.normalizedMessageText(), phrase) || strings.Contains(normalizeWhitespaceLower(search.cwd), phrase) {
+		return sessionTierScore(sessionTierText, 0), true
+	}
+	return 0, false
+}
+
+const (
+	sessionFieldID = iota
+	sessionFieldName
+	sessionFieldMessages
+	sessionFieldCWD
+)
+
+// regexMatchesField is regex.test(field) over the field's UTF-16 units.
+func (s *sessionSearch) regexMatchesField(regex *regexp2.Regexp, field int, text string) bool {
+	if s.unitRunes[field] == nil {
+		units := jsstring.ToUTF16(text)
+		runes := make([]rune, len(units))
+		for i, unit := range units {
+			runes[i] = rune(unit)
+		}
+		s.unitRunes[field] = runes
+	}
+	match, err := regex.FindRunesMatch(s.unitRunes[field])
+	return err == nil && match != nil
+}
+
+func matchRegex(search *sessionSearch, regex *regexp2.Regexp) (float64, bool) {
+	if search.name != "" && search.regexMatchesField(regex, sessionFieldName, search.name) {
+		return sessionTierScore(sessionTierName, 0), true
+	}
+	if search.regexMatchesField(regex, sessionFieldID, search.id) || search.regexMatchesField(regex, sessionFieldMessages, search.messages) || search.regexMatchesField(regex, sessionFieldCWD, search.cwd) {
+		return sessionTierScore(sessionTierText, 0), true
+	}
+	return 0, false
 }
 
 // fuzzyQueries prepares the fuzzy tokens' queries, indexed as the tokens.
@@ -829,42 +899,32 @@ func (parsed parsedSearchQuery) fuzzyQueries() []tui.FuzzyQuery {
 	return queries
 }
 
+// matchSessionSearch matches each field separately: a token never matches across field boundaries, but different tokens may match different fields.
 func matchSessionSearch(search *sessionSearch, parsed parsedSearchQuery, queries []tui.FuzzyQuery) (bool, float64) {
 	if parsed.mode == "regex" {
 		if parsed.regex == nil {
 			return false, 0
 		}
-		// text.search(regex): the match index counts UTF-16 code units, so match over the units.
-		match, err := parsed.regex.FindRunesMatch(search.unitRunes())
-		if err != nil || match == nil {
-			return false, 0
-		}
-		return true, float64(match.Index) * 0.1
-	}
-	if len(parsed.tokens) == 0 {
-		return true, 0
+		score, ok := matchRegex(search, parsed.regex)
+		return ok, score
 	}
 	var total float64
 	for i, tok := range parsed.tokens {
+		var score float64
+		var ok bool
 		if tok.kind == "phrase" {
-			normalizedText := search.normalizedText()
 			phrase := normalizeWhitespaceLower(tok.value)
 			if phrase == "" {
 				continue
 			}
-			before, _, ok := strings.Cut(normalizedText, phrase)
-			if !ok {
-				return false, 0
-			}
-			// float64() rounds the product before the add: arm64 fuses x*y+z, JS never does (session-selector-search.ts:144).
-			total += float64(float64(jsstring.Length(before)) * 0.1)
-			continue
+			score, ok = matchPhraseToken(search, phrase)
+		} else {
+			score, ok = matchFuzzyToken(search, tok.value, queries[i])
 		}
-		match := search.fuzzyText().Match(queries[i])
-		if !match.Matches {
+		if !ok {
 			return false, 0
 		}
-		total += match.Score
+		total += score
 	}
 	return true, total
 }

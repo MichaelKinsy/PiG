@@ -18,7 +18,7 @@ func (capture *ShallowCapture) Capture(message *AssistantMessage) {
 		*capture = ShallowCapture{plain: message}
 		return
 	}
-	current, references, seq := message.observation.captureUnsettled(message)
+	current, references, seq := message.observation.capture(message)
 	*capture = ShallowCapture{current: current, references: references, cell: message.observation.cell, seq: seq}
 }
 
@@ -35,7 +35,6 @@ func (capture *ShallowCapture) ShallowCopy() *AssistantMessage {
 	if capture.cell == nil {
 		return capture.plain.ShallowCopy()
 	}
-	capture.settle()
 	copy := clonePublishedAssistantMessage(capture.current)
 	references := capture.references
 	copy.observation = &assistantMessageObservation{cell: capture.cell, shallow: &references, seq: capture.seq}
@@ -47,26 +46,6 @@ func (capture *ShallowCapture) Observe() *AssistantMessage {
 	if capture.cell == nil {
 		return capture.plain.ShallowCopy().Observe()
 	}
-	capture.settle()
 	owned := clonePublishedAssistantMessage(capture.current)
 	return &owned
-}
-
-// settle parses the captured content's deferred tool arguments once, as a reader of the publication would have: through
-// the cell's parsers while the capture holds the cell's current publication, otherwise afresh.
-func (capture *ShallowCapture) settle() {
-	content := capture.current.Content
-	if !hasDeferredArguments(content) {
-		return
-	}
-	cell := capture.cell
-	cell.mu.Lock()
-	if sameContent(content, cell.current.Content) {
-		cell.settleLocked(nil)
-		content = cell.current.Content
-	} else {
-		content = settledContent(content)
-	}
-	cell.mu.Unlock()
-	capture.current.Content = content
 }

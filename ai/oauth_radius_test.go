@@ -157,8 +157,46 @@ func TestRadiusOAuthThrowsFetchErrorsForCredentialedGatewayAndInvalidEndpoint(t 
 		t.Fatalf("requests = %v", recorder.paths)
 	}
 	_, err = newTestRadiusOAuth(server.URL, time.Now()).LoginContext(context.Background(), OAuthLoginCallbacks{OnSelect: selectRadiusMethod(RadiusLoginMethodBrowser)})
-	if err == nil || err.Error() != "Invalid URL" {
-		t.Fatalf("browser login error = %v", err)
+	if want := "Invalid Radius OAuth config from " + server.URL; err == nil || err.Error() != want {
+		t.Fatalf("browser login error = %v, want %q", err, want)
+	}
+}
+
+// Ported from radius-oauth.test.ts "rejects an authorization endpoint that is not an http(s) URL".
+func TestRadiusOAuthBrowserDiscoveryRejectsNonHTTPAuthorizationEndpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writeRadiusJSON(writer, 200, map[string]any{"authorizationEndpoint": "file:///Users/victim/Downloads/payload.app"})
+	}))
+	defer server.Close()
+	var events []string
+	_, err := newTestRadiusOAuth(server.URL, time.Now()).LoginContext(context.Background(), OAuthLoginCallbacks{
+		OnSelect: selectRadiusMethod(RadiusLoginMethodBrowser),
+		OnAuth:   func(OAuthAuthInfo) { events = append(events, "auth") },
+	})
+	if want := "Invalid Radius OAuth config from " + server.URL; err == nil || err.Error() != want {
+		t.Fatalf("error = %v, want %q", err, want)
+	}
+	if len(events) != 0 {
+		t.Fatalf("events = %v", events)
+	}
+}
+
+// Ported from radius-oauth.test.ts "rejects a device verification URI that is not an http(s) URL".
+func TestRadiusOAuthDeviceLoginRejectsNonHTTPVerificationURI(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writeRadiusJSON(writer, 200, map[string]any{"device_code": "device-code", "user_code": "ABCD-1234", "verification_uri": "file:///Users/victim/Downloads/payload.app", "expires_in": 600})
+	}))
+	defer server.Close()
+	var events []OAuthDeviceCodeInfo
+	_, err := newTestRadiusOAuth(server.URL, time.Now()).LoginContext(context.Background(), OAuthLoginCallbacks{
+		OnSelect:     selectRadiusMethod(RadiusLoginMethodDeviceCode),
+		OnDeviceCode: func(info OAuthDeviceCodeInfo) { events = append(events, info) },
+	})
+	if err == nil || !strings.Contains(err.Error(), "Untrusted verification_uri") {
+		t.Fatalf("error = %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("events = %v", events)
 	}
 }
 

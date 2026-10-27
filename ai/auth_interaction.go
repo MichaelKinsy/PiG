@@ -62,10 +62,14 @@ type AuthURLEvent struct {
 	Instructions string `json:"instructions,omitempty"`
 }
 type AuthDeviceCodeEvent struct {
-	UserCode         string   `json:"userCode"`
-	VerificationURI  string   `json:"verificationUri"`
-	IntervalSeconds  *float64 `json:"intervalSeconds,omitempty"`
-	ExpiresInSeconds *float64 `json:"expiresInSeconds,omitempty"`
+	UserCode        string `json:"userCode"`
+	VerificationURI string `json:"verificationUri"`
+	// OpenBrowserOnConfirm offers best-effort browser opening on user confirmation; nil (Pi's undefined) means true, and clients may ignore it.
+	OpenBrowserOnConfirm *bool `json:"openBrowserOnConfirm,omitempty"`
+	// CopyCodeOnConfirm offers copying UserCode on user confirmation, replacing the clipboard; nil (Pi's undefined) means true.
+	CopyCodeOnConfirm *bool    `json:"copyCodeOnConfirm,omitempty"`
+	IntervalSeconds   *float64 `json:"intervalSeconds,omitempty"`
+	ExpiresInSeconds  *float64 `json:"expiresInSeconds,omitempty"`
 }
 type AuthProgressEvent struct {
 	Message string `json:"message"`

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -834,5 +836,37 @@ func TestWidget(t *testing.T) {
 	res, err := checkWith(coverageFixture(t, body), true)
 	if err != nil || len(res) != 1 || !res[0].Proven {
 		t.Fatalf("err=%v res=%+v", err, res)
+	}
+}
+
+// A failed evidence run names the tests that failed even when a test's large output pushes its own lines out of the tail, and the full
+// output is kept in a file the report names.
+func TestFailureReportNamesTheFailingTestsAndKeepsTheFullOutput(t *testing.T) {
+	root := t.TempDir()
+	out := []byte("=== RUN   TestA\n--- FAIL: TestA (0.00s)\n    a_test.go:7: got a value\n" + strings.Repeat("      \"noise\": 1,\n", 200) + "FAIL\n")
+	report := failureReport(root, "pkg/sub", out)
+	for _, want := range []string{"--- FAIL: TestA (0.00s)", "\nFAIL", "full output: " + filepath.Join(root, "build", "portmap-failures")} {
+		if !strings.Contains(report, want) {
+			t.Fatalf("report lacks %q:\n%s", want, report)
+		}
+	}
+	_, file, _ := strings.Cut(report, "full output: ")
+	if kept, err := os.ReadFile(file); err != nil || !bytes.Equal(kept, out) {
+		t.Fatalf("kept output %q, err %v", kept, err)
+	}
+}
+
+// The evidence runs go workers() at a time, sized by the CPUs the process may use. runtime.NumCPU counts the host's CPUs, so a shard in a
+// container limited to 4 CPUs on a 192-CPU host ran 96 builds and test binaries at once, and the evidence tests failed on time bounds
+// that measured the starvation: a fixture build lock waited on for 180 s, Pi oracle runs cut off at the binary's timeout. GOMAXPROCS is
+// what Go sets from the container's CPU quota.
+func TestWorkersFollowTheCPUsTheProcessMayUse(t *testing.T) {
+	for procs, want := range map[int]int{1: 1, 2: 1, 4: 2, 8: 4} {
+		t.Run(strconv.Itoa(procs), func(t *testing.T) {
+			defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(procs))
+			if got := workers(); got != want {
+				t.Fatalf("workers() = %d with GOMAXPROCS %d, want %d", got, procs, want)
+			}
+		})
 	}
 }

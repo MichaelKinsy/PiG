@@ -3160,12 +3160,12 @@ export class InteractiveMode {
                         // Render user message separately if present
                         if (skillBlock.userMessage) {
                             this.chatContainer.addChild(new Spacer(1));
-                            const userComponent = new UserMessageComponent(skillBlock.userMessage, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers());
+                            const userComponent = new UserMessageComponent(skillBlock.userMessage, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
                             this.chatContainer.addChild(userComponent);
                         }
                     }
                     else {
-                        const userComponent = new UserMessageComponent(textContent, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers());
+                        const userComponent = new UserMessageComponent(textContent, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
                         this.chatContainer.addChild(userComponent);
                     }
                     if (options?.populateHistory) {
@@ -3175,7 +3175,7 @@ export class InteractiveMode {
                 break;
             }
             case "assistant": {
-                const assistantComponent = new AssistantMessageComponent(message, this.hideThinkingBlock, this.getMarkdownThemeWithSettings(), this.hiddenThinkingLabel, this.outputPad, this.getMarkdownTransformers());
+                const assistantComponent = new AssistantMessageComponent(message, this.hideThinkingBlock, this.getMarkdownThemeWithSettings(), this.hiddenThinkingLabel, this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
                 this.chatContainer.addChild(assistantComponent);
                 break;
             }
@@ -3188,7 +3188,7 @@ export class InteractiveMode {
             }
         }
     }
-    renderSessionItems(items, options = {}) {
+    renderSessionItems(items, messageMeta, options = {}) {
         this.pendingTools.clear();
         const renderedPendingTools = new Map();
         // Cache misses are not persisted, unlike successful cache-warming usage.
@@ -3216,7 +3216,11 @@ export class InteractiveMode {
             const message = item;
             // Assistant messages need special handling for tool calls
             if (message.role === "assistant") {
-                this.addMessageToChat(message);
+                const meta = messageMeta?.get(message);
+                this.addMessageToChat(message, {
+                    messageId: meta?.id,
+                    timestamp: meta?.timestamp,
+                });
                 // Render tool call components
                 for (const content of message.content) {
                     if (content.type === "toolCall") {
@@ -3262,7 +3266,12 @@ export class InteractiveMode {
             }
             else {
                 // All other messages use standard rendering
-                this.addMessageToChat(message, options);
+                const meta = messageMeta?.get(message);
+                this.addMessageToChat(message, {
+                    ...options,
+                    messageId: meta?.id,
+                    timestamp: meta?.timestamp,
+                });
             }
         }
         for (const [toolCallId, component] of renderedPendingTools) {
@@ -3280,17 +3289,21 @@ export class InteractiveMode {
         // Selection coordinates point into the transcript being replaced (#9311).
         if (this.renderer instanceof TuiAltScreen)
             this.renderer.resetTextSelection();
+        const messageMeta = new Map();
         const items = entries.flatMap((entry) => {
             if (entry.type === "custom" || (entry.type === "usage" && entry.kind === "cache_warm")) {
                 return [entry];
             }
             const messages = sessionEntryToContextMessages(entry);
+            for (const msg of messages) {
+                messageMeta.set(msg, { id: entry.id, timestamp: entry.timestamp });
+            }
             if ((entry.type === "compaction" || entry.type === "branch_summary") && entry.usage && messages.length > 0) {
                 return [...messages, { type: "compaction_cost", kind: entry.type, usage: entry.usage }];
             }
             return messages;
         });
-        this.renderSessionItems(items, options);
+        this.renderSessionItems(items, messageMeta, options);
     }
     addCacheWarmingUsage(entry) {
         if (!this.settingsManager.getShowCacheMissNotices())

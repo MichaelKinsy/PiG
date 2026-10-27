@@ -2,17 +2,13 @@ package ai
 
 // Ports packages/ai/src/auth/oauth/github-copilot.ts.
 
-import (
-	"errors"
+import "errors"
 
-	"github.com/MichaelKinsy/PiG/internal/nodeurl"
-)
-
-// normalizeCopilotVerificationURI is startDeviceFlow's check of verification_uri (github-copilot.ts:242-257): `new URL(verificationUri)` must parse with an http: or https: protocol, and the URL's href is what the user is sent to (lowercased scheme and host, default port dropped, path "/" added, control bytes percent-encoded, tab and newline removed).
+// normalizeCopilotVerificationURI is startDeviceFlow's check of verification_uri (github-copilot.ts:243-246): the shared trustedHttpUrl must accept it, and its normalized href is what the user is sent to.
 func normalizeCopilotVerificationURI(raw string) (string, error) {
-	parsed, err := nodeurl.ParseURL(raw)
-	if err != nil || parsed.Protocol != "https:" && parsed.Protocol != "http:" {
+	href := trustedHTTPURL(raw)
+	if href == "" {
 		return "", errors.New("Untrusted verification_uri in device code response")
 	}
-	return parsed.Href(), nil
+	return href, nil
 }

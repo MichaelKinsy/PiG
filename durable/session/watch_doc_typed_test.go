@@ -12,45 +12,51 @@ import (
 )
 
 // WatchDoc is Session.watchDoc with a typed value: the acquisition revision, each later committed revision decoded as
-// T, nil once the document retires, and a nil watch for an absent document (types.ts DocumentObserver.watchDoc).
-func TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil(t *testing.T) {
+// T, a retirement as a change with Retired set that keeps the watch going, and a nil watch for an absent document
+// (types.ts DocumentObserver.watchDoc).
+func TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsAFlag(t *testing.T) {
 	harness := createWatchHarness(t)
 	ctx := context.Background()
 	watch, err := durable.WatchDoc[obj](ctx, harness.Session, watchStateDoc)
 	if err != nil || watch == nil {
 		t.Fatalf("WatchDoc = %v, %v", watch, err)
 	}
-	if initial := watch.Value(); initial == nil || (*initial).Value("value") != float64(0) || len((*initial).Value("items").([]any)) != 2 {
+	if initial := watch.Value(); initial == nil || initial.Value("value") != float64(0) || len(initial.Value("items").([]any)) != 2 {
 		t.Fatalf("acquisition value = %+v", initial)
 	}
 	var mu sync.Mutex
-	var seen []*obj
-	watch.Start(func(_ context.Context, value *obj, _ []durable.Op) error {
+	var seen []durable.WatchChange[obj]
+	watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
 		mu.Lock()
-		seen = append(seen, value)
+		seen = append(seen, change)
 		mu.Unlock()
 		return nil
 	})
 	setWatchValue(t, harness, 7)
 	eventuallyTrue(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(seen) == 1 })
 	mu.Lock()
-	if seen[0] == nil || (*seen[0]).Value("value") != float64(7) || len((*seen[0]).Value("items").([]any)) != 2 {
+	if seen[0].Retired || seen[0].Value == nil || seen[0].Value.Value("value") != float64(7) || len(seen[0].Value.Value("items").([]any)) != 2 {
 		t.Fatalf("delivered %+v", seen[0])
 	}
 	mu.Unlock()
-	// Retirement delivers a nil value and ends the watch (observation.ts retire/#drain: the source's explicit retirement).
+	// A retirement is a change with Retired set, the last value the watch was given and no ops; the watch goes on.
 	commit(t, harness.Session, func(tx durable.Tx) error { return tx.RetireDoc(watchStateDoc) })
 	eventuallyTrue(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(seen) == 2 })
 	mu.Lock()
-	if seen[1] != nil {
+	if !seen[1].Retired || seen[1].Value == nil || seen[1].Value.Value("value") != float64(7) || len(seen[1].Ops) != 0 {
 		t.Fatalf("retirement delivered %+v", seen[1])
 	}
 	mu.Unlock()
-	if watch.Value() != nil {
-		t.Fatalf("after retirement Value = %+v", watch.Value())
+	if value := watch.Value(); value == nil || value.Value("value") != float64(7) {
+		t.Fatalf("after retirement Value = %+v, want the last value", value)
 	}
-	if end, err := watch.Stop(); err != nil || end.Reason != durable.WatchRetired {
-		t.Fatalf("end after retirement = %+v, %v", end, err)
+	select {
+	case <-watch.Closed():
+		t.Fatalf("a retirement ended the watch: %+v", watch.End())
+	default:
+	}
+	if end, err := watch.Stop(); err != nil || end.Reason != durable.WatchStopped {
+		t.Fatalf("end = %+v, %v", end, err)
 	}
 
 	absent, err := durable.WatchDoc[obj](ctx, harness.Session, defineDoc("watch.never", 1, sessionScope, func() obj { return delta.NewJsonObject(0) }))
@@ -188,7 +194,7 @@ func TestWatchDocTypedValueDoesNotPanicOnAMismatchedRevision(t *testing.T) {
 	}
 	var mu sync.Mutex
 	var delivered int
-	watch.Start(func(context.Context, *watchedNumber, []durable.Op) error {
+	watch.Start(func(_ context.Context, change durable.WatchChange[watchedNumber]) error {
 		mu.Lock()
 		delivered++
 		mu.Unlock()
@@ -205,7 +211,7 @@ func TestWatchDocTypedValueDoesNotPanicOnAMismatchedRevision(t *testing.T) {
 	if end := watch.End(); end.Reason != durable.WatchListenerError {
 		t.Fatalf("end %+v, want listener_error", end)
 	}
-	if value := watch.Value(); value == nil || value.Value != 3 {
+	if value := watch.Value(); value.Value != 3 {
 		t.Fatalf("Value after a mismatched revision = %+v, want the latest that decoded", value)
 	}
 }

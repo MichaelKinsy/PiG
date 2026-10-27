@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
@@ -33,8 +34,8 @@ func (s *coreSession) WatchEvents(ctx context.Context, conversationId durable.Co
 	current := m.first
 	snapshot := harness.ViewSnapshotEvent(current)
 	var once sync.Once
-	watch := session.NewCommittedWatchOn(m.hub.sched, []harness.AgentEvent{}, func() { once.Do(func() { m.hub.release(m.id); m.closeCore() }) },
-		func() []harness.AgentEvent { return []harness.AgentEvent{harness.ViewSnapshotEvent(current)} }, m.hub.report)
+	watch := chord.NewNativeWatch([]harness.AgentEvent{}, func() { once.Do(func() { m.hub.release(m.id); m.closeCore() }) }, m.hub.report,
+		func() []harness.AgentEvent { return []harness.AgentEvent{harness.ViewSnapshotEvent(current)} }).On(m.hub.sched)
 	m.hub.bind(m.id, func(f rawFrame) {
 		after, ok := m.advance(f)
 		if !ok {
@@ -47,8 +48,8 @@ func (s *coreSession) WatchEvents(ctx context.Context, conversationId durable.Co
 			s.reportListener(err)
 			return
 		}
-		if events := harness.TranslateViewEvents(conversationId, before, after, f.ops, publication, held); len(events) > 0 {
-			watch.Advance(m.hub.deliveryContext(), events, nil)
+		if events := harness.TranslateViewEvents(conversationId, before, after, f.ops, session.ObservedCommit{Seq: publication.Seq, Changes: publication.Changes}, held); len(events) > 0 {
+			watch.Advance(m.hub.deliveryContext(), events)
 		}
 	}, func() { watch.SourceEnded(nil) })
 	if ctx.Done() != nil {

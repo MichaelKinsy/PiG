@@ -164,7 +164,11 @@ func installNpmBatch(sm *codingagent.SettingsManager, batch npmUpdateBatch) erro
 	if err != nil {
 		return err
 	}
-	installArgs := NpmInstallArgs(manager, specs[0], batch.root, batch.registry)
+	root, err := RealInstallRoot(batch.root)
+	if err != nil {
+		return err
+	}
+	installArgs := NpmInstallArgs(manager, specs[0], root, batch.registry)
 	args = append(args, installArgs[0])
 	args = append(args, specs...)
 	args = append(args, installArgs[2:]...)

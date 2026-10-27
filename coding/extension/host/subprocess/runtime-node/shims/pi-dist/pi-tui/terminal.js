@@ -5,6 +5,7 @@ import { isNativeModifierPressed } from "./native-modifiers.js";
 import { getNativePlatformHelper } from "./native-platform.js";
 import { formatProgramStatus, isProgramStatusReply, PROGRAM_STATUS_QUERY, } from "./program-status.js";
 import { StdinBuffer } from "./stdin-buffer.js";
+import { replaceControlCharacters } from "./utils.js";
 const TERMINAL_PROGRESS_KEEPALIVE_MS = 1000;
 const TERMINAL_PROGRESS_ACTIVE_SEQUENCE = "\x1b]9;4;3\x07";
 const TERMINAL_PROGRESS_CLEAR_SEQUENCE = "\x1b]9;4;0\x07";
@@ -471,8 +472,9 @@ export class ProcessTerminal {
         process.stdout.write("\x1b[2J\x1b[H"); // Clear screen and move to home (1,1)
     }
     setTitle(title) {
-        // OSC 0;title BEL - set terminal window title
-        process.stdout.write(`\x1b]0;${title}\x07`);
+        // OSC 0;title BEL - set terminal window title. A BEL or ESC in the title would end the sequence early and
+        // send the rest to the terminal as escape sequences (session names come from session files).
+        process.stdout.write(`\x1b]0;${replaceControlCharacters(title)}\x07`);
     }
     setProgramStatus(status) {
         this.programStatus = status.state === "clear" ? undefined : status;

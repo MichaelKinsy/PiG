@@ -109,10 +109,6 @@
   },
   {
     "provider": "opencode",
-    "id": "deepseek-v4-flash"
-  },
-  {
-    "provider": "opencode",
     "id": "deepseek-v4-pro"
   },
   {
@@ -345,7 +341,7 @@
   },
   {
     "provider": "opencode-go",
-    "id": "gemini-4-argon-contributor"
+    "id": "gemini-4-argon"
   },
   {
     "provider": "opencode-go",
@@ -381,11 +377,19 @@
   },
   {
     "provider": "opencode-go",
+    "id": "iceman-contributor-free"
+  },
+  {
+    "provider": "opencode-go",
     "id": "kimi-k2.7-code"
   },
   {
     "provider": "opencode-go",
     "id": "kimi-k3"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "kimi-k3.1-pro"
   },
   {
     "provider": "opencode-go",

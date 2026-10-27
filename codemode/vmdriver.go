@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -68,6 +69,7 @@ type callResult struct {
 	// since the epoch) while it processes this one. properties is, for a rejection, a JSON object whose properties the script's
 	// Error gets.
 	seq               int
+	hasSeq            bool
 	now               float64
 	hasNow            bool
 	properties        string
@@ -307,8 +309,13 @@ func (s *vmSession) deliver(r callResult) {
 		s.apply(r)
 		return
 	}
-	if _, used := s.early[r.seq]; r.seq < s.nextSeq || used {
-		s.crash(fmt.Sprintf("Result %d has sequence number %d, expected %d or later, once", r.id, r.seq, s.nextSeq))
+	if _, used := s.early[r.seq]; !r.hasSeq || r.seq < s.nextSeq || used {
+		// vm.ts throws an Error and crashMessage names it: `Error: Result ...`. A result without a number says undefined.
+		seq := "undefined"
+		if r.hasSeq {
+			seq = strconv.Itoa(r.seq)
+		}
+		s.crash(fmt.Sprintf("Error: Result %d has sequence number %s, expected %d or later, once", r.id, seq, s.nextSeq))
 		return
 	}
 	s.early[r.seq] = r

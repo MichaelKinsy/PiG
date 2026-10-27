@@ -84,8 +84,8 @@ type livePublications struct {
 func observeLive(t *testing.T, harness Harness) *livePublications {
 	t.Helper()
 	collected := &livePublications{}
-	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-		for _, change := range documentChanges(publication) {
+	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentChanges(publication.Changes) {
 			if change.Record.Kind != "pi.live" || change.Value == nil {
 				continue
 			}
@@ -416,6 +416,41 @@ func TestGeneration(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
+	t.Run("records the requested thinking level on answers, streamed and polled", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation.test.ts:388
+		pollAfter := int64(1)
+		setup := chatSetup(t, ai.FauxConfig{Deferred: &ai.FauxDeferredConfig{PendingFetches: 1, PollAfterMS: &pollAfter}})
+		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("streamed"), fauxAnswer("polled")})
+		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
+		harness.Resume()
+		answer := func(content string) ai.AssistantMessage {
+			settled := must(submitInput(t, root, content).Wait(testContext))
+			if settled.Status != durable.SubmissionDone || settled.Type != durable.SubmissionTypeInput {
+				t.Fatalf("Unexpected %s", settled.Status)
+			}
+			entry := commitValue(t, root, func(tx durable.Tx) (*durable.TypedEntry[durable.Never], error) {
+				return durable.TxEntry(tx, durable.AssistantEntry, *settled.Answer)
+			})
+			return entry.Model[0].(ai.AssistantMessage)
+		}
+		if err := root.Configure(testContext, AgentChange{ThinkingLevel: SetTo(ai.ModelThinkingLevel("high"))}); err != nil {
+			t.Fatal(err)
+		}
+		if got := answer("one").ThinkingLevel; got != "high" {
+			t.Fatalf("streamed answer thinkingLevel = %q, want high", got)
+		}
+		setup.SetSettings(func(settings *HarnessSettings) {
+			settings.Stream = &durable.ConversationStreamOptions{Deferred: &ai.DeferredOption{Enabled: true}}
+		})
+		if got := answer("two").ThinkingLevel; got != "high" {
+			t.Fatalf("polled answer thinkingLevel = %q, want high", got)
+		}
+		if fetches := setup.Faux.(interface{ DeferredFetchCount() int }).DeferredFetchCount(); fetches != 2 {
+			t.Fatalf("deferred fetches = %d, want 2", fetches)
+		}
+		closeHarness(t, harness)
+	})
+
 	t.Run("converts the committed partial when aborted during streaming", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-generation.test.ts:291
 		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 20, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
@@ -721,7 +756,7 @@ func TestGeneration(t *testing.T) {
 			Stream:        durable.ConversationStreamOptions{},
 			Retry:         durable.ConversationRetryPolicy{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxAgentDelayMs: &maxAgentDelayMs},
 			Compaction:    durable.CompactionPolicy{Enabled: true, ReserveTokens: 16384, KeepRecentTokens: 20000, BackgroundTokens: 32768},
-			Progress:      durable.ProgressPolicy{PartialIntervalMs: 100, OutputIntervalMs: 100},
+			Progress:      durable.ProgressPolicy{PartialIntervalMs: 100, OutputIntervalMs: 100, PersistWithinMs: 1000},
 			ToolExecution: durable.ToolExecutionParallel,
 			SteeringMode:  durable.QueueOneAtATime,
 			FollowUpMode:  durable.QueueOneAtATime,
@@ -753,8 +788,18 @@ func TestGeneration(t *testing.T) {
 			t.Fatalf("compaction = %+v", resolved.Compaction)
 		}
 		progress := ResolveSettings(&HarnessSettings{Progress: &ProgressPolicyPatch{OutputIntervalMs: new(500.0)}}).Progress
-		if progress != (durable.ProgressPolicy{PartialIntervalMs: 100, OutputIntervalMs: 500}) {
+		if progress != (durable.ProgressPolicy{PartialIntervalMs: 100, OutputIntervalMs: 500, PersistWithinMs: 1000}) {
 			t.Fatalf("progress = %+v", progress)
+		}
+		// harness-generation.test.ts:530: not a number of milliseconds, 0 or more: the default.
+		if got := ResolveSettings(&HarnessSettings{Progress: &ProgressPolicyPatch{PersistWithinMs: new(-1.0)}}).Progress.PersistWithinMs; got != 1000 {
+			t.Fatalf("persistWithinMs -1 resolved to %v, want 1000", got)
+		}
+		if got := ResolveSettings(&HarnessSettings{Progress: &ProgressPolicyPatch{PersistWithinMs: new(math.NaN())}}).Progress.PersistWithinMs; got != 1000 {
+			t.Fatalf("persistWithinMs NaN resolved to %v, want 1000", got)
+		}
+		if got := ResolveSettings(&HarnessSettings{Progress: &ProgressPolicyPatch{PersistWithinMs: new(0.0)}}).Progress.PersistWithinMs; got != 0 {
+			t.Fatalf("persistWithinMs 0 resolved to %v, want 0", got)
 		}
 	})
 

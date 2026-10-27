@@ -28,7 +28,8 @@ func metricsOf(adapter telemetry.TelemetryContext) telemetry.TelemetryMetrics {
 
 // telemetryReport wraps the contained host callback with the report counter and, under ctx's span, the report event
 // (harness.ts safeReport). Without a span the NOOP span drops the event; no root report span is created. Only the fixed
-// fields are recorded, never the error.
+// fields are recorded, never the error. It never panics, since reports also come from inside Storage's adopt: a panicking
+// metric or event is dropped, as reporting it would report again.
 func telemetryReport(onReport func(err error, info durable.ReportInfo), adapter telemetry.TelemetryContext) func(ctx context.Context, err error, info durable.ReportInfo) {
 	reportMetrics := metricsOf(adapter)
 	reports := telemetry.CreateTypedMetrics(reportMetrics, DurableTelemetrySchema).Counter("pi.durable.reports")
@@ -63,6 +64,10 @@ func telemetryReport(onReport func(err error, info durable.ReportInfo), adapter 
 		case durable.ReportHostError:
 			taskId()
 		}
+		defer func() {
+			// upstream: packages/durable/src/harness/harness.ts:safeReport drops a throwing metric or event.
+			_ = recover()
+		}()
 		if metricsOn {
 			reports.Add(1, telemetry.SpanAttributes{telemetry.Attr("type", string(info.Type))})
 		}

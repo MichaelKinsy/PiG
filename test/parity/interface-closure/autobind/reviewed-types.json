@@ -35,6 +35,10 @@
     "go": "ai/types.go#StreamOptions",
     "reason": "Pi ai/src/types.ts:241 is StreamOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the StreamOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
   },
+  "pkg:ai/.#StreamingJsonParser::property:snapshot::call:0": {
+    "go": "ai/streaming_json_parser.go#StreamingJSONParser.Snapshot",
+    "reason": "Pi snapshot(): JsonValue | undefined returns the value of the text read so far, or undefined before a value starts. Go cannot express an optional of any JSON value without a sentinel, so Snapshot() returns StreamingJSONSnapshot{Value, Defined, Order, Version}: Defined is false where Pi returns undefined, Value is the plain JSON value (nil, bool, float64, string, []any or map[string]any), Order carries the member order of objects whose keys are not sorted (a JavaScript object keeps insertion order itself) and Version changes when a fresh copy was made, so a caller can tell a changed snapshot where Pi compares identity. TestStreamingJSONParserMatchesPi compares the snapshot after every piece with Pi's."
+  },
   "pkg:ai/.#ThinkingTokenBudgetField": {
     "go": "ai/types.go#ThinkingTokenBudgetField",
     "reason": "42a3497d compat-schema.ts ThinkingTokenBudgetField is Static<typeof ThinkingTokenBudgetFieldSchema>, the closed union 'thinking_token_budget' | 'thinking_budget' | 'thinking_budget_tokens'. PiG's ai.ThinkingTokenBudgetField is a string type with exactly those three constants (ai/types.go); TestThinkingTokenBudgetFieldLiteralsMatchUpstream locks the literals and the compat schema accepts the same three (TestModelsJSONSchemaErrorsMatchPi)."
@@ -42,6 +46,18 @@
   "pkg:ai/.#Tool::property:constrainedSampling": {
     "go": "ai/types.go#ToolSchema.ConstrainedSampling",
     "reason": "Pi ai/src/types.ts:721 constrainedSampling?: false | ConstrainedSamplingConfig; utils/transcript.ts:128 keeps an explicit false in the serialized tool and api/constrained-sampling.ts:230,255 read the config. PiG carries the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false, ai/types.go:380); ai/schema_object_order.go:247-279 decodes and encodes false on the wire and ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go:87 lock all three states."
+  },
+  "pkg:ai/.#ToolCallArgumentsStream::property:append::call:0": {
+    "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Append",
+    "reason": "Pi append(delta): ToolCall['arguments'] returns the partial arguments, a new object whenever they changed. Go Append(delta string) (JsonObject, schemaObjectOrder) returns the same partial arguments (a new map when they changed) with the member order of the objects in them, which a Go map does not keep. TestStreamingToolArgumentsShowGrowingPartialsKeepStreamStateOffEveryPartialAndFinishWithTheExactArguments reads them through ToolCall.AppendStreamedArguments."
+  },
+  "pkg:ai/.#ToolCallArgumentsStream::property:finish::call:0": {
+    "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish",
+    "reason": "Pi finish(): Pick<ToolCall, 'arguments' | 'argumentsError'> is one full parseToolCallArguments of the text. Go Finish() (JsonObject, schemaObjectOrder, string) returns the arguments, their member order and the argumentsError text (empty for none), which ToolCall.SetFinalArguments stores."
+  },
+  "pkg:ai/.#ToolCallArgumentsStream::property:replace::call:0": {
+    "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace",
+    "reason": "Pi replace(text): {delta: string | undefined, arguments} takes the provider's complete text and returns the missing piece when it continues the text so far, else undefined. Go Replace(text) (delta string, hasDelta bool, arguments JsonObject, order schemaObjectOrder) returns hasDelta false where Pi returns an undefined delta, and the member order beside the arguments."
   },
   "pkg:ai/.#UserAgentMode": {
     "go": "ai/identity.go#UserAgentMode",
@@ -119,6 +135,10 @@
     "go": "ai/types.go#StreamOptions",
     "reason": "Pi ai/src/types.ts:241 is StreamOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the StreamOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
   },
+  "pkg:ai/compat#StreamingJsonParser::property:snapshot::call:0": {
+    "go": "ai/streaming_json_parser.go#StreamingJSONParser.Snapshot",
+    "reason": "Pi snapshot(): JsonValue | undefined returns the value of the text read so far, or undefined before a value starts. Go cannot express an optional of any JSON value without a sentinel, so Snapshot() returns StreamingJSONSnapshot{Value, Defined, Order, Version}: Defined is false where Pi returns undefined, Value is the plain JSON value (nil, bool, float64, string, []any or map[string]any), Order carries the member order of objects whose keys are not sorted (a JavaScript object keeps insertion order itself) and Version changes when a fresh copy was made, so a caller can tell a changed snapshot where Pi compares identity. TestStreamingJSONParserMatchesPi compares the snapshot after every piece with Pi's."
+  },
   "pkg:ai/compat#ThinkingTokenBudgetField": {
     "go": "ai/types.go#ThinkingTokenBudgetField",
     "reason": "42a3497d compat-schema.ts ThinkingTokenBudgetField is Static<typeof ThinkingTokenBudgetFieldSchema>, the closed union 'thinking_token_budget' | 'thinking_budget' | 'thinking_budget_tokens'. PiG's ai.ThinkingTokenBudgetField is a string type with exactly those three constants (ai/types.go); TestThinkingTokenBudgetFieldLiteralsMatchUpstream locks the literals and the compat schema accepts the same three (TestModelsJSONSchemaErrorsMatchPi)."
@@ -126,6 +146,18 @@
   "pkg:ai/compat#Tool::property:constrainedSampling": {
     "go": "ai/types.go#ToolSchema.ConstrainedSampling",
     "reason": "Pi ai/src/types.ts:721 constrainedSampling?: false | ConstrainedSamplingConfig; utils/transcript.ts:128 keeps an explicit false in the serialized tool and api/constrained-sampling.ts:230,255 read the config. PiG carries the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false, ai/types.go:380); ai/schema_object_order.go:247-279 decodes and encodes false on the wire and ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go:87 lock all three states."
+  },
+  "pkg:ai/compat#ToolCallArgumentsStream::property:append::call:0": {
+    "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Append",
+    "reason": "Pi append(delta): ToolCall['arguments'] returns the partial arguments, a new object whenever they changed. Go Append(delta string) (JsonObject, schemaObjectOrder) returns the same partial arguments (a new map when they changed) with the member order of the objects in them, which a Go map does not keep. TestStreamingToolArgumentsShowGrowingPartialsKeepStreamStateOffEveryPartialAndFinishWithTheExactArguments reads them through ToolCall.AppendStreamedArguments."
+  },
+  "pkg:ai/compat#ToolCallArgumentsStream::property:finish::call:0": {
+    "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish",
+    "reason": "Pi finish(): Pick<ToolCall, 'arguments' | 'argumentsError'> is one full parseToolCallArguments of the text. Go Finish() (JsonObject, schemaObjectOrder, string) returns the arguments, their member order and the argumentsError text (empty for none), which ToolCall.SetFinalArguments stores."
+  },
+  "pkg:ai/compat#ToolCallArgumentsStream::property:replace::call:0": {
+    "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace",
+    "reason": "Pi replace(text): {delta: string | undefined, arguments} takes the provider's complete text and returns the missing piece when it continues the text so far, else undefined. Go Replace(text) (delta string, hasDelta bool, arguments JsonObject, order schemaObjectOrder) returns hasDelta false where Pi returns an undefined delta, and the member order beside the arguments."
   },
   "pkg:ai/compat#UserAgentMode": {
     "go": "ai/identity.go#UserAgentMode",
@@ -166,6 +198,22 @@
   "pkg:ai/utils/identity#withClientIdentity::call:1": {
     "go": "ai/identity_models.go#WithClientIdentity",
     "reason": "Pi utils/identity.ts withClientIdentity(models: Models, identity): Models is the second overload, for the read and request surface without mutation. Go has the one ClientIdentityModels parameter for both overloads (a Go interface is satisfied by the smaller or the larger surface), and the view merges the request identity over the wrapper identity (TestWithClientIdentityMergesRequestIdentityOverTheWrapperIdentity, TestModelsMergeRequestIdentityOverTheModelsIdentity)."
+  },
+  "pkg:ai/utils/streaming-json#StreamingJsonParser::property:snapshot::call:0": {
+    "go": "ai/streaming_json_parser.go#StreamingJSONParser.Snapshot",
+    "reason": "Pi snapshot(): JsonValue | undefined returns the value of the text read so far, or undefined before a value starts. Go cannot express an optional of any JSON value without a sentinel, so Snapshot() returns StreamingJSONSnapshot{Value, Defined, Order, Version}: Defined is false where Pi returns undefined, Value is the plain JSON value (nil, bool, float64, string, []any or map[string]any), Order carries the member order of objects whose keys are not sorted (a JavaScript object keeps insertion order itself) and Version changes when a fresh copy was made, so a caller can tell a changed snapshot where Pi compares identity. TestStreamingJSONParserMatchesPi compares the snapshot after every piece with Pi's."
+  },
+  "pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:append::call:0": {
+    "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Append",
+    "reason": "Pi append(delta): ToolCall['arguments'] returns the partial arguments, a new object whenever they changed. Go Append(delta string) (JsonObject, schemaObjectOrder) returns the same partial arguments (a new map when they changed) with the member order of the objects in them, which a Go map does not keep. TestStreamingToolArgumentsShowGrowingPartialsKeepStreamStateOffEveryPartialAndFinishWithTheExactArguments reads them through ToolCall.AppendStreamedArguments."
+  },
+  "pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:finish::call:0": {
+    "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish",
+    "reason": "Pi finish(): Pick<ToolCall, 'arguments' | 'argumentsError'> is one full parseToolCallArguments of the text. Go Finish() (JsonObject, schemaObjectOrder, string) returns the arguments, their member order and the argumentsError text (empty for none), which ToolCall.SetFinalArguments stores."
+  },
+  "pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:replace::call:0": {
+    "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace",
+    "reason": "Pi replace(text): {delta: string | undefined, arguments} takes the provider's complete text and returns the missing piece when it continues the text so far, else undefined. Go Replace(text) (delta string, hasDelta bool, arguments JsonObject, order schemaObjectOrder) returns hasDelta false where Pi returns an undefined delta, and the member order beside the arguments."
   },
   "pkg:chord/.#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",
@@ -238,6 +286,10 @@
   "pkg:chord/delta#Decoder::property:decode::call:0": {
     "go": "chord/delta/codec.go#Decoder.Decode",
     "reason": "Pi 34a8bb38 chord/src/delta/index.ts:660-670 decode(wire: readonly unknown[]): Op[] runs assertValidWireOp on each element before use. Go's Decode(wire []WireOp) ([]Op, error) runs AssertValidWireOp (the same checks and messages) on each element too (codec.go), so the WireOp element type ([]any) hides no validation: the one element it cannot hold, a non-array, never reaches a decoder, because the frame's ops are List(List(Unknown)) in FrameSchema (wire.ts:109) and DecodeFrame refuses such a frame as Pi's isFrame does, while remote.ts:113-115 (Go remote.go receive) decodes only a decoded frame's ops. TestRemoteStateRejectsMalformedWireOpsInTheDecoder drives malformed wire ops through a client's remote state member (TypeError reported, value kept; red with the AssertValidWireOp call removed from Decode); delta.test.ts \"rejects unresolved short forms and unsafe interned paths\" is ported in chord/delta/delta_upstream_test.go (TestDeltaCodec)."
+  },
+  "pkg:chord/delta#appendText::call:0": {
+    "go": "chord/delta/handles.go#AppendText",
+    "reason": "Pi appendText<T extends object>(draft: Draft<T>, key: StringKeys<T>, text: string): void appends to the string at draft[key]. Draft<T> is the Proxy view of a change's root and StringKeys<T> a mapped type over T's string-valued keys, both compile-time mechanics. Go has no generic functions over a draft, so AppendText(draft *Object, key, text string) error takes the change's draft object and returns the TypeError of appendText as an error; TestAppendTextRecordsAnAppendOpAndTheAppendedValue and TestAppendTextRejectsWhatACallerCanGetWrong assert it."
   },
   "pkg:chord/node#childControl::call:0": {
     "go": "chord/host/manager.go#ChildControl",

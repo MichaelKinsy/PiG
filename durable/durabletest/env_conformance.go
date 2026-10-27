@@ -108,11 +108,11 @@ func listed(executionEnv env.ExecutionEnv, path string, options *env.ListFilesOp
 }
 
 // covers reports whether a change reports path: an overflow, or a reported path at or above it.
-func covers(change env.WatchChange, path string) bool {
+func covers(change env.FileChange, path string) bool {
 	switch typed := change.(type) {
-	case env.WatchChangeOverflow:
+	case env.FileChangeOverflow:
 		return true
-	case env.WatchChangePaths:
+	case env.FileChangePaths:
 		return slices.ContainsFunc(typed.Paths, func(reported string) bool {
 			return path == reported || strings.HasPrefix(path, reported+"/") || strings.HasPrefix(path, reported+`\`)
 		})
@@ -123,16 +123,16 @@ func covers(change env.WatchChange, path string) bool {
 // watchLog collects the changes a watcher reports.
 type watchLog struct {
 	mu      sync.Mutex
-	changes []env.WatchChange
+	changes []env.FileChange
 }
 
-func (log *watchLog) add(change env.WatchChange) {
+func (log *watchLog) add(change env.FileChange) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 	log.changes = append(log.changes, change)
 }
 
-func (log *watchLog) all() []env.WatchChange {
+func (log *watchLog) all() []env.FileChange {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 	return slices.Clone(log.changes)
@@ -149,7 +149,7 @@ func (helpers watchHelpers) expectChange(path string, change func()) {
 	from := len(helpers.log.all())
 	change()
 	deadline := time.Now().Add(watchWait)
-	for !slices.ContainsFunc(helpers.log.all()[from:], func(entry env.WatchChange) bool { return covers(entry, target) }) {
+	for !slices.ContainsFunc(helpers.log.all()[from:], func(entry env.FileChange) bool { return covers(entry, target) }) {
 		if time.Now().After(deadline) {
 			panic(caseFailure{err: fmt.Errorf("No change reported %s; got %v", target, helpers.log.all()[from:])})
 		}
@@ -479,7 +479,7 @@ func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {
 				helpers.expectChange("skills/SKILL.md", func() { check(executionEnv.RenameFile(ctx, "skills/.SKILL.md.tmp", "skills/SKILL.md")) })
 				hidden := []string{helpers.absolute("skills/node_modules"), helpers.absolute("skills/.SKILL.md.tmp")}
 				for _, change := range helpers.log.all() {
-					paths, ok := change.(env.WatchChangePaths)
+					paths, ok := change.(env.FileChangePaths)
 					if !ok {
 						continue
 					}

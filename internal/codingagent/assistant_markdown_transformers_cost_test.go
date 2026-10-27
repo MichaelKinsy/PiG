@@ -14,7 +14,7 @@ import (
 // transform closure again (TU-T6).
 func TestAssistantMarkdownTransformDoesNotRebuildItsTransformersPerRender(t *testing.T) {
 	m := statusBorderMode(t, false)
-	transform := m.assistantMarkdownTransform(nil, extension.MarkdownMessageAssistant, nil)
+	transform := m.assistantMarkdownTransform(nil, extension.MarkdownMessageAssistant, nil, messageMeta{})
 	const markdown = "An answer in **Markdown** with `code` and no diagram.\n\n- one\n- two\n"
 	if got := transform(markdown, 80); got != markdown {
 		t.Fatalf("transform changed text with no diagram: %q", got)

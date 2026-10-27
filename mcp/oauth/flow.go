@@ -324,6 +324,10 @@ func StartAuthorization(authorizationServerURL string, options StartAuthorizatio
 	if err != nil {
 		return URL{}, "", err
 	}
+	// upstream: flow.ts startAuthorization. Callers open this URL with the platform URL handler, which also launches files and custom protocols.
+	if !isHTTPURL(u) {
+		return URL{}, "", fmt.Errorf("Invalid authorization endpoint %s", u.Href())
+	}
 	verifier, challenge, err := pkce()
 	if err != nil {
 		return URL{}, "", err

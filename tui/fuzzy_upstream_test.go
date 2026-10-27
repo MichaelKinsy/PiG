@@ -106,3 +106,33 @@ func TestUpstreamFuzzyFilter(t *testing.T) {
 		}
 	})
 }
+
+// packages/tui/test/fuzzy.test.ts (#11220): the greedy alignment took o, p, u from "openrouter", so the real "opus" scored worst.
+func TestUpstreamFuzzyContiguousAlignment(t *testing.T) {
+	t.Run("scores a contiguous occurrence instead of an earlier scattered alignment", func(t *testing.T) {
+		opus := FuzzyMatchScore("opus", "openrouter openrouter/anthropic/claude-opus-4.1")
+		sonnet := FuzzyMatchScore("opus", "openrouter openrouter/anthropic/claude-sonnet-4.5")
+		gptOss := FuzzyMatchScore("opus", "openrouter openrouter/openai/gpt-oss-120b")
+		if !(opus.Score < sonnet.Score) || !(opus.Score < gptOss.Score) {
+			t.Fatalf("opus=%v sonnet=%v gptOss=%v", opus.Score, sonnet.Score, gptOss.Score)
+		}
+	})
+	t.Run("uses the best contiguous occurrence, not the first", func(t *testing.T) {
+		embeddedFirst := FuzzyMatchScore("opus", "xxopus opus")
+		boundaryOnly := FuzzyMatchScore("opus", "xxxxxx opus")
+		if embeddedFirst.Score != boundaryOnly.Score {
+			t.Fatalf("embeddedFirst=%v boundaryOnly=%v", embeddedFirst.Score, boundaryOnly.Score)
+		}
+	})
+	t.Run("ranks a model containing the query above models matching a shared provider prefix", func(t *testing.T) {
+		items := []string{
+			"radius radius/gpt-5.4 radius gpt-5.4 GPT 5.4",
+			"radius radius/agentic radius agentic Agentic",
+			"radius radius/gpt-6-sol radius gpt-6-sol GPT 6 Sol",
+			"radius radius/gpt-6-astra radius gpt-6-astra GPT 6 Astra",
+		}
+		if got := FuzzyFilter(items, "astra", func(s string) string { return s }); got[0] != items[3] {
+			t.Fatalf("got %q", got[0])
+		}
+	})
+}

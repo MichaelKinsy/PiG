@@ -110,14 +110,25 @@ func (c *fusedExtConn) Read(b []byte) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		frame := make([]byte, 4, 4+len(shell)+len(args))
+		// The host encodes no frame over MaxFrameSize (encodeEnvelope), and a reader of this stream rejects one as every SDK reader does. Each part is bounded before the parts are added up, so the size never overflows.
+		if len(shell) > MaxFrameSize || len(args) > MaxFrameSize {
+			return 0, &FrameTooLargeError{Size: max(len(shell), len(args)), Max: MaxFrameSize}
+		}
+		length := len(shell) + len(args)
+		if args != nil {
+			length -= len(argsPlaceholder)
+		}
+		if length > MaxFrameSize {
+			return 0, &FrameTooLargeError{Size: length, Max: MaxFrameSize}
+		}
+		frame := make([]byte, 4, 4+length)
 		if args == nil {
 			frame = append(frame, shell...)
 		} else {
 			at := len(shell) - c.suffixLen
 			frame = append(append(append(frame, shell[:at-len(argsPlaceholder)]...), args...), shell[at:]...)
 		}
-		binary.BigEndian.PutUint32(frame, uint32(len(frame)-4))
+		binary.BigEndian.PutUint32(frame, uint32(length))
 		c.pending = frame
 	}
 	n := copy(b, c.pending)

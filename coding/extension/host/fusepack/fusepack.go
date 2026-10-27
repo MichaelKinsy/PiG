@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/typebox/engine"
 )
 
 // fusedServes maps an extension name to its in-process serve func. Populated by
@@ -107,7 +108,8 @@ func HostHelpers() *sdk.HostHelpers {
 			image := result.Image
 			return sdk.ResizedImage{Data: image.Data, MimeType: image.MimeType, OriginalWidth: float64(*image.OriginalWidth), OriginalHeight: float64(*image.OriginalHeight), Width: float64(*image.Width), Height: float64(*image.Height), WasResized: *image.WasResized}, true, nil
 		},
-		BuiltinToolDefinition: subprocess.BuiltinToolDefinitionJSON,
+		BuiltinToolDefinition:       subprocess.BuiltinToolDefinitionJSON,
+		BuiltinToolPrepareArguments: subprocess.BuiltinToolPrepareArgumentsJSON,
 		LocalExec: func(ctx context.Context, argsJSON []byte, onData func([]byte) error) ([]byte, error) {
 			var args subprocess.BuiltinToolLocalExecArgs
 			if err := json.Unmarshal(argsJSON, &args); err != nil {
@@ -123,6 +125,7 @@ func HostHelpers() *sdk.HostHelpers {
 			return subprocess.BuiltinToolExecute(ctx, args, managedToolsDir(), subprocess.BuiltinToolPeer{Callback: peer.Callback, Update: peer.Update, Exec: peer.Exec})
 		},
 		HighlightCode: subprocess.HighlightCodeLines,
+		TypeEngine:    engine.Serve,
 		LoadTheme:     subprocess.LoadThemeJSON,
 		WithFileMutationQueue: func(filePath string, fn func() error) error {
 			_, err := tools.WithFileMutationQueue(filePath, func() (struct{}, error) { return struct{}{}, fn() })

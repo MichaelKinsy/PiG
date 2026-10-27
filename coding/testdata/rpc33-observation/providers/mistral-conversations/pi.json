@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0+74f46864",
+  "piVersion": "1.4.0+6c384aa3",
   "node": "v24.19.0",
   "api": "mistral-conversations",
   "bodies": {
@@ -75,8 +75,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -138,7 +137,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 31
+                "durationMs": 33
               }
             },
             {
@@ -177,7 +176,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 31
+                "durationMs": 33
               }
             },
             {
@@ -216,7 +215,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 31
+                "durationMs": 33
               }
             }
           ]
@@ -517,8 +516,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -580,7 +578,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 4
               }
             },
             {
@@ -619,7 +617,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 4
               }
             },
             {
@@ -658,7 +656,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3,
+                "durationMs": 4,
                 "thinkingLevel": "off"
               }
             }
@@ -701,7 +699,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 27
+            "durationMs": 32
           }
         },
         {
@@ -816,7 +814,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 27,
+            "durationMs": 32,
             "thinkingLevel": "off"
           }
         }
@@ -882,8 +880,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -945,7 +942,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -984,7 +981,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -1023,7 +1020,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 155
               }
             }
           ]
@@ -1123,7 +1120,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -1162,7 +1159,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -1201,7 +1198,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -1240,7 +1237,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 155
               }
             }
           ]
@@ -1311,8 +1308,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -1374,7 +1370,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 156
               }
             },
             {
@@ -1413,7 +1409,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 156
               }
             },
             {
@@ -1452,7 +1448,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153,
+                "durationMs": 156,
                 "thinkingLevel": "off"
               }
             }
@@ -1597,7 +1593,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 173,
+            "durationMs": 181,
             "thinkingLevel": "off"
           }
         }
@@ -1665,8 +1661,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -1704,8 +1699,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -1767,7 +1761,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 180
+                "durationMs": 181
               }
             },
             {
@@ -1806,7 +1800,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 180
+                "durationMs": 181
               }
             }
           ]
@@ -1884,8 +1878,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -1923,8 +1916,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -2098,8 +2090,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -2137,8 +2128,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -2200,7 +2190,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 179
+                "durationMs": 182
               }
             },
             {
@@ -2239,7 +2229,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 179,
+                "durationMs": 182,
                 "thinkingLevel": "off"
               }
             }
@@ -2384,7 +2374,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 201,
+            "durationMs": 210,
             "thinkingLevel": "off"
           }
         }
@@ -2466,8 +2456,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -2723,7 +2712,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354
+                "durationMs": 355
               }
             },
             {
@@ -2762,7 +2751,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354
+                "durationMs": 355
               }
             },
             {
@@ -2801,7 +2790,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354
+                "durationMs": 355
               }
             },
             {
@@ -2840,7 +2829,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354
+                "durationMs": 355
               }
             }
           ]
@@ -2927,8 +2916,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -2990,7 +2978,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354
+                "durationMs": 356
               }
             },
             {
@@ -3029,7 +3017,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354
+                "durationMs": 356
               }
             },
             {
@@ -3068,7 +3056,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 354,
+                "durationMs": 356,
                 "thinkingLevel": "off"
               }
             }
@@ -3213,7 +3201,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 379,
+            "durationMs": 391,
             "thinkingLevel": "off"
           }
         }
@@ -3279,8 +3267,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -3342,7 +3329,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -3381,7 +3368,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -3420,7 +3407,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -3520,7 +3507,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -3559,7 +3546,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -3598,7 +3585,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -3637,7 +3624,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -3708,8 +3695,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -3771,7 +3757,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -3810,7 +3796,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -3849,7 +3835,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153,
+                "durationMs": 155,
                 "thinkingLevel": "off"
               }
             }
@@ -3994,7 +3980,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 178,
+            "durationMs": 187,
             "thinkingLevel": "off"
           }
         }
@@ -4266,8 +4252,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4311,8 +4296,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4356,8 +4340,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4401,8 +4384,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4447,8 +4429,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4493,8 +4474,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4564,7 +4544,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 5
+                "durationMs": 3
               }
             },
             {
@@ -4611,7 +4591,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 5
+                "durationMs": 3
               }
             }
           ]
@@ -4790,8 +4770,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4835,8 +4814,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4880,8 +4858,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4925,8 +4902,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -4971,8 +4947,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -5018,8 +4993,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -5089,7 +5063,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -5136,7 +5110,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -5183,7 +5157,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -5230,7 +5204,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -5277,7 +5251,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -5324,7 +5298,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             }
           ]
@@ -5565,8 +5539,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -5610,8 +5583,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -5655,8 +5627,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -5701,8 +5672,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -5772,7 +5742,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -5819,7 +5789,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -5866,7 +5836,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -5913,7 +5883,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -5960,7 +5930,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 3,
+                "durationMs": 2,
                 "thinkingLevel": "off"
               }
             }
@@ -6324,7 +6294,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 28,
+            "durationMs": 31,
             "thinkingLevel": "off"
           }
         }
@@ -6596,8 +6566,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -6641,8 +6610,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -6686,8 +6654,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -6731,8 +6698,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -6777,8 +6743,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -6823,8 +6788,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -6894,7 +6858,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -6941,7 +6905,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 154
               }
             }
           ]
@@ -7114,8 +7078,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -7159,8 +7122,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -7204,8 +7166,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -7249,8 +7210,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -7295,8 +7255,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -7342,8 +7301,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -7413,7 +7371,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7460,7 +7418,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7507,7 +7465,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7554,7 +7512,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7601,7 +7559,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -7648,7 +7606,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -7889,8 +7847,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -7934,8 +7891,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -7979,8 +7935,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -8025,8 +7980,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -8096,7 +8050,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -8143,7 +8097,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -8190,7 +8144,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -8237,7 +8191,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -8284,7 +8238,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -8641,7 +8595,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 175,
+            "durationMs": 182,
             "thinkingLevel": "off"
           }
         }
@@ -8999,8 +8953,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -9044,8 +8997,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -9089,8 +9041,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -9134,8 +9085,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -9203,7 +9153,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 381
+                "durationMs": 382
               }
             },
             {
@@ -9250,7 +9200,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 381
+                "durationMs": 382
               }
             }
           ]
@@ -9645,8 +9595,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -9690,8 +9639,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -9735,8 +9683,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -9780,8 +9727,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -9849,7 +9795,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 381
+                "durationMs": 379
               }
             },
             {
@@ -9896,7 +9842,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 381
+                "durationMs": 379
               }
             }
           ]
@@ -10259,8 +10205,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -10304,8 +10249,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -10349,8 +10293,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -10394,8 +10337,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -10463,7 +10405,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 379
+                "durationMs": 380
               }
             },
             {
@@ -10510,7 +10452,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 379,
+                "durationMs": 380,
                 "thinkingLevel": "off"
               }
             }
@@ -10857,7 +10799,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 403,
+            "durationMs": 416,
             "thinkingLevel": "off"
           }
         }
@@ -11267,8 +11209,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -11312,8 +11253,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -11357,8 +11297,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -11402,8 +11341,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -11471,7 +11409,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1030
+                "durationMs": 1037
               }
             },
             {
@@ -11518,7 +11456,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1030
+                "durationMs": 1037
               }
             }
           ]
@@ -11965,8 +11903,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -12010,8 +11947,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -12055,8 +11991,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -12100,8 +12035,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -12169,7 +12103,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1033
+                "durationMs": 1034
               }
             },
             {
@@ -12216,7 +12150,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1033
+                "durationMs": 1034
               }
             }
           ]
@@ -12631,8 +12565,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -12676,8 +12609,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -12721,8 +12653,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -12766,8 +12697,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -12835,7 +12765,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1035
+                "durationMs": 1037
               }
             },
             {
@@ -12882,7 +12812,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1035,
+                "durationMs": 1037,
                 "thinkingLevel": "off"
               }
             }
@@ -13229,7 +13159,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 1057,
+            "durationMs": 1075,
             "thinkingLevel": "off"
           }
         }
@@ -13499,8 +13429,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -13544,8 +13473,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -13589,8 +13517,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -13634,8 +13561,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -13680,8 +13606,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -13726,8 +13651,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -13797,7 +13721,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 309
               }
             },
             {
@@ -13844,7 +13768,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 309
               }
             }
           ]
@@ -14047,8 +13971,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -14092,8 +14015,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -14137,8 +14059,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -14183,8 +14104,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -14230,8 +14150,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -14301,7 +14220,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14348,7 +14267,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14395,7 +14314,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14442,7 +14361,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14489,7 +14408,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -14536,7 +14455,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             }
           ]
@@ -14811,8 +14730,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-"
-                    },
-                    "partialArgs": "{\"path\":\"parity-"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -14856,8 +14774,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -14901,8 +14818,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -14947,8 +14863,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "parity-read-target.txt"
-                    },
-                    "partialArgs": "{\"path\":\"parity-read-target.txt\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -15018,7 +14933,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 303
+                "durationMs": 307
               }
             },
             {
@@ -15065,7 +14980,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 303
+                "durationMs": 307
               }
             },
             {
@@ -15112,7 +15027,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 303
+                "durationMs": 307
               }
             },
             {
@@ -15159,7 +15074,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 303,
+                "durationMs": 307,
                 "thinkingLevel": "off"
               }
             }
@@ -15514,7 +15429,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 331,
+            "durationMs": 338,
             "thinkingLevel": "off"
           }
         }
@@ -15633,8 +15548,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -15642,8 +15556,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -15683,8 +15596,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -15692,8 +15604,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -15733,8 +15644,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -15742,8 +15652,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -15783,8 +15692,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -15792,8 +15700,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -16213,8 +16120,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -16222,8 +16128,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -16263,8 +16168,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -16272,8 +16176,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -16934,8 +16837,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -16943,8 +16845,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -16984,8 +16885,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -16993,8 +16893,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -17034,8 +16933,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -17043,8 +16941,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -17447,8 +17344,7 @@
                 "name": "read",
                 "arguments": {
                   "path": "a"
-                },
-                "partialArgs": "{\"path\":\"a\"}"
+                }
               },
               {
                 "type": "toolCall",
@@ -17456,8 +17352,7 @@
                 "name": "read",
                 "arguments": {
                   "path": "b"
-                },
-                "partialArgs": "{\"path\":\"b\"}"
+                }
               }
             ],
             "api": "mistral-conversations",
@@ -17773,7 +17668,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 29,
+            "durationMs": 34,
             "thinkingLevel": "off"
           }
         }
@@ -17892,8 +17787,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -17901,8 +17795,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -17942,8 +17835,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -17951,8 +17843,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -17992,8 +17883,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -18001,8 +17891,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -18042,8 +17931,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -18051,8 +17939,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -18498,8 +18385,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -18507,8 +18393,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -18582,7 +18467,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18633,7 +18518,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18684,7 +18569,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18735,7 +18620,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18786,7 +18671,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18837,7 +18722,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18888,7 +18773,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18939,7 +18824,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18990,7 +18875,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -19041,7 +18926,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -19169,8 +19054,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -19178,8 +19062,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -19219,8 +19102,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -19228,8 +19110,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -19269,8 +19150,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -19278,8 +19158,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -19353,7 +19232,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -19404,7 +19283,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -19455,7 +19334,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -19506,7 +19385,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -19557,7 +19436,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -19608,7 +19487,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -19659,7 +19538,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -19984,7 +19863,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 173,
+            "durationMs": 181,
             "thinkingLevel": "off"
           }
         }
@@ -20143,8 +20022,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20152,8 +20030,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20193,8 +20070,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20202,8 +20078,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20243,8 +20118,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20252,8 +20126,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20293,8 +20166,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20302,8 +20174,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20343,8 +20214,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20352,8 +20222,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20393,8 +20262,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20402,8 +20270,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20475,7 +20342,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 256
+                "durationMs": 254
               }
             },
             {
@@ -20526,7 +20393,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 256
+                "durationMs": 254
               }
             },
             {
@@ -20577,7 +20444,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 256
+                "durationMs": 254
               }
             }
           ]
@@ -20767,8 +20634,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20776,8 +20642,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20817,8 +20682,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20826,8 +20690,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20867,8 +20730,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20876,8 +20738,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20917,8 +20778,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20926,8 +20786,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -20967,8 +20826,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -20976,8 +20834,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -21017,8 +20874,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -21026,8 +20882,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -21099,7 +20954,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 255
+                "durationMs": 254
               }
             },
             {
@@ -21150,7 +21005,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 255
+                "durationMs": 254
               }
             },
             {
@@ -21201,7 +21056,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 255
+                "durationMs": 254
               }
             }
           ]
@@ -21369,8 +21224,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -21378,8 +21232,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -21419,8 +21272,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -21428,8 +21280,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -21469,8 +21320,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -21478,8 +21328,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -21519,8 +21368,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -21528,8 +21376,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -21569,8 +21416,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -21578,8 +21424,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -21619,8 +21464,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -21628,8 +21472,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -22120,7 +21963,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 277,
+            "durationMs": 286,
             "thinkingLevel": "off"
           }
         }
@@ -22311,8 +22154,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -22320,8 +22162,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -22361,8 +22202,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -22370,8 +22210,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -22411,8 +22250,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -22420,8 +22258,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -22461,8 +22298,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -22470,8 +22306,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -22511,8 +22346,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -22520,8 +22354,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -22561,8 +22394,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -22570,8 +22402,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -22643,7 +22474,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 655
+                "durationMs": 658
               }
             },
             {
@@ -22694,7 +22525,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 655
+                "durationMs": 658
               }
             },
             {
@@ -22745,7 +22576,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 655
+                "durationMs": 658
               }
             }
           ]
@@ -22967,8 +22798,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -22976,8 +22806,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23017,8 +22846,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23026,8 +22854,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23067,8 +22894,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23076,8 +22902,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23117,8 +22942,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23126,8 +22950,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23167,8 +22990,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23176,8 +22998,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23217,8 +23038,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23226,8 +23046,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23299,7 +23118,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 655
+                "durationMs": 658
               }
             },
             {
@@ -23350,7 +23169,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 655
+                "durationMs": 658
               }
             },
             {
@@ -23401,7 +23220,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 655
+                "durationMs": 658
               }
             }
           ]
@@ -23601,8 +23420,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23610,8 +23428,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23651,8 +23468,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23660,8 +23476,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23701,8 +23516,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23710,8 +23524,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23751,8 +23564,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23760,8 +23572,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23801,8 +23612,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23810,8 +23620,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23851,8 +23660,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -23860,8 +23668,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -23933,7 +23740,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 655
+                "durationMs": 659
               }
             },
             {
@@ -23984,7 +23791,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 655
+                "durationMs": 659
               }
             },
             {
@@ -24035,7 +23842,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 655,
+                "durationMs": 659,
                 "thinkingLevel": "off"
               }
             }
@@ -24352,7 +24159,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 678,
+            "durationMs": 692,
             "thinkingLevel": "off"
           }
         }
@@ -24473,8 +24280,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -24482,8 +24288,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -24523,8 +24328,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -24532,8 +24336,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -24573,8 +24376,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -24582,8 +24384,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -24623,8 +24424,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -24632,8 +24432,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -24673,8 +24472,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -24682,8 +24480,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -24723,8 +24520,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -24732,8 +24528,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -24773,8 +24568,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -24782,8 +24576,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -24855,7 +24648,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 306
               }
             },
             {
@@ -24906,7 +24699,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 306
               }
             },
             {
@@ -24957,7 +24750,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 306
               }
             }
           ]
@@ -25077,8 +24870,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25086,8 +24878,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25127,8 +24918,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25136,8 +24926,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25177,8 +24966,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25186,8 +24974,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25227,8 +25014,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25236,8 +25022,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25277,8 +25062,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25286,8 +25070,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25327,8 +25110,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25336,8 +25118,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25377,8 +25158,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25386,8 +25166,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25459,7 +25238,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -25510,7 +25289,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -25561,7 +25340,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -25612,7 +25391,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 303
               }
             }
           ]
@@ -25742,8 +25521,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25751,8 +25529,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25792,8 +25569,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25801,8 +25577,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25842,8 +25617,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25851,8 +25625,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25892,8 +25665,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25901,8 +25673,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25942,8 +25713,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -25951,8 +25721,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -25992,8 +25761,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\""
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -26001,8 +25769,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -26042,8 +25809,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "a"
-                    },
-                    "partialArgs": "{\"path\":\"a\"}"
+                    }
                   },
                   {
                     "type": "toolCall",
@@ -26051,8 +25817,7 @@
                     "name": "read",
                     "arguments": {
                       "path": "b"
-                    },
-                    "partialArgs": "{\"path\":\"b\"}"
+                    }
                   }
                 ],
                 "api": "mistral-conversations",
@@ -26124,7 +25889,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 303
+                "durationMs": 304
               }
             },
             {
@@ -26175,7 +25940,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 303
+                "durationMs": 304
               }
             },
             {
@@ -26226,7 +25991,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 303,
+                "durationMs": 304,
                 "thinkingLevel": "off"
               }
             }
@@ -26544,7 +26309,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 329,
+            "durationMs": 333,
             "thinkingLevel": "off"
           }
         }
@@ -26734,7 +26499,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -26769,7 +26534,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 4
+                "durationMs": 2
               }
             }
           ]
@@ -27211,7 +26976,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 2
+                "durationMs": 4
               }
             },
             {
@@ -27246,7 +27011,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 2,
+                "durationMs": 4,
                 "thinkingLevel": "off"
               }
             }
@@ -27405,7 +27170,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 28,
+            "durationMs": 30,
             "thinkingLevel": "off"
           }
         }
@@ -27595,7 +27360,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -27630,7 +27395,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -27733,7 +27498,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -27768,7 +27533,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -27803,7 +27568,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -27838,7 +27603,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -27873,7 +27638,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -28064,7 +27829,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -28099,7 +27864,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -28250,7 +28015,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 173,
+            "durationMs": 177,
             "thinkingLevel": "off"
           }
         }
@@ -28444,7 +28209,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 228
+                "durationMs": 229
               }
             },
             {
@@ -28479,7 +28244,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 228
+                "durationMs": 229
               }
             }
           ]
@@ -28916,7 +28681,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 228
+                "durationMs": 230
               }
             },
             {
@@ -28951,7 +28716,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 228,
+                "durationMs": 230,
                 "thinkingLevel": "off"
               }
             }
@@ -29102,7 +28867,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 252,
+            "durationMs": 258,
             "thinkingLevel": "off"
           }
         }
@@ -29308,7 +29073,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 379
+                "durationMs": 381
               }
             },
             {
@@ -29343,7 +29108,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 379
+                "durationMs": 381
               }
             }
           ]
@@ -29562,7 +29327,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 383
+                "durationMs": 379
               }
             },
             {
@@ -29597,7 +29362,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 383
+                "durationMs": 379
               }
             }
           ]
@@ -29990,7 +29755,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 404,
+            "durationMs": 412,
             "thinkingLevel": "off"
           }
         }
@@ -30182,7 +29947,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 305
+                "durationMs": 304
               }
             },
             {
@@ -30217,7 +29982,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 305
+                "durationMs": 304
               }
             }
           ]
@@ -30390,7 +30155,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 306
+                "durationMs": 305
               }
             },
             {
@@ -30425,7 +30190,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 306
+                "durationMs": 305
               }
             },
             {
@@ -30460,7 +30225,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 306
+                "durationMs": 305
               }
             }
           ]
@@ -30653,7 +30418,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 305
+                "durationMs": 304
               }
             },
             {
@@ -30688,7 +30453,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 305,
+                "durationMs": 304,
                 "thinkingLevel": "off"
               }
             }
@@ -30839,7 +30604,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 329,
+            "durationMs": 336,
             "thinkingLevel": "off"
           }
         }
@@ -30990,7 +30755,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 4
+                "durationMs": 5
               }
             },
             {
@@ -31024,7 +30789,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 4
+                "durationMs": 5
               }
             }
           ]
@@ -31191,7 +30956,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -31225,7 +30990,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 3
+                "durationMs": 2
               }
             }
           ]
@@ -31696,7 +31461,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -31730,7 +31495,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -32077,7 +31842,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -32111,7 +31876,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 153,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -32239,7 +32004,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 176,
+            "durationMs": 178,
             "thinkingLevel": "off"
           }
         }
@@ -32585,7 +32350,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 179
+                "durationMs": 178
               }
             },
             {
@@ -32619,7 +32384,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 179
+                "durationMs": 178
               }
             }
           ]
@@ -32933,7 +32698,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 199,
+            "durationMs": 202,
             "thinkingLevel": "off"
           }
         }
@@ -33088,7 +32853,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 227
+                "durationMs": 228
               }
             },
             {
@@ -33122,7 +32887,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 227
+                "durationMs": 228
               }
             }
           ]
@@ -33287,7 +33052,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 228
+                "durationMs": 229
               }
             },
             {
@@ -33321,7 +33086,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 228
+                "durationMs": 229
               }
             }
           ]
@@ -33477,7 +33242,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 228
+                "durationMs": 230
               }
             },
             {
@@ -33511,7 +33276,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 228,
+                "durationMs": 230,
                 "thinkingLevel": "off"
               }
             }
@@ -33639,7 +33404,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 248,
+            "durationMs": 252,
             "thinkingLevel": "off"
           }
         }
@@ -33790,7 +33555,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 455
+                "durationMs": 454
               }
             },
             {
@@ -33824,7 +33589,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 455
+                "durationMs": 454
               }
             }
           ]
@@ -34171,7 +33936,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 454
+                "durationMs": 455
               }
             },
             {
@@ -34205,7 +33970,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 454,
+                "durationMs": 455,
                 "thinkingLevel": "off"
               }
             }
@@ -34333,7 +34098,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 474,
+            "durationMs": 478,
             "thinkingLevel": "off"
           }
         }
@@ -34488,7 +34253,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 3
+                "durationMs": 4
               }
             },
             {
@@ -34523,7 +34288,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 3
+                "durationMs": 4
               }
             }
           ]
@@ -34698,7 +34463,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 2
+                "durationMs": 3
               }
             },
             {
@@ -34733,7 +34498,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 2
+                "durationMs": 3
               }
             }
           ]
@@ -35064,7 +34829,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 28,
+            "durationMs": 32,
             "thinkingLevel": "off"
           }
         }
@@ -35421,7 +35186,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -35456,7 +35221,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -35612,7 +35377,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -35647,7 +35412,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 153,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -35779,7 +35544,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 174,
+            "durationMs": 177,
             "thinkingLevel": "off"
           }
         }
@@ -35934,7 +35699,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 204
+                "durationMs": 213
               }
             },
             {
@@ -35969,7 +35734,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 204
+                "durationMs": 213
               }
             }
           ]
@@ -36134,7 +35899,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 204
+                "durationMs": 203
               }
             },
             {
@@ -36169,7 +35934,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 204
+                "durationMs": 203
               }
             }
           ]
@@ -36325,7 +36090,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 202
+                "durationMs": 203
               }
             },
             {
@@ -36360,7 +36125,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 202,
+                "durationMs": 203,
                 "thinkingLevel": "off"
               }
             }
@@ -36490,7 +36255,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 222,
+            "durationMs": 227,
             "thinkingLevel": "off"
           }
         }
@@ -36869,7 +36634,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 354
+                "durationMs": 355
               }
             },
             {
@@ -36904,7 +36669,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 354
+                "durationMs": 355
               }
             }
           ]
@@ -37072,7 +36837,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 352
+                "durationMs": 355
               }
             },
             {
@@ -37107,7 +36872,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 352,
+                "durationMs": 355,
                 "thinkingLevel": "off"
               }
             }
@@ -37237,7 +37002,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 375,
+            "durationMs": 377,
             "thinkingLevel": "off"
           }
         }
@@ -37392,7 +37157,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 453
+                "durationMs": 452
               }
             },
             {
@@ -37427,7 +37192,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 453
+                "durationMs": 452
               }
             }
           ]
@@ -37594,7 +37359,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 453
+                "durationMs": 452
               }
             },
             {
@@ -37629,7 +37394,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 453
+                "durationMs": 452
               }
             }
           ]
@@ -37952,7 +37717,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 473,
+            "durationMs": 479,
             "thinkingLevel": "off"
           }
         }
@@ -38167,7 +37932,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -38201,7 +37966,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -38235,7 +38000,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 4
+                "durationMs": 2
               }
             },
             {
@@ -38269,7 +38034,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 4
+                "durationMs": 2
               }
             }
           ]
@@ -38386,7 +38151,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 3
+                "durationMs": 4
               }
             },
             {
@@ -38420,7 +38185,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 3,
+                "durationMs": 4,
                 "thinkingLevel": "off"
               }
             }
@@ -38458,7 +38223,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 29
+            "durationMs": 30
           }
         },
         {
@@ -38534,7 +38299,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 29,
+            "durationMs": 30,
             "thinkingLevel": "off"
           }
         }
@@ -38775,7 +38540,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -38809,7 +38574,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -38843,7 +38608,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 155
               }
             }
           ]
@@ -38960,7 +38725,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -38994,7 +38759,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -39100,7 +38865,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 174,
+            "durationMs": 176,
             "thinkingLevel": "off"
           }
         }
@@ -39250,7 +39015,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 178
+                "durationMs": 179
               }
             }
           ]
@@ -39558,7 +39323,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 176,
+                "durationMs": 179,
                 "thinkingLevel": "off"
               }
             }
@@ -39664,7 +39429,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 202,
+            "durationMs": 207,
             "thinkingLevel": "off"
           }
         }
@@ -39818,7 +39583,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 230
+                "durationMs": 231
               }
             }
           ]
@@ -40240,7 +40005,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 252,
+            "durationMs": 258,
             "thinkingLevel": "off"
           }
         }
@@ -40356,7 +40121,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -40390,7 +40155,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 155
+                "durationMs": 154
               }
             }
           ]
@@ -40481,7 +40246,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 157
+                "durationMs": 154
               }
             },
             {
@@ -40515,7 +40280,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 157
+                "durationMs": 154
               }
             },
             {
@@ -40549,7 +40314,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 157
+                "durationMs": 154
               }
             }
           ]
@@ -40666,7 +40431,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -40700,7 +40465,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153,
+                "durationMs": 155,
                 "thinkingLevel": "off"
               }
             }
@@ -40806,7 +40571,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 178,
+            "durationMs": 184,
             "thinkingLevel": "off"
           }
         }
@@ -40921,7 +40686,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -40955,7 +40720,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 3
+                "durationMs": 2
               }
             }
           ]
@@ -41019,7 +40784,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -41053,7 +40818,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -41087,7 +40852,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -41121,7 +40886,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 3
+                "durationMs": 2
               }
             }
           ]
@@ -41309,7 +41074,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 29
+            "durationMs": 30
           }
         },
         {
@@ -41385,7 +41150,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 29,
+            "durationMs": 30,
             "thinkingLevel": "off"
           }
         }
@@ -41500,7 +41265,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -41534,7 +41299,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -41624,7 +41389,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -41658,7 +41423,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 155
+                "durationMs": 154
               }
             },
             {
@@ -41692,7 +41457,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 155
+                "durationMs": 154
               }
             }
           ]
@@ -41808,7 +41573,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 152
+                "durationMs": 154
               }
             },
             {
@@ -41842,7 +41607,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 152,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -41948,7 +41713,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 175,
+            "durationMs": 179,
             "thinkingLevel": "off"
           }
         }
@@ -42253,7 +42018,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 178
+                "durationMs": 177
               }
             }
           ]
@@ -42403,7 +42168,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 179,
+                "durationMs": 178,
                 "thinkingLevel": "off"
               }
             }
@@ -42509,7 +42274,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 201,
+            "durationMs": 208,
             "thinkingLevel": "off"
           }
         }
@@ -42662,7 +42427,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 229
+                "durationMs": 230
               }
             }
           ]
@@ -42822,7 +42587,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 227
+                "durationMs": 229
               }
             }
           ]
@@ -42976,7 +42741,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 229,
+                "durationMs": 230,
                 "thinkingLevel": "off"
               }
             }
@@ -43082,7 +42847,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 253,
+            "durationMs": 260,
             "thinkingLevel": "off"
           }
         }
@@ -43197,7 +42962,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -43231,7 +42996,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -43645,7 +43410,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 178,
+            "durationMs": 182,
             "thinkingLevel": "off"
           }
         }
@@ -43761,7 +43526,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 3
+                "durationMs": 2
               }
             },
             {
@@ -43795,7 +43560,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 3
+                "durationMs": 2
               }
             }
           ]
@@ -44079,7 +43844,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 2
+                "durationMs": 4
               }
             },
             {
@@ -44113,7 +43878,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 2,
+                "durationMs": 4,
                 "thinkingLevel": "off"
               }
             }
@@ -44151,7 +43916,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 28
+            "durationMs": 31
           }
         },
         {
@@ -44227,7 +43992,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 28,
+            "durationMs": 31,
             "thinkingLevel": "off"
           }
         }
@@ -44343,7 +44108,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -44377,7 +44142,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -44468,7 +44233,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -44502,7 +44267,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -44536,7 +44301,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -44793,7 +44558,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 175,
+            "durationMs": 180,
             "thinkingLevel": "off"
           }
         }
@@ -45251,7 +45016,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 177,
+                "durationMs": 178,
                 "thinkingLevel": "off"
               }
             }
@@ -45357,7 +45122,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 203,
+            "durationMs": 207,
             "thinkingLevel": "off"
           }
         }
@@ -45672,7 +45437,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 230
+                "durationMs": 231
               }
             }
           ]
@@ -45827,7 +45592,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 228,
+                "durationMs": 230,
                 "thinkingLevel": "off"
               }
             }
@@ -45933,7 +45698,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 253,
+            "durationMs": 260,
             "thinkingLevel": "off"
           }
         }
@@ -46049,7 +45814,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -46083,7 +45848,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -46174,7 +45939,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -46208,7 +45973,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -46242,7 +46007,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -46359,7 +46124,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 152
+                "durationMs": 154
               }
             },
             {
@@ -46393,7 +46158,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 152,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -46499,7 +46264,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 177,
+            "durationMs": 185,
             "thinkingLevel": "off"
           }
         }
@@ -46572,7 +46337,7 @@
             },
             "stopReason": "aborted",
             "errorMessage": "This operation was aborted",
-            "durationMs": 61
+            "durationMs": 62
           }
         }
       ]
@@ -46642,7 +46407,7 @@
             },
             "stopReason": "aborted",
             "errorMessage": "This operation was aborted",
-            "durationMs": 2
+            "durationMs": 4
           }
         }
       ]

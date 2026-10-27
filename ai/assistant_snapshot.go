@@ -8,11 +8,16 @@ import (
 	"unicode/utf8"
 )
 
-// cloneAssistantMessageFrom is cloneAssistantMessage for the next snapshot of a message whose previous snapshot is previous. A tool call whose arguments equal the previous snapshot's shares its immutable copy instead of copying again, so publishing an event copies only what changed since the last event. settled may be nil: see cloneAssistantContentFrom.
-func cloneAssistantMessageFrom(message AssistantMessage, previous, settled []AssistantContentBlock) AssistantMessage {
+// cloneAssistantMessageFrom is cloneAssistantMessage for the next snapshot of a message whose previous snapshot is previous. A tool call whose arguments equal the previous snapshot's shares its immutable copy instead of copying again, so publishing an event copies only what changed since the last event.
+func cloneAssistantMessageFrom(message AssistantMessage, previous []AssistantContentBlock) AssistantMessage {
+	return cloneAssistantMessageSharing(message, previous, nil)
+}
+
+// cloneAssistantMessageSharing is cloneAssistantMessageFrom that keeps the streamed arguments snapshots of cloneAssistantContentSharing.
+func cloneAssistantMessageSharing(message AssistantMessage, previous []AssistantContentBlock, streamed map[int]JsonObject) AssistantMessage {
 	content := message.Content
 	message = cloneAssistantMessage(withoutContent(message))
-	message.Content = cloneAssistantContentFrom(content, previous, settled)
+	message.Content = cloneAssistantContentSharing(content, previous, streamed)
 	return message
 }
 
@@ -22,8 +27,14 @@ func withoutContent(message AssistantMessage) AssistantMessage {
 	return message
 }
 
-// cloneAssistantContentFrom copies blocks as cloneAssistantContent does, reusing what the previous snapshot, previous, already holds of a block that has not changed; a block it has to copy it boxes once, and a block it reuses it does not box at all. settled, when it is not nil, holds at the index of a tool call that still defers its argument text the block that settling the call would make, or nil: a snapshot that holds it needs no copy of the call and no later settlement.
-func cloneAssistantContentFrom(blocks, previous, settled []AssistantContentBlock) []AssistantContentBlock {
+// cloneAssistantContentFrom copies blocks as cloneAssistantContent does, reusing what the previous snapshot, previous, already holds of a block that has not changed; a block it has to copy it boxes once, and a block it reuses it does not box at all.
+func cloneAssistantContentFrom(blocks, previous []AssistantContentBlock) []AssistantContentBlock {
+	return cloneAssistantContentSharing(blocks, previous, nil)
+}
+
+// cloneAssistantContentSharing is cloneAssistantContentFrom keeping, for a tool call whose arguments are streamed's snapshot at its
+// index, that snapshot instead of a copy of it.
+func cloneAssistantContentSharing(blocks, previous []AssistantContentBlock, streamed map[int]JsonObject) []AssistantContentBlock {
 	if blocks == nil || len(previous) == 0 {
 		return cloneAssistantContent(blocks)
 	}
@@ -45,16 +56,12 @@ func cloneAssistantContentFrom(blocks, previous, settled []AssistantContentBlock
 				}
 			}
 		case ToolCall:
-			if value.deferredArguments != "" && i < len(settled) && settled[i] != nil {
-				out[i] = settled[i]
-				continue
-			}
 			var earlier ToolCall
 			hasEarlier := false
 			if i < len(previous) {
 				earlier, hasEarlier = previous[i].(ToolCall)
 			}
-			if value.Arguments != nil {
+			if value.Arguments != nil && !sharesStreamedArguments(streamed, i, value) {
 				value.Arguments = cloneArgumentsFrom(value.Arguments, earlier.Arguments)
 			}
 			if hasEarlier && sameToolCall(earlier, value) {
@@ -67,6 +74,15 @@ func cloneAssistantContentFrom(blocks, previous, settled []AssistantContentBlock
 		}
 	}
 	return out
+}
+
+// sharesStreamedArguments reports whether call's arguments are the immutable snapshot streamed names for its content index, still the
+// map the producer gave the call: a message cell that publishes the call keeps that map as its copy. The parser built the snapshot with
+// valid strings and finite numbers and never changes it, and a cell never hands out what it holds (a view, Observe and ShallowCopy copy
+// it; ObserveProjection's arguments are read-only), so the copy would be equal and held by no one who can change it.
+func sharesStreamedArguments(streamed map[int]JsonObject, index int, call ToolCall) bool {
+	snapshot, ok := streamed[index]
+	return ok && snapshot != nil && reflect.ValueOf(snapshot).Pointer() == reflect.ValueOf(call.Arguments).Pointer()
 }
 
 // cloneArgumentsFrom returns what cloneJSONValue returns for arguments, reusing the members of earlier, an immutable copy of an earlier state of the same arguments, that have not changed. It copies the whole tree the usual way unless every member is plain JSON.
@@ -156,7 +172,7 @@ func identicalPlainJSON(left, right any) bool {
 
 // sameToolCall reports whether the snapshot of a tool call is the same value as an earlier snapshot, which holds when its arguments and member order are the very objects the earlier one holds.
 func sameToolCall(earlier, call ToolCall) bool {
-	return sameToolCallIdentity(earlier, call) && earlier.deferredArguments == call.deferredArguments &&
+	return sameToolCallIdentity(earlier, call) &&
 		reflect.ValueOf(earlier.argumentOrder).Pointer() == reflect.ValueOf(call.argumentOrder).Pointer() &&
 		bytes.Equal(earlier.nonObjectArguments, call.nonObjectArguments) &&
 		(earlier.Arguments == nil) == (call.Arguments == nil) &&
@@ -165,6 +181,6 @@ func sameToolCall(earlier, call ToolCall) bool {
 
 // sameToolCallIdentity reports whether two tool calls agree in everything but their arguments, member order and deferred argument text.
 func sameToolCallIdentity(a, b ToolCall) bool {
-	return a.scratch == b.scratch && a.ID == b.ID && a.Name == b.Name && a.ThoughtSignature == b.ThoughtSignature &&
+	return a.ID == b.ID && a.Name == b.Name && a.ThoughtSignature == b.ThoughtSignature &&
 		a.Namespace == b.Namespace && a.ArgumentsError == b.ArgumentsError
 }

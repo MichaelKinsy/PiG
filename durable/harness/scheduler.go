@@ -444,7 +444,7 @@ func (s *TaskScheduler) liveValuesLocked() []anyTaskRecord {
 // task that reaches the restart limit this way is parked and reported. Read-only, it only loads them: a running task stays
 // as committed, running in another process.
 func (s *TaskScheduler) Open(ctx context.Context) error {
-	s.options.Session.ObserveCommits(func(_ context.Context, publication durable.CommitPublication) { s.observe(publication) })
+	s.options.Session.ObserveCommits(func(_ context.Context, publication session.ObservedCommit) { s.observe(publication) })
 	s.options.Session.SubscribeClose(s.seal)
 	s.unsubscribeRegistry = s.options.Registry.Subscribe(func() {
 		s.notifyBlocked()
@@ -988,7 +988,11 @@ func (s *TaskScheduler) AbortConversation(ctx context.Context, conversationId du
 
 // ─── Scheduling ────────────────────────────────────────────────────────
 
-func (s *TaskScheduler) observe(publication durable.CommitPublication) {
+func (s *TaskScheduler) observe(publication session.ObservedCommit) {
+	// A commit held in memory changes documents only.
+	if publication.Memory {
+		return
+	}
 	s.mu.Lock()
 	var failed []durable.TaskId
 	changed := false
@@ -1028,9 +1032,10 @@ func (s *TaskScheduler) observe(publication durable.CommitPublication) {
 		}
 		if record.AbortRequested && (!hadPrevious || !previous.AbortRequested) {
 			s.cascadePending = true
-			// Signal a run invocation of the newly marked task; its next step ends it.
+			// Signal a run invocation of the newly marked task; its next step ends it. Cancellation observers are task code,
+			// which never runs inside Storage's adopt: the signal follows after the host's commit listeners.
 			if running := s.invocations[record.Id]; running != nil && running.mode == modeRun {
-				running.cancel(context.Canceled)
+				s.options.Session.DeferUntilPublished(func() { running.cancel(context.Canceled) })
 			}
 		}
 		// A request replacing a restart mark upgrades the marks of the work below.
@@ -1092,9 +1097,21 @@ func (s *TaskScheduler) observe(publication durable.CommitPublication) {
 		s.scheduleReconcileLocked()
 	}
 	s.sweepLocked()
+	// Upstream settles the idle waits the commit's state decides here too, inside the observer (#settleIdle), where they are
+	// settled for good; only the code awaiting them resumes after the host listeners.
+	var idleWakes []func()
+	if changed {
+		idleWakes = s.settleIdleWaitsLocked()
+	}
 	s.mu.Unlock()
+	// Upstream resolves a wait here, inside the observer, so it is settled for good and only the code awaiting it resumes
+	// after the host listeners. The wait is settled now and woken after them, so a close that begins in the meantime, inside a
+	// listener or between the adoption and the publication, does not reject a wait whose task ended.
 	for _, record := range terminal {
-		s.options.Session.DeferUntilPublished(func() { s.taskWaiters.Resolve(record.Id, record) })
+		s.options.Session.DeferUntilPublished(s.taskWaiters.Settle(record.Id, record))
+	}
+	for _, wake := range idleWakes {
+		s.options.Session.DeferUntilPublished(wake)
 	}
 	if !changed {
 		return
@@ -1103,21 +1120,32 @@ func (s *TaskScheduler) observe(publication durable.CommitPublication) {
 	s.kick()
 }
 
+// settleIdleWaitsLocked takes the idle waits the state decides out of the pending set and fixes their result, as resolving
+// a promise does, and returns the functions that wake them (Waiters.Settle): a seal that comes before the wake can no
+// longer reject them.
+func (s *TaskScheduler) settleIdleWaitsLocked() []func() {
+	var wakes []func()
+	for _, conversationId := range s.idleWaiters.Keys() {
+		if s.idleLocked(&conversationId) {
+			wakes = append(wakes, s.idleWaiters.Settle(conversationId, struct{}{}))
+		}
+	}
+	if len(s.idleHarness.Keys()) > 0 && s.idleLocked(nil) {
+		wakes = append(wakes, s.idleHarness.Settle(true, struct{}{}))
+	}
+	return wakes
+}
+
 // resolveIdleWaiters resolves idle waiters, and drops each kept context whose conversation has been idle for the
-// retention period (scheduler.ts #settleIdle).
+// retention period (scheduler.ts #settleIdle). It runs behind the host listeners of the commit that queued it, at the end
+// of a reconcile pass, and on the context expiry timer.
 func (s *TaskScheduler) resolveIdleWaiters() {
 	now := s.options.Now()
 	// #settleIdle and the #scheduleExpiry it calls each read the setting, so a failing source is reported twice.
 	retention := s.contextRetentionMs()
 	expiryRetention := s.contextRetentionMs()
 	s.mu.Lock()
-	var idle []durable.ConversationId
-	for _, conversationId := range s.idleWaiters.Keys() {
-		if s.idleLocked(&conversationId) {
-			idle = append(idle, conversationId)
-		}
-	}
-	harness := len(s.idleHarness.Keys()) > 0 && s.idleLocked(nil)
+	wakes := s.settleIdleWaitsLocked()
 	for conversationId, kept := range s.contexts {
 		switch {
 		case kept.idleSince != nil && now-*kept.idleSince >= retention:
@@ -1134,11 +1162,8 @@ func (s *TaskScheduler) resolveIdleWaiters() {
 	}
 	s.scheduleExpiryLocked(now, expiryRetention)
 	s.mu.Unlock()
-	for _, conversationId := range idle {
-		s.idleWaiters.Resolve(conversationId, struct{}{})
-	}
-	if harness {
-		s.idleHarness.Resolve(true, struct{}{})
+	for _, wake := range wakes {
+		wake()
 	}
 }
 
@@ -1219,9 +1244,12 @@ func (s *TaskScheduler) scheduleReconcileLocked() {
 		s.reconcilesIdle = make(chan struct{})
 	}
 	s.reconciles++
-	// Taken now, in the turn that scheduled it, as upstream's queued reconcile microtask is.
-	ticket := s.options.Session.TakeLineTicket()
-	s.background.Go(func() { s.reconcile(ticket) })
+	// Taken in the turn that scheduled it, as upstream's queued reconcile microtask is: once the publication in progress ran
+	// the host's commit listeners, whose own commits therefore queue first.
+	s.options.Session.DeferUntilPublished(func() {
+		ticket := s.options.Session.TakeLineTicket()
+		s.background.Go(func() { s.reconcile(ticket) })
+	})
 }
 
 // awaitReconcilesLocked returns, with s.mu held, once no reconcile pass is scheduled or running. Upstream queues a
@@ -1684,10 +1712,8 @@ func (s *TaskScheduler) seal() {
 // finishSealLocked completes the seal; it is called with s.mu held and releases it.
 func (s *TaskScheduler) finishSealLocked() {
 	// Closing the Harness releases its active counts.
-	if s.metricsOn {
-		for _, kind := range s.counted {
-			s.activeMetric.Add(-1, telemetry.SpanAttributes{telemetry.Attr("task", kind)})
-		}
+	for _, kind := range s.counted {
+		s.countActive(-1, kind)
 	}
 	clear(s.counted)
 	clear(s.resumed)
@@ -1723,10 +1749,13 @@ func (s *TaskScheduler) kick() {
 		return
 	}
 	s.draining = true
-	// Never commit synchronously from a commit or registry listener. The pass takes its place on the Session line now,
-	// as upstream's queueMicrotask takes it in the publishing turn, so a commit started after this point queues behind.
-	ticket := s.options.Session.TakeLineTicket()
-	s.background.Go(func() { s.drain(ticket) })
+	// Never commit synchronously from a commit or registry listener. The pass takes its place on the Session line as
+	// upstream's queueMicrotask does in the publishing turn, after the host's commit listeners ran, so a commit started
+	// after this point queues behind.
+	s.options.Session.DeferUntilPublished(func() {
+		ticket := s.options.Session.TakeLineTicket()
+		s.background.Go(func() { s.drain(ticket) })
+	})
 }
 
 func (s *TaskScheduler) drain(ticket *session.LineTicket) {
@@ -2862,7 +2891,7 @@ func (hold *lineHold) release() {
 	}
 }
 
-func (runtime *taskRuntime) Commit(ctx context.Context, change func(tx durable.Tx, current durable.ErasedRunningTask) (*durable.NextTaskState[durable.JsonValue, durable.JsonValue], error)) error {
+func (runtime *taskRuntime) Commit(ctx context.Context, change func(tx durable.Tx, current durable.ErasedRunningTask) (*durable.NextTaskState[durable.JsonValue, durable.JsonValue], error), options ...durable.CommitOptions) error {
 	var checkpoint string
 	var committed bool
 	_, err := gated(ctx, runtime, func(tx *session.Transaction, current anyTaskRecord) (struct{}, error) {
@@ -2886,7 +2915,7 @@ func (runtime *taskRuntime) Commit(ctx context.Context, change func(tx durable.T
 			}
 		}
 		return struct{}{}, nil
-	})
+	}, options...)
 	if err == nil && committed {
 		if span := runtime.invocation.currentSpan(); span != telemetry.NoopTelemetryContext {
 			span.AddEvent("pi.durable.checkpoint", telemetry.SpanAttributes{telemetry.Attr("phase", checkpoint)})
@@ -3239,7 +3268,7 @@ func (runtime *taskRuntime) WatchDocErased(ctx context.Context, token durable.An
 }
 
 // gated commits after rereading the task on the line and gating the invocation.
-func gated[T any](ctx context.Context, runtime *taskRuntime, change func(tx *session.Transaction, current anyTaskRecord) (T, error)) (T, error) {
+func gated[T any](ctx context.Context, runtime *taskRuntime, change func(tx *session.Transaction, current anyTaskRecord) (T, error), options ...durable.CommitOptions) (T, error) {
 	var zero T
 	if err := runtime.check(); err != nil {
 		return zero, err
@@ -3268,7 +3297,7 @@ func gated[T any](ctx context.Context, runtime *taskRuntime, change func(tx *ses
 			return zero, fmt.Errorf("Task %d has a durable abort mark", taskId)
 		}
 		return change(tx, found)
-	})
+	}, options...)
 }
 
 // linkSignal returns ctx also cancelled by signal; stop releases the link.
@@ -3476,9 +3505,9 @@ func (s *TaskScheduler) wakeDueLocked() {
 	})
 }
 
-// scheduleWakeLocked recomputes the wake off the Session line: it arms the built-in timer, or tells OnWake of a change
-// (scheduler.ts #scheduleWake, a microtask after the change). Changes until the recomputation runs share it, as they share
-// upstream's one queued microtask.
+// scheduleWakeLocked recomputes the wake in a goroutine the Session line never waits for, with no order relative to host
+// commit listeners: it arms the built-in timer, or tells OnWake of a change (scheduler.ts #scheduleWake, a microtask after the
+// change). Changes until the recomputation runs share it, as they share upstream's one queued microtask.
 func (s *TaskScheduler) scheduleWakeLocked() {
 	if s.wakeScheduled || s.sealing.Load() || s.options.ReadOnly {
 		return
@@ -3605,9 +3634,10 @@ func (s *TaskScheduler) armTimerLocked(at *float64) {
 }
 
 var (
-	registryInfo = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackRegistry}
-	settingsInfo = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSettings}
-	onWakeInfo   = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackOnWake}
+	registryInfo  = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackRegistry}
+	settingsInfo  = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSettings}
+	onWakeInfo    = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackOnWake}
+	telemetryInfo = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackTelemetry}
 )
 
 // installerOf is the extension that installed task in snapshot, the last one that lists it; empty for a built-in task.

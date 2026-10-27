@@ -37,10 +37,15 @@ func (*lifetimeSession) Prompt(context.Context, ChildSessionPrompt) error { retu
 func (*lifetimeSession) Queue(context.Context, ChildSessionQueue) error   { return nil }
 func (*lifetimeSession) Abort(context.Context) error                      { return nil }
 func (*lifetimeSession) BindExtensions(context.Context) error             { return nil }
-func (*lifetimeSession) State() ChildSessionState                         { return ChildSessionState{} }
-func (*lifetimeSession) Messages() (json.RawMessage, error)               { return json.RawMessage("[]"), nil }
-func (*lifetimeSession) Subscribe(func(json.RawMessage)) func()           { return func() {} }
-func (*lifetimeSession) Dispose()                                         {}
+func (*lifetimeSession) EmitExtensionEvent(context.Context, json.RawMessage) (json.RawMessage, bool, error) {
+	return nil, false, nil
+}
+func (*lifetimeSession) RefreshContext()                          {}
+func (*lifetimeSession) SessionManagerObject() SessionGraphObject { return nil }
+func (*lifetimeSession) State() ChildSessionState                 { return ChildSessionState{} }
+func (*lifetimeSession) Messages() (json.RawMessage, error)       { return json.RawMessage("[]"), nil }
+func (*lifetimeSession) Subscribe(func(json.RawMessage)) func()   { return func() {} }
+func (*lifetimeSession) Dispose()                                 {}
 func (s *lifetimeSession) Close() {
 	s.mu.Lock()
 	s.closed++

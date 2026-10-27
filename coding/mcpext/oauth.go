@@ -159,9 +159,23 @@ type McpOAuthServerStore interface {
 	WithRefreshLock(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
+// McpOAuthCredentials is what the extension asks of a credential store, and what a host that keeps the credentials elsewhere implements (see [NewMcpOAuthCredentialStoreOver]): Pi's `credentials` option takes any object with these members (index.ts:508, 622, cli.ts:241).
+type McpOAuthCredentials interface {
+	// ForServer returns the store of the server with the given name and URL.
+	ForServer(name, serverURL string) (McpOAuthServerStore, error)
+	// Tokens returns the stored tokens of the server, nil when there are none.
+	Tokens(name, serverURL string) *oauth.OAuthTokens
+	// Remove deletes the stored state of the server and returns whether credentials were stored for it.
+	Remove(name, serverURL string) (bool, error)
+}
+
+var _ McpOAuthCredentials = (*McpOAuthCredentialStore)(nil)
+
 // McpOAuthCredentialStore keeps per-server OAuth state (client registration,
 // tokens, pending PKCE verifier) in `mcp-auth.json`.
 type McpOAuthCredentialStore struct {
+	// custom, when set, answers every operation: the store is a view of the host's own credentials.
+	custom  McpOAuthCredentials
 	backend AuthStorageBackend
 	// lockDir holds the refresh lock files. Without one, refreshes are only
 	// serialized in this process.
@@ -177,6 +191,11 @@ func NewMcpOAuthCredentialStore(agentDir string) *McpOAuthCredentialStore {
 		backend: NewFileAuthStorageBackend(agentDir + string(os.PathSeparator) + "mcp-auth.json"),
 		lockDir: agentDir,
 	}
+}
+
+// NewMcpOAuthCredentialStoreOver returns a store whose operations are those of custom.
+func NewMcpOAuthCredentialStoreOver(custom McpOAuthCredentials) *McpOAuthCredentialStore {
+	return &McpOAuthCredentialStore{custom: custom}
 }
 
 // NewMcpOAuthCredentialStoreWithBackend returns a store over backend. Refresh
@@ -245,6 +264,9 @@ type serverStore struct {
 
 // ForServer returns the store of the server with the given name and URL.
 func (c *McpOAuthCredentialStore) ForServer(name, serverURL string) (McpOAuthServerStore, error) {
+	if c.custom != nil {
+		return c.custom.ForServer(name, serverURL)
+	}
 	key, legacyKey, err := storeKeys(name, serverURL)
 	if err != nil {
 		return nil, err
@@ -342,6 +364,9 @@ func (c *McpOAuthCredentialStore) withRefreshLock(ctx context.Context, key strin
 // for noticing sign-ins done by another process. It does not take over legacy
 // state.
 func (c *McpOAuthCredentialStore) Tokens(name, serverURL string) *oauth.OAuthTokens {
+	if c.custom != nil {
+		return c.custom.Tokens(name, serverURL)
+	}
 	key, legacyKey, err := storeKeys(name, serverURL)
 	if err != nil {
 		return nil
@@ -365,6 +390,9 @@ func (c *McpOAuthCredentialStore) Tokens(name, serverURL string) *oauth.OAuthTok
 // or the legacy state it would take over. It returns whether credentials were
 // stored for it.
 func (c *McpOAuthCredentialStore) Remove(name, serverURL string) (bool, error) {
+	if c.custom != nil {
+		return c.custom.Remove(name, serverURL)
+	}
 	key, legacyKey, err := storeKeys(name, serverURL)
 	if err != nil {
 		return false, err

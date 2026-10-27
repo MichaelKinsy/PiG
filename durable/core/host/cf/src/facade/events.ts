@@ -2,8 +2,7 @@
 // conversation. The core publishes a conversation's view as frames of ops plus the commit's entry, task and submission
 // records (host/PROTOCOL.md, watches); `translate` turns each frame into events exactly as pi-durable does. Types are loose:
 // the declarations are pi-durable's own (index.ts re-exports them).
-import type { Context } from "@earendil-works/chord"
-import { CommittedWatch } from "./observation.ts"
+import { NativeWatch, type Context, type NativeWatchChange } from "@earendil-works/chord"
 import type { Harness } from "./harness.ts"
 
 type Json = any
@@ -39,7 +38,7 @@ function snapshotOf(view: Json): Json {
 }
 
 export async function watchEvents(harness: Harness, conversationId: number, context: Context) {
-  let watch!: CommittedWatch<readonly Json[]>
+  let watch!: NativeWatch<readonly Json[]>
   let snapshot!: Json
   let held!: Set<number>
   await harness.attachView(conversationId, context, (initial: Json, release: () => void, completing?: readonly number[]) => {
@@ -47,15 +46,15 @@ export async function watchEvents(harness: Harness, conversationId: number, cont
     held = new Set<number>(completing ?? harness.completingGenerations(conversationId))
     let current = initial
     snapshot = snapshotOf(initial)
-    watch = new CommittedWatch<readonly Json[]>([], release, error => harness.report(error), () => [snapshotOf(current)])
+    watch = new NativeWatch<readonly Json[]>([], release, error => harness.report(error), () => [snapshotOf(current)])
     return {
       advance: () => {},
       publication: (before: Json, after: Json, ops: readonly any[], changes: Changes | undefined, commitContext: Context) => {
         current = after
         const events = translate(before, after, ops, changes ?? { entries: [], tasks: [], submissions: [] }, held)
-        if (events.length > 0) watch.advance(events, [], commitContext)
+        if (events.length > 0) watch.advance(events, commitContext)
       },
-      closeSession: failure => watch.closeSession(failure),
+      end: failure => watch.end(failure),
     }
   })
   const signal = context.abortSignal
@@ -66,7 +65,7 @@ export async function watchEvents(harness: Harness, conversationId: number, cont
   if (signal !== undefined) watch.observeCancellation(signal)
   return {
     snapshot,
-    start: (listener: (events: readonly Json[], context: Context) => Promise<void>) => watch.start((events, _ops, deliveryContext) => listener(events, deliveryContext)),
+    start: (listener: (change: NativeWatchChange<readonly Json[]>, context: Context) => Promise<void>) => watch.start(listener),
     stop: () => watch.stop(),
     closed: watch.closed,
   }

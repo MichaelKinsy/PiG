@@ -97,22 +97,26 @@ func splitThinkingSuffix(text string) (base, level string, ok bool) {
 	return base, suffix, true
 }
 
+// splitProviderPrefix is model-resolver.ts splitProviderPrefix: a provider id may contain "/" (a URL-derived id), so the text is
+// compared with the provider ids of the catalog, not split at its first "/". A provider matches when the text, up to the first "/" at
+// or after the end of its lowercased trimmed id, trims to that id; among matches the one with the longest id wins, the first in
+// catalog order on a tie. Positions are UTF-16 units of the lowercased text, as in the source.
 func splitProviderPrefix(text string, models []RuntimeModel) (provider, modelText string, ok bool) {
-	before, after, ok := strings.Cut(text, "/")
-	if !ok {
-		return "", "", false
-	}
-	prefix := jsstring.ToLower(jsstring.Trim(before))
-	modelText = jsstring.Trim(after)
-	if prefix == "" || modelText == "" {
-		return "", "", false
-	}
+	lowerText := jsstring.ToLower(text)
 	for _, model := range models {
-		if jsstring.ToLower(model.Provider) == prefix {
-			return model.Provider, modelText, true
+		prefix := jsstring.ToLower(jsstring.Trim(model.Provider))
+		if prefix == "" || (ok && jsstring.Length(provider) >= jsstring.Length(model.Provider)) {
+			continue
+		}
+		slash := jsstring.IndexOf(lowerText, "/", jsstring.Length(prefix))
+		if slash == -1 || jsstring.Trim(jsstring.Slice(lowerText, 0, slash)) != prefix {
+			continue
+		}
+		if rest := jsstring.Trim(jsstring.Slice(text, slash+1)); rest != "" {
+			provider, modelText, ok = model.Provider, rest, true
 		}
 	}
-	return "", "", false
+	return provider, modelText, ok
 }
 
 // ResolveModelReference mirrors upstream resolveModelReference. usable only breaks ties between providers.

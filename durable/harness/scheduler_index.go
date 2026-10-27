@@ -4,6 +4,9 @@ package harness
 // downward around live work, and the sets that hold each reconcile pass's candidates. No pass visits every live task.
 
 import (
+	"context"
+	"errors"
+
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -377,20 +380,24 @@ func (s *TaskScheduler) scheduleSweepLocked() {
 	if s.sweepScheduled || s.sealing.Load() {
 		return
 	}
-	// Taken now, in the turn that scheduled it, as upstream's queued job is.
-	ticket := s.options.Session.TakeLineTicket()
-	if ticket == nil {
-		return
-	}
 	s.sweepScheduled = true
-	s.background.Go(func() {
-		// Fails only once the Session is closing or failed, when nothing is kept anyway.
-		_, _ = s.options.Session.ReadWithTicket(ticket, func() (any, error) {
-			s.mu.Lock()
-			s.sweepScheduled = false
-			s.sweepLocked()
-			s.mu.Unlock()
-			return nil, nil
+	// Taken in the turn that scheduled it, as upstream's queued job is: after the host's commit listeners of the publication
+	// in progress ran.
+	s.options.Session.DeferUntilPublished(func() {
+		ticket := s.options.Session.TakeLineTicket()
+		// None once the Session began closing, when nothing is kept anyway.
+		if ticket == nil {
+			return
+		}
+		s.background.Go(func() {
+			// Fails only once the Session is closing or failed, when nothing is kept anyway.
+			_, _ = s.options.Session.ReadWithTicket(ticket, func() (any, error) {
+				s.mu.Lock()
+				s.sweepScheduled = false
+				s.sweepLocked()
+				s.mu.Unlock()
+				return nil, nil
+			})
 		})
 	})
 }
@@ -416,6 +423,20 @@ func (s *TaskScheduler) sweepLocked() {
 	s.dropQueue.Clear()
 }
 
+// countActive counts a task in or out of pi.durable.tasks.active (scheduler.ts #countActive). Commit observers count inside
+// Storage's adopt, which must not fail, so a panicking adapter is reported.
+func (s *TaskScheduler) countActive(delta int, kind string) {
+	if !s.metricsOn {
+		return
+	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			s.options.Report(context.Background(), errors.New(durable.ErrorMessage(recovered)), telemetryInfo)
+		}
+	}()
+	s.activeMetric.Add(float64(delta), telemetry.SpanAttributes{telemetry.Attr("task", kind)})
+}
+
 // trackLocked brings the scheduler's sets in line with a task's committed record. A task that ended may free the
 // nearest live task above it: one holding its outcome finalizes, an abort-marked one runs its abort handler; its waiters
 // may run.
@@ -427,16 +448,12 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 	}
 	if record.State.Status == durable.TaskTerminal {
 		if kind, counted := s.counted[id]; counted {
-			if s.metricsOn {
-				s.activeMetric.Add(-1, telemetry.SpanAttributes{telemetry.Attr("task", kind)})
-			}
+			s.countActive(-1, kind)
 			delete(s.counted, id)
 		}
 		delete(s.resumed, id)
 	} else if _, counted := s.counted[id]; !counted && previous == nil && !s.sealing.Load() {
-		if s.metricsOn {
-			s.activeMetric.Add(1, telemetry.SpanAttributes{telemetry.Attr("task", record.Kind)})
-		}
+		s.countActive(1, record.Kind)
 		s.counted[id] = record.Kind
 	}
 	if previous != nil && previous.State.Status == durable.TaskWaiting {

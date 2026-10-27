@@ -54,8 +54,8 @@ func TestCacheRetentionAnthropicUpstream(t *testing.T) {
 }
 
 func TestCacheRetentionResponsesUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/cache-retention.test.ts:243 (all six rows)
-	for _, id := range []string{"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-6-astra", "gpt-6-luna", "gpt-6-sol"} {
+	// .upstream/v0.87.1/packages/ai/test/cache-retention.test.ts:243 (all seven rows)
+	for _, id := range []string{"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-6-astra", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-terra"} {
 		t.Run("does not enable cache warming from the documented TTL alone for "+id, func(t *testing.T) {
 			model, ok := LookupModelExact("openai/" + id)
 			if !ok {
@@ -136,7 +136,7 @@ func TestCacheRetentionCompletionsUpstream(t *testing.T) {
 		})
 	}
 	// .upstream/v0.99.1/packages/ai/test/cache-retention.test.ts:507 (five rows; 0.99.1 dropped opencode-go/kimi-k2.6)
-	for _, spec := range []string{"opencode/deepseek-v4-flash", "opencode/deepseek-v4-pro", "opencode/kimi-k2.5", "opencode/kimi-k2.6", "opencode/minimax-m2.7"} {
+	for _, spec := range []string{"opencode/deepseek-v4.1-flash", "opencode/deepseek-v4-pro", "opencode/kimi-k2.5", "opencode/kimi-k2.6", "opencode/minimax-m2.7"} {
 		t.Run("should omit long cache retention for "+spec, func(t *testing.T) {
 			model, ok := LookupModelExact(spec)
 			if !ok {

@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
@@ -99,7 +100,8 @@ func TestExample20LateJoin(t *testing.T) {
 	view := must(root.Watch(background))
 	var viewOutputs []string
 	var viewMu sync.Mutex
-	view.Start(func(_ context.Context, value harness.ConversationView, _ []durable.Op) error {
+	view.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+		value := change.Value
 		if tools := liveState(t, value).Tools; len(tools) == 1 && tools[0].Status == harness.ToolSlotRunning && tools[0].Output != nil {
 			viewMu.Lock()
 			viewOutputs = append(viewOutputs, *tools[0].Output)
@@ -138,7 +140,8 @@ func TestExample20LateJoin(t *testing.T) {
 	var mu sync.Mutex
 	var seen []string
 	var textDeltas, answers []string
-	stream.Start(func(_ context.Context, events []harness.AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]harness.AgentEvent]) error {
+		events := change.Value
 		mu.Lock()
 		defer mu.Unlock()
 		for _, event := range events {
@@ -355,7 +358,8 @@ func subagentForeground(t *testing.T, attachAfterSettled bool) {
 		}
 		streams = append(streams, stream)
 		mu.Unlock()
-		stream.Start(func(_ context.Context, events []harness.AgentEvent) error {
+		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]harness.AgentEvent]) error {
+			events := change.Value
 			for _, event := range events {
 				switch event := event.(type) {
 				case harness.MessageEndEvent:
@@ -646,8 +650,9 @@ func TestExample15RealModel(t *testing.T) {
 		increments = append(increments, text[len(printed):])
 		printed = text
 	}
-	liveWatch.Start(func(_ context.Context, value *harness.LiveState, _ []durable.Op) error {
-		if value == nil || value.Generation == nil {
+	liveWatch.Start(func(_ context.Context, change chord.WatchChange[harness.LiveState]) error {
+		value := change.Value
+		if value.Generation == nil {
 			return nil
 		}
 		if value.Generation.Message == nil {

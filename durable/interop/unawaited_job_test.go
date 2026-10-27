@@ -93,7 +93,8 @@ func run(t *testing.T, path string, unawaited, hold bool) *session {
 	var mu sync.Mutex
 	hooks.afterOpen = func(t *testing.T, opened harness.Harness) {
 		stream = must(harness.WatchEvents(background, opened, rootOf(t, opened).Id()))
-		stream.Start(func(_ context.Context, batch []harness.AgentEvent) error {
+		stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
+			batch := change.Value
 			mu.Lock()
 			defer mu.Unlock()
 			for _, event := range batch {

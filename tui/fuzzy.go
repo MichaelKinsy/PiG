@@ -64,6 +64,36 @@ func (t FuzzyText) Match(query FuzzyQuery) FuzzyMatch {
 	return FuzzyMatch{Matches: true, Score: sw.Score + 5}
 }
 
+// alignmentScore accumulates Pi's scorePositions one matched text index at a time, so the greedy alignment and each
+// contiguous run share the arithmetic.
+type alignmentScore struct {
+	score       float64
+	last        int
+	consecutive int
+}
+
+func newAlignmentScore() alignmentScore { return alignmentScore{last: -1} }
+
+func (a *alignmentScore) add(text []uint16, i int) {
+	// Reward consecutive matches; penalize gaps.
+	if a.last == i-1 {
+		a.consecutive++
+		a.score -= float64(float64(a.consecutive) * 5)
+	} else {
+		a.consecutive = 0
+		if a.last >= 0 {
+			a.score += float64(float64(i-a.last-1) * 2)
+		}
+	}
+	// Reward word boundary matches.
+	if i == 0 || isBoundaryChar(rune(text[i-1])) {
+		a.score -= 10
+	}
+	// float64() forces the product to round before the add: arm64 fuses x*y+z into one FMA rounding, which JS never does.
+	a.score += float64(float64(i) * 0.1)
+	a.last = i
+}
+
 func matchQuery(query, text []uint16) FuzzyMatch {
 	if len(query) == 0 {
 		return FuzzyMatch{Matches: true, Score: 0}
@@ -72,41 +102,54 @@ func matchQuery(query, text []uint16) FuzzyMatch {
 		return FuzzyMatch{Matches: false}
 	}
 
-	queryIdx := 0
-	score := 0.0
-	lastMatch := -1
-	consecutive := 0
+	// Greedy alignment: each query character at its first occurrence after the previous one.
+	greedy := newAlignmentScore()
+	from := 0
+	for _, q := range query {
+		i := indexUnit(text, q, from)
+		if i < 0 {
+			return FuzzyMatch{Matches: false}
+		}
+		greedy.add(text, i)
+		from = i + 1
+	}
+	score := greedy.score
 
-	for i := 0; i < len(text) && queryIdx < len(query); i++ {
-		if text[i] != query[queryIdx] {
-			continue
+	// The greedy alignment can scatter the query over an earlier, unrelated part of the text, e.g. "opus" in
+	// "openrouter openrouter/anthropic/claude-opus" takes o, p, u from "openrouter". Also score every contiguous
+	// occurrence and keep the best alignment.
+	for start := indexUnits(text, query, 0); start >= 0; start = indexUnits(text, query, start+1) {
+		run := newAlignmentScore()
+		for k := range query {
+			run.add(text, start+k)
 		}
-		isWordBoundary := i == 0 || isBoundaryChar(rune(text[i-1]))
-		if lastMatch == i-1 {
-			consecutive++
-			score -= float64(float64(consecutive) * 5)
-		} else {
-			consecutive = 0
-			if lastMatch >= 0 {
-				score += float64(float64(i-lastMatch-1) * 2)
-			}
-		}
-		if isWordBoundary {
-			score -= 10
-		}
-		// float64() forces the product to round before the add: arm64 fuses x*y+z into one FMA rounding, which JS never does.
-		score += float64(float64(i) * 0.1)
-		lastMatch = i
-		queryIdx++
+		score = min(score, run.score)
 	}
 
-	if queryIdx < len(query) {
-		return FuzzyMatch{Matches: false}
-	}
 	if slices.Equal(query, text) {
 		score -= 100
 	}
 	return FuzzyMatch{Matches: true, Score: score}
+}
+
+// indexUnit is String.prototype.indexOf for one UTF-16 unit from index from.
+func indexUnit(text []uint16, unit uint16, from int) int {
+	for i := from; i < len(text); i++ {
+		if text[i] == unit {
+			return i
+		}
+	}
+	return -1
+}
+
+// indexUnits is String.prototype.indexOf for a UTF-16 query from index from.
+func indexUnits(text, query []uint16, from int) int {
+	for i := from; i+len(query) <= len(text); i++ {
+		if slices.Equal(text[i:i+len(query)], query) {
+			return i
+		}
+	}
+	return -1
 }
 
 func isBoundaryChar(r rune) bool {

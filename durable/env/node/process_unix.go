@@ -9,10 +9,10 @@ import (
 
 const isWindows = false
 
-// detachedProcessAttributes starts the shell as a process-group leader so
-// killProcessTree can signal every descendant.
+// detachedProcessAttributes starts the shell as the leader of a new session, as Node's detached option does
+// (env/node.ts spawn), so killProcessTree can signal every descendant.
 func detachedProcessAttributes() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{Setpgid: true}
+	return &syscall.SysProcAttr{Setsid: true}
 }
 
 // killProcessTree sends SIGKILL to the process group, falling back to the

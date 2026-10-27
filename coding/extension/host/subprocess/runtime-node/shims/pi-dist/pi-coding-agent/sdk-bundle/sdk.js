@@ -22,7 +22,7 @@ import {
   isInstallTelemetryEnabled,
   isToolModifier,
   time
-} from "./chunk-HYVDWVV7.js";
+} from "./chunk-QLIWYORR.js";
 import {
   createBashTool,
   createCodingTools,
@@ -35,14 +35,14 @@ import {
   createReadTool,
   createWriteTool,
   withFileMutationQueue
-} from "./chunk-ZYMNLKUS.js";
+} from "./chunk-6HJCSATA.js";
 import "./chunk-LKHC5YTL.js";
-import "./chunk-QJIK7HVQ.js";
+import "./chunk-T5YZVFVX.js";
 import "./chunk-472CZNGH.js";
 import {
   createToolNameMatcher
-} from "./chunk-RTGDH7DA.js";
-import "./chunk-RVJYK3FO.js";
+} from "./chunk-XNXPQFJN.js";
+import "./chunk-OH2Z3DNC.js";
 import {
   VERSION,
   getAgentDir,

@@ -14,9 +14,9 @@ import (
 	"slices"
 )
 
-// bundle_embed.go lists the package's modules, its license and pyproject.toml. The unicode property tables (pig_sdk/tui/_tables.py, 186 KB of generated text) are embedded as _tables.py.gz, an eighth of the size, which staging writes back as _tables.py (coding/extension/pigsdk): go:embed cannot compress, so the list is generated. TestEveryPackageSourceIsBundled fails when it and the source tree disagree.
+// bundle_embed.go lists the package's modules, its license and pyproject.toml. A file of 32 KiB or more is embedded as its gzip, <name>.gz, which go generate writes beside it and staging writes back under the name without .gz (coding/extension/pigsdk): the sources are most of the weight the bundle adds to every binary that stages it. go:embed cannot compress, so the list is generated. The unicode property tables (pig_sdk/tui/_tables.py) are the largest of them. TestEveryPackageSourceIsBundled fails when it and the source tree disagree.
 //
-//go:generate go run ../../automation/gen/embed-bundle.go -pkg pysdk -out bundle_embed.go -skip _tables.py LICENSE pyproject.toml pig_sdk/*.py pig_sdk/tui/*.py pig_sdk/tui/*.py.gz
+//go:generate go run ../../automation/gen/embed-bundle.go -pkg pysdk -out bundle_embed.go -gzip-over 32768 LICENSE pyproject.toml pig_sdk/*.py pig_sdk/tui/*.py
 
 // BundledFiles lists the embedded files, relative to the SDK root, in a stable
 // order. Paths use forward slashes; a stager recreates subdirectories. A name

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
 type foreignHarness struct{ Harness }
@@ -16,7 +17,7 @@ func TestWatchEventsRejectsForeignHarness(t *testing.T) {
 	}
 }
 
-func generationWrite(id durable.TaskId, status durable.TaskStatus) durable.CommitPublication {
+func generationWrite(id durable.TaskId, status durable.TaskStatus) session.ObservedCommit {
 	record := durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]{
 		Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "pi.generation",
 		State: durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: status},
@@ -24,7 +25,7 @@ func generationWrite(id durable.TaskId, status durable.TaskStatus) durable.Commi
 	if status == durable.TaskCompleting || status == durable.TaskTerminal {
 		record.State.Outcome = &durable.TaskOutcome[durable.JsonValue]{Status: durable.OutcomeCompleted}
 	}
-	return durable.CommitPublication{Changes: []durable.CommitChange{durable.TaskWrite{Value: record}}}
+	return session.ObservedCommit{Changes: []durable.CommitChange{durable.TaskWrite{Value: record}}}
 }
 
 func turnEnds(events []AgentEvent) int { return len(eventsOfType(events, "turn_end")) }

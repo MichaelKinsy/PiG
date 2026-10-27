@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -43,5 +44,25 @@ func TestSessionSelectorCurrentSessionRelativePath(t *testing.T) {
 	sel.HandleInput("\x04")
 	if sel.confirmDelete != "" || sel.statusState.message != "Cannot delete the currently active session" {
 		t.Fatalf("active session deletion allowed: confirmation=%q status=%q", sel.confirmDelete, sel.statusState.message)
+	}
+}
+
+// package-manager.ts getNpmInstallArgs and uninstallNpm call realpathSync, which throws where CanonicalizePath keeps the raw input, and returns
+// the absolute path for a relative one.
+func TestRealPathSyncMatchesNodeRealpathSync(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.Mkdir(filepath.Join(dir, "npm"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	want := realPathForTest(t, filepath.Join(dir, "npm"))
+	for _, input := range []string{"npm", "./npm", want} {
+		got, err := RealPathSync(input)
+		if err != nil || got != want {
+			t.Errorf("RealPathSync(%q) = %q, %v; want %q", input, got, err, want)
+		}
+	}
+	if got, err := RealPathSync("missing"); err == nil {
+		t.Errorf("RealPathSync(missing) = %q, nil; want the error Node throws", got)
 	}
 }

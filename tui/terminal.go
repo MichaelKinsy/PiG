@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 
 	"golang.org/x/term"
 )
@@ -834,8 +835,11 @@ func (t *ProcessTerminal) ClearFromCursor() { t.writeUnlogged("\x1b[J") }
 // ClearScreen clears the screen and homes the cursor.
 func (t *ProcessTerminal) ClearScreen() { t.writeUnlogged("\x1b[2J\x1b[H") }
 
-// SetTitle writes an OSC 0 title update sequence.
-func (t *ProcessTerminal) SetTitle(title string) { t.writeUnlogged("\x1b]0;" + title + "\x07") }
+// SetTitle writes an OSC 0 title update sequence. A BEL or ESC in the title would end the sequence early and send the rest to the terminal as escape
+// sequences (session names come from session files), so control characters become spaces (terminal.ts setTitle).
+func (t *ProcessTerminal) SetTitle(title string) {
+	t.writeUnlogged("\x1b]0;" + widthx.ReplaceControlCharacters(title) + "\x07")
+}
 
 // SetProgress writes the OSC 9;4 progress indicator and keeps it alive during agent work. Clearing stops the keepalive and writes OSC 9;4;0 followed directly by BEL.
 func (t *ProcessTerminal) SetProgress(active bool) {

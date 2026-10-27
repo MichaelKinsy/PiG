@@ -47,7 +47,7 @@ func nativeModelFromEntry(entry ModelEntry) *ai.Model {
 	return model
 }
 
-func applyNativeExtensionModels(id string, base []*ai.Model, anyDefinitions []ai.AnyModel, extension ProviderConfigInput) ([]*ai.Model, error) {
+func applyNativeExtensionModels(id string, base []*ai.Model, anyDefinitions []ai.AnyModel, extension ProviderConfigInput, carrier bool) ([]*ai.Model, error) {
 	definitions := chatModelsOf(anyDefinitions)
 	models := make([]*ai.Model, 0, len(definitions))
 	baseIndex := newNativeModelIndex(base)
@@ -65,7 +65,7 @@ func applyNativeExtensionModels(id string, base []*ai.Model, anyDefinitions []ai
 			// provider-composer.ts extensionModelFromDefinition:286 words this differently from the models.json check.
 			return nil, fmt.Errorf(`Provider %s, model %s: no "api" specified. Set it at model level or provider level.`, id, model.ID)
 		}
-		if model.ProviderMeta.BaseURL == "" {
+		if model.ProviderMeta.BaseURL == "" && !carrier {
 			return nil, fmt.Errorf(`Provider %s: "baseUrl" is required when defining custom models.`, id)
 		}
 		// upstream: packages/coding-agent/src/core/provider-composer.ts:applyExtension sets headers: undefined; request headers come from ModelRuntime.getAuth.
@@ -307,7 +307,7 @@ func anyModelAPI(model ai.AnyModel) string {
 }
 
 // extensionNonChatModel materializes an extension image or classifier definition (provider-composer.ts extensionModelFromDefinition).
-func extensionNonChatModel(id string, models []ai.AnyModel, extension ProviderConfigInput, definition ai.AnyModel) (ai.AnyModel, error) {
+func extensionNonChatModel(id string, models []ai.AnyModel, extension ProviderConfigInput, definition ai.AnyModel, carrier bool) (ai.AnyModel, error) {
 	defaults := findExtensionModelDefaults(models, definition)
 	api := anyModelAPI(definition)
 	if api == "" && defaults != nil {
@@ -320,7 +320,7 @@ func extensionNonChatModel(id string, models []ai.AnyModel, extension ProviderCo
 	if baseURL == "" && defaults != nil {
 		baseURL = anyModelBaseURL(defaults)
 	}
-	if baseURL == "" {
+	if baseURL == "" && !carrier {
 		return nil, fmt.Errorf(`Provider %s: "baseUrl" is required when defining custom models.`, id)
 	}
 	// upstream: provider-composer.ts extensionModelFromDefinition sets headers: undefined; request headers come from ModelRuntime.getAuth.
@@ -348,6 +348,25 @@ func (r *ModelRegistry) nativeModelConfig(id string) (providerConfig, bool) {
 }
 
 func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension *ProviderConfigInput) (*ai.ModelsProvider, error) {
+	return r.composeProvider(base, extension, false)
+}
+
+// composeCarrierProvider composes the provider of a native Provider object the extension registered through a carrier (Pi's registerNativeProvider): extension holds the carrier's models and callbacks, not an extension's provider configuration. Pi composes such a provider untouched (model-runtime.ts composeProvider: `base` is the Provider object): its models keep the base URL they have, or none, and a provider-level base URL is only the refresh context's.
+func (r *ModelRegistry) composeCarrierProvider(base *ai.ModelsProvider, extension *ProviderConfigInput) (*ai.ModelsProvider, error) {
+	return r.composeProvider(base, extension, true)
+}
+
+func (r *ModelRegistry) composeProvider(base *ai.ModelsProvider, extension *ProviderConfigInput, carrier bool) (*ai.ModelsProvider, error) {
+	// modelExtension is what the models are composed from: a carrier's provider-level base URL never reaches its models.
+	var modelExtension *ProviderConfigInput
+	if extension != nil {
+		modelExtension = extension
+		if carrier && extension.BaseURL != "" {
+			stripped := *extension
+			stripped.BaseURL = ""
+			modelExtension = &stripped
+		}
+	}
 	config, configured := r.nativeModelConfig(base.ID)
 	if !configured && extension == nil {
 		return base, nil
@@ -415,14 +434,14 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 				definitions = dynamic
 			}
 			if definitions != nil {
-				models, err = applyNativeExtensionModels(base.ID, models, definitions, *extension)
+				models, err = applyNativeExtensionModels(base.ID, models, definitions, *modelExtension, carrier)
 				if err != nil {
 					return nil, err
 				}
-			} else if extension.BaseURL != "" {
+			} else if modelExtension.BaseURL != "" {
 				for i, model := range models {
 					copy := new(*model)
-					copy.ProviderMeta.BaseURL = extension.BaseURL
+					copy.ProviderMeta.BaseURL = modelExtension.BaseURL
 					models[i] = copy
 				}
 			}
@@ -485,7 +504,7 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 					}
 					continue
 				}
-				model, err := extensionNonChatModel(base.ID, configuredAll, *extension, definition)
+				model, err := extensionNonChatModel(base.ID, configuredAll, *modelExtension, definition, carrier)
 				if err != nil {
 					return nil, err
 				}
@@ -506,7 +525,7 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 					continue
 				}
 				if extension != nil {
-					model = withBaseURL(model, firstModelValue(extension.BaseURL, anyModelBaseURL(model)))
+					model = withBaseURL(model, firstModelValue(modelExtension.BaseURL, anyModelBaseURL(model)))
 				}
 				all = append(all, model)
 			}
@@ -594,7 +613,7 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 				if err != nil {
 					return err
 				}
-				if _, err := applyNativeExtensionModels(base.ID, defaults, models, *extension); err != nil {
+				if _, err := applyNativeExtensionModels(base.ID, defaults, models, *modelExtension, carrier); err != nil {
 					return err
 				}
 				configuredAll, err := configuredAllModels()
@@ -605,7 +624,7 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 					if ai.IsModelType(definition, ai.ModelTypeChat) {
 						continue
 					}
-					if _, err := extensionNonChatModel(base.ID, configuredAll, *extension, definition); err != nil {
+					if _, err := extensionNonChatModel(base.ID, configuredAll, *modelExtension, definition, carrier); err != nil {
 						return err
 					}
 				}

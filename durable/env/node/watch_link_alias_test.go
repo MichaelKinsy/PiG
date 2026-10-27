@@ -33,8 +33,8 @@ func TestNodeFileWatcherReportsALinkedTargetForAnEventNamedByTheResolvedFile(t *
 
 	var mu sync.Mutex
 	var reported []string
-	watcher, err := openFileWatcher([]durableenv.WatchTarget{{Path: link}}, func(path string) string { return path }, func(change durableenv.WatchChange) {
-		if paths, ok := change.(durableenv.WatchChangePaths); ok {
+	watcher, err := openFileWatcher([]durableenv.WatchTarget{{Path: link}}, func(path string) string { return path }, func(change durableenv.FileChange) {
+		if paths, ok := change.(durableenv.FileChangePaths); ok {
 			mu.Lock()
 			reported = append(reported, paths.Paths...)
 			mu.Unlock()

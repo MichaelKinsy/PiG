@@ -139,6 +139,23 @@ func commitBackend(p Profile, w Writes) int {
 // promise and whose #call returns (+2, as guarded adds to the whole call).
 func CommitTail(p Profile) int { return commitTailBackend(p) + 2 }
 
+// AdoptTail is the ticks from the backend's call of `adopt` to the Session's resumption from Storage.commit, which is how much
+// earlier than that resumption a commit is published (session.ts #runCommit publishes inside `adopt`). The backend calls `adopt`
+// right before it returns, so its commit promise resolves at that tick: MemoryStorage's resolves at the call, resumes its caller
+// one tick later (the whole call is `backend` = 1) and the guard's adoption takes the Session from there to guarded(1) = 4. Every
+// other profile calls it when the caller's await of the work is the next tick (the last of commitTailBackend's ticks), so the
+// guard's +2 and that tick remain: 3; the lazy proxy adds the one tick its adoption of the method's promise takes.
+func AdoptTail(p Profile) int {
+	if p == Memory {
+		return guarded(1)
+	}
+	n := CommitTail(p) - commitTailBackend(p) + 1
+	if p == Gate {
+		n++
+	}
+	return n
+}
+
 // commitTailBackend is the ticks from the COMMIT statement to the resumption of a caller of the adapter's commit
 // (scenarios/storage-ticks.mjs `commitTail`): over the capsql facade the facade's adoption of the work's promise, `await
 // this.db.transaction` and the caller's await (3); the Node adapter's `started.finally(...)` takes two more (nodeTransactionEnd

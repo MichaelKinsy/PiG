@@ -179,7 +179,7 @@ func TestStreamedAssistantMessageRendersOnlyChangedInlineText(t *testing.T) {
 	}
 	text := strings.Join(paragraphs, "\n\n")
 	thinking := "Thinking " + strings.Join(paragraphs[:3], "\n\n")
-	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	block.SetContent([]AssistantSegment{{Thinking: true, Text: thinking}, {Text: text}})
 	block.Render(60)
 	text += " more"
@@ -190,7 +190,7 @@ func TestStreamedAssistantMessageRendersOnlyChangedInlineText(t *testing.T) {
 	if renders != 1 {
 		t.Fatalf("streamed frame rendered %d inline texts, want 1 (the changed paragraph)", renders)
 	}
-	fresh := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	fresh := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	fresh.SetContent(content)
 	if want := fresh.Render(60); !slices.Equal(got, want) {
 		t.Fatalf("streamed frame differs from a new component:\n got %q\nwant %q", got, want)

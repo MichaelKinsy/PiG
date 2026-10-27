@@ -260,7 +260,7 @@ func TestFrontendUserMessageCarriesItsImages(t *testing.T) {
 func TestFrontendMarksOnlyTheGeneratingMessageAsStreaming(t *testing.T) {
 	session := &fakeFrontendSession{}
 	m, _ := newFrontendProbe(t, &fakeFrontend{session: session}, "fullscreen")
-	done, live := m.newAssistantMessageBlock(), m.newAssistantMessageBlock()
+	done, live := m.newAssistantMessageBlock(messageMeta{}), m.newAssistantMessageBlock(messageMeta{})
 	done.SetTextDelta("earlier")
 	live.SetTextDelta("now")
 	m.chatContainer.Add(done)

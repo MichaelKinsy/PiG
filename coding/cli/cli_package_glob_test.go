@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -223,12 +224,7 @@ func TestCLIGitSourceRefreshesOncePerLoad(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Cleanup(func() {
-				if build.Host != nil {
-					build.Host.Shutdown("test")
-				}
-				build.Services.Close()
-			})
+			releaseCLIBuildAtCleanup(t, build)
 			manager, err := coding.NewInMemorySessionManager(f.cwd)
 			if err != nil {
 				t.Fatal(err)
@@ -253,6 +249,48 @@ func TestCLIGitSourceRefreshesOncePerLoad(t *testing.T) {
 	})
 }
 
+// A startup that went on past a failed -e install runs the -e extension in a host process of the build. Pi's extensions end with its process; here the build's Host.Shutdown must stop that process and wait until it has exited, so none outlives the build (a Windows process still ending holds its files open, and the test's temporary directories could not be removed).
+func TestCLIPackageSourceInstallFailureHostProcessEndsWithShutdown(t *testing.T) {
+	f := newPackageProcessFixture(t, "process.exit(1);")
+	pidFile := filepath.Join(t.TempDir(), "host-pid")
+	quoted, err := json.Marshal(pidFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeResourceLoaderFixture(t, filepath.Join(f.agent, "extensions", "probe.js"), `import {writeFileSync} from "node:fs"; export default function() { writeFileSync(`+string(quoted)+`, String(process.pid)); }`)
+	build, err := newCLIGlobTestBuilder(t, f, "--print", "-e", "npm:eprobe-missing").buildResources(t.Context(), cliBuildInput{CWD: f.cwd})
+	if err != nil {
+		t.Fatalf("startup error = %v, want startup to go on after the failed npm command", err)
+	}
+	defer build.Services.Close()
+	data, err := os.ReadFile(pidFile)
+	if err != nil {
+		t.Fatalf("the extension factory did not run: %v", err)
+	}
+	pid, err := strconv.Atoi(string(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !extensionProcessAlive(pid) {
+		t.Fatalf("the extension host process %d ended before the build was released, so the test does not show Shutdown waiting for it", pid)
+	}
+	build.Host.Shutdown("test")
+	if extensionProcessAlive(pid) {
+		t.Fatalf("the extension host process %d outlived Host.Shutdown", pid)
+	}
+}
+
+// releaseCLIBuildAtCleanup shuts build's extension host down and closes its services before the test's temporary directories are removed (cleanups run last-in first-out, and the directories were made before the build). A build whose startup went on past a failed install runs the -e extension in a host process; the test context's end only starts killing that process, and Host.Shutdown is what waits until it has exited. Without the wait, RemoveAll of the agent directory failed with "The directory is not empty" on Windows in 80 of 80 runs.
+func releaseCLIBuildAtCleanup(t *testing.T, build *cliBuild) {
+	t.Helper()
+	t.Cleanup(func() {
+		if build.Host != nil {
+			build.Host.Shutdown("test")
+		}
+		build.Services.Close()
+	})
+}
+
 // newCLIGlobTestBuilder is the startup builder of a faux-model run with args in f's agent dir.
 func newCLIGlobTestBuilder(t *testing.T, f packageProcessFixture, args ...string) *cliRuntimeBuilder {
 	t.Helper()
@@ -267,8 +305,9 @@ func newCLIGlobTestBuilder(t *testing.T, f packageProcessFixture, args ...string
 	}
 }
 
-// Pi's resolveExtensionSources installs a missing npm or git -e source outside any catch (package-manager.ts:1293-1342), so a failed install rejects the load before any extension factory runs, and no later source is installed. Probed with Pi 1.1.0 (r26, r27): `-e npm:<missing>` with an unreachable registry exits 1 with npm's error, the user extension's factory does not run, and a second -e npm source makes no npm call.
-func TestCLIPackageSourceInstallFailureStopsStartup(t *testing.T) {
+// Pi 6dfb54678: resolveExtensionSources catches the failed install of a missing npm or git -e source, so the source contributes nothing and is reported as an extension warning, every
+// later -e source is resolved too, and the extension factories still run.
+func TestCLIPackageSourceInstallFailureWarnsAndStartupContinues(t *testing.T) {
 	for _, tc := range []struct{ source, second, command string }{
 		{"npm:eprobe-missing", "npm:eprobe-second", "npm"},
 		{cliGitSource, "git:https://example.com/owner/second", "git"},
@@ -281,16 +320,28 @@ func TestCLIPackageSourceInstallFailureStopsStartup(t *testing.T) {
 				t.Fatal(err)
 			}
 			writeResourceLoaderFixture(t, filepath.Join(f.agent, "extensions", "probe.js"), `import {writeFileSync} from "node:fs"; export default function() { writeFileSync(`+string(quoted)+`, "ran"); }`)
-			_, err = newCLIGlobTestBuilder(t, f, "--print", "-e", tc.source, "-e", tc.second).buildResources(t.Context(), cliBuildInput{CWD: f.cwd})
-			if err == nil || !strings.HasPrefix(err.Error(), tc.command+" ") || !strings.HasSuffix(err.Error(), "failed with code 1") {
-				t.Fatalf("startup error = %v, want the failed %s command", err, tc.command)
+			build, err := newCLIGlobTestBuilder(t, f, "--print", "-e", tc.source, "-e", tc.second).buildResources(t.Context(), cliBuildInput{CWD: f.cwd})
+			if err != nil {
+				t.Fatalf("startup error = %v, want startup to go on after the failed %s command", err, tc.command)
 			}
-			if _, statErr := os.Stat(marker); !os.IsNotExist(statErr) {
-				t.Fatalf("an extension factory ran before the install failure: %v", statErr)
+			releaseCLIBuildAtCleanup(t, build)
+			if _, statErr := os.Stat(marker); statErr != nil {
+				t.Fatalf("the extension factory did not run: %v", statErr)
 			}
+			secondResolved := false
 			for _, call := range f.calls(t) {
-				if strings.Contains(strings.Join(call.Args, " "), "second") {
-					t.Fatalf("the source after the failure was resolved too: %+v", call)
+				secondResolved = secondResolved || strings.Contains(strings.Join(call.Args, " "), "second")
+			}
+			if !secondResolved {
+				t.Fatal("the source after the failure was not resolved")
+			}
+			for _, source := range []string{tc.source, tc.second} {
+				warned := false
+				for _, diagnostic := range build.ExtensionDiagnostics {
+					warned = warned || strings.Contains(diagnostic.Message, "Extension package \""+source+"\": failed to install (") && strings.Contains(diagnostic.Message, "Check the source and try again.")
+				}
+				if !warned {
+					t.Fatalf("no install warning for %s in %+v", source, build.ExtensionDiagnostics)
 				}
 			}
 		})

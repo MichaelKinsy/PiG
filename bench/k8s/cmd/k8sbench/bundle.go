@@ -80,6 +80,14 @@ var publishedAgentPins = agentPins{
 // is a launcher whose bytes equal the release's; its chunks differ. A pin bump to a commit adds its entry
 // (TestCommittedPinHasAgentPins).
 var sourceAgentPins = map[string]agentPins{
+	"6c384aa30f619d7b28963f2bab24d8dacbe73cb6": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "65de56f7e1f679ad96eabe8e4bf58aece60d6063e94be6ed3114c24b23669256",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "7f4b30f0bc0d6196ad8bed37b4905f0f41ad9faa34b404e851b86a9fc533ae1f",
+	},
 	"fdce48eb404ec014adaf2ac10a3a53bc6b1740c2": {
 		files: map[string]string{
 			"pi-agent/package.json":      "49bcc92772c7bb1fbb6597e3a3d5671b586f34627bd76c964b25b291af9a3d5e",
@@ -168,6 +176,46 @@ var sourceAgentPins = map[string]agentPins{
 		},
 		tree: "30de7287b09e741d24a4a07ecca610854bb2e96a1f02e88481a70ceab6576bb4",
 	},
+	"42cb822f1c5d3153069dd0661bfd297424666cf1": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "c246f81f40b5905d75fc88b56095f8ab19174acebc1088f77e1c3df7ac454e6a",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "738ca6719ac7afa3227d3da74b7da598e73b8af030c71ab70edc095c12f09194",
+	},
+	"8a2ebd38549c3521a02db0e5d758a24320e97f94": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "cb53135e013c2643022793b044a4ba193235c14ebc972d477c78237b6b783fdc",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "6c4dd5030ba196918de29c1fdeccdfed5837df453bcc1dbacf3d6022544b2a16",
+	},
+	"36be9c612e64082a4f0d4d0a94706c38ecbc20a1": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "2c0a737f962f5a3c59e0c2d7da3842208d9c52c37056454eec3164ac2284bc18",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "be5fd4b6b20b36171aa76294cff9ff9bca88d690ff5230ecb10e706831356183",
+	},
+	"ede2c9b468d8e061c557d16957513715e6d49cd6": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "f93648318772a0d96f3a9e9e96d262de165910bae69201b421f40c557ef33412",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "0d50fee259349a68e1391e8fd5e2aa8aa738d953e40ea866fda32d2f534e2359",
+	},
+	"acf83acfd88f18e94e8d6634064b2ee2cca6f317": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "e2827f355972947f8c3cfd3f11b5b680c2dcae07fb013d4af08456b9109b4b64",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "5d0c170300942625bc2591459167289650cec10d9814ba974465fbc1bfa03c29",
+	},
 	"74f46864025c68504cd10c89eeb626b7e3d64cea": {
 		files: map[string]string{
 			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
@@ -175,6 +223,22 @@ var sourceAgentPins = map[string]agentPins{
 			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
 		},
 		tree: "6c502b63fd19b65b48040bf967d341cbcd04d915dc616954ddfd82dea63d737a",
+	},
+	"38ff99177fba21e9c57a670f4e95adcf407c99c7": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "548552bbde05f4dd27049ccb0b56e23a6dd5e70be693f45759785180589cee5d",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "0e92fcbd58917114020818efa892f31f67bc25472e087300212da186f740a78e",
+	},
+	"d5b3de22d0e24a3e9c38a9410d3329b099717283": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "171dfb4722fe92b819f57bbfa65172a2f68e117f5b4480376a06e52bb49e17f0",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "a370325fce00b85dd7639908e2548f21ff28056cc66a6db41012af45b60b5b34",
 	},
 }
 

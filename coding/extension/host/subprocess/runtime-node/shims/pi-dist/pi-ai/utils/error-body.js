@@ -12,6 +12,7 @@
 // composes into its display string. The `messageCarriesBody` flag captures the
 // Anthropic / `@google/genai` happy path where the SDK already folded the body
 // into the message, so providers can preserve it without double-printing.
+import { ownedSlice } from "./text.js";
 export const MAX_PROVIDER_ERROR_BODY_CHARS = 4000;
 export function normalizeProviderError(error) {
     if (!(error instanceof Error)) {
@@ -119,7 +120,7 @@ export function formatProviderError(norm, prefix) {
 export function truncateErrorText(text, maxChars) {
     if (text.length <= maxChars)
         return text;
-    return `${text.slice(0, maxChars)}... [truncated ${text.length - maxChars} chars]`;
+    return `${ownedSlice(text, 0, maxChars)}... [truncated ${text.length - maxChars} chars]`;
 }
 export function safeJsonStringify(value) {
     try {

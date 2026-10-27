@@ -31,12 +31,18 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 		return LoadExtensionsResult{}, fmt.Errorf("coding: %w", err)
 	}
 	enabled := enabledExtensionPaths(cli.Extensions)
+	l.cliExtensionPaths = map[string]bool{}
+	for _, path := range enabled {
+		l.cliExtensionPaths[icodingagent.CanonicalizePath(path)] = true
+	}
 	packageRoots := map[string]string{}
+	installFailures := [][]packagemanager.PackageInstallFailure{cli.InstallFailures}
 	if !l.options.NoExtensions {
 		resolved, err := manager.Resolve(nil)
 		if err != nil {
 			return LoadExtensionsResult{}, fmt.Errorf("coding: %w", err)
 		}
+		installFailures = append([][]packagemanager.PackageInstallFailure{resolved.InstallFailures}, installFailures...)
 		enabled = append(append([]string{}, enabled...), enabledExtensionPaths(resolved.Extensions)...)
 		for _, resource := range resolved.Extensions {
 			packageRoots[resource.Path] = resource.Metadata.PackageRoot
@@ -78,7 +84,10 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 	// One runtime serves every extension of a reload: the Host adopts it and the factories register against it (resource-loader.ts passes
 	// preTrustExtensions.runtime on). A pass with no PreTrust starts a new reload.
 	if request.PreTrust == nil || l.factoryRuntime == nil {
-		l.factoryRuntime = extension.CreateExtensionRuntime()
+		l.factoryRuntime = l.options.Runtime
+		if l.factoryRuntime == nil {
+			l.factoryRuntime = extension.CreateExtensionRuntime()
+		}
 	}
 	if l.eventBus == nil {
 		l.eventBus = l.options.EventBus
@@ -183,12 +192,22 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 	var replacementWarnings []icodingagent.ExtensionWarning
 	result.Extensions = extensionset.OmitReplaced(append(ordered, inline...), &replacementWarnings)
 	result.Runtime = l.factoryRuntime
+	// loader.ts registerFlag sets a flag's default into the runtime's flagValues as the extension registers it.
+	for _, ext := range result.Extensions {
+		for _, flag := range ext.RegisteredFlags() {
+			if flag.Default != nil {
+				result.Runtime.SetFlagDefault(flag.Name, flag.Default)
+			}
+		}
+	}
 	var existing []icodingagent.ExtensionWarning
 	for _, warning := range result.Warnings {
 		existing = append(existing, icodingagent.ExtensionWarning{Path: warning.Path, Warning: warning.Warning})
 	}
 	result.Warnings = nil
-	for _, warning := range icodingagent.MergeExtensionWarnings(icodingagent.MergeExtensionWarnings(existing, replacementWarnings), packageWarnings) {
+	// A Package that could not be installed warns before the package warnings (resource-loader.ts: [...installWarnings, ...packageWarnings], Pi 6dfb54678).
+	installWarnings := packagemanager.PackageInstallWarnings(installFailures...)
+	for _, warning := range icodingagent.MergeExtensionWarnings(icodingagent.MergeExtensionWarnings(existing, replacementWarnings), slices.Concat(installWarnings, packageWarnings)) {
 		result.Warnings = append(result.Warnings, ExtensionLoadWarning{Path: warning.Path, Warning: warning.Warning})
 	}
 	l.files, l.filesConfigs = result, configs
@@ -202,6 +221,12 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 		}
 		if _, statErr := os.Stat(resolved); statErr != nil {
 			result.Errors = append(result.Errors, ExtensionLoadError{Path: resolved, Error: "Extension path does not exist: " + resolved})
+		}
+	}
+	// resource-loader.ts addExtensionConflictDiagnostics: the final set lists a tool or flag two extensions register as an error of the result; both extensions stay loaded.
+	if !request.Bootstrap {
+		for _, conflict := range icodingagent.DetectExtensionConflicts(result.Extensions) {
+			result.Errors = append(result.Errors, ExtensionLoadError{Path: conflict.Path, Error: conflict.Message})
 		}
 	}
 	return result, nil

@@ -19,7 +19,7 @@ func assignOps(t *testing.T, base map[string]any, key string, value any) []any {
 	}
 	tracker := delta.Track(object)
 	change := tracker.BeginChange()
-	if err := AssignJson(change.State(), key, value); err != nil {
+	if err := AssignJson(change.State(), key, value, nil); err != nil {
 		t.Fatal(err)
 	}
 	prepared, err := change.Prepare()
@@ -59,5 +59,44 @@ func TestAssignJsonWritesLeafByLeafLikePi(t *testing.T) {
 				t.Fatalf("ops = %#v, want %#v", got, c.want)
 			}
 		})
+	}
+}
+
+// upstream: harness-json.test.ts "does not merge a new __proto__ member into Object.prototype" (Pi 89c921d8). A Go JsonObject has no
+// prototype to read a missing __proto__ member through to, so AssignJson needs no guard: the member arrives as an ordinary one and
+// nothing else changes.
+func TestAssignJsonKeepsANewProtoMemberAsAnOrdinaryMember(t *testing.T) {
+	tracker := delta.Track(delta.NewJsonObject(0))
+	assign := func(text string) {
+		t.Helper()
+		value, err := delta.DecodeJson([]byte(text))
+		if err != nil {
+			t.Fatal(err)
+		}
+		change := tracker.BeginChange()
+		if err := AssignJson(change.State(), "message", value, nil); err != nil {
+			t.Fatal(err)
+		}
+		prepared, err := change.Prepare()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tracker.Adopt(prepared); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assign(`{"args":{"path":"x"}}`)
+	assign(`{"args":{"path":"xy","__proto__":{"polluted":true}}}`)
+	message, _ := tracker.Value().Value("message").(*delta.JsonObject)
+	args, _ := message.Value("args").(*delta.JsonObject)
+	if args == nil || !args.Has("__proto__") || args.Value("path") != "xy" {
+		t.Fatalf("args %v", args)
+	}
+	member, _ := args.Value("__proto__").(*delta.JsonObject)
+	if member == nil || member.Len() != 1 || member.Value("polluted") != true {
+		t.Fatalf("__proto__ member %v", args.Value("__proto__"))
+	}
+	if got := args.Keys(); !reflect.DeepEqual(got, []string{"path", "__proto__"}) {
+		t.Fatalf("keys %v", got)
 	}
 }

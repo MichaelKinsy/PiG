@@ -189,10 +189,12 @@ func uvarint(s string) (uint64, int) {
 //   - shims/vendor-manifest.json: the provenance record the vendoring tests compare with the source tree; no runtime code opens it.
 //   - shims/pi-dist/pi-coding-agent/docs/images/: the screenshots the package docs embed. The documentation Pi's system prompt advertises is its Markdown (docs/*.md, README.md and examples/), which stays; PiG's own documentation bundle (internal/pigdocs) carries no images either.
 //   - shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png: the announcement image of Pi's Node InteractiveMode, which PiG never runs (its own copy is embedded by internal/codingagent); the loader reads it in a try/catch and shows the announcement without the picture when it is missing.
+//   - shims/undici/docs/: undici's API documentation (Markdown) that its npm package ships. undici's code never opens it, and no Pi documentation links to it.
 func UnreadAtRuntime(relative string) bool {
 	return strings.HasSuffix(relative, ".map") ||
 		strings.HasSuffix(relative, ".d.ts") ||
 		relative == "shims/vendor-manifest.json" ||
 		strings.HasPrefix(relative, "shims/pi-dist/pi-coding-agent/docs/images/") ||
-		relative == "shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png"
+		relative == "shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png" ||
+		strings.HasPrefix(relative, "shims/undici/docs/")
 }

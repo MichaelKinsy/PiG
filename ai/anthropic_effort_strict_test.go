@@ -117,8 +117,9 @@ func TestAnthropicManagedEffortAndStrictTools(t *testing.T) {
 		t.Errorf("thinking = %#v, want adaptive drop_block", thinking)
 	}
 	outputConfig, _ := body["output_config"].(map[string]any)
-	if outputConfig["effort"] != "high" {
-		t.Errorf("output_config = %#v, want top-level high", outputConfig)
+	// Pi e3bc05e87: the fixed top-level effort is low, because organizations can cap effort.
+	if outputConfig["effort"] != "low" {
+		t.Errorf("output_config = %#v, want top-level low", outputConfig)
 	}
 	if !headerListContains(betaHeader, "mid-conversation-output-config-2026-07-01") || !headerListContains(betaHeader, "thinking-binding-controls-2026-08-01") {
 		t.Errorf("anthropic-beta = %q, want managed-effort betas", betaHeader)

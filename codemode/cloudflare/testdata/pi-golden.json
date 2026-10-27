@@ -1,0 +1,907 @@
+{
+ "pin": "1.4.0+6c384aa3",
+ "constants": {
+  "defaultRemoteMemoryLimitBytes": 33554432
+ },
+ "quickjsWasmIsAModule": true,
+ "objects": {
+  "default": {
+   "maxInterruptBudget": 100000,
+   "maxMemoryLimitBytes": 33554432
+  },
+  "small": {
+   "maxInterruptBudget": 3,
+   "maxMemoryLimitBytes": 33554432
+  },
+  "medium": {
+   "maxInterruptBudget": 40,
+   "maxMemoryLimitBytes": 33554432
+  },
+  "tight": {
+   "maxInterruptBudget": 100000,
+   "maxMemoryLimitBytes": 2097152
+  },
+  "roomy": {
+   "maxInterruptBudget": 100000,
+   "maxMemoryLimitBytes": 67108864
+  }
+ },
+ "executes": [
+  {
+   "name": "default object runs a loop of 100",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 100; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": true,
+      "value": "4950",
+      "writes": "[]"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "default object runs a loop of 10000",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 10000; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": true,
+      "value": "49995000",
+      "writes": "[]"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "default object runs a loop of 100000",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 100000; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": true,
+      "value": "4999950000",
+      "writes": "[]"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "small object runs a loop of 100",
+   "object": "small",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 100; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "failure",
+      "error": {
+       "kind": "timeout",
+       "message": "Execution exceeded its interrupt budget of 3"
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "small object runs a loop of 10000",
+   "object": "small",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 10000; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "failure",
+      "error": {
+       "kind": "timeout",
+       "message": "Execution exceeded its interrupt budget of 3"
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "small object runs a loop of 100000",
+   "object": "small",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 100000; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "failure",
+      "error": {
+       "kind": "timeout",
+       "message": "Execution exceeded its interrupt budget of 3"
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "the default object lets a request ask for more than nothing",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 100; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    },
+    "interruptBudget": 1000000000
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": true,
+      "value": "4950",
+      "writes": "[]"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "the medium object caps a request's budget",
+   "object": "medium",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 1000000; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    },
+    "interruptBudget": 1000000000
+   },
+   "frames": [
+    [
+     {
+      "type": "failure",
+      "error": {
+       "kind": "timeout",
+       "message": "Execution exceeded its interrupt budget of 40"
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "the medium object lets a request ask for less",
+   "object": "medium",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 1000000; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    },
+    "interruptBudget": 5
+   },
+   "frames": [
+    [
+     {
+      "type": "failure",
+      "error": {
+       "kind": "timeout",
+       "message": "Execution exceeded its interrupt budget of 5"
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "the medium object runs a loop within its budget",
+   "object": "medium",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 100; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": true,
+      "value": "4950",
+      "writes": "[]"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "the small object caps a request's budget",
+   "object": "small",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 1000000; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    },
+    "interruptBudget": 1000000000
+   },
+   "frames": [
+    [
+     {
+      "type": "failure",
+      "error": {
+       "kind": "timeout",
+       "message": "Execution exceeded its interrupt budget of 3"
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "the small object lets a request ask for less",
+   "object": "small",
+   "request": {
+    "data": {
+     "code": "let n = 0; for (let i = 0; i < 1000000; i++) n += i; return n",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    },
+    "interruptBudget": 1
+   },
+   "frames": [
+    [
+     {
+      "type": "failure",
+      "error": {
+       "kind": "timeout",
+       "message": "Execution exceeded its interrupt budget of 1"
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "default object without a requested memory limit",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": false,
+      "error": "{\"name\":\"InternalError\",\"message\":\"out of memory\",\"stack\":\"InternalError: out of memory\\n    at <anonymous> (codemode.js:1:78)\"}"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "default object with a requested memory limit of 256 MiB",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "memoryLimitBytes": 268435456
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": false,
+      "error": "{\"name\":\"InternalError\",\"message\":\"out of memory\",\"stack\":\"InternalError: out of memory\\n    at <anonymous> (codemode.js:1:78)\"}"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "default object with a requested memory limit of 1 MiB",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "memoryLimitBytes": 1048576
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": false,
+      "error": "{\"name\":\"InternalError\",\"message\":\"out of memory\",\"stack\":\"InternalError: out of memory\\n    at <anonymous> (codemode.js:1:62)\"}"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "tight object without a requested memory limit",
+   "object": "tight",
+   "request": {
+    "data": {
+     "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": false,
+      "error": "{\"name\":\"InternalError\",\"message\":\"out of memory\",\"stack\":\"InternalError: out of memory\\n    at <anonymous> (codemode.js:1:78)\"}"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "tight object with a requested memory limit of 256 MiB",
+   "object": "tight",
+   "request": {
+    "data": {
+     "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "memoryLimitBytes": 268435456
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": false,
+      "error": "{\"name\":\"InternalError\",\"message\":\"out of memory\",\"stack\":\"InternalError: out of memory\\n    at <anonymous> (codemode.js:1:78)\"}"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "tight object with a requested memory limit of 1 MiB",
+   "object": "tight",
+   "request": {
+    "data": {
+     "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "memoryLimitBytes": 1048576
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": false,
+      "error": "{\"name\":\"InternalError\",\"message\":\"out of memory\",\"stack\":\"InternalError: out of memory\\n    at <anonymous> (codemode.js:1:62)\"}"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "roomy object without a requested memory limit",
+   "object": "roomy",
+   "request": {
+    "data": {
+     "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+     "tools": [],
+     "globals": [],
+     "store": {}
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": false,
+      "error": "{\"name\":\"InternalError\",\"message\":\"out of memory\",\"stack\":\"InternalError: out of memory\\n    at <anonymous> (codemode.js:1:78)\"}"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "roomy object with a requested memory limit of 256 MiB",
+   "object": "roomy",
+   "request": {
+    "data": {
+     "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "memoryLimitBytes": 268435456
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": false,
+      "error": "{\"name\":\"InternalError\",\"message\":\"out of memory\",\"stack\":\"InternalError: out of memory\\n    at <anonymous> (codemode.js:1:78)\"}"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "roomy object with a requested memory limit of 1 MiB",
+   "object": "roomy",
+   "request": {
+    "data": {
+     "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "memoryLimitBytes": 1048576
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "done",
+      "ok": false,
+      "error": "{\"name\":\"InternalError\",\"message\":\"out of memory\",\"stack\":\"InternalError: out of memory\\n    at <anonymous> (codemode.js:1:62)\"}"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "default object fingerprint without a request",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "return 1",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "deterministic": {
+      "startedAt": 1700000000000,
+      "seed": 42
+     }
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "started",
+      "fingerprint": "quickjs-wasi 3.6.2, quickjs 0.17.0, prelude 8c6c9242, deterministic 1, stack 262144, heap 33554432, budget 100000"
+     },
+     {
+      "type": "done",
+      "ok": true,
+      "value": "1",
+      "writes": "[]",
+      "during": {
+       "seq": 0,
+       "issued": 0
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "default object fingerprint with a memory request of 1 MiB",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "return 1",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "deterministic": {
+      "startedAt": 1700000000000,
+      "seed": 42
+     },
+     "memoryLimitBytes": 1048576
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "started",
+      "fingerprint": "quickjs-wasi 3.6.2, quickjs 0.17.0, prelude 8c6c9242, deterministic 1, stack 262144, heap 1048576, budget 100000"
+     },
+     {
+      "type": "done",
+      "ok": true,
+      "value": "1",
+      "writes": "[]",
+      "during": {
+       "seq": 0,
+       "issued": 0
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "default object fingerprint with a memory request of 256 MiB and a budget of 77",
+   "object": "default",
+   "request": {
+    "data": {
+     "code": "return 1",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "deterministic": {
+      "startedAt": 1700000000000,
+      "seed": 42
+     },
+     "memoryLimitBytes": 268435456
+    },
+    "interruptBudget": 77
+   },
+   "frames": [
+    [
+     {
+      "type": "started",
+      "fingerprint": "quickjs-wasi 3.6.2, quickjs 0.17.0, prelude 8c6c9242, deterministic 1, stack 262144, heap 33554432, budget 77"
+     },
+     {
+      "type": "done",
+      "ok": true,
+      "value": "1",
+      "writes": "[]",
+      "during": {
+       "seq": 0,
+       "issued": 0
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "tight object fingerprint without a request",
+   "object": "tight",
+   "request": {
+    "data": {
+     "code": "return 1",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "deterministic": {
+      "startedAt": 1700000000000,
+      "seed": 42
+     }
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "started",
+      "fingerprint": "quickjs-wasi 3.6.2, quickjs 0.17.0, prelude 8c6c9242, deterministic 1, stack 262144, heap 2097152, budget 100000"
+     },
+     {
+      "type": "done",
+      "ok": true,
+      "value": "1",
+      "writes": "[]",
+      "during": {
+       "seq": 0,
+       "issued": 0
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "tight object fingerprint with a memory request of 1 MiB",
+   "object": "tight",
+   "request": {
+    "data": {
+     "code": "return 1",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "deterministic": {
+      "startedAt": 1700000000000,
+      "seed": 42
+     },
+     "memoryLimitBytes": 1048576
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "started",
+      "fingerprint": "quickjs-wasi 3.6.2, quickjs 0.17.0, prelude 8c6c9242, deterministic 1, stack 262144, heap 1048576, budget 100000"
+     },
+     {
+      "type": "done",
+      "ok": true,
+      "value": "1",
+      "writes": "[]",
+      "during": {
+       "seq": 0,
+       "issued": 0
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "tight object fingerprint with a memory request of 256 MiB and a budget of 77",
+   "object": "tight",
+   "request": {
+    "data": {
+     "code": "return 1",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "deterministic": {
+      "startedAt": 1700000000000,
+      "seed": 42
+     },
+     "memoryLimitBytes": 268435456
+    },
+    "interruptBudget": 77
+   },
+   "frames": [
+    [
+     {
+      "type": "started",
+      "fingerprint": "quickjs-wasi 3.6.2, quickjs 0.17.0, prelude 8c6c9242, deterministic 1, stack 262144, heap 2097152, budget 77"
+     },
+     {
+      "type": "done",
+      "ok": true,
+      "value": "1",
+      "writes": "[]",
+      "during": {
+       "seq": 0,
+       "issued": 0
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "roomy object fingerprint without a request",
+   "object": "roomy",
+   "request": {
+    "data": {
+     "code": "return 1",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "deterministic": {
+      "startedAt": 1700000000000,
+      "seed": 42
+     }
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "started",
+      "fingerprint": "quickjs-wasi 3.6.2, quickjs 0.17.0, prelude 8c6c9242, deterministic 1, stack 262144, heap 67108864, budget 100000"
+     },
+     {
+      "type": "done",
+      "ok": true,
+      "value": "1",
+      "writes": "[]",
+      "during": {
+       "seq": 0,
+       "issued": 0
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "roomy object fingerprint with a memory request of 1 MiB",
+   "object": "roomy",
+   "request": {
+    "data": {
+     "code": "return 1",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "deterministic": {
+      "startedAt": 1700000000000,
+      "seed": 42
+     },
+     "memoryLimitBytes": 1048576
+    }
+   },
+   "frames": [
+    [
+     {
+      "type": "started",
+      "fingerprint": "quickjs-wasi 3.6.2, quickjs 0.17.0, prelude 8c6c9242, deterministic 1, stack 262144, heap 1048576, budget 100000"
+     },
+     {
+      "type": "done",
+      "ok": true,
+      "value": "1",
+      "writes": "[]",
+      "during": {
+       "seq": 0,
+       "issued": 0
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "name": "roomy object fingerprint with a memory request of 256 MiB and a budget of 77",
+   "object": "roomy",
+   "request": {
+    "data": {
+     "code": "return 1",
+     "tools": [],
+     "globals": [],
+     "store": {},
+     "deterministic": {
+      "startedAt": 1700000000000,
+      "seed": 42
+     },
+     "memoryLimitBytes": 268435456
+    },
+    "interruptBudget": 77
+   },
+   "frames": [
+    [
+     {
+      "type": "started",
+      "fingerprint": "quickjs-wasi 3.6.2, quickjs 0.17.0, prelude 8c6c9242, deterministic 1, stack 262144, heap 67108864, budget 77"
+     },
+     {
+      "type": "done",
+      "ok": true,
+      "value": "1",
+      "writes": "[]",
+      "during": {
+       "seq": 0,
+       "issued": 0
+      }
+     }
+    ]
+   ]
+  }
+ ],
+ "inlines": [
+  {
+   "name": "an inline sandbox with the bundled module",
+   "options": {
+    "tools": [
+     "echo"
+    ],
+    "wasm": false
+   },
+   "code": "return await tools.echo({ a: 1 })",
+   "result": {
+    "ok": true,
+    "value": {
+     "echoed": {
+      "a": 1
+     }
+    },
+    "output": [],
+    "calls": [
+     {
+      "name": "echo",
+      "status": "ok"
+     }
+    ]
+   }
+  },
+  {
+   "name": "an inline sandbox with a budget",
+   "options": {
+    "interruptBudget": 25,
+    "wasm": false
+   },
+   "code": "let n = 0; for (let i = 0; i < 1000000; i++) n += i; return n",
+   "result": {
+    "ok": false,
+    "error": {
+     "kind": "timeout",
+     "message": "Execution exceeded its interrupt budget of 25"
+    },
+    "output": [],
+    "calls": []
+   }
+  },
+  {
+   "name": "an inline sandbox within its budget",
+   "options": {
+    "interruptBudget": 100000,
+    "wasm": false
+   },
+   "code": "let n = 0; for (let i = 0; i < 100; i++) n += i; return n",
+   "result": {
+    "ok": true,
+    "value": 4950,
+    "output": [],
+    "calls": []
+   }
+  },
+  {
+   "name": "an inline sandbox ignores a wasm option",
+   "options": {
+    "wasm": true
+   },
+   "code": "return 1 + 1",
+   "result": {
+    "ok": true,
+    "value": 2,
+    "output": [],
+    "calls": []
+   }
+  },
+  {
+   "name": "an inline sandbox with a memory limit",
+   "options": {
+    "memoryLimitBytes": 2097152,
+    "wasm": false
+   },
+   "code": "const a = []; for (;;) a.push(\"x\".repeat(1000) + a.length)",
+   "result": {
+    "ok": false,
+    "error": {
+     "kind": "script",
+     "name": "InternalError",
+     "message": "out of memory",
+     "stack": "InternalError: out of memory\n    at <anonymous> (codemode.js:1:78)"
+    },
+    "output": [],
+    "calls": []
+   }
+  }
+ ]
+}

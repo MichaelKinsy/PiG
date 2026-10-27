@@ -300,14 +300,12 @@ func (content ToolCall) ArgumentMembers() ([]ArgumentMember, error) {
 // SetStreamingArguments parses a streamed tool-argument text as ParseStreamingJson does and keeps its member order.
 func (content *ToolCall) SetStreamingArguments(input string) {
 	content.Arguments, content.argumentOrder, content.nonObjectArguments = parseStreamingJsonValue(input)
-	content.deferredArguments = ""
 }
 
 // SetFinalArguments stores the complete arguments text of a finished tool call as Pi's parseToolCallArguments does: text that is not a valid JSON object leaves Arguments empty and ArgumentsError describing the problem, never the parsed prefix.
 func (content *ToolCall) SetFinalArguments(input string) {
 	content.Arguments, content.argumentOrder, content.ArgumentsError = parseToolCallArguments(input)
 	content.nonObjectArguments = nil
-	content.deferredArguments = ""
 }
 
 // DefaultFalsyArguments is `arguments || {}`: a non-object value JavaScript treats as false (null, 0, false, "") becomes the empty object; [] and
@@ -321,7 +319,6 @@ func (content *ToolCall) DefaultFalsyArguments() {
 // CopyArgumentsFrom gives content other's arguments, a non-object value included.
 func (content *ToolCall) CopyArgumentsFrom(other ToolCall) {
 	content.Arguments, content.argumentOrder, content.nonObjectArguments = nil, other.argumentOrder, slices.Clone(other.nonObjectArguments)
-	content.deferredArguments = other.deferredArguments
 	content.ArgumentsError = other.ArgumentsError
 	if other.Arguments != nil {
 		content.Arguments = JsonObject(cloneArgumentsValue(map[string]any(other.Arguments)).(map[string]any))
@@ -368,14 +365,13 @@ func falsyArgumentsJSON(raw json.RawMessage) bool {
 // setParsedArguments stores what a streaming parse returned.
 func (content *ToolCall) setParsedArguments(arguments JsonObject, order schemaObjectOrder, nonObject json.RawMessage) {
 	content.Arguments, content.argumentOrder, content.nonObjectArguments = arguments, order, nonObject
-	content.deferredArguments = ""
 }
 
-// deferArguments records text, the call's streamed argument text so far, in place of its parse: Arguments keeps its
-// earlier value until a reader of a published copy settles the call (assistantMessageCell.settleLocked), which parses text as
-// setParsedArguments would have stored it, or until a later parse replaces it. text must not be empty.
-func (content *ToolCall) deferArguments(text string) {
-	content.deferredArguments = text
+// AppendStreamedArguments reads a piece of the call's argument text into stream, the call's argument stream, and shows the partial
+// arguments so far (ToolCallArgumentsStream.append).
+func (content *ToolCall) AppendStreamedArguments(stream *ToolCallArgumentsStream, delta string) {
+	arguments, order := stream.Append(delta)
+	content.setParsedArguments(arguments, order, nil)
 }
 
 // compactNonObjectArguments returns the JSON text of arguments that are not an object, as JSON.stringify writes the parsed value, and nil for an object or for text that is not JSON.
@@ -402,16 +398,6 @@ func nonObjectArgumentsJSON(value any, order schemaObjectOrder) json.RawMessage 
 		return json.RawMessage("null")
 	}
 	return encoded
-}
-
-// SetPartialJson records text as the call's `partialJson` member, the argument text an unfinished streamed call has received so far; JSON shows it until DeletePartialJson. Pi keeps the member on the block it streams into, so a message delivered before the call ends carries it.
-func (content *ToolCall) SetPartialJson(text string) {
-	content.scratch.partialJson, content.scratch.hasPartialJson = text, true
-}
-
-// DeletePartialJson removes the `partialJson` member, as `delete toolCall.partialJson` does when the call ends.
-func (content *ToolCall) DeletePartialJson() {
-	content.scratch.partialJson, content.scratch.hasPartialJson = "", false
 }
 
 // SetArgumentsJSON decodes a complete JSON object into Arguments and keeps its member order. A text that is not a JSON object is an error and leaves the call unchanged.

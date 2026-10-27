@@ -1,14 +1,14 @@
 // The `attach` of upstream harness/view.ts `conversationViews(harness)`, for the Pi tests that attach a view observer. Partial: no `state` or
 // `watch`, and each call builds its own instance where Pi keeps one per Harness. The core mounts the view.
 // The core mounts the view (a `view` watch with changes); this attaches one observer to it. An observer that throws is reported through
-// the Harness and the others still get the frame; the Session's close reaches `closeSession` once.
-import type { Context } from "@earendil-works/chord"
+// the Harness and the others still get the frame; the Session's close reaches `end` once.
+import type { Context, WatchChange } from "@earendil-works/chord"
 import { Harness } from "../harness.ts"
 
 type Observer = {
-  advance?(value: unknown, ops: readonly unknown[], context: Context): void
+  advance?(change: WatchChange<unknown>, context: Context): void
   publication?(before: unknown, after: unknown, ops: readonly unknown[], publication: unknown, context: Context): void
-  closeSession(failure: { readonly error: unknown } | undefined): void
+  end(failure: { readonly error: unknown } | undefined): void
 }
 
 export class ConversationViews {
@@ -34,9 +34,9 @@ export class ConversationViews {
         for (const call of early.splice(0)) { try { call(created) } catch (error) { this.#harness.report(error) } }
       }, error => made.reject(error))
       return {
-        advance: (next, ops, frameContext) => deliver(o => o.advance?.(next, ops, frameContext)),
+        advance: (change, frameContext) => deliver(o => o.advance?.(change, frameContext)),
         publication: (before, after, ops, changes, frameContext) => deliver(o => o.publication?.(before, after, ops, { changes }, frameContext)),
-        closeSession: failure => deliver(o => o.closeSession(failure)),
+        end: failure => deliver(o => o.end(failure)),
       }
     })
     if (ready === undefined) throw new Error(`Conversation ${id} does not exist`)

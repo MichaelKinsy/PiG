@@ -4,6 +4,7 @@
  *
  * Spec: https://www.superlogical.com/rex/docs/build/program-status
  */
+import { replaceControlCharacters } from "./utils.js";
 /** Feature detection query. A supporting terminal replies with the same body. */
 export const PROGRAM_STATUS_QUERY = "\x1b]7501;?\x1b\\";
 /** The reply to {@link PROGRAM_STATUS_QUERY}. Later spec revisions may add pairs after the `?`. */
@@ -11,7 +12,6 @@ export function isProgramStatusReply(sequence) {
     return /^\x1b\]7501;\?[^\x07\x1b]*(?:\x07|\x1b\\)$/.test(sequence);
 }
 const APP_PATTERN = /^[A-Za-z0-9_.+-]{1,32}$/;
-const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]+/g;
 /** Decoded `msg` limit. Its base64 encoding stays under the 2732-byte encoded limit. */
 const MAX_MESSAGE_BYTES = 2048;
 function truncateUtf8(text, maxBytes) {
@@ -35,7 +35,7 @@ export function formatProgramStatus(status) {
         pairs.push(`app=${status.app}`);
     if (status.state === "blocked" && status.kind)
         pairs.push(`kind=${status.kind}`);
-    const message = truncateUtf8((status.message ?? "").replace(CONTROL_CHARACTERS, " ").trim(), MAX_MESSAGE_BYTES);
+    const message = truncateUtf8(replaceControlCharacters(status.message ?? "").trim(), MAX_MESSAGE_BYTES);
     if (message)
         pairs.push(`msg=${Buffer.from(message, "utf8").toString("base64")}`);
     return `\x1b]7501;${pairs.join(":")}\x1b\\`;

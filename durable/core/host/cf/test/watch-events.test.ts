@@ -27,7 +27,7 @@ async function stream(first: unknown, frames: (watchId: number) => any[]) {
   ;(h as any).completingGenerations = () => []
   const events = await watchEvents(h, 1 as never, context)
   const seen: any[][] = []
-  events.start(async list => { seen.push([...list]) })
+  events.start(async ({ value }) => { seen.push([...value]) })
   const pump = async () => { (h as any).host.sendJSON(EVENT.registry, {}); await tick(); await tick() }
   return { events, seen, pump, core }
 }

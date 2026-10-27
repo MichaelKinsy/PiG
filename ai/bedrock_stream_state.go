@@ -27,13 +27,12 @@ func newBedrockStreamState(provider *BedrockProvider, builder *assistantStreamBu
 	return &bedrockStreamState{provider: provider, builder: builder, blocks: map[int32]*activeBlock{}, stopReason: StopReasonStop}
 }
 
-// finalizeBlocks is `for (const block of output.content) finalizeStreamingBlock(block)`: it drops streaming scratch and flushes redacted reasoning without emitting events.
-// upstream: packages/ai/src/api/bedrock-converse-stream.ts:finalizeStreamingBlock
+// finalizeBlocks is flushOpenBlocks: it flushes the redacted reasoning of the blocks a stream settled without stopping, without emitting events.
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:flushOpenBlocks
 func (state *bedrockStreamState) finalizeBlocks() {
 	for _, block := range state.blocks {
 		flushBedrockRedactedContent(block, state.builder)
 	}
-	state.builder.clearStreamingScratch()
 	clear(state.builder.toolCalls)
 }
 
@@ -62,7 +61,6 @@ func (state *bedrockStreamState) handleItem(item bedrockStreamItem) error {
 				}
 				builder.toolCallStart(streamToolCallDelta{
 					index: int(idx), id: aws.ToString(tu.Value.ToolUseId), name: aws.ToString(tu.Value.Name),
-					scratch: toolCallScratch{hasPartialJson: builder.managed, hasIndex: builder.managed, index: int(idx)},
 				})
 			}
 		}
@@ -140,12 +138,4 @@ func (state *bedrockStreamState) finish(ctx context.Context, streamErr error, re
 		return
 	}
 	builder.done(state.stopReason, nil, state.stopErrMsg)
-}
-
-// bedrockBlockScratch is the streaming `index` field. Pi's output blocks carry it until the block stops, visible to any consumer whose tick falls before then; a builder outside the executor pushes emission-time snapshots (D82), which do not model that window, so the field is only published when the producer runs as an executor turn.
-func bedrockBlockScratch(builder *assistantStreamBuilder, index int32) contentIndexScratch {
-	if !builder.managed {
-		return ""
-	}
-	return scratchIndexFor(int(index))
 }

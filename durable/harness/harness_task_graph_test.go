@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -116,7 +118,7 @@ func sameGraph(a, b TaskGraph) bool {
 // startedGraph is a graph watch with a listener that ignores its frames: a started watch keeps its value current.
 func startedGraph(harness Harness) TaskGraphWatch {
 	watch := must(harness.WatchTaskGraph(testContext))
-	watch.Start(func(context.Context, TaskGraph, []durable.Op) error { return nil })
+	watch.Start(func(context.Context, chord.WatchChange[TaskGraph]) error { return nil })
 	return watch
 }
 
@@ -136,7 +138,8 @@ func TestTaskGraphView(t *testing.T) {
 		var seen []TaskGraph
 		observe := func() TaskGraphWatch {
 			opened := must(harness.WatchTaskGraph(testContext))
-			opened.Start(func(_ context.Context, value TaskGraph, _ []durable.Op) error {
+			opened.Start(func(_ context.Context, change chord.WatchChange[TaskGraph]) error {
+				value := change.Value
 				mu.Lock()
 				seen = append(seen, value)
 				mu.Unlock()
@@ -328,7 +331,9 @@ func TestTaskGraphView(t *testing.T) {
 		replica := orderedJSONOf(t, watch.Value())
 		var frames [][]durable.Op
 		var replayErr error
-		watch.Start(func(_ context.Context, value TaskGraph, ops []durable.Op) error {
+		watch.Start(func(_ context.Context, change chord.WatchChange[TaskGraph]) error {
+			value := change.Value
+			ops := change.Ops
 			mu.Lock()
 			defer mu.Unlock()
 			converted := make([]durable.Op, len(ops))
@@ -538,7 +543,8 @@ func TestTaskGraphView(t *testing.T) {
 		}
 		var mu sync.Mutex
 		var updates []string
-		first.Start(func(_ context.Context, value TaskGraph, _ []durable.Op) error {
+		first.Start(func(_ context.Context, change chord.WatchChange[TaskGraph]) error {
+			value := change.Value
 			status := "gone"
 			if node, ok := value.Tasks[taskKey(id)]; ok {
 				status = string(node.State.Status)
@@ -573,4 +579,45 @@ func TestTaskGraphView(t *testing.T) {
 		_, _ = rebuilt.Stop()
 		mustClose(t, harness)
 	})
+}
+
+// harness-task-graph.test.ts "advances with the conversation view inside the one storage commit that changes both".
+func TestTaskGraphViewAdvancesWithTheConversationViewInsideTheOneStorageCommitThatChangesBoth(t *testing.T) {
+	store := newControlledStorage()
+	parentTask, childTask := graphFamily(graphGates{child: deferred(), late: deferred()})
+	harness, _, _ := openTasks(t, store, []durable.AnyTask{parentTask.Erased(), childTask.Erased()})
+	root := mustRoot(t, harness, nil)
+	var mu sync.Mutex
+	var seen []string
+	record := func(name string) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, fmt.Sprintf("%s adopting=%v", name, store.adopting.Load()))
+	}
+	view := must(harness.ObserveConversation(testContext, root.Id(), observerFuncs[ConversationView]{
+		advance: func(context.Context, chord.WatchChange[ConversationView]) { record("view") },
+		end:     func(error) {},
+	}))
+	graph := must(harness.ObserveTaskGraph(testContext, observerFuncs[TaskGraph]{
+		advance: func(context.Context, chord.WatchChange[TaskGraph]) { record("graph") },
+		end:     func(error) {},
+	}))
+	if _, err := root.Commit(testContext, func(tx durable.Tx) (any, error) {
+		if _, err := tx.AppendEntry(root.Id(), durable.EntryDraft{Kind: "note"}); err != nil {
+			return nil, err
+		}
+		return tx.CreateTaskErased(parentTask.Erased(), nil, durable.TaskOptions{Ownership: conversationOwned})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Both inside the one adopt, in no promised order.
+	mu.Lock()
+	sorted := slices.Sorted(slices.Values(seen))
+	mu.Unlock()
+	if !reflect.DeepEqual(sorted, []string{"graph adopting=true", "view adopting=true"}) {
+		t.Fatalf("seen %v", sorted)
+	}
+	view.Detach()
+	graph.Detach()
+	mustClose(t, harness)
 }

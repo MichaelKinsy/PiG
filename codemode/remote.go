@@ -237,7 +237,7 @@ func messageFromWire(message WorkerToHostMessage) vmMessage {
 
 func replyToWire(result callResult) *RemoteReply {
 	reply := HostToWorkerMessage{Type: MessageResult, ID: result.id, Ok: result.ok, Payload: stringPtr(result.payload, result.defined), Properties: stringPtr(result.properties, result.propertiesDefined)}
-	if result.seq != 0 {
+	if result.hasSeq {
 		reply.Seq = &result.seq
 	}
 	if result.hasNow {

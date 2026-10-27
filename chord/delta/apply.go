@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/chord/src/delta/index.ts (apply, applyImmutable, applyImmutableBatches).
@@ -486,7 +487,7 @@ func rewriteText(current any, op Op, path Path) (any, error) {
 		return nil, NewPathError(path)
 	}
 	if Verb(op) == "a" {
-		return text + op[2].(string), nil
+		return jsstring.Concat(text, op[2].(string)), nil
 	}
 	count, _ := index(op[2])
 	return utf16Suffix(text, count), nil

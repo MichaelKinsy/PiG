@@ -115,6 +115,9 @@ func createChildSession(ctx context.Context, services *coding.AgentSessionServic
 		NoTools:       request.NoTools,
 		CustomTools:   request.ToolDefinitions,
 	}
+	if event := request.SessionStartEvent; event != nil {
+		create.SessionStartEvent = &extension.SessionStartEvent{Type: "session_start", Reason: event.Reason, PreviousSessionFile: event.PreviousSessionFile}
+	}
 	if request.Tools != nil {
 		create.Tools = slices.Clone(*request.Tools)
 		if create.Tools == nil {
@@ -357,4 +360,17 @@ func (c *childSession) Close() {
 			c.services.Close()
 		}
 	})
+}
+
+// EmitExtensionEvent is `hasHandlers(type)` and `emit(event)` on the session's runner.
+func (c *childSession) EmitExtensionEvent(ctx context.Context, event json.RawMessage) (json.RawMessage, bool, error) {
+	return c.session.EmitExtensionEvent(ctx, event)
+}
+
+// RefreshContext is AgentSession.refreshContext.
+func (c *childSession) RefreshContext() { c.session.RefreshContext() }
+
+// SessionManagerObject is AgentSession.sessionManager: the log the session appends to.
+func (c *childSession) SessionManagerObject() subprocess.SessionGraphObject {
+	return icodingagent.NewGraphSessionManagerOf(c.session.SessionManager())
 }

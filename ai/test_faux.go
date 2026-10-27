@@ -385,10 +385,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 
 	// Tool execution parity.
 	if strings.Contains(lastText, "Run: expr 20 + 22") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "bash",
-			Args: map[string]any{"command": "expr 20 + 22"},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"expr 20 + 22"}`}}
 	}
 
 	// Long-running tool, for tests that must signal or abort a run while a
@@ -408,28 +405,17 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}}}
 	}
 	if strings.Contains(lastText, "Run: noncanonical read") {
-		return "tool", "", []testFauxToolCall{{Name: "read", Args: map[string]any{
-			"path": "parity-read-target.txt", "offset": "2", "limit": nil, "extra": true,
-		}}}
+		return "tool", "", []testFauxToolCall{{Name: "read", ArgsJSON: `{"extra":true,"limit":null,"offset":"2","path":"parity-read-target.txt"}`}}
 	}
 
 	// Read tool parity.
 	if strings.Contains(lastText, "Run: read parity-read-target.txt") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "read",
-			Args: map[string]any{"path": "parity-read-target.txt"},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "read", ArgsJSON: `{"path":"parity-read-target.txt"}`}}
 	}
 
 	// Write tool parity.
 	if strings.Contains(lastText, "Run: write parity-write-output.txt") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "write",
-			Args: map[string]any{
-				"path":    "parity-write-output.txt",
-				"content": "hello from faux\nline two\n",
-			},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "write", ArgsJSON: `{"content":"hello from faux\nline two\n","path":"parity-write-output.txt"}`}}
 	}
 
 	// Same-file write+edit batch parity. Upstream runs both calls in the
@@ -437,13 +423,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	// order for the edit to observe the freshly-written content.
 	if strings.Contains(lastText, "Run: write then edit parity-batched-target.txt") {
 		return "tool", "", []testFauxToolCall{
-			{
-				Name: "write",
-				Args: map[string]any{
-					"path":    "parity-batched-target.txt",
-					"content": "REPLACE_ME\n",
-				},
-			},
+			{Name: "write", ArgsJSON: `{"content":"REPLACE_ME\n","path":"parity-batched-target.txt"}`},
 			{
 				Name: "edit",
 				Args: map[string]any{
@@ -460,8 +440,8 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	// Extension tool and built-in write and edit on one file in one parallel batch: file-mutation-queue.ts is shared by the built-in tools and every extension.
 	if strings.Contains(lastText, "Run: parallel extension file mutation") {
 		return "tool", "", []testFauxToolCall{
-			{Name: "write", Args: map[string]any{"path": "parity-parallel-mutation-target.txt", "content": "base\n"}},
-			{Name: "patch_file", Args: map[string]any{"path": "parity-parallel-mutation-target.txt", "line": "patched-A"}},
+			{Name: "write", ArgsJSON: `{"content":"base\n","path":"parity-parallel-mutation-target.txt"}`},
+			{Name: "patch_file", ArgsJSON: `{"line":"patched-A","path":"parity-parallel-mutation-target.txt"}`},
 			{Name: "edit", Args: map[string]any{
 				"path":  "parity-parallel-mutation-target.txt",
 				"edits": []map[string]any{{"oldText": "base", "newText": "BASE"}},
@@ -471,10 +451,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 
 	// MCP tool card parity.
 	if strings.Contains(lastText, "Run: mcp search cards") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "mcp__docs__search",
-			Args: map[string]any{"query": "cards"},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "mcp__docs__search", ArgsJSON: `{"query":"cards"}`}}
 	}
 	// Generic extension tool call: "Run: ext tool <name> [<json arguments>]" on one line calls that tool with those arguments, so a scenario can drive any extension tool without a dedicated script.
 	if _, rest, ok := strings.Cut(lastText, "Run: ext tool "); ok {
@@ -488,58 +465,43 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	}
 	// Extension tool bridge parity.
 	if strings.Contains(lastText, "Run: extension echo hello") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "echo_bridge",
-			Args: map[string]any{"text": "hello"},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "echo_bridge", ArgsJSON: `{"text":"hello"}`}}
 	}
 	if strings.Contains(lastText, "Run: extension details") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "echo_bridge",
-			Args: map[string]any{"text": "DETAILS_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT_GOLF_HOTEL_INDIA_JULIET_KILO_LIMA_TAIL"},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "echo_bridge", ArgsJSON: `{"text":"DETAILS_ALPHA_BRAVO_CHARLIE_DELTA_ECHO_FOXTROT_GOLF_HOTEL_INDIA_JULIET_KILO_LIMA_TAIL"}`}}
 	}
 	if strings.Contains(lastText, "Run: extension UI dialogs") {
-		return "tool", "", []testFauxToolCall{{Name: "ui_dialog_probe", Args: map[string]any{}}}
+		return "tool", "", []testFauxToolCall{{Name: "ui_dialog_probe", ArgsJSON: `{}`}}
 	}
 	// One assistant message with two calls of a tool that waits on a UI dialog.
 	if strings.Contains(lastText, "Run: two dialog tools") {
 		return "tool", "", []testFauxToolCall{
-			{Name: "dialog_pick", Args: map[string]any{"title": "First?"}},
-			{Name: "dialog_pick", Args: map[string]any{"title": "Second?"}},
+			{Name: "dialog_pick", ArgsJSON: `{"title":"First?"}`},
+			{Name: "dialog_pick", ArgsJSON: `{"title":"Second?"}`},
 		}
 	}
 	if strings.Contains(lastText, "Run: extension render cards") {
 		return "tool", "", []testFauxToolCall{
-			{Name: "render_card", Args: map[string]any{"topic": "alpha"}},
-			{Name: "render_self", Args: map[string]any{"topic": "beta"}},
-			{Name: "render_throw", Args: map[string]any{"topic": "gamma"}},
-			{Name: "render_fail", Args: map[string]any{"topic": "delta"}},
+			{Name: "render_card", ArgsJSON: `{"topic":"alpha"}`},
+			{Name: "render_self", ArgsJSON: `{"topic":"beta"}`},
+			{Name: "render_throw", ArgsJSON: `{"topic":"gamma"}`},
+			{Name: "render_fail", ArgsJSON: `{"topic":"delta"}`},
 		}
 	}
 
 	// Failing bash parity: a non-zero exit is a RETURNED error result, which keeps `isError` inside tool_execution_end.result (bash.ts:403-409).
 	if strings.Contains(lastText, "Run: bash failing exit") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "bash",
-			Args: map[string]any{"command": "echo out; exit 3"},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"echo out; exit 3"}`}}
 	}
 
 	// Extension tool_call blocker parity.
 	if strings.Contains(lastText, "Run: bash BLOCK_ME") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "bash",
-			Args: map[string]any{"command": "echo BLOCK_ME"},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"echo BLOCK_ME"}`}}
 	}
 
 	// Extension tool_result modifier parity.
 	if strings.Contains(lastText, "Run: bash modified") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "bash",
-			Args: map[string]any{"command": "echo parity-base"},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"echo parity-base"}`}}
 	}
 
 	// Extension tool_call input member order parity: the arguments are not in sorted order.
@@ -554,8 +516,8 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	// no-input rendering probe to observe independent streamed output.
 	if strings.Contains(lastText, "Run: tui live parallel tools") {
 		return "tool", "", []testFauxToolCall{
-			{Name: "read", Args: map[string]any{"path": ".pig-live-parallel-a"}},
-			{Name: "read", Args: map[string]any{"path": ".pig-live-parallel-b"}},
+			{Name: "read", ArgsJSON: `{"path":".pig-live-parallel-a"}`},
+			{Name: "read", ArgsJSON: `{"path":".pig-live-parallel-b"}`},
 		}
 	}
 
@@ -563,35 +525,23 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	// and an ordinary file.
 	if strings.Contains(lastText, "Run: compact reads") {
 		return "tool", "", []testFauxToolCall{
-			{Name: "read", Args: map[string]any{"path": "skills/demo-skill/SKILL.md"}},
-			{Name: "read", Args: map[string]any{"path": "AGENTS.md", "offset": 2, "limit": 1}},
-			{Name: "read", Args: map[string]any{"path": "notes.txt"}},
+			{Name: "read", ArgsJSON: `{"path":"skills/demo-skill/SKILL.md"}`},
+			{Name: "read", ArgsJSON: `{"limit":1,"offset":2,"path":"AGENTS.md"}`},
+			{Name: "read", ArgsJSON: `{"path":"notes.txt"}`},
 		}
 	}
 
 	// Parallel tool call parity: two tools dispatched simultaneously.
 	if strings.Contains(lastText, "Run: parallel reads") {
 		return "tool", "", []testFauxToolCall{
-			{
-				Name: "read",
-				Args: map[string]any{"path": "parity-read-target.txt"},
-			},
-			{
-				Name: "bash",
-				Args: map[string]any{"command": "echo parallel-ok", "timeout": 10},
-			},
+			{Name: "read", ArgsJSON: `{"path":"parity-read-target.txt"}`},
+			{Name: "bash", ArgsJSON: `{"command":"echo parallel-ok","timeout":10}`},
 		}
 	}
 
 	// Grep tool parity.
 	if strings.Contains(lastText, "Run: grep hello") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "grep",
-			Args: map[string]any{
-				"pattern": "hello",
-				"path":    "parity-read-target.txt",
-			},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "grep", ArgsJSON: `{"path":"parity-read-target.txt","pattern":"hello"}`}}
 	}
 
 	// Find results are echoed, not replaced with a success token: a failed search must fail the scenario.
@@ -610,32 +560,17 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 
 	// Ls tool parity.
 	if strings.Contains(lastText, "Run: ls here") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "ls",
-			Args: map[string]any{
-				"path": ".",
-			},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "ls", ArgsJSON: `{"path":"."}`}}
 	}
 
 	// Edit tool parity.
 	if strings.Contains(lastText, "Run: edit parity-edit-target.txt") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "edit",
-			Args: map[string]any{
-				"path":    "parity-edit-target.txt",
-				"oldText": "REPLACE_ME",
-				"newText": "REPLACED",
-			},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "edit", ArgsJSON: `{"newText":"REPLACED","oldText":"REPLACE_ME","path":"parity-edit-target.txt"}`}}
 	}
 
 	// Long-output bash tool parity (exercises visual-truncate.ts via bash.ts collapse hint).
 	if strings.Contains(lastText, "Run: bash long output") {
-		return "tool", "", []testFauxToolCall{{
-			Name: "bash",
-			Args: map[string]any{"command": "seq 1 30"},
-		}}
+		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"seq 1 30"}`}}
 	}
 
 	// Slow-output tool used by the live main-screen parity probe.
@@ -672,7 +607,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		if strings.Contains(currentUserText, "Run: parallel extension file mutation") {
 			// The batch's results (write, patch_file, edit) lead to a read of the file; the read's result decides.
 			if strings.Contains(lastText, "Successfully") || strings.Contains(lastText, "patch-file: appended") {
-				return "tool", "", []testFauxToolCall{{Name: "read", Args: map[string]any{"path": "parity-parallel-mutation-target.txt"}}}
+				return "tool", "", []testFauxToolCall{{Name: "read", ArgsJSON: `{"path":"parity-parallel-mutation-target.txt"}`}}
 			}
 			if strings.Contains(lastText, "BASE") && strings.Contains(lastText, "patched-A") {
 				return "text", "parallel-mutation-done", nil

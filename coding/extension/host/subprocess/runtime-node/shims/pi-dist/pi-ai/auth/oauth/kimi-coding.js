@@ -8,6 +8,7 @@
 import { getProviderEnvValue } from "../../utils/provider-env.js";
 import { sleep } from "../../utils/sleep.js";
 import { pollOAuthDeviceCodeFlow } from "./device-code.js";
+import { trustedHttpUrl } from "./trusted-url.js";
 const CLIENT_ID = "17e5f671-d194-4dfb-9706-5516cb48c098";
 const DEFAULT_OAUTH_HOST = "https://auth.kimi.com";
 const DEVICE_CODE_TIMEOUT_SECONDS = 15 * 60;
@@ -33,20 +34,6 @@ async function readJson(response) {
         return null;
     }
 }
-/** The verification URI is opened in the user's browser; only http(s) URLs are trusted. */
-function trustedHttpUrl(value) {
-    if (typeof value !== "string" || !value)
-        return null;
-    try {
-        const url = new URL(value);
-        if (url.protocol !== "https:" && url.protocol !== "http:")
-            return null;
-        return url.href;
-    }
-    catch {
-        return null;
-    }
-}
 async function startDeviceAuthorization(oauthHost, signal) {
     const response = await fetch(`${oauthHost}/api/oauth/device_authorization`, {
         method: "POST",
@@ -64,14 +51,9 @@ async function startDeviceAuthorization(oauthHost, signal) {
     const json = await readJson(response);
     const deviceCode = json?.device_code;
     const userCode = json?.user_code;
-    const verificationUri = json?.verification_uri;
-    const verificationUriComplete = json?.verification_uri_complete;
-    if (typeof deviceCode !== "string" ||
-        typeof userCode !== "string" ||
-        typeof verificationUri !== "string" ||
-        typeof verificationUriComplete !== "string" ||
-        !trustedHttpUrl(verificationUriComplete) ||
-        !trustedHttpUrl(verificationUri)) {
+    const verificationUri = trustedHttpUrl(json?.verification_uri);
+    const verificationUriComplete = trustedHttpUrl(json?.verification_uri_complete);
+    if (typeof deviceCode !== "string" || typeof userCode !== "string" || !verificationUri || !verificationUriComplete) {
         throw new Error(`Invalid Kimi Code device authorization response: ${JSON.stringify(json)}`);
     }
     const interval = json?.interval;

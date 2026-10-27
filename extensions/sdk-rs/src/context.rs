@@ -1152,6 +1152,8 @@ pub(crate) fn model_stream_error_event(message: &str, model: &serde_json::Value)
 /// ModelRegistry exposes Session model discovery, request authentication, and
 /// model operations through the host-owned runtime.
 pub struct ModelRegistry {
+    /// The runtime this registry forwards to ([`ModelRegistry::new`]); `None` is the Session's registry.
+    pub(crate) runtime: Option<Arc<crate::ModelRuntime>>,
     request_parent: Option<Arc<crate::protocol::RequestParent>>,
     conn: Arc<Connection>,
     request_id: String,
@@ -1160,7 +1162,14 @@ pub struct ModelRegistry {
 }
 
 impl ModelRegistry {
+    /// Pi's `new ModelRegistry(runtime)` (model-registry.ts:48-52): the compatibility facade over a runtime the extension built. Every member forwards to the runtime, as Pi's does, so it answers from that runtime and not from the Session's registry; a provider is registered by configuration without functions.
+    pub fn new(runtime: Arc<crate::ModelRuntime>) -> ModelRegistry {
+        ModelRegistry { runtime: Some(runtime.clone()), ..runtime.context().model_registry() }
+    }
     pub fn get_registered_native_provider(&self,id:&str)->io::Result<Option<Arc<crate::Provider>>>{
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_registered_native_provider(id);
+        }
         let snapshot=self.state()?;
         let Some(declaration)=snapshot["registered"].as_array().and_then(|entries|entries.iter().find(|entry|entry["name"]==id&&entry["native"].is_object())).map(|entry|entry["native"].clone())else{return Ok(None)};
         let state=self.conn.provider_objects.get().ok_or_else(||io::Error::other("Provider runtime unavailable"))?;
@@ -1168,11 +1177,17 @@ impl ModelRegistry {
     }
     // pig divergence (D78): builtin/composed Provider methods still need a native SDK carrier.
     pub fn get_provider(&self,id:&str)->io::Result<Option<Arc<crate::Provider>>>{
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_provider(id);
+        }
         if let Some(provider)=self.get_registered_native_provider(id)?{return Ok(Some(provider))}
         if self.state()?["providers"].get(id).is_some(){return Err(io::Error::other("builtin/composed Provider object carrier is unavailable (D78)"))}
         Ok(None)
     }
     pub fn register_native_provider(&self,provider:Arc<crate::Provider>)->io::Result<()>{
+        if let Some(runtime) = &self.runtime {
+            return runtime.register_native_provider(provider);
+        }
         let state=self.conn.provider_objects.get().ok_or_else(||io::Error::other("Provider runtime unavailable"))?;
         let declaration=state.register(provider).map_err(io::Error::other)?;
         self.call("registerProvider",serde_json::to_value(declaration).map_err(io::Error::other)?)?;
@@ -1185,9 +1200,17 @@ impl ModelRegistry {
     fn state(&self) -> io::Result<serde_json::Value> {
         self.call("getModelRegistryState", serde_json::Value::Null)
     }
-    pub fn get_all(&self) -> io::Result<serde_json::Value> { Ok(self.state()?["models"].clone()) }
+    pub fn get_all(&self) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_models(None);
+        }
+        Ok(self.state()?["models"].clone())
+    }
     /// Every known model of a type (`chat`, `image` or `classifier`), optionally for one provider. Chat models come from the registry state's `models` and the others from its `typedModels`, in the host's order (`model-registry.ts` `getModelsOfType`).
     pub fn get_models_of_type(&self, model_type: &str, provider: Option<&str>) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_models_of_type(model_type, provider);
+        }
         let state = self.state()?;
         let mut models = Vec::new();
         for list in [&state["models"], &state["typedModels"]] {
@@ -1202,6 +1225,9 @@ impl ModelRegistry {
     }
     /// One model of a type by provider and id, or `None` (`getModelOfType`).
     pub fn get_model_of_type(&self, model_type: &str, provider: &str, model_id: &str) -> io::Result<Option<serde_json::Value>> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_model_of_type(model_type, provider, model_id).map(|model| (!model.is_null()).then_some(model));
+        }
         Ok(self.get_models_of_type(model_type, Some(provider))?.as_array().and_then(|models| models.iter().find(|model| model["id"] == model_id)).cloned())
     }
     /// One model of a type by provider and id, or `None` (`findOfType`).
@@ -1210,6 +1236,9 @@ impl ModelRegistry {
     }
     /// The models of a type whose provider has working credentials. It awaits the host (`getAvailableOfType`).
     pub fn get_available_of_type(&self, model_type: &str, provider: Option<&str>) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_available_of_type(model_type, provider);
+        }
         let mut args = serde_json::json!({"type": model_type});
         if let Some(provider) = provider {
             args["provider"] = serde_json::json!(provider);
@@ -1218,6 +1247,9 @@ impl ModelRegistry {
     }
     /// Classifies structured state with request-time authentication. It never fails: a failure, and a cancelled request, are a result with `stopReason` `error` or `aborted` that names the model (`classify`).
     pub fn classify(&self, model: &serde_json::Value, context: serde_json::Value, options: Option<serde_json::Value>) -> serde_json::Value {
+        if let Some(runtime) = &self.runtime {
+            return runtime.classify(model, context, options);
+        }
         let mut args = serde_json::json!({"model": model, "context": context});
         if let Some(options) = options {
             args["options"] = options;
@@ -1236,6 +1268,9 @@ impl ModelRegistry {
     }
     /// Generates images with request-time authentication. `context` is `{"input": [...]}` with text and image blocks and the result is the `AssistantImages` object. It never fails: a failure, and a cancelled request, are a result with `stopReason` `error` or `aborted` that names the model (`generateImages`).
     pub fn generate_images(&self, model: &serde_json::Value, context: serde_json::Value, options: Option<serde_json::Value>) -> serde_json::Value {
+        if let Some(runtime) = &self.runtime {
+            return runtime.generate_images(model, context, options);
+        }
         let mut args = serde_json::json!({"model": model, "context": context});
         if let Some(options) = options {
             args["options"] = options;
@@ -1254,16 +1289,25 @@ impl ModelRegistry {
     }
     /// Registers a virtual model, as [`Context::register_virtual_model`] does (`registerVirtualModel`).
     pub fn register_virtual_model(&self, model: crate::VirtualModel) -> io::Result<()> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.register_virtual_model(model);
+        }
         let declaration = serde_json::to_value(model.declaration()).map_err(io::Error::other)?;
         install_virtual_model(&self.conn, model, || self.call("registerVirtualModel", declaration).map(|_| ()))
     }
     /// Removes a virtual model (`unregisterVirtualModel`).
     pub fn unregister_virtual_model(&self, provider: &str, id: &str) -> io::Result<()> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.unregister_virtual_model(provider, id);
+        }
         self.call("unregisterVirtualModel", serde_json::json!({"provider": provider, "id": id}))?;
         self.conn.virtual_models.lock().unwrap().remove(&(provider.to_string(), id.to_string()));
         Ok(())
     }
     pub fn get_available(&self) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_available_snapshot();
+        }
         let state = self.state()?;
         let models = state["models"].as_array().ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "registry models must be an array"))?;
         Ok(serde_json::Value::Array(models.iter().filter(|m| {
@@ -1271,41 +1315,76 @@ impl ModelRegistry {
             provider["configured"] == true && provider["availableModelIds"].as_array().is_none_or(|ids| ids.contains(&m["id"]))
         }).cloned().collect()))
     }
-    pub fn get_error(&self) -> io::Result<serde_json::Value> { Ok(self.state()?["error"].clone()) }
+    pub fn get_error(&self) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return Ok(runtime.get_error()?.map_or(serde_json::Value::Null, serde_json::Value::String));
+        }
+        Ok(self.state()?["error"].clone())
+    }
     pub fn has_configured_auth(&self, model: &serde_json::Value) -> io::Result<bool> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.has_configured_auth(model["provider"].as_str().unwrap_or_default());
+        }
         Ok(self.state()?["providers"][model["provider"].as_str().unwrap_or_default()]["configured"] == true)
     }
     pub fn is_using_oauth(&self, model: &serde_json::Value) -> io::Result<bool> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.is_using_oauth(model["provider"].as_str().unwrap_or_default());
+        }
         Ok(self.state()?["providers"][model["provider"].as_str().unwrap_or_default()]["usingOAuth"] == true)
     }
     pub fn get_provider_auth_status(&self, provider: &str) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_provider_auth_status(provider);
+        }
         let state = self.state()?;
         Ok(state["providers"].get(provider).map(|p| p["authStatus"].clone()).unwrap_or_else(|| serde_json::json!({"configured":false})))
     }
     pub fn get_provider_display_name(&self, provider: &str) -> io::Result<String> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.provider_display_name(provider);
+        }
         Ok(self.state()?["providers"][provider]["name"].as_str().unwrap_or(provider).to_owned())
     }
     pub fn get_provider_auth(&self, provider: &str) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_auth(serde_json::json!(provider), None);
+        }
         self.call("getProviderAuth", serde_json::json!({"provider":provider}))
     }
     pub fn get_api_key_for_provider(&self, provider: &str) -> Option<String> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_auth(serde_json::json!(provider), None).ok()?["auth"]["apiKey"].as_str().map(str::to_owned);
+        }
         self.get_provider_auth(provider).ok()?["auth"]["apiKey"].as_str().map(str::to_owned)
     }
     pub fn get_registered_provider_ids(&self) -> io::Result<Vec<String>> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_registered_provider_ids().and_then(|ids| serde_json::from_value(ids).map_err(io::Error::other));
+        }
         let state = self.state()?;
         let registered = state["registered"].as_array().ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "registry registrations must be an array"))?;
         registered.iter().map(|r| r["name"].as_str().map(str::to_owned).ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "registry name must be a string"))).collect()
     }
     pub fn get_registered_provider_config(&self, provider: &str) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_registered_provider_config(provider);
+        }
         let state = self.state()?;
         let registered = state["registered"].as_array().ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "registry registrations must be an array"))?;
         Ok(registered.iter().find(|r| r["name"] == provider).map(|r| r["config"].clone()).unwrap_or_default())
     }
     pub fn register_provider(&self, name: &str, config: serde_json::Value) -> io::Result<()> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.register_provider(name, config);
+        }
         self.register_provider_operations(name, config, crate::ProviderOperations::new())
     }
     /// Applies a provider config at once, as Pi's `pi.registerProvider` does after the factory finished (types.ts:1766-1803, runner.ts:517-523). The config's `images`, `classifiers` and `streamSimple` run in this extension as a factory registration's do: they stay here and the call names them. A registration the host refuses leaves the implementations the provider had.
     pub fn register_provider_operations(&self, name: &str, config: serde_json::Value, operations: crate::ProviderOperations) -> io::Result<()> {
+        if self.runtime.is_some() {
+            return Err(io::Error::other("a runtime registry registers a provider by configuration without functions"));
+        }
         let callbacks = self.conn.provider_callbacks.get().ok_or_else(|| io::Error::other("Provider runtime unavailable"))?;
         let kept = callbacks.held(name);
         let declaration = callbacks.declare(name.to_string(), config, operations);
@@ -1317,6 +1396,9 @@ impl ModelRegistry {
     }
     /// Removes a provider and, once the host removed it, drops the implementations the extension held for it.
     pub fn unregister_provider(&self, name: &str) -> io::Result<()> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.unregister_provider(name);
+        }
         self.call("unregisterProvider", serde_json::json!({"name":name}))?;
         if let Some(callbacks) = self.conn.provider_callbacks.get() {
             callbacks.restore(name, None);
@@ -1324,12 +1406,18 @@ impl ModelRegistry {
         Ok(())
     }
     pub fn refresh(&self, options: serde_json::Value) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.refresh(Some(options));
+        }
         let result = self.call("refreshModelRegistry", options)?;
         Ok(serde_json::json!({"aborted":result["aborted"],"errors":result["errors"]}))
     }
 
     /// Resolves a model by exact provider and model ID through the host registry. `Ok(None)` means no model matches, as Pi's `find` returns undefined (model-registry.ts:72); a host or transport failure is the `Err`, never a model that is absent.
     pub fn find(&self, provider_id: &str, model_id: &str) -> io::Result<Option<serde_json::Value>> {
+        if let Some(runtime) = &self.runtime {
+            return runtime.get_model(provider_id, model_id).map(|model| (!model.is_null()).then_some(model));
+        }
         let model = self.call("getModel", serde_json::json!({"provider":provider_id,"modelId":model_id}))?;
         Ok((!model.is_null()).then_some(model))
     }
@@ -1338,6 +1426,9 @@ impl ModelRegistry {
         &self,
         model: &serde_json::Value,
     ) -> io::Result<serde_json::Value> {
+        if let Some(runtime) = &self.runtime {
+            return Ok(runtime.request_auth(model));
+        }
         let provider = model
             .get("provider")
             .and_then(|value| value.as_str())
@@ -1397,6 +1488,7 @@ impl ModelRegistry {
         self.stream_with_method(model,request,options,simple,ModelStreamCallbacks::default(),Some(runtime.to_string()))
     }
     fn stream_with_method(&self,model:serde_json::Value,request:serde_json::Value,options:serde_json::Value,simple:bool,callbacks:ModelStreamCallbacks,runtime:Option<String>)->Arc<ModelEventStream> {
+        let runtime = runtime.or_else(|| self.runtime.as_ref().map(|runtime| runtime.handle().to_string()));
         let id = format!(
             "model-stream-{}",
             self.sequence.fetch_add(1, Ordering::Relaxed) + 1
@@ -1876,6 +1968,7 @@ const RPC_SYNCHRONOUS_UI_EFFECTS: &[&str] = &[
 impl Context {
     pub fn model_registry(&self) -> ModelRegistry {
         ModelRegistry {
+            runtime: None,
             conn: self.conn.clone(),
             request_parent: self.request_parent.clone(),
             request_id: self.request_id.clone(),
@@ -2080,7 +2173,7 @@ impl Context {
     ///
     /// The session belongs to this extension's connection and is disposed with it; see the `child_session` module for the async contract.
     pub fn create_agent_session(&self, options: crate::CreateAgentSessionOptions) -> io::Result<crate::AgentSession> {
-        crate::child_session::create(&self.conn, |method, args| self.call_host(method, args), options)
+        crate::child_session::create(self, options)
     }
 
     /// Register a slash command after load, as `pi.registerCommand` does when a handler calls it: it replaces a command with the same name and is visible to the host before this returns.

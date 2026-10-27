@@ -6,7 +6,7 @@
 import { isObject } from "../protocol/jsonrpc.js";
 import { discoverAuthorizationServerMetadata, discoverOAuthServerInfo, parseWwwAuthenticate, selectResource, } from "./discovery.js";
 import { McpOAuthAuthorizationRequiredError, OAuthError, OAuthInsecureEndpointError, OAuthIssuerMismatchError, OAuthRegistrationError, } from "./errors.js";
-import { parseClientInformation, parseOAuthTokens, } from "./types.js";
+import { isHttpUrl, parseClientInformation, parseOAuthTokens, } from "./types.js";
 function loopback(hostname) {
     return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]" || hostname === "::1";
 }
@@ -73,6 +73,9 @@ export async function startAuthorization(authorizationServerUrl, options) {
         throw new Error("Authorization server does not support PKCE S256");
     }
     const url = new URL(metadata?.authorization_endpoint ?? new URL("/authorize", authorizationServerUrl));
+    // Callers open this URL with the platform URL handler, which also launches files and custom protocols.
+    if (!isHttpUrl(url))
+        throw new Error(`Invalid authorization endpoint ${url.href}`);
     const { verifier, challenge } = await pkce();
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", options.clientInformation.client_id);

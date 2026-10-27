@@ -1,25 +1,63 @@
-// Ports packages/durable/src/session/observation.ts: the Session-to-Chord bridge of one attached state or watch. The frames
-// come from the core's `published` notices (WatchHub) instead of a Session's commit path; delivery order, the pending bound,
-// retirement and the terminal reasons are the upstream rules.
-import { errorMessage } from "../errors.ts"
-import type {
-	Context,
-	JsonValue,
-	ReplicatedStateSource,
-	ReplicatedStateSourceAttachment,
-	ReplicatedStateSourceFrame,
-} from "@earendil-works/chord";
-import { withoutAbortSignal } from "@earendil-works/chord/context";
+// Ports packages/durable/src/session/session.ts guardObserver and observation: the guard of a synchronous Observer. The attached
+// state source is the host's own Chord bridge over the core's `published` notices (WatchHub); Pi's watches are Chord's `Watch` and
+// `NativeWatch`, so the host builds them directly.
+import type { Context, ReplicatedStateSource, ReplicatedStateSourceAttachment, ReplicatedStateSourceFrame } from "@earendil-works/chord";
 import type { Op } from "@earendil-works/chord/delta";
-import type { JsonObject, WatchEnd, WatchHandle } from "./watch-types.ts";
+import { contained } from "./session/session.ts";
+import type { Observation, Observer } from "./watch-types.ts";
 
-export type ObservedDocumentValue = Readonly<JsonObject> | null;
-
-/** Maximum exact committed frames retained behind one unavailable watch listener. */
-const MAX_PENDING_WATCH_FRAMES = 100;
+export type ObservedDocumentValue = Readonly<{ [key: string]: unknown }> | null;
 
 /** Canonical terminal update for a retired document incarnation. */
 export const RETIREMENT_OPERATIONS: readonly Op[] = [["r", null]];
+
+/**
+ * Guard `observer` as session.ts guardObserver does: a throw from `advance` is reported, detaches it and ends it with the
+ * error; `end` and `detach()` release it from its source once, and nothing reaches it afterwards. `detach` is the source's;
+ * the returned `detach()` is the observation's.
+ */
+export function guardObserver<T>(
+	observer: Observer<T>,
+	detach: () => void,
+	report: (error: unknown) => void,
+): Observer<T> & { detach(): void } {
+	type Attached = {
+		readonly observer: Observer<T>;
+		readonly detach: () => void;
+		readonly report: (error: unknown) => void;
+	};
+	let attached: Attached | undefined = { observer, detach, report };
+	const release = (): Attached | undefined => {
+		const released = attached;
+		attached = undefined;
+		released?.detach();
+		return released;
+	};
+	return {
+		advance: (change, context) => {
+			const current = attached;
+			if (current === undefined) return;
+			try {
+				current.observer.advance(change, context);
+			} catch (error) {
+				current.report(error);
+				if (release() !== undefined) contained(() => current.observer.end({ error }), current.report);
+			}
+		},
+		end: (failure) => {
+			const ending = release();
+			if (ending !== undefined) contained(() => ending.observer.end(failure), ending.report);
+		},
+		detach: () => {
+			release();
+		},
+	};
+}
+
+/** The `Observation` of a guarded observer attached at `value`. */
+export function observation<T>(value: T, guarded: { detach(): void }): Observation<T> {
+	return { value, detach: () => guarded.detach() };
+}
 
 /**
  * Session-to-Chord bridge owned one-to-one by one attached state: a document, or a conversation view. A `null` value
@@ -144,168 +182,4 @@ class SessionSourceAttachment<T> implements ReplicatedStateSourceAttachment<T> {
 			this.#delivering = false;
 		}
 	}
-}
-
-type WatchFrame<T> = {
-	readonly value: T;
-	readonly ops: readonly Op[];
-	readonly context: Context;
-};
-
-/**
- * Serialized exact-frame watch bound to one document incarnation or conversation view. A `null` value retires it.
- * @internal
- */
-export class CommittedWatch<T = ObservedDocumentValue> implements WatchHandle<T> {
-	readonly #detach: () => void;
-	readonly #replace: (() => T) | undefined;
-	readonly #report: (error: unknown) => void;
-	readonly #closedPromise: Promise<WatchEnd>;
-	readonly #pending: WatchFrame<T>[] = [];
-	#resolveClosed!: (end: WatchEnd) => void;
-	#value: T;
-	#listener: ((value: T, ops: readonly Op[], context: Context) => Promise<void>) | undefined;
-	#started = false;
-	#scheduled = false;
-	#running = false;
-	#detached = false;
-	#retired = false;
-	#end: WatchEnd | undefined;
-	#resolved = false;
-	#cancellationSignal: AbortSignal | undefined;
-	#cancellationListener: (() => void) | undefined;
-
-	/** `report` gets a listener's throw, which also ends the watch. `replace` gives the value an overflow delivers; by default the newest value. */
-	constructor(value: T, detach: () => void, report: (error: unknown) => void, replace?: () => T) {
-		this.#report = report;
-		this.#value = value;
-		this.#detach = detach;
-		this.#replace = replace;
-		this.#closedPromise = new Promise((resolve) => {
-			this.#resolveClosed = resolve;
-		});
-	}
-
-	get value(): T {
-		return this.#value;
-	}
-
-	get closed(): Promise<WatchEnd> {
-		return this.#closedPromise;
-	}
-
-	start(listener: (value: T, ops: readonly Op[], context: Context) => Promise<void>): void {
-		if (this.#started) throw new Error("Watch is already started");
-		if (this.#end !== undefined) throw new Error("Watch is stopped");
-		this.#started = true;
-		this.#listener = listener;
-		if (this.#pending.length > 0) this.#schedule();
-	}
-
-	stop(): Promise<WatchEnd> {
-		this.#terminate({ reason: "stopped" });
-		return this.#closedPromise;
-	}
-
-	observeCancellation(signal: AbortSignal): void {
-		if (this.#cancellationSignal !== undefined) throw new Error("Watch cancellation is already installed");
-		if (this.#end !== undefined) return;
-		this.#cancellationSignal = signal;
-		this.#cancellationListener = () => this.cancel();
-		signal.addEventListener("abort", this.#cancellationListener, { once: true });
-		if (signal.aborted) this.cancel();
-	}
-
-	cancel(): void {
-		this.#terminate({ reason: "cancelled" });
-	}
-
-	/** End with `session_closed`, or with `session_failed` and the error when the Session failed. */
-	closeSession(failure?: { readonly error: unknown }): void {
-		this.#terminate(
-			failure === undefined ? { reason: "session_closed" } : { reason: "session_failed", error: failure.error },
-		);
-	}
-
-	advance(value: T, ops: readonly Op[], context: Context): void {
-		if (this.#end !== undefined || this.#retired) return;
-		if (value === null) this.#retired = true;
-		if (this.#pending.length >= MAX_PENDING_WATCH_FRAMES) {
-			this.#pending.length = 0;
-			const replacement = this.#replace?.() ?? value;
-			this.#pending.push({ value: replacement, ops: [["r", replacement as JsonValue]], context });
-		} else {
-			this.#pending.push({ value, ops, context });
-		}
-		if (this.#started) this.#schedule();
-	}
-
-	#schedule(): void {
-		if (this.#scheduled || this.#running || this.#end !== undefined) return;
-		this.#scheduled = true;
-		queueMicrotask(() => {
-			this.#scheduled = false;
-			void this.#drain();
-		});
-	}
-
-	async #drain(): Promise<void> {
-		if (this.#running || this.#end !== undefined || !this.#started) {
-			this.#finishIfReady();
-			return;
-		}
-		this.#running = true;
-		try {
-			while (this.#end === undefined) {
-				const frame = this.#pending.shift();
-				if (frame === undefined) break;
-				this.#value = frame.value;
-				const deliveryContext = withoutAbortSignal(frame.context);
-				try {
-					await this.#listener!(frame.value, frame.ops, deliveryContext);
-				} catch (error) {
-					if (this.#end === undefined) {
-						this.#report(error);
-						this.#terminate({ reason: "listener_error", error: toError(error) });
-					}
-					break;
-				}
-				if (frame.value === null) {
-					this.#terminate({ reason: "retired" });
-					break;
-				}
-			}
-		} finally {
-			this.#running = false;
-			if (this.#end === undefined && this.#pending.length > 0) this.#schedule();
-			this.#finishIfReady();
-		}
-	}
-
-	#terminate(end: WatchEnd): void {
-		if (this.#end !== undefined) return;
-		this.#end = end;
-		this.#detachNow();
-		this.#pending.length = 0;
-		this.#finishIfReady();
-	}
-
-	#detachNow(): void {
-		if (this.#detached) return;
-		this.#detached = true;
-		this.#detach();
-	}
-
-	#finishIfReady(): void {
-		if (this.#resolved || this.#end === undefined) return;
-		this.#resolved = true;
-		if (this.#cancellationSignal !== undefined && this.#cancellationListener !== undefined) {
-			this.#cancellationSignal.removeEventListener("abort", this.#cancellationListener);
-		}
-		this.#resolveClosed(this.#end);
-	}
-}
-
-function toError(error: unknown): Error {
-	return error instanceof Error ? error : new Error(errorMessage(error));
 }

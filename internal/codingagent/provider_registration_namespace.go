@@ -10,6 +10,15 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// carrierModelInput is providerModelInput for the models of a native Provider object registered through a carrier: the provider's base URL stays the provider's (the refresh context's), and the models keep the base URL they declare, or none (Pi composes the Provider object untouched, model-runtime.ts composeProvider).
+func carrierModelInput(id string, config providerConfig) ProviderConfigInput {
+	baseURL := config.BaseURL
+	config.BaseURL = ""
+	input := providerModelInput(id, config)
+	input.BaseURL = baseURL
+	return input
+}
+
 // providerModelInput is the model-bearing part of a registered provider: its name, endpoint, api, models of every type and the implementations of its image and classifier models. Callback and credential fields are added by legacyProviderInput.
 func providerModelInput(id string, config providerConfig) ProviderConfigInput {
 	input := ProviderConfigInput{Name: config.Name, BaseURL: config.BaseURL, API: ai.API(config.API), Images: config.Images, Classifiers: config.Classifiers, Insecure: config.Insecure}

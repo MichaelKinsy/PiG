@@ -1,4 +1,5 @@
 import { createTypedMetrics, createTypedSpanStarter, defineTelemetrySchema, NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS, } from "../pi-telemetry/index.js";
+import { ownedSlice } from "./utils/text.js";
 const provider = { type: "string", description: "Provider identifier.", required: true };
 const model = { type: "string", description: "Requested model identifier.", required: true };
 const stop = {
@@ -172,7 +173,7 @@ export function observeModelRequest(requestedModel, options, poll) {
                 if (message.stopReason === "error") {
                     span.setStatus({
                         status: "error",
-                        error: { name: "provider_error", message: message.errorMessage?.slice(0, 500) ?? "" },
+                        error: { name: "provider_error", message: ownedSlice(message.errorMessage ?? "", 0, 500) },
                     });
                 }
                 requestDuration.record(performance.now() - started, { ...attributes, stop: message.stopReason }, span);

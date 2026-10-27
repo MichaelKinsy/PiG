@@ -39,6 +39,8 @@ type fakeSocket struct {
 	state  int
 	sent   []string
 	closes []int
+	// closeReasons holds the reason of each close, "" for none.
+	closeReasons []string
 }
 
 func (s *fakeSocket) ReadyState() int {
@@ -58,10 +60,11 @@ func (s *fakeSocket) Send(data any) error {
 	return nil
 }
 
-func (s *fakeSocket) Close(code int, _ string) {
+func (s *fakeSocket) Close(code int, reason string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.closes = append(s.closes, code)
+	s.closeReasons = append(s.closeReasons, reason)
 	s.state = 3
 }
 

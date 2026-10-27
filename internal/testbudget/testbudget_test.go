@@ -38,42 +38,6 @@ func TestResolve(t *testing.T) {
 	}
 }
 
-// A wait the deadline cut short says so, so a failure in the last seconds of a package's -timeout is not read as a hang;
-// a wait the deadline did not touch says nothing.
-func TestResolveNotesACapFromTheDeadline(t *testing.T) {
-	for _, tc := range []struct {
-		name          string
-		untilDeadline time.Duration
-		hasDeadline   bool
-		wantBudget    time.Duration
-		wantNote      bool
-	}{
-		{name: "no deadline", wantBudget: Default},
-		{name: "distant deadline", untilDeadline: time.Hour, hasDeadline: true, wantBudget: Default},
-		{name: "deadline inside the default", untilDeadline: 40 * time.Second, hasDeadline: true, wantBudget: 30 * time.Second, wantNote: true},
-		{name: "inside the grace", untilDeadline: 3 * time.Second, hasDeadline: true, wantBudget: time.Second, wantNote: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			budget, note, err := resolve("", tc.untilDeadline, tc.hasDeadline)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if budget != tc.wantBudget || (note != "") != tc.wantNote {
-				t.Fatalf("budget = %s, note = %q; want %s, note %t", budget, note, tc.wantBudget, tc.wantNote)
-			}
-			if tc.wantNote && !strings.Contains(note, "is "+tc.untilDeadline.String()+" away") {
-				t.Fatalf("note %q does not name the time left, %s", note, tc.untilDeadline)
-			}
-			if tc.wantNote && !strings.Contains(note, "capped to "+tc.wantBudget.String()+".") {
-				t.Fatalf("note %q does not name the cap, %s", note, tc.wantBudget)
-			}
-		})
-	}
-	if _, _, err := resolve("0", time.Hour, true); err == nil {
-		t.Fatal("a zero override was accepted")
-	}
-}
-
 func TestDeadlineBound(t *testing.T) {
 	for _, tc := range []struct{ until, want time.Duration }{
 		{time.Hour, time.Hour - grace},
@@ -120,5 +84,41 @@ func TestOnceBuildsOnceAndKeepsTheResult(t *testing.T) {
 		if _, err := failed.Do(t, func(context.Context) (string, error) { return "", want }); !errors.Is(err, want) {
 			t.Fatalf("Do error = %v, want %v", err, want)
 		}
+	}
+}
+
+// A wait the deadline cut short says so, so a failure in the last seconds of a package's -timeout is not read as a hang;
+// a wait the deadline did not touch says nothing.
+func TestResolveNotesACapFromTheDeadline(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		untilDeadline time.Duration
+		hasDeadline   bool
+		wantBudget    time.Duration
+		wantNote      bool
+	}{
+		{name: "no deadline", wantBudget: Default},
+		{name: "distant deadline", untilDeadline: time.Hour, hasDeadline: true, wantBudget: Default},
+		{name: "deadline inside the default", untilDeadline: 40 * time.Second, hasDeadline: true, wantBudget: 30 * time.Second, wantNote: true},
+		{name: "inside the grace", untilDeadline: 3 * time.Second, hasDeadline: true, wantBudget: time.Second, wantNote: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			budget, note, err := resolve("", tc.untilDeadline, tc.hasDeadline)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if budget != tc.wantBudget || (note != "") != tc.wantNote {
+				t.Fatalf("budget = %s, note = %q; want %s, note %t", budget, note, tc.wantBudget, tc.wantNote)
+			}
+			if tc.wantNote && !strings.Contains(note, "is "+tc.untilDeadline.String()+" away") {
+				t.Fatalf("note %q does not name the time left, %s", note, tc.untilDeadline)
+			}
+			if tc.wantNote && !strings.Contains(note, "capped to "+tc.wantBudget.String()+".") {
+				t.Fatalf("note %q does not name the cap, %s", note, tc.wantBudget)
+			}
+		})
+	}
+	if _, _, err := resolve("0", time.Hour, true); err == nil {
+		t.Fatal("a zero override was accepted")
 	}
 }

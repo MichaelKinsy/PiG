@@ -1,18 +1,18 @@
-// The watch declarations of pi-durable's types.ts (WatchEnd, WatchHandle, JsonObject), kept structural so the facade does not
-// import the package it replaces.
-import type { Context } from "@earendil-works/chord"
-import type { Op } from "@earendil-works/chord/delta"
+// The watch and observer declarations of pi-durable's types.ts (JsonObject, Observer, Observation), kept structural so the
+// facade does not import the package it replaces. The watch types themselves are Chord's.
+import type { Context, WatchChange } from "@earendil-works/chord"
 
 export type JsonObject = { [key: string]: unknown }
 
-export type WatchEnd =
-  | { reason: "stopped" | "cancelled" | "session_closed" | "retired" }
-  | { reason: "listener_error"; error: Error }
-  | { reason: "session_failed"; error: unknown }
+/** pi-durable's `Observer`: a synchronous observer of committed state. `advance` only records the change; `end` is called once. */
+export type Observer<T> = {
+  advance(change: WatchChange<T>, context: Context): void
+  end(failure: { readonly error: unknown } | undefined): void
+}
 
-export interface WatchHandle<T> {
+/** An attached `Observer`: the value at attachment, and how to detach it. */
+export type Observation<T> = {
   readonly value: T
-  start(listener: (value: T, ops: readonly Op[], context: Context) => Promise<void>): void
-  stop(): Promise<WatchEnd>
-  readonly closed: Promise<WatchEnd>
+  /** Idempotent: no `advance` or `end` follows it. */
+  detach(): void
 }

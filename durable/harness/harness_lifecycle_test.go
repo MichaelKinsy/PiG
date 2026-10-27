@@ -19,6 +19,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -404,9 +406,9 @@ func TestHarnessClose(t *testing.T) {
 			defer mu.Unlock()
 			frames = append(frames, name)
 		}
-		graphWatch.Start(func(context.Context, TaskGraph, []durable.Op) error { frame("graphWatch"); return nil })
-		docWatch.Start(func(context.Context, durable.JsonObject, []durable.Op) error { frame("docWatch"); return nil })
-		viewWatch.Start(func(context.Context, ConversationView, []durable.Op) error { frame("viewWatch"); return nil })
+		graphWatch.Start(func(context.Context, chord.WatchChange[TaskGraph]) error { frame("graphWatch"); return nil })
+		docWatch.Start(func(context.Context, chord.WatchChange[durable.JsonObject]) error { frame("docWatch"); return nil })
+		viewWatch.Start(func(context.Context, chord.WatchChange[ConversationView]) error { frame("viewWatch"); return nil })
 		docValue := docWatch.Value()
 		viewValue := viewWatch.Value()
 

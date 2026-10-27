@@ -99,7 +99,7 @@ func TestAssistantMessageHiddenThinkingLabelMatchesPi(t *testing.T) {
 	for i, probe := range probes {
 		SetCapabilities(TerminalCapabilities{TrueColor: true})
 		SetTheme(probe.Theme)
-		component := NewAssistantMessageComponent(nil, probe.Hide, nil, "", nil, nil)
+		component := NewAssistantMessageComponent(nil, probe.Hide, nil, "", nil, nil, "", "")
 		if probe.Label != nil {
 			component.SetHiddenThinkingLabel(*probe.Label)
 		}

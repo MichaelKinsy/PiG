@@ -30,7 +30,7 @@ func TestCustomMessageDefaultBoxFollowsOutputPad(t *testing.T) {
 func TestAssistantMessageConfiguredOutputPadding(t *testing.T) {
 	for _, hidden := range []bool{false, true} {
 		t.Run(fmt.Sprint(hidden), func(t *testing.T) {
-			c := NewAssistantMessageComponent(nil, hidden, nil, "", nil, nil)
+			c := NewAssistantMessageComponent(nil, hidden, nil, "", nil, nil, "", "")
 			c.SetTextDelta("hello")
 			c.SetThinkingDelta("reasoning")
 			c.SetTerminalError("error", "failure")

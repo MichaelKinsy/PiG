@@ -95,7 +95,7 @@ func TestRenderCurrentSessionStateForgetsTheReplacedSessionsState(t *testing.T) 
 	m.loadedResourcesContainer = tui.NewContainer(tui.NewText("loaded resource"))
 	m.pendingMessagesContainer = tui.NewContainer(tui.NewText("pending message"))
 	m.compactionQueue = append(m.compactionQueue, compactionQueuedMessage{text: "queued"})
-	m.evCurrentBlock = m.newAssistantMessageBlock()
+	m.evCurrentBlock = m.newAssistantMessageBlock(messageMeta{})
 	m.toolByID["stale"] = tui.NewToolExecutionComponent("bash", "stale", nil, tui.ToolExecutionOptions{}, nil, nil, "")
 	m.renderCurrentSessionState()
 	if m.loadedResourcesContainer.ChildCount() != 0 || m.pendingMessagesContainer.ChildCount() != 0 || len(m.compactionQueue) != 0 {

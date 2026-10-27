@@ -634,7 +634,11 @@ func (h boundHandle) WaitForIdle(ctx context.Context) error {
 // Commit commits on the Session line after rereading the task: the transaction begins for this invocation, so the core rejects
 // it once the invocation ended or the task carries an abort mark, hands the task record it read (ready.current) to change, and
 // takes the returned state as the task's next state in the same commit (nil leaves it).
-func (r *taskRuntime) Commit(ctx context.Context, change func(tx durable.Tx, current durable.ErasedRunningTask) (*durable.NextTaskState[durable.JsonValue, durable.JsonValue], error)) error {
+func (r *taskRuntime) Commit(ctx context.Context, change func(tx durable.Tx, current durable.ErasedRunningTask) (*durable.NextTaskState[durable.JsonValue, durable.JsonValue], error), options ...durable.CommitOptions) error {
+	// The core stores every commit before it returns: options.Persistence is a permission (spec §4.1), so a deferred commit is stored at once.
+	if _, err := durable.SingleCommitOptions(options); err != nil {
+		return err
+	}
 	if err := r.check(); err != nil {
 		return err
 	}

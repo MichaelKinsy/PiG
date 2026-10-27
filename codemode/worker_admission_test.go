@@ -14,6 +14,9 @@ import (
 // onWorkerStarted).
 
 func TestDeniedAdmissionStartsNoWorker(t *testing.T) {
+	// The count of live VMs is the process's, and an earlier test's VM closes after its Execute returned: wait for those, so a VM
+	// still open at the end is this test's.
+	exitsWithin(t, 10*time.Second, "an earlier test")
 	var acquired, started atomic.Int32
 	sandbox, err := NewSandbox(SandboxOptions{
 		AcquireWorker: func() (func(), error) {

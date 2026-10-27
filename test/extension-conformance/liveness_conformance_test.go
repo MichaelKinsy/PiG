@@ -14,8 +14,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding/extension/host/fusepack"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/typebox/engine"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture"
 )
 
@@ -52,6 +55,9 @@ func TestLivenessConformanceSDKsMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The fused fixture runs in this process, as the host's own, so its helpers (the type engine its schemas are built with) are the host's.
+	sdk.SetHostHelpers(fusepack.HostHelpers())
+	t.Cleanup(func() { sdk.SetHostHelpers(nil) })
 	fixtures := []livenessFixture{
 		{name: "go", command: func(string) *exec.Cmd { return exec.Command(goFixture) }},
 		{name: "fused-go", serve: testfixture.Extension().RunWithConn},
@@ -101,11 +107,14 @@ func recordSDKLiveness(t *testing.T, fixture livenessFixture) livenessRecording 
 		t.Fatal(err)
 	}
 	register := readSDKEnvelope(t, peer)
-	// A factory may call the host-parser helpers before the connection is ready (the lazy dial); the host answers them before it reads the register frame.
-	for register.Type == subprocess.MsgCall && register.Call != nil && (register.Call.Method == subprocess.CallParseFrontmatter || register.Call.Method == subprocess.CallParseDate) {
+	// A factory may call the host-parser helpers and build schemas with the type engine before the connection is ready (the lazy dial); the host answers them before it reads the register frame.
+	for register.Type == subprocess.MsgCall && register.Call != nil && (register.Call.Method == subprocess.CallParseFrontmatter || register.Call.Method == subprocess.CallParseDate || register.Call.Method == subprocess.CallTypeEngine) {
 		result := json.RawMessage(`{"frontmatter":{},"body":""}`)
-		if register.Call.Method == subprocess.CallParseDate {
+		switch register.Call.Method {
+		case subprocess.CallParseDate:
 			result = json.RawMessage(`{"ms":null}`)
+		case subprocess.CallTypeEngine:
+			result = json.RawMessage(engine.Serve(register.Call.Args))
 		}
 		writeSDKEnvelope(t, peer, subprocess.Envelope{Type: subprocess.MsgCallResult, ID: register.ID, CallResult: &subprocess.CallResultPayload{Result: result}})
 		register = readSDKEnvelope(t, peer)

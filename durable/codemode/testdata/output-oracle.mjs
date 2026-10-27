@@ -41,6 +41,16 @@ const cases = [
 	{ name: "limit lines tiny", result: ok([text(Array.from({ length: 30 }, (_, i) => `row ${i}`).join("\n"))]), wallMs: 1, limits: { maxBytes: 100000, maxLines: 100 } },
 	{ name: "byte limit below the token budget", result: ok([text("q".repeat(300))]), wallMs: 1, limits: { maxBytes: 400, maxLines: 100_000 } },
 	{ name: "trailing newline then text", result: ok([text("a\n"), text("b")]), wallMs: 1 },
+	{ name: "null value", result: ok([], null), wallMs: 1 },
+	{ name: "text one under the token budget", result: ok([text("x".repeat(39))]), wallMs: 1, maxOutputTokens: 10 },
+	{ name: "text exactly at the token budget", result: ok([text("x".repeat(40))]), wallMs: 1, maxOutputTokens: 10 },
+	{ name: "text one over the token budget", result: ok([text("x".repeat(41))]), wallMs: 1, maxOutputTokens: 10 },
+	{ name: "lines exactly at the line budget", result: ok([text(Array.from({ length: 6 }, (_, i) => `row ${i}`).join("\n"))]), wallMs: 1, limits: { maxBytes: 4 * 1024 * 1024, maxLines: 106 } },
+	{ name: "lines one over the line budget", result: ok([text(Array.from({ length: 7 }, (_, i) => `row ${i}`).join("\n"))]), wallMs: 1, limits: { maxBytes: 4 * 1024 * 1024, maxLines: 106 } },
+	{ name: "zero token budget", result: ok([text("abc\ndef")]), wallMs: 1, maxOutputTokens: 0 },
+	{ name: "a one-line head and tail", result: ok([text(Array.from({ length: 10 }, (_, i) => `row ${i}`).join("\n"))]), wallMs: 1, limits: { maxBytes: 4 * 1024 * 1024, maxLines: 102 } },
+	{ name: "a two-line head and tail", result: ok([text(Array.from({ length: 10 }, (_, i) => `row ${i}`).join("\n"))]), wallMs: 1, limits: { maxBytes: 4 * 1024 * 1024, maxLines: 104 } },
+	{ name: "a budget of one character", result: ok([text("abcdef")]), wallMs: 1, limits: { maxBytes: 4, maxLines: 100_000 } },
 	{ name: "within budget", result: ok([text("short")]), wallMs: 1, maxOutputTokens: 10 },
 ];
 

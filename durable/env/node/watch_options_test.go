@@ -17,10 +17,10 @@ func TestNodeWatchOptionsForceTheModeAndSetThePollInterval(t *testing.T) {
 		mustDo(t, env.WriteFile(background, "watched.txt", "one"))
 		var mu sync.Mutex
 		changed := make(chan struct{}, 8)
-		watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "watched.txt"}}, func(change durableenv.WatchChange) {
+		watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "watched.txt"}}, func(change durableenv.FileChange) {
 			mu.Lock()
 			defer mu.Unlock()
-			if _, ok := change.(durableenv.WatchChangePaths); ok {
+			if _, ok := change.(durableenv.FileChangePaths); ok {
 				changed <- struct{}{}
 			}
 		}))

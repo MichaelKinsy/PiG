@@ -1,3 +1,4 @@
+import { ownedSlice } from "../utils/text.js";
 export const DEFAULT_RADIUS_GATEWAY = "https://radius.pi.dev";
 function isRadiusGatewayModel(value) {
     if (typeof value !== "object" || value === null || Array.isArray(value))
@@ -45,7 +46,7 @@ export function getRadiusModels(providerId, credential) {
 }
 function truncateHttpBody(body) {
     const trimmed = body.trim();
-    return trimmed.length > 512 ? `${trimmed.slice(0, 512)}…` : trimmed;
+    return trimmed.length > 512 ? `${ownedSlice(trimmed, 0, 512)}…` : trimmed;
 }
 export async function loadRadiusGatewayConfig(gateway, apiKey, signal) {
     const headers = { accept: "application/json" };

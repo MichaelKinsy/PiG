@@ -15,6 +15,7 @@ export * from "./utils/identity.js";
 export * from "./utils/json-parse.js";
 export * from "./utils/overflow.js";
 export * from "./utils/retry.js";
+export * from "./utils/streaming-json.js";
 export { contentText, getSystemMessageText, renderSystemMessageUpdate } from "./utils/text.js";
 export * from "./utils/transcript.js";
 export * from "./utils/typebox-helpers.js";

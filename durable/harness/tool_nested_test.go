@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -282,7 +284,8 @@ func TestANestedCallSlotShowsTheArgumentsItRunsWith(t *testing.T) {
 	var mu sync.Mutex
 	var starts []ToolExecutionStartEvent
 	var runEnded bool
-	stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		mu.Lock()
 		defer mu.Unlock()
 		for _, event := range batch {
@@ -405,7 +408,8 @@ func TestANestedCallKeepsTheCallersArgumentOrder(t *testing.T) {
 			var mu sync.Mutex
 			var startArgs string
 			var runEnded bool
-			stream.Start(func(_ context.Context, batch []AgentEvent) error {
+			stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+				batch := change.Value
 				mu.Lock()
 				defer mu.Unlock()
 				for _, event := range batch {
@@ -476,7 +480,8 @@ func TestNestedCallsAreToolEventsWithTheirParent(t *testing.T) {
 	var mu sync.Mutex
 	var events []AgentEvent
 	var runEnded bool
-	stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		mu.Lock()
 		events = append(events, batch...)
 		for _, event := range batch {
@@ -747,7 +752,8 @@ func TestACallerThatReturnsAbortsTheNestedCallsItLeftRunning(t *testing.T) {
 	var mu sync.Mutex
 	var ends []ToolExecutionEndEvent
 	var runEnded bool
-	stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		mu.Lock()
 		defer mu.Unlock()
 		for _, event := range batch {
@@ -1106,7 +1112,8 @@ func TestNestedCallsOfNestedCallsEndChildrenFirst(t *testing.T) {
 	var mu sync.Mutex
 	var tools []string
 	var runEnded bool
-	stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		mu.Lock()
 		defer mu.Unlock()
 		for _, event := range batch {
@@ -1319,7 +1326,8 @@ func TestAnAbortedNestedCallWithoutProgressLosesItsRunningOutput(t *testing.T) {
 	var mu sync.Mutex
 	var nestedEnd *ToolExecutionEndEvent
 	var runEnded bool
-	stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		mu.Lock()
 		defer mu.Unlock()
 		for _, event := range batch {
@@ -1401,7 +1409,8 @@ func TestSeveralRunningNestedCallsReportTheirOutputAndShowToALateSubscriber(t *t
 	}
 	var mu sync.Mutex
 	var updates []string
-	stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		mu.Lock()
 		defer mu.Unlock()
 		for _, event := range batch {

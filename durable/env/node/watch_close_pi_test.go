@@ -15,8 +15,8 @@ func TestFileWatcherCloseIsIdempotentAndEndsReporting(t *testing.T) {
 	env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir()})
 	mustDo(t, env.CreateDir(background, "tree", nil))
 	var reported atomic.Int32
-	watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(change durableenv.WatchChange) {
-		if _, ok := change.(durableenv.WatchChangePaths); ok {
+	watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(change durableenv.FileChange) {
+		if _, ok := change.(durableenv.FileChangePaths); ok {
 			reported.Add(1)
 		}
 	}))

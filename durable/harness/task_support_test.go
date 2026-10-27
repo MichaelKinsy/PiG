@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 type stepState struct {
@@ -82,6 +83,8 @@ type openTasksOptions struct {
 	settings func() *HarnessSettings
 	onWake   func(Wake)
 	setTimer durable.SetTimer
+	// telemetry is HarnessOptions.Telemetry.
+	telemetry telemetry.TelemetryContext
 }
 
 type reportLog struct {
@@ -126,13 +129,14 @@ func openTasks(t *testing.T, storage durable.Storage, tasks []durable.AnyTask, o
 	}
 	reports := &reportLog{}
 	harness, err := OpenHarness(testContext, storage, HarnessOptions{
-		Models:   ai.CreateModels(),
-		Registry: registry,
-		OnReport: reports.add,
-		Now:      option.now,
-		Settings: option.settings,
-		OnWake:   option.onWake,
-		SetTimer: option.setTimer,
+		Models:    ai.CreateModels(),
+		Registry:  registry,
+		OnReport:  reports.add,
+		Now:       option.now,
+		Settings:  option.settings,
+		OnWake:    option.onWake,
+		SetTimer:  option.setTimer,
+		Telemetry: option.telemetry,
 	})
 	if err != nil {
 		t.Fatal(err)

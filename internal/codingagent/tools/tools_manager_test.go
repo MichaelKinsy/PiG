@@ -17,23 +17,29 @@ import (
 	"testing"
 )
 
-func TestArchStr(t *testing.T) {
-	tests := []struct {
-		in   string
-		want string
-	}{
-		{"arm64", "aarch64"},
-		{"aarch64", "aarch64"},
-		{"amd64", "x86_64"},
-		{"x64", "x86_64"},
-		{"x86_64", "x86_64"},
-		// tools-manager.ts getAssetName: any architecture other than arm64 selects the x86_64 archive.
-		{"riscv64", "x86_64"},
-		{"386", "x86_64"},
+func TestReleaseTarget(t *testing.T) {
+	tests := []struct{ plat, arch, want string }{
+		{"linux", "arm64", "aarch64-unknown-linux-musl.tar.gz"},
+		{"linux", "aarch64", "aarch64-unknown-linux-musl.tar.gz"},
+		{"linux", "x64", "x86_64-unknown-linux-musl.tar.gz"},
+		{"linux", "amd64", "x86_64-unknown-linux-musl.tar.gz"},
+		{"darwin", "arm64", "aarch64-apple-darwin.tar.gz"},
+		{"darwin", "x64", "x86_64-apple-darwin.tar.gz"},
+		{"win32", "x64", "x86_64-pc-windows-msvc.zip"},
+		{"windows", "arm64", "aarch64-pc-windows-msvc.zip"},
+		// tools-manager.ts getReleaseTarget maps only x64 and arm64: ARM32, ia32 and riscv64 never fall back to an
+		// x86-64 archive (Pi #11209).
+		{"linux", "arm", ""},
+		{"linux", "ia32", ""},
+		{"linux", "386", ""},
+		{"linux", "riscv64", ""},
+		{"win32", "ia32", ""},
+		{"freebsd", "x64", ""},
+		{"android", "arm64", ""},
 	}
 	for _, tt := range tests {
-		if got := archStr(tt.in); got != tt.want {
-			t.Errorf("archStr(%q) = %q, want %q", tt.in, got, tt.want)
+		if got := releaseTarget(tt.plat, tt.arch); got != tt.want {
+			t.Errorf("releaseTarget(%q, %q) = %q, want %q", tt.plat, tt.arch, got, tt.want)
 		}
 	}
 }
@@ -59,14 +65,10 @@ func TestToolsTable_AssetNames(t *testing.T) {
 	versions := map[string]string{"fd": "9.0.0", "rg": "14.0.0"}
 	for _, c := range cases {
 		cfg := toolsTable[c.tool]
-		got := cfg.GetAssetName(versions[c.tool], c.plat, c.arch)
+		got := cfg.GetAssetName(versions[c.tool], releaseTarget(c.plat, c.arch))
 		if got != c.want {
 			t.Errorf("%s/%s/%s: got %q, want %q", c.tool, c.plat, c.arch, got, c.want)
 		}
-	}
-	// Unsupported platform returns "".
-	if got := toolsTable["fd"].GetAssetName("9.0.0", "freebsd", "x64"); got != "" {
-		t.Errorf("fd/freebsd: got %q, want empty", got)
 	}
 }
 

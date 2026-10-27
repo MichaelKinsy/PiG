@@ -2,7 +2,9 @@ import {
   AssistantMessageEventStream,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
+  StreamingJsonParser,
   StringEnum,
+  ToolCallArgumentsStream,
   Type,
   cleanupSessionResources,
   createAssistantMessageEventStream,
@@ -28,7 +30,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-IHYSFH2N.js";
+} from "./chunk-V34LBYPQ.js";
 import {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
@@ -52,11 +54,11 @@ import {
   openAICodexResponsesApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-UNH56B46.js";
+} from "./chunk-IVQOCMGA.js";
 import {
   anthropicMessagesApi,
   openAICompletionsApi
-} from "./chunk-KAPM6JVF.js";
+} from "./chunk-GWORY4ZZ.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -108,7 +110,7 @@ import {
   toToolDeclaration,
   withClientIdentity,
   withoutInitialSystemMessage
-} from "./chunk-SS4XPEIJ.js";
+} from "./chunk-QGCG6AEG.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -433,7 +435,9 @@ export {
   ModelsError,
   PI_AI_VERSION,
   PI_ATTRIBUTION,
+  StreamingJsonParser,
   StringEnum,
+  ToolCallArgumentsStream,
   Type,
   anthropicMessagesApi,
   appendAssistantMessageDiagnostic,

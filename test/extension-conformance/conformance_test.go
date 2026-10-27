@@ -1435,6 +1435,17 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"type-engine-tool": {
+				Definition: extension.ToolDefinition{
+					Name:        "type-engine-tool",
+					Description: "Parameters built with the engine members of Type",
+					Parameters:  typeEngineToolParameters(),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"refine-probe": {
 				Definition: extension.ToolDefinition{
 					Name:        "refine-probe",
@@ -3527,7 +3538,7 @@ func testPythonExecutable() string {
 	return toolchain.PythonExecutable(runtime.GOOS, exec.LookPath)
 }
 
-func findModuleRoot(t *testing.T) string {
+func findModuleRoot(t testing.TB) string {
 	t.Helper()
 	dir, err := os.Getwd()
 	if err != nil {

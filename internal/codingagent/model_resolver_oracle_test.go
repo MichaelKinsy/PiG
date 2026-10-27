@@ -59,6 +59,12 @@ func TestModelResolverMatchesPi(t *testing.T) {
 		{Models: []resolverModel{{"zai", "glm-5", "GLM", true}, {"vercel-ai-gateway", "zai/glm-5", "GLM via gateway", false}, {"xiaomi", "mimo-v2.5-pro", "Mimo", true}, {"commandcode", "xiaomi/mimo-v2.5-pro", "Mimo CC", false}}, Authed: []string{"commandcode"}},
 		{Models: []resolverModel{{"anthropic", "a", "A", false}, {"anthropic", "a-1", "A one", false}, {"openai", "a", "A two", false}}, Authed: []string{}},
 		{Models: []resolverModel{}, Authed: []string{}},
+		// Provider ids that contain "/" (URL-derived ids), one that is another's prefix, padding and case, and one whose lowercase is longer.
+		{Models: []resolverModel{
+			{"llama=http://host:10800", "unsloth/qwen-gguf:BF16", "Qwen GGUF", true}, {"llama=http:", "//host:10800/unsloth/qwen-gguf:BF16", "Prefix clash", false},
+			{"a", "b/c", "A B C", false}, {"a/b", "c", "AB C", true}, {"A/B/c", "d", "ABC D", false}, {" spaced ", "m", "Spaced", false}, {"spaced", "m", "Spaced plain", false},
+			{"İ/x", "y", "Dotted", false}, {"İ", "x/y", "Dotted two", false}, {"openrouter", "a/b/c", "Router", false},
+		}, Authed: []string{"a/b", "llama=http://host:10800"}},
 	}
 	r := rand.New(rand.NewPCG(3, 17))
 	suffixes := []string{"", "", "", ":high", ":off", ":bogus", ":low:high", ":xhigh", ":", "::", ":extended", ":HIGH", ":max", ":minimal"}

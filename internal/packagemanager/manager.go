@@ -380,8 +380,22 @@ func InstallManagedNPM(cwd, agentDir string, sm *codingagent.SettingsManager, so
 	if err != nil {
 		return err
 	}
-	args = append(args, NpmInstallArgs(manager, ref.Locator, installRoot, ref.NPMRegistry, opts...)...)
+	realRoot, err := RealInstallRoot(installRoot)
+	if err != nil {
+		return err
+	}
+	args = append(args, NpmInstallArgs(manager, ref.Locator, realRoot, ref.NPMRegistry, opts...)...)
 	return RunPackageProcess("", command[0], args...)
+}
+
+// RealInstallRoot is the install root npm gets as --prefix: its real path when it exists, itself otherwise (package-manager.ts
+// getNpmInstallArgs, realpathSync: on Windows the spelling of a component that is not a link, 8.3 short names included, is kept). npm writes broken nested package-lock.json paths when --prefix goes through a symlink, such as a ~/.pi linked
+// into a dotfiles repository; every later install would nest one level deeper.
+func RealInstallRoot(root string) (string, error) {
+	if _, err := os.Stat(root); err != nil {
+		return root, nil
+	}
+	return codingagent.RealPathSync(root)
 }
 
 func NpmInstallArgs(manager, spec, installRoot, registry string, opts ...InstallOption) []string {

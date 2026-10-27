@@ -35,6 +35,18 @@ func TestBuildTerminalTitle_RootDir(t *testing.T) {
 	}
 }
 
+// Ported from terminal.test.ts "ProcessTerminal title replaces control characters so the title cannot end the OSC sequence".
+func TestProcessTerminalSetTitleReplacesControlCharacters(t *testing.T) {
+	var buf bytes.Buffer
+	term := NewProcessTerminalWithOutput(nil, nil, &buf)
+
+	term.SetTitle("pi - work\x07\x1b]52;c;Zm9v\x07\u009b2J - repo")
+
+	if want := "\x1b]0;pi - work ]52;c;Zm9v 2J - repo\x07"; buf.String() != want {
+		t.Fatalf("title sequence = %q, want %q", buf.String(), want)
+	}
+}
+
 func TestProcessTerminal_ControlSequences(t *testing.T) {
 	var buf bytes.Buffer
 	term := NewProcessTerminalWithOutput(nil, nil, &buf)

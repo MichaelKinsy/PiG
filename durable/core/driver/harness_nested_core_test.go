@@ -513,7 +513,8 @@ func TestCoreNestedCallsAreToolEventsWithTheirParent(t *testing.T) {
 	if stream.Snapshot.NestedTools == nil || len(stream.Snapshot.NestedTools) != 0 {
 		t.Fatalf("snapshot nestedTools = %#v, want an empty list", stream.Snapshot.NestedTools)
 	}
-	stream.Start(func(_ context.Context, batch []harness.AgentEvent) error {
+	stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
+		batch := change.Value
 		mu.Lock()
 		defer mu.Unlock()
 		for _, event := range batch {

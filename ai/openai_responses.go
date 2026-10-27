@@ -1981,19 +1981,11 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 		toolIndex    int
 		toolID       string
 		toolName     string
-		argsJSON     strings.Builder
-		// argsNotString is set while the slot's partialJson is still the truthy non-string `arguments` of its added item; a delta or an arguments.done event makes it a string.
-		argsNotString bool
-		customProp    string
-		customIn      string
-		// customGrown holds customIn's bytes, so a delta appends to them instead of copying them.
-		customGrown accumulatedString
-		grammarBuf  *grammarToolInputJSONBuffer
 	}
 	states := make(map[responsesSlotKey]*currentState)
 	reasoningBlocksByID := make(map[string]int)
 	nextToolIndex := 0
-	createState := func(outputIndex responsesSlotKey, item respOutputItem, rawItem json.RawMessage) *currentState {
+	createState := func(outputIndex responsesSlotKey, item respOutputItem, rawItem json.RawMessage, argumentsNotString bool) *currentState {
 		if item.Type == "message" && item.Phase == "final_answer" {
 			builder.partial.StopReason = StopReasonStop
 		}
@@ -2011,24 +2003,23 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 			nextToolIndex++
 			state.toolID = responsesStreamedToolCallID(rawItem, item.Name)
 			state.toolName = item.Name
-			state.argsJSON.WriteString(item.Arguments)
 			builder.toolCallStart(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, namespace: item.Namespace,
-				initialJSON: item.Arguments, scratch: toolCallScratch{hasPartialJson: true, partialJson: item.Arguments}})
+				initialJSON: item.Arguments, initialUnparsed: argumentsNotString})
 		case "custom_tool_call":
 			state.toolIndex = nextToolIndex
 			nextToolIndex++
 			state.toolID = responsesStreamedToolCallID(rawItem, item.Name)
 			state.toolName = item.Name
-			state.customProp = grammarProps[item.Name]
-			if state.customProp == "" {
-				state.customProp = "input"
+			property := grammarProps[item.Name]
+			if property == "" {
+				property = "input"
 			}
+			input := ""
 			if item.Input != nil {
-				state.customIn = *item.Input
+				input = *item.Input
 			}
-			state.grammarBuf = &grammarToolInputJSONBuffer{}
 			builder.toolCallStart(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, namespace: item.Namespace,
-				initialArguments: JsonObject{state.customProp: state.customIn}, scratch: toolCallScratch{customInput: true, property: state.customProp}})
+				custom: newCustomToolInput(property, input)})
 		default:
 			return nil
 		}
@@ -2127,10 +2118,8 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 			case "reasoning", "message", "function_call", "custom_tool_call":
 				delete(states, event.OutputIndex)
 			}
-			// createSlot stores `partialJson: item.arguments || ""` as it is; a delta then appends to its string form.
-			if state := createState(event.OutputIndex, item, rawItem); state != nil && item.Type == "function_call" {
-				state.argsNotString = responsesArgumentsNotString(event.Item)
-			}
+			// createSlot appends a truthy added `arguments` to the call's text as it is, without reading it when it is not a string.
+			createState(event.OutputIndex, item, rawItem, item.Type == "function_call" && responsesArgumentsNotString(event.Item))
 
 		case "response.reasoning_summary_text.delta", "response.reasoning_text.delta":
 			if state := states[event.OutputIndex]; state != nil && state.itemType == "reasoning" {
@@ -2149,8 +2138,6 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 
 		case "response.function_call_arguments.delta":
 			if state := states[event.OutputIndex]; state != nil && state.itemType == "function_call" {
-				state.argsNotString = false
-				state.argsJSON.WriteString(event.Delta)
 				builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, argumentsDelta: event.Delta})
 			}
 
@@ -2160,42 +2147,32 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 					builder.failUnfinished(StopReasonError, read.thrown)
 					return
 				}
-				state.argsNotString = false
-				previous := state.argsJSON.String()
-				if after, ok := strings.CutPrefix(event.Arguments, previous); ok && after != "" {
-					builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, argumentsDelta: after})
+				if delta, ok := builder.replaceToolCallArguments(state.toolIndex, event.Arguments); ok && delta != "" {
+					builder.pushToolCallDelta(state.toolIndex, delta)
 				}
-				state.argsJSON.Reset()
-				state.argsJSON.WriteString(event.Arguments)
-				builder.setToolCallFinal(state.toolIndex, "", event.Arguments, false)
 			}
 
 		case "response.custom_tool_call_input.delta":
 			if state := states[event.OutputIndex]; state != nil && state.itemType == "custom_tool_call" {
-				next := state.customGrown.append(state.customIn, event.Delta)
-				delta, ok, err := appendGrammarToolInputJSONDelta(state.grammarBuf, state.customProp, next, false)
-				state.customIn = next
+				delta, ok, err := builder.appendCustomToolCallInput(state.toolIndex, event.Delta)
 				if err != nil {
 					builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: %w", err))
 					return
 				}
-				builder.setCustomToolCallInput(state.toolIndex, state.customProp, next, *state.grammarBuf)
 				if ok {
-					builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, argumentsDelta: delta})
+					builder.pushToolCallDelta(state.toolIndex, delta)
 				}
 			}
 
 		case "response.custom_tool_call_input.done":
 			if state := states[event.OutputIndex]; state != nil && state.itemType == "custom_tool_call" {
-				delta, ok, err := appendGrammarToolInputJSONDelta(state.grammarBuf, state.customProp, event.Input, true)
-				state.customIn = event.Input
+				delta, ok, err := builder.closeCustomToolCallInput(state.toolIndex, &event.Input)
 				if err != nil {
 					builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: %w", err))
 					return
 				}
-				builder.setCustomToolCallInput(state.toolIndex, state.customProp, event.Input, *state.grammarBuf)
 				if ok {
-					builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, argumentsDelta: delta})
+					builder.pushToolCallDelta(state.toolIndex, delta)
 				}
 			}
 
@@ -2206,13 +2183,9 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 				builder.failUnfinished(StopReasonError, err)
 				return
 			}
-			state := createState(event.OutputIndex, item, rawItem)
+			state := createState(event.OutputIndex, item, rawItem, false)
 			if state == nil || state.itemType != item.Type {
 				continue
-			}
-			// parseToolCallArguments(item.arguments || slot.block.partialJson) also reaches a non-string partialJson the added item left (:741).
-			if thrown == nil && item.Type == "function_call" && item.Arguments == "" && state.argsNotString {
-				thrown = errors.New("json?.trim is not a function")
 			}
 			if thrown != nil {
 				builder.failUnfinished(StopReasonError, thrown)
@@ -2245,28 +2218,20 @@ func processResponsesStream(ctx context.Context, decoder providerSSEDecoder, bui
 				}
 				builder.textBlockEnd(state.contentIndex, finalText.String(), responsesTextSignature(event.Item, &item))
 			case "function_call":
-				arguments := item.Arguments
-				if arguments == "" {
-					arguments = state.argsJSON.String()
-				}
-				if arguments == "" {
-					arguments = "{}"
-				}
-				builder.setToolCallFinal(state.toolIndex, item.Namespace, arguments, true)
+				builder.takeFunctionCallItem(state.toolIndex, item.Namespace, item.Arguments)
 				builder.endToolCall(state.toolIndex)
 			case "custom_tool_call":
-				finalInput := state.customIn
+				var finalInput *string
 				if item.Input != nil {
-					finalInput = *item.Input
+					finalInput = item.Input
 				}
-				delta, ok, err := appendGrammarToolInputJSONDelta(state.grammarBuf, state.customProp, finalInput, true)
+				delta, ok, err := builder.closeCustomToolCallInput(state.toolIndex, finalInput)
 				if err != nil {
 					builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: %w", err))
 					return
 				}
-				builder.setCustomToolCallInput(state.toolIndex, state.customProp, finalInput, *state.grammarBuf)
 				if ok {
-					builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, argumentsDelta: delta})
+					builder.pushToolCallDelta(state.toolIndex, delta)
 				}
 				if item.Namespace != "" {
 					index := builder.toolCalls[state.toolIndex].contentIndex
@@ -2531,14 +2496,20 @@ func encodeResponsesTextSignature(id, phase string) string {
 }
 
 // unfinishedToolCallError refuses to hand over a completed tool-use message that holds a tool call whose output_item.done never arrived: its arguments may be cut off or mixed up,
-// for example when a non-compliant server omits output_index. Finished calls have their scratch buffers cleared (openai-responses-shared.ts processResponsesStream).
+// for example when a non-compliant server omits output_index (openai-responses-shared.ts processResponsesStream). A call is unfinished while the builder keeps its stream state.
 func unfinishedToolCallError(builder *assistantStreamBuilder) error {
 	if builder.partial.StopReason != StopReasonToolUse {
 		return nil
 	}
-	for _, block := range builder.partial.Content {
-		if call, ok := block.(ToolCall); ok && (call.scratch.hasPartialJson || call.scratch.customInput) {
-			return fmt.Errorf("OpenAI Responses stream completed with an unfinished tool call: %s (%s)", call.Name, call.ID)
+	for index, block := range builder.partial.Content {
+		call, ok := block.(ToolCall)
+		if !ok {
+			continue
+		}
+		for _, state := range builder.toolCalls {
+			if state.contentIndex == index {
+				return fmt.Errorf("OpenAI Responses stream completed with an unfinished tool call: %s (%s)", call.Name, call.ID)
+			}
 		}
 	}
 	return nil

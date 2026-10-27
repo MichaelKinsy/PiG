@@ -14,10 +14,6 @@ type assistantMessageCell struct {
 	full    *AssistantMessage
 	// seq counts publications: every view of the cell reads the same state while it is unchanged.
 	seq uint64
-	// unsettled says a tool call of the current publication waits for its argument parse (settleLocked); arguments holds
-	// the parse state of each streamed call by content index.
-	unsettled bool
-	arguments map[int]*cellArguments
 }
 
 // These pointers identify nested objects; only their latest immutable values are retained. The cell mutex guards every dereference.
@@ -49,12 +45,17 @@ func newAssistantMessageCell(message *AssistantMessage) *assistantMessageCell {
 
 // publish runs under producer ownership of message, before the producer suspends. It never changes delivered public fields.
 func (cell *assistantMessageCell) publish(message *AssistantMessage, replacements assistantMessageReplacements) {
-	// The previous snapshot's content is immutable once published, so the copy below may share what has not changed. A call that
-	// still defers a text the cell has settled is published as its settled call (settledCalls).
+	cell.publishSharing(message, replacements, nil)
+}
+
+// publishSharing is publish for a producer that streams tool-call arguments: streamed holds, by content index, the immutable snapshot
+// of the arguments a call's ToolCallArgumentsStream last returned (see sharesStreamedArguments), which the cell keeps as its copy.
+func (cell *assistantMessageCell) publishSharing(message *AssistantMessage, replacements assistantMessageReplacements, streamed map[int]JsonObject) {
+	// The previous snapshot's content is immutable once published, so the copy below may share what has not changed.
 	cell.mu.RLock()
-	previous, settled := cell.current.Content, cell.settledCalls(message.Content)
+	previous := cell.current.Content
 	cell.mu.RUnlock()
-	next := cloneAssistantMessageFrom(*message, previous, settled)
+	next := cloneAssistantMessageSharing(*message, previous, streamed)
 	cell.mu.Lock()
 	defer cell.mu.Unlock()
 	// Absent optional properties are not object references; adding or removing one is an assignment even without an explicit replacement flag.
@@ -66,7 +67,6 @@ func (cell *assistantMessageCell) publish(message *AssistantMessage, replacement
 	publishAssistantReference(&cell.nested.diagnostics, next.Diagnostics, replacements.Diagnostics)
 	publishAssistantReference(&cell.nested.deferred, next.Deferred, replacements.Deferred)
 	cell.current = next
-	cell.unsettled = hasDeferredArguments(next.Content)
 	cell.seq++
 }
 
@@ -82,7 +82,6 @@ func (cell *assistantMessageCell) view() *AssistantMessage {
 	cell.mu.Lock()
 	defer cell.mu.Unlock()
 	if cell.full == nil {
-		cell.settleLocked(nil)
 		view := clonePublishedAssistantMessage(cell.current)
 		view.observation = &assistantMessageObservation{cell: cell, seq: cell.seq}
 		cell.full = &view
@@ -178,8 +177,8 @@ func (message *AssistantMessage) ObserveProjection(content []AssistantContentPro
 	observed := message.Content
 	stopReason, errorMessage = message.StopReason, message.ErrorMessage
 	if observation := message.observation; observation != nil {
-		exclusive := observation.cell.readLock(observation.shallow)
-		defer observation.cell.readUnlock(exclusive)
+		observation.cell.mu.RLock()
+		defer observation.cell.mu.RUnlock()
 		if observation.shallow == nil {
 			current := &observation.cell.current
 			observed, stopReason, errorMessage = current.Content, current.StopReason, current.ErrorMessage
@@ -223,16 +222,8 @@ func (message *AssistantMessage) ShallowCopy() *AssistantMessage {
 	return &copy
 }
 
-// capture reads the state message observes, settled (assistantMessageCell.settleLocked), and the cell publication it belongs to.
+// capture reads the state message observes and the cell publication it belongs to.
 func (observation *assistantMessageObservation) capture(message *AssistantMessage) (AssistantMessage, assistantMessageReferences, uint64) {
-	cell := observation.cell
-	exclusive := cell.readLock(observation.shallow)
-	defer cell.readUnlock(exclusive)
-	return observation.captureLocked(message)
-}
-
-// captureUnsettled is capture without settling: a tool call of what it returns may still hold its deferred argument text.
-func (observation *assistantMessageObservation) captureUnsettled(message *AssistantMessage) (AssistantMessage, assistantMessageReferences, uint64) {
 	observation.cell.mu.RLock()
 	defer observation.cell.mu.RUnlock()
 	return observation.captureLocked(message)

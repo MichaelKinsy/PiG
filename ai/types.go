@@ -66,8 +66,6 @@ const (
 type TextContent struct {
 	Text          string `json:"text"`
 	TextSignature string `json:"textSignature,omitempty"`
-
-	scratch contentIndexScratch
 }
 
 func (TextContent) contentType() string { return "text" }
@@ -85,11 +83,10 @@ func (content TextContent) AppendStringify(dst []byte) ([]byte, error) {
 type textContentWire struct {
 	Text          string `json:"text"`
 	TextSignature string `json:"textSignature,omitempty"`
-	Index         *int   `json:"index,omitempty"`
 }
 
 func (content TextContent) wire() textContentWire {
-	return textContentWire{content.Text, content.TextSignature, content.scratch.wire()}
+	return textContentWire(content)
 }
 
 // ImageContent is a base64-encoded image in a message.
@@ -117,14 +114,11 @@ type JsonValue = any
 // JsonObject is a provider-facing JSON object (types.ts:459).
 type JsonObject map[string]JsonValue
 
-// ToolCall is a tool invocation block in an assistant message. Streaming OpenAI calls also serialize provider scratch fields until finalization or failure. Arguments is read and edited as a Go map; the member order the model sent is kept beside it and is written by ArgumentsJSON and MarshalJSON.
+// ToolCall is a tool invocation block in an assistant message. Arguments is read and edited as a Go map; the member order the model sent is kept beside it and is written by ArgumentsJSON and MarshalJSON.
 type ToolCall struct {
-	scratch       toolCallScratch
 	argumentOrder schemaObjectOrder
 	// nonObjectArguments is the JSON text of arguments that are valid JSON but not an object ([], null, 5, "s"). Pi's parseStreamingJson returns such a value as it is, so the validator reports it and the session stores it; Arguments is nil while it is set.
-	// deferredArguments is the argument text of a streamed call whose parse waits for a reader (deferArguments); empty once Arguments holds its parse. Only a stream builder's own partial and the cells it publishes to hold it.
 	nonObjectArguments json.RawMessage
-	deferredArguments  string
 	ID                 string     `json:"id"`
 	Name               string     `json:"name"`
 	Arguments          JsonObject `json:"arguments"`
@@ -162,7 +156,6 @@ type toolCallWire struct {
 	ThoughtSignature string `json:"thoughtSignature,omitempty"`
 	Namespace        string `json:"namespace,omitempty"`
 	ArgumentsError   string `json:"argumentsError,omitempty"`
-	toolCallScratchJSON
 }
 
 // wire returns the members after type. Arguments with a recorded member order are their encoded text, or with stringify an
@@ -174,7 +167,7 @@ func (content ToolCall) wire(stringify bool) (toolCallWire, error) {
 			if stringify {
 				arguments = encodedArguments(encoded)
 			}
-			return toolCallWire{content.ID, content.Name, arguments, content.ThoughtSignature, content.Namespace, content.ArgumentsError, content.scratch.wire()}, nil
+			return toolCallWire{content.ID, content.Name, arguments, content.ThoughtSignature, content.Namespace, content.ArgumentsError}, nil
 		}
 	}
 	if err := validateArgumentsValue(content.Arguments); err != nil {
@@ -195,7 +188,7 @@ func (content ToolCall) wire(stringify bool) (toolCallWire, error) {
 			arguments = json.RawMessage(ordered)
 		}
 	}
-	return toolCallWire{content.ID, content.Name, arguments, content.ThoughtSignature, content.Namespace, content.ArgumentsError, content.scratch.wire()}, nil
+	return toolCallWire{content.ID, content.Name, arguments, content.ThoughtSignature, content.Namespace, content.ArgumentsError}, nil
 }
 
 // orderedArguments is a validated arguments object written with its members in their recorded order (ToolCall.ArgumentsJSON).
@@ -325,7 +318,6 @@ type ThinkingContent struct {
 	Redacted          bool   `json:"redacted,omitempty"`
 
 	thinkingSignatureEmpty bool
-	scratch                contentIndexScratch
 }
 
 func (ThinkingContent) contentType() string { return "thinking" }
@@ -344,7 +336,6 @@ type thinkingContentWire struct {
 	Thinking          string  `json:"thinking"`
 	ThinkingSignature *string `json:"thinkingSignature,omitempty"`
 	Redacted          bool    `json:"redacted,omitempty"`
-	Index             *int    `json:"index,omitempty"`
 }
 
 func (content ThinkingContent) wire() thinkingContentWire {
@@ -352,7 +343,7 @@ func (content ThinkingContent) wire() thinkingContentWire {
 	if content.ThinkingSignature != "" || content.thinkingSignatureEmpty {
 		signature = &content.ThinkingSignature
 	}
-	return thinkingContentWire{content.Thinking, signature, content.Redacted, content.scratch.wire()}
+	return thinkingContentWire{content.Thinking, signature, content.Redacted}
 }
 
 func (content *ThinkingContent) UnmarshalJSON(data []byte) error {

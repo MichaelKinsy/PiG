@@ -12,12 +12,11 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// Pi's Anthropic stream keeps the provider's event index on every open block, and RPC serializes the partial as it is (packages/ai/src/api/anthropic-messages.ts:626-750). The wire object that RPC builds for text and thinking blocks must carry that index after their stable fields.
-func TestRPCAssistantContentCarriesOpenBlockIndex(t *testing.T) {
+// Pi's Anthropic stream keeps the provider's event index per open block in a Map beside the message, "kept off the content blocks so it never reaches partials" (packages/ai/src/api/anthropic-messages.ts:697-756), and RPC serializes the partial as it is. The wire object that RPC builds for text and thinking blocks must carry no index, however the provider numbered them.
+func TestRPCAssistantContentCarriesNoOpenBlockIndex(t *testing.T) {
 	sse := func(event, data string) string { return fmt.Sprintf("event: %s\ndata: %s\n\n", event, data) }
 	// The partial an event carries is the live message, so the server sends one block start at a time and waits until the test
-	// has serialized it: a client that lags the stream would otherwise see the finished message, in which Pi has deleted the
-	// index of every closed block.
+	// has serialized it: a client that lags the stream would otherwise see only the finished message, not each block as it opened.
 	chunks := []string{
 		sse("message_start", `{"type":"message_start","message":{"id":"m","model":"probe","usage":{"input_tokens":1,"output_tokens":1}}}`) +
 			sse("content_block_start", `{"type":"content_block_start","index":3,"content_block":{"type":"thinking","thinking":"","signature":""}}`),
@@ -74,9 +73,9 @@ func TestRPCAssistantContentCarriesOpenBlockIndex(t *testing.T) {
 		serialized <- struct{}{}
 	}
 	want := []string{
-		`[{"type":"thinking","thinking":"","thinkingSignature":"","index":3}]`,
-		`[{"type":"thinking","thinking":"","thinkingSignature":"","index":3},{"type":"text","text":"hi","index":4}]`,
-		`[{"type":"thinking","thinking":"","thinkingSignature":"","index":3},{"type":"text","text":"hi","index":4},{"type":"thinking","thinking":"[Reasoning redacted]","thinkingSignature":"sig","redacted":true,"index":5}]`,
+		`[{"type":"thinking","thinking":"","thinkingSignature":""}]`,
+		`[{"type":"thinking","thinking":"","thinkingSignature":""},{"type":"text","text":"hi"}]`,
+		`[{"type":"thinking","thinking":"","thinkingSignature":""},{"type":"text","text":"hi"},{"type":"thinking","thinking":"[Reasoning redacted]","thinkingSignature":"sig","redacted":true}]`,
 	}
 	if !slices.Equal(wire, want) {
 		t.Fatalf("rpc content:\n got %v\nwant %v", wire, want)

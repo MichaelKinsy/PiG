@@ -1,5 +1,5 @@
 {
- "pin": "1.4.0+74f46864",
+ "pin": "1.4.0+6c384aa3",
  "package": "pi-tui@1.4.0",
  "module": "pi-tui",
  "export": "CURSOR_MARKER",

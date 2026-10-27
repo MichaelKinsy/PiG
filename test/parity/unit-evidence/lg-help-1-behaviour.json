@@ -2085,7 +2085,7 @@
       "TestSnapshotAsOfQueuedBehindACommitThatPoisonsTheSessionRejects",
       "TestSnapshotQueuedBehindACommitThatPoisonsTheSessionRejectsWithoutReadingStorage",
       "TestWatchDocQueuedBehindACommitThatPoisonsTheSessionRejectsWithoutReadingStorage",
-      "TestWatchReleasesItsCommitSubscriptionWhenItEnds"
+      "TestWatchReleasesItsObserverSubscriptionWhenItEnds"
     ],
     "upstream": "packages/durable/src/types.ts",
     "upstream_reference": "types.ts DocumentReader (snapshot, snapshotAsOf) and DocumentObserver (watchDoc) implemented by Session"

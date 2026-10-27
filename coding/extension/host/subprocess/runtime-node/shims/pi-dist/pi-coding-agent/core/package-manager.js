@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, globSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, } from "node:fs";
+import { chmodSync, existsSync, globSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync, } from "node:fs";
 import { homedir } from "node:os";
 function getEnv() {
     if (process.platform !== "linux" || Object.keys(process.env).length > 0) {
@@ -715,7 +715,7 @@ export class DefaultPackageManager {
         }
         // Dedupe: project scope wins over global for same package identity
         const packageSources = this.dedupePackages(allPackages);
-        await this.resolvePackageSources(packageSources, accumulator, onMissing);
+        const installFailures = await this.resolvePackageSources(packageSources, accumulator, onMissing);
         const globalBaseDir = this.agentDir;
         const projectBaseDir = join(this.cwd, CONFIG_DIR_NAME);
         for (const resourceType of RESOURCE_TYPES) {
@@ -741,7 +741,7 @@ export class DefaultPackageManager {
             const projectEnabled = applyAutoloadDisabledPatterns([path], getOverridePatterns(projectSettings.extensions ?? []), projectBaseDir).get(path);
             this.addResource(accumulator.extensions, path, { source: "builtin", scope: projectEnabled === undefined ? "user" : "project", origin: "top-level" }, projectEnabled ?? isEnabledByOverrides(path, globalSettings.extensions ?? [], globalBaseDir));
         }
-        return this.toResolvedPaths(accumulator);
+        return { ...this.toResolvedPaths(accumulator), installFailures };
     }
     async resolveExtensionSources(sources, options) {
         const accumulator = this.createAccumulator();
@@ -753,8 +753,8 @@ export class DefaultPackageManager {
         const packageSources = sources
             .filter((source) => !source.startsWith(BUILTIN_PATH_PREFIX))
             .map((source) => ({ pkg: source, scope }));
-        await this.resolvePackageSources(packageSources, accumulator);
-        return this.toResolvedPaths(accumulator);
+        const installFailures = await this.resolvePackageSources(packageSources, accumulator);
+        return { ...this.toResolvedPaths(accumulator), installFailures };
     }
     listConfiguredPackages() {
         const globalSettings = this.settingsManager.getGlobalSettings();
@@ -998,6 +998,7 @@ export class DefaultPackageManager {
         return results.filter((result) => result !== undefined);
     }
     async resolvePackageSources(sources, accumulator, onMissing) {
+        const installFailures = [];
         for (const { pkg, scope } of sources) {
             const sourceStr = typeof pkg === "string" ? pkg : pkg.source;
             const filter = typeof pkg === "object" ? pkg : undefined;
@@ -1014,17 +1015,27 @@ export class DefaultPackageManager {
             const installMissing = async () => {
                 if (isOfflineModeEnabled())
                     return false;
-                if (!onMissing) {
+                if (onMissing) {
+                    const action = await onMissing(resolvedSource);
+                    if (action === "skip")
+                        return false;
+                    if (action === "error")
+                        throw new Error(`Missing source: ${resolvedSource}`);
+                }
+                // A source that cannot be installed (no network, missing package, failing git prepare step)
+                // must not abort startup. Skip its resources, like offline mode does, and report the failure.
+                try {
                     await this.installParsedSource(parsed, resolvedScope);
                     return true;
                 }
-                const action = await onMissing(resolvedSource);
-                if (action === "skip")
+                catch (error) {
+                    installFailures.push({
+                        source: resolvedSource,
+                        scope: resolvedScope,
+                        message: error instanceof Error ? error.message : String(error),
+                    });
                     return false;
-                if (action === "error")
-                    throw new Error(`Missing source: ${resolvedSource}`);
-                await this.installParsedSource(parsed, resolvedScope);
-                return true;
+                }
             };
             if (parsed.type === "npm") {
                 let installedPath = this.getNpmInstallPath(parsed, resolvedScope);
@@ -1055,6 +1066,7 @@ export class DefaultPackageManager {
                 this.collectPackageResources(installedPath, accumulator, filter, metadata);
             }
         }
+        return installFailures;
     }
     findAutoloadDeltaBase(pkg, scope, sources) {
         if (scope !== "project" || typeof pkg !== "object" || pkg.autoload !== false)
@@ -1502,7 +1514,9 @@ export class DefaultPackageManager {
         const npmCommand = this.getNpmCommand();
         return this.runCommandSync(npmCommand.command, [...npmCommand.args, ...args]);
     }
-    getNpmInstallArgs(specs, installRoot) {
+    getNpmInstallArgs(specs, root) {
+        // npm writes broken nested package-lock.json paths when --prefix goes through a symlink.
+        const installRoot = existsSync(root) ? realpathSync(root) : root;
         const packageManagerName = this.getPackageManagerName();
         // Extension packages run inside pi and resolve pi APIs through loader aliases/virtual modules.
         // Disable peer dependency resolution for managed installs (npm's --legacy-peer-deps, and
@@ -1530,10 +1544,12 @@ export class DefaultPackageManager {
         await this.runNpmCommand(this.getNpmInstallArgs([source.spec], installRoot));
     }
     async uninstallNpm(source, scope) {
-        const installRoot = this.getNpmInstallRoot(scope, false);
-        if (!existsSync(installRoot)) {
+        const root = this.getNpmInstallRoot(scope, false);
+        if (!existsSync(root)) {
             return;
         }
+        // npm writes broken nested package-lock.json paths when --prefix goes through a symlink.
+        const installRoot = realpathSync(root);
         const packageManagerName = this.getPackageManagerName();
         if (packageManagerName === "bun") {
             await this.runNpmCommand(["uninstall", source.name, "--cwd", installRoot]);

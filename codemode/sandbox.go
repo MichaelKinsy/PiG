@@ -16,12 +16,12 @@ import (
 
 // defaultTimeoutMs is the default deadline per execution.
 //
-// Ports packages/codemode/src/runtime/host.ts (DEFAULT_TIMEOUT_MS).
+// Ports packages/codemode/src/runtime/execution.ts (DEFAULT_TIMEOUT_MS).
 const defaultTimeoutMs = 300_000
 
 // reservedGlobals are the names a global may not shadow.
 //
-// Ports packages/codemode/src/runtime/host.ts (RESERVED_GLOBALS).
+// Ports packages/codemode/src/runtime/execution.ts (RESERVED_GLOBALS).
 var reservedGlobals = []string{"tools", "ALL_TOOLS", "console", "text", "image", "exit", "globalThis", "store", "load"}
 
 // Sandbox runs scripts in QuickJS VMs. Each Execute gets its own VM; the sandbox holds only the tool table and
@@ -94,10 +94,10 @@ func checkGlobals(globals []string) error {
 			valid = valid && isIdentifier(part)
 		}
 		if !valid || containsString(reservedGlobals, parts[0]) {
-			return fmt.Errorf("Invalid global name %q", name)
+			return fmt.Errorf("Invalid global name \"%s\"", name)
 		}
 		if names[name] {
-			return fmt.Errorf("Global %q is already registered", name)
+			return fmt.Errorf("Global \"%s\" is already registered", name)
 		}
 		if len(parts) == 2 && !namespaces[parts[0]] {
 			namespaces[parts[0]] = true
@@ -107,7 +107,7 @@ func checkGlobals(globals []string) error {
 	}
 	for _, name := range namespaceOrder {
 		if names[name] {
-			return fmt.Errorf("Global %q conflicts with the namespace %q", name, name)
+			return fmt.Errorf("Global \"%s\" conflicts with the namespace \"%s\"", name, name)
 		}
 	}
 	return nil
@@ -122,7 +122,7 @@ func (s *Sandbox) RegisterTool(tool Tool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.toolSet[tool.Name]; exists {
-		return fmt.Errorf("Tool %q is already registered", tool.Name)
+		return fmt.Errorf("Tool \"%s\" is already registered", tool.Name)
 	}
 	s.toolSet[tool.Name] = struct{}{}
 	s.tools = append(s.tools, tool)

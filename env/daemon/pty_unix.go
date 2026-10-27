@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"slices"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -109,12 +108,8 @@ func lookPath(name string, environment []string) (string, error) {
 // spawnFailure is the spawn_error of a program that could not start, in the words of Rust's io::Error that pty.rs
 // passes on: the system's text for the error number, then `(os error N)`.
 func spawnFailure(err error) *Failure {
-	if errno, ok := errors.AsType[syscall.Errno](err); ok {
-		text := errno.Error()
-		if text != "" {
-			text = strings.ToUpper(text[:1]) + text[1:]
-		}
-		return newFailure("spawn_error", text+" (os error "+strconv.Itoa(int(errno))+")")
+	if text, ok := rustIOError(err); ok {
+		return newFailure("spawn_error", text)
 	}
 	return newFailure("spawn_error", err.Error())
 }

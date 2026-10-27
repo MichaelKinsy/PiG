@@ -658,3 +658,8 @@ func graphListProgress(ctx context.Context, scope subprocess.SessionGraphScope, 
 		}
 	}, nil
 }
+
+// NewGraphSessionManagerOf is the SessionManager object of a session log that already exists: AgentSession.sessionManager as an extension holds it.
+func NewGraphSessionManagerOf(session *Session) *GraphSessionManager {
+	return &GraphSessionManager{session}
+}

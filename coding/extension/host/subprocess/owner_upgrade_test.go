@@ -2,9 +2,12 @@ package subprocess
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"golang.org/x/mod/modfile"
@@ -21,6 +24,17 @@ func TestLegacyStandaloneBuildsStagedSDKSubpackages(t *testing.T) {
 		data, err := sdk.Source.ReadFile(name)
 		if err != nil {
 			t.Fatal(err)
+		}
+		// An embedded name ending in .gz holds the gzip of the file under the name without it.
+		if stripped, compressed := strings.CutSuffix(name, ".gz"); compressed {
+			reader, err := gzip.NewReader(bytes.NewReader(data))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if data, err = io.ReadAll(reader); err != nil {
+				t.Fatal(err)
+			}
+			name = stripped
 		}
 		path := filepath.Join(sdkDir, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

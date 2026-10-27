@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/perfgate"
 )
 
@@ -23,7 +24,7 @@ func proxyLongSource(bytes int) string {
 // proxyDeltaRun returns a run that converts the opening of a block and then units deltas of 16 bytes of the block's text through a fresh converter.
 func proxyDeltaRun(t *testing.T, kind string, text string) func(units int) {
 	return func(units int) {
-		converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolJSON: map[int]string{}}
+		converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolArguments: map[proxyArgumentsKey]*ai.ToolCallArgumentsStream{}}
 		start := ProxyAssistantMessageEvent{Type: ProxyAssistantMessageEventType(kind + "_start"), ContentIndex: 0}
 		if kind == "toolcall" {
 			start.ID, start.ToolName = "call_0", "write"

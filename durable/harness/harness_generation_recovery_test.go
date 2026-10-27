@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -163,7 +165,8 @@ func TestGenerationRecovery(t *testing.T) {
 		var mu sync.Mutex
 		watched := ""
 		seen := false
-		watch.Start(func(_ context.Context, value durable.JsonObject, _ []durable.Op) error {
+		watch.Start(func(_ context.Context, change chord.WatchChange[durable.JsonObject]) error {
+			value := change.Value
 			generation, _ := value.Value("generation").(*delta.JsonObject)
 			message, _ := generation.Value("message").(*delta.JsonObject)
 			if got, ok := messageTextJSON(t, message); ok {
@@ -371,6 +374,71 @@ func TestGenerationRecovery(t *testing.T) {
 		}
 		if fetches := setup.Faux.(interface{ DeferredFetchCount() int }).DeferredFetchCount(); fetches != 1 {
 			t.Fatalf("deferred fetches = %d, want 1", fetches)
+		}
+		closeHarness(t, harness)
+	})
+
+	t.Run("polls a checkpoint stored without a thinking level and records none", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation-recovery.test.ts:290
+		path := filepath.Join(t.TempDir(), "session.sqlite")
+		pollAfter := int64(60_000)
+		setup := chatSetup(t, ai.FauxConfig{Deferred: &ai.FauxDeferredConfig{PollAfterMS: &pollAfter}})
+		var mu sync.Mutex
+		now := 1_000.0
+		setup.SetNow(func() float64 {
+			mu.Lock()
+			defer mu.Unlock()
+			return now
+		})
+		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("deferred answer")})
+		harness, root := openAt(t, path, setup)
+		if err := root.Configure(testContext, AgentChange{ThinkingLevel: SetTo(ai.ModelThinkingLevel("high"))}); err != nil {
+			t.Fatal(err)
+		}
+		harness.Resume()
+		setup.SetSettings(func(settings *HarnessSettings) {
+			settings.Stream = &durable.ConversationStreamOptions{Deferred: &ai.DeferredOption{Enabled: true}}
+		})
+		id := submitInput(t, root, "hi").Id()
+		waitFor(t, func() bool {
+			state := liveOf(t, harness, root.Id())
+			return state.Generation != nil && state.Generation.Deferred != nil
+		})
+		taskId := runTaskId(t, harness)
+		expectMatch(t, taskCheckpoint(t, harness, taskId), `{"phase":"poll","thinkingLevel":"high"}`)
+		closeHarness(t, harness)
+		// Earlier versions stored poll checkpoints without the field.
+		database, err := sqlitenode.OpenNodeSqliteDatabase(path, sqlitenode.NodeSqliteDatabaseOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := database.Run("UPDATE tasks SET record = json_remove(record, '$.state.checkpoint.thinkingLevel') WHERE id = ?", int64(taskId)); err != nil {
+			t.Fatal(err)
+		}
+		if err := database.Close(); err != nil {
+			t.Fatal(err)
+		}
+
+		harness, root = openAt(t, path, setup)
+		if text := jsonText(t, taskCheckpoint(t, harness, taskId)); strings.Contains(text, "thinkingLevel") {
+			t.Fatalf("checkpoint %s still has a thinking level", text)
+		}
+		mu.Lock()
+		now = 61_000
+		mu.Unlock()
+		harness.Resume()
+		settled := must(submissionOfHarness(t, harness, id).Wait(testContext))
+		if settled.Status != durable.SubmissionDone || settled.Type != durable.SubmissionTypeInput {
+			t.Fatalf("Unexpected %s", settled.Status)
+		}
+		answer := commitValue(t, root, func(tx durable.Tx) (*durable.TypedEntry[durable.Never], error) {
+			return durable.TxEntry(tx, durable.AssistantEntry, *settled.Answer)
+		})
+		if got, _ := textOf(answer.Model[0]); got != "deferred answer" {
+			t.Fatalf("answer = %q", got)
+		}
+		if text := jsonText(t, answer.Model[0]); strings.Contains(text, "thinkingLevel") {
+			t.Fatalf("answer %s records a thinking level the checkpoint did not have", text)
 		}
 		closeHarness(t, harness)
 	})

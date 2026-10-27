@@ -383,17 +383,11 @@ func TestProxyRequestPreservesOptionPresence(t *testing.T) {
 	}
 }
 
-// streamingProxyToolCall is call with the partialJson member an unfinished streamed call keeps (proxy.ts:343-357).
-func streamingProxyToolCall(call ai.ToolCall, partialJson string) ai.ToolCall {
-	call.SetPartialJson(partialJson)
-	return call
-}
-
-// Upstream processProxyEvent gives each toolcall_start a new block with partialJson: "", even when its index replaces an unfinished tool.
+// Upstream processProxyEvent gives each toolcall_start a new block and a new argument stream, even when its index replaces an unfinished tool.
 func TestProxyEventConverterRestartsToolIndex(t *testing.T) {
 	for _, staleJSON := range []string{`{"stale":1}`, `{"stale":"unfinished`} {
 		t.Run(staleJSON, func(t *testing.T) {
-			converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolJSON: map[int]string{}}
+			converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolArguments: map[proxyArgumentsKey]*ai.ToolCallArgumentsStream{}}
 			for _, event := range []ProxyAssistantMessageEvent{
 				{Type: "toolcall_start", ContentIndex: 0, ID: "old", ToolName: "lookup"},
 				{Type: "toolcall_delta", ContentIndex: 0, Delta: staleJSON},
@@ -403,21 +397,16 @@ func TestProxyEventConverterRestartsToolIndex(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if got := converter.toolJSON[0]; got != "" {
-				t.Errorf("restarted tool JSON = %q, want empty", got)
-			}
-			if got, want := converter.partial.Content[0], streamingProxyToolCall(ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{}}, ""); !reflect.DeepEqual(got, want) {
+			if got, want := converter.partial.Content[0], (ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{}}); !reflect.DeepEqual(got, want) {
 				t.Errorf("restarted tool = %#v, want %#v", got, want)
 			}
-			partialJson := ""
 			for _, delta := range []string{`{"fresh":2`, `}`} {
-				partialJson += delta
 				event, err := converter.process(ProxyAssistantMessageEvent{Type: "toolcall_delta", ContentIndex: 0, Delta: delta})
 				if err != nil {
 					t.Fatal(err)
 				}
 				got := event.(ai.ToolCallDeltaEvent).Partial.Content[0]
-				want := streamingProxyToolCall(ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{"fresh": float64(2)}}, partialJson)
+				want := ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{"fresh": float64(2)}}
 				if !reflect.DeepEqual(got, want) {
 					t.Errorf("tool after delta %q = %#v, want %#v", delta, got, want)
 				}
@@ -457,11 +446,11 @@ func TestStreamProxyRestartsToolIndex(t *testing.T) {
 		partial *ai.AssistantMessage
 		want    ai.ToolCall
 	}{
-		{"old delta", events[2].(ai.ToolCallDeltaEvent).Partial, streamingProxyToolCall(ai.ToolCall{ID: "old", Name: "lookup", Arguments: ai.JsonObject{"stale": float64(1)}}, `{"stale":1}`)},
-		{"new start", events[3].(ai.ToolCallStartEvent).Partial, streamingProxyToolCall(ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{}}, "")},
-		{"new delta", events[4].(ai.ToolCallDeltaEvent).Partial, streamingProxyToolCall(ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{"fresh": float64(2)}}, `{"fresh":2}`)},
+		{"old delta", events[2].(ai.ToolCallDeltaEvent).Partial, ai.ToolCall{ID: "old", Name: "lookup", Arguments: ai.JsonObject{"stale": float64(1)}}},
+		{"new start", events[3].(ai.ToolCallStartEvent).Partial, ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{}}},
+		{"new delta", events[4].(ai.ToolCallDeltaEvent).Partial, ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{"fresh": float64(2)}}},
 		// No toolcall_end arrived, so the delivered call keeps its partialJson member, as Pi's does.
-		{"result", result, streamingProxyToolCall(ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{"fresh": float64(2)}}, `{"fresh":2}`)},
+		{"result", result, ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{"fresh": float64(2)}}},
 	} {
 		if got, want := check.partial.Observe().Content, []ai.AssistantContentBlock{check.want}; !reflect.DeepEqual(got, want) {
 			t.Errorf("%s content = %#v, want %#v", check.name, got, want)

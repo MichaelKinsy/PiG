@@ -291,7 +291,7 @@ func TestListenersOfAFailingPublication(t *testing.T) {
 		kernel, _, reports := openScripted(t)
 		var host int
 		kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) { host++ })
-		kernel.ObserveCommits(func(context.Context, durable.CommitPublication) { panic(errors.New("bookkeeping failed")) })
+		kernel.ObserveCommits(func(context.Context, session.ObservedCommit) { panic(errors.New("bookkeeping failed")) })
 		err := commitOne(func() error {
 			return tryCommit(kernel, func(tx durable.Tx) error {
 				_, err := tx.CreateConversation(ownerless())

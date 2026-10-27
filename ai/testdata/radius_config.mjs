@@ -5,13 +5,15 @@
 // A number JSON cannot hold (Infinity, -Infinity) is written as its string.
 import { readFileSync } from "node:fs";
 import module from "node:module";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 const path = process.argv[2];
 const { normalizeRadiusGatewayUrl, getRadiusCredentialConfig, getRadiusModels } = await import(pathToFileURL(path).href);
+const { ownedSlice } = await import(pathToFileURL(join(dirname(path), "..", "utils", "text.ts")).href);
 const source = readFileSync(path, "utf8");
 const cut = /^function truncateHttpBody[\s\S]*?\n}\n/m.exec(source);
 if (!cut) throw new Error("truncateHttpBody not found");
-const truncateHttpBody = new Function(`${module.stripTypeScriptTypes(cut[0])}; return truncateHttpBody;`)();
+const truncateHttpBody = new Function("ownedSlice", `${module.stripTypeScriptTypes(cut[0])}; return truncateHttpBody;`)(ownedSlice);
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;

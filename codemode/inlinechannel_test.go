@@ -2,6 +2,7 @@ package codemode
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"sync"
 	"testing"
@@ -167,5 +168,43 @@ func TestAnInlineFirstSegmentDeliversItsResultBeforeAnExpiredDeadline(t *testing
 	}
 	if !result.OK || string(result.Value) != "3" {
 		t.Fatalf("result = %+v (%+v), want ok 3: Pi delivers the segment's result before the expired deadline", result, result.Error)
+	}
+}
+
+// The deadline of an in-thread VM is checked between the turns of the event loop, so a deadline that expires while a later
+// segment computes waits for that segment's result: Pi's host arms the deadline before the launcher runs, and Node runs its
+// timer only between tasks (probed against live Pi ea448f45: wait 10 ms, spin 500 ms, deadline 300 ms: ok).
+//
+// The execution arms its deadline when the VM is ready, before the VM starts and runs the script's first segment. Measured
+// here, that start takes 26 ms on an idle host and 290 to 390 ms with one CPU shared by eight busy processes, so a 400 ms
+// deadline armed at the VM's ready expires before the later segment begins: a timeout, which Pi reports there too, and the
+// test observes how fast the host starts a VM instead of the behavior. The launcher below leaves the arming to the step the
+// execution takes when the launcher returns (execution.launch), which is when the VM has started and run its first segment:
+// the 400 ms covers the wait on the tool and the delivery of its result, and the segment, which computes for 800 ms, outlasts it.
+func TestAnInlineLaterSegmentDeliversItsResultBeforeAnExpiredDeadline(t *testing.T) {
+	wait := Tool{Name: "wait", Execute: func(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+		time.Sleep(10 * time.Millisecond)
+		return args, nil
+	}}
+	sandbox, err := NewInlineSandbox(InlineSandboxOptions{InterruptBudget: 10_000_000, SandboxOptions: SandboxOptions{Tools: []Tool{wait}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sandbox.Close() })
+	if r, _ := sandbox.Execute(t.Context(), "return 0", ExecuteOptions{}); !r.OK {
+		t.Fatalf("warm-up: %+v", r.Error)
+	}
+	inline := sandbox.launcher
+	sandbox.launcher = func(ctx context.Context, data VmStartData, events vmEvents) (vmChannel, error) {
+		events.ready = func() {}
+		return inline(ctx, data, events)
+	}
+	const code = "const spin = (ms) => { const t = Date.now(); while (Date.now() - t < ms) {} }; await tools.wait(10); spin(800); return 2"
+	result, err := sandbox.Execute(t.Context(), code, ExecuteOptions{TimeoutMs: 400})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || string(result.Value) != "2" {
+		t.Fatalf("result = %+v (%+v), want ok 2: Pi delivers the segment's result before the expired deadline", result, result.Error)
 	}
 }

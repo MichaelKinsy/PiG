@@ -320,7 +320,7 @@ func (env *NodeExecutionEnv) RenameFile(ctx context.Context, sourcePath, destina
 	if err := abortedFileError(ctx, destination); err != nil {
 		return err
 	}
-	if err := os.Rename(source, destination); err != nil {
+	if err := nodeerrno.Rename(source, destination); err != nil {
 		return toFileError(err, fsCall{syscall: "rename", path: source, dest: destination})
 	}
 	return nil

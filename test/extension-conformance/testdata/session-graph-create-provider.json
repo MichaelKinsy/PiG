@@ -1,0 +1,283 @@
+{
+	"deferred": {
+		"cancelNoApi": "Provider dp cannot cancel deferred responses for \"api-z\"",
+		"cancelOk": "no error",
+		"cancelUnsupported": "Provider dp cannot cancel deferred responses for \"api-b\"",
+		"cancelled": [
+			"h1"
+		],
+		"fetched": {
+			"api": "api-a",
+			"error": null,
+			"model": "c1",
+			"provider": "cp",
+			"stopReason": "stop",
+			"text": "a.fetch.h1:c1",
+			"timestampIsNumber": true,
+			"types": [
+				"done"
+			],
+			"usageZero": true
+		},
+		"noApi": {
+			"api": "api-z",
+			"error": "Provider dp does not support deferred responses for \"api-z\"",
+			"model": "c3",
+			"provider": "cp",
+			"stopReason": "error",
+			"text": "",
+			"timestampIsNumber": true,
+			"types": [
+				"error"
+			],
+			"usageZero": true
+		},
+		"thrown": {
+			"api": "api-a",
+			"error": "fetch boom",
+			"model": "c1",
+			"provider": "cp",
+			"stopReason": "error",
+			"text": "",
+			"timestampIsNumber": true,
+			"types": [
+				"error"
+			],
+			"usageZero": true
+		},
+		"unsupported": {
+			"api": "api-b",
+			"error": "Provider dp does not support deferred responses for \"api-b\"",
+			"model": "c2",
+			"provider": "cp",
+			"stopReason": "error",
+			"text": "",
+			"timestampIsNumber": true,
+			"types": [
+				"error"
+			],
+			"usageZero": true
+		}
+	},
+	"dispatch": {
+		"a": {
+			"api": "api-a",
+			"error": null,
+			"model": "c1",
+			"provider": "cp",
+			"stopReason": "stop",
+			"text": "a.stream:c1",
+			"timestampIsNumber": true,
+			"types": [
+				"done"
+			],
+			"usageZero": true
+		},
+		"b": {
+			"api": "api-b",
+			"error": null,
+			"model": "c2",
+			"provider": "cp",
+			"stopReason": "stop",
+			"text": "b.simple:c2",
+			"timestampIsNumber": true,
+			"types": [
+				"done"
+			],
+			"usageZero": true
+		},
+		"missing": {
+			"api": "api-z",
+			"error": "Provider cp has no API implementation for \"api-z\"",
+			"model": "c9",
+			"provider": "cp",
+			"stopReason": "error",
+			"text": "",
+			"timestampIsNumber": true,
+			"types": [
+				"error"
+			],
+			"usageZero": true
+		},
+		"noApi": {
+			"api": null,
+			"error": "Provider cp has no API implementation for \"undefined\"",
+			"model": "c8",
+			"provider": "cp",
+			"stopReason": "error",
+			"text": "",
+			"timestampIsNumber": true,
+			"types": [
+				"error"
+			],
+			"usageZero": true
+		},
+		"single": {
+			"api": "anything",
+			"error": null,
+			"model": "x",
+			"provider": "cp",
+			"stopReason": "stop",
+			"text": "s.stream:x",
+			"timestampIsNumber": true,
+			"types": [
+				"done"
+			],
+			"usageZero": true
+		}
+	},
+	"invalid": {
+		"empty": "Provider e2: at least one of \"api\", \"images\", or \"classifiers\" is required.",
+		"none": "Provider e1: at least one of \"api\", \"images\", or \"classifiers\" is required."
+	},
+	"meta": {
+		"baseUrl": "http://x",
+		"headers": {
+			"h": "1"
+		},
+		"id": "cp",
+		"methods": {
+			"cancelDeferred": "undefined",
+			"classify": "undefined",
+			"fetchDeferred": "undefined",
+			"filterAllModels": "undefined",
+			"filterModels": "undefined",
+			"generateImages": "undefined",
+			"refreshModels": "undefined"
+		},
+		"name": "cp",
+		"named": "Named"
+	},
+	"models": {
+		"all": [
+			"c1",
+			"c2",
+			"i1",
+			"k1"
+		],
+		"chat": [
+			"c1",
+			"c2"
+		]
+	},
+	"operations": {
+		"classify": {
+			"answers": {
+				"q": "a"
+			},
+			"api": "cls-a",
+			"error": null,
+			"model": "k1",
+			"output": null,
+			"provider": "cp",
+			"stopReason": "stop",
+			"timestampIsNumber": true
+		},
+		"classifyMissing": {
+			"answers": {},
+			"api": "cls-z",
+			"error": "Provider op has no classifier implementation for \"cls-z\"",
+			"model": "k2",
+			"output": null,
+			"provider": "cp",
+			"stopReason": "error",
+			"timestampIsNumber": true
+		},
+		"image": {
+			"answers": null,
+			"api": "img-a",
+			"error": null,
+			"model": "i1",
+			"output": [
+				{
+					"data": "x",
+					"type": "image"
+				}
+			],
+			"provider": "cp",
+			"stopReason": "stop",
+			"timestampIsNumber": true
+		},
+		"imageMissing": {
+			"answers": null,
+			"api": "img-z",
+			"error": "Provider op has no image generation implementation for \"img-z\"",
+			"model": "i2",
+			"output": [],
+			"provider": "cp",
+			"stopReason": "error",
+			"timestampIsNumber": true
+		},
+		"methods": {
+			"classify": "function",
+			"generateImages": "function",
+			"stream": "function"
+		}
+	},
+	"refresh": {
+		"aborted": {
+			"fetchCalls": [],
+			"publications": [
+				{
+					"persist": "omitted",
+					"update": "function"
+				}
+			]
+		},
+		"absent": "undefined",
+		"fetched": {
+			"catalog": [
+				"c1:Fetched One:chat",
+				"c2:c2:chat",
+				"c3:c3:chat",
+				"i1:i1:image"
+			],
+			"chat": [
+				"c1",
+				"c2",
+				"c3"
+			],
+			"fetchCalls": [
+				true
+			],
+			"publications": [
+				{
+					"persist": {
+						"checkedAt": "number",
+						"models": [
+							"c1",
+							"c3",
+							"i1"
+						]
+					},
+					"update": "function"
+				}
+			]
+		},
+		"initial": [
+			"c1:Base One:chat",
+			"c2:c2:chat"
+		],
+		"present": "function",
+		"refused": {
+			"catalog": [
+				"c1:Stored One:chat",
+				"c2:c2:chat"
+			],
+			"fetchCalls": []
+		},
+		"restoredOffline": {
+			"catalog": [
+				"c1:Stored One:chat",
+				"c2:c2:chat"
+			],
+			"fetchCalls": [],
+			"publications": [
+				{
+					"persist": "omitted",
+					"update": "function"
+				}
+			]
+		}
+	}
+}

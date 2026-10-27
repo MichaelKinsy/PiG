@@ -27,12 +27,17 @@ type grammarConstrainedSampling struct {
 
 // grammarToolInputJSONBuffer accumulates a grammar tool's streamed string input
 // and reconstructs it as monotonic JSON-argument deltas. Mirrors upstream
-// GrammarToolInputJsonBuffer.
+// GrammarToolInputJsonBuffer. It is used through a pointer: the input is a
+// growing buffer, so a delta costs time linear in itself, never in the input
+// so far.
 type grammarToolInputJSONBuffer struct {
-	Input   string
+	input   strings.Builder
 	Started bool
 	Closed  bool
 }
+
+// Input is the input streamed so far.
+func (buffer *grammarToolInputJSONBuffer) Input() string { return buffer.input.String() }
 
 // jsonStringJS encodes s the way JavaScript's JSON.stringify does: without Go's
 // default HTML escaping of <, >, & and with U+2028 and U+2029 written raw: so
@@ -53,42 +58,53 @@ func getGrammarToolInput(toolName string, arguments map[string]any, inputPropert
 	return input, nil
 }
 
-// appendGrammarToolInputJSONDelta appends the next streamed grammar input to the
-// buffer and returns the JSON-argument delta to emit (ok=false means "no delta",
-// upstream's undefined). Mirrors upstream appendGrammarToolInputJsonDelta.
-func appendGrammarToolInputJSONDelta(buffer *grammarToolInputJSONBuffer, inputProperty, nextInput string, closeBuf bool) (string, bool, error) {
+// appendGrammarToolInputJSONDelta appends inputDelta to a streaming grammar tool input and returns the matching piece of its JSON
+// arguments text (ok=false means "no delta", upstream's undefined, for an empty delta). It costs time linear in the delta, never
+// in the input so far. Mirrors upstream appendGrammarToolInputJsonDelta.
+func appendGrammarToolInputJSONDelta(buffer *grammarToolInputJSONBuffer, inputProperty, inputDelta string) (string, bool, error) {
 	if buffer.Closed {
-		if closeBuf && nextInput == buffer.Input {
+		return "", false, fmt.Errorf("grammar tool input for property \"%s\" changed after it was closed", inputProperty)
+	}
+	if inputDelta == "" {
+		return "", false, nil
+	}
+	buffer.input.WriteString(inputDelta)
+	// JSON.stringify(inputDelta).slice(1, -1): the escaped body without quotes.
+	encoded := jsonStringJS(inputDelta)
+	return grammarToolInputJSONStart(buffer, inputProperty) + encoded[1:len(encoded)-1], true, nil
+}
+
+// closeGrammarToolInputJSON closes a streaming grammar tool input and returns the rest of its JSON arguments text. finalInput is
+// the complete input when the provider sends one (nil when it does not); it must continue the input streamed so far. Closing again
+// with the same input returns no delta. Mirrors upstream closeGrammarToolInputJson.
+func closeGrammarToolInputJSON(buffer *grammarToolInputJSONBuffer, inputProperty string, finalInput *string) (string, bool, error) {
+	if buffer.Closed {
+		if finalInput == nil || *finalInput == buffer.Input() {
 			return "", false, nil
 		}
 		return "", false, fmt.Errorf("grammar tool input for property \"%s\" changed after it was closed", inputProperty)
 	}
-	if !strings.HasPrefix(nextInput, buffer.Input) {
-		return "", false, fmt.Errorf("grammar tool input for property \"%s\" changed non-monotonically", inputProperty)
+	rest := ""
+	if finalInput != nil {
+		current := buffer.Input()
+		if !strings.HasPrefix(*finalInput, current) {
+			return "", false, fmt.Errorf("grammar tool input for property \"%s\" changed non-monotonically", inputProperty)
+		}
+		rest = (*finalInput)[len(current):]
+		buffer.input.WriteString(rest)
 	}
+	buffer.Closed = true
+	encoded := jsonStringJS(rest)
+	return grammarToolInputJSONStart(buffer, inputProperty) + encoded[1:len(encoded)-1] + `"}`, true, nil
+}
 
-	inputDelta := nextInput[len(buffer.Input):]
-	if !closeBuf && inputDelta == "" {
-		return "", false, nil
+// grammarToolInputJSONStart is the opening of the JSON arguments text, once.
+func grammarToolInputJSONStart(buffer *grammarToolInputJSONBuffer, inputProperty string) string {
+	if buffer.Started {
+		return ""
 	}
-
-	var delta strings.Builder
-	if !buffer.Started {
-		delta.WriteString("{")
-		delta.WriteString(jsonStringJS(inputProperty))
-		delta.WriteString(`:"`)
-		buffer.Started = true
-	}
-	// JSON.stringify(inputDelta).slice(1, -1): the escaped body without quotes.
-	encoded := jsonStringJS(inputDelta)
-	delta.WriteString(encoded[1 : len(encoded)-1])
-	buffer.Input = nextInput
-
-	if closeBuf {
-		delta.WriteString(`"}`)
-		buffer.Closed = true
-	}
-	return delta.String(), true, nil
+	buffer.Started = true
+	return "{" + jsonStringJS(inputProperty) + `:"`
 }
 
 // inferGrammarInputProperty resolves the single required string property that

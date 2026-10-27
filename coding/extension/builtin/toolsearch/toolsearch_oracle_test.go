@@ -189,3 +189,61 @@ func sameTerms(a, b []string) bool {
 	}
 	return true
 }
+
+// A query that names a tool ranks it first, as Pi's isNameQuery decides it: the full normalized name or a suffix after `__`. Pi's tool.js runs over tools whose names
+// hold separators, upper case, the Kelvin sign and U+0130 (JS lowercases them before the replacement), a character outside the BMP (two UTF-16 code units, each
+// replaced) and surrounding white space, with the queries that name them in every form, partial names and non-names; names, order and scores must match.
+func TestToolSearchNameQueriesMatchPi(t *testing.T) {
+	names := []string{
+		"mcp__app__queue_read", "mcp__dev-app__thread_read", "thread_read", "app__thread_read", "mcp__app__THREAD_READ", "mcp__a.b__read thread", "\u212aelvin_read",
+		"\u0130stanbul_read", "x\U0001F600y_read", "mcp__$dollar__read", "read", "mcp__x__read", "mcp__x____read",
+	}
+	queries := []string{
+		"thread_read", "Thread_Read", "thread read", "dev_app__thread_read", "mcp__dev-app__thread_read", "app__thread_read", " thread_read ", "THREAD-READ", "read", "mcp__x__read",
+		"x__read", "__read", "kelvin_read", "\u212aelvin_read", "i_stanbul_read", "\u0130stanbul_read", "x__y_read", "x\U0001F600y_read", "$dollar__read", "mcp__a_b__read_thread", "a.b__read thread", "mcp__app__queue_read",
+	}
+	type probe struct {
+		Names []string `json:"names"`
+		Query string   `json:"query"`
+		Limit int      `json:"limit"`
+	}
+	var probes []probe
+	for _, query := range queries {
+		for _, limit := range []int{1, 3, 50} {
+			probes = append(probes, probe{Names: names, Query: query, Limit: limit})
+		}
+	}
+	type matchOut struct {
+		Name  string  `json:"name"`
+		Score float64 `json:"score"`
+	}
+	var want [][]matchOut
+	pioracle.Run(t, `
+const m = await load("pi-coding-agent/extensions/tool-search/tool.js");
+emit(input.map((p) => {
+	const docs = p.names.map((name, i) => m.createToolSearchDocument({ name, description: i % 2 === 0 ? "Read a thread message." : "Read durable state and a paginated timeline from any thread. The default view returns user messages, assistant messages and plans.", parameters: { type: "object", properties: {} } }));
+	return new m.Bm25Ranker().rank(p.query, docs, p.limit);
+}));
+`, probes, &want)
+	for i, p := range probes {
+		var docs []Document
+		for j, name := range p.Names {
+			description := "Read a thread message."
+			if j%2 == 1 {
+				description = "Read durable state and a paginated timeline from any thread. The default view returns user messages, assistant messages and plans."
+			}
+			docs = append(docs, CreateDocument(extension.ToolInfo{Name: name, Description: description, Parameters: json.RawMessage(`{"type":"object","properties":{}}`)}, nil))
+		}
+		got := NewBm25Ranker().Rank(p.Query, docs, p.Limit)
+		if len(got) != len(want[i]) {
+			t.Errorf("query %q limit %d: got %v, want %v", p.Query, p.Limit, got, want[i])
+			continue
+		}
+		for k := range got {
+			if got[k].Name != want[i][k].Name || got[k].Score != want[i][k].Score {
+				t.Errorf("query %q limit %d: got %v, want %v", p.Query, p.Limit, got, want[i])
+				break
+			}
+		}
+	}
+}

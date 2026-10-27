@@ -1,17 +1,18 @@
 //! Pi's `DefaultResourceLoader` class (core/resource-loader.ts): the skills, prompt templates, themes, context files, system prompt and extensions of a project and agent directory. The host owns the loader; a loader passed to `create_agent_session` is the very loader the child session reads. Call `reload` before reading, as Pi requires. Results are Pi's JSON shapes (a theme is its `name`, `sourcePath` and `sourceInfo`, an extension its `path`, `resolvedPath`, `sourceInfo` and `tools`: the objects themselves hold functions that live in the host).
 
 use crate::context::Context;
+use crate::extension_runtime::ExtensionRuntime;
 use crate::graph::{callback_id, GraphCallback, GraphObject};
 use crate::settings_manager::SettingsManager;
 use serde_json::{json, Value};
 use std::io;
+use std::ops::Deref;
 use std::sync::Arc;
 
 /// An override function of the options: it takes Pi's JSON argument and answers Pi's JSON result.
 pub type LoaderOverride = Arc<dyn Fn(Value) -> Value + Send + Sync>;
 
-/// A factory of an inline extension. Not supported yet: see [`DefaultResourceLoaderOptions::extension_factories`].
-pub type InlineExtensionFactory = Box<dyn Fn(&mut crate::Extension) + Send + Sync>;
+pub use crate::extension_factories::{ExtensionFactory, InlineExtensionFactory};
 
 /// Pi's `DefaultResourceLoaderOptions`. `None`, an empty list and `false` are Pi's undefined.
 ///
@@ -21,11 +22,13 @@ pub struct DefaultResourceLoaderOptions<'a> {
     pub cwd: String,
     pub agent_dir: String,
     pub settings_manager: Option<&'a SettingsManager>,
+    /// The runtime the loader loads its extensions against, which `create_extension_runtime` made. pig additive (D201): Pi's loader takes none (its loadExtensions does); this is how a runtime made first reaches the extensions. `None`: each reload makes its own, as Pi's does.
+    pub runtime: Option<&'a ExtensionRuntime>,
     pub additional_extension_paths: Vec<String>,
     pub additional_skill_paths: Vec<String>,
     pub additional_prompt_template_paths: Vec<String>,
     pub additional_theme_paths: Vec<String>,
-    pub extension_factories: Vec<InlineExtensionFactory>,
+    pub extension_factories: Vec<ExtensionFactory>,
     pub no_extensions: bool,
     pub disabled_builtin_extensions: Vec<String>,
     pub no_skills: bool,
@@ -51,6 +54,43 @@ fn callback(context: &Context, override_fn: &Option<LoaderOverride>) -> Value {
     callback_id(context, wrapped)
 }
 
+/// One extension of a load: its `path`, `resolvedPath`, `sourceInfo` and `tools` as data (the extension object holds functions that live in the host), and the loader it was read from. It reads as that data.
+#[derive(Clone)]
+pub struct LoadedExtension {
+    data: Value,
+    loader: String,
+}
+
+impl LoadedExtension {
+    /// The handle of the loader the extension was read from, which `ExtensionRunner::new` names to the host.
+    pub(crate) fn loader(&self) -> &str {
+        &self.loader
+    }
+}
+
+impl Deref for LoadedExtension {
+    type Target = Value;
+    fn deref(&self) -> &Value {
+        &self.data
+    }
+}
+
+/// Pi's `LoadExtensionsResult`: the extensions of a load with its `errors` and `warnings`, and the `runtime` they share. It reads as the data object `{extensions, errors, warnings}`.
+pub struct LoadExtensionsResult {
+    data: Value,
+    /// The extensions of the load, which `ExtensionRunner::new` takes.
+    pub extensions: Vec<LoadedExtension>,
+    /// Pi's `runtime`.
+    pub runtime: ExtensionRuntime,
+}
+
+impl Deref for LoadExtensionsResult {
+    type Target = Value;
+    fn deref(&self) -> &Value {
+        &self.data
+    }
+}
+
 /// Pi's `DefaultResourceLoader`. Dropping it releases the host's reference; a session created from it keeps its own.
 pub struct DefaultResourceLoader {
     object: GraphObject,
@@ -59,7 +99,7 @@ pub struct DefaultResourceLoader {
 impl DefaultResourceLoader {
     /// `new DefaultResourceLoader(options)`.
     pub fn new(context: &Context, options: DefaultResourceLoaderOptions) -> io::Result<DefaultResourceLoader> {
-        if !options.extension_factories.is_empty() {
+        if options.extension_factories.iter().any(|factory| matches!(factory, ExtensionFactory::Inline(_))) {
             return Err(io::Error::other("DefaultResourceLoader option extensionFactories is not supported by the Rust SDK: an inline factory runs in this process but the child session's extensions load in the host (decision pending, gap SdkSessionGraph); use additional_extension_paths, or create_agent_session custom tools"));
         }
         if options.extensions_override.is_some() {
@@ -77,8 +117,29 @@ impl DefaultResourceLoader {
             "systemPromptOverride": callback(context, &options.system_prompt_override),
             "appendSystemPromptOverride": callback(context, &options.append_system_prompt_override),
         });
+        let references: Vec<Value> = options
+            .extension_factories
+            .iter()
+            .filter_map(|factory| match factory {
+                ExtensionFactory::Builtin { name, options, mcp } => {
+                    // The option object is built for each loader: a function is named to the host in the connection's table once per loader it is passed to.
+                    let mut options = options.clone();
+                    if let (Some(functions), Some(wire)) = (mcp, options.as_object_mut()) {
+                        functions.register(context, wire);
+                    }
+                    Some(json!({"builtin": name, "options": options}))
+                }
+                ExtensionFactory::Inline(_) => None,
+            })
+            .collect();
+        if !references.is_empty() {
+            wire["extensionFactories"] = Value::Array(references);
+        }
         if let Some(settings) = options.settings_manager {
             wire["settingsManager"] = json!(settings.handle());
+        }
+        if let Some(runtime) = options.runtime {
+            wire["runtime"] = json!(runtime.handle());
         }
         Ok(DefaultResourceLoader { object: GraphObject::construct(context, "DefaultResourceLoader", "new", vec![wire])? })
     }
@@ -88,8 +149,17 @@ impl DefaultResourceLoader {
         self.object.handle()
     }
 
-    /// The extensions of the last `reload`, as data.
-    pub fn get_extensions(&self) -> io::Result<Value> { self.object.call("getExtensions", vec![]) }
+    /// The extensions of the last `reload`, as data, with the runtime they share.
+    pub fn get_extensions(&self) -> io::Result<LoadExtensionsResult> {
+        self.extensions_result(self.object.call("getExtensions", vec![])?)
+    }
+
+    fn extensions_result(&self, data: Value) -> io::Result<LoadExtensionsResult> {
+        let loader = self.object.handle().to_string();
+        let extensions = data["extensions"].as_array().map(|list| list.iter().map(|extension| LoadedExtension { data: extension.clone(), loader: loader.clone() }).collect()).unwrap_or_default();
+        let runtime = ExtensionRuntime::of_loader(self.object.context(), &loader)?;
+        Ok(LoadExtensionsResult { data, extensions, runtime })
+    }
     /// `{"skills", "diagnostics"}` of the last `reload`.
     pub fn get_skills(&self) -> io::Result<Value> { self.object.call("getSkills", vec![]) }
     /// `{"prompts", "diagnostics"}` of the last `reload`.
@@ -110,7 +180,9 @@ impl DefaultResourceLoader {
     /// Adds the skills, prompt templates and themes extensions contributed: `{"skillPaths", "promptPaths", "themePaths"}`, lists of `{"path", "metadata": {"source", "scope", "origin", "baseDir"?}}`.
     pub fn extend_resources(&self, paths: Value) -> io::Result<()> { self.object.call("extendResources", vec![paths]).map(|_| ()) }
     /// The bootstrap extension set, loaded with project settings untrusted, that project trust is decided with.
-    pub fn load_project_trust_extensions(&self) -> io::Result<Value> { self.object.call_async("loadProjectTrustExtensions", vec![]) }
+    pub fn load_project_trust_extensions(&self) -> io::Result<LoadExtensionsResult> {
+        self.extensions_result(self.object.call_async("loadProjectTrustExtensions", vec![])?)
+    }
     /// Rediscovers every resource. `resolve_project_trust` takes the bootstrap extension set and answers whether the project is trusted.
     pub fn reload(&self, resolve_project_trust: Option<Arc<dyn Fn(Value) -> bool + Send + Sync>>) -> io::Result<()> {
         let mut options = serde_json::Map::new();

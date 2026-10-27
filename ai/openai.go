@@ -1883,16 +1883,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		wireIndex   *int
 		id          string
 		name        string
-		// customProp/customIn/grammarBuf reconstruct a streamed grammar tool
-		// call's raw input into JSON arguments. Mirrors openai-completions.ts
-		// StreamingToolCallBlock.customInput.
-		customProp string
-		customIn   string
-		// customGrown holds customIn's bytes, so a delta appends to them instead of copying them.
-		customGrown accumulatedString
-		grammarBuf  *grammarToolInputJSONBuffer
 	}
-	partials := map[int]*partialTool{}
 	partialsByWireIndex := map[int]*partialTool{}
 	partialsByID := map[string]*partialTool{}
 	nextStreamIndex := 0
@@ -1930,7 +1921,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	supportsFinishReason := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsFinishReason }, true)
 	openRouter := isOpenRouterModel(p.cfg.ProviderID, p.cfg.BaseURL)
 	inferredStopReason := func() StopReason {
-		if len(partials) > 0 {
+		if nextStreamIndex > 0 {
 			return StopReasonToolUse
 		}
 		return StopReasonStop
@@ -2070,7 +2061,6 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 				}
 				if pt == nil {
 					pt = &partialTool{streamIndex: nextStreamIndex}
-					partials[nextStreamIndex] = pt
 					nextStreamIndex++
 				}
 				if tc.Index != nil && pt.wireIndex == nil {
@@ -2086,41 +2076,33 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 				if pt.name == "" {
 					pt.name = functionName
 				}
-				if tc.Custom != nil && tc.Function == nil && pt.grammarBuf == nil {
-					pt.customProp = grammarProps[pt.name]
-					if pt.customProp == "" {
-						pt.customProp = "input"
+				// A call is a custom (grammar) call from the first delta that says so, or at once when it is created by one.
+				var custom *customToolInput
+				if tc.Custom != nil && tc.Function == nil {
+					property := grammarProps[pt.name]
+					if property == "" {
+						property = "input"
 					}
-					pt.grammarBuf = &grammarToolInputJSONBuffer{}
+					custom = newCustomToolInput(property, "")
 				}
-				scratch := toolCallScratch{hasPartialArgs: pt.grammarBuf == nil}
-				if pt.wireIndex != nil {
-					scratch.hasStreamIndex, scratch.streamIndex = true, *pt.wireIndex
+				builder.toolCallStart(streamToolCallDelta{index: pt.streamIndex, id: pt.id, name: pt.name, custom: custom})
+				if custom != nil {
+					builder.convertToCustomToolCall(pt.streamIndex, custom)
 				}
-				var initialArguments JsonObject
-				if pt.grammarBuf != nil {
-					scratch.customInput, scratch.property, scratch.jsonBuffer = true, pt.customProp, *pt.grammarBuf
-					initialArguments = JsonObject{pt.customProp: pt.customIn}
-				}
-				builder.toolCallStart(streamToolCallDelta{index: pt.streamIndex, id: pt.id, name: pt.name, initialArguments: initialArguments, scratch: scratch})
-				state := builder.toolCalls[pt.streamIndex]
-				scratch.partialArgs = state.arguments.String()
-				builder.setToolCallScratch(pt.streamIndex, scratch)
-				argsDelta := functionArguments
-				if pt.grammarBuf != nil {
-					if tc.Custom != nil && tc.Custom.Input != "" && functionArguments == "" {
-						next := pt.customGrown.append(pt.customIn, tc.Custom.Input)
-						var err error
-						argsDelta, _, err = appendGrammarToolInputJSONDelta(pt.grammarBuf, pt.customProp, next, false)
-						if err != nil {
-							fail(StopReasonError, err)
-							return
-						}
-						pt.customIn = next
+				argsDelta := ""
+				if state := builder.toolCalls[pt.streamIndex]; state.custom == nil {
+					if functionArguments != "" {
+						argsDelta = functionArguments
 					}
-					builder.setCustomToolCallInput(pt.streamIndex, pt.customProp, pt.customIn, *pt.grammarBuf)
+				} else if tc.Custom != nil && tc.Custom.Input != "" {
+					var err error
+					argsDelta, _, err = builder.appendCustomToolCallInput(pt.streamIndex, tc.Custom.Input)
+					if err != nil {
+						fail(StopReasonError, err)
+						return
+					}
 				}
-				builder.toolCallDelta(streamToolCallDelta{index: pt.streamIndex, id: pt.id, name: pt.name, argumentsDelta: argsDelta})
+				builder.toolCallDelta(streamToolCallDelta{index: pt.streamIndex, id: pt.id, name: pt.name, argumentsDelta: argsDelta, skipEmpty: true})
 			}
 		}
 		if thrown != "" {

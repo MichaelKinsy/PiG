@@ -74,6 +74,7 @@ func TestMainPackagesRuntimeReproducibly(t *testing.T) {
 		"shims/pi-dist/pi-coding-agent/docs/images/shot.png":                   "ignored: docs screenshot",
 		"shims/pi-dist/pi-coding-agent/docs/usage.md":                          "docs",
 		"shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png": "ignored: announcement image",
+		"shims/undici/docs/docs/api/Agent.md":                                  "ignored: undici API docs",
 	}))
 	out := t.TempDir()
 	archive, metadata := filepath.Join(out, "runtime.pack"), filepath.Join(out, "digest.go")

@@ -11,9 +11,9 @@ CI reads the reviewed snapshot offline. It does not trust an ambient node_module
 | Property | Proof |
 |---|---|
 | Upstream owner | `.upstream/current/packages/coding-agent/package.json` |
-| Exact dependency | `undici` 8.10.2 |
-| Source | `test/parity/dependency-sources/undici/8.10.2/lib/core/connect.js` |
-| License | `test/parity/dependency-sources/undici/8.10.2/LICENSE` |
+| Exact dependency | `undici` 8.12.3 |
+| Source | `test/parity/dependency-sources/undici/8.12.3/lib/core/connect.js` |
+| License | `test/parity/dependency-sources/undici/8.12.3/LICENSE` |
 | Symbol | `buildConnector` |
 | Rule | Default connection timeout is 10000ms; the connector clears the timer on `secureConnect` for TLS and `connect` for TCP |
 | Literal consumer | `ai/http_transport.go:defaultHTTPConnectTimeout` |
@@ -73,25 +73,25 @@ A package that no workspace manifest declares is admitted through the root lockf
 6. Review the default, completion event and error/cancellation behavior in the new source.
 7. Run the guard tests, transport tests and provider scenario before accepting the update.
 
-The capture for 8.10.2 uses:
+The capture for 8.12.3 uses:
 
 ```sh
 work=$(mktemp -d)
 export work
-curl -fsS https://registry.npmjs.org/undici/8.10.2 -o "$work/package.json"
-curl -fsS https://registry.npmjs.org/undici/-/undici-8.10.2.tgz -o "$work/package.tgz"
+curl -fsS https://registry.npmjs.org/undici/8.12.3 -o "$work/package.json"
+curl -fsS https://registry.npmjs.org/undici/-/undici-8.12.3.tgz -o "$work/package.tgz"
 python3 - <<'PY'
 import base64, hashlib, json, os, pathlib, tarfile
 work = pathlib.Path(os.environ['work'])
 metadata = json.loads((work / 'package.json').read_text())
 archive = (work / 'package.tgz').read_bytes()
-assert metadata['version'] == '8.10.2'
+assert metadata['version'] == '8.12.3'
 integrity = 'sha512-' + base64.b64encode(hashlib.sha512(archive).digest()).decode()
 assert integrity == metadata['dist']['integrity']
 with tarfile.open(work / 'package.tgz') as package:
     for name in ['lib/core/connect.js', 'LICENSE']:
         source = package.extractfile('package/' + name).read()
-        target = pathlib.Path('test/parity/dependency-sources/undici/8.10.2') / name
+        target = pathlib.Path('test/parity/dependency-sources/undici/8.12.3') / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(source)
         print(name, hashlib.sha256(source).hexdigest())

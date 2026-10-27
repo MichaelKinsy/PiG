@@ -23,7 +23,7 @@ func TestResumedUserMessageShowsUntrimmedText(t *testing.T) {
 			m := resumeBashModeFromFile(t, dir, sess.Path())
 			m.rebuildChatFromSession()
 			want := tui.NewContainer()
-			want.AddChild(m.newUserMessageBlock(text))
+			want.AddChild(m.newUserMessageBlock(text, messageMeta{}))
 			if got, wantRows := m.chatContainer.Render(60), want.Render(60); !reflect.DeepEqual(got, wantRows) {
 				t.Fatalf("resumed rows %q, want the rows of %q: %q", got, text, wantRows)
 			}

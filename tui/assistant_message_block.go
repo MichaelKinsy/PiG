@@ -88,7 +88,7 @@ type AssistantMessage struct {
 // assistant-message.ts; only the settings layer limits it to 0 or 1). markdownTransformers rewrite the text and the visible thinking of the block, in order, with the
 // block's streaming flag (markdown-transform.ts createMarkdownTransform); a host with a live transformer list uses
 // SetMarkdownTransform and SetThinkingMarkdownTransform instead.
-func NewAssistantMessageComponent(message *AssistantMessage, hideThinkingBlock bool, markdownTheme *MarkdownTheme, hiddenThinkingLabel string, outputPad *int, markdownTransformers []MarkdownTransformer) *AssistantMessageComponent {
+func NewAssistantMessageComponent(message *AssistantMessage, hideThinkingBlock bool, markdownTheme *MarkdownTheme, hiddenThinkingLabel string, outputPad *int, markdownTransformers []MarkdownTransformer, messageID, timestamp string) *AssistantMessageComponent {
 	b := &AssistantMessageComponent{
 		hidden:           hideThinkingBlock,
 		hiddenLabel:      thinkingHiddenLabel,
@@ -105,8 +105,8 @@ func NewAssistantMessageComponent(message *AssistantMessage, hideThinkingBlock b
 	b.md = b.newMarkdown("")
 	b.Add(b.contentContainer)
 	if len(markdownTransformers) > 0 {
-		b.SetMarkdownTransform(createMarkdownTransform("assistant", func() bool { return b.isStreaming }, markdownTransformers))
-		b.SetThinkingMarkdownTransform(createMarkdownTransform("assistant-thinking", func() bool { return b.isStreaming }, markdownTransformers))
+		b.SetMarkdownTransform(createMarkdownTransform("assistant", func() bool { return b.isStreaming }, markdownTransformers, messageID, timestamp))
+		b.SetThinkingMarkdownTransform(createMarkdownTransform("assistant-thinking", func() bool { return b.isStreaming }, markdownTransformers, messageID, timestamp))
 	}
 	if message != nil {
 		b.UpdateContent(*message)
@@ -120,6 +120,9 @@ type MarkdownTransformContext struct {
 	MessageType    string
 	IsStreaming    bool
 	AvailableWidth int
+	// MessageID and Timestamp are the persisted entry's, empty for a live message.
+	MessageID string
+	Timestamp string
 }
 
 // MarkdownTransformer is upstream's MarkdownTransformer: it returns the rewritten markdown, or ok=false for a result that is
@@ -128,9 +131,9 @@ type MarkdownTransformer func(markdown string, context MarkdownTransformContext)
 
 // createMarkdownTransform is markdown-transform.ts createMarkdownTransform: each transformer sees the previous one's output; a
 // panic (upstream's thrown exception) or a non-string result keeps the current markdown and continues with the next transformer.
-func createMarkdownTransform(messageType string, isStreaming func() bool, transformers []MarkdownTransformer) func(string, int) string {
+func createMarkdownTransform(messageType string, isStreaming func() bool, transformers []MarkdownTransformer, messageID, timestamp string) func(string, int) string {
 	return func(markdown string, width int) string {
-		context := MarkdownTransformContext{MessageType: messageType, IsStreaming: isStreaming(), AvailableWidth: width}
+		context := MarkdownTransformContext{MessageType: messageType, IsStreaming: isStreaming(), AvailableWidth: width, MessageID: messageID, Timestamp: timestamp}
 		current := markdown
 		for _, transformer := range transformers {
 			func() {

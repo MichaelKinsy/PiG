@@ -357,7 +357,7 @@ func replyFromWire(reply HostToWorkerMessage) callResult {
 	payload, defined := derefString(reply.Payload)
 	result := callResult{id: reply.ID, ok: reply.Ok, payload: payload, defined: defined}
 	if reply.Seq != nil {
-		result.seq = *reply.Seq
+		result.seq, result.hasSeq = *reply.Seq, true
 	}
 	if reply.Now != nil {
 		result.now, result.hasNow = *reply.Now, true

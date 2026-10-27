@@ -17,7 +17,7 @@ func TestDefaultPoliciesMatchPi(t *testing.T) {
 	if want := (durable.CompactionPolicy{Enabled: true, ReserveTokens: 16384, KeepRecentTokens: 20000, BackgroundTokens: 32768}); !reflect.DeepEqual(DefaultCompactionPolicy, want) {
 		t.Errorf("DefaultCompactionPolicy = %+v, want %+v", DefaultCompactionPolicy, want)
 	}
-	if want := (durable.ProgressPolicy{PartialIntervalMs: 100, OutputIntervalMs: 100}); DefaultProgressPolicy != want {
+	if want := (durable.ProgressPolicy{PartialIntervalMs: 100, OutputIntervalMs: 100, PersistWithinMs: 1000}); DefaultProgressPolicy != want {
 		t.Errorf("DefaultProgressPolicy = %+v, want %+v", DefaultProgressPolicy, want)
 	}
 	resolved := ResolveSettings(nil)

@@ -82,8 +82,8 @@ func TestExecutionEnvFileSystemContract(t *testing.T) {
 	}
 
 	// watch reports a change below a watched directory and stops after Close.
-	changed := make(chan durableenv.WatchChange, 16)
-	watcher, err := fs.Watch(background, []durableenv.WatchTarget{{Path: root, Recursive: true}}, func(change durableenv.WatchChange) { changed <- change })
+	changed := make(chan durableenv.FileChange, 16)
+	watcher, err := fs.Watch(background, []durableenv.WatchTarget{{Path: root, Recursive: true}}, func(change durableenv.FileChange) { changed <- change })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestExecutionEnvFileSystemContract(t *testing.T) {
 	}
 	select {
 	case change := <-changed:
-		if paths, ok := change.(durableenv.WatchChangePaths); ok && len(paths.Paths) == 0 {
+		if paths, ok := change.(durableenv.FileChangePaths); ok && len(paths.Paths) == 0 {
 			t.Fatalf("a path change named no path: %+v", change)
 		}
 	case <-time.After(10 * time.Second):

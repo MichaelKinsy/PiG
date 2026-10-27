@@ -6,7 +6,7 @@ import {
   loadMcpConfig,
   openBrowser,
   updateMcpServerConfig
-} from "./chunk-7NLBDVYL.js";
+} from "./chunk-N6HXWYKG.js";
 import {
   ArminComponent
 } from "./chunk-S7TFHYGY.js";
@@ -71,6 +71,7 @@ import {
   formatHttpIdleTimeoutMs,
   formatMissingSessionCwdPrompt,
   formatNoModelsAvailableMessage,
+  formatPackageInstallWarning,
   formatSkillsForPrompt,
   generateBranchSummary,
   generateSummary,
@@ -122,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-HYVDWVV7.js";
+} from "./chunk-QLIWYORR.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -157,13 +158,13 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-ZYMNLKUS.js";
+} from "./chunk-6HJCSATA.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-ILH7WEUZ.js";
+} from "./chunk-NF6AG2GL.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -186,7 +187,7 @@ import {
   truncateTail,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-QJIK7HVQ.js";
+} from "./chunk-T5YZVFVX.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -231,12 +232,12 @@ import {
   mcpNamespace,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-RTGDH7DA.js";
+} from "./chunk-XNXPQFJN.js";
 import {
   getPowerShellConfig,
   getShellConfig,
   killTrackedDetachedChildren
-} from "./chunk-RVJYK3FO.js";
+} from "./chunk-OH2Z3DNC.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -827,7 +828,7 @@ function createMcpResourceToolDefinitions(options) {
 __name(createMcpResourceToolDefinitions, "createMcpResourceToolDefinitions");
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-H73TEJEY.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-XROSFU7A.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container3, Input, SelectList, Spacer as Spacer2, Text as Text3, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -3742,10 +3743,78 @@ function normalizeWhitespaceLower(text) {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
 __name(normalizeWhitespaceLower, "normalizeWhitespaceLower");
-function getSessionSearchText(session) {
-  return `${session.id} ${session.name ?? ""} ${session.allMessagesText} ${session.cwd}`;
+var TIER_NAME = 0;
+var TIER_TEXT = 1;
+var TIER_FUZZY = 2;
+var TIER_WEIGHT = 1e6;
+var messageTextCache = /* @__PURE__ */ new WeakMap();
+function getMessageText(session) {
+  let cached = messageTextCache.get(session);
+  if (!cached || cached.source !== session.allMessagesText) {
+    cached = { source: session.allMessagesText, lower: session.allMessagesText.toLowerCase() };
+    messageTextCache.set(session, cached);
+  }
+  return cached;
 }
-__name(getSessionSearchText, "getSessionSearchText");
+__name(getMessageText, "getMessageText");
+function getNormalizedMessageText(session) {
+  const cached = getMessageText(session);
+  cached.normalized ??= cached.lower.replace(/\s+/g, " ").trim();
+  return cached.normalized;
+}
+__name(getNormalizedMessageText, "getNormalizedMessageText");
+function tierScore(tier, score = 0) {
+  return tier * TIER_WEIGHT + score;
+}
+__name(tierScore, "tierScore");
+function matchLiteralToken(session, value) {
+  const name = session.name?.toLowerCase() ?? "";
+  if (name.includes(value))
+    return tierScore(TIER_NAME, fuzzyMatch(value, name).score);
+  if (session.id.toLowerCase().includes(value))
+    return tierScore(TIER_TEXT);
+  if (getMessageText(session).lower.includes(value))
+    return tierScore(TIER_TEXT);
+  if (session.cwd.toLowerCase().includes(value))
+    return tierScore(TIER_TEXT);
+  return void 0;
+}
+__name(matchLiteralToken, "matchLiteralToken");
+function matchFuzzyToken(session, value) {
+  const literal = matchLiteralToken(session, value.toLowerCase());
+  if (literal !== void 0)
+    return literal;
+  let best;
+  for (const field of [session.name ?? "", session.cwd]) {
+    const m = fuzzyMatch(value, field);
+    if (m.matches && (best === void 0 || m.score < best))
+      best = m.score;
+  }
+  return best === void 0 ? void 0 : tierScore(TIER_FUZZY, best);
+}
+__name(matchFuzzyToken, "matchFuzzyToken");
+function matchPhraseToken(session, phrase) {
+  const name = normalizeWhitespaceLower(session.name ?? "");
+  if (name.includes(phrase))
+    return tierScore(TIER_NAME, fuzzyMatch(phrase, name).score);
+  if (session.id.toLowerCase().includes(phrase))
+    return tierScore(TIER_TEXT);
+  if (getNormalizedMessageText(session).includes(phrase))
+    return tierScore(TIER_TEXT);
+  if (normalizeWhitespaceLower(session.cwd).includes(phrase))
+    return tierScore(TIER_TEXT);
+  return void 0;
+}
+__name(matchPhraseToken, "matchPhraseToken");
+function matchRegex(session, regex) {
+  if (session.name && regex.test(session.name))
+    return tierScore(TIER_NAME);
+  if (regex.test(session.id) || regex.test(session.allMessagesText) || regex.test(session.cwd)) {
+    return tierScore(TIER_TEXT);
+  }
+  return void 0;
+}
+__name(matchRegex, "matchRegex");
 function hasSessionName(session) {
   return Boolean(session.name?.trim());
 }
@@ -3817,39 +3886,27 @@ function parseSearchQuery(query) {
 }
 __name(parseSearchQuery, "parseSearchQuery");
 function matchSession(session, parsed) {
-  const text = getSessionSearchText(session);
   if (parsed.mode === "regex") {
     if (!parsed.regex) {
       return { matches: false, score: 0 };
     }
-    const idx = text.search(parsed.regex);
-    if (idx < 0)
-      return { matches: false, score: 0 };
-    return { matches: true, score: idx * 0.1 };
-  }
-  if (parsed.tokens.length === 0) {
-    return { matches: true, score: 0 };
+    const score = matchRegex(session, parsed.regex);
+    return score === void 0 ? { matches: false, score: 0 } : { matches: true, score };
   }
   let totalScore = 0;
-  let normalizedText = null;
   for (const token of parsed.tokens) {
+    let score;
     if (token.kind === "phrase") {
-      if (normalizedText === null) {
-        normalizedText = normalizeWhitespaceLower(text);
-      }
       const phrase = normalizeWhitespaceLower(token.value);
       if (!phrase)
         continue;
-      const idx = normalizedText.indexOf(phrase);
-      if (idx < 0)
-        return { matches: false, score: 0 };
-      totalScore += idx * 0.1;
-      continue;
+      score = matchPhraseToken(session, phrase);
+    } else {
+      score = matchFuzzyToken(session, token.value);
     }
-    const m = fuzzyMatch(token.value, text);
-    if (!m.matches)
+    if (score === void 0)
       return { matches: false, score: 0 };
-    totalScore += m.score;
+    totalScore += score;
   }
   return { matches: true, score: totalScore };
 }
@@ -6155,7 +6212,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-CAUF7UZP.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-T2RT6V7W.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -6385,7 +6442,7 @@ import * as os3 from "node:os";
 import * as path4 from "node:path";
 import { isRetryableAssistantError } from "../../pi-ai/sdk-bundle/compat.js";
 import * as TuiLayouts from "../../../pi-tui.mjs";
-import { CombinedAutocompleteProvider, Container as Container31, fuzzyFilter as fuzzyFilter8, getCapabilities as getCapabilities3, hyperlink as hyperlink3, Markdown as Markdown7, matchesKey as matchesKey2, Spacer as Spacer28, setCapabilityOverrides as setCapabilityOverrides2, setKeybindings as setKeybindings3, Text as Text31, TruncatedText as TruncatedText2, TuiAltScreen as TuiAltScreen3, TuiMainScreen as TuiMainScreen3, visibleWidth as visibleWidth7 } from "../../../pi-tui.mjs";
+import { CombinedAutocompleteProvider, Container as Container31, fuzzyFilter as fuzzyFilter8, getCapabilities as getCapabilities3, hyperlink as hyperlink4, Markdown as Markdown7, matchesKey as matchesKey2, Spacer as Spacer28, setCapabilityOverrides as setCapabilityOverrides2, setKeybindings as setKeybindings3, Text as Text31, TruncatedText as TruncatedText3, TuiAltScreen as TuiAltScreen3, TuiMainScreen as TuiMainScreen3, visibleWidth as visibleWidth7 } from "../../../pi-tui.mjs";
 import chalk5 from "../../../chalk/source/index.js";
 import { spawn as spawn4 } from "child_process";
 
@@ -7762,8 +7819,8 @@ __name(createChatViewport, "createChatViewport");
 import { Container as Container11, Markdown, MouseRegion, Spacer as Spacer10, Text as Text11 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/markdown-transform.js
-function createMarkdownTransform(messageType, isStreaming, transformers) {
-  return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming, availableWidth }, transformers);
+function createMarkdownTransform(messageType, isStreaming, transformers, messageId, timestamp) {
+  return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming, availableWidth, messageId, timestamp }, transformers);
 }
 __name(createMarkdownTransform, "createMarkdownTransform");
 function applyMarkdownTransformers(markdown, context, transformers) {
@@ -7798,14 +7855,18 @@ var AssistantMessageComponent = class extends Container11 {
   lastMessage;
   hasToolCalls = false;
   isStreaming = false;
+  messageId;
+  timestamp;
   thinkingVisibilityOverrides = /* @__PURE__ */ new Map();
-  constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = []) {
+  constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super();
     this.hideThinkingBlock = hideThinkingBlock;
     this.markdownTheme = markdownTheme;
     this.hiddenThinkingLabel = hiddenThinkingLabel;
     this.outputPad = outputPad;
     this.markdownTransformers = markdownTransformers;
+    this.messageId = messageId;
+    this.timestamp = timestamp;
     this.contentContainer = new Container11();
     this.addChild(this.contentContainer);
     if (message) {
@@ -7859,7 +7920,7 @@ var AssistantMessageComponent = class extends Container11 {
       const content = message.content[i];
       if (content.type === "text" && content.text.trim()) {
         this.contentContainer.addChild(new Markdown(content.text.trim(), this.outputPad, 0, this.markdownTheme, void 0, {
-          transform: createMarkdownTransform("assistant", this.isStreaming, this.markdownTransformers)
+          transform: createMarkdownTransform("assistant", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
         }));
       } else if (content.type === "thinking") {
         const thinkingBlocks = [];
@@ -7884,7 +7945,7 @@ var AssistantMessageComponent = class extends Container11 {
           color: /* @__PURE__ */ __name((text) => theme.fg("thinkingText", text), "color"),
           italic: true
         }, {
-          transform: createMarkdownTransform("assistant-thinking", this.isStreaming, this.markdownTransformers)
+          transform: createMarkdownTransform("assistant-thinking", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
         });
         this.contentContainer.addChild(new MouseRegion(thinkingComponent, (event) => {
           if (event.type !== "click" || event.button !== "left")
@@ -8665,7 +8726,23 @@ var FooterComponent = class {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/login-dialog.js
-import { Container as Container18, getKeybindings as getKeybindings6, Input as Input5, Spacer as Spacer17, Text as Text18 } from "../../../pi-tui.mjs";
+import { Container as Container18, getKeybindings as getKeybindings6, hyperlink as hyperlink3, Input as Input5, replaceControlCharacters, Spacer as Spacer17, Text as Text18, TruncatedText } from "../../../pi-tui.mjs";
+function webUrl(value) {
+  if (!URL.canParse(value))
+    return void 0;
+  const url = new URL(value);
+  return url.protocol === "https:" || url.protocol === "http:" ? url.href : void 0;
+}
+__name(webUrl, "webUrl");
+function displayUrl(value) {
+  return webUrl(value) ?? replaceControlCharacters(value);
+}
+__name(displayUrl, "displayUrl");
+function webLink(text, url) {
+  const target = webUrl(url);
+  return target === void 0 ? text : hyperlink3(text, target);
+}
+__name(webLink, "webLink");
 var LoginDialogComponent = class extends Container18 {
   static {
     __name(this, "LoginDialogComponent");
@@ -8678,6 +8755,8 @@ var LoginDialogComponent = class extends Container18 {
   abortController = new AbortController();
   inputResolver;
   inputRejecter;
+  deviceCodeAction;
+  deviceCodeHint;
   onComplete;
   // Focusable implementation - propagate to input for IME cursor positioning
   _focused = false;
@@ -8719,7 +8798,15 @@ var LoginDialogComponent = class extends Container18 {
   replaceInputWithSubmittedText(value) {
     this.contentContainer.children = this.contentContainer.children.map((child) => child === this.input ? new Text18(`> ${value}`, 0, 0) : child);
   }
+  clearDeviceCodeAction() {
+    if (this.deviceCodeHint) {
+      this.contentContainer.removeChild(this.deviceCodeHint);
+    }
+    this.deviceCodeHint = void 0;
+    this.deviceCodeAction = void 0;
+  }
   cancel() {
+    this.clearDeviceCodeAction();
     this.abortController.abort();
     if (this.inputRejecter) {
       this.inputRejecter(new Error("Login cancelled"));
@@ -8732,15 +8819,18 @@ var LoginDialogComponent = class extends Container18 {
    * Called by onAuth callback - show URL and optional instructions
    */
   showAuth(url, instructions) {
+    this.clearDeviceCodeAction();
     this.contentContainer.clear();
     this.contentContainer.addChild(new Spacer17(1));
-    this.authUrl = new AuthUrlComponent(this.tui, url);
+    const target = webUrl(url);
+    this.authUrl = new AuthUrlComponent(this.tui, target ?? replaceControlCharacters(url));
     this.contentContainer.addChild(this.authUrl);
     if (instructions) {
       this.contentContainer.addChild(new Spacer17(1));
       this.contentContainer.addChild(new Text18(theme.fg("warning", instructions), 1, 0));
     }
-    openBrowser(url);
+    if (target !== void 0)
+      openBrowser(target);
     this.tui.requestRender();
   }
   /**
@@ -8748,21 +8838,55 @@ var LoginDialogComponent = class extends Container18 {
    */
   showDeviceCode(info) {
     this.authUrl = void 0;
+    info = {
+      ...info,
+      openBrowserOnConfirm: info.openBrowserOnConfirm ?? true,
+      copyCodeOnConfirm: info.copyCodeOnConfirm ?? true
+    };
+    this.clearDeviceCodeAction();
     this.contentContainer.clear();
     this.contentContainer.addChild(new Spacer17(1));
-    const linkedUrl = `\x1B]8;;${info.verificationUri}\x07${info.verificationUri}\x1B]8;;\x07`;
-    this.contentContainer.addChild(new Text18(theme.fg("accent", linkedUrl), 1, 0));
+    const shownUrl = displayUrl(info.verificationUri);
+    this.contentContainer.addChild(new Text18(theme.fg("accent", webLink(shownUrl, shownUrl)), 1, 0));
     const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
-    const hyperlink4 = `\x1B]8;;${info.verificationUri}\x07${clickHint}\x1B]8;;\x07`;
-    this.contentContainer.addChild(new Text18(theme.fg("dim", hyperlink4), 1, 0));
+    this.contentContainer.addChild(new Text18(theme.fg("dim", webLink(clickHint, info.verificationUri)), 1, 0));
     this.contentContainer.addChild(new Spacer17(1));
     this.contentContainer.addChild(new Text18(theme.fg("warning", `Enter code: ${info.userCode}`), 1, 0));
+    if (!this.signal.aborted && (info.openBrowserOnConfirm || info.copyCodeOnConfirm)) {
+      const actionLabel = info.openBrowserOnConfirm ? info.copyCodeOnConfirm ? "to open browser and copy code" : "to open browser" : "to copy code";
+      const hint = new Container18();
+      hint.addChild(new TruncatedText(`(${keyHint("tui.select.confirm", actionLabel)})`, 1, 0));
+      this.contentContainer.addChild(hint);
+      this.deviceCodeHint = hint;
+      this.deviceCodeAction = { info, hint };
+    }
     this.tui.requestRender();
+  }
+  setDeviceCodeStatus(hint, message) {
+    if (this.signal.aborted || !this.focused || !this.contentContainer.children.includes(hint))
+      return;
+    hint.children = [new TruncatedText(theme.fg("dim", message), 1, 0)];
+    this.tui.requestRender();
+  }
+  activateDeviceCode(info, hint) {
+    this.setDeviceCodeStatus(hint, info.copyCodeOnConfirm ? "Copying code..." : "Browser open requested");
+    if (info.copyCodeOnConfirm) {
+      void copyToClipboard(info.userCode).then(() => this.setDeviceCodeStatus(hint, "Code copied to clipboard")).catch(() => this.setDeviceCodeStatus(hint, "Copy code manually"));
+    }
+    if (info.openBrowserOnConfirm) {
+      try {
+        const target = webUrl(info.verificationUri);
+        if (target !== void 0)
+          openBrowser(target);
+      } catch {
+      }
+    }
   }
   /**
    * Show input for manual code/URL entry (for callback server providers)
    */
   showManualInput(prompt) {
+    this.clearDeviceCodeAction();
     this.input.setValue("");
     this.contentContainer.addChild(new Spacer17(1));
     this.contentContainer.addChild(new Text18(theme.fg("dim", prompt), 1, 0));
@@ -8779,6 +8903,7 @@ var LoginDialogComponent = class extends Container18 {
    * Note: Does NOT clear content, appends to existing (preserves URL from showAuth)
    */
   showPrompt(message, placeholder) {
+    this.clearDeviceCodeAction();
     this.contentContainer.addChild(new Spacer17(1));
     this.contentContainer.addChild(new Text18(theme.fg("text", message), 1, 0));
     if (placeholder) {
@@ -8796,6 +8921,7 @@ var LoginDialogComponent = class extends Container18 {
   /** Show informational text before another login step. */
   showDetails(lines) {
     this.authUrl = void 0;
+    this.clearDeviceCodeAction();
     this.contentContainer.clear();
     this.contentContainer.addChild(new Spacer17(1));
     for (const line of lines) {
@@ -8808,9 +8934,9 @@ var LoginDialogComponent = class extends Container18 {
     this.contentContainer.addChild(new Spacer17(1));
     this.contentContainer.addChild(new Text18(theme.fg("text", message), 1, 0));
     for (const link of links) {
-      const text = link.label ? `${link.label}: ${link.url}` : link.url;
-      const hyperlink4 = `\x1B]8;;${link.url}\x07${text}\x1B]8;;\x07`;
-      this.contentContainer.addChild(new Text18(theme.fg("accent", hyperlink4), 1, 0));
+      const url = displayUrl(link.url);
+      const text = link.label ? `${link.label}: ${url}` : url;
+      this.contentContainer.addChild(new Text18(theme.fg("accent", webLink(text, url)), 1, 0));
     }
     if (showCloseHint) {
       this.contentContainer.addChild(new Spacer17(1));
@@ -8842,6 +8968,13 @@ var LoginDialogComponent = class extends Container18 {
     }
     if (this.authUrl && kb.matches(data, "app.message.copy")) {
       void this.authUrl.copy();
+      return;
+    }
+    if (this.deviceCodeAction && !this.inputResolver && !this.signal.aborted && this.focused && kb.matches(data, "tui.select.confirm")) {
+      const action = this.deviceCodeAction;
+      this.deviceCodeAction = void 0;
+      this.activateDeviceCode(action.info, action.hint);
+      this.tui.requestRender();
       return;
     }
     this.input.handleInput(data);
@@ -8961,6 +9094,18 @@ function getModelSearchText(item) {
   return `${id} ${provider} ${provider}/${id} ${provider} ${id}${name}`;
 }
 __name(getModelSearchText, "getModelSearchText");
+var splitModelLabel = /* @__PURE__ */ __name((value) => value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean), "splitModelLabel");
+function getDistinctModelName(item) {
+  const name = item.name?.trim();
+  if (!name)
+    return void 0;
+  const idWords = splitModelLabel(item.id);
+  const idTokens = new Set(idWords);
+  const compactId = idWords.join("");
+  const isCovered = /* @__PURE__ */ __name((word) => idTokens.has(word) || word.length > 1 && compactId.includes(word), "isCovered");
+  return splitModelLabel(name).every(isCovered) ? void 0 : name;
+}
+__name(getDistinctModelName, "getDistinctModelName");
 function getModelSelectorSearchText(item) {
   const { id, provider } = item;
   const name = item.name ? ` ${item.name}` : "";
@@ -9208,8 +9353,10 @@ var ModelSelectorComponent = class extends Container19 {
       const cursor = isSelected ? theme.fg("accent", "\u2192 ") : "  ";
       const currentMarker = isCurrent ? theme.fg("accent", "\u2713 ") : "  ";
       const modelText = isSelected ? theme.fg("accent", item.id) : item.id;
+      const name = getDistinctModelName({ id: item.id, name: item.model.name });
+      const nameText = name ? theme.fg("muted", ` (${name})`) : "";
       const providerBadge = theme.fg("muted", `[${item.provider}]`);
-      const line = `${cursor}${currentMarker}${modelText} ${providerBadge}${defaultBadge}`;
+      const line = `${cursor}${currentMarker}${modelText}${nameText} ${providerBadge}${defaultBadge}`;
       this.listContainer.addChild(new Text19(line, 0, 0));
     }
     if (startIndex > 0 || endIndex < this.filteredModels.length) {
@@ -9284,7 +9431,7 @@ var ModelSelectorComponent = class extends Container19 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js
-import { Container as Container20, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, Input as Input7, Spacer as Spacer19, TruncatedText } from "../../../pi-tui.mjs";
+import { Container as Container20, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, Input as Input7, Spacer as Spacer19, TruncatedText as TruncatedText2 } from "../../../pi-tui.mjs";
 function formatAuthSelectorProviderType(authType, subscription) {
   if (authType === "api_key")
     return "API key";
@@ -9338,7 +9485,7 @@ var OAuthSelectorComponent = class extends Container20 {
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer19(1));
     const title = mode === "login" ? "Select provider to configure:" : "Select provider to logout:";
-    this.addChild(new TruncatedText(theme.fg("accent", theme.bold(title)), 1, 0));
+    this.addChild(new TruncatedText2(theme.fg("accent", theme.bold(title)), 1, 0));
     this.addChild(new Spacer19(1));
     this.searchInput = new Input7();
     if (initialSearchInput) {
@@ -9384,15 +9531,15 @@ var OAuthSelectorComponent = class extends Container20 {
         const text = `  ${theme.fg("text", provider.name)}`;
         line = text + authTypeLabel + statusIndicator;
       }
-      this.listContainer.addChild(new TruncatedText(line, 1, 0));
+      this.listContainer.addChild(new TruncatedText2(line, 1, 0));
     }
     if (startIndex > 0 || endIndex < this.filteredProviders.length) {
       const scrollInfo = theme.fg("muted", `  (${this.selectedIndex + 1}/${this.filteredProviders.length})`);
-      this.listContainer.addChild(new TruncatedText(scrollInfo, 1, 0));
+      this.listContainer.addChild(new TruncatedText2(scrollInfo, 1, 0));
     }
     if (this.filteredProviders.length === 0) {
       const message = this.allProviders.length === 0 ? this.mode === "login" ? "No providers available" : "No providers logged in. Use /login first." : "No matching providers";
-      this.listContainer.addChild(new TruncatedText(theme.fg("muted", `  ${message}`), 1, 0));
+      this.listContainer.addChild(new TruncatedText2(theme.fg("muted", `  ${message}`), 1, 0));
     }
   }
   handleInput(keyData) {
@@ -9707,9 +9854,11 @@ var ScopedModelsSelectorComponent = class extends Container21 {
       const id = item.model?.id ?? item.fullId;
       const styledId = item.model ? id : theme.strikethrough(id);
       const modelText = isSelected ? theme.fg("accent", styledId) : styledId;
+      const name = item.model ? getDistinctModelName(item.model) : void 0;
+      const nameText = name ? theme.fg("muted", ` (${name})`) : "";
       const providerBadge = theme.fg("muted", item.model ? ` [${item.model.provider}]` : " [unavailable]");
       const status = item.model && item.enabled ? theme.fg("accent", "\u2713 ") : "  ";
-      this.listContainer.addChild(new Text21(`${prefix}${status}${modelText}${providerBadge}`, 0, 0));
+      this.listContainer.addChild(new Text21(`${prefix}${status}${modelText}${nameText}${providerBadge}`, 0, 0));
     }
     if (startIndex > 0 || endIndex < this.filteredItems.length) {
       this.listContainer.addChild(new Text21(theme.fg("muted", `  (${this.selectedIndex + 1}/${this.filteredItems.length})`), 0, 0));
@@ -10991,6 +11140,8 @@ var ToolExecutionComponent = class extends Container26 {
   cwd;
   executionStarted = false;
   argsComplete = false;
+  /** `updateArgs()` ran since the last display update; the next render applies it. */
+  argsPending = false;
   result;
   hideComponent = false;
   constructor(toolName, toolCallId, args, options = {}, toolDefinition, ui, cwd) {
@@ -11075,9 +11226,14 @@ var ToolExecutionComponent = class extends Container26 {
       return { handled: true };
     });
   }
+  /**
+   * Show new partial arguments. Applied at the next render, so a call streaming many argument deltas between two
+   * frames runs its renderer once per frame, not once per delta (#9265).
+   */
   updateArgs(args) {
     this.args = args;
-    this.updateDisplay();
+    this.argsPending = true;
+    this.ui.requestRender();
   }
   markExecutionStarted() {
     this.executionStarted = true;
@@ -11115,6 +11271,8 @@ var ToolExecutionComponent = class extends Container26 {
     this.updateDisplay();
   }
   render(width) {
+    if (this.argsPending)
+      this.updateDisplay();
     if (this.hideComponent) {
       return [];
     }
@@ -11155,6 +11313,7 @@ var ToolExecutionComponent = class extends Container26 {
     });
   }
   updateDisplay() {
+    this.argsPending = false;
     const bgFn = this.isPartial ? (text) => theme.bg("toolPendingBg", text) : this.result?.isError ? (text) => theme.bg("toolErrorBg", text) : (text) => theme.bg("toolSuccessBg", text);
     let hasContent = false;
     this.hideComponent = false;
@@ -12453,12 +12612,16 @@ var UserMessageComponent = class extends Container29 {
   markdownTheme;
   outputPad;
   markdownTransformers;
-  constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = []) {
+  messageId;
+  timestamp;
+  constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super();
     this.text = text;
     this.markdownTheme = markdownTheme;
     this.outputPad = outputPad;
     this.markdownTransformers = markdownTransformers;
+    this.messageId = messageId;
+    this.timestamp = timestamp;
     this.rebuild();
   }
   setOutputPad(padding) {
@@ -12473,7 +12636,7 @@ var UserMessageComponent = class extends Container29 {
     }, {
       preserveOrderedListMarkers: true,
       preserveBackslashEscapes: true,
-      transform: createMarkdownTransform("user", false, this.markdownTransformers)
+      transform: createMarkdownTransform("user", false, this.markdownTransformers, this.messageId, this.timestamp)
     }));
   }
   render(width) {
@@ -15624,11 +15787,11 @@ ${message}`, ["Yes", "No"], opts, {
             this.chatContainer.addChild(component);
             if (skillBlock.userMessage) {
               this.chatContainer.addChild(new Spacer28(1));
-              const userComponent = new UserMessageComponent(skillBlock.userMessage, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers());
+              const userComponent = new UserMessageComponent(skillBlock.userMessage, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
               this.chatContainer.addChild(userComponent);
             }
           } else {
-            const userComponent = new UserMessageComponent(textContent, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers());
+            const userComponent = new UserMessageComponent(textContent, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
             this.chatContainer.addChild(userComponent);
           }
           if (options?.populateHistory) {
@@ -15638,7 +15801,7 @@ ${message}`, ["Yes", "No"], opts, {
         break;
       }
       case "assistant": {
-        const assistantComponent = new AssistantMessageComponent(message, this.hideThinkingBlock, this.getMarkdownThemeWithSettings(), this.hiddenThinkingLabel, this.outputPad, this.getMarkdownTransformers());
+        const assistantComponent = new AssistantMessageComponent(message, this.hideThinkingBlock, this.getMarkdownThemeWithSettings(), this.hiddenThinkingLabel, this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
         this.chatContainer.addChild(assistantComponent);
         break;
       }
@@ -15650,7 +15813,7 @@ ${message}`, ["Yes", "No"], opts, {
       }
     }
   }
-  renderSessionItems(items, options = {}) {
+  renderSessionItems(items, messageMeta, options = {}) {
     this.pendingTools.clear();
     const renderedPendingTools = /* @__PURE__ */ new Map();
     const cacheMisses = this.settingsManager.getShowCacheMissNotices() ? collectCacheMisses(this.sessionManager.getEntries(), this.session.modelRuntime) : /* @__PURE__ */ new Map();
@@ -15673,7 +15836,11 @@ ${message}`, ["Yes", "No"], opts, {
       }
       const message = item;
       if (message.role === "assistant") {
-        this.addMessageToChat(message);
+        const meta = messageMeta?.get(message);
+        this.addMessageToChat(message, {
+          messageId: meta?.id,
+          timestamp: meta?.timestamp
+        });
         for (const content of message.content) {
           if (content.type === "toolCall") {
             const component = new ToolExecutionComponent(content.name, content.id, content.arguments, {
@@ -15709,7 +15876,12 @@ ${message}`, ["Yes", "No"], opts, {
           renderedPendingTools.delete(message.toolCallId);
         }
       } else {
-        this.addMessageToChat(message, options);
+        const meta = messageMeta?.get(message);
+        this.addMessageToChat(message, {
+          ...options,
+          messageId: meta?.id,
+          timestamp: meta?.timestamp
+        });
       }
     }
     for (const [toolCallId, component] of renderedPendingTools) {
@@ -15726,17 +15898,21 @@ ${message}`, ["Yes", "No"], opts, {
   renderSessionEntries(entries, options = {}) {
     if (this.renderer instanceof TuiAltScreen3)
       this.renderer.resetTextSelection();
+    const messageMeta = /* @__PURE__ */ new Map();
     const items = entries.flatMap((entry) => {
       if (entry.type === "custom" || entry.type === "usage" && entry.kind === "cache_warm") {
         return [entry];
       }
       const messages = sessionEntryToContextMessages(entry);
+      for (const msg of messages) {
+        messageMeta.set(msg, { id: entry.id, timestamp: entry.timestamp });
+      }
       if ((entry.type === "compaction" || entry.type === "branch_summary") && entry.usage && messages.length > 0) {
         return [...messages, { type: "compaction_cost", kind: entry.type, usage: entry.usage }];
       }
       return messages;
     });
-    this.renderSessionItems(items, options);
+    this.renderSessionItems(items, messageMeta, options);
   }
   addCacheWarmingUsage(entry) {
     if (!this.settingsManager.getShowCacheMissNotices())
@@ -16159,7 +16335,7 @@ ${this.crashReportInstructions()}`);
     const updateInstruction = /* @__PURE__ */ __name(() => theme.fg("muted", `New version ${release.version} is available. Run `) + theme.fg("accent", `${APP_NAME} update`), "updateInstruction");
     const changelogUrl = "https://pi.dev/changelog";
     const changelogLine = /* @__PURE__ */ __name(() => {
-      const changelogLink = getCapabilities3().hyperlinks ? hyperlink3(theme.fg("accent", changelogUrl), changelogUrl) : theme.fg("accent", changelogUrl);
+      const changelogLink = getCapabilities3().hyperlinks ? hyperlink4(theme.fg("accent", changelogUrl), changelogUrl) : theme.fg("accent", changelogUrl);
       return theme.fg("muted", "Changelog: ") + changelogLink;
     }, "changelogLine");
     const note = release.note?.trim();
@@ -16227,15 +16403,15 @@ ${packageLines}`, 1, 0));
       this.pendingMessagesContainer.addChild(new Spacer28(1));
       for (const message of steeringMessages) {
         const text = theme.fg("dim", `Steering: ${message}`);
-        this.pendingMessagesContainer.addChild(new TruncatedText2(text, 1, 0));
+        this.pendingMessagesContainer.addChild(new TruncatedText3(text, 1, 0));
       }
       for (const message of followUpMessages) {
         const text = theme.fg("dim", `Follow-up: ${message}`);
-        this.pendingMessagesContainer.addChild(new TruncatedText2(text, 1, 0));
+        this.pendingMessagesContainer.addChild(new TruncatedText3(text, 1, 0));
       }
       const dequeueHint = this.getAppKeyDisplay("app.message.dequeue");
       const hintText = theme.fg("dim", `\u21B3 ${dequeueHint} to edit all queued messages`);
-      this.pendingMessagesContainer.addChild(new TruncatedText2(hintText, 1, 0));
+      this.pendingMessagesContainer.addChild(new TruncatedText3(hintText, 1, 0));
     }
   }
   restoreQueuedMessagesToEditor(options) {
@@ -21095,6 +21271,10 @@ async function handleConfigCommand(args, runtimeOptions = {}) {
     builtinExtensions
   }).resolve();
   const projectResolvedPaths = settingsManager.isProjectTrusted() ? await new DefaultPackageManager({ cwd, agentDir, settingsManager, builtinExtensions }).resolve() : globalResolvedPaths;
+  const installWarnings = new Set([...globalResolvedPaths.installFailures ?? [], ...projectResolvedPaths.installFailures ?? []].map(formatPackageInstallWarning));
+  for (const warning of installWarnings) {
+    console.error(chalk6.yellow(`Warning: ${warning}`));
+  }
   await selectConfig({
     resolvedPaths: { global: globalResolvedPaths, project: projectResolvedPaths },
     settingsManager,
@@ -21942,14 +22122,16 @@ async function main(args, options) {
   setCapabilityOverrides3(settingsManager.getTerminalCapabilityOverrides());
   applyHttpProxySettings(settingsManager.getGlobalSettings().httpProxy);
   configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
+  const startupDiagnostics = deduplicateDiagnostics([...startupSettingsDiagnostics, ...runtime.diagnostics]);
+  const hasRuntimeErrors = runtime.diagnostics.some((diagnostic) => diagnostic.type === "error");
   if (parsed.help) {
-    reportDiagnostics(startupSettingsDiagnostics);
+    reportDiagnostics(startupDiagnostics);
     const extensionFlags = resourceLoader.getExtensions().extensions.flatMap((extension) => Array.from(extension.flags.values()));
     printHelp(extensionFlags);
     process.exit(0);
   }
   if (parsed.listModels !== void 0) {
-    reportDiagnostics(startupSettingsDiagnostics);
+    reportDiagnostics(startupDiagnostics);
     const searchPattern = typeof parsed.listModels === "string" ? parsed.listModels : void 0;
     await listModels(modelRuntime, searchPattern, AbortSignal.timeout(15e3));
     process.exit(0);
@@ -21970,8 +22152,6 @@ async function main(args, options) {
     await showDeprecationWarnings(deprecationWarnings);
   }
   time("resolveModelScope");
-  const startupDiagnostics = deduplicateDiagnostics([...startupSettingsDiagnostics, ...runtime.diagnostics]);
-  const hasRuntimeErrors = runtime.diagnostics.some((diagnostic) => diagnostic.type === "error");
   if (appMode !== "interactive" || hasRuntimeErrors) {
     reportDiagnostics(startupDiagnostics);
   }

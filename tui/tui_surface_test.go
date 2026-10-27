@@ -524,8 +524,8 @@ func TestTuiSurfaceSendsADefinitionsResultWithoutItsCall(t *testing.T) {
 // marked streaming.
 func TestTuiSurfaceSendsMessagesAsMarkdown(t *testing.T) {
 	chat := NewContainer()
-	user := NewUserMessageComponent("Fix **the** build", nil, 1, nil)
-	assistant := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	user := NewUserMessageComponent("Fix **the** build", nil, 1, nil, "", "")
+	assistant := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	chat.Add(user)
 	chat.Add(assistant)
 	session := newRecordingSession()
@@ -586,7 +586,7 @@ func TestTuiSurfaceSendsMessagesAsMarkdown(t *testing.T) {
 // still arriving streams. The ANSI lines stay Pi's: hidden runs draw the
 // "Thinking..." label.
 func TestTuiSurfaceSendsThinkingRuns(t *testing.T) {
-	assistant := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	assistant := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	session := newRecordingSession()
 	surface := NewTuiSurfaceWithSize(session, 60, 20, func(err error) { t.Fatalf("apply: %v", err) })
 	renderOnlyWhenAsked(surface)
@@ -756,8 +756,8 @@ func TestTuiSurfaceSendsAToolResultsImages(t *testing.T) {
 // update. The terminal lines stay Pi's, which draws no user images.
 func TestTuiSurfaceSendsAUserMessagesImages(t *testing.T) {
 	pngData := makePNGBase64(t, 3, 2)
-	plain := NewUserMessageComponent("Look at this", nil, 1, nil)
-	user := NewUserMessageComponent("Look at this", nil, 1, nil)
+	plain := NewUserMessageComponent("Look at this", nil, 1, nil, "", "")
+	user := NewUserMessageComponent("Look at this", nil, 1, nil, "", "")
 	user.SetImages([]ImageBlock{{Data: pngData, MIMEType: "image/png"}, {Data: "not base64!", MIMEType: "image/gif"}})
 	if got, want := user.Render(60), plain.Render(60); !slices.Equal(got, want) {
 		t.Fatalf("terminal lines with images =\n%q\nwant\n%q", got, want)
@@ -1243,7 +1243,7 @@ func TestTuiSurfaceUpdatesANodeWhoseImagesAloneChange(t *testing.T) {
 	card := NewToolExecutionComponent("read", "", nil, ToolExecutionOptions{}, nil, nil, "")
 	card.UpdateArgs(json.RawMessage(`{"path":"dot.png"}`))
 	card.SetResult("Read image file [image/png]", false, 0)
-	user := NewUserMessageComponent("Look", nil, 1, nil)
+	user := NewUserMessageComponent("Look", nil, 1, nil, "", "")
 	user.SetImages([]ImageBlock{{Data: makePNGBase64(t, 3, 2), MIMEType: "image/png"}})
 	surface, session := startedSurface(t, NewContainer(card, user), nil)
 	main := session.tree[frontend.RegionMain]

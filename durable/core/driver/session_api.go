@@ -58,7 +58,10 @@ func (i *invocation) Env() env.ExecutionEnv { return i.s.envs.Get(i.task) }
 
 func (i *invocation) Now() float64 { return i.s.now() }
 
-func (i *invocation) Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error) {
+func (i *invocation) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
+	if _, err := durable.SingleCommitOptions(options); err != nil {
+		return nil, err
+	}
 	return i.s.commit(ctx, map[string]any{"conversationId": i.conversation}, change)
 }
 
@@ -197,8 +200,12 @@ func (s *coreSession) WatchDocErased(ctx context.Context, token durable.AnyDocTo
 	return s.watchDoc(ctx, token, args)
 }
 
-// Commit runs one atomic transaction on the Session mutation line.
-func (s *coreSession) Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error) {
+// Commit runs one atomic transaction on the Session mutation line. The core stores every commit before it returns:
+// options.Persistence is a permission (spec §4.1), so a deferred commit is stored at once.
+func (s *coreSession) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
+	if _, err := durable.SingleCommitOptions(options); err != nil {
+		return nil, err
+	}
 	return s.commit(ctx, nil, change)
 }
 
@@ -705,7 +712,10 @@ func (c *conversation) Compact(ctx context.Context, instructions *string) (durab
 	return result.(durable.TaskId), nil
 }
 
-func (c *conversation) Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error) {
+func (c *conversation) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
+	if _, err := durable.SingleCommitOptions(options); err != nil {
+		return nil, err
+	}
 	return c.s.commit(ctx, map[string]any{"conversationId": c.id}, change)
 }
 

@@ -402,6 +402,12 @@ pub struct MarkdownTransformContext {
     pub is_streaming: bool,
     #[serde(default, rename = "availableWidth")]
     pub available_width: u32,
+    /// Persisted session-entry id; `None` for a live message or live rendering.
+    #[serde(default, rename = "messageId", skip_serializing_if = "Option::is_none")]
+    pub message_id: Option<String>,
+    /// Persisted session-entry ISO timestamp; `None` for a live message or live rendering.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<String>,
 }
 
 /// Type alias for a display-only Markdown transformer (Pi's

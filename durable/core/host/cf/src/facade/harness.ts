@@ -22,6 +22,7 @@ import { SentSettings } from "./settings-watch.ts"
 import { bindContext, documentReader, invocationApi, invocationCommit, invocationOf, type InvocationBinding } from "./hostapi.ts"
 import { resolveAddress, wireAddress, type AnyDocToken } from "./documents.ts"
 import { WatchHub } from "./watches.ts"
+import type { Observer } from "./watch-types.ts"
 import { runCommit, TxProxy, wireDefinition } from "./tx.ts"
 import { recordPublication } from "./publications.ts"
 import { overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
@@ -662,6 +663,11 @@ export class Harness {
     const { address, nextArgument } = resolveAddress(token.definition, args)
     return this.watches.state({ kind: "doc", address: wireAddress(address), def: wireDefinition(token.definition) }, args[nextArgument] as Context)
   }
+  /** `observeDoc(token, ...owner, [key], observer, context)`: a synchronous Observer of one document address, or undefined when absent. */
+  observeDoc(token: AnyDocToken, ...args: unknown[]) {
+    const { address, nextArgument } = resolveAddress(token.definition, args)
+    return this.watches.observe({ kind: "doc", address: wireAddress(address), def: wireDefinition(token.definition) }, args[nextArgument] as Observer<never>, args[nextArgument + 1] as Context)
+  }
   /** `watchDoc(token, ...owner, [key], context)`: the serialized exact-frame watch of a document, or undefined when absent. */
   watchDoc(token: AnyDocToken, ...args: unknown[]) {
     const { address, nextArgument } = resolveAddress(token.definition, args)
@@ -773,6 +779,16 @@ export class Harness {
   async usage(context: Context) { return awaitWithContext(this.client.api("usage"), context) }
   taskGraph(context: Context) { return this.watches.state({ kind: "graph" }, context) }
   watchTaskGraph(context: Context) { return this.watches.watch({ kind: "graph" }, context) }
+  /** `observeTaskGraph(observer, context)`: a synchronous Observer of the task graph (harness.ts observeTaskGraph). */
+  async observeTaskGraph(observer: Observer<unknown>, context: Context) {
+    this.assertReadable()
+    return (await this.watches.observe({ kind: "graph" }, observer, context))!
+  }
+  /** `observeConversation(id, observer, context)`: a synchronous Observer of a conversation's structural view (harness.ts observeConversation). */
+  async observeConversation(conversationId: number, observer: Observer<unknown>, context: Context) {
+    this.assertReadable()
+    return (await this.watches.observe({ kind: "view", conversationId }, observer, context))!
+  }
   /** The view state and watch of one conversation. */
   /** The core's view of a conversation with a custom observer (watchEvents): every commit that touches it reaches `publication` with the commit's records. */
   attachView(conversationId: number, context: Context, make: Parameters<WatchHub["attach"]>[2]) {

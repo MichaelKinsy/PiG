@@ -1,9 +1,33 @@
-import { Container, getKeybindings, Input, Spacer, Text } from "../../../../../pi-tui.mjs";
+import { Container, getKeybindings, hyperlink, Input, replaceControlCharacters, Spacer, Text, TruncatedText, } from "../../../../../pi-tui.mjs";
+import { copyToClipboard } from "../../../utils/clipboard.js";
 import { openBrowser } from "../../../utils/open-browser.js";
 import { theme } from "../theme/theme.js";
 import { AuthUrlComponent } from "./auth-url.js";
 import { DynamicBorder } from "./dynamic-border.js";
 import { keyHint } from "./keybinding-hints.js";
+/**
+ * The `http:` or `https:` URL `value` names, normalized, or undefined. The shared launcher also opens files and custom
+ * protocols, so login only opens web URLs. Normalizing percent-encodes control characters, which would otherwise end a
+ * terminal hyperlink early.
+ */
+function webUrl(value) {
+    if (!URL.canParse(value))
+        return undefined;
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
+}
+/**
+ * `value` normalized as a web URL, else with control characters replaced: an untrusted string printed as is could end a
+ * hyperlink early or send its own escape sequences to the terminal.
+ */
+function displayUrl(value) {
+    return webUrl(value) ?? replaceControlCharacters(value);
+}
+/** `text` as a terminal hyperlink to `url` when that is a web URL, else plain `text`. */
+function webLink(text, url) {
+    const target = webUrl(url);
+    return target === undefined ? text : hyperlink(text, target);
+}
 /**
  * Login dialog component - replaces editor during OAuth login flow
  */
@@ -16,6 +40,8 @@ export class LoginDialogComponent extends Container {
     abortController = new AbortController();
     inputResolver;
     inputRejecter;
+    deviceCodeAction;
+    deviceCodeHint;
     onComplete;
     // Focusable implementation - propagate to input for IME cursor positioning
     _focused = false;
@@ -62,7 +88,15 @@ export class LoginDialogComponent extends Container {
     replaceInputWithSubmittedText(value) {
         this.contentContainer.children = this.contentContainer.children.map((child) => child === this.input ? new Text(`> ${value}`, 0, 0) : child);
     }
+    clearDeviceCodeAction() {
+        if (this.deviceCodeHint) {
+            this.contentContainer.removeChild(this.deviceCodeHint);
+        }
+        this.deviceCodeHint = undefined;
+        this.deviceCodeAction = undefined;
+    }
     cancel() {
+        this.clearDeviceCodeAction();
         this.abortController.abort();
         if (this.inputRejecter) {
             this.inputRejecter(new Error("Login cancelled"));
@@ -75,15 +109,18 @@ export class LoginDialogComponent extends Container {
      * Called by onAuth callback - show URL and optional instructions
      */
     showAuth(url, instructions) {
+        this.clearDeviceCodeAction();
         this.contentContainer.clear();
         this.contentContainer.addChild(new Spacer(1));
-        this.authUrl = new AuthUrlComponent(this.tui, url);
+        const target = webUrl(url);
+        this.authUrl = new AuthUrlComponent(this.tui, target ?? replaceControlCharacters(url));
         this.contentContainer.addChild(this.authUrl);
         if (instructions) {
             this.contentContainer.addChild(new Spacer(1));
             this.contentContainer.addChild(new Text(theme.fg("warning", instructions), 1, 0));
         }
-        openBrowser(url);
+        if (target !== undefined)
+            openBrowser(target);
         this.tui.requestRender();
     }
     /**
@@ -91,21 +128,65 @@ export class LoginDialogComponent extends Container {
      */
     showDeviceCode(info) {
         this.authUrl = undefined;
+        info = {
+            ...info,
+            openBrowserOnConfirm: info.openBrowserOnConfirm ?? true,
+            copyCodeOnConfirm: info.copyCodeOnConfirm ?? true,
+        };
+        this.clearDeviceCodeAction();
         this.contentContainer.clear();
         this.contentContainer.addChild(new Spacer(1));
-        const linkedUrl = `\x1b]8;;${info.verificationUri}\x07${info.verificationUri}\x1b]8;;\x07`;
-        this.contentContainer.addChild(new Text(theme.fg("accent", linkedUrl), 1, 0));
+        const shownUrl = displayUrl(info.verificationUri);
+        this.contentContainer.addChild(new Text(theme.fg("accent", webLink(shownUrl, shownUrl)), 1, 0));
         const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
-        const hyperlink = `\x1b]8;;${info.verificationUri}\x07${clickHint}\x1b]8;;\x07`;
-        this.contentContainer.addChild(new Text(theme.fg("dim", hyperlink), 1, 0));
+        this.contentContainer.addChild(new Text(theme.fg("dim", webLink(clickHint, info.verificationUri)), 1, 0));
         this.contentContainer.addChild(new Spacer(1));
         this.contentContainer.addChild(new Text(theme.fg("warning", `Enter code: ${info.userCode}`), 1, 0));
+        if (!this.signal.aborted && (info.openBrowserOnConfirm || info.copyCodeOnConfirm)) {
+            const actionLabel = info.openBrowserOnConfirm
+                ? info.copyCodeOnConfirm
+                    ? "to open browser and copy code"
+                    : "to open browser"
+                : "to copy code";
+            // Reuse this single row for progress/result text, including in narrow terminals.
+            const hint = new Container();
+            hint.addChild(new TruncatedText(`(${keyHint("tui.select.confirm", actionLabel)})`, 1, 0));
+            this.contentContainer.addChild(hint);
+            this.deviceCodeHint = hint;
+            this.deviceCodeAction = { info, hint };
+        }
         this.tui.requestRender();
+    }
+    setDeviceCodeStatus(hint, message) {
+        if (this.signal.aborted || !this.focused || !this.contentContainer.children.includes(hint))
+            return;
+        hint.children = [new TruncatedText(theme.fg("dim", message), 1, 0)];
+        this.tui.requestRender();
+    }
+    activateDeviceCode(info, hint) {
+        this.setDeviceCodeStatus(hint, info.copyCodeOnConfirm ? "Copying code..." : "Browser open requested");
+        if (info.copyCodeOnConfirm) {
+            // Do not delay polling or browser opening while clipboard tools are running.
+            void copyToClipboard(info.userCode)
+                .then(() => this.setDeviceCodeStatus(hint, "Code copied to clipboard"))
+                .catch(() => this.setDeviceCodeStatus(hint, "Copy code manually"));
+        }
+        if (info.openBrowserOnConfirm) {
+            try {
+                const target = webUrl(info.verificationUri);
+                if (target !== undefined)
+                    openBrowser(target);
+            }
+            catch {
+                // Launcher failures must not interrupt login.
+            }
+        }
     }
     /**
      * Show input for manual code/URL entry (for callback server providers)
      */
     showManualInput(prompt) {
+        this.clearDeviceCodeAction();
         this.input.setValue("");
         this.contentContainer.addChild(new Spacer(1));
         this.contentContainer.addChild(new Text(theme.fg("dim", prompt), 1, 0));
@@ -122,6 +203,7 @@ export class LoginDialogComponent extends Container {
      * Note: Does NOT clear content, appends to existing (preserves URL from showAuth)
      */
     showPrompt(message, placeholder) {
+        this.clearDeviceCodeAction();
         this.contentContainer.addChild(new Spacer(1));
         this.contentContainer.addChild(new Text(theme.fg("text", message), 1, 0));
         if (placeholder) {
@@ -139,6 +221,7 @@ export class LoginDialogComponent extends Container {
     /** Show informational text before another login step. */
     showDetails(lines) {
         this.authUrl = undefined;
+        this.clearDeviceCodeAction();
         this.contentContainer.clear();
         this.contentContainer.addChild(new Spacer(1));
         for (const line of lines) {
@@ -151,9 +234,9 @@ export class LoginDialogComponent extends Container {
         this.contentContainer.addChild(new Spacer(1));
         this.contentContainer.addChild(new Text(theme.fg("text", message), 1, 0));
         for (const link of links) {
-            const text = link.label ? `${link.label}: ${link.url}` : link.url;
-            const hyperlink = `\x1b]8;;${link.url}\x07${text}\x1b]8;;\x07`;
-            this.contentContainer.addChild(new Text(theme.fg("accent", hyperlink), 1, 0));
+            const url = displayUrl(link.url);
+            const text = link.label ? `${link.label}: ${url}` : url;
+            this.contentContainer.addChild(new Text(theme.fg("accent", webLink(text, url)), 1, 0));
         }
         if (showCloseHint) {
             this.contentContainer.addChild(new Spacer(1));
@@ -185,6 +268,18 @@ export class LoginDialogComponent extends Container {
         }
         if (this.authUrl && kb.matches(data, "app.message.copy")) {
             void this.authUrl.copy();
+            return;
+        }
+        if (this.deviceCodeAction &&
+            !this.inputResolver &&
+            !this.signal.aborted &&
+            this.focused &&
+            kb.matches(data, "tui.select.confirm")) {
+            const action = this.deviceCodeAction;
+            // Consume once so a repeated Enter cannot launch multiple browsers or clipboard writes.
+            this.deviceCodeAction = undefined;
+            this.activateDeviceCode(action.info, action.hint);
+            this.tui.requestRender();
             return;
         }
         // Pass to input

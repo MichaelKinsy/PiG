@@ -8,6 +8,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
@@ -56,6 +57,10 @@ type ControlledStorage struct {
 	commitGate        *Gate
 	findGate          *Gate
 	commitFailure     error
+	// adopting is set while adopt runs, the storage's synchronous step: code that sees it set runs inside Storage.Commit's adopt.
+	adopting atomic.Bool
+	// afterAdopt runs once, in the next commit's synchronous step right after adopt returned.
+	afterAdopt func()
 }
 
 // NewControlledStorage returns an empty controlled memory storage.
@@ -144,6 +149,16 @@ func (controlled *ControlledStorage) FailNextCommit(err error) {
 	controlled.mu.Unlock()
 }
 
+// Adopting reports whether the caller runs inside the adopt callback of a Storage.Commit, the storage's synchronous step.
+func (controlled *ControlledStorage) Adopting() bool { return controlled.adopting.Load() }
+
+// AfterAdopt makes the next commit run after, once, in its synchronous step right after adopt returned.
+func (controlled *ControlledStorage) AfterAdopt(after func()) {
+	controlled.mu.Lock()
+	controlled.afterAdopt = after
+	controlled.mu.Unlock()
+}
+
 // Commit records the batch, honors a held gate and an injected failure, then commits.
 func (controlled *ControlledStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
 	controlled.mu.Lock()
@@ -161,7 +176,20 @@ func (controlled *ControlledStorage) Commit(ctx context.Context, writes []durabl
 	if failure != nil {
 		return 0, failure
 	}
-	return controlled.MemoryStorage.Commit(ctx, writes, adopt)
+	return controlled.MemoryStorage.Commit(ctx, writes, func(seq durable.Seq) {
+		controlled.adopting.Store(true)
+		func() {
+			defer controlled.adopting.Store(false)
+			adopt(seq)
+		}()
+		controlled.mu.Lock()
+		after := controlled.afterAdopt
+		controlled.afterAdopt = nil
+		controlled.mu.Unlock()
+		if after != nil {
+			after()
+		}
+	})
 }
 
 // MintId counts and mints.

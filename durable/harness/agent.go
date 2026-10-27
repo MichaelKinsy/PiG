@@ -37,6 +37,7 @@ var DefaultCompactionPolicy = durable.CompactionPolicy{
 var DefaultProgressPolicy = durable.ProgressPolicy{
 	PartialIntervalMs: 100,
 	OutputIntervalMs:  100,
+	PersistWithinMs:   1_000,
 }
 
 // InstructionsKey is the reserved section key of the agent's instructions.
@@ -320,6 +321,9 @@ type CompactionPolicyPatch struct {
 type ProgressPolicyPatch struct {
 	PartialIntervalMs *float64
 	OutputIntervalMs  *float64
+	// PersistWithinMs is how long deferred commits may stay in memory before they are stored; a value that is not a number
+	// of milliseconds, 0 or more, means the default, 1,000.
+	PersistWithinMs *float64
 }
 
 // ResolveSettings resolves host settings: every field over its built-in default, object fields merged.
@@ -367,6 +371,7 @@ func ResolveSettings(settings *HarnessSettings) durable.Settings {
 	if progress := settings.Progress; progress != nil {
 		assign(&resolved.Progress.PartialIntervalMs, progress.PartialIntervalMs)
 		assign(&resolved.Progress.OutputIntervalMs, progress.OutputIntervalMs)
+		resolved.Progress.PersistWithinMs = session.PersistWithin(progress.PersistWithinMs)
 	}
 	assign(&resolved.ContextRetentionMs, settings.ContextRetentionMs)
 	resolved.DocumentRetentionMs = session.DocumentRetention(settings.DocumentRetentionMs)

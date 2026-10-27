@@ -115,10 +115,7 @@ func TestLongStreamOutputUnchanged(t *testing.T) {
 			t.Fatal(err)
 		}
 		pushed.Write(encoded)
-		// The construction message holds deferred argument text between reads (lw-quiet); hash it as a reader would see it.
-		settled := *builder.partial
-		settled.Content = settledContent(settled.Content)
-		encoded, err = json.Marshal(&settled)
+		encoded, err = json.Marshal(builder.partial)
 		if err != nil {
 			t.Fatal(err)
 		}

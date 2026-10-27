@@ -327,7 +327,8 @@ func TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatche
 		if watch, err = rt.WatchDocErased(ctx, notes); err != nil {
 			return err
 		}
-		watch.Start(func(_ context.Context, value durable.JsonObject, _ []durable.Op) error {
+		watch.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+			value := change.Value
 			mu.Lock()
 			defer mu.Unlock()
 			delivered = append(delivered, fmt.Sprint(value.Value("text")))

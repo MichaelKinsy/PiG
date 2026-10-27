@@ -28,7 +28,7 @@ func TestScalingMainScreenFrames(t *testing.T) {
 	// Pi's TUI.render (tui.ts doRender) renders every child and compares every line with the previous frame, so its frame is linear in the transcript. PiG's frame keeps the lines before the first child that changed (Container window) and starts the line resets and the differential scan there, so a frame that changes the end of the transcript allocates the same at any length; TestWindowedFramesEqualWholeFrames proves the bytes equal. Each case renders warm frames first: the first frame after a whole render allocates the arrays later frames reuse.
 	testscaling.Check(t, testscaling.Case{Name: "main screen streaming delta frame at transcript n", Size: 200, Bound: testscaling.Constant, Prepare: func(n int) func() {
 		ui, chat := scalingMainScreen(n)
-		tail := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+		tail := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 		chat.Add(tail)
 		text := "token "
 		for range 3 {
@@ -57,11 +57,11 @@ func TestScalingMainScreenFrames(t *testing.T) {
 	testscaling.Check(t, testscaling.Case{Name: "main screen message mount frame at transcript n", Size: 200, Bound: testscaling.Constant, Prepare: func(n int) func() {
 		ui, chat := scalingMainScreen(n)
 		for range 3 {
-			chat.Add(NewUserMessageComponent("Warm **up**.", nil, 1, nil))
+			chat.Add(NewUserMessageComponent("Warm **up**.", nil, 1, nil, "", ""))
 			ui.Render()
 		}
 		return func() {
-			chat.Add(NewUserMessageComponent("One more **thing**.", nil, 1, nil))
+			chat.Add(NewUserMessageComponent("One more **thing**.", nil, 1, nil, "", ""))
 			ui.Render()
 		}
 	}})
@@ -94,7 +94,7 @@ func TestScalingAltScreenFrames(t *testing.T) {
 	// Fullscreen (Pi's default) lays the transcript out in a scroll view: RenderLayoutFrame asks the container for its lines each frame (tui-alt-screen.ts doRender renders the whole document). PiG's container keeps the lines before the first child that changed, so a streaming frame allocates the same at any transcript length; the time that still grows is the dirty poll of every child.
 	testscaling.Check(t, testscaling.Case{Name: "fullscreen streaming delta frame at transcript n", Size: 150, Bound: testscaling.Constant, Prepare: func(n int) func() {
 		ui, chat := scalingAltScreen(n)
-		tail := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+		tail := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 		chat.Add(tail)
 		text := "token "
 		for range 4 {
@@ -171,7 +171,7 @@ func TestScalingStreamingMessage(t *testing.T) {
 		}
 	}})
 	testscaling.Check(t, testscaling.Case{Name: "assistant message streaming of n deltas", Size: 100, Bound: testscaling.Linear, BytesBound: linearWithFrameCopy, Prepare: func(n int) func() {
-		block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+		block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 		return func() {
 			var text strings.Builder
 			for i := range n {

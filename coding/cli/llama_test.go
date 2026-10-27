@@ -52,6 +52,18 @@ func llamaLoads(t *testing.T, cwd, agentDir string, args ...string) bool {
 	return slices.Contains(loadProductionExtensionSetIn(t, cwd, agentDir, args).paths(), codingagent.BuiltinPathPrefix+llamaBuiltinName)
 }
 
+// llamaBuiltInEntry is the production llama.cpp entry of builtInExtensions, the first entry of extensions/index.ts.
+func llamaBuiltInEntry(t *testing.T) extension.NamedInlineExtension {
+	t.Helper()
+	for _, input := range builtInExtensions {
+		if named, ok := input.(extension.NamedInlineExtension); ok && named.Builtin && named.Name == llamaBuiltinName {
+			return named
+		}
+	}
+	t.Fatalf("builtInExtensions has no %q entry; extensions/index.ts lists llama.cpp first", llamaBuiltinName)
+	return extension.NamedInlineExtension{}
+}
+
 // startBuiltInLlama loads the built-in llama.cpp extension through the production extension set and binds its registrations to the
 // session's model registry, as the session runner does, then makes the cache-only refresh every mode runs at startup
 // (agent-session-services.ts `modelRuntime.refresh({ allowNetwork: false })`).

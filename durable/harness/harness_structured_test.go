@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -1865,7 +1867,8 @@ func TestToolRounds(t *testing.T) {
 		stream := must(WatchEvents(testContext, harness, root.Id()))
 		var mu sync.Mutex
 		turns := []string{}
-		stream.Start(func(_ context.Context, batch []AgentEvent) error {
+		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+			batch := change.Value
 			mu.Lock()
 			for _, event := range batch {
 				if strings.HasPrefix(event.EventType(), "turn_") {
@@ -1907,6 +1910,9 @@ func TestToolRounds(t *testing.T) {
 				return streamOf(fauxMessage("partial", ai.StopReasonPending), 300*time.Millisecond, final), nil
 			}
 		})
+		// The partial is stored at once, so the failed final commit leaves it for the reopened run to convert; held, it would
+		// be lost with the failed Session (harness-structured.test.ts:1339).
+		setup.SetSettings(func(settings *HarnessSettings) { settings.Progress = &ProgressPolicyPatch{PersistWithinMs: new(0.0)} })
 		addTask(t, setup.Registry, nodeTask.Erased())
 		var opened Harness
 		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeRequest: func(ctx context.Context, _ GenerationRequest, api HookApi) (*GenerationRequest, error) {
@@ -2458,7 +2464,8 @@ type eventListener struct {
 func listenEvents(t *testing.T, harness Harness, conversation Conversation) *eventListener {
 	t.Helper()
 	found := &eventListener{stream: must(WatchEvents(testContext, harness, conversation.Id()))}
-	found.stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	found.stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		found.mu.Lock()
 		found.events = append(found.events, batch...)
 		found.mu.Unlock()

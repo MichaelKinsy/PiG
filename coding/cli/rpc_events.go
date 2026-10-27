@@ -472,9 +472,8 @@ func rpcAssistantContent(blocks []ai.AssistantContentBlock) ([]any, error) {
 	return out, nil
 }
 
-// rpcBlockScratch is what a streamed text or thinking block carries beyond its stable fields: the provider event index while its content block is open, and a thinking signature that is present but empty.
+// rpcBlockScratch is what a streamed text or thinking block carries beyond its stable fields: a thinking signature that is present but empty.
 type rpcBlockScratch struct {
-	index          *int
 	emptySignature bool
 }
 
@@ -485,25 +484,21 @@ func rpcStreamingBlockScratch(block ai.AssistantContentBlock) (rpcBlockScratch, 
 		return rpcBlockScratch{}, err
 	}
 	var fields struct {
-		Index     *int    `json:"index"`
 		Signature *string `json:"thinkingSignature"`
 	}
 	if err := json.Unmarshal(encoded, &fields); err != nil {
 		return rpcBlockScratch{}, err
 	}
-	return rpcBlockScratch{index: fields.Index, emptySignature: fields.Signature != nil && *fields.Signature == ""}, nil
+	return rpcBlockScratch{emptySignature: fields.Signature != nil && *fields.Signature == ""}, nil
 }
 
-// apply adds the scratch fields in Pi's property order: signature after the thinking text, index last.
+// apply adds the empty thinking signature after the thinking text, where Pi's property order has it.
 func (scratch rpcBlockScratch) apply(object rpcObject) rpcObject {
 	if scratch.emptySignature {
 		fields := make(rpcObject, 0, len(object)+2)
 		fields = append(fields, object[:2]...)
 		fields = append(fields, rpcField{"thinkingSignature", ""})
 		object = append(fields, object[2:]...)
-	}
-	if scratch.index != nil {
-		object = append(object, rpcField{"index", *scratch.index})
 	}
 	return object
 }
@@ -523,7 +518,7 @@ func rpcToolResultContent(blocks []ai.ToolResultMessageContent) ([]any, error) {
 func rpcContentBlock(block ai.ContentBlock) (any, error) {
 	switch block := block.(type) {
 	case ai.TextContent, ai.ToolCall, ai.ThinkingContent:
-		// These blocks own the provider's optional streaming scratch fields (`index`, `partialJson`, ...), the presence of an empty thinking signature, and their JSON order.
+		// These blocks own the presence of an empty thinking signature and their JSON order.
 		return block, nil
 	case ai.ImageContent:
 		return rpcObject{{"type", "image"}, {"data", block.Data}, {"mimeType", block.MimeType}}, nil

@@ -15,10 +15,10 @@ func TestUserMessageComponentTakesTheConstructorInjections(t *testing.T) {
 	}
 	theme := GetMarkdownTheme()
 	theme.Bold = func(text string) string { return "<<" + text + ">>" }
-	if got := render(NewUserMessageComponent("a **b** c", &theme, 1, nil)); !strings.Contains(got, "<<b>>") {
+	if got := render(NewUserMessageComponent("a **b** c", &theme, 1, nil, "", "")); !strings.Contains(got, "<<b>>") {
 		t.Fatalf("the injected markdown theme must style bold:\n%s", got)
 	}
-	if got := render(NewUserMessageComponent("a **b** c", nil, 1, nil)); strings.Contains(got, "<<") {
+	if got := render(NewUserMessageComponent("a **b** c", nil, 1, nil, "", "")); strings.Contains(got, "<<") {
 		t.Fatalf("the default theme must not be the injected one:\n%s", got)
 	}
 	lead := func(block *UserMessageComponent) int {
@@ -26,10 +26,10 @@ func TestUserMessageComponentTakesTheConstructorInjections(t *testing.T) {
 		line := lines[1] // row 0 is the top padding row
 		return len(line) - len(strings.TrimLeft(line, " "))
 	}
-	if padded, flush := lead(NewUserMessageComponent("hi", nil, 1, nil)), lead(NewUserMessageComponent("hi", nil, 0, nil)); padded != 1 || flush != 0 {
+	if padded, flush := lead(NewUserMessageComponent("hi", nil, 1, nil, "", "")), lead(NewUserMessageComponent("hi", nil, 0, nil, "", "")); padded != 1 || flush != 0 {
 		t.Fatalf("output pad: default %d, injected 0 gives %d; want 1 and 0", padded, flush)
 	}
-	transformed := NewUserMessageComponent("plain", nil, 1, []markdowntransform.MarkdownTransformer{func(text string, _ markdowntransform.MarkdownTransformContext) string { return strings.ToUpper(text) }})
+	transformed := NewUserMessageComponent("plain", nil, 1, []markdowntransform.MarkdownTransformer{func(text string, _ markdowntransform.MarkdownTransformContext) string { return strings.ToUpper(text) }}, "", "")
 	if got := render(transformed); !strings.Contains(got, "PLAIN") {
 		t.Fatalf("the injected transform must rewrite the displayed text:\n%s", got)
 	}
@@ -44,18 +44,18 @@ func TestAssistantMessageComponentTakesTheConstructorInjections(t *testing.T) {
 	theme.Bold = func(text string) string { return "<<" + text + ">>" }
 	content := []AssistantSegment{{Thinking: true, Text: "SECRET"}, {Text: "an **answer**"}}
 
-	themed := NewAssistantMessageComponent(nil, false, &theme, "", nil, nil)
+	themed := NewAssistantMessageComponent(nil, false, &theme, "", nil, nil, "", "")
 	themed.SetContent(content)
 	if got := render(themed); !strings.Contains(got, "<<answer>>") {
 		t.Fatalf("the injected markdown theme must style text blocks:\n%s", got)
 	}
-	plain := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	plain := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	plain.SetContent(content)
 	if got := render(plain); strings.Contains(got, "<<") {
 		t.Fatalf("the default theme must not be the injected one:\n%s", got)
 	}
 
-	hidden := NewAssistantMessageComponent(nil, true, nil, "Mulling it over", nil, nil)
+	hidden := NewAssistantMessageComponent(nil, true, nil, "Mulling it over", nil, nil, "", "")
 	hidden.SetContent(content)
 	if got := render(hidden); !strings.Contains(got, "Mulling it over") || strings.Contains(got, "Thinking...") || strings.Contains(got, "SECRET") {
 		t.Fatalf("the injected hidden label must stand in for the run:\n%s", got)
@@ -70,7 +70,7 @@ func TestAssistantMessageComponentTakesTheConstructorInjections(t *testing.T) {
 		}
 		return -1
 	}
-	if padded, flush := lead(NewAssistantMessageComponent(nil, false, nil, "", nil, nil)), lead(NewAssistantMessageComponent(nil, false, nil, "", new(0), nil)); padded != 1 || flush != 0 {
+	if padded, flush := lead(NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")), lead(NewAssistantMessageComponent(nil, false, nil, "", new(0), nil, "", "")); padded != 1 || flush != 0 {
 		t.Fatalf("output pad: default %d, injected 0 gives %d; want 1 and 0", padded, flush)
 	}
 }

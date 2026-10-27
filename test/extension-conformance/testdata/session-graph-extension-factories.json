@@ -1,0 +1,159 @@
+{
+	"active": [
+		{
+			"commands": [
+				"mcp"
+			],
+			"tools": [
+				{
+					"active": true,
+					"guidelines": [
+						"Use codemode to batch independent tool calls (Promise.allSettled), chain them, or filter large output, instead of many separate calls."
+					],
+					"models": false,
+					"name": "codemode",
+					"parameters": {
+						"properties": {
+							"code": {
+								"description": "Raw JavaScript source.",
+								"type": "string"
+							}
+						},
+						"required": [
+							"code"
+						],
+						"type": "object"
+					}
+				},
+				{
+					"active": true,
+					"guidelines": null,
+					"models": false,
+					"name": "tool_search",
+					"parameters": {
+						"properties": {
+							"limit": {
+								"description": "Maximum number of tools to return. Defaults to 8.",
+								"type": "number"
+							},
+							"query": {
+								"description": "Search query for deferred tools.",
+								"type": "string"
+							}
+						},
+						"required": [
+							"query"
+						],
+						"type": "object"
+					}
+				}
+			]
+		}
+	],
+	"defaults": [
+		{
+			"commands": [],
+			"tools": [
+				{
+					"active": true,
+					"guidelines": [
+						"Use codemode to batch independent tool calls (Promise.allSettled), chain them, or filter large output, instead of many separate calls."
+					],
+					"models": true,
+					"name": "codemode",
+					"parameters": {
+						"properties": {
+							"code": {
+								"description": "Raw JavaScript source.",
+								"type": "string"
+							}
+						},
+						"required": [
+							"code"
+						],
+						"type": "object"
+					}
+				},
+				{
+					"active": true,
+					"guidelines": null,
+					"models": false,
+					"name": "tool_search",
+					"parameters": {
+						"properties": {
+							"limit": {
+								"description": "Maximum number of tools to return. Defaults to 8.",
+								"type": "number"
+							},
+							"query": {
+								"description": "Search query for deferred tools.",
+								"type": "string"
+							}
+						},
+						"required": [
+							"query"
+						],
+						"type": "object"
+					}
+				}
+			]
+		}
+	],
+	"inactive": [
+		{
+			"commands": [
+				"mcp"
+			],
+			"tools": [
+				{
+					"active": false,
+					"guidelines": [
+						"Use codemode to batch independent tool calls (Promise.allSettled), chain them, or filter large output, instead of many separate calls."
+					],
+					"models": false,
+					"name": "codemode",
+					"parameters": {
+						"properties": {
+							"code": {
+								"description": "Raw JavaScript source.",
+								"type": "string"
+							}
+						},
+						"required": [
+							"code"
+						],
+						"type": "object"
+					}
+				},
+				{
+					"active": false,
+					"guidelines": null,
+					"models": false,
+					"name": "tool_search",
+					"parameters": {
+						"properties": {
+							"limit": {
+								"description": "Maximum number of tools to return. Defaults to 8.",
+								"type": "number"
+							},
+							"query": {
+								"description": "Search query for deferred tools.",
+								"type": "string"
+							}
+						},
+						"required": [
+							"query"
+						],
+						"type": "object"
+					}
+				}
+			]
+		}
+	],
+	"none": [
+		{
+			"commands": [],
+			"tools": []
+		}
+	]
+}

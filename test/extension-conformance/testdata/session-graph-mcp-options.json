@@ -1,0 +1,54 @@
+{
+	"log": {
+		"credentials": [
+			"forServer remote \u003cserver\u003e/mcp",
+			"load remote",
+			"remove remote \u003cserver\u003e/mcp",
+			"tokens remote \u003cserver\u003e/mcp"
+		],
+		"demo": [
+			"create demo cwd=\u003croot\u003e/project auth=false",
+			"start",
+			"send initialize",
+			"send notifications/initialized",
+			"send tools/list",
+			"send tools/call",
+			"close",
+			"create demo cwd=\u003croot\u003e/project auth=false",
+			"start",
+			"send initialize",
+			"send notifications/initialized",
+			"send tools/list"
+		],
+		"loadConfig": [
+			{
+				"cwd": "\u003croot\u003e/project",
+				"isProjectTrusted": true
+			}
+		],
+		"remote": [
+			"create remote cwd=\u003croot\u003e/project auth=true",
+			"start",
+			"token tok-1",
+			"send initialize",
+			"send notifications/initialized",
+			"send tools/list",
+			"close"
+		]
+	},
+	"messages": [
+		"echo:hi"
+	],
+	"seen": [
+		{
+			"active": [
+				"mcp__demo__echo",
+				"mcp__remote__echo"
+			],
+			"tools": [
+				"mcp__demo__echo",
+				"mcp__remote__echo"
+			]
+		}
+	]
+}

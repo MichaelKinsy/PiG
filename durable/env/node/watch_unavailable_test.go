@@ -20,24 +20,24 @@ func TestNodeFileWatcherReportsOverflowWhenNoNativeWatchCanBeCreated(t *testing.
 	env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir(), Watch: NodeWatchOptions{Mode: durableenv.WatchNative, PollIntervalMs: new(30)}})
 	mustDo(t, env.WriteFile(background, "watched.txt", "one"))
 	var mu sync.Mutex
-	var changes []durableenv.WatchChange
+	var changes []durableenv.FileChange
 	changed := make(chan struct{}, 8)
-	watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "."}}, func(change durableenv.WatchChange) {
+	watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "."}}, func(change durableenv.FileChange) {
 		mu.Lock()
 		changes = append(changes, change)
 		mu.Unlock()
-		if _, ok := change.(durableenv.WatchChangePaths); ok {
+		if _, ok := change.(durableenv.FileChangePaths); ok {
 			changed <- struct{}{}
 		}
 	}))
 	defer func() { mustDo(t, watcher.Close(background)) }()
 	mu.Lock()
-	opened := append([]durableenv.WatchChange(nil), changes...)
+	opened := append([]durableenv.FileChange(nil), changes...)
 	mu.Unlock()
 	if len(opened) != 1 {
 		t.Fatalf("open delivered %#v, want one overflow", opened)
 	}
-	if _, ok := opened[0].(durableenv.WatchChangeOverflow); !ok {
+	if _, ok := opened[0].(durableenv.FileChangeOverflow); !ok {
 		t.Fatalf("open delivered %#v, want an overflow", opened[0])
 	}
 	if got := watcher.Mode(); got != durableenv.WatchPolling {

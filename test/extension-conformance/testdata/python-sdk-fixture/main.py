@@ -530,6 +530,57 @@ def new_extension() -> pig_sdk.Extension:
         "tags": Type.optional(Type.array(Type.string())),
         "filter": Type.optional(Type.record(Type.string(), Type.number())),
     }, {"additionalProperties": False}), lambda ctx, args: "ok")
+    # type-engine-tool (TestConformance_TypeEngineMembersAgreeAcrossSDKs): one property per member of Type that the host's type engine serves.
+    T = Type
+    s, n, i, b = T.string(), T.number(), T.integer(), T.boolean()
+    base = T.object({"id": s, "name": T.optional(s), "n": i, "tags": T.array(s)})
+    same = T.object({"a": s})
+    key = T.identifier("K")
+    ext.tool("type-engine-tool", "Parameters built with the engine members of Type", T.object({
+        "picked": T.pick(base, ["id", "name"]),
+        "omitted": T.omit(base, ["tags"]),
+        "partial": T.partial(base),
+        "required": T.required(T.object({"a": T.optional(s), "b": T.optional(n)})),
+        "keys": T.key_of(base),
+        "indexed": T.index(base, T.literal("n")),
+        "readonlyObject": T.readonly_object(base),
+        "readonlyType": T.readonly_type(T.array(s)),
+        "evaluated": T.evaluate(T.intersect([same, T.object({"b": n})])),
+        "excluded": T.exclude(T.union([s, n, b]), s),
+        "extracted": T.extract(T.union([s, n, b]), T.union([s, n])),
+        "nonNullable": T.non_nullable(T.union([s, T.null()])),
+        "uppercase": T.uppercase(T.literal("abc")),
+        "lowercase": T.lowercase(T.literal("ABC")),
+        "capitalize": T.capitalize(T.literal("abc")),
+        "uncapitalize": T.uncapitalize(T.literal("ABC")),
+        "parameters": T.parameters(T.function([s, n], b)),
+        "constructorParameters": T.constructor_parameters(T.constructor([s], T.object({}))),
+        "returnType": T.return_type(T.function([s], n)),
+        "instanceType": T.instance_type(T.constructor([s], same)),
+        "fn": T.function([s], n),
+        "constructorType": T.constructor([s], same),
+        "tuple": T.tuple([s, n]),
+        "template": T.template_literal("a${string}"),
+        "conditional": T.conditional(s, s, T.literal("yes"), T.literal("no")),
+        "mapped": T.mapped(key, T.union([T.literal("a"), T.literal("b")]), T.ref("K"), s),
+        "cyclic": T.cyclic({"A": T.object({"next": T.optional(T.ref("A"))})}, "A"),
+        "module": T.module({"A": s, "B": T.array(T.ref("A"))}),
+        "interface": T.interface([same], {"b": n}),
+        "dependent": T.dependent(s, n, b),
+        "extends": T.extends(None, s, s),
+        "instantiate": T.instantiate({"A": s}, T.ref("A")),
+        "call": T.instantiate({"Id": T.generic([T.parameter("T")], T.ref("T"))}, T.call(T.ref("Id"), [s])),
+        "script": T.script("{ a: string; b?: number[] }"),
+        "rest": T.rest(T.tuple([s])),
+        "this": T.this(),
+        "infer": T.infer("U", s),
+        "identifier": key,
+        "generic": T.generic([T.parameter("T", s, s)], T.array(T.ref("T"))),
+        "recordKey": T.record_key(T.record(s, n)),
+        "recordValue": T.record_value(T.record(s, n)),
+        "recordPattern": T.string({"description": T.record_pattern(T.record(s, n))}),
+        "enumKeyRecord": T.record(T.enum(["x", "y"]), n),
+    }, {"additionalProperties": False}), lambda ctx, args: "ok")
     # refine-probe (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): the schema of the "probe" cases of validateToolArguments.json; every predicate and message function logs its call.
     refine_log: list = []
 
@@ -846,6 +897,18 @@ def new_extension() -> pig_sdk.Extension:
         ctx.register_tool(dataclasses.replace(bash, execute=bash_execute))
         return [read.name, bash.name]
 
+    def register_edit_override(ctx, factory_cwd):
+        edit = pig_sdk.create_edit_tool_definition(factory_cwd)
+        run_edit = edit.execute
+
+        def edit_execute(ctx, params):
+            result = run_edit(ctx, params)
+            blocks = [{**b, "text": "«edited:" + b["text"] + "»"} if i == 0 else b for i, b in enumerate(result["content"])]
+            return {**result, "content": blocks}
+
+        ctx.register_tool(dataclasses.replace(edit, execute=edit_execute))
+        return [edit.name]
+
     def local_probe(case):
         operations = pig_sdk.create_local_powershell_operations() if case.get("shell") == "powershell" else pig_sdk.create_local_bash_operations()
         signal = pig_sdk.ProviderSignal()
@@ -873,6 +936,16 @@ def new_extension() -> pig_sdk.Extension:
             report = {"cwd": ctx.cwd}
         elif kind == "register":
             report = {"registered": register_overrides(ctx, case["factoryCwd"])}
+        elif kind == "registerEdit":
+            report = {"registered": register_edit_override(ctx, case["factoryCwd"])}
+        elif kind == "prepare":
+            definition = factories[case["tool"]][0](case["factoryCwd"])
+            report = {"has": definition.prepare_arguments is not None}
+            if definition.prepare_arguments is not None:
+                try:
+                    report["prepared"] = definition.prepare_arguments(case.get("params") or {})
+                except Exception as error:  # noqa: BLE001
+                    report["error"] = str(error)
         elif kind == "local":
             report = local_probe(case)
         elif kind == "sets":

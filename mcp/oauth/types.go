@@ -255,7 +255,8 @@ func optionalStrings(fields map[string]json.RawMessage, key, name string) ([]str
 	return out, nil
 }
 
-// safeURL requires an absolute URL that is not a script-bearing scheme.
+// safeURL requires an absolute http: or https: URL. Servers supply these URLs and the authorization endpoint is opened
+// with the platform URL handler, so a file: or custom protocol URL would launch local programs (Pi 9ffd27cfa).
 func safeURL(fields map[string]json.RawMessage, key, name string) (string, error) {
 	text, err := requiredString(fields, key, name)
 	if err != nil {
@@ -267,12 +268,14 @@ func safeURL(fields map[string]json.RawMessage, key, name string) (string, error
 	if err != nil {
 		return "", fmt.Errorf("Invalid %s", name)
 	}
-	switch u.Protocol {
-	case "javascript:", "data:", "vbscript:":
+	if !isHTTPURL(u) {
 		return "", fmt.Errorf("Invalid %s", name)
 	}
 	return text, nil
 }
+
+// isHTTPURL is Pi's isHttpUrl: the protocol is http: or https:.
+func isHTTPURL(u URL) bool { return u.Protocol == "http:" || u.Protocol == "https:" }
 
 func optionalURL(fields map[string]json.RawMessage, key, name string) (string, error) {
 	if absent(fields, key) {

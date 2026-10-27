@@ -187,6 +187,12 @@ pub struct OAuthAuthInfo {
 pub struct OAuthDeviceCodeInfo {
     pub user_code: String,
     pub verification_uri: String,
+    /// Offer best-effort browser opening on user confirmation. `None` means true; clients may ignore it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub open_browser_on_confirm: Option<bool>,
+    /// Offer copying `user_code` on user confirmation, replacing the clipboard. `None` means true.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copy_code_on_confirm: Option<bool>,
     #[serde(default)]
     pub interval_seconds: f64,
     #[serde(default)]

@@ -16,9 +16,10 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
+// samplingStep is one call on a grammar input buffer: kind "append" adds Text as a delta, "close" closes with Text as the complete input, and "closeNone" closes with none.
 type samplingStep struct {
-	Next  string `json:"next"`
-	Close bool   `json:"close"`
+	Kind string `json:"kind"`
+	Text string `json:"text"`
 }
 
 type samplingProbe struct {
@@ -120,18 +121,23 @@ func samplingProbes() []samplingProbe {
 	for range 1500 {
 		var steps []samplingStep
 		current := ""
-		for range 1 + g.random.Intn(5) {
-			next := current
-			switch g.random.Intn(6) {
+		for range 1 + g.random.Intn(6) {
+			text := inputs[g.random.Intn(len(inputs))]
+			switch g.random.Intn(8) {
 			case 0:
-				next = inputs[g.random.Intn(len(inputs))]
+				// A complete input that continues the input so far.
+				steps = append(steps, samplingStep{Kind: "close", Text: current + text})
+				current += text
 			case 1:
-				next = ""
+				// A complete input that need not continue it.
+				steps = append(steps, samplingStep{Kind: "close", Text: text})
+				current = text
+			case 2:
+				steps = append(steps, samplingStep{Kind: "closeNone"})
 			default:
-				next += inputs[g.random.Intn(len(inputs))]
+				steps = append(steps, samplingStep{Kind: "append", Text: text})
+				current += text
 			}
-			steps = append(steps, samplingStep{Next: next, Close: g.random.Intn(4) == 0})
-			current = next
 		}
 		probes = append(probes, samplingProbe{Op: "delta", Property: g.pick("input", "we\"ird", "é"), Steps: steps})
 	}
@@ -260,7 +266,17 @@ func TestConstrainedSamplingMatchesPi(t *testing.T) {
 			buffer := &grammarToolInputJSONBuffer{}
 			ok, label = len(want.Steps) == len(probe.Steps), "delta"
 			for j, step := range probe.Steps {
-				delta, present, err := appendGrammarToolInputJSONDelta(buffer, probe.Property, step.Next, step.Close)
+				var delta string
+				var present bool
+				var err error
+				switch step.Kind {
+				case "append":
+					delta, present, err = appendGrammarToolInputJSONDelta(buffer, probe.Property, step.Text)
+				case "close":
+					delta, present, err = closeGrammarToolInputJSON(buffer, probe.Property, &step.Text)
+				default:
+					delta, present, err = closeGrammarToolInputJSON(buffer, probe.Property, nil)
+				}
 				encoded, undef, message := settleSampling(delta, err, present)
 				if j < len(want.Steps) && !sameSampling(t, "delta", encoded, undef, message, want.Steps[j]) {
 					ok = false

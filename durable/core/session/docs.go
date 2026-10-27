@@ -110,6 +110,9 @@ func recordAddress(rec *jv.Object) Address {
 	return ad
 }
 
+// RecordAddressID is the address ID of a document record: the address of every incarnation of one document.
+func RecordAddressID(rec *jv.Object) string { return addressID(recordAddress(rec)) }
+
 func scopeValue(s Scope) *jv.Object {
 	switch s.Kind {
 	case ScopeConversation:

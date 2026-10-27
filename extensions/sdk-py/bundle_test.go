@@ -22,12 +22,21 @@ func TestSourceReadable(t *testing.T) {
 			t.Fatalf("embedded %s is empty", name)
 		}
 	}
-	if !slices.Contains(BundledFiles(), "pig_sdk/__init__.py") {
+	// The package init is 300 KB of text, so the bundle embeds it as pig_sdk/__init__.py.gz.
+	if !slices.Contains(BundledFiles(), "pig_sdk/__init__.py.gz") {
 		t.Fatal("BundledFiles must include the pig_sdk package init so the staged SDK is importable")
 	}
-	data, err := Source.ReadFile("pig_sdk/__init__.py")
+	compressed, err := Source.ReadFile("pig_sdk/__init__.py.gz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := io.ReadAll(reader)
 	if err != nil || !strings.Contains(string(data), "class Extension") {
-		t.Fatalf("embedded pig_sdk/__init__.py is not the SDK module: err=%v", err)
+		t.Fatalf("embedded pig_sdk/__init__.py.gz is not the SDK module: err=%v", err)
 	}
 }
 

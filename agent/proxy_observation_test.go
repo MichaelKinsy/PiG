@@ -9,7 +9,7 @@ import (
 
 // upstream: packages/agent/src/proxy.ts:343-398 reconstructs one live partial while tool JSON advances. The proxy reader does not yet run under the JavaScript-order executor, so each delivered partial is its emission-time snapshot (D82) and stays unchanged after later pushes.
 func TestProxyPartialObservationsAreEmissionSnapshots(t *testing.T) {
-	converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolJSON: map[int]string{}}
+	converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolArguments: map[proxyArgumentsKey]*ai.ToolCallArgumentsStream{}}
 	stream := ai.NewAssistantMessageEventStream()
 	push := func(event ProxyAssistantMessageEvent) {
 		t.Helper()

@@ -161,9 +161,13 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		opened.bump(t, conversationId, 1)
 		watch := watchOf(t, opened, retentionCounterDoc, conversationId)
 		kept := watchOf(t, opened, retentionCounterDoc, conversationId)
-		kept.Start(func(context.Context, obj, []durable.Op) error { return nil })
+		kept.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return nil })
 		seen := &watchRecorder{}
-		watch.Start(func(_ context.Context, value obj, ops []durable.Op) error { seen.record(value, ops); return nil })
+		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+			value, ops := change.Value, change.Ops
+			seen.record(value, ops)
+			return nil
+		})
 		opened.clock.advance(1_000_000)
 		opened.bump(t, conversationId, 1)
 		opened.settleLine(t)
@@ -493,29 +497,26 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		opened.close(t)
 	})
 
-	// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:347 "does not keep a replacement cached for an observer of the retired incarnation"
-	t.Run("does not keep a replacement cached for an observer of the retired incarnation", func(t *testing.T) {
+	// session-document-retention.test.ts "pins only what is at the address a watch follows: nothing while retired, then the new incarnation"
+	t.Run("pins only what is at the address a watch follows: nothing while retired, then the new incarnation", func(t *testing.T) {
 		opened := openRetention(0)
 		conversationId := opened.conversation(t)
 		opened.bump(t, conversationId, 1)
 		watch := watchOf(t, opened, retentionCounterDoc, conversationId)
-		watch.Start(func(context.Context, obj, []durable.Op) error { return nil })
+		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return nil })
 		commit(t, opened.session, func(tx durable.Tx) error { return tx.RetireDoc(retentionCounterDoc, conversationId) })
-		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchRetired {
-			t.Fatalf("end %+v, want retired", end)
-		}
-		if watch.Value() != nil {
-			t.Fatalf("watch value %v, want retired", watch.Value())
-		}
-		// A retired incarnation never changes again: its observer pins nothing.
+		opened.untilCached(t, 0)
 		if attached := opened.sizes().Attached; attached != 0 {
 			t.Fatalf("attached %d, want 0", attached)
 		}
 		opened.bump(t, conversationId, 5)
-		opened.untilCached(t, 0)
-		expectEqual(t, opened.snapshot(t, retentionCounterDoc, conversationId), delta.JsonObjectOf("count", 5))
+		opened.settleLine(t)
+		if sizes := opened.sizes(); sizes.Cached != 1 || sizes.Attached != 1 {
+			t.Fatalf("sizes %+v, want one cached and one attached", sizes)
+		}
+		eventuallyTrue(t, func() bool { return num(watch.Value().Value("count")) == 5 })
 		_, _ = watch.Stop()
+		opened.untilCached(t, 0)
 		opened.close(t)
 	})
 

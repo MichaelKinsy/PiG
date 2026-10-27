@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -212,6 +213,45 @@ func TestSubmissions(t *testing.T) {
 		if err := <-closing; err != nil {
 			t.Fatal(err)
 		}
+	})
+
+	// Upstream resolves a wait inside the observer, at the commit, so a close whose seal runs before the code awaiting it
+	// resumes cannot reject it. A Go listener closes on a goroutine of its own, so this one waits until the seal has rejected
+	// what it rejects, which it learns from a wait no commit settles, and only then returns for the publication to wake the
+	// waits.
+	t.Run("keeps a wait resolved when a host listener's close has sealed the Harness before the publication wakes the waits", func(t *testing.T) {
+		setup := chatSetup(t)
+		release := deferred()
+		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAfter(release, "answer")})
+		harness, root := openChat(t, newControlledStorage(), setup)
+		submission := must(root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi")}))
+		sealed := harness.(*harnessImpl).submissions.waiters.Add(testContext, 999_999)
+		closing := make(chan struct{})
+		var once sync.Once
+		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range publication.Changes {
+				if write, ok := change.(durable.SubmissionWrite); ok && write.Value.Id == submission.Id() && write.Value.Status == durable.SubmissionDone {
+					once.Do(func() {
+						go func() { _ = harness.Close(testContext); close(closing) }()
+						<-sealed.Done()
+					})
+				}
+			}
+		})
+		type waitResult struct {
+			record durable.SettledSubmissionRecord
+			err    error
+		}
+		waited := make(chan waitResult, 1)
+		callAsync(func() {
+			record, err := submission.Wait(testContext)
+			waited <- waitResult{record, err}
+		})
+		release.resolve()
+		if result := <-waited; result.err != nil || result.record.Status != durable.SubmissionDone {
+			t.Fatalf("wait %+v %v", result.record, result.err)
+		}
+		<-closing
 	})
 
 	t.Run("reacquires a submission after reopen and settles it durably", func(t *testing.T) {
@@ -448,6 +488,32 @@ func TestSubmissionDraftIgnoresTheFieldsOfTheOtherType(t *testing.T) {
 		}))
 		if record := must(write.Status(testContext)); record.Status != durable.SubmissionQueued || record.Type != durable.SubmissionTypeWrite {
 			t.Fatalf("record = %+v, want a queued write", record)
+		}
+		closeHarness(t, harness)
+	})
+
+	t.Run("resumes a wait only once subscribeCommits() listeners saw the commit that settled it", func(t *testing.T) {
+		setup := chatSetup(t)
+		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("hi")})
+		harness, root := openChat(t, newLateResolvingStorage(), setup)
+		var mu sync.Mutex
+		settled := map[durable.SubmissionId]bool{}
+		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range publication.Changes {
+				if write, ok := change.(durable.SubmissionWrite); ok && write.Value.Status == durable.SubmissionDone {
+					mu.Lock()
+					settled[write.Value.Id] = true
+					mu.Unlock()
+				}
+			}
+		})
+		submission := must(root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hello")}))
+		must(submission.Wait(testContext))
+		mu.Lock()
+		saw := settled[submission.Id()]
+		mu.Unlock()
+		if !saw {
+			t.Fatal("the wait resumed before the subscribeCommits() listeners saw the settling commit")
 		}
 		closeHarness(t, harness)
 	})

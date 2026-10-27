@@ -12,7 +12,7 @@ import (
 func TestFileWatcherCloseWaitsForTheRescanInProgress(t *testing.T) {
 	env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir()})
 	mustDo(t, env.CreateDir(background, "tree", nil))
-	watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.WatchChange) {}))
+	watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.FileChange) {}))
 	node := watcher.(*nodeFileWatcher)
 	rescan := make(chan struct{})
 	node.mu.Lock()

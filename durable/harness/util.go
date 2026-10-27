@@ -102,6 +102,14 @@ func (waiters *Waiters[K, T]) Keys() []K {
 
 // Resolve settles every wait of key with value.
 func (waiters *Waiters[K, T]) Resolve(key K, value T) {
+	waiters.Settle(key, value)()
+}
+
+// Settle takes the waits of key out of the pending set and fixes their result to value, as resolving a promise does, and
+// returns the function that wakes them. Until it is called the waits are settled but their goroutines still sleep: a
+// RejectAll or a cancelled context in between no longer reaches them, so a close that seals before the wake cannot turn
+// the result into an error.
+func (waiters *Waiters[K, T]) Settle(key K, value T) (wake func()) {
 	waiters.mu.Lock()
 	set := waiters.sets[key]
 	if set != nil {
@@ -110,7 +118,11 @@ func (waiters *Waiters[K, T]) Resolve(key K, value T) {
 	waiters.mu.Unlock()
 	for _, waiter := range set {
 		waiter.value = value
-		close(waiter.done)
+	}
+	return func() {
+		for _, waiter := range set {
+			close(waiter.done)
+		}
 	}
 }
 

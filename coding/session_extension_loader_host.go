@@ -34,10 +34,19 @@ func (s *Session) bindLoaderExtensionHost(bridge *subprocess.UIBridge) {
 	BindSessionReadActions(bridge, current, s.CWD(), s.Inner().GetSessionDir())
 	icodingagent.BindAppendEntryAction(bridge, func() (*icodingagent.Session, error) { return s.Inner(), nil }, s.reportExtensionEntry)
 	flagValues := services.ExtensionFlagValues()
+	// loader.ts:329-337: getFlag reads the runtime's flagValues, which hold the registered defaults and the command-line values createAgentSessionServices applied to the runtime of the loader that loaded the extensions. A Session built over a loader the extension made and applied itself (createAgentSessionServices) finds them there, not in its own services.
+	runtime := s.ResourceLoader().GetExtensions().Runtime
 	BindSessionExtensionActions(nil, bridge, current, extension.ContextActions{
 		ModelRegistry:    services.Registry(),
 		IsProjectTrusted: services.SettingsManager().IsProjectTrusted,
-		GetFlagValue:     func(name string) any { return flagValues[name] },
+		GetFlagValue: func(name string) any {
+			if runtime != nil {
+				if value, has := runtime.FlagValue(name); has {
+					return value
+				}
+			}
+			return flagValues[name]
+		},
 	}, nil)
 	// upstream: agent-session.ts:3361-3390 binds getAllTools and getCommands to the Session in every mode.
 	bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {

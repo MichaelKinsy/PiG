@@ -3,10 +3,10 @@
     "reference": "node_modules/undici/lib/core/connect.js",
     "manifest": "packages/coding-agent/package.json",
     "package": "undici",
-    "version": "8.10.2",
-    "source": "test/parity/dependency-sources/undici/8.10.2/lib/core/connect.js",
-    "sha256": "4bf7ce84d6d31ffacebb0130164d50e619645b79cf6c4221ac374ab5ada677e3",
-    "integrity": "sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ=="
+    "version": "8.12.3",
+    "source": "test/parity/dependency-sources/undici/8.12.3/lib/core/connect.js",
+    "sha256": "266125b72199c68f93c6277b1c1e4455c3cc32803fbbce4842d74169cf4bb428",
+    "integrity": "sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw=="
   },
   {
     "reference": "node_modules/@anthropic-ai/sdk/lib/credentials/types.mjs",

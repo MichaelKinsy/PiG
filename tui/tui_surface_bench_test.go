@@ -31,9 +31,9 @@ func buildSessionChat(msgs int) *Container {
 	for i := range msgs {
 		switch i % 3 {
 		case 0:
-			chat.Add(NewUserMessageComponent(fmt.Sprintf("Please look at file %d and fix the **build**.", i), nil, 1, nil))
+			chat.Add(NewUserMessageComponent(fmt.Sprintf("Please look at file %d and fix the **build**.", i), nil, 1, nil, "", ""))
 		case 1:
-			block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+			block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 			block.SetContent([]AssistantSegment{
 				{Thinking: true, Text: fmt.Sprintf("Reading file %d first.", i)},
 				{Text: fmt.Sprintf("File %d has a `nil` check missing.\n\n- add it\n- rerun the tests", i)},
@@ -95,7 +95,7 @@ func BenchmarkStreamingFrameLongTranscript(b *testing.B) {
 						stream = tail.SetText
 					case "session":
 						chat = buildSessionChat(msgs)
-						tail := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+						tail := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 						chat.Add(tail)
 						hooks.Streaming = func() *AssistantMessageComponent { return tail }
 						stream = func(text string) {
@@ -182,7 +182,7 @@ func BenchmarkMessageFrameLongTranscript(b *testing.B) {
 				chat := buildSessionChat(msgs)
 				render := streamingRenderer(renderer, chat, nil, SurfaceHooks{})
 				render()
-				message := NewUserMessageComponent("One more **thing**.", nil, 1, nil)
+				message := NewUserMessageComponent("One more **thing**.", nil, 1, nil, "", "")
 				b.ReportAllocs()
 				mounted := false
 				for b.Loop() {

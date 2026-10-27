@@ -1,0 +1,3 @@
+### Fixed
+
+- A closed Harness or Session no longer stays reachable from Go's timer heap. `durable.NativeTimer`, the default `SetTimer`, stopped a timer without dropping its callback, and Go keeps a stopped timer and the function it was armed with until the runtime next removes it from the timer heap, which is not at `Stop` and can be as late as the timer's delay (ten minutes for the document sweep); the sweep's callback reaches the Session, so a closed Harness stayed alive that long, where Pi's `clearTimeout` leaves nothing of the callback. A disarmed timer now keeps nothing of its callback. <!-- fix: 9327bc7628 -->

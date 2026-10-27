@@ -54,7 +54,7 @@ func TestTuiSurfaceStreamingFrameWorkDoesNotGrowWithTheTranscript(t *testing.T) 
 		for i := range msgs {
 			chat.Add(&surfaceRenderCounter{text: fmt.Sprint(i), renders: &renders})
 		}
-		tail := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+		tail := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 		tail.SetTextDelta("first")
 		chat.Add(tail)
 		surface, session := startedSurface(t, chat, nil)
@@ -97,7 +97,7 @@ func TestTuiSurfaceMessageFrameWorkDoesNotGrowWithTheTranscript(t *testing.T) {
 		chat := buildSessionChat(msgs)
 		surface, session := startedSurface(t, chat, nil)
 		walks := surface.walks
-		message, spacer := NewUserMessageComponent("One more.", nil, 1, nil), NewSpacer(1)
+		message, spacer := NewUserMessageComponent("One more.", nil, 1, nil, "", ""), NewSpacer(1)
 		for i := range 10 {
 			chat.Add(message)
 			chat.Add(spacer)
@@ -211,11 +211,11 @@ func randomSurfaceEdits(t *testing.T, rng *rand.Rand, positional bool, structura
 		case 2:
 			return &inPlaceComponent{lines: []string{fmt.Sprint("in place ", rng.IntN(100))}}
 		case 3:
-			block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+			block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 			block.SetTextDelta(fmt.Sprint("reply ", rng.IntN(100)))
 			return block
 		case 4:
-			return NewUserMessageComponent(fmt.Sprint("ask ", rng.IntN(100)), nil, 1, nil)
+			return NewUserMessageComponent(fmt.Sprint("ask ", rng.IntN(100)), nil, 1, nil, "", "")
 		case 5:
 			card := NewToolExecutionComponent("read", "", nil, ToolExecutionOptions{}, nil, nil, "")
 			card.UpdateArgs(json.RawMessage(fmt.Sprintf(`{"path":"f%d"}`, rng.IntN(100))))
@@ -417,7 +417,7 @@ func assertSurfaceIndex(t *testing.T, surface *TuiSurface, step int) {
 // A message that stops streaming without changing sends its last part as no
 // longer streaming.
 func TestTuiSurfaceRebuildsAMessageThatStopsStreaming(t *testing.T) {
-	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	block.SetTextDelta("Done.")
 	streaming := block
 	surface, session := startedSurface(t, NewContainer(block), nil)

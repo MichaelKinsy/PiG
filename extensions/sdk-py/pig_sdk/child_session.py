@@ -26,6 +26,7 @@ from .type_schema import count_refinements
 
 if TYPE_CHECKING:
     from . import Extension, ToolDefinition
+    from .session_manager import SessionManager
 
 
 @dataclass(kw_only=True)
@@ -89,6 +90,18 @@ class CreateAgentSessionOptions:
     model_runtime: Any = None
     #: Pi's ``scopedModels``: a list of ``{"model": <model object>, "thinkingLevel": ...}`` the session cycles through.
     scoped_models: list[dict[str, Any]] | None = None
+    #: Pi's ``sessionStartEvent``: the session_start event the session's extensions receive when they bind. ``None`` is Pi's default, reason ``"startup"``.
+    session_start_event: "SessionStartEvent | None" = None
+
+
+@dataclass(kw_only=True)
+class SessionStartEvent:
+    """Pi's SessionStartEvent (types.ts) as the ``sessionStartEvent`` option takes it: why a session starts and, when it replaces another, that session's file. Its ``type`` is always ``"session_start"``."""
+
+    #: ``"startup"``, ``"reload"``, ``"new"``, ``"resume"`` or ``"fork"``.
+    reason: str
+    #: The file of the session this one replaces; ``None`` is Pi's undefined.
+    previous_session_file: str | None = None
 
 
 def _resources_wire(resources: ResourceOptions | None) -> dict[str, Any] | None:
@@ -237,6 +250,28 @@ class AgentSession:
         """``session.messages``: the transcript the session holds, in Pi's message shape."""
         return list(self._call("childSession.messages", {}) or [])
 
+    def refresh_context(self) -> None:
+        """``session.refreshContext()``: the session's finalized transcript is read again from its log, after the caller appended entries to the log :meth:`session_manager` returns."""
+        self._call("childSession.refreshContext", {})
+
+    def session_manager(self) -> "SessionManager":
+        """``session.sessionManager``: the log the session appends to, the very one a ``SessionManager`` passed in ``CreateAgentSessionOptions`` names."""
+        from .session_manager import SessionManager
+
+        reply = self._call("childSession.sessionManager", {}) or {}
+        if not reply.get("handle"):
+            raise RuntimeError("host returned no session graph handle")
+        manager = object.__new__(SessionManager)
+        manager._context = self._extension
+        manager.handle = reply["handle"]
+        manager._released = False
+        return manager
+
+    def _emit_extension_event(self, event: dict[str, Any]) -> tuple[Any, bool]:
+        """``session.extensionRunner.hasHandlers(event.type)`` and then ``emit(event)``: the result, and whether an extension had a handler for the type. It serves ``AgentSessionRuntime``, which Pi gives these two calls on the runner of the session it replaces."""
+        reply = self._call("childSession.emit", {"event": event}) or {}
+        return reply.get("result"), bool(reply.get("emitted"))
+
     def subscribe(self, listener: Callable[[dict[str, Any]], None]) -> Callable[[], None]:
         """AgentSession.subscribe: ``listener`` receives the session's events (Pi's AgentSessionEvent as a dict) in order until the returned function
         unsubscribes it, the session is disposed or the connection ends. The dict is shared by the session's listeners."""
@@ -339,6 +374,11 @@ def create_agent_session(extension: "Extension", call: Callable[[str, Any], dict
             args[key] = value.handle
     if options.scoped_models is not None:
         args["scopedModels"] = options.scoped_models
+    if options.session_start_event is not None:
+        event: dict[str, Any] = {"reason": options.session_start_event.reason}
+        if options.session_start_event.previous_session_file is not None:
+            event["previousSessionFile"] = options.session_start_event.previous_session_file
+        args["sessionStartEvent"] = event
     resources = _resources_wire(options.resources)
     if resources is not None:
         args["resources"] = resources

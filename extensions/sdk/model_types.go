@@ -189,6 +189,9 @@ func modelTypeOf(model map[string]any) ModelType {
 
 // GetModelsOfType lists every known model of a type, optionally for one provider. Chat models come from the registry state's models and the others from its typed models, in the host's order (model-registry.ts:145-161).
 func (r ModelRegistry) GetModelsOfType(modelType ModelType, provider ...string) ([]map[string]any, error) {
+	if r.runtime != nil {
+		return r.runtime.GetModelsOfType(modelType, provider...)
+	}
 	state, err := r.state()
 	if err != nil {
 		return nil, err
@@ -210,6 +213,9 @@ func (r ModelRegistry) GetModelsOfType(modelType ModelType, provider ...string) 
 
 // GetModelOfType looks up one model of a type, or returns nil.
 func (r ModelRegistry) GetModelOfType(modelType ModelType, provider, modelID string) (map[string]any, error) {
+	if r.runtime != nil {
+		return r.runtime.GetModelOfType(modelType, provider, modelID)
+	}
 	models, err := r.GetModelsOfType(modelType, provider)
 	if err != nil {
 		return nil, err
@@ -229,6 +235,9 @@ func (r ModelRegistry) FindOfType(modelType ModelType, provider, modelID string)
 
 // GetAvailableOfType lists the models of a type whose provider has working credentials. It awaits the host (model-registry.ts:135-143).
 func (r ModelRegistry) GetAvailableOfType(modelType ModelType, provider ...string) ([]map[string]any, error) {
+	if r.runtime != nil {
+		return r.runtime.GetAvailableOfType(modelType, provider...)
+	}
 	args := struct {
 		Type     ModelType `json:"type"`
 		Provider string    `json:"provider,omitempty"`
@@ -241,6 +250,9 @@ func (r ModelRegistry) GetAvailableOfType(modelType ModelType, provider ...strin
 
 // Classify classifies structured state with request-time authentication. It never fails: a failure, and a cancelled request, are a result with StopReason "error" or "aborted" that names the model (model-registry.ts:170-177).
 func (r ModelRegistry) Classify(model map[string]any, request ClassifierContext, options *ClassifierOptions) ClassifierResult {
+	if r.runtime != nil {
+		return r.runtime.Classify(model, request, options)
+	}
 	args := struct {
 		Model   map[string]any     `json:"model"`
 		Context ClassifierContext  `json:"context"`
@@ -280,6 +292,9 @@ type ImagesOptions struct {
 
 // GenerateImages generates images with request-time authentication. request is the images context ({"input": [...]}) and the result is Pi's AssistantImages object, both as JSON maps. It never fails: a failure, and a cancelled request, are a result with "stopReason" "error" or "aborted" that names the model (model-registry.ts:181-188).
 func (r ModelRegistry) GenerateImages(model map[string]any, request map[string]any, options *ImagesOptions) map[string]any {
+	if r.runtime != nil {
+		return r.runtime.GenerateImages(model, request, options)
+	}
 	args := struct {
 		Model   map[string]any `json:"model"`
 		Context map[string]any `json:"context"`
@@ -303,11 +318,18 @@ func imageErrorResult(model map[string]any, err error, aborted bool) map[string]
 
 // RegisterVirtualModel registers a virtual model; see [Context.RegisterVirtualModel].
 func (r ModelRegistry) RegisterVirtualModel(model VirtualModel) error {
+	if r.runtime != nil {
+		return r.runtime.RegisterVirtualModel(model)
+	}
 	return r.context.RegisterVirtualModel(model)
 }
 
 // UnregisterVirtualModel removes a virtual model; see [Context.UnregisterVirtualModel].
 func (r ModelRegistry) UnregisterVirtualModel(provider, id string) {
+	if r.runtime != nil {
+		_ = r.runtime.UnregisterVirtualModel(provider, id)
+		return
+	}
 	r.context.UnregisterVirtualModel(provider, id)
 }
 

@@ -109,7 +109,8 @@ type ToolControl struct {
 	AddTools []string `json:"addTools,omitempty"`
 	// Terminate is Pi's `terminate?: true`: false is absent.
 	Terminate bool `json:"terminate,omitempty"`
-	// Handoff is nil when absent.
+	// Handoff, when set, starts a new context with this text as its user message, as Reset(handoff) writes, and continues the
+	// run there. The last handoff in call order wins. Nil when absent.
 	Handoff *string `json:"handoff,omitempty"`
 }
 
@@ -217,7 +218,8 @@ type ToolExecutionApi interface {
 	Diagnostic(diagnostic ToolDiagnostic)
 	// Details replaces running details; the last value becomes the result details when the result omits Details.
 	Details(ctx context.Context, value JsonValue) error
-	Commit(ctx context.Context, change func(tx Tx) (any, error)) (any, error)
+	// Commit commits on this call's task; options.Persistence may defer storing it (CommitPersistence).
+	Commit(ctx context.Context, change func(tx Tx) (any, error), options ...CommitOptions) (any, error)
 	// Memo reads a durable memo of the tool task; ok is false when absent.
 	Memo(ctx context.Context, name string) (value JsonValue, ok bool, err error)
 	// MemoCandidate stores candidate unless a memo already exists and returns the durable winner.
@@ -511,14 +513,20 @@ func (policy CompactionPolicy) PolicyFor(model ModelRef) CompactionPolicy {
 	return resolved
 }
 
-// ProgressPolicy is how often running progress is committed. Each progress commit is a storage write; a host whose
-// storage is remote can commit less often, so live answers and tool output appear in larger steps.
+// ProgressPolicy is how often running progress is committed, and how long it may wait in memory before it is stored.
+// Progress commits are deferred (CommitPersistence): watches see each at once, and Storage gets them together, at the
+// run's next phase boundary or after PersistWithinMs. A host can commit less often, so live answers and tool output
+// appear in larger steps.
 type ProgressPolicy struct {
 	// PartialIntervalMs is the minimum pause between commits of the answer being generated.
 	PartialIntervalMs float64 `json:"partialIntervalMs"`
 	// OutputIntervalMs is the minimum pause between commits of running tool output; large commits also pause in
 	// proportion to their size.
 	OutputIntervalMs float64 `json:"outputIntervalMs"`
+	// PersistWithinMs is how long these commits, and other deferred commits without their own WithinMs, may stay in
+	// memory before they are stored; a crash loses at most about this much of an answer or of tool output. Default
+	// 1,000; +Inf stores them only at the next commit that reads or writes their document and at close.
+	PersistWithinMs float64 `json:"persistWithinMs"`
 }
 
 // CompactionReason is why a compaction runs: Compact(), a threshold in generation preparation, or a context overflow.

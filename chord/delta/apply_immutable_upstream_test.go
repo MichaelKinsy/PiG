@@ -290,3 +290,31 @@ func TestImmutableApplicationAppendsToAnArrayNotYetCopiedInOneCopySharingEveryth
 	// An insert that is not at the end takes the general path.
 	expectJSON(t, mustApplyImmutable(t, rootArray, ops(t, `[["p",[],1,0,[9]]]`)), `[1,9,2]`)
 }
+
+// upstream: delta-apply-immutable.test.ts "immutable container copies keep an own __proto__ member as data and the prototype of the copied object" (Pi d0aa218cb). A Go JsonObject has no prototype; the copy keeps the member, the key order and the new value, and the base stays as it was.
+func TestImmutableContainerCopiesKeepAnOwnProtoMemberAsData(t *testing.T) {
+	base := parse(t, `{"__proto__":{"polluted":true},"n":1}`)
+	checked := mustApplyImmutable(t, base, []Op{{"s", []any{"n"}, float64(2)}})
+
+	tracker := Track(obj(t, base))
+	change := tracker.BeginChange()
+	mustNoErr(t, change.State().Set("n", float64(2)))
+	prepared, err := change.Prepare()
+	mustNoErr(t, err)
+	mustNoErr(t, tracker.Adopt(prepared))
+
+	for name, copy := range map[string]any{"applyImmutable": checked, "tracker": tracker.Value()} {
+		object := obj(t, copy)
+		if object == obj(t, base) {
+			t.Fatalf("%s: the copy is the base", name)
+		}
+		if keys := object.Keys(); !slices.Equal(keys, []string{"__proto__", "n"}) {
+			t.Fatalf("%s: keys %v", name, keys)
+		}
+		if object.Value("n") != float64(2) {
+			t.Fatalf("%s: n = %v", name, object.Value("n"))
+		}
+		expectJSONText(t, object.Value("__proto__"), `{"polluted":true}`)
+	}
+	expectJSONText(t, base, `{"__proto__":{"polluted":true},"n":1}`)
+}

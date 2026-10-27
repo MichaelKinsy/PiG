@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -18,6 +19,14 @@ import (
 type GraphModelRuntime struct {
 	runtime *ModelRuntime
 	scope   subprocess.SessionGraphScope
+	// natives are the Provider objects the extension registered on this runtime (registerNativeProvider): the declaration the host answers for them, and the release that ends each registration.
+	nativesMu sync.Mutex
+	natives   map[string]graphNativeProvider
+}
+
+type graphNativeProvider struct {
+	declared json.RawMessage
+	release  func()
 }
 
 var (
@@ -87,7 +96,95 @@ func newGraphModelRuntime(ctx context.Context, scope subprocess.SessionGraphScop
 func (g *GraphModelRuntime) Runtime() *ModelRuntime { return g.runtime }
 
 // Release implements subprocess.SessionGraphReleaser.
-func (g *GraphModelRuntime) Release() { g.runtime.Close() }
+func (g *GraphModelRuntime) Release() {
+	g.nativesMu.Lock()
+	natives := g.natives
+	g.natives = nil
+	g.nativesMu.Unlock()
+	for _, native := range natives {
+		native.release()
+	}
+	g.runtime.Close()
+}
+
+// graphProviderCarrierMessage is why a provider without a Provider object of the extension's is not served: builtin and composed providers hold functions the host cannot carry (the Provider surface D78 records). It is the message of the session-bound registry's getProvider.
+const graphProviderCarrierMessage = "builtin/composed Provider object carrier is unavailable (D78)"
+
+// nativeProvider is the declaration of the Provider object the extension registered on this runtime for id, while the runtime still holds that registration.
+func (g *GraphModelRuntime) nativeProvider(id string) json.RawMessage {
+	g.nativesMu.Lock()
+	native, ok := g.natives[id]
+	g.nativesMu.Unlock()
+	if !ok || g.runtime.services.Registry().NativeProvider(id) == nil {
+		return nil
+	}
+	return native.declared
+}
+
+// registerNativeProvider is ModelRuntime.registerNativeProvider(provider): the Provider object stays in the extension and the runtime's carrier calls it over the connection.
+func (g *GraphModelRuntime) registerNativeProvider(ctx context.Context, args icodingagent.GraphArgs) (any, error) {
+	declaration := args.Raw(0)
+	var identity struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(declaration, &identity); err != nil {
+		return nil, err
+	}
+	declared, release, err := g.scope.RegisterNativeProvider(ctx, declaration, func(ctx context.Context, carrier *extension.NativeProvider) error {
+		return g.runtime.services.Registry().RegisterNativeProvider(ctx, carrier)
+	})
+	if err != nil {
+		return nil, err
+	}
+	g.nativesMu.Lock()
+	if g.natives == nil {
+		g.natives = map[string]graphNativeProvider{}
+	}
+	previous := g.natives[identity.ID]
+	g.natives[identity.ID] = graphNativeProvider{declared: declared, release: release}
+	g.nativesMu.Unlock()
+	if previous.release != nil {
+		previous.release()
+	}
+	// Pi's registerNativeProvider composes the provider into the runtime's snapshot before it returns; the port runs that composition in the queued registration refresh, which the call waits for so the extension's next read sees the provider (D84).
+	g.runtime.services.Registry().YieldToRegistrationRefresh(ctx)
+	return nil, nil
+}
+
+// releaseNative ends the registration of the Provider object registered for id, if any.
+func (g *GraphModelRuntime) releaseNative(id string) {
+	g.nativesMu.Lock()
+	native, ok := g.natives[id]
+	delete(g.natives, id)
+	g.nativesMu.Unlock()
+	if ok {
+		native.release()
+	}
+}
+
+// getProvider is the Provider object of id: the one the extension registered, nothing for an unknown id, and the D78 error for a provider whose object the host cannot carry.
+func (g *GraphModelRuntime) getProvider(id string) (any, error) {
+	if declared := g.nativeProvider(id); declared != nil {
+		return declared, nil
+	}
+	if g.runtime.GetProvider(id) == nil {
+		return nil, nil
+	}
+	return nil, errors.New(graphProviderCarrierMessage)
+}
+
+// getProviders lists the Provider objects of every provider; one without a carrier fails the call, as getProvider does.
+func (g *GraphModelRuntime) getProviders() (any, error) {
+	out := []json.RawMessage{}
+	for _, provider := range g.runtime.GetProviders() {
+		declared := g.nativeProvider(provider.ID)
+		if declared == nil {
+			return nil, errors.New(graphProviderCarrierMessage)
+		}
+		out = append(out, declared)
+	}
+	return out, nil
+}
 
 // anyModel is the runtime's model a model object an extension passed names, or a bare model of that provider and id when the runtime lists none (Pi's methods take any Model object).
 func (g *GraphModelRuntime) anyModel(raw json.RawMessage) (ai.AnyModel, error) {
@@ -184,11 +281,6 @@ func graphAuthStatus(status ai.AuthStatus) map[string]any {
 	return out
 }
 
-// graphProviderObjectError names why a Provider object is not served.
-func graphProviderObjectError(method string) error {
-	return fmt.Errorf("ModelRuntime.%s: a Provider object holds functions the host cannot run for the extension (the Provider surface D78 records); register a provider declaratively with registerProvider", method)
-}
-
 // Call runs a ModelRuntime method.
 func (g *GraphModelRuntime) Call(ctx context.Context, method string, raw json.RawMessage) (any, error) {
 	args, err := icodingagent.ParseGraphArgs(raw)
@@ -197,8 +289,25 @@ func (g *GraphModelRuntime) Call(ctx context.Context, method string, raw json.Ra
 	}
 	runtime := g.runtime
 	switch method {
-	case "getProviders", "getProvider", "getRegisteredNativeProvider", "registerNativeProvider":
-		return nil, graphProviderObjectError(method)
+	case "registerNativeProvider":
+		return g.registerNativeProvider(ctx, args)
+	case "getRegisteredNativeProvider":
+		id, err := args.String(0)
+		if err != nil {
+			return nil, err
+		}
+		if declared := g.nativeProvider(id); declared != nil {
+			return declared, nil
+		}
+		return nil, nil
+	case "getProvider":
+		id, err := args.String(0)
+		if err != nil {
+			return nil, err
+		}
+		return g.getProvider(id)
+	case "getProviders":
+		return g.getProviders()
 	case "getModels", "getAllModels":
 		provider, err := args.String(0)
 		if err != nil {
@@ -366,6 +475,16 @@ func (g *GraphModelRuntime) Call(ctx context.Context, method string, raw json.Ra
 			return runtime.IsUsingSubscription(provider), nil
 		}
 		return runtime.HasConfiguredAuth(provider), nil
+	case "providerName":
+		// The name of the provider's object, for ModelRegistry.getProviderDisplayName (model-registry.ts: `getProvider(provider)?.name ?? provider`), which does not need the object a builtin provider has no carrier for.
+		provider, err := args.String(0)
+		if err != nil {
+			return nil, err
+		}
+		if found := runtime.GetProvider(provider); found != nil {
+			return found.Name, nil
+		}
+		return nil, nil
 	case "getProviderAuthStatus":
 		provider, err := args.String(0)
 		if err != nil {
@@ -449,6 +568,7 @@ func (g *GraphModelRuntime) Call(ctx context.Context, method string, raw json.Ra
 			return nil, err
 		}
 		runtime.UnregisterProvider(id)
+		g.releaseNative(id)
 		return nil, nil
 	case "registerVirtualModel":
 		var definition struct {

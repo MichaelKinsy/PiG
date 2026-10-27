@@ -2325,7 +2325,7 @@ What: when a provider request fails in transport (reset, refused, DNS, dial or T
 
 Why: a reset, a dial timeout and a DNS failure all read `Connection error.`, so a log cannot tell them apart (#87).
 
-Scope: `assistantStreamBuilder.fail` and `failUnfinished` (`ai/stream_builder.go`, `ai/provider_tool_scratch.go`), classification in `ai/transport_diagnostic.go`. Purely additive on new failures. Stored entries are never rewritten or reinterpreted; an entry without the diagnostic loads and saves unchanged, and no migration exists.
+Scope: `assistantStreamBuilder.fail` and `failUnfinished` (`ai/stream_builder.go`), classification in `ai/transport_diagnostic.go`. Purely additive on new failures. Stored entries are never rewritten or reinterpreted; an entry without the diagnostic loads and saves unchanged, and no migration exists.
 
 Owner decision: owner, 2026-10-14 (in session): option A, non-invasive.
 
@@ -2579,6 +2579,30 @@ Remove when: Pi refuses to send a bearer token over HTTP (its SDK adds an HTTPS 
 
 SCRUTINIZED:approved
 
+## D197 The env daemon's limit of open files is the hard limit, where Pi's daemon keeps the soft limit it inherited
+
+What: PiG's env daemon (`env/daemon`) runs under the Go runtime, which raises the soft `RLIMIT_NOFILE` of the process to the hard limit (on Linux to one below it, `syscall/rlimit.go`) before `main` starts. Pi's daemon (`packages/env/daemon`, Rust) never touches the limit, so it runs under the soft limit the client's shell passed on. On a default shell (soft limit 1024) Pi's daemon answers an `open`, `write` or `opendir` with `EMFILE` once about 1020 handles are open (each handle holds one descriptor), where PiG's daemon goes on until the hard limit or its own handle table (4096 handles, the same `EMFILE` Pi's daemon reports at that count, `packages/env/daemon/src/main.rs:42-43` and `:116-120`) stops it. A client that opens fewer handles than the soft limit sees no difference. The commands the daemon starts are not affected: Go restores the inherited limit for a child process.
+
+Why: nothing in PiG reaches the limit on purpose. The Go runtime's raise is the toolchain's own behavior (every Go program on Unix has it), and undoing it to give a program Pi's smaller limit would make PiG fail on workloads that succeed, in a daemon whose handle table already caps the count.
+
+Pi bug: none. Pi's daemon leaves the limit alone (no `setrlimit` call in any file of `packages/env/daemon/src`) and maps the system's `EMFILE` as it should (`src/sys/unix.rs:35`). The two counts differ because the two runtimes differ.
+
+Scope: Unix hosts only (Windows has no such limit), and only a daemon started with a soft limit below both its hard limit and 4096. On macOS the Go runtime raises the soft limit to the hard limit or `kern.maxfilesperproc`, whichever is lower. Everything else, including the handle table limit and its message, is equal to Pi's (`TestDaemonHandlesAreLimitedLikePisDaemon`).
+
+Workaround: none needed in PiG. Pi's count cannot be reproduced in PiG: the runtime raises the limit again whatever the daemon inherits.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not lower the limit to Pi's).
+
+Call-site markers: `env/daemon/server.go` (`Serve`, where the daemon's connection starts).
+
+Evidence: `TestDaemonDescriptorLimitIsTheHardLimitUnlikePisDaemon` (`env/daemon_descriptor_limit_divergence_test.go`) starts Pi's daemon (built from the pin) and PiG's with a soft limit of 64 and the host's hard limit, and opens directories until one fails: Pi's refuses with `EMFILE` before 64, PiG opens all 300. `TestDescriptorLimitIsTheHardLimit` (`env/daemon/descriptor_limit_linux_test.go`) pins that the runtime leaves PiG's soft limit at the hard limit or one below it. The first fails when either daemon changes its behavior, the second when the runtime stops raising the limit.
+
+Parity allowance: the wire tests that open thousands of handles (`TestDaemonHandlesAreLimitedLikePisDaemon`) start both daemons with the soft limit raised to the hard limit (`startWireDaemon` in `env/daemon_wire_oracle_test.go`), so the count under test is the handle table's, equal on both sides.
+
+Remove when: the Go runtime lets a program keep its inherited soft limit, or Pi's daemon raises its own soft limit to the hard limit at start, or an owner decision reverses this one; then the marker, the two tests and this record go.
+
+SCRUTINIZED:approved
+
 ## D198 The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`, `EncodeBuilder`, `IsCodec`)
 
 What: pi-ai's `Type` is TypeBox 1.3.27's builder namespace. The Go (`sdk.Type`), Rust (`pig_sdk::Type`) and Python (`pig_sdk.Type`) ports serve its schema constructors and guards, but not the six members that attach a JavaScript decode/encode callback pair to a schema (`Codec(type).Decode(f).Encode(g)`, `Decode(type, f)`, `Encode(type, g)`, the `DecodeBuilder` and `EncodeBuilder` classes, and the guard `IsCodec`). They are absent: a call fails to compile in Go and Rust and raises `AttributeError` in Python. The Node runtime serves TypeBox's own and behaves as in Pi.
@@ -2660,5 +2684,27 @@ Evidence: `TestRegisterProviderWithEmptyAPIKeyIsNotConfigured` (`coding/register
 Parity allowance: no parity scenario registers a provider with an empty `apiKey`.
 
 Remove when: Pi treats `""` as missing in `configuredApiKey`, or the SDK API gains explicit presence for `apiKey` (a pointer or an option) and an owner decision asks for Pi's behaviour; then the three markers, the test and this record go.
+
+SCRUTINIZED:approved
+
+## D204 The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node SDK does
+
+What: Pi's `pi-tui` exports `TuiAltScreen` (the alternate-screen, viewport-scrolling host that `createInteractiveTui` constructs beside `TuiMainScreen`) and its members. The Node SDK serves it, as Pi's own module. The Go, Rust and Python SDKs export no `TuiAltScreen` and none of its members (`mode`, `scrollBy`, `scrollToTop`, `scrollToBottom`, `viewportTop`, `isFollowingOutput`, `flash`, selection and copy-on-select calls, overlay and render members); a Go, Rust or Python extension cannot construct one. PiG's own interactive mode paints through its own alternate-screen renderer and is not affected.
+
+Why: the host is a terminal-bound renderer whose members only make sense together with the rest of the `pi-tui` helper port (`TuiMainScreen`, `Terminal`, the component base), which the SdkTuiHelpers lane ports as one unit. Landing the export in all three SDKs needs that unit and its vector tests; it is not part of 0.6.0.
+
+Pi bug: none claimed.
+
+Scope: the 46 `pi-tui: TuiAltScreen` rows of `test/parity/sdk-exports.toml` (the class and each member) carry `divergence:D204` in the `go`, `rust` and `python` cells in place of `gap:SdkTuiHelpers`; `docs/extension-sdk-exports.md` is generated from that file. The Node cells are unchanged. No SDK source changes: the divergence is the absence of the export.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-26 (record the missing `TuiAltScreen` export as a divergence for 0.6.0 so the `sdk-exports-release` gate does not block on a high-use gap; the export ships in 0.6.1).
+
+Call-site markers: none in code; the ledger rows named in Scope are the declaration `make sdk-surface-drift` and `make sdk-exports-release` read.
+
+Evidence: `make sdk-surface-drift` and `make sdk-exports-release` read the rows: a `divergence:D204` cell needs this record, and the release gate no longer counts the high-use `TuiAltScreen` export (6 scanned packages in `test/parity/extension-import-usage.json`) as a gap.
+
+Parity allowance: the `divergence:D204` cells are the allowance; no paired Pi corpus constructs `TuiAltScreen` through an SDK, so none changes.
+
+Remove when: the 0.6.1 export of `TuiAltScreen` lands in the Go, Rust and Python SDKs; then the 46 cells become `native:` cells with their conformance or vector reach, and this record goes.
 
 SCRUTINIZED:approved

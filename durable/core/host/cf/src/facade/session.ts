@@ -35,7 +35,7 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     void open().then(h => { if (!cancelled) off = subscribe(h, listener) }, () => {})
     return () => { cancelled = true; off?.() }
   }
-  const via = (name: "snapshot" | "snapshotAsOf" | "documentState" | "watchDoc" | "unloadDocuments") => async (...args: unknown[]) => (((await open()) as unknown as Record<string, (...a: unknown[]) => unknown>)[name]!)(...args)
+  const via = (name: "snapshot" | "snapshotAsOf" | "documentState" | "watchDoc" | "observeDoc" | "unloadDocuments") => async (...args: unknown[]) => (((await open()) as unknown as Record<string, (...a: unknown[]) => unknown>)[name]!)(...args)
   return {
     closed: ended.promise,
     /** Internal: run a read-only job on the mutation line (session.ts readOnLine): a commit that writes nothing holds the line for it. */
@@ -47,6 +47,6 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     close: async (context: Context) => { if (opened) await (await opened).close(context); else ended.resolve({ reason: "closed" }) },
     subscribeCommits: later<(publication: unknown, context: Context) => void>((h, l) => h.subscribeCommits(l)),
     subscribeClose: later<() => void>((h, l) => h.subscribeClose(l)),
-    snapshot: via("snapshot"), snapshotAsOf: via("snapshotAsOf"), documentState: via("documentState"), watchDoc: via("watchDoc"), unloadDocuments: via("unloadDocuments"),
+    snapshot: via("snapshot"), snapshotAsOf: via("snapshotAsOf"), documentState: via("documentState"), watchDoc: via("watchDoc"), observeDoc: via("observeDoc"), unloadDocuments: via("unloadDocuments"),
   }
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -30,8 +31,8 @@ type liveOps struct {
 
 func observeLiveOps(harness Harness) *liveOps {
 	collected := &liveOps{}
-	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-		for _, change := range documentChanges(publication) {
+	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentChanges(publication.Changes) {
 			if change.Record.Kind == "pi.live" && len(change.Ops) > 0 {
 				collected.mu.Lock()
 				collected.commits = append(collected.commits, slices.Clone(change.Ops))
@@ -313,7 +314,7 @@ func TestLiveDeltas(t *testing.T) {
 		var mu sync.Mutex
 		values := map[durable.Seq]LiveState{}
 		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication) {
+			for _, change := range documentChanges(publication.Changes) {
 				if change.Record.Kind != "pi.live" {
 					continue
 				}
@@ -402,7 +403,7 @@ func TestLiveDeltas(t *testing.T) {
 		var mu sync.Mutex
 		var handover *durable.CommitPublication
 		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication) {
+			for _, change := range documentChanges(publication.Changes) {
 				tools, _ := change.Value.Value("tools").([]any)
 				mu.Lock()
 				if change.Record.Kind == "pi.live" && len(tools) == 2 && handover == nil {

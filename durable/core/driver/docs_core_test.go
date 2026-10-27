@@ -656,7 +656,11 @@ func TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites(t 
 		t.Fatalf("watch: %v %v", w, err)
 	}
 	frames := make(chan []durable.Op, 4)
-	w.Start(func(_ context.Context, _ durable.JsonObject, ops []durable.Op) error { frames <- ops; return nil })
+	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		ops := change.Ops
+		frames <- ops
+		return nil
+	})
 	r.commit(t, func(tx durable.Tx) error {
 		o, err := tx.Doc(v2)
 		if err != nil {

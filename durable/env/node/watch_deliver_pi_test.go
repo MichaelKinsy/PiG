@@ -12,18 +12,18 @@ import (
 func TestWatcherDeliversOnlyWhileOpenAndSurvivesAThrowingCallback(t *testing.T) {
 	env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir()})
 	mustDo(t, env.CreateDir(background, "tree", nil))
-	var got []durableenv.WatchChange
+	var got []durableenv.FileChange
 	throw := false
-	watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(change durableenv.WatchChange) {
+	watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(change durableenv.FileChange) {
 		got = append(got, change)
 		if throw {
 			panic("callback failure")
 		}
 	})).(*nodeFileWatcher)
-	changes := []durableenv.WatchChange{
-		durableenv.WatchChangePaths{Paths: []string{"tree/a"}},
-		durableenv.WatchChangeOverflow{},
-		durableenv.WatchChangeError{Error: &durableenv.FileError{Code: "unknown", Message: "boom"}},
+	changes := []durableenv.FileChange{
+		durableenv.FileChangePaths{Paths: []string{"tree/a"}},
+		durableenv.FileChangeOverflow{},
+		durableenv.FileChangeError{Error: &durableenv.FileError{Code: "unknown", Message: "boom"}},
 	}
 
 	for _, change := range changes {

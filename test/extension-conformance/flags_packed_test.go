@@ -69,13 +69,13 @@ func TestPackedFlagValuesAcrossSDKs(t *testing.T) {
 	}
 }
 
-func packedFlagFactory(t *testing.T, root, language, name string, value bool) subprocess.ExtConfig {
+func packedFlagFactory(t testing.TB, root, language, name string, value bool) subprocess.ExtConfig {
 	t.Helper()
 	return packedFlagFactoryIn(t, t.TempDir(), root, language, name, value)
 }
 
 // packedFlagFactoryIn writes the factory's source into dir.
-func packedFlagFactoryIn(t *testing.T, dir, root, language, name string, value bool) subprocess.ExtConfig {
+func packedFlagFactoryIn(t testing.TB, dir, root, language, name string, value bool) subprocess.ExtConfig {
 	t.Helper()
 	write := func(path, content string) {
 		t.Helper()

@@ -1,0 +1,4 @@
+pkg:chord/.#NativeWatchable	chord	child-gap	chord/watch.go#NativeWatchable
+pkg:chord/.#NativeWatchable::property:value	chord	not-exercised	chord/watch.go#NativeWatchable.Value
+pkg:chord/.#NativeWatchable::property:watch	chord	not-exercised	chord/watch.go#NativeWatchable.Watch
+pkg:chord/.#NativeWatchable::property:watch::call:0	chord	not-exercised	chord/watch.go#NativeWatchable.Watch

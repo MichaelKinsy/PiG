@@ -241,7 +241,7 @@ func TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo(t *testing.T) {
 	if out := loginDialogText(d); !strings.Contains(out, "to close") {
 		t.Fatalf("close hint missing:\n%s", out)
 	}
-	if !strings.Contains(strings.Join(d.Render(80), "\n"), "\x1b]8;;https://docs.test/a\x07") {
+	if !strings.Contains(strings.Join(d.Render(80), "\n"), "\x1b]8;;https://docs.test/a\x1b\\") {
 		t.Fatal("the info link is not a terminal hyperlink")
 	}
 }

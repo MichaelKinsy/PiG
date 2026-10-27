@@ -141,9 +141,9 @@ func (p metaOAuthProvider) startDeviceAuthorization(ctx context.Context) (metaDe
 	}
 	deviceCode, _ := body.members["device_code"].(string)
 	userCode, _ := body.members["user_code"].(string)
-	verificationURI := metaTrustedHTTPURL(body.members["verification_uri_complete"])
+	verificationURI := trustedHTTPURL(body.members["verification_uri_complete"])
 	if verificationURI == "" {
-		verificationURI = metaTrustedHTTPURL(body.members["verification_uri"])
+		verificationURI = trustedHTTPURL(body.members["verification_uri"])
 	}
 	if deviceCode == "" || userCode == "" || verificationURI == "" {
 		return metaDeviceAuthorization{}, fmt.Errorf("Invalid Meta device authorization response: %s", body.text)
@@ -209,7 +209,7 @@ func (p metaOAuthProvider) mintAPIKey(ctx context.Context, identityToken string)
 	apiKey, _ := body.members["api_key"].(string)
 	if apiKey == "" {
 		message := "Meta did not issue an API key."
-		if actionURL := metaTrustedHTTPURL(body.members["action_url"]); actionURL != "" {
+		if actionURL := trustedHTTPURL(body.members["action_url"]); actionURL != "" {
 			message += " Complete setup at " + actionURL
 		}
 		return OAuthCredentials{}, errors.New(message)
@@ -284,16 +284,6 @@ func metaErrorDetail(body metaBody) string {
 		}
 	}
 	return ""
-}
-
-// metaTrustedHTTPURL is meta.ts trustedHttpUrl: the href of an http(s) URL, or "" for anything else. The verification URI is opened in the user's browser.
-func metaTrustedHTTPURL(value any) string {
-	raw, _ := value.(string)
-	if raw == "" {
-		return ""
-	}
-	href, _ := trustedURLHref(raw, false)
-	return href
 }
 
 func metaPositiveNumber(value any) *float64 {

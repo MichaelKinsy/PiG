@@ -1,0 +1,103 @@
+{
+	"defaulted": {
+		"agentDir": true,
+		"cwd": "\u003croot\u003e/project"
+	},
+	"own": {
+		"agentDir": "\u003croot\u003e/agent-services",
+		"appendix": [
+			"project append\n"
+		],
+		"cwd": "\u003croot\u003e/project",
+		"defaultModel": "sonnet",
+		"diagnostics": [],
+		"models": [
+			"s1"
+		],
+		"project": {
+			"compaction": {
+				"reserveTokens": 99
+			},
+			"defaultModel": "sonnet",
+			"skills": [
+				"./s"
+			]
+		},
+		"registered": []
+	},
+	"services": {
+		"agentDir": "\u003croot\u003e/agent",
+		"appendix": [
+			"Services appendix"
+		],
+		"cwd": "\u003croot\u003e/project",
+		"diagnostics": [
+			{
+				"message": "Extension flag \"--probe-text\" requires a value",
+				"type": "error"
+			},
+			{
+				"message": "Unknown options: --missing-flag, --other",
+				"type": "error"
+			}
+		],
+		"extensionErrors": 0,
+		"extensions": [
+			"\u003croot\u003e/probe/services.mjs"
+		],
+		"providers": {
+			"ids": [
+				"svc-prov"
+			],
+			"models": [
+				"p1"
+			]
+		},
+		"sameRuntime": true,
+		"sameSettings": true
+	},
+	"session": {
+		"created": {
+			"appendix": true,
+			"extensionErrors": 0,
+			"fallback": null,
+			"model": {
+				"id": "m1",
+				"provider": "mr-local"
+			},
+			"sessionId": true,
+			"thinkingLevel": "off"
+		},
+		"events": [
+			"agent_start",
+			"turn_start",
+			"message_start:system",
+			"message_end:system",
+			"message_start:user",
+			"message_end:user",
+			"message_start:assistant",
+			"message_update:assistant",
+			"message_update:assistant",
+			"message_update:assistant",
+			"message_update:assistant",
+			"message_end:assistant",
+			"turn_end",
+			"agent_end",
+			"agent_settled"
+		],
+		"roles": [
+			"system",
+			"user",
+			"assistant"
+		],
+		"started": [
+			{
+				"flag": true,
+				"previous": "/previous.jsonl",
+				"reason": "fork",
+				"text": null
+			}
+		],
+		"text": "hello"
+	}
+}

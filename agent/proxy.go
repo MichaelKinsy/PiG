@@ -60,6 +60,18 @@ type ProxyAssistantMessageEvent struct {
 	toolCallFields map[string]json.RawMessage
 	// notArrayIndex marks a contentIndex that is not a JavaScript array index (see parseProxyContentIndex).
 	notArrayIndex bool
+	// indexIsString marks a contentIndex written as a JSON string: the argument streams are a Map keyed by the contentIndex value, where "1" is not 1.
+	indexIsString bool
+}
+
+// proxyArgumentsKey is the key of a toolArguments Map entry: Map keys compare by SameValueZero, so a string index and a number index differ.
+type proxyArgumentsKey struct {
+	index    int
+	isString bool
+}
+
+func (event ProxyAssistantMessageEvent) argumentsKey() proxyArgumentsKey {
+	return proxyArgumentsKey{index: event.ContentIndex, isString: event.indexIsString}
 }
 
 // UnmarshalJSON decodes the event and records the members of a toolcall_end toolCall.
@@ -81,6 +93,7 @@ func (event *ProxyAssistantMessageEvent) UnmarshalJSON(data []byte) error {
 	*event = ProxyAssistantMessageEvent(decoded.plain)
 	event.toolCallFields = members.ToolCall
 	event.ContentIndex, event.notArrayIndex = parseProxyContentIndex(decoded.ContentIndex)
+	event.indexIsString = firstJSONByte(decoded.ContentIndex) == '"'
 	return nil
 }
 
@@ -263,7 +276,7 @@ type proxyRequestContext struct {
 func StreamProxy(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ProxyStreamOptions) *ai.AssistantMessageEventStream {
 	stream := ai.NewAssistantMessageEventStream()
 	partial := newProxyPartial(model)
-	converter := &proxyEventConverter{partial: partial, toolJSON: map[int]string{}}
+	converter := &proxyEventConverter{partial: partial, toolArguments: map[proxyArgumentsKey]*ai.ToolCallArgumentsStream{}}
 	body, err := buildProxyRequest(model, transcript, options)
 	go func(runErr error) {
 		if runErr == nil {
@@ -374,9 +387,10 @@ func proxyHTTPError(response *http.Response) error {
 }
 
 type proxyEventConverter struct {
-	partial  *ai.AssistantMessage
-	toolJSON map[int]string
-	// streamed appends deltas to the open blocks without copying their earlier bytes again and parses tool arguments from where the last delta ended.
+	partial *ai.AssistantMessage
+	// toolArguments is the argument stream of each open tool call by content index, kept off the content blocks (proxy.ts toolArguments).
+	toolArguments map[proxyArgumentsKey]*ai.ToolCallArgumentsStream
+	// streamed appends deltas to the open blocks without copying their earlier bytes again.
 	streamed ai.BlockDeltas
 }
 
@@ -499,24 +513,19 @@ func (converter *proxyEventConverter) process(proxyEvent ProxyAssistantMessageEv
 		return ai.ThinkingEndEvent{ContentIndex: proxyEvent.ContentIndex, Content: thinking.Thinking, Partial: partial}, nil
 	case "toolcall_start":
 		toolCall := ai.ToolCall{ID: proxyEvent.ID, Name: proxyEvent.ToolName, Arguments: ai.JsonObject{}}
-		toolCall.SetPartialJson("")
 		if err := setProxyContent(partial, proxyEvent.ContentIndex, toolCall); err != nil {
 			return nil, err
 		}
-		delete(converter.toolJSON, proxyEvent.ContentIndex)
-		converter.streamed.Release(proxyEvent.ContentIndex)
+		converter.toolArguments[proxyEvent.argumentsKey()] = ai.NewToolCallArgumentsStream()
 		return ai.ToolCallStartEvent{ContentIndex: proxyEvent.ContentIndex, Partial: partial}, nil
 	case "toolcall_delta":
 		content, err := proxyContent(partial, proxyEvent.ContentIndex)
 		toolCall, ok := content.(ai.ToolCall)
-		if err != nil || !ok {
+		arguments := converter.toolArguments[proxyEvent.argumentsKey()]
+		if err != nil || !ok || arguments == nil {
 			return nil, errors.New("Received toolcall_delta for non-toolCall content")
 		}
-		converter.toolJSON[proxyEvent.ContentIndex] = converter.streamed.AppendArguments(proxyEvent.ContentIndex, converter.toolJSON[proxyEvent.ContentIndex], proxyEvent.Delta)
-		toolCall.SetPartialJson(converter.toolJSON[proxyEvent.ContentIndex])
-		converter.streamed.SetStreamingArguments(&toolCall, proxyEvent.ContentIndex, converter.toolJSON[proxyEvent.ContentIndex])
-		// proxy.ts:343: parseStreamingJson(partialJson) || {}.
-		toolCall.DefaultFalsyArguments()
+		toolCall.AppendStreamedArguments(arguments, proxyEvent.Delta)
 		partial.Content[proxyEvent.ContentIndex] = toolCall
 		return ai.ToolCallDeltaEvent{ContentIndex: proxyEvent.ContentIndex, Delta: proxyEvent.Delta, Partial: partial}, nil
 	case "toolcall_end":
@@ -528,10 +537,8 @@ func (converter *proxyEventConverter) process(proxyEvent ProxyAssistantMessageEv
 		if proxyEvent.ToolCall != nil {
 			toolCall = mergeProxyToolCall(toolCall, *proxyEvent.ToolCall, proxyEvent.toolCallFields)
 		}
-		toolCall.DeletePartialJson()
 		partial.Content[proxyEvent.ContentIndex] = toolCall
-		delete(converter.toolJSON, proxyEvent.ContentIndex)
-		converter.streamed.Release(proxyEvent.ContentIndex)
+		delete(converter.toolArguments, proxyEvent.argumentsKey())
 		return ai.ToolCallEndEvent{ContentIndex: proxyEvent.ContentIndex, ToolCall: toolCall, Partial: partial}, nil
 	case "done":
 		finishProxyPartial(partial, proxyEvent)

@@ -33,6 +33,12 @@ func TestOpenAIResponsesMistypedMembersMatchPi(t *testing.T) {
 	toolDone := func(item string) string {
 		return event(`{"type":"response.output_item.done","output_index":0,"item":{"type":"function_call","id":"fc","name":"read",` + item + `}}`)
 	}
+	toolAddedWith := func(arguments string) string {
+		return event(`{"type":"response.output_item.added","output_index":0,"item":{"type":"function_call","id":"fc","call_id":"call_1","name":"read","arguments":` + arguments + `}}`)
+	}
+	argsDone := func(arguments string) string {
+		return event(`{"type":"response.function_call_arguments.done","output_index":0,"arguments":` + arguments + `}`)
+	}
 	reasoning := event(`{"type":"response.output_item.added","output_index":0,"item":{"type":"reasoning","id":"rs","summary":[]}}`)
 	reasoningDone := func(item string) string {
 		return event(`{"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","id":"rs",` + item + `}}`)
@@ -85,6 +91,17 @@ func TestOpenAIResponsesMistypedMembersMatchPi(t *testing.T) {
 		{"tool args done false", toolAdded + argsDelta(`"{}"`) + event(`{"type":"response.function_call_arguments.done","output_index":0,"arguments":false}`) + ok},
 		{"tool args done null", toolAdded + argsDelta(`"{}"`) + event(`{"type":"response.function_call_arguments.done","output_index":0,"arguments":null}`) + ok},
 		{"tool args done missing", toolAdded + argsDelta(`"{}"`) + event(`{"type":"response.function_call_arguments.done","output_index":0}`) + ok},
+		// An added item's truthy arguments is appended to the call's text as it is (ToolCallArgumentsStream.append), and a finished item's replaces it (replace reads `text.startsWith`).
+		{"added arguments number, done without arguments", toolAddedWith(`5`) + toolDone(`"call_id":"call_1"`) + ok},
+		{"added arguments number, done empty arguments", toolAddedWith(`5`) + toolDone(`"call_id":"call_1","arguments":""`) + ok},
+		{"added arguments true, done null arguments", toolAddedWith(`true`) + toolDone(`"call_id":"call_1","arguments":null`) + ok},
+		{"added arguments empty array, done without arguments", toolAddedWith(`[]`) + toolDone(`"call_id":"call_1"`) + ok},
+		{"added arguments number, a delta, done without arguments", toolAddedWith(`5`) + argsDelta(`"{\"a\":1}"`) + toolDone(`"call_id":"call_1"`) + ok},
+		{"added arguments object, arguments.done, done without arguments", toolAddedWith(`{}`) + argsDone(`"{\"b\":2}"`) + toolDone(`"call_id":"call_1"`) + ok},
+		{"added arguments falsy, done without arguments", toolAddedWith(`0`) + toolDone(`"call_id":"call_1"`) + ok},
+		{"added arguments string, done without arguments", toolAddedWith(`"{\"a\":"`) + argsDelta(`"1}"`) + toolDone(`"call_id":"call_1"`) + ok},
+		{"done arguments object", toolAdded + toolDone(`"call_id":"call_1","arguments":{}`) + ok},
+		{"done arguments array", toolAdded + toolDone(`"call_id":"call_1","arguments":["a"]`) + ok},
 		{"status number", hel + event(`{"type":"response.completed","response":{"id":"r","status":5,`+usage+`}}`)},
 		{"status array", hel + event(`{"type":"response.completed","response":{"id":"r","status":["completed"],`+usage+`}}`)},
 		// The JS read takes the record after integer-valued floats are rewritten (77790f284b): JSON.parse reads 3.0 and 1E0 as integers.

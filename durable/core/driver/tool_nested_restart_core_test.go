@@ -120,7 +120,8 @@ func TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	stream.Start(func(_ context.Context, batch []harness.AgentEvent) error {
+	stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
+		batch := change.Value
 		endsMu.Lock()
 		defer endsMu.Unlock()
 		for _, event := range batch {

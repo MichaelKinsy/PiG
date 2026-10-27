@@ -68,8 +68,10 @@ func TestInlineSandboxCountsTheBudgetAcrossWaitsOnTools(t *testing.T) {
 //   - wait 10 ms, spin 500 ms, deadline 300 ms: ok (the deadline fires after the segment delivered its result);
 //   - spin 500 ms, deadline 300 ms: ok.
 //
-// The durations are scaled so that a loaded host cannot move a deadline across a segment boundary. spin is a busy loop on the
-// wall clock.
+// The second probe is TestAnInlineLaterSegmentDeliversItsResultBeforeAnExpiredDeadline (package codemode): the deadline is
+// armed before the VM starts, which a starved host takes longer than the probe's deadline to do, so it needs the deadline
+// armed once the VM has started. The probes here hold on a loaded host: a deadline that has to expire during the first
+// segment, or while the script waits on a tool, does so however slowly the VM starts. spin is a busy loop on the wall clock.
 func TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi(t *testing.T) {
 	const spin = "const spin = (ms) => { const t = Date.now(); while (Date.now() - t < ms) {} };"
 	wait := codemode.Tool{Name: "wait", Execute: func(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
@@ -84,7 +86,6 @@ func TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi(t *testing.T) {
 		wantValue  string
 	}{
 		{"the first segment counts toward the deadline", spin + "spin(400); await tools.wait(400); return 1", 600, false, ""},
-		{"a deadline that expires while a later segment computes waits for its result", spin + "await tools.wait(10); spin(800); return 2", 400, true, "2"},
 		{"a deadline that expires during the first segment waits for its result", spin + "spin(800); return 3", 400, true, "3"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

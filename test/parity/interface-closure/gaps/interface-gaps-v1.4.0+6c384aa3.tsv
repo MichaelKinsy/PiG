@@ -1,0 +1,3 @@
+pkg:coding-agent/.#LoginDialogComponent	coding-agent	child-gap	tui/login_dialog.go#LoginDialogComponent
+pkg:coding-agent/.#LoginDialogComponent::property:showAuth	coding-agent	child-gap	tui/login_dialog.go#LoginDialogComponent.ShowAuth
+pkg:coding-agent/.#LoginDialogComponent::property:showAuth::call:0	coding-agent	signature-mismatch	tui/login_dialog.go#LoginDialogComponent.ShowAuth

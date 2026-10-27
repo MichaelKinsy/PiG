@@ -306,9 +306,14 @@ func (m *PackageManager) uninstallManagedNPM(source string, local bool) error {
 	if err != nil {
 		return err
 	}
-	installRoot := NpmInstallRoot(m.CWD, m.agentDir(), ref, local)
-	if _, err := os.Stat(installRoot); os.IsNotExist(err) {
+	root := NpmInstallRoot(m.CWD, m.agentDir(), ref, local)
+	if _, err := os.Stat(root); os.IsNotExist(err) {
 		return nil
+	}
+	// npm writes broken nested package-lock.json paths when --prefix goes through a symlink (package-manager.ts uninstallNpm).
+	installRoot, err := codingagent.RealPathSync(root)
+	if err != nil {
+		return err
 	}
 	command := DefaultNpmCommand(m.SettingsManager)
 	args := append([]string{}, command[1:]...)

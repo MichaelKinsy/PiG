@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -102,9 +103,10 @@ func (docs *ViewDocs) UnmarshalJSON(data []byte) error {
 
 // ViewObserver receives each next revision of a mount, and the Session's close. Advance and Publication may be nil.
 type ViewObserver struct {
-	Advance func(ctx context.Context, value ConversationView, ops []durable.Op)
+	// Advance receives each next revision; one change is shared by every observer of the mount.
+	Advance func(ctx context.Context, change chord.WatchChange[ConversationView])
 	// Publication receives every publication, after the mount took it; ops are the mount's, possibly none.
-	Publication func(ctx context.Context, before, after ConversationView, ops []durable.Op, publication durable.CommitPublication)
+	Publication func(ctx context.Context, before, after ConversationView, ops []durable.Op, publication session.ObservedCommit)
 	// End receives the Session's failure, nil when it closed.
 	End func(failure error)
 }
@@ -149,7 +151,7 @@ type ConversationViews struct {
 // NewConversationViews subscribes the mounts to the Session's commits and close.
 func NewConversationViews(sessionImpl *session.SessionImpl, storage durable.Storage) *ConversationViews {
 	views := &ConversationViews{session: sessionImpl, storage: storage, mounts: map[durable.ConversationId]*viewMount{}}
-	sessionImpl.ObserveCommits(func(ctx context.Context, publication durable.CommitPublication) {
+	sessionImpl.ObserveCommits(func(ctx context.Context, publication session.ObservedCommit) {
 		// Detach may run off the line, from a watch that ends on its delivery goroutine; read the observers under the lock.
 		type advancing struct {
 			id        durable.ConversationId
@@ -185,13 +187,33 @@ func NewConversationViews(sessionImpl *session.SessionImpl, storage durable.Stor
 	return views
 }
 
-// Watch returns a serialized exact-frame watch of the view; cancelling ctx stops it.
+// Observe attaches a synchronous observer of the view (Harness.ObserveConversation), behind session.GuardObserver; ctx governs
+// only the attachment.
+func (views *ConversationViews) Observe(ctx context.Context, id durable.ConversationId, observer durable.Observer[ConversationView]) (durable.Observation[ConversationView], error) {
+	var value ConversationView
+	var guarded *session.GuardedObserver[ConversationView]
+	_, detach, err := views.Attach(ctx, id, func(current ConversationView, release func(), _ durable.Storage) (*ViewObserver, error) {
+		value = current
+		guarded = session.GuardObserver(observer, release, views.session.Report)
+		return &ViewObserver{Advance: guarded.Advance, End: guarded.End}, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Err() != nil {
+		detach()
+		return nil, context.Cause(ctx)
+	}
+	return session.NewObservation(value, guarded), nil
+}
+
+// Watch returns a serialized watch of the view, an observer of its mount; cancelling ctx stops it.
 func (views *ConversationViews) Watch(ctx context.Context, id durable.ConversationId) (ConversationWatch, error) {
-	var watch *session.CommittedWatch[ConversationView]
+	var watch *chord.Watch[ConversationView]
 	_, _, err := views.Attach(ctx, id, func(value ConversationView, release func(), _ durable.Storage) (*ViewObserver, error) {
-		watch = session.NewCommittedWatch(views.session, value, release, nil)
+		watch = session.NewSessionWatch(views.session, value, release)
 		return &ViewObserver{
-			Advance: func(ctx context.Context, value ConversationView, ops []durable.Op) { watch.Advance(ctx, value, ops) },
+			Advance: watch.Advance,
 			End:     watch.SourceEnded,
 		}, nil
 	})
@@ -297,10 +319,9 @@ func (views *ConversationViews) build(ctx context.Context, id durable.Conversati
 	return &viewMount{value: ConversationView{Conversation: *conversation, Entries: entries, Docs: docs}, docs: incarnations}, nil
 }
 
-// advanceView derives the mount's operations from one publication, applies them, and hands the revision to every observer.
 // advanceView derives the mount's operations from one publication, applies them, and hands the revision to every observer; one
 // that panics is reported through report, and the others still get it.
-func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMount, observers []*ViewObserver, publication durable.CommitPublication, report func(error)) {
+func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMount, observers []*ViewObserver, publication session.ObservedCommit, report func(error)) {
 	var docOps, entryOps []durable.Op
 	entries := mount.value.Entries
 	entriesChanged := false
@@ -373,9 +394,10 @@ func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMoun
 			value.Entries = entries
 		}
 		mount.value = value
+		change := chord.WatchChange[ConversationView]{Value: mount.value, Ops: ops}
 		for _, observer := range observers {
 			if observer.Advance != nil {
-				session.Contained(func() { observer.Advance(frameContext, mount.value, ops) }, report)
+				session.Contained(func() { observer.Advance(frameContext, change) }, report)
 			}
 		}
 	}

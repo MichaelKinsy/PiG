@@ -15,9 +15,9 @@ The unit of work is a Provider → Event Stream → forwarding → Agent → Ses
 | `packages/coding-agent/src/core/model-runtime.ts:638-643` | Simple streaming adds an auth/setup and forwarding boundary. |
 | `packages/coding-agent/src/core/provider-composer.ts:492-513` | Composition adds another forwarding boundary. API lazy loading adds the boundary in `lazy.ts:76-79`. |
 | `packages/ai/src/api/openai-completions.ts:378-379,553-680` | Successful response observation precedes start. Start precedes the first body read. A complete chunk mutates the output synchronously, including stop state, before the next iterator await. |
-| `packages/ai/src/api/openai-completions.ts:425-470,491-550,644-657,711-723` | Function tools expose `partialArgs` and optional `streamIndex`. Custom tools expose `customInput`. Finalization and errors delete scratch state. |
-| `packages/ai/src/api/openai-responses.ts:177-180,197-216` | Start precedes body iteration. Response processing completes before the terminal push. Error cleanup removes scratch state. |
-| `packages/ai/src/api/openai-responses-shared.ts:485-529,653-676,709-739` | Function tools expose `partialJson`; custom tools expose `customInput`. Parsed arguments advance before delta publication. Finalization deletes scratch state. |
+| `packages/ai/src/api/openai-completions.ts:408-470,491-550,638-662` | Function tools read their argument text into a `ToolCallArgumentsStream` and custom tools into a grammar input buffer, both in the provider's own state; no block carries `partialArgs`, `streamIndex` or `customInput`. |
+| `packages/ai/src/api/openai-responses.ts:177-180,197-216` | Start precedes body iteration. Response processing completes before the terminal push. |
+| `packages/ai/src/api/openai-responses-shared.ts:480-530,720-760` | Function and custom tools keep their stream state in the output slot, never on the block. Parsed arguments advance before delta publication. |
 | `packages/agent/src/agent-loop.ts:408-453` | Agent messages shallow-copy top-level fields. The copied stop reason stays fixed, but nested content retains the provider reference. Event sinks are awaited. |
 | `packages/coding-agent/src/core/agent-session.ts:894-919` | Extension handling precedes subscriber notification. |
 | `packages/coding-agent/src/modes/rpc/rpc-mode.ts:354-363` | Serialization is an observation, not a reconstruction from deltas. |

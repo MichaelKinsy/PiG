@@ -135,7 +135,10 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) {
 	}
 }
 
-func workers() int { return max(1, runtime.NumCPU()/2) }
+// workers is how many evidence builds and runs go at once: half the CPUs this process may use. runtime.GOMAXPROCS(0) honors a
+// container's CPU quota (go 1.25), where runtime.NumCPU counts the host's CPUs: in a 4-CPU container on a 192-CPU host the shard
+// would run 96 test builds and test binaries at once on 4 CPUs, and every time bound inside them would measure that starvation.
+func workers() int { return max(1, runtime.GOMAXPROCS(0)/2) }
 
 // group is one run of a set of tests of one package; every row that names exactly these tests there shares its result.
 type group struct {
@@ -360,7 +363,7 @@ func runGroup(root, bin, scratchRoot string, g *group) {
 	// go test also points PWD at the package directory the binary runs in.
 	cmd.Env = append(evidenceEnv(scratch), "GOCOVERDIR="+coverDir, "PWD="+cmd.Dir)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "portmap: evidence tests of %s failed: %v\n%s\n", g.dir, err, lastLines(out, 40))
+		fmt.Fprintf(os.Stderr, "portmap: evidence tests of %s failed: %v\n%s\n", g.dir, err, failureReport(root, g.dir, out))
 		g.failed = true
 		return
 	}

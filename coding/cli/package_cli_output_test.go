@@ -64,7 +64,7 @@ func TestPackageChildOutputAndFailure(t *testing.T) {
 				wantOut += "Installed npm:fixture\n"
 			} else {
 				wantCode = 1
-				wantErr += fmt.Sprintf("Error: %s install fixture --prefix %s --legacy-peer-deps failed with code %d\n", stub, filepath.Join(agentDir, "npm"), exit)
+				wantErr += fmt.Sprintf("Error: %s install fixture --prefix %s --legacy-peer-deps failed with code %d\n", stub, realPathSync(t, filepath.Join(agentDir, "npm")), exit)
 			}
 			if code != wantCode || stdout != wantOut || stderr != wantErr {
 				t.Fatalf("code=%d stdout=%q stderr=%q; want %d %q %q", code, stdout, stderr, wantCode, wantOut, wantErr)

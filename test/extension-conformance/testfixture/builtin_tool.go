@@ -16,7 +16,8 @@ import (
 // builtinProbeCase is one case of builtin_probe (TestConformance_BuiltinToolDelegationAcrossSDKs). Every SDK's fixture implements the same cases, so the
 // test compares what each reports with Pi's own code, which the Node fixture runs.
 type builtinProbeCase struct {
-	// Kind is "cwd" (report ctx.cwd), "register" (override read and bash with wrapped built-ins), "definition", "delegate" or "local".
+	// Kind is "cwd" (report ctx.cwd), "register" (override read and bash with wrapped built-ins), "registerEdit" (override edit with a wrapped built-in), "prepare"
+	// (report whether the definition has prepareArguments and what it makes of Params), "definition", "delegate" or "local".
 	Kind       string          `json:"kind"`
 	Tool       string          `json:"tool"`
 	FactoryCwd string          `json:"factoryCwd"`
@@ -212,6 +213,8 @@ func builtinProbe(ctx sdk.Context, c builtinProbeCase) (map[string]any, error) {
 		return map[string]any{"cwd": ctx.Cwd()}, nil
 	case "register":
 		return map[string]any{"registered": registerDelegatingOverrides(ctx, c.FactoryCwd)}, nil
+	case "registerEdit":
+		return map[string]any{"registered": registerEditOverride(ctx, c.FactoryCwd)}, nil
 	case "local":
 		return builtinLocalProbe(c)
 	case "sets":
@@ -250,6 +253,22 @@ func builtinProbe(ctx sdk.Context, c builtinProbeCase) (map[string]any, error) {
 			"name": def.Name, "label": def.Label, "description": def.Description, "promptSnippet": def.PromptSnippet, "promptGuidelines": def.PromptGuidelines,
 			"parameters": def.Parameters, "outputSchema": def.OutputSchema, "constrainedSampling": def.ConstrainedSampling, "executionMode": def.ExecutionMode,
 			"renderShell": string(def.RenderShell),
+		}
+		return report, nil
+	}
+
+	if c.Kind == "prepare" {
+		def, err := definition()
+		if err != nil {
+			return nil, err
+		}
+		report["has"] = def.PrepareArguments != nil
+		if def.PrepareArguments != nil {
+			if prepared, err := def.PrepareArguments(params); err != nil {
+				report["error"] = err.Error()
+			} else {
+				report["prepared"] = prepared
+			}
 		}
 		return report, nil
 	}
@@ -381,4 +400,27 @@ func registerDelegatingOverrides(ctx sdk.Context, factoryCwd string) []string {
 	}
 	ctx.RegisterTool(bash.ToolDefinition)
 	return append(names, bash.Name)
+}
+
+// registerEditOverride overrides the edit tool with a wrapped built-in, as `pi.registerTool({ ...createEditToolDefinition(cwd), execute })` does: the definition
+// carries the built-in's prepareArguments, so the model's legacy shapes reach the wrapper normalised, and only an edit the host really applied can produce the
+// sentinel text.
+func registerEditOverride(ctx sdk.Context, factoryCwd string) []string {
+	edit, err := sdk.CreateEditToolDefinition(factoryCwd, nil)
+	if err != nil {
+		panic(err)
+	}
+	runEdit := edit.Execute
+	edit.Execute = func(ctx sdk.Context, params map[string]any) (any, error) {
+		result, err := runEdit(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		out := result.(sdk.AgentToolResult)
+		out.Content = append([]sdk.ToolResultContent(nil), out.Content...)
+		out.Content[0].Text = "«edited:" + out.Content[0].Text + "»"
+		return out, nil
+	}
+	ctx.RegisterTool(edit.ToolDefinition)
+	return []string{edit.Name}
 }

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -204,7 +206,8 @@ func TestTheHarnessStoresExactlyWhatCallersAndEventsGetAndKeepsAStoredNull(t *te
 	stream := must(WatchEvents(testContext, harness, root.Id()))
 	var mu sync.Mutex
 	var ends []string
-	stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		mu.Lock()
 		defer mu.Unlock()
 		for _, event := range batch {

@@ -90,7 +90,7 @@ func buildConversation(out io.Writer, n int) (t *TuiMainScreen, top, bottom *Tex
 	top = NewText("\033[2m● first turn marker\033[0m")
 	t.Add(top)
 	for i := range n {
-		t.Add(NewUserMessageComponent(fmt.Sprintf("refactor the %d-th handler and keep the tests green", i), nil, 1, nil))
+		t.Add(NewUserMessageComponent(fmt.Sprintf("refactor the %d-th handler and keep the tests green", i), nil, 1, nil, "", ""))
 		t.Add(NewMarkdown(fmt.Sprintf(
 			"Here is turn %d. It touches `pkg/foo`, `pkg/bar`, and a couple of call sites.\n\n"+
 				"- first point about the change\n- second point with more detail\n- third trade-off\n\n"+

@@ -13,8 +13,8 @@ import (
 
 func TestMermaidAssistantBlockPreservesNestedCode(t *testing.T) {
 	const markdown = "````text\n```mermaid\nflowchart LR\n A --> B\n```\n````\n"
-	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
-	block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{createMermaidMarkdownTransformer(func() string { return "streaming" }, nil)}))
+	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
+	block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{createMermaidMarkdownTransformer(func() string { return "streaming" }, nil)}, "", ""))
 	block.SetTextDelta(markdown)
 	output := strings.Join(block.Render(100), "\n")
 	if !strings.Contains(output, "```mermaid") || !strings.Contains(output, "flowchart LR") || strings.Contains(output, "┌───┐") {
@@ -35,8 +35,8 @@ func TestMermaidBlockWiring(t *testing.T) {
 		transformers := []extension.MarkdownTransformer{
 			createMermaidMarkdownTransformer(func() string { return mode }, tui.ActiveTheme()),
 		}
-		block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
-		block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, streaming, transformers))
+		block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
+		block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, streaming, transformers, "", ""))
 		block.SetTextDelta(src)
 		return strings.Join(block.Render(80), "\n")
 	}

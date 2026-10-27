@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -1502,7 +1504,8 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		var mu sync.Mutex
 		types := []string{}
 		stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-		stream.Start(func(_ context.Context, batch []AgentEvent) error {
+		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+			batch := change.Value
 			mu.Lock()
 			for _, event := range batch {
 				types = append(types, event.EventType())
@@ -1981,7 +1984,8 @@ func TestCompactionEventsAndLiveStatus(t *testing.T) {
 		var mu sync.Mutex
 		events := []AgentEvent{}
 		stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-		stream.Start(func(_ context.Context, batch []AgentEvent) error {
+		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+			batch := change.Value
 			mu.Lock()
 			events = append(events, batch...)
 			mu.Unlock()
@@ -2027,7 +2031,8 @@ func TestCompactionEventsAndLiveStatus(t *testing.T) {
 		var mu sync.Mutex
 		events := []AgentEvent{}
 		stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-		stream.Start(func(_ context.Context, batch []AgentEvent) error {
+		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+			batch := change.Value
 			mu.Lock()
 			events = append(events, batch...)
 			mu.Unlock()
@@ -2474,7 +2479,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 		chat.history(t)
 		watch := must(chat.root.Watch(testContext))
 		// A started watch keeps its value current.
-		watch.Start(func(context.Context, ConversationView, []durable.Op) error { return nil })
+		watch.Start(func(context.Context, chord.WatchChange[ConversationView]) error { return nil })
 		chat.faux.pushSummary(scriptSummary())
 		chat.outcome(t, chat.compact(t, nil))
 		waitFor(t, func() bool {
@@ -2660,7 +2665,8 @@ func watchEventLog(t *testing.T, chat *compactionChat) (*eventLog, *AgentEventSt
 	t.Helper()
 	log := &eventLog{}
 	stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
-	stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		types := []string{}
 		for _, event := range batch {
 			types = append(types, event.EventType())

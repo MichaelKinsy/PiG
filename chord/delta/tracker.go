@@ -426,7 +426,9 @@ type node struct {
 	deletes     map[string]bool
 	deleteOrder []string        // deleted base keys in deletion order (tracker.ts deletes Set)
 	readded     map[string]bool // base keys deleted and then written again
-	kids        map[string]*node
+	// appends holds, for the keys whose only changes are AppendText calls, the text appended so far: emission records each as one append op without comparing the old and new strings (tracker.ts appends).
+	appends map[string]string
+	kids    map[string]*node
 
 	// Array overlay (pieces.go); nil until the array is first accessed.
 	array *arrayOverlay
@@ -545,6 +547,12 @@ func (n *node) objectSet(key string, stored any) {
 	if current, present := n.objectLookup(key); present && !n.deletes[key] && !isContainer(stored) && !isContainer(current) && current == stored {
 		return
 	}
+	delete(n.appends, key)
+	n.objectWrite(key, stored)
+}
+
+// objectWrite records stored as the value of key, as setObjectWrite and the rest of setProperty do.
+func (n *node) objectWrite(key string, stored any) {
 	if n.writes == nil {
 		n.writes = map[string]any{}
 	}
@@ -586,6 +594,7 @@ func (n *node) objectDelete(key string) {
 	}
 	delete(n.writes, key)
 	delete(n.readded, key)
+	delete(n.appends, key)
 	if n.base.(*JsonObject).Has(key) {
 		if n.deletes == nil {
 			n.deletes = map[string]bool{}
@@ -779,6 +788,10 @@ func emitObject(n *node, path []any, ops *[]Op) {
 		}
 	}
 	for _, key := range n.writtenKeys() {
+		if appended, ok := n.appends[key]; ok {
+			*ops = append(*ops, Op{"a", childPath(path, key), appended})
+			continue
+		}
 		stored := n.writes[key]
 		before, present := base.Get(key)
 		if n.readded[key] {

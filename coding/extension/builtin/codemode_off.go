@@ -17,3 +17,5 @@ func codemodeEntries(Options) []Extension { return nil }
 
 // ConfigureCodemode does nothing: this build has no codemode.
 func (o *Options) ConfigureCodemode(string) {}
+
+func registerCodemodeReference() {}

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +21,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
+
+// kimiFixedNowMillis is the instant of the fixed clock of Pi's oracle (testdata/kimi_responses.mjs).
+const kimiFixedNowMillis = 1_700_000_000_000
 
 type kimiResponseProbe struct {
 	Flow     string `json:"flow"`
@@ -129,9 +131,9 @@ func runPigKimiResponse(t *testing.T, probe kimiResponseProbe) kimiResponseAnswe
 	provider := kimiOAuthProvider{client: server.Client(), oauthHost: server.URL, sleep: func(context.Context, time.Duration) error { return nil }}
 	ctx := context.Background()
 	fail := func(err error) kimiResponseAnswer { message := err.Error(); return kimiResponseAnswer{Err: &message} }
-	// A credential's expiry is reported as the time to live from the call, to the nearest 100 ms: Pi's clock is fixed, Go's is not.
+	// A credential's expiry is reported as the time to live from the call: Pi's clock is fixed at kimiFixedNowMillis and so is nowMillis for the test.
 	credentials := func(access, refresh string, expires float64, started int64) map[string]any {
-		return map[string]any{"access": access, "refresh": refresh, "ttlMs": math.Round((expires-float64(started))/100) * 100}
+		return map[string]any{"access": access, "refresh": refresh, "ttlMs": expires - float64(started)}
 	}
 	started := nowMillis()
 	var value any
@@ -180,6 +182,10 @@ func runPigKimiResponse(t *testing.T, probe kimiResponseProbe) kimiResponseAnswe
 }
 
 func TestKimiResponsesMatchPi(t *testing.T) {
+	// Pi's oracle runs on a fixed clock; the Go provider reads nowMillis, so it reads the same instant and a loaded host cannot add milliseconds to a credential's time to live.
+	previousNow := nowMillis
+	nowMillis = func() int64 { return kimiFixedNowMillis }
+	t.Cleanup(func() { nowMillis = previousNow })
 	probes := kimiResponseProbes()
 	payload, err := json.Marshal(probes)
 	if err != nil {
@@ -209,7 +215,7 @@ func TestKimiResponsesMatchPi(t *testing.T) {
 		walk = func(node any) {
 			if object, ok := node.(map[string]any); ok {
 				if expires, ok := object["expires"].(float64); ok && pi {
-					object["ttlMs"] = math.Round((expires-1_700_000_000_000)/100) * 100
+					object["ttlMs"] = expires - kimiFixedNowMillis
 					delete(object, "expires")
 				}
 				for _, child := range object {

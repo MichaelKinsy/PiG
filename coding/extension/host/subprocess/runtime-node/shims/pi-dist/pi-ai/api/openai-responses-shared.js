@@ -1,10 +1,10 @@
 import { calculateCost } from "../models.js";
 import { shortHash } from "../utils/hash.js";
-import { parseStreamingJson, parseToolCallArguments } from "../utils/json-parse.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
+import { ToolCallArgumentsStream } from "../utils/streaming-json.js";
 import { getSystemMessageText, renderSystemMessageUpdate } from "../utils/text.js";
 import { resolveTranscript, resolveTranscriptTools } from "../utils/transcript.js";
-import { appendGrammarToolInputJsonDelta, getGrammarToolInput, getJsonSchemaToolParameters, resolveGrammarConstrainedSampling, resolveJsonSchemaStrictSampling, } from "./constrained-sampling.js";
+import { appendGrammarToolInputJsonDelta, closeGrammarToolInputJson, getGrammarToolInput, getJsonSchemaToolParameters, resolveGrammarConstrainedSampling, resolveJsonSchemaStrictSampling, } from "./constrained-sampling.js";
 import { transformMessages } from "./transform-messages.js";
 // =============================================================================
 // Utilities
@@ -368,24 +368,11 @@ export function convertResponsesTools(tools, options) {
         return functionTool;
     });
 }
-function getCustomToolCallInput(block) {
-    const property = block.customInput?.property;
-    if (property === undefined)
-        return "";
-    const value = block.arguments[property];
-    return typeof value === "string" ? value : "";
-}
-function appendCustomToolCallInput(block, nextInput, close) {
-    const customInput = block.customInput;
-    if (!customInput)
-        return undefined;
-    const delta = appendGrammarToolInputJsonDelta(customInput.jsonBuffer, customInput.property, nextInput, close);
-    block.arguments = { [customInput.property]: nextInput };
-    return delta;
-}
 export async function processResponsesStream(openaiStream, output, stream, model, options) {
     let sawTerminalResponseEvent = false;
     const outputSlots = new Map();
+    // Tool calls whose output_item.done has not arrived yet.
+    const unfinishedToolCalls = new Set();
     const reasoningBlocksById = new Map();
     const applyMessagePhaseStopReason = (item) => {
         if (item.type === "message" && item.phase === "final_answer") {
@@ -429,19 +416,21 @@ export async function processResponsesStream(openaiStream, output, stream, model
             return slot;
         }
         if (item.type === "function_call") {
+            const args = new ToolCallArgumentsStream();
             const block = {
                 type: "toolCall",
                 id: `${item.call_id}|${item.id}`,
                 name: item.name,
-                arguments: {},
+                arguments: item.arguments ? args.append(item.arguments) : {},
                 ...(item.namespace !== undefined ? { namespace: item.namespace } : {}),
-                partialJson: item.arguments || "",
             };
             output.content.push(block);
+            unfinishedToolCalls.add(block);
             const slot = {
                 type: "toolCall",
                 block,
                 contentIndex: output.content.length - 1,
+                input: { kind: "json", arguments: args },
             };
             outputSlots.set(outputIndex, slot);
             stream.push({ type: "toolcall_start", contentIndex: slot.contentIndex, partial: output });
@@ -456,16 +445,14 @@ export async function processResponsesStream(openaiStream, output, stream, model
                 name: item.name,
                 arguments: { [inputProperty]: input },
                 ...(item.namespace !== undefined ? { namespace: item.namespace } : {}),
-                customInput: {
-                    property: inputProperty,
-                    jsonBuffer: { input: "", started: false, closed: false },
-                },
             };
             output.content.push(block);
+            unfinishedToolCalls.add(block);
             const slot = {
                 type: "toolCall",
                 block,
                 contentIndex: output.content.length - 1,
+                input: customInput(inputProperty, input),
             };
             outputSlots.set(outputIndex, slot);
             stream.push({ type: "toolcall_start", contentIndex: slot.contentIndex, partial: output });
@@ -610,36 +597,31 @@ export async function processResponsesStream(openaiStream, output, stream, model
         }
         else if (event.type === "response.function_call_arguments.delta") {
             const slot = getSlot(event.output_index, "toolCall");
-            if (!slot || slot.block.partialJson === undefined)
+            if (slot?.input.kind !== "json")
                 continue;
-            slot.block.partialJson += event.delta;
-            slot.block.arguments = parseStreamingJson(slot.block.partialJson);
+            slot.block.arguments = slot.input.arguments.append(event.delta);
             pushToolCallDelta(slot, event.delta);
         }
         else if (event.type === "response.function_call_arguments.done") {
             const slot = getSlot(event.output_index, "toolCall");
-            if (!slot || slot.block.partialJson === undefined)
+            if (slot?.input.kind !== "json")
                 continue;
-            const previousPartialJson = slot.block.partialJson;
-            slot.block.partialJson = event.arguments;
-            slot.block.arguments = parseStreamingJson(slot.block.partialJson);
-            if (event.arguments.startsWith(previousPartialJson)) {
-                const delta = event.arguments.slice(previousPartialJson.length);
-                if (delta.length > 0)
-                    pushToolCallDelta(slot, delta);
-            }
+            const replaced = slot.input.arguments.replace(event.arguments);
+            slot.block.arguments = replaced.arguments;
+            if (replaced.delta)
+                pushToolCallDelta(slot, replaced.delta);
         }
         else if (event.type === "response.custom_tool_call_input.delta") {
             const slot = getSlot(event.output_index, "toolCall");
-            if (!slot || !slot.block.customInput)
+            if (slot?.input.kind !== "custom")
                 continue;
-            pushToolCallDelta(slot, appendCustomToolCallInput(slot.block, getCustomToolCallInput(slot.block) + event.delta, false));
+            pushToolCallDelta(slot, appendCustomInput(slot.block, slot.input, event.delta));
         }
         else if (event.type === "response.custom_tool_call_input.done") {
             const slot = getSlot(event.output_index, "toolCall");
-            if (!slot || !slot.block.customInput)
+            if (slot?.input.kind !== "custom")
                 continue;
-            pushToolCallDelta(slot, appendCustomToolCallInput(slot.block, event.input, true));
+            pushToolCallDelta(slot, closeCustomInput(slot.block, slot.input, event.input));
         }
         else if (event.type === "response.output_item.done") {
             const item = event.item;
@@ -670,15 +652,13 @@ export async function processResponsesStream(openaiStream, output, stream, model
                 });
                 outputSlots.delete(event.output_index);
             }
-            else if (item.type === "function_call" &&
-                slot?.type === "toolCall" &&
-                slot.block.partialJson !== undefined) {
-                Object.assign(slot.block, parseToolCallArguments(item.arguments || slot.block.partialJson));
+            else if (item.type === "function_call" && slot?.type === "toolCall" && slot.input.kind === "json") {
+                if (item.arguments)
+                    slot.input.arguments.replace(item.arguments);
+                Object.assign(slot.block, slot.input.arguments.finish());
                 if (item.namespace !== undefined)
                     slot.block.namespace = item.namespace;
-                // Finalize in-place and strip the scratch buffer so replay only
-                // carries parsed arguments.
-                delete slot.block.partialJson;
+                unfinishedToolCalls.delete(slot.block);
                 stream.push({
                     type: "toolcall_end",
                     contentIndex: slot.contentIndex,
@@ -687,11 +667,11 @@ export async function processResponsesStream(openaiStream, output, stream, model
                 });
                 outputSlots.delete(event.output_index);
             }
-            else if (item.type === "custom_tool_call" && slot?.type === "toolCall" && slot.block.customInput) {
-                pushToolCallDelta(slot, appendCustomToolCallInput(slot.block, item.input ?? getCustomToolCallInput(slot.block), true));
+            else if (item.type === "custom_tool_call" && slot?.type === "toolCall" && slot.input.kind === "custom") {
+                pushToolCallDelta(slot, closeCustomInput(slot.block, slot.input, item.input));
                 if (item.namespace !== undefined)
                     slot.block.namespace = item.namespace;
-                delete slot.block.customInput;
+                unfinishedToolCalls.delete(slot.block);
                 stream.push({
                     type: "toolcall_end",
                     contentIndex: slot.contentIndex,
@@ -725,17 +705,38 @@ export async function processResponsesStream(openaiStream, output, stream, model
     }
     // The agent runs every tool call in the final message. Refuse to hand over calls whose
     // output_item.done never arrived: their arguments may be cut off or mixed up, e.g. when a
-    // non-compliant server omits output_index. Finished calls have their scratch buffers removed.
+    // non-compliant server omits output_index.
     if (output.stopReason === "toolUse") {
-        for (const block of output.content) {
-            if (block.type !== "toolCall")
-                continue;
-            const toolCall = block;
-            if (toolCall.partialJson !== undefined || toolCall.customInput !== undefined) {
-                throw new Error(`OpenAI Responses stream completed with an unfinished tool call: ${toolCall.name} (${toolCall.id})`);
-            }
+        for (const toolCall of unfinishedToolCalls) {
+            throw new Error(`OpenAI Responses stream completed with an unfinished tool call: ${toolCall.name} (${toolCall.id})`);
         }
     }
+}
+/** Stream state of a custom tool call that starts with `initialInput`. */
+function customInput(property, initialInput) {
+    const buffer = { input: "", started: false, closed: false };
+    return {
+        kind: "custom",
+        property,
+        buffer,
+        unsent: appendGrammarToolInputJsonDelta(buffer, property, initialInput) ?? "",
+    };
+}
+/** Append to a streaming custom tool input; returns the matching piece of its JSON arguments text. */
+function appendCustomInput(block, input, delta) {
+    return sendCustomInput(block, input, appendGrammarToolInputJsonDelta(input.buffer, input.property, delta));
+}
+/** Close a custom tool input with the provider's complete input, if it sent one. */
+function closeCustomInput(block, input, finalInput) {
+    return sendCustomInput(block, input, closeGrammarToolInputJson(input.buffer, input.property, finalInput));
+}
+function sendCustomInput(block, input, jsonDelta) {
+    block.arguments = { [input.property]: input.buffer.input };
+    if (input.unsent === "")
+        return jsonDelta;
+    const sent = input.unsent + (jsonDelta ?? "");
+    input.unsent = "";
+    return sent;
 }
 function mapStopReason(status, incompleteReason) {
     if (!status)

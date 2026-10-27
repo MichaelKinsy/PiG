@@ -17,17 +17,17 @@ import (
 
 type changes struct {
 	mu    sync.Mutex
-	items []durableenv.WatchChange
+	items []durableenv.FileChange
 }
 
-func (c *changes) add(change durableenv.WatchChange) {
+func (c *changes) add(change durableenv.FileChange) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.items = append(c.items, change)
 }
 
 // waitFor returns once an item satisfies match, scanning from index start; it reports the index after it.
-func (c *changes) waitFor(t *testing.T, start int, within time.Duration, match func(durableenv.WatchChange) bool) int {
+func (c *changes) waitFor(t *testing.T, start int, within time.Duration, match func(durableenv.FileChange) bool) int {
 	t.Helper()
 	deadline := time.Now().Add(within)
 	for time.Now().Before(deadline) {
@@ -47,14 +47,14 @@ func (c *changes) waitFor(t *testing.T, start int, within time.Duration, match f
 	return 0
 }
 
-func isOverflow(change durableenv.WatchChange) bool {
-	_, ok := change.(durableenv.WatchChangeOverflow)
+func isOverflow(change durableenv.FileChange) bool {
+	_, ok := change.(durableenv.FileChangeOverflow)
 	return ok
 }
 
-func pathsInclude(path string) func(durableenv.WatchChange) bool {
-	return func(change durableenv.WatchChange) bool {
-		paths, ok := change.(durableenv.WatchChangePaths)
+func pathsInclude(path string) func(durableenv.FileChange) bool {
+	return func(change durableenv.FileChange) bool {
+		paths, ok := change.(durableenv.FileChangePaths)
 		if !ok {
 			return false
 		}
@@ -115,7 +115,7 @@ func TestRemoteWatcherFailsToOpenOverTheDirectoryBudgetLikeNodeFileWatcher(t *te
 	small := NewRemoteExecutionEnv(RemoteExecutionEnvOptions{Connection: env.Connection, ID: "pi-env:test", Cwd: env.Cwd(), Watch: RemoteWatchOptions{MaxDirectories: new(2)}})
 	mustDo(small.CreateDir(ctx, "tree/a/b", nil))
 	mustDo(small.CreateDir(ctx, "tree/c", nil))
-	_, err := small.Watch(ctx, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.WatchChange) {})
+	_, err := small.Watch(ctx, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.FileChange) {})
 	if code := errorCodeOf(err); code != "invalid" {
 		t.Fatalf("watch of a tree over the budget: code %s (%v), want invalid", code, err)
 	}
@@ -128,11 +128,11 @@ func TestRemoteWatcherSendsASetZeroDirectoryBudget(t *testing.T) {
 	ctx := context.Background()
 	zero := NewRemoteExecutionEnv(RemoteExecutionEnvOptions{Connection: env.Connection, ID: "pi-env:test", Cwd: env.Cwd(), Watch: RemoteWatchOptions{MaxDirectories: new(0)}})
 	mustDo(zero.CreateDir(ctx, "tree", nil))
-	_, err := zero.Watch(ctx, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.WatchChange) {})
+	_, err := zero.Watch(ctx, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.FileChange) {})
 	if code := errorCodeOf(err); code != "invalid" {
 		t.Fatalf("watch with a budget of 0 directories: code %s (%v), want invalid", code, err)
 	}
-	watcher, err := env.Watch(ctx, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.WatchChange) {})
+	watcher, err := env.Watch(ctx, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.FileChange) {})
 	if err != nil {
 		t.Fatalf("an unset budget is the daemon default: %v", err)
 	}

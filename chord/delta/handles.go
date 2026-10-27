@@ -1,12 +1,16 @@
 package delta
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Object is a draft handle of a JSON object. It is usable only while its
@@ -170,6 +174,43 @@ func (object *Object) Set(key string, value any) error {
 	if n.attached() {
 		n.objectSet(key, stored)
 	}
+	return nil
+}
+
+// AppendText appends text to the string at key. The change is recorded as one append op (several appends to a key in one change join
+// into one op) without comparing the old and new strings, which a plain Set of the longer string makes the tracker do when it prepares
+// the change. Go strings are immutable, so the new revision still holds its own copy of the whole string. A Set or Delete of the key in the same change falls back to that comparison. A
+// key that holds no string is an error and leaves the draft unchanged (tracker.ts appendText).
+func AppendText(object *Object, key, text string) error {
+	n, mu := object.ref.lock()
+	defer mu.Unlock()
+	if !n.attached() {
+		return nil
+	}
+	current, present := n.objectLookup(key)
+	value, isString := current.(string)
+	if !present || !isString {
+		quoted, _ := json.Marshal(key)
+		return fmt.Errorf("appendText() needs a string at %s", quoted)
+	}
+	if text == "" {
+		return nil
+	}
+	text = strings.Clone(text)
+	appended, tracked := n.appends[key]
+	if !tracked {
+		if _, written := n.writes[key]; written {
+			n.objectWrite(key, jsstring.Concat(value, text))
+			n.markChanged()
+			return nil
+		}
+		if n.appends == nil {
+			n.appends = map[string]string{}
+		}
+	}
+	n.objectWrite(key, jsstring.Concat(value, text))
+	n.appends[key] = appended + text
+	n.markChanged()
 	return nil
 }
 

@@ -34,10 +34,10 @@ func TestMarkdownModeClearRemovesQueuedBodies(t *testing.T) {
 			}
 			return "complete " + text
 		}}}, "")
-		m.chatContainer.Add(m.newUserMessageBlock("active"))
+		m.chatContainer.Add(m.newUserMessageBlock("active", messageMeta{}))
 		m.chatContainer.Render(80)
 		<-started
-		m.chatContainer.Add(m.newUserMessageBlock("queued"))
+		m.chatContainer.Add(m.newUserMessageBlock("queued", messageMeta{}))
 		m.chatContainer.Render(80)
 		m.buildSlashContext(ctx).Clear()
 		close(release)
@@ -65,7 +65,7 @@ func TestMarkdownModeShutdownCancelsInvocationLifetime(t *testing.T) {
 			<-c.Context.Done()
 			return "late"
 		}}}, "")
-		block := m.newAssistantMessageBlock()
+		block := m.newAssistantMessageBlock(messageMeta{})
 		block.SetContent([]tui.AssistantSegment{{Text: "original"}})
 		block.Render(80)
 		<-started

@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 )
@@ -41,7 +43,8 @@ func collectToolEnds(t *testing.T, harness Harness, conversationId durable.Conve
 	t.Helper()
 	collected := &toolEnds{}
 	stream := must(WatchEvents(testContext, harness, conversationId))
-	stream.Start(func(_ context.Context, batch []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		batch := change.Value
 		collected.mu.Lock()
 		defer collected.mu.Unlock()
 		for _, event := range batch {

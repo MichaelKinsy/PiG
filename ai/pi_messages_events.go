@@ -6,9 +6,12 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -58,6 +61,7 @@ type PiMessagesEvent struct {
 	Usage                 Usage               `json:"usage"`
 	ErrorMessage          string              `json:"errorMessage"`
 	ResponseID            string              `json:"responseId"`
+	ResponseModel         *string             `json:"responseModel"`
 	ProviderThinkingLevel *string             `json:"providerThinkingLevel"`
 	Rewrite               map[string]any      `json:"rewrite"`
 	// rewriteOrder is the rewrite object's wire text, whose member order the diagnostic keeps (`{ ...rewrite }`).
@@ -65,8 +69,9 @@ type PiMessagesEvent struct {
 }
 
 type piMessagesEventConverter struct {
-	partial  *AssistantMessage
-	toolJSON map[int]string
+	partial *AssistantMessage
+	// toolArguments reads the argument deltas of each open tool call, off the content block.
+	toolArguments map[int]*ToolCallArgumentsStream
 	// streamed appends deltas to the open blocks without copying their earlier bytes again.
 	streamed streamedBlocks
 	// observe is the bound OnProviderStreamEvent callback, or nil.
@@ -81,7 +86,7 @@ func newPiMessagesEventConverter(providerID, modelID string) *piMessagesEventCon
 			Content: []AssistantContentBlock{}, API: APIPiMessages, Provider: providerID, Model: modelID,
 			StopReason: StopReasonPending, Timestamp: time.Now().UnixMilli(),
 		},
-		toolJSON: map[int]string{},
+		toolArguments: map[int]*ToolCallArgumentsStream{},
 	}
 }
 
@@ -92,9 +97,16 @@ func (c *piMessagesEventConverter) convert(raw json.RawMessage) ([]AssistantMess
 	if len(raw) > 0 && raw[0] != '{' {
 		return nil, nil
 	}
-	var event PiMessagesEvent
-	if err := json.Unmarshal(jsjson.NormalizeIntegers(raw), &event); err != nil {
+	var wire piMessagesWireEvent
+	if err := json.Unmarshal(jsjson.NormalizeIntegers(raw), &wire); err != nil {
 		return nil, err
+	}
+	event := wire.PiMessagesEvent
+	if wire.ContentIndex.present {
+		if err := c.checkContentIndex(raw, event.Type, wire.ContentIndex); err != nil {
+			return nil, err
+		}
+		event.ContentIndex = wire.ContentIndex.index
 	}
 	if event.Rewrite != nil {
 		if parsed, err := orderedjson.Parse(raw); err == nil {
@@ -160,12 +172,58 @@ func (c *piMessagesEventConverter) apply(event PiMessagesEvent) (AssistantMessag
 	return nil, nil
 }
 
+// piMessagesWireEvent is a backend event as it arrives: the contentIndex is read for what it is, not as the integer the event struct holds.
+type piMessagesWireEvent struct {
+	PiMessagesEvent
+	ContentIndex piMessagesContentIndex `json:"contentIndex"`
+}
+
+// piMessagesContentIndex is an event's contentIndex member: present when the member is there, and index with valid set only when it is an integer.
+type piMessagesContentIndex struct {
+	present bool
+	valid   bool
+	index   int
+}
+
+func (field *piMessagesContentIndex) UnmarshalJSON(data []byte) error {
+	field.present = true
+	if index, err := strconv.ParseInt(string(data), 10, strconv.IntSize); err == nil {
+		field.index, field.valid = int(index), true
+	}
+	return nil
+}
+
+// checkContentIndex is the check at the top of createEventConverter's returned function (pi-messages.ts:198-205): the index comes from the wire and keys the
+// content array, so an event that carries one must name the next block (a start, which adds it) or an existing one (any other event).
+func (c *piMessagesEventConverter) checkContentIndex(raw json.RawMessage, eventType PiMessagesEventType, field piMessagesContentIndex) error {
+	limit := len(c.partial.Content) - 1
+	if strings.HasSuffix(string(eventType), "_start") {
+		limit++
+	}
+	if field.valid && field.index >= 0 && field.index <= limit {
+		return nil
+	}
+	var member struct {
+		ContentIndex json.RawMessage `json:"contentIndex"`
+	}
+	_ = json.Unmarshal(raw, &member)
+	text, err := jsonstringify.Canonicalize(member.ContentIndex)
+	if err != nil {
+		text = member.ContentIndex
+	}
+	return fmt.Errorf("Invalid contentIndex %s in pi-messages %s event", text, eventType)
+}
+
 func (c *piMessagesEventConverter) finish(event PiMessagesEvent) {
 	c.partial.StopReason = event.Reason
 	// upstream: packages/ai/src/api/pi-messages.ts:195-217 `Object.assign(partial, { usage: event.usage })` assigns a new usage object.
 	c.partial.Usage = event.Usage
 	c.replaced.Usage = true
 	c.partial.ResponseID = event.ResponseID
+	// upstream: pi-messages.ts createEventConverter assigns responseModel on done and error only when the event carries it (Pi 14c811841).
+	if event.ResponseModel != nil {
+		c.partial.ResponseModel = *event.ResponseModel
+	}
 	if event.ProviderThinkingLevel != nil {
 		c.partial.ProviderThinkingLevel = *event.ProviderThinkingLevel
 	}
@@ -191,7 +249,7 @@ func (c *piMessagesEventConverter) startBlock(event PiMessagesEvent) (AssistantM
 		block, result = ThinkingContent{}, ThinkingStartEvent{ContentIndex: index, Partial: c.partial}
 	default:
 		block, result = ToolCall{ID: event.ID, Name: event.ToolName, Arguments: JsonObject{}}, ToolCallStartEvent{ContentIndex: index, Partial: c.partial}
-		c.toolJSON[index] = ""
+		c.toolArguments[index] = NewToolCallArgumentsStream()
 		c.streamed.release(index)
 	}
 	if index == len(c.partial.Content) {
@@ -225,9 +283,11 @@ func (c *piMessagesEventConverter) deltaBlock(event PiMessagesEvent) (AssistantM
 		c.partial.Content[index] = block
 		return ThinkingDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	case ToolCall:
-		c.toolJSON[index] = c.streamed.appendArguments(index, c.toolJSON[index], event.Delta)
-		block.setParsedArguments(c.streamed.streamingArguments(index, c.toolJSON[index]))
-		c.partial.Content[index] = block
+		if arguments := c.toolArguments[index]; arguments != nil {
+			parsed, order := arguments.Append(event.Delta)
+			block.setParsedArguments(parsed, order, nil)
+			c.partial.Content[index] = block
+		}
 		return ToolCallDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	}
 	return nil, fmt.Errorf("pi-messages %s does not match content block %d", event.Type, index)
@@ -253,7 +313,7 @@ func (c *piMessagesEventConverter) endBlock(event PiMessagesEvent) (AssistantMes
 			block = mergeToolCall(block, *event.ToolCall)
 		}
 		c.partial.Content[index] = block
-		delete(c.toolJSON, index)
+		delete(c.toolArguments, index)
 		c.streamed.release(index)
 		return ToolCallEndEvent{ContentIndex: index, ToolCall: block, Partial: c.partial}, nil
 	}

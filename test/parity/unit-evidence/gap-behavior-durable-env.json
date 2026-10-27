@@ -77,22 +77,22 @@
     "mutation": "durable/harness/task_graph.go:258 `if record.State.Status == durable.TaskTerminal {` -> `if record.State.Status != durable.TaskTerminal {` (TestExample23ChildTasks FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
-    "upstream": "packages/durable/src/session/observation.ts",
+    "upstream": "packages/chord/src/watch.ts",
     "package": "./durable/harness",
     "tests": [
       "TestCompactionAndTheInbox"
     ],
-    "upstream_reference": "packages/durable/src/session/observation.ts:119 (Dispose); packages/durable/src/session/observation.ts:1-302; packages/durable/test/harness-compaction.test.ts",
-    "mutation": "durable/session/observation.go:35 `return false` -> `return true` (TestCompactionAndTheInbox FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/chord/src/watch.ts:1-290 (Watch, NativeWatch); packages/durable/test/harness-compaction.test.ts",
+    "mutation": "chord/watch_impl.go:472 `close(watch.closed)` -> `_ = watch.closed` (TestCompactionAndTheInbox FAIL: the watch never reports its end); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
-    "upstream": "packages/durable/src/session/observation.ts",
+    "upstream": "packages/chord/src/watch.ts",
     "package": "./durable/examples",
     "tests": [
       "TestExample20LateJoin"
     ],
-    "upstream_reference": "packages/durable/src/session/observation.ts:119 (Dispose); packages/durable/src/session/observation.ts:1-302; packages/durable/test/examples/20-late-join.ts",
-    "mutation": "durable/session/observation.go:35 `return false` -> `return true` (TestExample20LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/chord/src/watch.ts:1-290 (Watch, NativeWatch); packages/durable/test/examples/20-late-join.ts",
+    "mutation": "chord/watch_impl.go:472 `close(watch.closed)` -> `_ = watch.closed` (TestExample20LateJoin FAIL: the watch never reports its end); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/storage/sqlite/node.ts",

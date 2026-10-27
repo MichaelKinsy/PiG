@@ -271,6 +271,18 @@ func Extension() *sdk.Extension {
 		},
 	})
 	e.RegisterTool(sdk.ToolDefinition{
+		Name: "model_registry", Label: "model_registry", Description: "Runs the ModelRegistry over a ModelRuntime script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(modelRegistryScript(ctx, args))
+			return string(encoded), err
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
 		Name: "model_runtime", Label: "model_runtime", Description: "Runs the ModelRuntime script.", Parameters: sdk.Schema{"type": "object"},
 		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
 			defer func() {
@@ -303,6 +315,89 @@ func Extension() *sdk.Extension {
 				}
 			}()
 			encoded, err := json.Marshal(childHandlesScript(ctx, args))
+			return string(encoded), err
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "create_provider", Label: "create_provider", Description: "Runs the createProvider script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			report, err := createProviderScript()
+			if err != nil {
+				return nil, err
+			}
+			encoded, err := json.Marshal(report)
+			return string(encoded), err
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "mcp_options", Label: "mcp_options", Description: "Runs the createMcpExtension function options script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(mcpOptionsScript(ctx, args))
+			return string(encoded), err
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "extension_refs", Label: "extension_refs", Description: "Runs the compiled-in extension factories script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(extensionRefsScript(ctx, args))
+			return string(encoded), err
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "services", Label: "services", Description: "Runs the createAgentSessionServices script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(servicesScript(ctx, args))
+			return string(encoded), err
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "extension_runner", Label: "extension_runner", Description: "Runs the createExtensionRuntime and ExtensionRunner script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(extensionRunnerScript(ctx, args))
+			return string(encoded), err
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "extension_runner_bench", Label: "extension_runner_bench", Description: "Times one operation of the extension_runner script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(extensionRunnerBench(ctx, args))
+			return string(encoded), err
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "agent_session_runtime", Label: "agent_session_runtime", Description: "Runs the createAgentSessionRuntime script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(agentSessionRuntimeScript(ctx, args))
 			return string(encoded), err
 		},
 	})

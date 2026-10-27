@@ -62,11 +62,12 @@ func TestStrictRequireReasonStringifiesLikeJSONEdgeCases(t *testing.T) {
 // with U+2028/U+2029 raw and the literal backslash-u text escaped.
 func TestAppendGrammarToolInputJSONDeltaWritesLineTerminatorsRaw(t *testing.T) {
 	buffer := &grammarToolInputJSONBuffer{}
-	first, _, err := appendGrammarToolInputJSONDelta(buffer, "p<\u2029", "a\u2028<", false)
+	first, _, err := appendGrammarToolInputJSONDelta(buffer, "p<\u2029", "a\u2028<")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, _, err := appendGrammarToolInputJSONDelta(buffer, "p<\u2029", `a`+"\u2028"+`<\u2028`, true)
+	finalInput := `a` + "\u2028" + `<\u2028`
+	second, _, err := closeGrammarToolInputJSON(buffer, "p<\u2029", &finalInput)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,7 +1,6 @@
 package ai
 
-// pi: packages/ai/src/auth/oauth/kimi-coding.ts
-// pi: packages/ai/src/auth/oauth/meta.ts
+// pi: packages/ai/src/auth/oauth/trusted-url.ts
 // pi: packages/ai/src/auth/oauth/xai.ts
 
 import (
@@ -15,9 +14,10 @@ import (
 )
 
 type trustedURLAnswer struct {
-	Kimi *string `json:"kimi"`
-	Meta *string `json:"meta"`
-	Xai  *string `json:"xai"`
+	Trusted *string `json:"trusted"`
+	Xai     *string `json:"xai"`
+	// Copilot is PiG's startDeviceFlow check of verification_uri; Pi runs trustedHttpUrl there, so it must answer as Trusted does.
+	Copilot *string `json:"-"`
 }
 
 // trustedURLInputs are verification URIs a server could send: schemes and cases, missing or extra slashes, backslashes, userinfo, ports, IDNA and
@@ -37,8 +37,8 @@ func trustedURLInputs() []string {
 	}
 }
 
-// Pi's private trustedHttpUrl (kimi-coding.ts and meta.ts) and validateVerificationUri (xai.ts) run in Node from the pinned source against the same
-// values: which URLs each accepts and, where Pi returns it, the href it returns (the URL the user's browser opens).
+// Pi's trustedHttpUrl (trusted-url.ts, shared by the Copilot, Kimi, Meta and Radius logins) and its private validateVerificationUri (xai.ts) run in Node
+// from the pinned source against the same values: which URLs each accepts and the href it returns (the URL the user's browser opens).
 func TestTrustedVerificationURLsMatchPi(t *testing.T) {
 	inputs := trustedURLInputs()
 	payload, err := json.Marshal(inputs)
@@ -70,24 +70,22 @@ func TestTrustedVerificationURLsMatchPi(t *testing.T) {
 	accepted, differing := 0, 0
 	for i, input := range inputs {
 		var got trustedURLAnswer
-		if trustedHTTPURL(input) {
-			got.Kimi = &input
-		}
-		if href := metaTrustedHTTPURL(input); href != "" {
-			got.Meta = &href
+		if href := trustedHTTPURL(input); href != "" {
+			got.Trusted = &href
 		}
 		if href, err := xaiValidateHTTPSURL(input); err == nil {
 			got.Xai = &href
 		}
+		if href, err := normalizeCopilotVerificationURI(input); err == nil {
+			got.Copilot = &href
+		}
 		want := expected[i]
-		if want.Meta != nil {
+		if want.Trusted != nil {
 			accepted++
 		}
-		// Pi's kimi function returns an href that its caller only tests for null; Go reports acceptance.
-		kimiDiffers := (got.Kimi != nil) != (want.Kimi != nil)
-		if kimiDiffers || str(got.Meta) != str(want.Meta) || str(got.Xai) != str(want.Xai) {
+		if str(got.Trusted) != str(want.Trusted) || str(got.Xai) != str(want.Xai) || str(got.Copilot) != str(want.Trusted) {
 			if differing++; differing <= 15 {
-				t.Errorf("%q differs from Pi:\n  Pig kimi accepts %v, meta %s, xai %s\n  Pi  kimi accepts %v, meta %s, xai %s", input, got.Kimi != nil, str(got.Meta), str(got.Xai), want.Kimi != nil, str(want.Meta), str(want.Xai))
+				t.Errorf("%q differs from Pi:\n  Pig trusted %s, xai %s, copilot %s\n  Pi  trusted %s, xai %s", input, str(got.Trusted), str(got.Xai), str(got.Copilot), str(want.Trusted), str(want.Xai))
 			}
 		}
 	}
@@ -95,6 +93,6 @@ func TestTrustedVerificationURLsMatchPi(t *testing.T) {
 		t.Errorf("%d of %d inputs differ from Pi", differing, len(inputs))
 	}
 	if accepted < len(inputs)/4 || accepted > len(inputs)*3/4 {
-		t.Errorf("inputs are one-sided: Pi's meta accepts %d of %d", accepted, len(inputs))
+		t.Errorf("inputs are one-sided: Pi's trustedHttpUrl accepts %d of %d", accepted, len(inputs))
 	}
 }

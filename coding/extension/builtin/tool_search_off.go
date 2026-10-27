@@ -9,3 +9,5 @@ import "github.com/MichaelKinsy/PiG/internal/pigstrip"
 func init() { pigstrip.Strip(pigstrip.ListExtensions, "tool-search") }
 
 func toolSearchEntries() []Extension { return nil }
+
+func registerToolSearchReference() {}

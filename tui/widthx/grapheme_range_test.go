@@ -115,3 +115,21 @@ func TestGetOsc8LinkAtColumn(t *testing.T) {
 		t.Error("plain text should have no link")
 	}
 }
+
+// utils.ts replaceControlCharacters: each run of C0 and C1 control characters becomes one space, and text without one is returned as it is.
+func TestReplaceControlCharacters(t *testing.T) {
+	for _, test := range []struct{ in, want string }{
+		{"", ""},
+		{"plain text", "plain text"},
+		{"a\x07b", "a b"},
+		{"a\x07\x1b]52;c;Zm9v\x07\u009b2J - b", "a ]52;c;Zm9v 2J - b"},
+		{"\x1b[31mred", " [31mred"},
+		{"tail\n\n\r\n", "tail "},
+		{"\u007f\u009f", " "},
+		{"\u00a0é\u2028", "\u00a0é\u2028"},
+	} {
+		if got := ReplaceControlCharacters(test.in); got != test.want {
+			t.Errorf("ReplaceControlCharacters(%q) = %q, want %q", test.in, got, test.want)
+		}
+	}
+}

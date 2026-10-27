@@ -648,6 +648,62 @@ fn main() {
         ext.tool("type-schema-tool", "Parameters built with Type", parameters.to_value(), |_, _| ToolResult::text("ok"));
     }
     {
+        // type-engine-tool (TestConformance_TypeEngineMembersAgreeAcrossSDKs): one property per member of Type that the host's type engine serves.
+        use pig_sdk::{TSchema, TValue, Type};
+        let (s, n, i, b) = (Type::string(None), Type::number(None), Type::integer(None), Type::boolean(None));
+        let lit = |text: &str| Type::literal(text, None).unwrap();
+        let obj = |pairs: Vec<(&str, TSchema)>| Type::object(pairs, None);
+        let base = obj(vec![("id", s.clone()), ("name", Type::optional(s.clone())), ("n", i.clone()), ("tags", Type::array(s.clone(), None))]);
+        let same = obj(vec![("a", s.clone())]);
+        let key = Type::identifier("K").unwrap();
+        let parameters = Type::object(vec![
+            ("picked", Type::pick(&base, ["id", "name"], None).unwrap()),
+            ("omitted", Type::omit(&base, ["tags"], None).unwrap()),
+            ("partial", Type::partial(&base, None).unwrap()),
+            ("required", Type::required(obj(vec![("a", Type::optional(s.clone())), ("b", Type::optional(n.clone()))]), None).unwrap()),
+            ("keys", Type::key_of(&base, None).unwrap()),
+            ("indexed", Type::index(&base, lit("n"), None).unwrap()),
+            ("readonlyObject", Type::readonly_object(&base, None).unwrap()),
+            ("readonlyType", Type::readonly_type(Type::array(s.clone(), None), None).unwrap()),
+            ("evaluated", Type::evaluate(Type::intersect([same.clone(), obj(vec![("b", n.clone())])], None), None).unwrap()),
+            ("excluded", Type::exclude(Type::union([s.clone(), n.clone(), b.clone()], None), s.clone(), None).unwrap()),
+            ("extracted", Type::extract(Type::union([s.clone(), n.clone(), b.clone()], None), Type::union([s.clone(), n.clone()], None), None).unwrap()),
+            ("nonNullable", Type::non_nullable(Type::union([s.clone(), Type::null(None)], None), None).unwrap()),
+            ("uppercase", Type::uppercase(lit("abc"), None).unwrap()),
+            ("lowercase", Type::lowercase(lit("ABC"), None).unwrap()),
+            ("capitalize", Type::capitalize(lit("abc"), None).unwrap()),
+            ("uncapitalize", Type::uncapitalize(lit("ABC"), None).unwrap()),
+            ("parameters", Type::parameters(Type::function(vec![s.clone(), n.clone()], b.clone(), None).unwrap(), None).unwrap()),
+            ("constructorParameters", Type::constructor_parameters(Type::constructor(vec![s.clone()], obj(vec![]), None).unwrap(), None).unwrap()),
+            ("returnType", Type::return_type(Type::function(vec![s.clone()], n.clone(), None).unwrap(), None).unwrap()),
+            ("instanceType", Type::instance_type(Type::constructor(vec![s.clone()], same.clone(), None).unwrap(), None).unwrap()),
+            ("fn", Type::function(vec![s.clone()], n.clone(), None).unwrap()),
+            ("constructorType", Type::constructor(vec![s.clone()], same.clone(), None).unwrap()),
+            ("tuple", Type::tuple(vec![s.clone(), n.clone()], None).unwrap()),
+            ("template", Type::template_literal("a${string}", None).unwrap()),
+            ("conditional", Type::conditional(s.clone(), s.clone(), lit("yes"), lit("no"), None).unwrap()),
+            ("mapped", Type::mapped(&key, Type::union([lit("a"), lit("b")], None), Type::ref_("K", None), s.clone(), None).unwrap()),
+            ("cyclic", Type::cyclic(TValue::object([("A", obj(vec![("next", Type::optional(Type::ref_("A", None)))]))]), "A", None).unwrap()),
+            ("module", Type::module(TValue::object([("A", s.clone()), ("B", Type::array(Type::ref_("A", None), None))]), None).unwrap()),
+            ("interface", Type::interface(vec![same.clone()], TValue::object([("b", n.clone())]), None).unwrap()),
+            ("dependent", Type::dependent(s.clone(), n.clone(), b.clone(), None).unwrap()),
+            ("extends", Type::extends(None, s.clone(), s.clone()).unwrap()),
+            ("instantiate", Type::instantiate(TValue::object([("A", s.clone())]), Type::ref_("A", None)).unwrap()),
+            ("call", Type::instantiate(TValue::object([("Id", Type::generic(vec![Type::parameter("T", None, None).unwrap()], Type::ref_("T", None)).unwrap())]), Type::call(Type::ref_("Id", None), vec![s.clone()]).unwrap()).unwrap()),
+            ("script", Type::script(vec![TValue::from("{ a: string; b?: number[] }")]).unwrap()),
+            ("rest", Type::rest(Type::tuple(vec![s.clone()], None).unwrap()).unwrap()),
+            ("this", Type::this(None).unwrap()),
+            ("infer", Type::infer("U", Some(TValue::from(&s))).unwrap()),
+            ("identifier", key.clone()),
+            ("generic", Type::generic(vec![Type::parameter("T", Some(TValue::from(&s)), Some(TValue::from(&s))).unwrap()], Type::array(Type::ref_("T", None), None)).unwrap()),
+            ("recordKey", Type::record_key(Type::record(s.clone(), n.clone(), None).unwrap()).unwrap()),
+            ("recordValue", Type::record_value(Type::record(s.clone(), n.clone(), None).unwrap()).unwrap()),
+            ("recordPattern", Type::string(json!({"description": Type::record_pattern(Type::record(s.clone(), n.clone(), None).unwrap()).unwrap()}).as_object())),
+            ("enumKeyRecord", Type::record(Type::enum_(&json!(["x", "y"]), None).unwrap(), n.clone(), None).unwrap()),
+        ], json!({"additionalProperties": false}).as_object());
+        ext.tool("type-engine-tool", "Parameters built with the engine members of Type", parameters.to_value(), |_, _| ToolResult::text("ok"));
+    }
+    {
         // refine-probe (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): the schema of the "probe" cases of validateToolArguments.json; every predicate and message function logs its call.
         use pig_sdk::Type;
         use std::sync::{Arc, Mutex};
@@ -4413,6 +4469,7 @@ fn builtin_probe(ctx: &pig_sdk::Context, case: &Value) -> Result<Value, String> 
     match kind {
         "cwd" => return Ok(json!({"cwd": ctx.cwd()})),
         "register" => return builtin_register(ctx, &factory_cwd),
+        "registerEdit" => return builtin_register_edit(ctx, &factory_cwd),
         "local" => return Ok(builtin_local(case)),
         "sets" => {
             let names = |tools: Vec<pig_sdk::BuiltinTool>| tools.into_iter().map(|tool| tool.name).collect::<Vec<_>>();
@@ -4427,7 +4484,7 @@ fn builtin_probe(ctx: &pig_sdk::Context, case: &Value) -> Result<Value, String> 
     let tool = case["tool"].as_str().unwrap_or("bash");
     macro_rules! create {
         ($definition:ident, $tool:ident, $options:expr) => {
-            if kind == "definition" { Created::Definition(pig_sdk::$definition(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) } else if case["noContext"].as_bool() == Some(true) { Created::Tool(pig_sdk::$tool(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) } else { Created::Executor(pig_sdk::$definition(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) }
+            if kind == "definition" || kind == "prepare" { Created::Definition(pig_sdk::$definition(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) } else if case["noContext"].as_bool() == Some(true) { Created::Tool(pig_sdk::$tool(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) } else { Created::Executor(pig_sdk::$definition(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) }
         };
     }
     let created = match tool {
@@ -4440,6 +4497,17 @@ fn builtin_probe(ctx: &pig_sdk::Context, case: &Value) -> Result<Value, String> 
         "powershell" => create!(create_powershell_tool_definition, create_powershell_tool, options.powershell),
         _ => create!(create_bash_tool_definition, create_bash_tool, options.bash),
     };
+    if kind == "prepare" {
+        let Created::Definition(built) = created else { unreachable!() };
+        let mut report = json!({"has": built.definition.prepare_arguments.is_some()});
+        if let Some(prepare) = &built.definition.prepare_arguments {
+            match prepare(case.get("params").cloned().unwrap_or_else(|| json!({}))) {
+                Ok(prepared) => report["prepared"] = prepared,
+                Err(error) => report["error"] = json!(error),
+            }
+        }
+        return Ok(report);
+    }
     if kind == "definition" {
         let Created::Definition(built) = created else { unreachable!() };
         let d = &built.definition;
@@ -4529,6 +4597,23 @@ fn builtin_register(ctx: &pig_sdk::Context, factory_cwd: &str) -> Result<Value, 
     let bash_name = bash.definition.name.clone();
     ctx.register_tool(bash.definition).map_err(|e| e.to_string())?;
     Ok(json!({"registered": [read_name, bash_name]}))
+}
+
+/// Overrides the edit tool with a wrapped built-in, as `pi.registerTool({ ...createEditToolDefinition(cwd), execute })` does: the definition carries the
+/// built-in's prepareArguments, so the model's legacy shapes reach the wrapper normalised, and only an edit the host really applied can produce the sentinel text.
+fn builtin_register_edit(ctx: &pig_sdk::Context, factory_cwd: &str) -> Result<Value, String> {
+    let mut edit = pig_sdk::create_edit_tool_definition(factory_cwd, None).map_err(|e| e.to_string())?;
+    let run_edit = edit.executor();
+    edit.definition.execute = Box::new(move |ctx, params| match run_edit.execute(ctx, params) {
+        Ok(mut result) => {
+            wrap_first_text(&mut result, |text| format!("«edited:{text}»"));
+            result.into_tool_result()
+        }
+        Err(error) => ToolResult::error(error.to_string()),
+    });
+    let name = edit.definition.name.clone();
+    ctx.register_tool(edit.definition).map_err(|e| e.to_string())?;
+    Ok(json!({"registered": [name]}))
 }
 
 fn builtin_local(case: &Value) -> Value {

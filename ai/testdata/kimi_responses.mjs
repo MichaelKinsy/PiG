@@ -4,6 +4,7 @@
 // usage: node kimi_responses.mjs <path to kimi-coding.ts>
 import { readFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
+import { pathToFileURL } from "node:url";
 const source = readFileSync(process.argv[2], "utf8");
 const cut = (name) => {
 	const match = new RegExp(`^(?:async )?function ${name}[\\s\\S]*?\\n}\\n`, "m").exec(source);
@@ -11,8 +12,9 @@ const cut = (name) => {
 	return match[0];
 };
 const constants = source.match(/^const [A-Z_]+ = .*;$/gm).join("\n");
-const names = ["requestSignal", "formUrlEncode", "readJson", "trustedHttpUrl", "startDeviceAuthorization", "parseTokenResponse", "pollForToken", "isRetryableRefreshFailure", "refreshToken"];
-const body = stripTypeScriptTypes(`${constants}\n${names.map(cut).join("\n")}`);
+const names = ["requestSignal", "formUrlEncode", "readJson", "startDeviceAuthorization", "parseTokenResponse", "pollForToken", "isRetryableRefreshFailure", "refreshToken"];
+const trustedUrl = readFileSync(new URL("trusted-url.ts", pathToFileURL(process.argv[2])), "utf8").match(/^export (function trustedHttpUrl[\s\S]*?\n}\n)/m)[1];
+const body = stripTypeScriptTypes(`${constants}\n${trustedUrl}\n${names.map(cut).join("\n")}`);
 // pollOAuthDeviceCodeFlow runs poll once here: the poll step is what carries Kimi's response handling.
 const fns = new Function("pollOAuthDeviceCodeFlow", "sleep", `${body}; return { startDeviceAuthorization, pollForToken, refreshToken };`)((options) => options.poll(), async () => {});
 Date.now = () => 1_700_000_000_000;

@@ -735,6 +735,10 @@ func TestAltScreenDoubleClickJoinsSlashAndHyphenSegments(t *testing.T) {
 	for _, tc := range []struct{ line, needle string }{
 		{"extensions/starline/fixed-editor/compositor.ts", "starline"},
 		{"earendil-works/pi-tui", "works"},
+		// Pi ff6896471: iTerm2's word characters also join ~ . \\ + _ (tui-alt-screen.test.ts "double-click joins ...").
+		{"~/.pi/agent/settings.json", "agent"},
+		{"~\\Documents\\pi", "Documents"},
+		{"foo+bar", "bar"},
 	} {
 		var copied []string
 		h := newAltHarness(t, 80, 1, TuiAltScreenOptions{CopySelection: func(text string) error { copied = append(copied, text); return nil }})

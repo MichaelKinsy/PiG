@@ -107,7 +107,7 @@ func TestPiMessagesStreamsTextAndToolCalls(t *testing.T) {
 		map[string]any{"type": "toolcall_delta", "contentIndex": 1, "delta": `{"path":`},
 		map[string]any{"type": "toolcall_delta", "contentIndex": 1, "delta": `"a.txt"}`},
 		map[string]any{"type": "toolcall_end", "contentIndex": 1, "toolCall": map[string]any{"type": "toolCall", "id": "call_1", "name": "read", "arguments": map[string]any{"path": "a.txt"}}},
-		map[string]any{"type": "done", "reason": "toolUse", "usage": piMessagesTestUsage, "responseId": "resp_1", "providerThinkingLevel": "high"},
+		map[string]any{"type": "done", "reason": "toolUse", "usage": piMessagesTestUsage, "responseId": "resp_1", "responseModel": "claude-opus-5-5", "providerThinkingLevel": "high"},
 	}})
 	provider := newTestPiMessagesProvider(baseURL, nil)
 
@@ -127,7 +127,7 @@ func TestPiMessagesStreamsTextAndToolCalls(t *testing.T) {
 	if _, ok := events[0].(StartEvent); !ok || initialStopReason != StopReasonPending {
 		t.Fatalf("first event = %#v, initial stop reason=%s", events[0], initialStopReason)
 	}
-	if message.StopReason != StopReasonToolUse || message.Usage != piMessagesWantUsage || message.ResponseID != "resp_1" || message.ProviderThinkingLevel != "high" || message.Model != "auto" || message.Provider != "radius" {
+	if message.StopReason != StopReasonToolUse || message.Usage != piMessagesWantUsage || message.ResponseID != "resp_1" || message.ResponseModel != "claude-opus-5-5" || message.ProviderThinkingLevel != "high" || message.Model != "auto" || message.Provider != "radius" {
 		t.Fatalf("message = %+v", message)
 	}
 	wantContent := []AssistantContentBlock{TextContent{Text: "Hello"}, ToolCall{ID: "call_1", Name: "read", Arguments: JsonObject{"path": "a.txt"}}}
@@ -182,7 +182,8 @@ func TestPiMessagesDebugAndOnResponse(t *testing.T) {
 		return nil
 	}})
 
-	if message.StopReason != StopReasonStop {
+	// pi-messages.test.ts: a done event without responseModel leaves the message without one (Pi 14c811841).
+	if message.StopReason != StopReasonStop || message.ResponseModel != "" {
 		t.Fatalf("message = %+v", message)
 	}
 	recorded := requests()
@@ -226,12 +227,12 @@ func TestPiMessagesUnstructuredErrorBodyIsTruncatedInDiagnostics(t *testing.T) {
 func TestPiMessagesPropagatesServerErrorEvents(t *testing.T) {
 	baseURL, _ := startPiMessagesServer(t, piMessagesResponder{events: []any{
 		map[string]any{"type": "start"},
-		map[string]any{"type": "error", "reason": "error", "usage": piMessagesTestUsage, "errorMessage": "Upstream failed"},
+		map[string]any{"type": "error", "reason": "error", "usage": piMessagesTestUsage, "errorMessage": "Upstream failed", "responseModel": "claude-opus-5-5"},
 	}})
 
 	_, message := collectPiMessages(t, newTestPiMessagesProvider(baseURL, nil), StreamOptions{})
 
-	if message.StopReason != StopReasonError || message.ErrorMessage != "Upstream failed" || message.Usage != piMessagesWantUsage {
+	if message.StopReason != StopReasonError || message.ErrorMessage != "Upstream failed" || message.Usage != piMessagesWantUsage || message.ResponseModel != "claude-opus-5-5" {
 		t.Fatalf("message = %+v", message)
 	}
 }
@@ -259,6 +260,46 @@ func TestPiMessagesErrorsWhenStreamEndsWithoutTerminal(t *testing.T) {
 
 	if message.StopReason != StopReasonError || !strings.Contains(message.ErrorMessage, "stream ended without a terminal event") {
 		t.Fatalf("message = %+v", message)
+	}
+}
+
+// Ported from pi-messages.test.ts "rejects content indexes that are not the next or an existing block".
+func TestPiMessagesRejectsContentIndexesThatAreNotTheNextOrAnExistingBlock(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		events []any
+		want   string
+	}{
+		{"huge start", []any{map[string]any{"type": "text_start", "contentIndex": 4294967000}}, "Invalid contentIndex 4294967000 in pi-messages text_start event"},
+		{"past int64", []any{map[string]any{"type": "text_start", "contentIndex": uint64(1) << 63}}, "Invalid contentIndex 9223372036854776000 in pi-messages text_start event"},
+		{"string start", []any{map[string]any{"type": "text_start", "contentIndex": "__proto__"}}, `Invalid contentIndex "__proto__" in pi-messages text_start event`},
+		{"string end", []any{
+			map[string]any{"type": "text_start", "contentIndex": 0},
+			map[string]any{"type": "toolcall_end", "contentIndex": "__proto__", "toolCall": map[string]any{"polluted": true}},
+		}, `Invalid contentIndex "__proto__" in pi-messages toolcall_end event`},
+		{"delta without a block", []any{map[string]any{"type": "text_delta", "contentIndex": 0, "delta": "x"}}, "Invalid contentIndex 0 in pi-messages text_delta event"},
+		{"negative", []any{map[string]any{"type": "text_start", "contentIndex": -1}}, "Invalid contentIndex -1 in pi-messages text_start event"},
+		{"fraction", []any{map[string]any{"type": "text_start", "contentIndex": 0.5}}, "Invalid contentIndex 0.5 in pi-messages text_start event"},
+		{"null", []any{map[string]any{"type": "text_start", "contentIndex": nil}}, "Invalid contentIndex null in pi-messages text_start event"},
+		{"skipped block", []any{
+			map[string]any{"type": "text_start", "contentIndex": 0},
+			map[string]any{"type": "text_start", "contentIndex": 2},
+		}, "Invalid contentIndex 2 in pi-messages text_start event"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			events := append([]any{map[string]any{"type": "start"}}, test.events...)
+			events = append(events, map[string]any{"type": "done", "reason": "stop", "usage": piMessagesTestUsage})
+			baseURL, _ := startPiMessagesServer(t, piMessagesResponder{events: events})
+
+			_, message := collectPiMessages(t, newTestPiMessagesProvider(baseURL, nil), StreamOptions{})
+
+			if message.StopReason != StopReasonError || !strings.Contains(message.ErrorMessage, test.want) {
+				t.Fatalf("message = %+v, want an error containing %q", message, test.want)
+			}
+			if len(message.Content) > 1 {
+				t.Fatalf("content = %+v, want at most the block started before the bad event", message.Content)
+			}
+		})
 	}
 }
 

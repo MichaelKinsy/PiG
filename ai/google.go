@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -681,6 +682,10 @@ func geminiConvertTools(tools []ToolSchema, useParameters, supportsStrictMode bo
 			return nil, err
 		}
 		schemaKey := "parametersJsonSchema"
+		if !useParameters {
+			// Gemini ignores const in parametersJsonSchema but honors enum (google-shared.ts rewriteConstAsEnum).
+			toolParameters.Schema, toolParameters.order = rewriteConstAsEnum(toolParameters.Schema, toolParameters.order)
+		}
 		if useParameters {
 			// sanitizeForOpenApi rebuilds the object from Object.entries, so the members it keeps keep their order.
 			schemaKey = "parameters"
@@ -689,6 +694,87 @@ func geminiConvertTools(tools []ToolSchema, useParameters, supportsStrictMode bo
 		decls[i] = geminiFunctionDecl{{"name", tool.Name}, {"description", tool.Description}, {schemaKey, toolParameters}}
 	}
 	return []geminiToolDecl{{FunctionDeclarations: decls}}, nil
+}
+
+// isJSONSchemaNameMap reports whether key is a schema keyword whose value maps names to subschemas, so its keys are not schema keywords
+// (google-shared.ts JSON_SCHEMA_NAME_MAPS). A switch rather than a package-level set: a set is built by an initializer on every start.
+func isJSONSchemaNameMap(key string) bool {
+	switch key {
+	case "properties", "patternProperties", "$defs", "definitions", "dependentSchemas", "dependencies":
+		return true
+	}
+	return false
+}
+
+// isJSONSchemaSubschema reports whether key is a keyword containing a subschema or an array of subschemas, not literal data
+// (google-shared.ts JSON_SCHEMA_SUBSCHEMAS).
+func isJSONSchemaSubschema(key string) bool {
+	switch key {
+	case "additionalProperties", "unevaluatedProperties", "propertyNames", "items", "prefixItems", "additionalItems",
+		"unevaluatedItems", "contains", "allOf", "anyOf", "oneOf", "not", "if", "then", "else", "contentSchema":
+		return true
+	}
+	return false
+}
+
+// rewriteConstAsEnum is google-shared.ts rewriteConstAsEnum: it rewrites string and number const values of the schema, and of the schemas
+// under the keywords that hold subschemas, to single-value enums, leaving literal data (default, examples, enum, const, unknown keywords) as it
+// is. The input is not modified; the result shares the subtrees it does not visit. The member order the objects carry follows the rewrite:
+// an object whose const became an enum lists the enum last, as the object JavaScript builds does.
+func rewriteConstAsEnum(schema map[string]any, order schemaObjectOrder) (map[string]any, schemaObjectOrder) {
+	rewritten := maps.Clone(order)
+	result, _ := rewriteConstNode(schema, order, rewritten, "", false).(map[string]any)
+	return result, rewritten
+}
+
+func rewriteConstNode(schema any, order, rewritten schemaObjectOrder, path string, isNameMap bool) any {
+	switch schema := schema.(type) {
+	case []any:
+		items := make([]any, len(schema))
+		for i, item := range schema {
+			items[i] = rewriteConstNode(item, order, rewritten, schemaPath(path, strconv.Itoa(i)), false)
+		}
+		return items
+	case map[string]any:
+		keys := orderedSchemaKeys(schema, order, path)
+		result := make(map[string]any, len(schema))
+		for _, key := range keys {
+			value := schema[key]
+			switch {
+			case isNameMap || isJSONSchemaSubschema(key):
+				value = rewriteConstNode(value, order, rewritten, schemaPath(path, key), false)
+			case isJSONSchemaNameMap(key):
+				value = rewriteConstNode(value, order, rewritten, schemaPath(path, key), true)
+			}
+			result[key] = value
+		}
+		if !isNameMap {
+			_, hasEnum := result["enum"]
+			if value, hasConst := result["const"]; hasConst && !hasEnum {
+				if _, isString := value.(string); isString || isJSONNumber(value) {
+					delete(result, "const")
+					result["enum"] = []any{value}
+					keys = append(slices.DeleteFunc(slices.Clone(keys), func(key string) bool { return key == "const" }), "enum")
+				}
+			}
+		}
+		if enumerated := unsortedKeyOrder(keys); enumerated != nil {
+			rewritten[path] = enumerated
+		} else {
+			delete(rewritten, path)
+		}
+		return result
+	}
+	return schema
+}
+
+// isJSONNumber reports whether value is a JavaScript number: a decoded JSON number or any Go number.
+func isJSONNumber(value any) bool {
+	switch value.(type) {
+	case float64, float32, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, json.Number:
+		return true
+	}
+	return false
 }
 
 // sanitizeForOpenAPI strips meta declarations from schema objects, preserving arrays and references as Pi's legacy Google helper does.
@@ -1267,7 +1353,7 @@ func (state *googleStreamState) handle(chunk *geminiStreamChunk) error {
 
 					// Pi builds the whole tool call, arguments included, before it pushes toolcall_start (google-generative-ai.ts:200-215).
 					builder.toolCallDelta(streamToolCallDelta{
-						index: partIdx, id: toolID, name: fc.Name, argumentsDelta: string(argsJSON), initialArguments: parsed.Arguments, thoughtSignature: part.ThoughtSignature,
+						index: partIdx, id: toolID, name: fc.Name, argumentsDelta: string(argsJSON), initialArguments: parsed.Arguments, thoughtSignature: part.ThoughtSignature, recordOnly: true,
 					})
 					builder.endToolCall(partIdx)
 				}

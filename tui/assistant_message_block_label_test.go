@@ -12,7 +12,7 @@ import (
 // assistant-message.ts setHiddenThinkingLabel: the label stands in for a hidden thinking run and the component re-renders with it; a visible run is unaffected.
 // Pi: packages/coding-agent/src/modes/interactive/components/assistant-message.ts:58 (AssistantMessageComponent.setHideThinkingBlock); packages/coding-agent/src/modes/interactive/components/assistant-message.ts:66 (AssistantMessageComponent.setHiddenThinkingLabel).
 func TestAssistantMessageComponentSetHiddenThinkingLabel(t *testing.T) {
-	block := NewAssistantMessageComponent(nil, true, nil, "", nil, nil)
+	block := NewAssistantMessageComponent(nil, true, nil, "", nil, nil, "", "")
 	block.SetContent([]AssistantSegment{{Thinking: true, Text: "SECRET"}, {Text: "answer"}})
 	text := func() string { return widthx.StripAnsi(strings.Join(block.Render(40), "\n")) }
 	if got := text(); !strings.Contains(got, "Thinking...") || strings.Contains(got, "SECRET") {

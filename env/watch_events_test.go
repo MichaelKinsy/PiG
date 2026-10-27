@@ -39,21 +39,21 @@ func scriptedWatchDaemon(t *testing.T, targets []durableenv.WatchTarget, events 
 
 type changeLog struct {
 	mu      sync.Mutex
-	changes []durableenv.WatchChange
+	changes []durableenv.FileChange
 }
 
-func (l *changeLog) add(change durableenv.WatchChange) {
+func (l *changeLog) add(change durableenv.FileChange) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.changes = append(l.changes, change)
 }
 
-func (l *changeLog) wait(t *testing.T, count int) []durableenv.WatchChange {
+func (l *changeLog) wait(t *testing.T, count int) []durableenv.FileChange {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		l.mu.Lock()
-		changes := append([]durableenv.WatchChange(nil), l.changes...)
+		changes := append([]durableenv.FileChange(nil), l.changes...)
 		l.mu.Unlock()
 		if len(changes) >= count {
 			return changes
@@ -126,7 +126,7 @@ func TestRemoteWatcherReportsTheDaemonsWatchErrors(t *testing.T) {
 			}
 			defer func() { _ = watcher.Close(background) }()
 			changes := log.wait(t, 1)
-			failure, ok := changes[0].(durableenv.WatchChangeError)
+			failure, ok := changes[0].(durableenv.FileChangeError)
 			if !ok || failure.Error == nil || failure.Error.Code != tc.code || failure.Error.Message != tc.message {
 				t.Fatalf("first change %#v, want a %s error %q", changes[0], tc.code, tc.message)
 			}
@@ -153,11 +153,11 @@ func TestRemoteWatcherDeliversAnOverflowChangeOnlyForOverflowTrue(t *testing.T) 
 	}
 	defer func() { connection.Close(); _ = watcher.Close(background) }()
 	changes := log.wait(t, 3)
-	if _, ok := changes[0].(durableenv.WatchChangeOverflow); !ok {
+	if _, ok := changes[0].(durableenv.FileChangeOverflow); !ok {
 		t.Fatalf("first change %#v, want overflow", changes[0])
 	}
 	for i, want := range []string{"/watched/a", "/watched/b"} {
-		got, ok := changes[i+1].(durableenv.WatchChangePaths)
+		got, ok := changes[i+1].(durableenv.FileChangePaths)
 		if !ok || len(got.Paths) != 1 || got.Paths[0] != want {
 			t.Fatalf("change %d = %#v, want paths [%s]", i+1, changes[i+1], want)
 		}
@@ -179,7 +179,7 @@ func TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose(t *te
 		log := &changeLog{}
 		var calls int
 		var watcher *RemoteWatcher
-		watcher, err := OpenRemoteWatcher(background, connection, targets, func(change durableenv.WatchChange) {
+		watcher, err := OpenRemoteWatcher(background, connection, targets, func(change durableenv.FileChange) {
 			calls++
 			if calls == 1 {
 				panic("onChange threw")
@@ -191,7 +191,7 @@ func TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose(t *te
 		}
 		defer func() { connection.Close(); _ = watcher.Close(background) }()
 		changes := log.wait(t, 1)
-		if got, ok := changes[0].(durableenv.WatchChangePaths); !ok || got.Paths[0] != "/watched/b" {
+		if got, ok := changes[0].(durableenv.FileChangePaths); !ok || got.Paths[0] != "/watched/b" {
 			t.Fatalf("delivered %#v after the throwing call, want the second change", changes[0])
 		}
 	})
@@ -223,7 +223,7 @@ func TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose(t *te
 		}
 		defer func() { connection.Close(); _ = watcher.Close(background) }()
 		watcher.stop()
-		watcher.deliver(durableenv.WatchChangePaths{Paths: []string{"/watched/late"}})
+		watcher.deliver(durableenv.FileChangePaths{Paths: []string{"/watched/late"}})
 		log.mu.Lock()
 		defer log.mu.Unlock()
 		if len(log.changes) != 0 {

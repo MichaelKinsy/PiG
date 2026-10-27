@@ -30,8 +30,16 @@ type SessionGraphObject interface {
 type SessionGraphScope interface {
 	// Object returns the live object handle names on the connection, which an option that takes an object (a loader's settingsManager) names by handle.
 	Object(handle string) (SessionGraphObject, bool)
+	// Retain adds a holder to the live object handle names, and returns the object and the function that ends that hold, which is idempotent; the object is released when its last holder lets go. An object that uses another (an ExtensionRunner over the loader whose extensions it dispatches to) holds it this way for as long as it lives.
+	Retain(handle string) (SessionGraphObject, func(), bool)
 	// Callback runs the function the extension named id (RequestSessionGraphCallback) and answers its result. A closed connection fails it.
 	Callback(ctx context.Context, id string, args json.RawMessage) (json.RawMessage, error)
+	// Add makes an object the host built (not one the extension constructed with CallSessionGraphNew) live for the connection and names it, so the extension can call its methods with CallSessionGraphCall. The extension's release call and the end of the connection drop it like any object; Remove drops it earlier.
+	Add(object SessionGraphObject) (handle string, err error)
+	// RegisterNativeProvider binds the Provider object the extension declared (a NativeProviderDeclaration as JSON: the callbacks stay in the extension) to the extension's connection and hands its carrier to register, which installs it in the registry of a graph ModelRuntime instead of the Session's. It answers the declaration with the host's handle for the object, and a release function that ends the registration: the object leaves the host when its last reference is gone.
+	RegisterNativeProvider(ctx context.Context, declaration json.RawMessage, register func(context.Context, *extension.NativeProvider) error) (declared json.RawMessage, release func(), err error)
+	// Remove drops the object Add named. A handle the extension already released is ignored.
+	Remove(handle string)
 }
 
 // SessionGraphStreamer is an object that serves a model stream (ModelRuntime.stream and streamSimple). A modelStream call that names the object's handle in its runtime field runs on it, and the call delivers the events as it does for the Session's runtime.
@@ -107,6 +115,10 @@ func (s graphScope) Object(handle string) (SessionGraphObject, bool) {
 	return s.host.sessionGraphObjects.lookup(s.conn, handle)
 }
 
+func (s graphScope) Retain(handle string) (SessionGraphObject, func(), bool) {
+	return s.host.sessionGraphObjects.retain(s.conn, handle)
+}
+
 func (s graphScope) Callback(ctx context.Context, id string, args json.RawMessage) (json.RawMessage, error) {
 	data, err := json.Marshal(SessionGraphCallbackArgs{ID: id, Args: args})
 	if err != nil {
@@ -124,6 +136,16 @@ func (s graphScope) Callback(ctx context.Context, id string, args json.RawMessag
 	}
 	return response.Response.Result, nil
 }
+
+func (s graphScope) Add(object SessionGraphObject) (string, error) {
+	return s.host.sessionGraphObjects.add(s.conn, object)
+}
+
+func (s graphScope) RegisterNativeProvider(ctx context.Context, declaration json.RawMessage, register func(context.Context, *extension.NativeProvider) error) (json.RawMessage, func(), error) {
+	return s.host.registerGraphNativeProvider(ctx, s.conn, declaration, register)
+}
+
+func (s graphScope) Remove(handle string) { s.host.sessionGraphObjects.remove(s.conn, handle) }
 
 // SetSessionGraph binds the backend that serves the session graph. Without one the calls fail with SessionGraphUnavailableMessage.
 func (h *Host) SetSessionGraph(backend SessionGraphBackend) {

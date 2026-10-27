@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"math/big"
 	"reflect"
 	"regexp"
 	"slices"
@@ -111,7 +112,10 @@ func (r schemaRoot) MarshalJSON() ([]byte, error) {
 type TypeOptions = *OrderedObject
 
 // typeNamespace is pi-ai's `Type`. Every member is a method: Type.Object, Type.String, Type.Optional, ...
-type typeNamespace struct{}
+type typeNamespace struct {
+	// ExtendsResult is Type.ExtendsResult.
+	ExtendsResult extendsResult
+}
 
 // Type is pi-ai's `Type` (TypeBox's builder namespace). The JSON Schema it returns is byte for byte what Pi's `Type` returns, member order included, which the Pi vectors in
 // test/parity/sdk-vectors/pi-ai/Type.json check. Members that a later release has not ported are absent; the Codec family (Codec, Decode, Encode, DecodeBuilder, EncodeBuilder,
@@ -530,22 +534,26 @@ func deferred(action string, parameters []any, options TypeOptions) *TSchema {
 	return create("Deferred", []any{"type", "deferred", "action", action, "parameters", parameters, "options", options}, nil)
 }
 
-// Literal is `Type.Literal(value, options)`: `{"type": <string|number|boolean>, "const": value}`. A value that is not a string, a boolean or a number panics, where Pi
-// throws "Invalid Literal value"; a number is the JavaScript number it converts to. A JavaScript bigint has no Go counterpart here.
+// Literal is `Type.Literal(value, options)`: `{"type": <string|number|boolean|bigint>, "const": value}`. A value that is not a string, a boolean, a number or a [BigInt] (a
+// *big.Int is one too) panics, where Pi throws "Invalid Literal value"; a number is the JavaScript number it converts to. A bigint literal holds the bigint, which JSON cannot write
+// (see [BigInt]).
 func (typeNamespace) Literal(value any, options ...TypeOptions) *TSchema {
 	var name string
-	switch value := value.(type) {
+	switch typed := value.(type) {
 	case string:
 		name = "string"
 	case bool:
 		name = "boolean"
+	case BigInt:
+		name = "bigint"
+	case *big.Int:
+		name, value = "bigint", NewBigInt(typed)
 	default:
 		number, ok := typeNumber(value)
 		if !ok || math.IsNaN(number) || math.IsInf(number, 0) {
 			panic("Invalid Literal value")
 		}
 		name, value = "number", number
-		return create("Literal", []any{"type", name, "const", value}, firstOptions(options))
 	}
 	return create("Literal", []any{"type", name, "const", value}, firstOptions(options))
 }
@@ -594,7 +602,7 @@ const (
 
 // Record is `Type.Record(key, value, options)`: for a string, number or integer key, `{"type":"object","patternProperties":{<pattern>: value}}`; for a literal, boolean or
 // union-of-literals key, the object with those properties. A key Pi evaluates through a part of TypeBox this SDK has not ported (an enum, an intersection or a template
-// literal) panics until it is.
+// literal) is evaluated by the host's type engine.
 func (t typeNamespace) Record(key, value any, options ...TypeOptions) *TSchema {
 	if t.IsRef(key) {
 		return deferred("Record", []any{key, value}, firstOptions(options))
@@ -613,7 +621,8 @@ func (t typeNamespace) recordFromKey(key, value any) *TSchema {
 	case t.IsBoolean(key):
 		return t.Object(NewOrderedObject("true", value, "false", value))
 	case t.IsEnum(key), t.IsIntersect(key), t.IsKind(key, "TemplateLiteral"):
-		panic("Type.Record: a key of this kind is evaluated by a part of TypeBox this SDK has not ported yet")
+		// The key kinds TypeBox evaluates with its type engine, which the host runs.
+		return engineSchema(typeEngineCall("Record", key, value))
 	case t.IsInteger(key):
 		return createRecord(integerKeyPattern, value)
 	case t.IsLiteral(key):

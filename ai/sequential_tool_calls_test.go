@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -131,6 +132,35 @@ func sequentialToolCallStream(tb testing.TB, provider Provider) *AssistantMessag
 	return stream
 }
 
+// eagerToolCall is the call a publication holds once a stream has read text, as one piece, into the partial arguments.
+func eagerToolCall(text string) ToolCall {
+	call := ToolCall{ID: "c", Name: "t"}
+	call.AppendStreamedArguments(NewToolCallArgumentsStream(), text)
+	return call
+}
+
+// eagerFinalToolCall is the call a finished stream holds: its complete text parsed strictly (Pi 87f9a364).
+func eagerFinalToolCall(text string) ToolCall {
+	call := ToolCall{ID: "c", Name: "t"}
+	call.SetFinalArguments(text)
+	return call
+}
+
+func sameArguments(t *testing.T, label string, got, want ToolCall) {
+	t.Helper()
+	gotJSON, gotErr := got.ArgumentsJSON()
+	wantJSON, wantErr := want.ArgumentsJSON()
+	if !bytes.Equal(gotJSON, wantJSON) || (gotErr == nil) != (wantErr == nil) {
+		t.Fatalf("%s: arguments %s (%v), want %s (%v)", label, gotJSON, gotErr, wantJSON, wantErr)
+	}
+	if got.ArgumentsError != want.ArgumentsError {
+		t.Fatalf("%s: argumentsError %q, want %q", label, got.ArgumentsError, want.ArgumentsError)
+	}
+	if !reflect.DeepEqual(got.Arguments, want.Arguments) || !reflect.DeepEqual(got.nonObjectArguments, want.nonObjectArguments) {
+		t.Fatalf("%s: arguments %#v / %s, want %#v / %s", label, got.Arguments, got.nonObjectArguments, want.Arguments, want.nonObjectArguments)
+	}
+}
+
 // sequentialToolCallStates is the arguments (as ArgumentsJSON writes them) an eager parse gives each prefix of the text every call streams, shortest first. A reader at an event sees the stream state at its own tick, which the producer may already have advanced past the event, so any prefix is a state a call may be read in.
 func sequentialToolCallStates(t *testing.T) (text string, states []string) {
 	t.Helper()
@@ -183,8 +213,8 @@ func TestSequentialToolCallsReadAsTheEagerParse(t *testing.T) {
 							continue
 						}
 						encoded, err := call.ArgumentsJSON()
-						if err != nil || call.deferredArguments != "" {
-							check("event %d call %d: arguments %s (%v), deferred %q", events, index, encoded, err, call.deferredArguments)
+						if err != nil {
+							check("event %d call %d: arguments %s (%v)", events, index, encoded, err)
 							return
 						}
 						// The shortest prefix this state is the parse of that does not go back from the last read.

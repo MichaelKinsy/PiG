@@ -18,7 +18,8 @@ func piMessagesLongStream(textDeltas, toolCalls, argDeltas, argLines int) []json
 		}
 		events = append(events, encoded)
 	}
-	add(PiMessagesEvent{Type: PiMessagesEventStart})
+	// start and done carry no contentIndex on the wire; a marshaled PiMessagesEvent would add one.
+	events = append(events, json.RawMessage(`{"type":"start"}`))
 	add(PiMessagesEvent{Type: PiMessagesEventThinkingStart, ContentIndex: 0})
 	for i := range textDeltas / 10 {
 		add(PiMessagesEvent{Type: PiMessagesEventThinkingDelta, ContentIndex: 0, Delta: "think " + strconv.Itoa(i) + " "})
@@ -37,7 +38,7 @@ func piMessagesLongStream(textDeltas, toolCalls, argDeltas, argLines int) []json
 		}
 		add(PiMessagesEvent{Type: PiMessagesEventToolcallEnd, ContentIndex: index})
 	}
-	add(PiMessagesEvent{Type: PiMessagesEventDone, Reason: StopReasonToolUse})
+	events = append(events, json.RawMessage(`{"type":"done","reason":"toolUse"}`))
 	return events
 }
 

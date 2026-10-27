@@ -1,0 +1,1028 @@
+[
+ {
+  "upstream": "packages/env/daemon/src/decode.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestDecoderKeepsAFeffThatDoesNotStartTheStream"
+  ],
+  "upstream_reference": "packages/env/daemon/src/decode.rs:46-83 (tests keeps_a_feff_that_does_not_start_the_stream, drops_only_a_leading_mark_and_never_sniffs_utf16, replaces_an_incomplete_sequence_once); ported with the same inputs and expected text as TestDecoder*",
+  "mutation": "durable/env/decode.go: replace `if decoder.started || text == \"\" {` with `if text == \"\" {`; TestDecoderKeepsAFeffThatDoesNotStartTheStream fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/decode.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestDecoderDropsOnlyALeadingMarkAndNeverSniffsUTF16"
+  ],
+  "upstream_reference": "packages/env/daemon/src/decode.rs:46-83 (tests keeps_a_feff_that_does_not_start_the_stream, drops_only_a_leading_mark_and_never_sniffs_utf16, replaces_an_incomplete_sequence_once); ported with the same inputs and expected text as TestDecoder*",
+  "mutation": "durable/env/decode.go: replace `strings.TrimPrefix(text, \"\\ufeff\")` with `strings.TrimPrefix(text, \"\\ufefe\")`; TestDecoderDropsOnlyALeadingMarkAndNeverSniffsUTF16 fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/errors.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/errors.rs:7-126 (Failure::to_json, io_between, describe); error replies compared with Pi's daemon for every file operation (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/errors.go: replace `target = \"'\" + path + \"' -> '\" + destination + \"'\"` with `target = \"'\" + path + \"' => '\" + destination + \"'\"`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/errors.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonOpensASocketLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/errors.rs:7-126 (Failure::to_json, io_between, describe); error replies compared with Pi's daemon for every file operation (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/errors.go: replace `return libuvName(code) } switch` with `return code } switch`; TestDaemonOpensASocketLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/errors.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/errors.rs:7-126 (Failure::to_json, io_between, describe); error replies compared with Pi's daemon for every file operation (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/errors.go: replace `if f.Path != \"\" || f.pathSet {` with `if f.Path != \"\" {`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/errors.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon",
+   "TestDaemonNameEncodingsMatchPisDaemon",
+   "TestDaemonOpensASocketLikePisDaemon",
+   "TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/errors.rs:7-126 (Failure::to_json, io_between, describe); error replies compared with Pi's daemon for every file operation (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/errors.go: replace `if f.Syscall != \"\" {` with `if false {`; TestDaemonFileOperationsMatchPisDaemon, TestDaemonNameEncodingsMatchPisDaemon, TestDaemonOpensASocketLikePisDaemon, TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/errors.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonOpensASocketLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/errors.rs:7-126 (Failure::to_json, io_between, describe); error replies compared with Pi's daemon for every file operation (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/errors.go: replace `if !known || code == \"UNKNOWN\" {` with `if !known {`; TestDaemonOpensASocketLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `\"exec needs cwd\"` with `\"exec needs a cwd\"`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonCancelRightBehindItsRequestMatchesPisDaemon",
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `value := Object{\"exitCode\": result.ExitCode}` with `value := Object{\"exitCode\": result.ExitCode + 1}`; TestDaemonCancelRightBehindItsRequestMatchesPisDaemon, TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `result := &execRequest{inheritEnv: true,` with `result := &execRequest{inheritEnv: false,`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `Env:        request.env,` with `Env:        nil,`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `ok && strings.HasPrefix(message, \"spawn \") {` with `ok && !strings.HasPrefix(message, \"spawn \") {`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `ok && strings.HasPrefix(message, spillFailurePrefix) {` with `ok && !strings.HasPrefix(message, spillFailurePrefix) {`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `failure.Extra = Object{\"spillPath\": executionError.SpillPath}` with `failure.Extra = nil`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `&spillRequest{int64(min(afterBytes, 1<<53)), int64(min(afterLines, 1<<53))}` with `&spillRequest{int64(min(afterLines, 1<<53)), int64(min(afterBytes, 1<<53))}`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `case request.command != nil: command = *request.command` with `case request.command != nil && !request.hasArgv: command = *request.command`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `message = \"timeout\"` with `message = \"timed out\"`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `result.window = windowFromJSON(request[\"window\"])` with `result.window = nil`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/frame.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/frame.rs:101-120 (test round_trips_json_and_payload) and read_frame/write_frame (frame.rs:1-100); the wire framing is also compared with Pi's daemon: env/daemon_wire_oracle_test.go TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon, TestDaemonEndsOnAFramingErrorLikePisDaemon",
+  "mutation": "env/daemon/frame.go: replace `frame.JSON = Object{}` with `frame.JSON = nil`; TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/frame.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestFrameReadingKeepsFramingWhenJSONDoesNotParseAndRejectsBadLengths",
+   "TestFrameRoundTripsJSONAndPayload"
+  ],
+  "upstream_reference": "packages/env/daemon/src/frame.rs:101-120 (test round_trips_json_and_payload) and read_frame/write_frame (frame.rs:1-100); the wire framing is also compared with Pi's daemon: env/daemon_wire_oracle_test.go TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon, TestDaemonEndsOnAFramingErrorLikePisDaemon",
+  "mutation": "env/daemon/frame.go: replace `ID: binary.BigEndian.Uint32(body[1:5])` with `ID: binary.BigEndian.Uint32(body[2:6])`; TestFrameReadingKeepsFramingWhenJSONDoesNotParseAndRejectsBadLengths, TestFrameRoundTripsJSONAndPayload fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/frame.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestFrameLayoutIsBigEndianWithJSONLengthBeforeTheJSON",
+   "TestFrameRoundTripsJSONAndPayload"
+  ],
+  "upstream_reference": "packages/env/daemon/src/frame.rs:101-120 (test round_trips_json_and_payload) and read_frame/write_frame (frame.rs:1-100); the wire framing is also compared with Pi's daemon: env/daemon_wire_oracle_test.go TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon, TestDaemonEndsOnAFramingErrorLikePisDaemon",
+  "mutation": "env/daemon/frame.go: replace `binary.BigEndian.PutUint32(header[9:13], uint32(len(encoded)))` with `binary.BigEndian.PutUint32(header[9:13], uint32(len(encoded)+1))`; TestFrameLayoutIsBigEndianWithJSONLengthBeforeTheJSON, TestFrameRoundTripsJSONAndPayload fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/frame.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/frame.rs:101-120 (test round_trips_json_and_payload) and read_frame/write_frame (frame.rs:1-100); the wire framing is also compared with Pi's daemon: env/daemon_wire_oracle_test.go TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon, TestDaemonEndsOnAFramingErrorLikePisDaemon",
+  "mutation": "env/daemon/frame.go: replace `if length < 9 || length > MaxFrame {` with `if length < 10 || length > MaxFrame {`; TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `flags = os.O_WRONLY | os.O_CREATE | os.O_APPEND` with `flags = os.O_WRONLY | os.O_CREATE`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `if len(content) > 0 {` with `if true {`; TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `EISDIR: illegal operation on a directory, open '` with `EISDIR: illegal operation on a directory, read '`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `return nil, ioFailure(err, \"mkdtemp\", prefix+\"XXXXXX\")` with `return nil, ioFailure(err, \"mkdtemp\", prefix)`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonStatReportsTheFilesIdentityLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `\"mtimeSec\":  modified.Unix(),` with `\"mtimeSec\":  modified.Unix() + 1,`; TestDaemonStatReportsTheFilesIdentityLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `\"NOT_REGULAR\", \"Not a regular file\"` with `\"NOT_REGULAR\", \"Not a regular file.\"`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `if errors.Is(err, io.EOF) { break` with `if errors.Is(err, io.EOF) { return nil, ioFailure(err, \"read\", path)`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonNameEncodingsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `if raw := rawName(fileName); raw != nil && fileName != name {` with `if raw := rawName(fileName); raw != nil && false {`; TestDaemonNameEncodingsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `if _, ok := errors.AsType[syscall.Errno](err); !ok {` with `if false {`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `Path is a directory: rm returned EISDIR (is a directory)` with `Path is a directory: rm returned EISDIR`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/fs.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/fs.rs:1-258 (info, mkdir_recursive, write, truncate, fsync, rename, rm, mkdtemp, open_reader, pread, read, dir_entry); replies compared with Pi's daemon (env/daemon_wire_oracle_test.go)",
+  "mutation": "env/daemon/fs.go: replace `if noFollow && isLinkRefusal(err) {` with `if false && noFollow && isLinkRefusal(err) {`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonHelloMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `\"features\":  []any{\"listFiles\"},` with `\"features\":  []any{\"listFiles\", \"x\"},`; TestDaemonHelloMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `\"invalid JSON\"` with `\"invalid json\"`; TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonCancelRightBehindItsRequestMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/control.go: replace `if kill { if !c.killed.Swap(true) {` with `if false { if !c.killed.Swap(true) {`; TestDaemonCancelRightBehindItsRequestMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonHandlesAreLimitedLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `maxHandles     = 4096` with `maxHandles     = 4095`; TestDaemonHandlesAreLimitedLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `\"missing field \"+key` with `\"missing \"+key`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `\"not a directory handle\"` with `\"not a directory\"`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `\"not a file handle\"` with `\"not a file handles\"`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `\"an earlier write failed\"` with `\"an earlier write had failed\"`; TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonHelloMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `\"protocol\":  Protocol,` with `\"protocol\":  Protocol + 1,`; TestDaemonHelloMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `\"Invalid line range\"` with `\"Invalid range\"`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/main.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon",
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/main.rs:91-550 (dispatch, serve_frames, hello, handles, cancel); replies and frame order compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/server.go: replace `\"unknown operation %s\"` with `\"unknown operation: %s\"`; TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon, TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/output.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonRepliesBeforeBulkOutputLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/output.rs:1-100 (Output::control, bulk, wait_for_room, run); control frames ahead of bulk output compared with Pi's daemon (TestDaemonRepliesBeforeBulkOutputLikePisDaemon)",
+  "mutation": "env/daemon/output.go: replace `o.bulkBytes -= len(next.frame.Payload)` with `nothing`; TestDaemonRepliesBeforeBulkOutputLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/output.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonRepliesBeforeBulkOutputLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/output.rs:1-100 (Output::control, bulk, wait_for_room, run); control frames ahead of bulk output compared with Pi's daemon (TestDaemonRepliesBeforeBulkOutputLikePisDaemon)",
+  "mutation": "env/daemon/output.go: replace `case len(o.control) > 0:` with `case len(o.control) > 0 && len(o.bulk) == 0:`; TestDaemonRepliesBeforeBulkOutputLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/output.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/output.rs:1-100 (Output::control, bulk, wait_for_room, run); control frames ahead of bulk output compared with Pi's daemon (TestDaemonRepliesBeforeBulkOutputLikePisDaemon)",
+  "mutation": "env/daemon/output.go: replace `next := o.bulk[0] o.bulk = o.bulk[1:]` with `next := o.bulk[len(o.bulk)-1] o.bulk = o.bulk[:len(o.bulk)-1]`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/pty.rs",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection",
+   "TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt",
+   "TestTerminalForegroundOfANameCutInsideACharacterHasNoName"
+  ],
+  "upstream_reference": "packages/env/daemon/src/pty.rs and packages/env/test/terminal.test.ts:51-161 (7 cases); each env/terminal*_test.go test runs against PiG's daemon and Pi's own daemon (eachDaemon)",
+  "mutation": "env/daemon/pty_unix.go: replace `Setsid: true, Setctty: true, Ctty: 0` with `Setsid: true`; TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection, TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt, TestTerminalForegroundOfANameCutInsideACharacterHasNoName fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/pty.rs",
+  "package": "./env",
+  "tests": [
+   "TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+   "TestOpenTerminalDeliversRawBytesNotDecodedText",
+   "TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal",
+   "TestOpenTerminalKeepsInputInOrder",
+   "TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
+   "TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode",
+   "TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault",
+   "TestOpenTerminalWriteOfMoreThanAFrameArrivesWholeAndInOrder",
+   "TestTerminalEnvironmentIsOrderedByName",
+   "TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing",
+   "TestTerminalProgramGetsAnEmptySignalMaskWhenTheDaemonStartedWithSignalsBlocked",
+   "TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem",
+   "TestTerminalThatCannotStartFailsWithTheSystemsWords"
+  ],
+  "upstream_reference": "packages/env/daemon/src/pty.rs and packages/env/test/terminal.test.ts:51-161 (7 cases); each env/terminal*_test.go test runs against PiG's daemon and Pi's own daemon (eachDaemon)",
+  "mutation": "env/daemon/pty.go: replace `return Object{\"exitCode\": exitCode}, nil` with `return Object{\"exitCode\": exitCode + 1}, nil`; TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText, TestOpenTerminalDeliversRawBytesNotDecodedText, TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal, TestOpenTerminalKeepsInputInOrder, TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout, TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode, TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault, TestOpenTerminalWriteOfMoreThanAFrameArrivesWholeAndInOrder, TestTerminalEnvironmentIsOrderedByName, TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing, TestTerminalProgramGetsAnEmptySignalMaskWhenTheDaemonStartedWithSignalsBlocked, TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem, TestTerminalThatCannotStartFailsWithTheSystemsWords fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/pty.rs",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal"
+  ],
+  "upstream_reference": "packages/env/daemon/src/pty.rs and packages/env/test/terminal.test.ts:51-161 (7 cases); each env/terminal*_test.go test runs against PiG's daemon and Pi's own daemon (eachDaemon)",
+  "mutation": "env/daemon/pty.go: replace `exited, exitCode = true, message.exit idleUntil = time.Now().Add(ptyExitGrace)` with `exited, exitCode = true, message.exit idleUntil = time.Now().Add(time.Hour)`; TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/pty.rs",
+  "package": "./env",
+  "tests": [
+   "TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing"
+  ],
+  "upstream_reference": "packages/env/daemon/src/pty.rs and packages/env/test/terminal.test.ts:51-161 (7 cases); each env/terminal*_test.go test runs against PiG's daemon and Pi's own daemon (eachDaemon)",
+  "mutation": "env/daemon/pty_unix.go: replace `if request.inheritEnv && len(request.env) == 0 {` with `if false && request.inheritEnv && len(request.env) == 0 {`; TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/pty.rs",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault"
+  ],
+  "upstream_reference": "packages/env/daemon/src/pty.rs and packages/env/test/terminal.test.ts:51-161 (7 cases); each env/terminal*_test.go test runs against PiG's daemon and Pi's own daemon (eachDaemon)",
+  "mutation": "env/daemon/pty_unix.go: replace `Args: []string{\"-\" + name}` with `Args: []string{name}`; TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/pty.rs",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt"
+  ],
+  "upstream_reference": "packages/env/daemon/src/pty.rs and packages/env/test/terminal.test.ts:51-161 (7 cases); each env/terminal*_test.go test runs against PiG's daemon and Pi's own daemon (eachDaemon)",
+  "mutation": "env/daemon/pty.go: replace `JSON: Object{\"kind\": \"started\", \"pid\": proc.pid}` with `JSON: Object{\"kind\": \"started\", \"pid\": proc.pid + 1}`; TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/pty.rs",
+  "package": "./env",
+  "tests": [
+   "TestTerminalThatCannotStartFailsWithTheSystemsWords"
+  ],
+  "upstream_reference": "packages/env/daemon/src/pty.rs and packages/env/test/terminal.test.ts:51-161 (7 cases); each env/terminal*_test.go test runs against PiG's daemon and Pi's own daemon (eachDaemon)",
+  "mutation": "env/daemon/pty_unix.go: replace `if text, ok := rustIOError(err); ok { return newFailure(\"spawn_error\", text)` with `if text, ok := rustIOError(err); ok { return newFailure(\"spawn_error\", text+\".\")`; TestTerminalThatCannotStartFailsWithTheSystemsWords fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/pty.rs",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode"
+  ],
+  "upstream_reference": "packages/env/daemon/src/pty.rs and packages/env/test/terminal.test.ts:51-161 (7 cases); each env/terminal*_test.go test runs against PiG's daemon and Pi's own daemon (eachDaemon)",
+  "mutation": "env/daemon/pty_unix.go: replace `&unix.Winsize{Row: rows, Col: cols}` with `&unix.Winsize{Row: cols, Col: rows}`; TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/scan.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding"
+  ],
+  "upstream_reference": "packages/env/daemon/src/scan.rs:179-215 (test locates_and_measures_lines_like_whole_file_decoding); ported with the same file bytes, chunk sizes and expected counts as TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding",
+  "mutation": "durable/env/line_scan.go: replace `scanner.bom = StartsWithBom(head)` with `scanner.bom = false`; TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/scan.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding"
+  ],
+  "upstream_reference": "packages/env/daemon/src/scan.rs:179-215 (test locates_and_measures_lines_like_whole_file_decoding); ported with the same file bytes, chunk sizes and expected counts as TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding",
+  "mutation": "durable/env/line_scan.go: replace `if line == scanner.startLine { scanner.endFirstLine(position)` with `if line == scanner.startLine+1 { scanner.endFirstLine(position)`; TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/scan.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding"
+  ],
+  "upstream_reference": "packages/env/daemon/src/scan.rs:179-215 (test locates_and_measures_lines_like_whole_file_decoding); ported with the same file bytes, chunk sizes and expected counts as TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding",
+  "mutation": "durable/env/line_scan.go: replace `return scanner.hasEnd && line == scanner.endLine-1` with `return scanner.hasEnd && line == scanner.endLine`; TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonOpensASocketLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/sys_unix.go: replace `\"ELOOP\": true,` with `\"ELOOP\": true, \"ENXIO\": true,`; TestDaemonOpensASocketLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonHelloMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/sys_unix.go: replace `func home() string { return os.Getenv(\"HOME\") }` with `func home() string { return os.Getenv(\"USERPROFILE\") }`; TestDaemonHelloMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonStatReportsTheFilesIdentityLikePisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/sys_unix.go: replace `return uint64(stats.Dev), uint64(stats.Ino)` with `return uint64(stats.Ino), uint64(stats.Dev)`; TestDaemonStatReportsTheFilesIdentityLikePisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/sys_unix.go: replace `flags |= syscall.O_NOFOLLOW` with `flags |= 0`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/sys_unix.go: replace `syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC` with `syscall.O_RDONLY|syscall.O_CLOEXEC`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/sys_unix.go: replace `(os error %d)` with `(os err %d)`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonHelloMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/sys_unix.go: replace `const pathSeparator = \"/\"` with `const pathSeparator = \"|\"`; TestDaemonHelloMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonFileOperationsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "internal/nodeerrno/rename_unix.go: replace `if err := syscall.Rename(oldpath, newpath); err != nil {` with `if err := os.Rename(oldpath, newpath); err != nil && err != syscall.EBADF {`; TestDaemonFileOperationsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestShellCommandRunsAsTheLeaderOfANewSession"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "durable/env/node/process_unix.go: replace `Setsid: true` with `Setpgid: true`; TestShellCommandRunsAsTheLeaderOfANewSession fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonHelloMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/sys_unix.go: replace `[]string{\"TMPDIR\", \"TMP\", \"TEMP\"}` with `[]string{\"TMP\", \"TMPDIR\", \"TEMP\"}`; TestDaemonHelloMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonHelloMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs:15-323 (os_error_name, tmpdir, home, mkdtemp, open_reader, rename, configure/setsid, exit_code, raw_name); behavior compared with Pi's daemon (env/daemon_wire_oracle_test.go, env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/sys_unix.go: replace `if len(path) > 1 && strings.HasSuffix(path, \"/\") {` with `if len(path) > 1 && strings.HasSuffix(path, \"//\") {`; TestDaemonHelloMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/watch.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonWatchMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/watch.rs:625-778 (on_event, flush, parse_targets, run); ready/change/error events and watch failures compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/watch.go: replace `exclude.Hidden, _ = object[\"hidden\"].(bool)` with `exclude.Hidden = false`; TestDaemonWatchMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/watch.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonWatchRequestsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/watch.rs:625-778 (on_event, flush, parse_targets, run); ready/change/error events and watch failures compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/watch.go: replace `\"watch needs targets\"` with `\"watch needs target\"`; TestDaemonWatchRequestsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/watch.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonWatchRequestsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/watch.rs:625-778 (on_event, flush, parse_targets, run); ready/change/error events and watch failures compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/watch.go: replace `options.MaxDirectories = new(int(min(limit, 1<<31)))` with `options.MaxDirectories = new(int(min(limit, 1<<31)) + 1000000)`; TestDaemonWatchRequestsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/watch.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonWatchMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/watch.rs:625-778 (on_event, flush, parse_targets, run); ready/change/error events and watch failures compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/watch.go: replace `exclude.Names = append(exclude.Names, text)` with `_ = text`; TestDaemonWatchMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/watch.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonWatchMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/watch.rs:625-778 (on_event, flush, parse_targets, run); ready/change/error events and watch failures compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/watch.go: replace `options.Mode = durableenv.WatchNative` with `options.Mode = durableenv.WatchPolling`; TestDaemonWatchMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/watch.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonWatchMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/watch.rs:625-778 (on_event, flush, parse_targets, run); ready/change/error events and watch failures compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/watch.go: replace `return Object{\"kind\": \"change\", \"paths\": typed.Paths}` with `return Object{\"kind\": \"change\", \"paths\": []string{}}`; TestDaemonWatchMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/watch.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonWatchMatchesPisDaemon",
+   "TestDaemonWatchRequestsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/watch.rs:625-778 (on_event, flush, parse_targets, run); ready/change/error events and watch failures compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/watch.go: replace `send(Object{\"kind\": \"ready\", \"mode\": string(opened.Mode())})` with `send(Object{\"kind\": \"ready\", \"mode\": \"native\"})`; TestDaemonWatchMatchesPisDaemon, TestDaemonWatchRequestsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/watch.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonWatchMatchesPisDaemon",
+   "TestDaemonWatchRequestsMatchPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/watch.rs:625-778 (on_event, flush, parse_targets, run); ready/change/error events and watch failures compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/watch.go: replace `recursive, _ := target[\"recursive\"].(bool)` with `recursive := false`; TestDaemonWatchMatchesPisDaemon, TestDaemonWatchRequestsMatchPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/watch.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestWatchEventsMatchTheRustDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/watch.rs:625-778 (on_event, flush, parse_targets, run); ready/change/error events and watch failures compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/watch.go: replace `\"overflow\": true, \"mode\": \"polling\"` with `\"overflow\": true, \"mode\": \"native\"`; TestWatchEventsMatchTheRustDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/window.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/window.rs:206-269 (tests counts_everything_and_keeps_more_than_the_window_after_a_skip, delivers_streams_apart_without_skips) and Pending::push/trim/take (window.rs:1-205); output events compared with Pi's daemon for the same command output (TestDaemonExecMatchesPisDaemon window cases)",
+  "mutation": "env/daemon/window.go: replace `for index > 0 && !isCharBoundary(first, index) {` with `for false && index > 0 && !isCharBoundary(first, index) {`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/window.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/window.rs:206-269 (tests counts_everything_and_keeps_more_than_the_window_after_a_skip, delivers_streams_apart_without_skips) and Pending::push/trim/take (window.rs:1-205); output events compared with Pi's daemon for the same command output (TestDaemonExecMatchesPisDaemon window cases)",
+  "mutation": "env/daemon/window.go: replace `p.skipped.endsWithNewline = strings.HasSuffix(text, \"\\n\")` with `p.skipped.endsWithNewline = true`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/window.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/window.rs:206-269 (tests counts_everything_and_keeps_more_than_the_window_after_a_skip, delivers_streams_apart_without_skips) and Pending::push/trim/take (window.rs:1-205); output events compared with Pi's daemon for the same command output (TestDaemonExecMatchesPisDaemon window cases)",
+  "mutation": "env/daemon/window.go: replace `if !okBytes || !okLines || !okInterval || !okRate {` with `if !okBytes || !okLines || !okInterval || (false && !okRate) {`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/window.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/window.rs:206-269 (tests counts_everything_and_keeps_more_than_the_window_after_a_skip, delivers_streams_apart_without_skips) and Pending::push/trim/take (window.rs:1-205); output events compared with Pi's daemon for the same command output (TestDaemonExecMatchesPisDaemon window cases)",
+  "mutation": "env/daemon/window.go: replace `keepBytes := saturatingSub(p.window.maxBytes+1, restBytes)` with `keepBytes := saturatingSub(p.window.maxBytes, restBytes)`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/window.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/window.rs:206-269 (tests counts_everything_and_keeps_more_than_the_window_after_a_skip, delivers_streams_apart_without_skips) and Pending::push/trim/take (window.rs:1-205); output events compared with Pi's daemon for the same command output (TestDaemonExecMatchesPisDaemon window cases)",
+  "mutation": "env/daemon/window.go: replace `return bytes > p.window.maxBytes || newlines > p.window.maxLines` with `return bytes > p.window.maxBytes && newlines > p.window.maxLines`; TestDaemonExecMatchesPisDaemon fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/window.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestWindowCountsEverythingAndKeepsMoreThanTheWindowAfterASkip",
+   "TestWindowTrimsOnCharacterBoundariesAndRecordsHowTheSkipEnds"
+  ],
+  "upstream_reference": "packages/env/daemon/src/window.rs:206-269 (tests counts_everything_and_keeps_more_than_the_window_after_a_skip, delivers_streams_apart_without_skips) and Pending::push/trim/take (window.rs:1-205); output events compared with Pi's daemon for the same command output (TestDaemonExecMatchesPisDaemon window cases)",
+  "mutation": "env/daemon/window.go: replace `if p.skipped != nil { skip := p.skipped` with `if false && p.skipped != nil { skip := p.skipped`; TestWindowCountsEverythingAndKeepsMoreThanTheWindowAfterASkip, TestWindowTrimsOnCharacterBoundariesAndRecordsHowTheSkipEnds fail."
+ },
+ {
+  "upstream": "packages/env/src/terminal.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalDeliversRawBytesNotDecodedText",
+   "TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal",
+   "TestOpenTerminalKeepsInputInOrder",
+   "TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection",
+   "TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
+   "TestOpenTerminalWriteOfMoreThanAFrameArrivesWholeAndInOrder",
+   "TestTerminalEnvironmentIsOrderedByName",
+   "TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing",
+   "TestTerminalProgramGetsAnEmptySignalMaskWhenTheDaemonStartedWithSignalsBlocked",
+   "TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem",
+   "TestTerminalThatCannotStartFailsWithTheSystemsWords"
+  ],
+  "upstream_reference": "packages/env/test/terminal.test.ts:51-161 (openTerminal: terminal with input, resize and exit code; foreground job; raw bytes; input order; close kills; missing directory; EBADF write); ported one to one in env/terminal_test.go and run against Pi's daemon too",
+  "mutation": "env/terminal.go: replace `if options.Argv != nil {` with `if false {`; TestOpenTerminalDeliversRawBytesNotDecodedText, TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal, TestOpenTerminalKeepsInputInOrder, TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection, TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout, TestOpenTerminalWriteOfMoreThanAFrameArrivesWholeAndInOrder, TestTerminalEnvironmentIsOrderedByName, TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing, TestTerminalProgramGetsAnEmptySignalMaskWhenTheDaemonStartedWithSignalsBlocked, TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem, TestTerminalThatCannotStartFailsWithTheSystemsWords fail."
+ },
+ {
+  "upstream": "packages/env/src/terminal.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
+  ],
+  "upstream_reference": "packages/env/test/terminal.test.ts:51-161 (openTerminal: terminal with input, resize and exit code; foreground job; raw bytes; input order; close kills; missing directory; EBADF write); ported one to one in env/terminal_test.go and run against Pi's daemon too",
+  "mutation": "env/terminal.go: replace `cancel() return nil, ctx.Err()` with `return nil, ctx.Err()`; TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram fail."
+ },
+ {
+  "upstream": "packages/env/src/terminal.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalWriteOfMoreThanAFrameArrivesWholeAndInOrder"
+  ],
+  "upstream_reference": "packages/env/test/terminal.test.ts:51-161 (openTerminal: terminal with input, resize and exit code; foreground job; raw bytes; input order; close kills; missing directory; EBADF write); ported one to one in env/terminal_test.go and run against Pi's daemon too",
+  "mutation": "env/terminal.go: replace `const terminalWriteChunk = 1024 * 1024` with `const terminalWriteChunk = 16 * 1024 * 1024`; TestOpenTerminalWriteOfMoreThanAFrameArrivesWholeAndInOrder fail."
+ },
+ {
+  "upstream": "packages/env/src/terminal.ts",
+  "package": "./env",
+  "tests": [
+   "TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+   "TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection",
+   "TestOpenTerminalKillsTheProgramOnClose",
+   "TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt"
+  ],
+  "upstream_reference": "packages/env/test/terminal.test.ts:51-161 (openTerminal: terminal with input, resize and exit code; foreground job; raw bytes; input order; close kills; missing directory; EBADF write); ported one to one in env/terminal_test.go and run against Pi's daemon too",
+  "mutation": "env/terminal.go: replace `func (t *RemoteTerminal) Close() { t.abort() }` with `func (t *RemoteTerminal) Close() {}`; TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText, TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection, TestOpenTerminalKillsTheProgramOnClose, TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt fail."
+ },
+ {
+  "upstream": "packages/env/src/terminal.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode"
+  ],
+  "upstream_reference": "packages/env/test/terminal.test.ts:51-161 (openTerminal: terminal with input, resize and exit code; foreground job; raw bytes; input order; close kills; missing directory; EBADF write); ported one to one in env/terminal_test.go and run against Pi's daemon too",
+  "mutation": "env/terminal.go: replace `body := Json{\"cwd\": options.Cwd, \"cols\": options.Cols, \"rows\": options.Rows}` with `body := Json{\"cwd\": options.Cwd, \"cols\": options.Rows, \"rows\": options.Cols}`; TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode fail."
+ },
+ {
+  "upstream": "packages/env/src/terminal.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode",
+   "TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault",
+   "TestTerminalEnvironmentIsOrderedByName",
+   "TestTerminalThatCannotStartFailsWithTheSystemsWords"
+  ],
+  "upstream_reference": "packages/env/test/terminal.test.ts:51-161 (openTerminal: terminal with input, resize and exit code; foreground job; raw bytes; input order; close kills; missing directory; EBADF write); ported one to one in env/terminal_test.go and run against Pi's daemon too",
+  "mutation": "env/terminal.go: replace `body[\"env\"] = options.Env` with `body[\"env\"] = map[string]string{}`; TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode, TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault, TestTerminalEnvironmentIsOrderedByName, TestTerminalThatCannotStartFailsWithTheSystemsWords fail."
+ },
+ {
+  "upstream": "packages/env/src/terminal.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault",
+   "TestTerminalEnvironmentIsOrderedByName"
+  ],
+  "upstream_reference": "packages/env/test/terminal.test.ts:51-161 (openTerminal: terminal with input, resize and exit code; foreground job; raw bytes; input order; close kills; missing directory; EBADF write); ported one to one in env/terminal_test.go and run against Pi's daemon too",
+  "mutation": "env/terminal.go: replace `if options.InheritEnv != nil {` with `if false {`; TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault, TestTerminalEnvironmentIsOrderedByName fail."
+ },
+ {
+  "upstream": "packages/env/src/terminal.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt"
+  ],
+  "upstream_reference": "packages/env/test/terminal.test.ts:51-161 (openTerminal: terminal with input, resize and exit code; foreground job; raw bytes; input order; close kills; missing directory; EBADF write); ported one to one in env/terminal_test.go and run against Pi's daemon too",
+  "mutation": "env/terminal.go: replace `name, _ := foreground[\"name\"].(string)` with `name := \"\"`; TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt fail."
+ },
+ {
+  "upstream": "packages/env/src/terminal.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode"
+  ],
+  "upstream_reference": "packages/env/test/terminal.test.ts:51-161 (openTerminal: terminal with input, resize and exit code; foreground job; raw bytes; input order; close kills; missing directory; EBADF write); ported one to one in env/terminal_test.go and run against Pi's daemon too",
+  "mutation": "env/terminal.go: replace `Json{\"cols\": cols, \"rows\": rows}` with `Json{\"cols\": rows, \"rows\": cols}`; TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode fail."
+ },
+ {
+  "upstream": "packages/env/src/list-files.ts",
+  "package": "./env",
+  "tests": [
+   "TestListFilesCancelsAListingInTheDaemon",
+   "TestRemoteExecutionEnvOverAPipeConformance"
+  ],
+  "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
+  "mutation": "env/list_files.go: replace `request[bound.key] = *bound.value` with `request[bound.key] = *bound.value + 1`; TestListFilesCancelsAListingInTheDaemon, TestRemoteExecutionEnvOverAPipeConformance fail."
+ },
+ {
+  "upstream": "packages/env/src/list-files.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnvOverAPipeConformance"
+  ],
+  "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
+  "mutation": "env/list_files.go: replace `request[\"exclude\"] = slices.Clone(options.Exclude)` with `_ = options.Exclude`; TestRemoteExecutionEnvOverAPipeConformance fail."
+ },
+ {
+  "upstream": "packages/env/src/list-files.ts",
+  "package": "./env",
+  "tests": [
+   "TestListFilesCancelsAListingInTheDaemon",
+   "TestListFilesIsNotSupportedByDaemonsReleasedBeforeIt",
+   "TestRemoteExecutionEnvOverAPipeConformance"
+  ],
+  "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
+  "mutation": "env/list_files.go: replace `if !slices.Contains(info.Features, \"listFiles\") {` with `if slices.Contains(info.Features, \"listFiles\") {`; TestListFilesCancelsAListingInTheDaemon, TestListFilesIsNotSupportedByDaemonsReleasedBeforeIt, TestRemoteExecutionEnvOverAPipeConformance fail."
+ },
+ {
+  "upstream": "packages/env/src/list-files.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnvOverAPipeConformance"
+  ],
+  "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
+  "mutation": "env/list_files.go: replace `if options.Gitignore != nil {` with `if false {`; TestRemoteExecutionEnvOverAPipeConformance fail."
+ },
+ {
+  "upstream": "packages/env/src/list-files.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnvOverAPipeConformance"
+  ],
+  "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
+  "mutation": "env/list_files.go: replace `if options.Hidden != nil {` with `if false {`; TestRemoteExecutionEnvOverAPipeConformance fail."
+ },
+ {
+  "upstream": "packages/env/src/list-files.ts",
+  "package": "./env",
+  "tests": [
+   "TestListFilesNamesTheFirstInvalidBoundInPisOrder"
+  ],
+  "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
+  "mutation": "env/list_files.go: replace `|| *value < 0)` with `|| *value < -1)`; TestListFilesNamesTheFirstInvalidBoundInPisOrder fail."
+ },
+ {
+  "upstream": "packages/env/src/list-files.ts",
+  "package": "./env",
+  "tests": [
+   "TestListFilesNamesTheFirstInvalidBoundInPisOrder"
+  ],
+  "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
+  "mutation": "env/list_files.go: replace `{{\"maxEntries\", options.MaxEntries}, {\"maxBytes\", options.MaxBytes}, {\"timeoutMs\", options.TimeoutMs}}` with `{{\"maxBytes\", options.MaxBytes}, {\"maxEntries\", options.MaxEntries}, {\"timeoutMs\", options.TimeoutMs}}`; TestListFilesNamesTheFirstInvalidBoundInPisOrder fail."
+ },
+ {
+  "upstream": "packages/env/src/list-files.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnvOverAPipeConformance"
+  ],
+  "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
+  "mutation": "env/list_files.go: replace `'l': durableenv.FileKindSymlink` with `'l': durableenv.FileKindFile`; TestRemoteExecutionEnvOverAPipeConformance fail."
+ },
+ {
+  "upstream": "packages/env/src/list-files.ts",
+  "package": "./env",
+  "tests": [
+   "TestListFilesCancelsAListingInTheDaemon",
+   "TestRemoteExecutionEnvOverAPipeConformance"
+  ],
+  "upstream_reference": "packages/env/src/list-files.ts:21-80 with packages/env/test/remote.test.ts:84-110, ssh.test.ts:200-214 and conformance.test.ts:30-44 (listFiles); ported in env/list_files_test.go, the conformance suite and TestSSHBootstrap",
+  "mutation": "env/list_files.go: replace `Truncated: reply.JSON[\"truncated\"] == true` with `Truncated: false`; TestListFilesCancelsAListingInTheDaemon, TestRemoteExecutionEnvOverAPipeConformance fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/exec.rs",
+  "package": "./env",
+  "tests": [
+   "TestDaemonExecMatchesPisDaemon"
+  ],
+  "upstream_reference": "packages/env/daemon/src/exec.rs:1-483 (ExecRequest::from_json, Spill, run); exec replies, output events, spill files, timeouts and cancels compared with Pi's daemon (env/daemon_wire_exec_oracle_test.go)",
+  "mutation": "env/daemon/exec.go: replace `if milliseconds <= maxTimeoutMs {` with `if true {`; TestDaemonExecMatchesPisDaemon fails."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "durable/env/node/exec.go: in spawnSpec, drop empty arguments from the argv (`args: typed[1:]` becomes a loop keeping only non-empty ones); TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "durable/env/node/exec.go: in spawnSpec, join the arguments into one argument with single spaces (`args: []string{joined}`); TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "durable/env/node/exec.go: in spawnSpec, pre-quote every argument with nodespawn.QuoteCmdArg before os/exec sees it; TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "internal/nodespawn/cmdline.go: in QuoteCmdArg, disable the doubling of backslashes before a double quote or the end (`case quoteHit && c == '\\\\':` becomes `case false && quoteHit && c == '\\\\':`); TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "durable/env/node/exec.go: delete `nodespawn.SetCommandLine(cmd)`, so os/exec's syscall.EscapeArg builds the command line; TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/windows.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
+  "mutation": "internal/nodespawn/cmdline.go: in QuoteCmdArg, return an empty argument as nothing instead of `\"\"`; TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ }
+]

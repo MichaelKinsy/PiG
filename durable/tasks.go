@@ -142,7 +142,7 @@ type typedTaskRuntime[I, S, R, H any] struct {
 	ErasedTaskRuntime
 }
 
-func (runtime typedTaskRuntime[I, S, R, H]) Commit(ctx context.Context, change func(tx Tx, current RunningTask[I, S, R]) (*NextTaskState[S, R], error)) error {
+func (runtime typedTaskRuntime[I, S, R, H]) Commit(ctx context.Context, change func(tx Tx, current RunningTask[I, S, R]) (*NextTaskState[S, R], error), options ...CommitOptions) error {
 	return runtime.ErasedTaskRuntime.Commit(ctx, func(tx Tx, current ErasedRunningTask) (*NextTaskState[JsonValue, JsonValue], error) {
 		typed, err := DecodeTaskRecord[I, S, R](current)
 		if err != nil {
@@ -157,7 +157,7 @@ func (runtime typedTaskRuntime[I, S, R, H]) Commit(ctx context.Context, change f
 			return nil, err
 		}
 		return &erased, nil
-	})
+	}, options...)
 }
 
 func (runtime typedTaskRuntime[I, S, R, H]) SleepUntil(ctx context.Context, until float64, checkpoint S) error {

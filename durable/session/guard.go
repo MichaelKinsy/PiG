@@ -11,10 +11,14 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/internal/entryscan"
 )
 
-// failureLatch is the Session's failure state, which the guard reads and sets.
+// failureLatch is the Session's failure state, which the guard reads and sets, and the end of the publication a Storage
+// commit adopted.
 type failureLatch interface {
 	failure() error
 	fail(error)
+	// finishPublication runs what the commit's adoption queued: the dispatch to subscribeCommits listeners, then the work
+	// its observers deferred.
+	finishPublication()
 }
 
 // guardedStorage is the Session's Storage behind its failure guard; every component of the Session reads and writes
@@ -98,9 +102,14 @@ func guardedCall[T any](guard *guardedStorage, read context.Context, run func() 
 	return result, nil
 }
 
-// Commit is never exempt, whatever it fails with.
+// Commit is never exempt, whatever it fails with. Once the backend returned, success or failure, the commit it adopted is
+// finished: its host listeners get it and the waits it resolved wake, before the Session sees the result and before a
+// failure fails the Session, so a commit rejected after its adoption is published first.
 func (guard *guardedStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
-	return guardedCall(guard, nil, func() (durable.Seq, error) { return guard.storage.Commit(ctx, writes, adopt) })
+	return guardedCall(guard, nil, func() (durable.Seq, error) {
+		defer guard.latch.finishPublication()
+		return guard.storage.Commit(ctx, writes, adopt)
+	})
 }
 
 func (guard *guardedStorage) MintId() (int64, error) {

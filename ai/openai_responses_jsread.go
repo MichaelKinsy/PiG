@@ -28,7 +28,7 @@ import (
 // dropped here. A member Pi stores raw (a name, a namespace, a reasoning id, a custom tool call's members) is not rewritten, so the item stays undecodable
 // and the turn ends with the decode error. thrown is the TypeError Pi throws reading the done item: a content or summary that is not an array
 // (`item.content?.map is not a function`), a null part, or a truthy function_call arguments that is not a string (parseToolCallArguments's
-// `json?.trim is not a function`).
+// `text.startsWith is not a function`).
 // upstream: openai-responses-shared.ts:463-741
 func normalizeResponsesItemJS(raw []byte, done bool) (normalized []byte, thrown error, ok bool) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
@@ -98,10 +98,10 @@ func normalizeResponsesItemJS(raw []byte, done bool) (normalized []byte, thrown 
 			case isJSString(arguments):
 				read["arguments"] = arguments
 			case done:
-				thrown = errors.New("json?.trim is not a function")
+				thrown = errors.New("text.startsWith is not a function")
 			default:
 				// createSlot keeps `item.arguments || ""` as it is, and a delta appends to its String() form; the caller records that it is not a
-				// string yet (responsesArgumentsNotString).
+				// string (responsesArgumentsNotString) and keeps its text without reading it.
 				read["arguments"] = jsToString(arguments)
 			}
 		}
@@ -313,18 +313,16 @@ func marshalResponsesEvent(event map[string]any, source []byte, read responsesEv
 	return out, read, true
 }
 
-// responsesArgumentsDoneError is the TypeError function_call_arguments.done throws for arguments that is not a string: parseStreamingJson calls
-// `partialJson.trim()` on a truthy value, and `event.arguments.startsWith(...)` then fails on a falsy one (:661-671).
+// responsesArgumentsDoneError is the TypeError function_call_arguments.done throws for arguments that is not a string: ToolCallArgumentsStream.replace
+// calls `text.startsWith(...)` on it.
 func responsesArgumentsDoneError(arguments any, present bool) error {
 	switch {
 	case !present:
 		return errors.New("Cannot read properties of undefined (reading 'startsWith')")
 	case arguments == nil:
 		return errors.New("Cannot read properties of null (reading 'startsWith')")
-	case jsTruthy(arguments):
-		return errors.New("partialJson.trim is not a function")
 	}
-	return errors.New("event.arguments.startsWith is not a function")
+	return errors.New("text.startsWith is not a function")
 }
 
 func normalizeResponsesTerminal(response map[string]any, read *responsesEventRead) bool {

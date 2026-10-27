@@ -230,7 +230,36 @@ func evidenceEnv(scratch string) []string {
 	return env
 }
 
-// lastLines is the tail of a failed evidence run, so the check names why it failed instead of only that it did.
+// failureReport says why a failed evidence run failed: every line that names a failing test or a crash, then the tail of the output, where
+// a failing test's own message often is not (a test that prints a large value ends the run with that value). The full output is kept in a
+// file under build/portmap-failures, named in the report.
+func failureReport(root, dir string, out []byte) string {
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	var named []string
+	for _, line := range lines {
+		text := strings.TrimSpace(line)
+		if strings.HasPrefix(text, "--- FAIL") || strings.HasPrefix(text, "panic:") || strings.HasPrefix(text, "fatal error:") || strings.HasPrefix(text, "FAIL") {
+			named = append(named, line)
+		}
+	}
+	tail := lines
+	if len(tail) > 40 {
+		tail = tail[len(tail)-40:]
+	}
+	report := "failing tests and crashes:\n" + strings.Join(named, "\n") + "\nlast lines:\n" + strings.Join(tail, "\n")
+	failures := filepath.Join(root, "build", "portmap-failures")
+	if err := os.MkdirAll(failures, 0o755); err == nil {
+		if file, err := os.CreateTemp(failures, strings.ReplaceAll(dir, "/", "_")+"-*.log"); err == nil {
+			_, written := file.Write(out)
+			if closed := file.Close(); written == nil && closed == nil {
+				report += "\nfull output: " + file.Name()
+			}
+		}
+	}
+	return report
+}
+
+// lastLines is the tail of a failed build, so the check names why it failed instead of only that it did.
 func lastLines(out []byte, n int) string {
 	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
 	if len(lines) > n {

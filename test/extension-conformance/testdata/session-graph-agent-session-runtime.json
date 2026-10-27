@@ -1,0 +1,183 @@
+{
+	"counts": {
+		"factoryCalls": 7,
+		"invalidations": 7,
+		"reasons": [
+			"null",
+			"new+previous",
+			"fork+previous",
+			"fork+previous",
+			"resume+previous",
+			"fork+previous",
+			"resume+previous"
+		],
+		"rebinds": 6
+	},
+	"events": [
+		"start|startup|-",
+		"before_switch|new|-",
+		"before_switch|new|-",
+		"shutdown|new|target",
+		"start|new|previous",
+		"before_fork|before|-",
+		"before_fork|before|-",
+		"shutdown|fork|target",
+		"start|fork|previous",
+		"before_fork|at|-",
+		"shutdown|fork|target",
+		"start|fork|previous",
+		"before_fork|before|-",
+		"before_fork|before|-",
+		"before_switch|resume|target",
+		"before_switch|resume|target",
+		"shutdown|resume|target",
+		"start|resume|previous",
+		"before_fork|before|-",
+		"shutdown|fork|target",
+		"start|fork|previous",
+		"before_switch|resume|target",
+		"shutdown|resume|target",
+		"start|resume|previous",
+		"shutdown|quit|-"
+	],
+	"fork": {
+		"calls": 1,
+		"fresh": true,
+		"kinds": [
+			"model_change",
+			"thinking_level_change",
+			"custom_message",
+			"message"
+		],
+		"parentIsNotSecond": true,
+		"result": {
+			"cancelled": false,
+			"selectedText": "two"
+		},
+		"roles": [
+			"custom",
+			"system"
+		]
+	},
+	"forkAt": {
+		"fresh": true,
+		"result": {
+			"cancelled": false
+		},
+		"roles": [
+			"custom",
+			"system",
+			"user",
+			"assistant"
+		]
+	},
+	"forkCancelled": {
+		"result": {
+			"cancelled": true
+		},
+		"sameSession": true
+	},
+	"forkErrors": {
+		"missing": "error: Invalid entry ID for forking",
+		"notUser": "error: Invalid entry ID for forking"
+	},
+	"forkRoot": {
+		"fresh": true,
+		"kinds": [
+			"model_change",
+			"thinking_level_change",
+			"message"
+		],
+		"parentIsFirst": true,
+		"result": {
+			"cancelled": false,
+			"selectedText": "one"
+		}
+	},
+	"import": {
+		"fresh": false,
+		"inSessionDir": true,
+		"missing": "error: File not found: \u003croot\u003e/import/missing.jsonl",
+		"name": "imported.jsonl",
+		"result": {
+			"cancelled": false
+		},
+		"roles": [
+			"system",
+			"user",
+			"assistant"
+		],
+		"sourceKept": true
+	},
+	"initial": {
+		"calls": 1,
+		"cwd": "\u003croot\u003e/project",
+		"diagnostics": [],
+		"fallback": null,
+		"sameLog": true,
+		"servicesAgentDir": true,
+		"servicesCwd": "\u003croot\u003e/project"
+	},
+	"newCancelled": {
+		"calls": 1,
+		"invalidations": 0,
+		"rebinds": 0,
+		"result": {
+			"cancelled": true
+		},
+		"sameSession": true
+	},
+	"newSession": {
+		"calls": [
+			{
+				"cwd": "\u003croot\u003e/project",
+				"persisted": true,
+				"previous": true,
+				"reason": "new"
+			}
+		],
+		"fresh": true,
+		"invalidations": 1,
+		"kinds": [
+			"model_change",
+			"thinking_level_change",
+			"custom_message"
+		],
+		"parentIsFirst": true,
+		"rebinds": 1,
+		"result": {
+			"cancelled": false
+		},
+		"roles": [
+			"custom"
+		]
+	},
+	"prompted": {
+		"kinds": [
+			"model_change",
+			"thinking_level_change",
+			"message",
+			"message",
+			"message"
+		],
+		"persisted": true
+	},
+	"switch": {
+		"backOnFirst": true,
+		"file": true,
+		"result": {
+			"cancelled": false
+		},
+		"roles": [
+			"system",
+			"user",
+			"assistant"
+		]
+	},
+	"switchCancelled": {
+		"result": {
+			"cancelled": true
+		},
+		"sameSession": true
+	}
+}

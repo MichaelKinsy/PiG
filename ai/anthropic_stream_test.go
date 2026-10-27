@@ -162,8 +162,8 @@ func openAnthropicWireBlocks(t *testing.T, message *AssistantMessage) []map[stri
 	return decoded.Content
 }
 
-// Pi's blocks carry the provider's event index (and a tool call its partial JSON) while their content block is open, deletes them at content_block_stop, and deletes both on failure (anthropic-messages.ts:626-750,817-826).
-func TestAnthropicOpenBlocksCarryProviderScratch(t *testing.T) {
+// Pi keeps the provider's event index of an open block and the argument text of a tool call in its own stream state, never on the block (anthropic-messages.ts openBlocks), so a partial message shows neither.
+func TestAnthropicOpenBlocksCarryNoProviderScratch(t *testing.T) {
 	events := anthropicFixtureEvent("message_start", `{"message":{"id":"m","usage":{"input_tokens":1,"output_tokens":1}}}`) +
 		anthropicFixtureEvent("content_block_start", `{"index":4,"content_block":{"type":"thinking","thinking":"","signature":""}}`) +
 		anthropicFixtureEvent("content_block_start", `{"index":5,"content_block":{"type":"text","text":""}}`) +
@@ -180,24 +180,26 @@ func TestAnthropicOpenBlocksCarryProviderScratch(t *testing.T) {
 		}
 	}
 	want := [][]map[string]any{
-		{{"type": "thinking", "thinking": "", "thinkingSignature": "", "index": float64(4)}},
-		{{"type": "thinking", "thinking": "", "thinkingSignature": "", "index": float64(4)}, {"type": "text", "text": "", "index": float64(5)}},
-		{{"type": "thinking", "thinking": "", "thinkingSignature": "", "index": float64(4)}, {"type": "text", "text": "", "index": float64(5)}, {"type": "toolCall", "id": "t", "name": "read", "arguments": map[string]any{}, "partialJson": "", "index": float64(6)}},
-		{{"type": "thinking", "thinking": "", "thinkingSignature": "", "index": float64(4)}, {"type": "text", "text": "", "index": float64(5)}, {"type": "toolCall", "id": "t", "name": "read", "arguments": map[string]any{"a": float64(1)}, "partialJson": `{"a":1`, "index": float64(6)}},
-		{{"type": "thinking", "thinking": "", "thinkingSignature": ""}, {"type": "text", "text": "", "index": float64(5)}, {"type": "toolCall", "id": "t", "name": "read", "arguments": map[string]any{"a": float64(1)}, "partialJson": `{"a":1`, "index": float64(6)}},
+		{{"type": "thinking", "thinking": "", "thinkingSignature": ""}},
+		{{"type": "thinking", "thinking": "", "thinkingSignature": ""}, {"type": "text", "text": ""}},
+		{{"type": "thinking", "thinking": "", "thinkingSignature": ""}, {"type": "text", "text": ""}, {"type": "toolCall", "id": "t", "name": "read", "arguments": map[string]any{}}},
+		{{"type": "thinking", "thinking": "", "thinkingSignature": ""}, {"type": "text", "text": ""}, {"type": "toolCall", "id": "t", "name": "read", "arguments": map[string]any{"a": float64(1)}}},
+		{{"type": "thinking", "thinking": "", "thinkingSignature": ""}, {"type": "text", "text": ""}, {"type": "toolCall", "id": "t", "name": "read", "arguments": map[string]any{"a": float64(1)}}},
 	}
 	if !reflect.DeepEqual(open, want) {
 		t.Fatalf("open blocks:\n got %v\nwant %v", open, want)
 	}
-	// Blocks that never stop keep their scratch into the terminal message, as Pi's do.
+	// Blocks that never stop carry nothing of the stream into the terminal message either.
 	final := emitted[len(emitted)-1].(DoneEvent).Message
-	if blocks := openAnthropicWireBlocks(t, final); blocks[1]["index"] != float64(5) || blocks[2]["partialJson"] != `{"a":1` {
-		t.Fatalf("terminal blocks=%v", blocks)
+	for _, block := range openAnthropicWireBlocks(t, final) {
+		if block["index"] != nil || block["partialJson"] != nil {
+			t.Fatalf("terminal block carries stream state: %v", block)
+		}
 	}
 }
 
-// A failure deletes the scratch of every block (anthropic-messages.ts:817-826) but synthesizes no end events.
-func TestAnthropicFailureDeletesScratchWithoutEndEvents(t *testing.T) {
+// A failure synthesizes no end events and leaves no stream state on any block.
+func TestAnthropicFailureLeavesNoScratchAndNoEndEvents(t *testing.T) {
 	events := anthropicFixtureEvent("message_start", `{"message":{"id":"m","usage":{}}}`) +
 		anthropicFixtureEvent("content_block_start", `{"index":0,"content_block":{"type":"text","text":""}}`) +
 		anthropicFixtureEvent("content_block_start", `{"index":1,"content_block":{"type":"tool_use","id":"t","name":"read","input":{}}}`) +

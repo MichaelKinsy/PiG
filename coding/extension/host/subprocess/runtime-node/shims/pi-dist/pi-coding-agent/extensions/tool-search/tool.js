@@ -88,7 +88,26 @@ export function createToolSearchDocument(tool, namespace) {
         parts.push(namespace.name, namespace.description ?? "", namespace.instructions ?? "");
     return { name: tool.name, text: parts.filter((part) => part.trim()).join(" ") };
 }
-/** Okapi BM25 with the usual parameters. Ties keep document order. */
+/** Lowercase with characters invalid in script identifiers as `_`, so `dev-radius` matches `dev_radius`. */
+function normalizeName(name) {
+    return name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_$]/g, "_");
+}
+/**
+ * Whether `query` names the tool: its full name or a suffix after a `__` separator, so `thread_read`
+ * and `app__thread_read` both name `mcp__app__thread_read`.
+ */
+function isNameQuery(query, name) {
+    const normalized = normalizeName(name);
+    return normalized === query || normalized.endsWith(`__${query}`);
+}
+/**
+ * Okapi BM25 with the usual parameters. A query that names a tool ranks that tool first, because
+ * length normalization can otherwise rank a short description sharing the name's words above it.
+ * Ties keep document order.
+ */
 export class Bm25Ranker {
     k1;
     b;
@@ -112,6 +131,7 @@ export class Bm25Ranker {
             const frequency = termCounts.filter((counts) => counts.has(term)).length;
             return [term, Math.log(1 + (documents.length - frequency + 0.5) / (frequency + 0.5))];
         }));
+        const nameQuery = normalizeName(query);
         const matches = [];
         documents.forEach((document, index) => {
             let score = 0;
@@ -123,9 +143,12 @@ export class Bm25Ranker {
                 score += (idf.get(term) ?? 0) * ((count * (this.k1 + 1)) / (count + norm));
             }
             if (score > 0)
-                matches.push({ name: document.name, score });
+                matches.push({ name: document.name, score, named: isNameQuery(nameQuery, document.name) });
         });
-        return matches.sort((a, b) => b.score - a.score).slice(0, limit);
+        return matches
+            .sort((a, b) => Number(b.named) - Number(a.named) || b.score - a.score)
+            .slice(0, limit)
+            .map(({ name, score }) => ({ name, score }));
     }
 }
 export const toolSearchSchema = Type.Object({

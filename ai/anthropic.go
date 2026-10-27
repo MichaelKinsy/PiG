@@ -343,6 +343,9 @@ type anthEventContentBlockDelta struct {
 		Thinking    string `json:"thinking,omitempty"`
 		PartialJSON string `json:"partial_json,omitempty"`
 		Signature   string `json:"signature,omitempty"`
+		// NoPartialJSON is "null" or "undefined" for an input_json_delta whose partial_json is null or absent: ToolCallArgumentsStream.append reads
+		// its length, which throws, where `+=` would have appended the word.
+		NoPartialJSON string `json:"-"`
 	} `json:"delta"`
 }
 
@@ -1641,7 +1644,8 @@ func (p *anthropicProvider) applySampling(req *anthRequest, model *Model, transc
 			if slices.Contains(req.Betas, thinkingBindingControlsBeta) {
 				req.Thinking.BlockBinding = &anthBlockBinding{PrefixMismatchBehavior: "drop_block"}
 			}
-			req.OutputConfig = &anthOutputConfig{Effort: "high"}
+			// upstream: anthropic-messages.ts buildParams (Pi e3bc05e87). Effort markers set the level for every reply, and the top-level effort is part of the cached prompt, so it stays fixed. It is "low" because organizations can cap effort and reject requests containing any level above the cap.
+			req.OutputConfig = &anthOutputConfig{Effort: "low"}
 			if !effortMarkers {
 				req.OutputConfig.Effort = managedEffort
 			}
@@ -1885,6 +1889,11 @@ func coerceAnthropicDelta(data []byte) (anthEventContentBlockDelta, bool) {
 		case value == nil:
 			*member = "null"
 		}
+		if ev.Delta.Type == "input_json_delta" && (ev.Delta.PartialJSON == "undefined" || ev.Delta.PartialJSON == "null") {
+			if _, present := fields["partial_json"]; !present || fields["partial_json"] == nil {
+				ev.Delta.NoPartialJSON = ev.Delta.PartialJSON
+			}
+		}
 	}
 	return ev, true
 }
@@ -1907,26 +1916,11 @@ func anthropicDeltaMember(ev *anthEventContentBlockDelta) *string {
 	return nil
 }
 
-// findAnthropicBlock is `blocks.findIndex((b) => b.index === event.index)`; it returns -1 when no open block carries the index.
-func findAnthropicBlock(content []AssistantContentBlock, index int) int {
-	want := scratchIndexFor(index)
-	for i, block := range content {
-		switch block := block.(type) {
-		case TextContent:
-			if block.scratch == want {
-				return i
-			}
-		case ThinkingContent:
-			if block.scratch == want {
-				return i
-			}
-		case ToolCall:
-			if block.scratch.hasIndex && block.scratch.index == index {
-				return i
-			}
-		}
-	}
-	return -1
+// anthropicOpenBlock is the stream state of an open Anthropic content block, kept off the content block: where it sits in the
+// output and, for a tool call, the reader of its argument deltas.
+type anthropicOpenBlock struct {
+	contentIndex int
+	args         *ToolCallArgumentsStream
 }
 
 // parseAnthropicSSE is the body of stream()'s try block from the start event on (packages/ai/src/api/anthropic-messages.ts:596-826): it pushes start, consumes the SSE iterator until it completes, and publishes exactly one terminal event. Error-event data is surfaced verbatim.
@@ -1949,6 +1943,8 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 	usage := &output.Usage
 	usageCost := builder.modelCost
 	var inputTransformations []any
+	// openBlocks is the stream state per Anthropic block index.
+	openBlocks := map[int]*anthropicOpenBlock{}
 
 	// fail is the catch block (anthropic-messages.ts:817-826).
 	fail := func(err error) {
@@ -2056,22 +2052,24 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 				}
 				continue
 			}
-			index := scratchIndexFor(ev.Index)
 			switch ev.ContentBlock.Type {
 			case "text":
-				output.Content = append(output.Content, TextContent{Text: ev.ContentBlock.Text, scratch: index})
+				output.Content = append(output.Content, TextContent{Text: ev.ContentBlock.Text})
+				openBlocks[ev.Index] = &anthropicOpenBlock{contentIndex: len(output.Content) - 1}
 				builder.push(TextStartEvent{ContentIndex: len(output.Content) - 1, Partial: output})
 			case "thinking":
 				output.Content = append(output.Content, ThinkingContent{
 					Thinking: ev.ContentBlock.Thinking, ThinkingSignature: ev.ContentBlock.Signature,
-					thinkingSignatureEmpty: ev.ContentBlock.Signature == "", scratch: index,
+					thinkingSignatureEmpty: ev.ContentBlock.Signature == "",
 				})
+				openBlocks[ev.Index] = &anthropicOpenBlock{contentIndex: len(output.Content) - 1}
 				builder.push(ThinkingStartEvent{ContentIndex: len(output.Content) - 1, Partial: output})
 			case "redacted_thinking":
 				output.Content = append(output.Content, ThinkingContent{
 					Thinking: "[Reasoning redacted]", ThinkingSignature: ev.ContentBlock.Data, Redacted: true,
-					thinkingSignatureEmpty: ev.ContentBlock.Data == "", scratch: index,
+					thinkingSignatureEmpty: ev.ContentBlock.Data == "",
 				})
+				openBlocks[ev.Index] = &anthropicOpenBlock{contentIndex: len(output.Content) - 1}
 				builder.push(ThinkingStartEvent{ContentIndex: len(output.Content) - 1, Partial: output})
 			case "tool_use":
 				arguments, _ := ev.ContentBlock.Input.value.(map[string]any)
@@ -2080,8 +2078,8 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 				}
 				output.Content = append(output.Content, ToolCall{
 					ID: ev.ContentBlock.ID, Name: names.toolName(ev.ContentBlock.Name), Arguments: arguments,
-					scratch: toolCallScratch{hasPartialJson: true, hasIndex: true, index: ev.Index},
 				})
+				openBlocks[ev.Index] = &anthropicOpenBlock{contentIndex: len(output.Content) - 1, args: NewToolCallArgumentsStream()}
 				builder.push(ToolCallStartEvent{ContentIndex: len(output.Content) - 1, Partial: output})
 			}
 
@@ -2098,13 +2096,14 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 					return
 				}
 			}
-			index := -1
+			var open *anthropicOpenBlock
 			if ev.Index.present {
-				index = findAnthropicBlock(output.Content, ev.Index.value)
+				open = openBlocks[ev.Index.value]
 			}
-			if index < 0 {
+			if open == nil {
 				continue
 			}
+			index := open.contentIndex
 			switch ev.Delta.Type {
 			case "text_delta":
 				if block, ok := output.Content[index].(TextContent); ok {
@@ -2119,9 +2118,13 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 					builder.push(ThinkingDeltaEvent{ContentIndex: index, Delta: ev.Delta.Thinking, Partial: output})
 				}
 			case "input_json_delta":
-				if block, ok := output.Content[index].(ToolCall); ok {
-					block.scratch.partialJson = builder.appendArguments(index, block.scratch.partialJson, ev.Delta.PartialJSON)
-					block.setParsedArguments(builder.streamingArguments(index, block.scratch.partialJson))
+				if block, ok := output.Content[index].(ToolCall); ok && open.args != nil {
+					if ev.Delta.NoPartialJSON != "" {
+						throw(fmt.Errorf("Cannot read properties of %s (reading 'length')", ev.Delta.NoPartialJSON))
+						return
+					}
+					arguments, order := open.args.Append(ev.Delta.PartialJSON)
+					builder.showStreamedArguments(index, &block, open.args, arguments, order)
 					output.Content[index] = block
 					builder.push(ToolCallDeltaEvent{ContentIndex: index, Delta: ev.Delta.PartialJSON, Partial: output})
 				}
@@ -2140,25 +2143,25 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 				throw(err)
 				return
 			}
-			index := findAnthropicBlock(output.Content, ev.Index)
-			if index < 0 {
+			open := openBlocks[ev.Index]
+			delete(openBlocks, ev.Index)
+			if open == nil {
 				continue
 			}
+			index := open.contentIndex
 			switch block := output.Content[index].(type) {
 			case TextContent:
-				block.scratch = ""
 				output.Content[index] = block
 				builder.release(index)
 				builder.push(TextEndEvent{ContentIndex: index, Content: block.Text, Partial: output})
 			case ThinkingContent:
-				block.scratch = ""
 				output.Content[index] = block
 				builder.release(index)
 				builder.push(ThinkingEndEvent{ContentIndex: index, Content: block.Thinking, Partial: output})
 			case ToolCall:
-				// Finalize in place and strip the scratch buffer so replay only carries parsed arguments.
-				block.SetFinalArguments(block.scratch.partialJson)
-				block.scratch = toolCallScratch{}
+				if open.args != nil {
+					block.SetFinalArguments(open.args.Text())
+				}
 				output.Content[index] = block
 				builder.release(index)
 				builder.push(ToolCallEndEvent{ContentIndex: index, ToolCall: block, Partial: output})

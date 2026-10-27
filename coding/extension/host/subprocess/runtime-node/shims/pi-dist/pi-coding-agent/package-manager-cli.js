@@ -9,7 +9,7 @@ import { APP_NAME, CONFIG_DIR_NAME, detectInstallMethod, getAgentDir, getPackage
 import { ModelRuntime } from "./core/model-runtime.js";
 import { DefaultPackageManager } from "./core/package-manager.js";
 import { resolveProjectTrusted } from "./core/project-trust.js";
-import { DefaultResourceLoader, isBuiltinExtension } from "./core/resource-loader.js";
+import { DefaultResourceLoader, formatPackageInstallWarning, isBuiltinExtension } from "./core/resource-loader.js";
 import { SettingsManager } from "./core/settings-manager.js";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.js";
 import { spawnProcess, spawnProcessSync, waitForChildProcess } from "./utils/child-process.js";
@@ -764,6 +764,10 @@ export async function handleConfigCommand(args, runtimeOptions = {}) {
     const projectResolvedPaths = settingsManager.isProjectTrusted()
         ? await new DefaultPackageManager({ cwd, agentDir, settingsManager, builtinExtensions }).resolve()
         : globalResolvedPaths;
+    const installWarnings = new Set([...(globalResolvedPaths.installFailures ?? []), ...(projectResolvedPaths.installFailures ?? [])].map(formatPackageInstallWarning));
+    for (const warning of installWarnings) {
+        console.error(chalk.yellow(`Warning: ${warning}`));
+    }
     await selectConfig({
         resolvedPaths: { global: globalResolvedPaths, project: projectResolvedPaths },
         settingsManager,

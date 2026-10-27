@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
@@ -457,7 +458,7 @@ func TestTranslateEventsMatchPi(t *testing.T) {
 					publication.Changes = append(publication.Changes, durable.SubmissionWrite{Value: value})
 				}
 			}
-			got := translateEvents(1, before, after, ops, publication, held)
+			got := translateEvents(1, before, after, ops, session.ObservedCommit{Seq: publication.Seq, Changes: publication.Changes}, held)
 			batches++
 			events += len(got)
 			var gotJSON []any

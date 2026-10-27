@@ -80,21 +80,23 @@ func TestRuntimeMetadataUsesLoadedExtensionsInEveryMode(t *testing.T) {
 		}
 		return stdout.String(), stderr.String()
 	}
+	// Pi 6dfb54678 main.ts: --help and --list-models report the runtime diagnostics first, so the failed -e extension is reported on stderr, without changing the exit status.
+	diagnostic := "Error: Failed to load extension \"" + broken + "\": Failed to load extension: broken startup fixture\n"
 	listing, stderr := run("--list-models", "startup")
-	if !strings.Contains(listing, "startup-prov  startup-model") || stderr != "" {
+	if !strings.Contains(listing, "startup-prov  startup-model") || stderr != diagnostic {
 		t.Errorf("plain list stdout=%q stderr=%q", listing, stderr)
 	}
 	help, stderr := run("--help")
-	if !strings.HasPrefix(help, "pig - ") || stderr != "" {
+	if !strings.HasPrefix(help, "pig - ") || stderr != diagnostic {
 		t.Errorf("plain help stdout=%q stderr=%q", help, stderr)
 	}
 	for _, mode := range []string{"json", "rpc"} {
-		if stdout, stderr := run("--mode", mode, "--list-models", "startup"); stdout != "" || stderr != listing {
-			t.Errorf("%s list stdout=%q stderr=%q, want empty stdout and listing %q", mode, stdout, stderr, listing)
+		if stdout, stderr := run("--mode", mode, "--list-models", "startup"); stdout != "" || stderr != diagnostic+listing {
+			t.Errorf("%s list stdout=%q stderr=%q, want empty stdout and the diagnostic, then the listing %q", mode, stdout, stderr, listing)
 		}
 	}
-	if stdout, stderr := run("--mode", "rpc", "--help"); stdout != "" || stderr != help {
-		t.Errorf("rpc help stdout=%q stderr=%q, want empty stdout and plain help", stdout, stderr)
+	if stdout, stderr := run("--mode", "rpc", "--help"); stdout != "" || stderr != diagnostic+help {
+		t.Errorf("rpc help stdout=%q stderr=%q, want empty stdout, the diagnostic and plain help", stdout, stderr)
 	}
 }
 

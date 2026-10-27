@@ -176,6 +176,11 @@ func taskStatus(task *jv.Object) string {
 	return s
 }
 
+// TerminalTask returns the ID of a task record and whether its status is terminal.
+func TerminalTask(task *jv.Object) (ID, bool) {
+	return mustInt(task, "id"), taskStatus(task) == StatusTerminal
+}
+
 // withState returns {...record, state}; a terminal or completing state also
 // drops the task's memos and restart count (scheduler.ts withState).
 func withState(record *jv.Object, state *jv.Object) *jv.Object {

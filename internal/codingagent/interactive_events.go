@@ -146,7 +146,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		if e.Message.User != nil {
 			text := extractAgentMessageText(e.Message)
 			if text != "" {
-				m.addUserMessageToChat(e.Message, text)
+				m.addUserMessageToChat(e.Message, text, messageMeta{})
 				m.tuiInst.RequestRender()
 			}
 			// A queued steering/follow-up message that just got injected as a
@@ -165,7 +165,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		}
 		if e.Message.Assistant != nil {
 			// One block per assistant message: handles thinking + text.
-			m.evCurrentBlock = m.newAssistantMessageBlock()
+			m.evCurrentBlock = m.newAssistantMessageBlock(messageMeta{})
 			updateAssistantMessageBlock(m.evCurrentBlock, e.Message.Assistant)
 			m.appendToChat(m.evCurrentBlock)
 			m.assistantBlocks = append(m.assistantBlocks, m.evCurrentBlock)

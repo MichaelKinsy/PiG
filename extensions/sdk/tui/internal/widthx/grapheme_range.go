@@ -13,6 +13,34 @@ import (
 // getOsc8LinkAtColumn.
 var osc8HyperlinkPattern = lazyregexp.New("^\x1b\\]8;[^;]*;([^\x07\x1b]*)(?:\x07|\x1b\\\\)$")
 
+// ReplaceControlCharacters is `str.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")` (utils.ts replaceControlCharacters): each run of C0 and C1 control
+// characters (ESC, BEL, newlines, ...) becomes one space.
+func ReplaceControlCharacters(s string) string {
+	var out strings.Builder
+	inRun := false
+	for i, char := range s {
+		if char <= 0x1f || (char >= 0x7f && char <= 0x9f) {
+			if !inRun {
+				if out.Len() == 0 {
+					out.Grow(len(s))
+					out.WriteString(s[:i])
+				}
+				out.WriteByte(' ')
+				inRun = true
+			}
+			continue
+		}
+		inRun = false
+		if out.Len() > 0 {
+			out.WriteRune(char)
+		}
+	}
+	if out.Len() == 0 {
+		return s
+	}
+	return out.String()
+}
+
 // StripTerminalSequences removes ANSI/OSC/APC escapes from s, leaving only
 // printable content with the upstream-compatible layout extractor.
 func StripTerminalSequences(s string) string {

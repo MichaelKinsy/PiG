@@ -12,7 +12,7 @@ import (
 // A response.output_item.added/.done item that Pi's processResponsesStream cannot read throws a V8 TypeError, which the
 // stream reports as its error; Go must surface the same message on the same operation instead of skipping the event
 // (openai-responses-shared.ts: createSlot/applyMessagePhaseStopReason read item.type, :689-690 summary/content .map,
-// :702 content .map with c.type, :741 parseToolCallArguments(json?.trim), Pi 87f9a364).
+// :702 content .map with c.type, :754 ToolCallArgumentsStream.replace(text.startsWith)).
 func TestOpenAIResponsesOutputItemTypeErrorsMatchPi(t *testing.T) {
 	const (
 		typeUndefined = "Cannot read properties of undefined (reading 'type')"
@@ -20,7 +20,7 @@ func TestOpenAIResponsesOutputItemTypeErrorsMatchPi(t *testing.T) {
 		textNull      = "Cannot read properties of null (reading 'text')"
 		summaryMap    = "item.summary?.map is not a function"
 		contentMap    = "item.content?.map is not a function"
-		trim          = "json?.trim is not a function"
+		startsWith    = "text.startsWith is not a function"
 	)
 	event := func(kind, item string) string {
 		return `{"type":"response.output_item.` + kind + `","output_index":0` + item + `}`
@@ -47,15 +47,15 @@ func TestOpenAIResponsesOutputItemTypeErrorsMatchPi(t *testing.T) {
 		{"message content object", []string{event("done", `,"item":{"type":"message","content":{}}`)}, contentMap},
 		{"message content null element", []string{event("done", `,"item":{"type":"message","content":[null]}`)}, "Cannot read properties of null (reading 'type')"},
 
-		{"function call arguments object", []string{event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":{}}`)}, trim},
-		{"function call arguments number", []string{event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":5}`)}, trim},
-		{"function call arguments array", []string{event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":["a"]}`)}, trim},
+		{"function call arguments object", []string{event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":{}}`)}, startsWith},
+		{"function call arguments number", []string{event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":5}`)}, startsWith},
+		{"function call arguments array", []string{event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":["a"]}`)}, startsWith},
 
-		// createSlot keeps a truthy non-string added `arguments` as partialJson; output_item.done without its own arguments then parses it and throws, unless a delta or arguments.done made it a string first (measured with Pi's pinned openai-responses stream).
-		{"added arguments number, done without arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":5}`), event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n"}`)}, trim},
-		{"added arguments number, done empty arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":5}`), event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":""}`)}, trim},
-		{"added arguments true, done null arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":true}`), event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":null}`)}, trim},
-		{"added arguments empty array, done without arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":[]}`), event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n"}`)}, trim},
+		// createSlot appends a truthy non-string added `arguments` to the call's text without reading it, so the stream completes unless output_item.done carries a truthy non-string arguments of its own (cases measured by TestOpenAIResponsesMistypedMembersMatchPi against Pi's pinned stream).
+		{"added arguments number, done without arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":5}`), event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n"}`)}, "toolUse"},
+		{"added arguments number, done empty arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":5}`), event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":""}`)}, "toolUse"},
+		{"added arguments true, done null arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":true}`), event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":null}`)}, "toolUse"},
+		{"added arguments empty array, done without arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":[]}`), event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n"}`)}, "toolUse"},
 		{"added arguments number, a delta, done without arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":5}`), `{"type":"response.function_call_arguments.delta","output_index":0,"delta":"{\"a\":1}"}`, event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n"}`)}, "toolUse"},
 		{"added arguments object, arguments.done, done without arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":{}}`), `{"type":"response.function_call_arguments.done","output_index":0,"arguments":"{\"b\":2}"}`, event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n"}`)}, "toolUse"},
 		{"added arguments falsy, done without arguments", []string{event("added", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n","arguments":0}`), event("done", `,"item":{"type":"function_call","call_id":"c","id":"i","name":"n"}`)}, "toolUse"},

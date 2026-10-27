@@ -146,7 +146,8 @@ func TestCoreTaskGraphBuildsFromCommittedTasksShowsSurvivorsPendingAfterReopenAn
 	replica := graphJSON(t, watch.Value())
 	var frames [][]durable.Op
 	var replayErr error
-	watch.Start(func(_ context.Context, value harness.TaskGraph, ops []durable.Op) error {
+	watch.Start(func(_ context.Context, change durable.WatchChange[harness.TaskGraph]) error {
+		value, ops := change.Value, change.Ops
 		mu.Lock()
 		defer mu.Unlock()
 		converted := make([]durable.Op, len(ops))
@@ -315,6 +316,6 @@ func startedTaskGraph(ctx context.Context, opener interface {
 	if err != nil {
 		return nil, err
 	}
-	watch.Start(func(context.Context, harness.TaskGraph, []durable.Op) error { return nil })
+	watch.Start(func(_ context.Context, change durable.WatchChange[harness.TaskGraph]) error { return nil })
 	return watch, nil
 }

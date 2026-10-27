@@ -15,6 +15,18 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// realPathSync is Node's realpathSync, which Pi's package-manager tests wrap around the install root they expect as --prefix (Pi 5f960a0e2): the directory
+// as the kernel names it (macOS /var -> /private/var), and on Windows the spelling it was given in, 8.3 short names (RUNNER~1) included, where
+// filepath.EvalSymlinks would return the long form npm is never given.
+func realPathSync(t *testing.T, path string) string {
+	t.Helper()
+	resolved, err := codingagent.RealPathSync(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resolved
+}
+
 type packageProcessCall struct {
 	Command string   `json:"command"`
 	Args    []string `json:"args"`
@@ -104,6 +116,8 @@ func TestPackageNpmCommandOriginal(t *testing.T) {
 			if err := os.MkdirAll(root, 0o755); err != nil {
 				t.Fatal(err)
 			}
+			// Pi's test expects realpathSync(join(agentDir, "npm")) (package-manager.test.ts, Pi 5f960a0e2): the install root exists here, so npm gets its real path.
+			root = realPathSync(t, root)
 			var err error
 			if tc.remove {
 				err = packageManagerFor(f.cwd, f.settings, nil).Remove("npm:@scope/pkg", false)
@@ -187,7 +201,7 @@ func TestPackagePnpmManagedResolutionOriginal(t *testing.T) {
 	if len(installs) != 1 {
 		t.Fatalf("installs=%+v", installs)
 	}
-	requirePackageProcessCall(t, installs, "pnpm", []string{"install", "pnpm-pkg", "--prefix", filepath.Join(f.agent, "npm"), "--config.auto-install-peers=false", "--config.strict-peer-dependencies=false", "--config.strict-dep-builds=false"}, "")
+	requirePackageProcessCall(t, installs, "pnpm", []string{"install", "pnpm-pkg", "--prefix", realPathSync(t, filepath.Join(f.agent, "npm")), "--config.auto-install-peers=false", "--config.strict-peer-dependencies=false", "--config.strict-dep-builds=false"}, "")
 	if got := packagemanager.InstalledPathForSource(f.cwd, f.settings.AgentDir(), f.settings, "npm:pnpm-pkg", false); got != pkg {
 		t.Fatalf("installed=%s want=%s", got, pkg)
 	}
@@ -275,7 +289,7 @@ func TestPackageLegacyNpmUpdateMigratesOriginal(t *testing.T) {
 	if installs != 1 {
 		t.Fatalf("installs=%d want1", installs)
 	}
-	requirePackageProcessCall(t, f.calls(t), "npm", []string{"install", "legacy-pkg@latest", "--prefix", filepath.Join(f.agent, "npm"), "--legacy-peer-deps"}, "")
+	requirePackageProcessCall(t, f.calls(t), "npm", []string{"install", "legacy-pkg@latest", "--prefix", realPathSync(t, filepath.Join(f.agent, "npm")), "--legacy-peer-deps"}, "")
 	if got := packagemanager.InstalledPathForSource(f.cwd, f.settings.AgentDir(), f.settings, "npm:legacy-pkg", false); got != managed {
 		t.Fatalf("installed=%s want=%s", got, managed)
 	}

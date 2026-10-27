@@ -1407,10 +1407,10 @@
    "TestSessionDocumentTransactions",
    "TestSessionDocumentWatches",
    "TestSessionHistoricalDocumentSnapshots",
-   "TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil"
+   "TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsAFlag"
   ],
   "upstream_reference": "packages/durable/src/session/transaction.ts",
-  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {' with 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestSessionConversationDocumentForks, TestSessionDocumentCheckpoints, TestSessionDocumentMigrations, TestSessionDocumentTransactions, TestSessionDocumentWatches, TestSessionHistoricalDocumentSnapshots, TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil."
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {' with 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestSessionConversationDocumentForks, TestSessionDocumentCheckpoints, TestSessionDocumentMigrations, TestSessionDocumentTransactions, TestSessionDocumentWatches, TestSessionHistoricalDocumentSnapshots, TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsAFlag."
  },
  {
   "upstream": "packages/durable/src/harness/scheduler.ts",

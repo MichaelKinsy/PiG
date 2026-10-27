@@ -352,7 +352,7 @@ test("a watch survives a trap at any event of a commit: it ends on the committed
       await again(() => h.commit(async (tx: any) => { (await tx.doc(Live, id)).items.push(0) }, context))
       const watch = (await h.watchDoc(Live, id, context))! as any
       const seen: number[][] = []
-      watch.start(async (value: { items: number[] }) => { seen.push([...value.items]) })
+      watch.start(async ({ value }: { value: { items: number[] } }) => { seen.push([...value.items]) })
       const fault = inject(n => plan(n - baseline))
       const baseline = fault.state.events
       try {

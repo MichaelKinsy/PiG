@@ -51,10 +51,15 @@ func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 	dynamic, registered := r.dynamic[id]
 	r.mu.RUnlock()
 	var input *ProviderConfigInput
+	compose := r.composeNativeProvider
 	if registered {
-		input = new(providerModelInput(id, dynamic))
+		if r.NativeProvider(id) != nil {
+			input, compose = new(carrierModelInput(id, dynamic)), r.composeCarrierProvider
+		} else {
+			input = new(providerModelInput(id, dynamic))
+		}
 	}
-	provider, err := r.composeNativeProvider(&ai.ModelsProvider{ID: id, Name: id, GetModels: func() ([]*ai.Model, error) { return baseline, nil }}, input)
+	provider, err := compose(&ai.ModelsProvider{ID: id, Name: id, GetModels: func() ([]*ai.Model, error) { return baseline, nil }}, input)
 	if err != nil {
 		return nil
 	}

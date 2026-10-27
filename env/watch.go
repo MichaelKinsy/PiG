@@ -35,7 +35,7 @@ var reconnectTimer = time.NewTimer
 type RemoteWatcher struct {
 	connection *Connection
 	targets    []durableenv.WatchTarget
-	onChange   func(durableenv.WatchChange)
+	onChange   func(durableenv.FileChange)
 	options    RemoteWatchOptions
 
 	mu      sync.Mutex
@@ -55,7 +55,7 @@ var _ durableenv.FileWatcher = (*RemoteWatcher)(nil)
 // OpenRemoteWatcher is upstream's RemoteWatcher.open: the constructor is private upstream, and Go has no static methods.
 // It watches targets (resolved paths); it fails like NodeFileWatcher.open if coverage cannot be
 // established.
-func OpenRemoteWatcher(ctx context.Context, connection *Connection, targets []durableenv.WatchTarget, onChange func(durableenv.WatchChange), options RemoteWatchOptions) (*RemoteWatcher, error) {
+func OpenRemoteWatcher(ctx context.Context, connection *Connection, targets []durableenv.WatchTarget, onChange func(durableenv.FileChange), options RemoteWatchOptions) (*RemoteWatcher, error) {
 	watcher := &RemoteWatcher{connection: connection, targets: targets, onChange: onChange, options: options, mode: durableenv.WatchNative}
 	if err := watcher.start(ctx); err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (w *RemoteWatcher) stop() {
 }
 
 // deliver calls onChange unless closed; a throwing callback must not stop watching.
-func (w *RemoteWatcher) deliver(change durableenv.WatchChange) {
+func (w *RemoteWatcher) deliver(change durableenv.FileChange) {
 	if w.isClosed() {
 		return
 	}
@@ -177,7 +177,7 @@ func (w *RemoteWatcher) start(ctx context.Context) error {
 				w.mu.Unlock()
 			}
 			if event["overflow"] == true {
-				w.deliver(durableenv.WatchChangeOverflow{})
+				w.deliver(durableenv.FileChangeOverflow{})
 				return
 			}
 			var paths []string
@@ -187,13 +187,13 @@ func (w *RemoteWatcher) start(ctx context.Context) error {
 					paths = append(paths, path)
 				}
 			}
-			w.deliver(durableenv.WatchChangePaths{Paths: paths})
+			w.deliver(durableenv.FileChangePaths{Paths: paths})
 		case "error":
 			code := durableenv.FileErrorInvalid
 			if event["code"] == "permission_denied" {
 				code = durableenv.FileErrorPermissionDenied
 			}
-			w.deliver(durableenv.WatchChangeError{Error: durableenv.NewFileError(code, templateString(event, "message"), "", nil)})
+			w.deliver(durableenv.FileChangeError{Error: durableenv.NewFileError(code, templateString(event, "message"), "", nil)})
 			w.stop()
 		}
 	}})
@@ -219,7 +219,7 @@ func (w *RemoteWatcher) start(ctx context.Context) error {
 			w.reconnecting.Go(w.reconnect)
 			return
 		}
-		w.deliver(durableenv.WatchChangeError{Error: toFileError(err, "")})
+		w.deliver(durableenv.FileChangeError{Error: toFileError(err, "")})
 		w.stop()
 	}()
 	select {
@@ -259,13 +259,13 @@ func (w *RemoteWatcher) reconnect() {
 		err := w.start(context.Background())
 		if err == nil {
 			// Changes while disconnected were not seen.
-			w.deliver(durableenv.WatchChangeOverflow{})
+			w.deliver(durableenv.FileChangeOverflow{})
 			return
 		}
 		if IsConnectionLost(err) {
 			continue
 		}
-		w.deliver(durableenv.WatchChangeError{Error: toFileError(err, "")})
+		w.deliver(durableenv.FileChangeError{Error: toFileError(err, "")})
 		w.stop()
 		return
 	}

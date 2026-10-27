@@ -152,3 +152,8 @@ why = "Pi has no Piglets, so which tools, commands and extensions each shipped P
 paths = ["test/parity/sdk-vectors/*/*.json"]
 owner = "pi"
 generator = "automation/gen/generate-sdk-vectors.mjs"
+
+[[golden]]
+paths = ["codemode/cloudflare/testdata/pi-golden.json"]
+owner = "pi"
+generator = "codemode/cloudflare/testdata/oracle.mjs"

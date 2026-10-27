@@ -13,6 +13,7 @@
  * user must sign in again.
  */
 import { pollOAuthDeviceCodeFlow } from "./device-code.js";
+import { trustedHttpUrl } from "./trusted-url.js";
 // Muse Code CLI client id.
 const CLIENT_ID = "1031625952748946";
 const AUTH_HOST = "https://auth.meta.com";
@@ -40,20 +41,6 @@ function errorDetail(json) {
             return `: ${value.trim()}`;
     }
     return "";
-}
-/** The verification URI is opened in the user's browser; only http(s) URLs are trusted. */
-function trustedHttpUrl(value) {
-    if (typeof value !== "string" || !value)
-        return null;
-    try {
-        const url = new URL(value);
-        if (url.protocol !== "https:" && url.protocol !== "http:")
-            return null;
-        return url.href;
-    }
-    catch {
-        return null;
-    }
 }
 function positiveNumber(value) {
     return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;

@@ -39,10 +39,19 @@ type Options struct {
 // All lists the built-in extensions in upstream's order, then PiG's own `pig-login`. A stripped built-in has no row.
 // pig additive (D92): each row comes from a registration shim a Piglet Binary compiles out with pig_strip_<name>.
 func All(options Options) []Extension {
+	registerCompiledInReferences()
 	entries := append(codemodeEntries(options), toolSearchEntries()...)
 	entries = append(entries, mcpEntries(options)...)
 	// pig divergence (D2): the sprite login is PiG's own built-in; upstream's index.ts lists no such entry.
 	return append(entries, pigLoginEntries()...)
+}
+
+// registerCompiledInReferences makes the built-ins that are linked the ones an extension names by reference (createCodemodeExtension, createToolSearchExtension), as
+// the session graph looks them up (internal/compiledin). It runs where the host assembles its built-ins, not when this package is linked: linking a package adds no
+// compiled-in code to a session (coding/extension/factoryload TestNoPackageLevelFactoryRegistry).
+func registerCompiledInReferences() {
+	registerCodemodeReference()
+	registerToolSearchReference()
 }
 
 // Resolve returns the built-in extension a `builtin:<name>` path names. An unknown name fails with upstream's

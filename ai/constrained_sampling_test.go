@@ -282,8 +282,9 @@ func TestGetGrammarToolInput(t *testing.T) {
 // Reconstructed deltas preserve the input; an idempotent close yields no delta, and a post-close change errors.
 func TestAppendGrammarToolInputJSONDelta(t *testing.T) {
 	buf := &grammarToolInputJSONBuffer{}
-	first, ok1, err1 := appendGrammarToolInputJSONDelta(buf, "payload", `a"`, false)
-	second, ok2, err2 := appendGrammarToolInputJSONDelta(buf, "payload", "a\"\nb", true)
+	first, ok1, err1 := appendGrammarToolInputJSONDelta(buf, "payload", `a"`)
+	finalInput := "a\"\nb"
+	second, ok2, err2 := closeGrammarToolInputJSON(buf, "payload", &finalInput)
 	if err1 != nil || err2 != nil || !ok1 || !ok2 {
 		t.Fatalf("append errors: %v %v (ok %v %v)", err1, err2, ok1, ok2)
 	}
@@ -295,23 +296,42 @@ func TestAppendGrammarToolInputJSONDelta(t *testing.T) {
 		t.Fatalf("reconstructed payload = %q, want %q", out["payload"], "a\"\nb")
 	}
 	// Idempotent close → no delta.
-	if _, ok, err := appendGrammarToolInputJSONDelta(buf, "payload", "a\"\nb", true); ok || err != nil {
+	if _, ok, err := closeGrammarToolInputJSON(buf, "payload", &finalInput); ok || err != nil {
 		t.Fatalf("idempotent close: ok %v err %v, want no delta", ok, err)
 	}
 	// Change after close → error.
-	if _, _, err := appendGrammarToolInputJSONDelta(buf, "payload", "changed", true); err == nil ||
+	changed := "changed"
+	if _, _, err := closeGrammarToolInputJSON(buf, "payload", &changed); err == nil ||
 		!strings.Contains(err.Error(), `grammar tool input for property "payload" changed after it was closed`) {
 		t.Fatalf("post-close change err = %v", err)
+	}
+	if _, _, err := appendGrammarToolInputJSONDelta(buf, "payload", "x"); err == nil ||
+		!strings.Contains(err.Error(), `grammar tool input for property "payload" changed after it was closed`) {
+		t.Fatalf("post-close append err = %v", err)
+	}
+}
+
+// upstream: constrained-sampling.test.ts "rejects a final grammar input that does not continue the streamed input".
+func TestCloseGrammarToolInputJSONRejectsAFinalInputThatDoesNotContinueTheStreamedInput(t *testing.T) {
+	buf := &grammarToolInputJSONBuffer{}
+	if _, _, err := appendGrammarToolInputJSONDelta(buf, "payload", "abc"); err != nil {
+		t.Fatal(err)
+	}
+	final := "abd"
+	if _, _, err := closeGrammarToolInputJSON(buf, "payload", &final); err == nil ||
+		!strings.Contains(err.Error(), `grammar tool input for property "payload" changed non-monotonically`) {
+		t.Fatalf("err = %v", err)
 	}
 }
 
 // TestAppendGrammarToolInputJSONDelta_NonMonotonic pins the monotonicity guard.
 func TestAppendGrammarToolInputJSONDelta_NonMonotonic(t *testing.T) {
 	buf := &grammarToolInputJSONBuffer{}
-	if _, _, err := appendGrammarToolInputJSONDelta(buf, "payload", "hello", false); err != nil {
+	if _, _, err := appendGrammarToolInputJSONDelta(buf, "payload", "hello"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	if _, _, err := appendGrammarToolInputJSONDelta(buf, "payload", "help", false); err == nil ||
+	help := "help"
+	if _, _, err := closeGrammarToolInputJSON(buf, "payload", &help); err == nil ||
 		!strings.Contains(err.Error(), "changed non-monotonically") {
 		t.Fatalf("non-monotonic err = %v", err)
 	}

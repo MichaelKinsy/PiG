@@ -84,6 +84,15 @@ type ChildSessionCreate struct {
 	// ScopedModels is Pi's `scopedModels`: the models the session cycles through.
 	//portlint:allow emptydrop PiG wire field read by the host as a list: an empty list and an absent one mean the same (nothing to exclude or add)
 	ScopedModels []ChildScopedModel `json:"scopedModels,omitempty"`
+	// SessionStartEvent is Pi's `sessionStartEvent` option: the session_start event the session's extensions receive when they bind. Absent is Pi's default, `{type: "session_start", reason: "startup"}`.
+	SessionStartEvent *ChildSessionStartEvent `json:"sessionStartEvent,omitempty"`
+}
+
+// ChildSessionStartEvent is Pi's SessionStartEvent (types.ts), the value of the sessionStartEvent option: the reason a session starts and, when it replaces another, that session's file.
+type ChildSessionStartEvent struct {
+	// Reason is "startup", "reload", "new", "resume" or "fork".
+	Reason              string `json:"reason"`
+	PreviousSessionFile string `json:"previousSessionFile,omitempty"`
 }
 
 // ChildScopedModel is one entry of Pi's scopedModels option: a model object and an optional thinking level.
@@ -193,4 +202,31 @@ type ChildSessionState struct {
 	PendingMessageCount int `json:"pendingMessageCount"`
 	// LastAssistantText is getLastAssistantText(), absent when there is none.
 	LastAssistantText *string `json:"lastAssistantText,omitempty"`
+}
+
+// The calls below give an extension that replaces sessions (Pi's AgentSessionRuntime) what Pi reads from the AgentSession it replaces. They are for the Go, Python and Rust SDKs; Node runs Pi's own AgentSession.
+const (
+	// CallChildSessionEmit runs `session.extensionRunner.emit(event)` when the session's extensions have a handler for the event's type (`hasHandlers(type)`, then `emit(event)`, as agent-session-runtime.ts does for session_before_switch, session_before_fork and, through emitSessionShutdownEvent, session_shutdown). Args is a ChildSessionEmit and the result a ChildSessionEmitResult. It returns when the handlers settled.
+	CallChildSessionEmit = "childSession.emit"
+	// CallChildSessionRefreshContext runs AgentSession.refreshContext: the session's finalized transcript is read again from its log, which an extension appended to through the session's SessionManager. Args is a ChildSessionRef.
+	CallChildSessionRefreshContext = "childSession.refreshContext"
+	// CallChildSessionSessionManager reads AgentSession.sessionManager: the result is a ChildSessionManagerHandle, the session graph handle of the log the session appends to. Every call returns a handle to the same log.
+	CallChildSessionSessionManager = "childSession.sessionManager"
+)
+
+// ChildSessionEmit is the CallChildSessionEmit argument. Event is one of the events the ExtensionRunner's generic emit takes, in Pi's JSON shape.
+type ChildSessionEmit struct {
+	ID    string          `json:"id"`
+	Event json.RawMessage `json:"event"`
+}
+
+// ChildSessionEmitResult is the CallChildSessionEmit result. Emitted is false when no extension has a handler for the event's type (nothing ran); Result is what emit answered, null when it answered nothing.
+type ChildSessionEmitResult struct {
+	Emitted bool            `json:"emitted"`
+	Result  json.RawMessage `json:"result,omitempty"`
+}
+
+// ChildSessionManagerHandle is the CallChildSessionSessionManager result.
+type ChildSessionManagerHandle struct {
+	Handle string `json:"handle"`
 }

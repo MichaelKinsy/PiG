@@ -68,12 +68,12 @@ func proxyOracleScripts() map[string]string {
 		"delta non-canonical":     proxyBody(text(0), `data: {"type":"text_delta","contentIndex":"00","delta":"a"}`, done),
 		"delta at last index":     proxyBody(text(0), `data: {"type":"text_delta","contentIndex":4294967294,"delta":"a"}`, done),
 		"delta past last index":   proxyBody(text(0), `data: {"type":"text_delta","contentIndex":4294967295,"delta":"a"}`, done),
-		// An unfinished tool call keeps its partialJson member in the delivered message.
-		"drop during tool call":  proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, `data: {"type":"toolcall_delta","contentIndex":0,"delta":"{\"path\":\"a"}`),
-		"error during tool call": proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, `data: {"type":"toolcall_delta","contentIndex":0,"delta":"{\"p\":1}"}`, `data: {"type":"error","reason":"error","errorMessage":"upstream failed",`+usage+`}`),
-		"done before tool end":   proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, done),
-		"tool end drops partial": proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, `data: {"type":"toolcall_delta","contentIndex":0,"delta":"{\"p\":1}"}`, `data: {"type":"toolcall_end","contentIndex":0,"toolCall":{"type":"toolCall","id":"c1","name":"read","arguments":{"p":1},"partialJson":"x"}}`, done),
-		"tool end without call":  proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, `data: {"type":"toolcall_delta","contentIndex":0,"delta":"{\"p\":1}"}`, `data: {"type":"toolcall_end","contentIndex":0}`, done),
+		// An unfinished tool call delivers the arguments read so far and no stream state.
+		"drop during tool call":    proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, `data: {"type":"toolcall_delta","contentIndex":0,"delta":"{\"path\":\"a"}`),
+		"error during tool call":   proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, `data: {"type":"toolcall_delta","contentIndex":0,"delta":"{\"p\":1}"}`, `data: {"type":"error","reason":"error","errorMessage":"upstream failed",`+usage+`}`),
+		"done before tool end":     proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, done),
+		"tool end merges the call": proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, `data: {"type":"toolcall_delta","contentIndex":0,"delta":"{\"p\":1}"}`, `data: {"type":"toolcall_end","contentIndex":0,"toolCall":{"type":"toolCall","id":"c1","name":"read","arguments":{"p":1}}}`, done),
+		"tool end without call":    proxyBody(`data: {"type":"toolcall_start","contentIndex":0,"id":"c1","toolName":"read"}`, `data: {"type":"toolcall_delta","contentIndex":0,"delta":"{\"p\":1}"}`, `data: {"type":"toolcall_end","contentIndex":0}`, done),
 		// Keys that are array indices in another spelling: canonical numeric strings, -0, exponent and fraction forms of integers.
 		"string indices": proxyBody(`data: {"type":"text_start","contentIndex":"0"}`, `data: {"type":"text_delta","contentIndex":"0","delta":"a"}`, `data: {"type":"text_end","contentIndex":0,"contentSignature":"s"}`,
 			`data: {"type":"toolcall_start","contentIndex":"1","id":"c1","toolName":"read"}`, `data: {"type":"toolcall_delta","contentIndex":1,"delta":"{\"p\":2}"}`, `data: {"type":"toolcall_end","contentIndex":"1","toolCall":{"type":"toolCall","id":"c1","name":"read","arguments":{"p":3}}}`, done),

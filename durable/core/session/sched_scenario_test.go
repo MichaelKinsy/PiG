@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
+	"github.com/MichaelKinsy/PiG/durable/core/session/hopcost"
 	"github.com/MichaelKinsy/PiG/durable/core/session/sessiontest"
 )
 
@@ -58,19 +59,46 @@ func TestSchedulerMatchesPiDurable(t *testing.T) {
 	}
 }
 
+// logStore logs each commit one tick after Storage applied it, as the oracle's wrapper does (`await origCommit(...)` before it
+// pushes the event): the commit is published when Storage adopts it, so what the publication wakes queues its microtasks before
+// that log entry.
 type logStore struct {
 	*sessiontest.MemStore
 	log *[]any
+	// pending are the commits applied by the running job, whose log entries wait until the job's publication queued what it
+	// wakes (flush): Storage calls `adopt` before it returns to the wrapper that logs.
+	pending *[]any
+	loop    *session.Loop
+	// inJob reports whether a line job runs; a commit made outside one is logged a tick later at once.
+	inJob func() bool
 }
 
-func (l logStore) Commit(writes []session.Write, next session.ID) (session.Seq, error) {
+// flush queues the log entries of the commits the running job applied, one tick from now.
+func (l *logStore) flush() {
+	entries := *l.pending
+	*l.pending = nil
+	for _, entry := range entries {
+		if l.inJob() {
+			*l.pending = append(*l.pending, entry)
+		} else {
+			l.loop.Defer(func() { *l.log = append(*l.log, entry) })
+		}
+	}
+}
+
+func (l *logStore) Commit(writes []session.Write, next session.ID) (session.Seq, error) {
 	seq, err := l.MemStore.Commit(writes, next)
 	if err == nil {
 		ws := make([]any, len(writes))
 		for i, w := range writes {
 			ws[i] = writeValue(w)
 		}
-		*l.log = append(*l.log, obj("t", "commit", "seq", float64(seq), "writes", ws))
+		entry := obj("t", "commit", "seq", float64(seq), "writes", ws)
+		if l.inJob() {
+			*l.pending = append(*l.pending, entry)
+		} else {
+			l.loop.Defer(func() { *l.log = append(*l.log, entry) })
+		}
 	}
 	return seq, err
 }
@@ -95,10 +123,33 @@ func runSched(t *testing.T, file string) []any {
 	var events []any
 	logf := func(kv ...any) { events = append(events, obj(kv...)) }
 	mem := sessiontest.New()
-	store := logStore{mem, &events}
+	loop := &session.Loop{}
+	// A commit job is published when Storage adopts it, and the code that awaits the commit resumes hopcost.AdoptTail(Memory)
+	// ticks later (session.ts #runCommit): the job's completion waits that long, and what the publication wakes runs meanwhile.
+	var pending []any
+	store := &logStore{MemStore: mem, log: &events, pending: &pending, loop: loop}
+	loop.Hold = func(release func()) bool {
+		if !loop.HasPubs() {
+			store.flush()
+			return false
+		}
+		loop.Publish()
+		store.flush()
+		var tick func(left int)
+		tick = func(left int) {
+			if left == 0 {
+				release()
+				return
+			}
+			loop.Defer(func() { tick(left - 1) })
+		}
+		tick(hopcost.AdoptTail(hopcost.Memory))
+		return true
+	}
 	now := func() float64 { return 1000 + float64(len(mem.Commits)) }
 	sess := session.New(store, mem.NextID(), now)
-	loop := &session.Loop{}
+	loop.Session = sess
+	store.inJob = sess.InJob
 
 	gates := map[string][]func(){}
 	released := map[string]bool{}

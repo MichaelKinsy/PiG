@@ -42,8 +42,15 @@ func TestEmptyAgentDirNeverWritesIntoTheProcessDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := NewPackageManager(PackageManagerOptions{CWD: "", SettingsManager: sm}).Resolve(nil); err == nil || !strings.Contains(err.Error(), "not absolute") {
-		t.Fatalf("Resolve with an empty agent directory = %v, want the not-absolute error", err)
+	// An install that fails is skipped and reported since Pi 6dfb54678, so the not-absolute error is a reported install failure.
+	resolved, err := NewPackageManager(PackageManagerOptions{CWD: "", SettingsManager: sm}).Resolve(nil)
+	if err != nil || len(resolved.InstallFailures) == 0 {
+		t.Fatalf("Resolve with an empty agent directory = %+v, %v, want reported install failures", resolved, err)
+	}
+	for _, failure := range resolved.InstallFailures {
+		if !strings.Contains(failure.Message, "not absolute") {
+			t.Fatalf("install failure %+v, want the not-absolute error", failure)
+		}
 	}
 	requireEmptyDir(t, dir, "Resolve")
 

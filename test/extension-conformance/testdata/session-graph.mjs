@@ -1,5 +1,8 @@
 // The Node fixture of the session graph conformance rows (session_graph_test.go). It runs the script of testfixture/sessiongraph (Go), testdata/session-graph-rust and the inline Python fixture with Pi's own SessionManager, so the report it makes is Pi's.
-import { DefaultPackageManager, DefaultResourceLoader, ModelRuntime, ProjectTrustStore, SessionManager, SettingsManager, createAgentSession, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
+import { DefaultPackageManager, DefaultResourceLoader, ModelRegistry, ModelRuntime, ProjectTrustStore, SessionManager, SettingsManager, createAgentSession, createCodemodeExtension, createMcpExtension, createToolSearchExtension, createAgentSessionFromServices, createAgentSessionServices, getAgentDir, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
+import { createAssistantMessageEventStream, createProvider } from "@earendil-works/pi-ai";
+import { extensionRunnerScript } from "./extension-runner.mjs";
+import { agentSessionRuntimeScript } from "./agent-session-runtime.mjs";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -626,6 +629,111 @@ async function modelRuntimeScript({ mrAuth, mrModels, mrStore, mrServer }) {
   return r;
 }
 
+// ModelRegistry over a ModelRuntime (model-registry.ts): Pi's own run is the expectation (model_registry). Every member of `new ModelRegistry(runtime)` forwards to the runtime; the Go, Python and Rust scripts build the registry over their SDK's runtime and must report the same. The one reported difference is `builtin`: Pi's getProvider and getProviders answer a builtin provider's
+// Provider object, the other SDKs fail with the D78 error because that object holds functions the host cannot carry (the test overlays that expectation for them).
+async function modelRegistryScript({ mrAuth, mrModels, mrStore, mrServer }) {
+  const r = {};
+  const rt = await ModelRuntime.create({ authPath: mrAuth, modelsPath: mrModels, modelsStorePath: mrStore });
+  const registry = new ModelRegistry(rt);
+  const local = registry.find("mr-local", "m1");
+  const availableOfType = (await registry.getAvailableOfType("chat", "mr-local")).map((model) => model.id);
+  r.catalog = {
+    error: orNull(registry.getError()), all: registry.getAll().filter((model) => model.provider === "mr-local").map(pickModel), builtinListed: registry.getAll().some((model) => model.provider === "anthropic"),
+    available: registry.getAvailable().filter((model) => model.provider === "mr-local").map((model) => model.id), one: pickModel(local), missing: registry.find("mr-local", "nope") === undefined,
+    findOfType: pickModel(registry.findOfType("chat", "mr-local", "m1")), ofType: registry.getModelsOfType("chat", "mr-local").map((model) => model.id), oneOfType: pickModel(registry.getModelOfType("chat", "mr-local", "m1")),
+    oneOfTypeMissing: registry.getModelOfType("image", "mr-local", "m1") === undefined, imagesOfType: registry.getModelsOfType("image", "mr-local").length, availableOfType,
+  };
+  const unknown = { ...local, provider: "nope-prov" };
+  r.auth = {
+    configured: registry.hasConfiguredAuth(local), unconfigured: registry.hasConfiguredAuth(unknown), oauth: registry.isUsingOAuth(local),
+    status: registry.getProviderAuthStatus("mr-local"), storedStatus: registry.getProviderAuthStatus("stored-prov"), unknownStatus: registry.getProviderAuthStatus("nope-prov"),
+    displayLocal: registry.getProviderDisplayName("mr-local"), displayBuiltin: registry.getProviderDisplayName("anthropic"), displayUnknown: registry.getProviderDisplayName("nope-prov"),
+    providerAuth: plain(await registry.getProviderAuth("mr-local")), providerAuthNone: plain(await registry.getProviderAuth("nope-prov")),
+    apiKey: orNull(await registry.getApiKeyForProvider("mr-local")), apiKeyNone: orNull(await registry.getApiKeyForProvider("nope-prov")),
+    request: plain(await registry.getApiKeyAndHeaders(local)), requestUnconfigured: plain(await registry.getApiKeyAndHeaders(unknown)),
+  };
+
+  const before = [...registry.getRegisteredProviderIds()];
+  registry.registerProvider("reg-prov", {
+    baseUrl: mrServer, apiKey: "regkey", api: "openai-completions", headers: { "x-reg": "1" },
+    models: [{ id: "r1", name: "Reg One", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 4000, maxTokens: 500 }],
+  });
+  const config = registry.getRegisteredProviderConfig("reg-prov");
+  r.registered = {
+    before, ids: [...registry.getRegisteredProviderIds()], models: registry.getAll().filter((model) => model.provider === "reg-prov").map(pickModel), baseUrl: config.baseUrl, apiKey: config.apiKey, api: config.api, headers: plain(config.headers), modelIds: config.models.map((model) => model.id),
+    unregisteredConfig: registry.getRegisteredProviderConfig("nope-prov") === undefined, rejected: await failed(() => registry.registerProvider("bad-prov", { models: [{ id: "x" }] })),
+  };
+  registry.unregisterProvider("reg-prov");
+  r.registered.after = { ids: [...registry.getRegisteredProviderIds()], models: registry.getAll().filter((model) => model.provider === "reg-prov").length, config: registry.getRegisteredProviderConfig("reg-prov") === undefined };
+
+  const nativeModel = { id: "n1", name: "N One", api: "nat-api", provider: "nreg", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 4000, maxTokens: 500 };
+  const message = (model, text) => ({
+    role: "assistant", content: [{ type: "text", text }], api: model.api, provider: model.provider, model: model.id,
+    usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: 1,
+  });
+  const scripted = (tag) => (model) => {
+    const stream = createAssistantMessageEventStream();
+    stream.push({ type: "done", reason: "stop", message: message(model, `${tag}:${model.id}`) });
+    return stream;
+  };
+  const provider = createProvider({ id: "nreg", name: "Native Reg", auth: { apiKey: { name: "Key", check: async () => ({ type: "api_key", source: "ext check" }), resolve: async () => ({ auth: { apiKey: "nk" } }) } }, models: [nativeModel], api: { "nat-api": { stream: scripted("n.stream"), streamSimple: scripted("n.simple") } } });
+  registry.registerProvider(provider);
+  const conversation = { systemPrompt: "Be brief.", messages: [{ role: "user", content: "say hello", timestamp: 1 }] };
+  const nativeStream = registry.streamSimple(nativeModel, conversation, {});
+  const nativeEvents = [];
+  for await (const event of nativeStream) nativeEvents.push(event.type);
+  const nativeMessage = await nativeStream.result();
+  // Pi's refresh that follows a registration is unawaited, and a refresh that queues its availability pass before an earlier one supersedes that pass and returns at once: `await registry.refresh()` can come back before the latest pass has published. The probes below wait until the settled state shows (the other SDKs' registration waits for it).
+  const settled = async (read, want) => {
+    for (let i = 0; i < 400 && read() !== want; i++) await new Promise((resolve) => setTimeout(resolve, 25));
+  };
+  await registry.refresh({ allowNetwork: false });
+  await settled(() => registry.hasConfiguredAuth(nativeModel), true);
+  r.native = {
+    registered: registry.getRegisteredNativeProvider("nreg")?.id ?? null, same: registry.getRegisteredNativeProvider("nreg") === provider, viaGetProvider: registry.getProvider("nreg")?.id ?? null, viaRuntime: rt.getProvider("nreg")?.id ?? null,
+    viaRuntimeRegistered: rt.getRegisteredNativeProvider("nreg")?.id ?? null, none: registry.getRegisteredNativeProvider("nope-prov") === undefined, noneProvider: registry.getProvider("nope-prov") === undefined,
+    ids: [...registry.getRegisteredProviderIds()], displayName: registry.getProviderDisplayName("nreg"), models: registry.getAll().filter((model) => model.provider === "nreg").map((model) => model.id),
+    auth: plain(await registry.getProviderAuth("nreg")), request: plain(await registry.getApiKeyAndHeaders(nativeModel)),
+    events: nativeEvents, text: nativeMessage.content.map((block) => block.text ?? "").join(""), stopReason: nativeMessage.stopReason, completed: (await registry.complete(nativeModel, conversation, {})).stopReason,
+    configured: registry.hasConfiguredAuth(nativeModel),
+  };
+  registry.unregisterProvider("nreg");
+  r.native.after = { registered: registry.getRegisteredNativeProvider("nreg") === undefined, provider: registry.getProvider("nreg") === undefined, models: registry.getAll().filter((model) => model.provider === "nreg").length };
+  // A stored credential makes registration mark the provider configured at once (model-runtime.ts markProvisionallyConfigured); its auth check finds no key, so the availability refresh the registration launched replaces the mark and the settled state is unconfigured.
+  const storedModel = { ...nativeModel, provider: "stored-prov" };
+  const storedProvider = createProvider({ id: "stored-prov", name: "Stored Native", auth: { apiKey: { name: "Key", check: async () => undefined, resolve: async () => undefined } }, models: [storedModel], api: { "nat-api": { stream: scripted("s.stream"), streamSimple: scripted("s.simple") } } });
+  registry.registerProvider(storedProvider);
+  await registry.refresh({ allowNetwork: false });
+  await settled(() => registry.hasConfiguredAuth(storedModel), false);
+  r.native.storedSettled = { configured: registry.hasConfiguredAuth(storedModel), status: registry.getProviderAuthStatus("stored-prov"), available: registry.getAvailable().some((model) => model.provider === "stored-prov") };
+  registry.unregisterProvider("stored-prov");
+  await registry.refresh({ allowNetwork: false });
+  r.builtin = { provider: registry.getProvider("anthropic").id, providers: rt.getProviders().some((candidate) => candidate.id === "anthropic") ? "anthropic" : "absent" };
+
+  registry.registerVirtualModel({
+    provider: "mr-virtual", id: "v1", name: "Virtual One", thinkingLevels: ["off", "high"], contextWindow: 1000, maxTokens: 100, input: ["text"],
+    route: async () => ({ model: rt.getPhysicalModel("mr-local", "m1"), thinkingLevel: "off" }),
+  });
+  r.virtual = { model: pickModel(registry.find("mr-virtual", "v1")), thinkingLevels: registry.find("mr-virtual", "v1").thinkingLevels ?? null };
+  registry.unregisterVirtualModel("mr-virtual", "v1");
+  r.virtual.after = registry.find("mr-virtual", "v1") === undefined;
+
+  const refreshed = await registry.refresh({ allowNetwork: false });
+  r.refresh = { aborted: refreshed.aborted, errors: Object.fromEntries(refreshed.errors) };
+  const events = [];
+  const stream = registry.streamSimple(local, conversation, { maxTokens: 50 });
+  for await (const event of stream) events.push(event.type);
+  const result = await stream.result();
+  const full = await registry.complete(local, conversation, { maxTokens: 50 });
+  const classified = await registry.classify(local, { state: {}, questions: {} });
+  const imaged = await registry.generateImages(local, { input: [{ type: "text", text: "a cat" }] });
+  r.stream = {
+    events, stopReason: result.stopReason, text: result.content.map((block) => block.text ?? "").join(""), provider: result.provider, model: result.model, api: result.api, full: full.stopReason,
+    classifyStop: classified.stopReason, classifyError: classified.errorMessage ?? null, imagesStop: imaged.stopReason, imagesError: imaged.errorMessage ?? null,
+  };
+  return r;
+}
+
 // createAgentSession over the objects the extension built: Pi's own run is the expectation (child_handles). One run of the script per SDK; the Go, Python and Rust scripts build the same objects through their SDK and must report the same.
 async function childHandlesScript({ mrAuth, mrModels, mrStore, cwd, dir, agentDir, probeExt }) {
   const r = {};
@@ -663,6 +771,276 @@ async function childHandlesScript({ mrAuth, mrModels, mrStore, cwd, dir, agentDi
   return r;
 }
 
+// createAgentSessionServices and createAgentSessionFromServices: Pi's own run is the expectation (services). The Go, Python and Rust scripts call their SDK's functions with the same options and must report the same.
+async function servicesScript({ mrAuth, mrModels, mrStore, cwd, agentDir, servicesAgentDir, servicesProbe }) {
+  const r = {};
+  const rt = await ModelRuntime.create({ authPath: mrAuth, modelsPath: mrModels, modelsStorePath: mrStore });
+  const settings = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false }, defaultProvider: "mr-local", defaultModel: "m1", defaultThinkingLevel: "high" });
+  const quiet = { noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true };
+  const services = await createAgentSessionServices({
+    cwd: join(cwd, "sub", ".."), agentDir, settingsManager: settings, modelRuntime: rt,
+    resourceLoaderOptions: { ...quiet, additionalExtensionPaths: [servicesProbe], appendSystemPrompt: ["Services appendix"] },
+    extensionFlagValues: new Map([["probe-flag", true], ["missing-flag", "x"], ["probe-text", true], ["other", false]]),
+  });
+  const extensions = services.resourceLoader.getExtensions();
+  r.services = {
+    cwd: services.cwd, agentDir: services.agentDir, sameRuntime: services.modelRuntime === rt, sameSettings: services.settingsManager === settings,
+    diagnostics: services.diagnostics, extensions: extensions.extensions.map((extension) => extension.path), extensionErrors: extensions.errors.length,
+    appendix: services.resourceLoader.getAppendSystemPrompt(),
+    providers: { ids: [...rt.getRegisteredProviderIds()].filter((id) => id.startsWith("svc-")).sort(), models: rt.getModels("svc-prov").map((model) => model.id) },
+  };
+  const own = await createAgentSessionServices({ cwd, agentDir: servicesAgentDir, resourceLoaderOptions: quiet });
+  r.own = {
+    cwd: own.cwd, agentDir: own.agentDir, diagnostics: own.diagnostics, models: own.modelRuntime.getModels("svc-local").map((model) => model.id),
+    defaultModel: orNull(own.settingsManager.getDefaultModel()), project: own.settingsManager.getProjectSettings(), appendix: own.resourceLoader.getAppendSystemPrompt(),
+    registered: [...own.modelRuntime.getRegisteredProviderIds()],
+  };
+  const defaulted = await createAgentSessionServices({ cwd, settingsManager: settings, modelRuntime: rt, resourceLoaderOptions: quiet });
+  r.defaulted = { agentDir: defaulted.agentDir === getAgentDir(), cwd: defaulted.cwd };
+  const memory = SessionManager.inMemory(cwd);
+  const { session, extensionsResult, modelFallbackMessage } = await createAgentSessionFromServices({
+    services, sessionManager: memory, sessionStartEvent: { type: "session_start", reason: "fork", previousSessionFile: "/previous.jsonl" },
+    scopedModels: [{ model: rt.getModel("mr-local", "m1"), thinkingLevel: "off" }],
+  });
+  const events = [];
+  session.subscribe((event) => events.push(event.type + (event.type.startsWith("message_") ? ":" + event.message.role : "")));
+  await session.bindExtensions({});
+  const created = {
+    model: { provider: session.model?.provider, id: session.model?.id }, thinkingLevel: session.thinkingLevel, fallback: orNull(modelFallbackMessage), extensionErrors: extensionsResult.errors.length,
+    appendix: session.systemPrompt.includes("Services appendix"), sessionId: session.sessionId === memory.getSessionId(),
+  };
+  await session.prompt("hello");
+  const textOf = (message) => (typeof message?.content === "string" ? message.content : (message?.content ?? []).filter((block) => block.type === "text").map((block) => block.text).join(""));
+  r.session = {
+    created, events, roles: session.messages.map((message) => message.role), text: textOf(session.messages.at(-1)),
+    started: memory.getEntries().filter((entry) => entry.type === "custom" && entry.customType === "probe_start").map((entry) => entry.data),
+  };
+  session.dispose();
+  return r;
+}
+
+// createProvider (pi-ai models.ts): Pi's own run is the expectation (create_provider). The Go, Python and Rust scripts call their SDK's CreateProvider with the same parts and must report the same. The provider is built and driven
+// in the extension process, as Pi's is.
+async function createProviderScript() {
+  const r = {};
+  const auth = { apiKey: { name: "Key", resolve: async () => ({ auth: { apiKey: "k" } }) } };
+  const M = (id, api, extra = {}) => ({ id, name: id, api, provider: "cp", ...extra });
+  const message = (model, text) => ({
+    role: "assistant", content: [{ type: "text", text }], api: model.api, provider: model.provider, model: model.id,
+    usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: 1,
+  });
+  const scripted = (tag) => (model) => {
+    const stream = createAssistantMessageEventStream();
+    stream.push({ type: "done", reason: "stop", message: message(model, `${tag}:${model.id}`) });
+    return stream;
+  };
+  const impl = (tag, extra = {}) => ({ stream: scripted(`${tag}.stream`), streamSimple: scripted(`${tag}.simple`), ...extra });
+  const drain = async (stream) => {
+    const types = [];
+    for await (const event of stream) types.push(event.type);
+    const result = await stream.result();
+    return {
+      types, text: result.content.map((block) => block.text ?? "").join(""), stopReason: result.stopReason, error: result.errorMessage ?? null, api: result.api ?? null, provider: result.provider, model: result.model,
+      usageZero: result.usage.totalTokens === 0, timestampIsNumber: typeof result.timestamp === "number",
+    };
+  };
+  const thrown = (fn) => {
+    try {
+      fn();
+    } catch (error) {
+      return error.message;
+    }
+    return "no error";
+  };
+  const rejected = async (fn) => {
+    try {
+      await fn();
+    } catch (error) {
+      return error.message;
+    }
+    return "no error";
+  };
+  const base = [M("c1", "api-a"), M("c2", "api-b"), M("i1", "img-a", { type: "image" }), M("k1", "cls-a", { type: "classifier" })];
+  const p = createProvider({ id: "cp", auth, models: base, api: { "api-a": impl("a"), "api-b": impl("b") }, baseUrl: "http://x", headers: { h: "1" } });
+  r.meta = {
+    id: p.id, name: p.name, baseUrl: p.baseUrl ?? null, headers: p.headers ?? null, named: createProvider({ id: "cp2", name: "Named", auth, models: [], api: impl("s") }).name,
+    methods: Object.fromEntries(["fetchDeferred", "cancelDeferred", "generateImages", "classify", "refreshModels", "filterModels", "filterAllModels"].map((name) => [name, typeof p[name]])),
+  };
+  r.models = { chat: p.getModels().map((model) => model.id), all: p.getAllModels().map((model) => model.id) };
+  r.dispatch = {
+    a: await drain(p.stream(base[0], {})), b: await drain(p.streamSimple(base[1], {})), missing: await drain(p.stream(M("c9", "api-z"), {})),
+    noApi: await drain(p.streamSimple({ id: "c8", provider: "cp" }, {})),
+    single: await drain(createProvider({ id: "sp", auth, models: [], api: impl("s") }).stream(M("x", "anything"), {})),
+  };
+  r.invalid = {
+    none: thrown(() => createProvider({ id: "e1", auth, models: [] })),
+    empty: thrown(() => createProvider({ id: "e2", auth, models: [], api: {}, images: {}, classifiers: {} })),
+  };
+  const cancelled = [];
+  const deferredApis = {
+    "api-a": impl("a", { fetchDeferred: (model, handle) => scripted(`a.fetch.${handle.id}`)(model), cancelDeferred: async (_model, handle) => { cancelled.push(handle.id); } }),
+    "api-b": impl("b"),
+  };
+  const d = createProvider({ id: "dp", auth, models: [], api: deferredApis });
+  const broken = createProvider({ id: "bp", auth, models: [], api: { "api-a": impl("a", { fetchDeferred: () => { throw new Error("fetch boom"); } }) } });
+  r.deferred = {
+    fetched: await drain(d.fetchDeferred(M("c1", "api-a"), { id: "h1" })), unsupported: await drain(d.fetchDeferred(M("c2", "api-b"), { id: "h2" })),
+    noApi: await drain(d.fetchDeferred(M("c3", "api-z"), { id: "h3" })), thrown: await drain(broken.fetchDeferred(M("c1", "api-a"), { id: "h4" })),
+    cancelOk: await rejected(() => d.cancelDeferred(M("c1", "api-a"), { id: "h1" })), cancelled,
+    cancelUnsupported: await rejected(() => d.cancelDeferred(M("c2", "api-b"), { id: "h2" })), cancelNoApi: await rejected(() => d.cancelDeferred(M("c3", "api-z"), { id: "h3" })),
+  };
+  const pick = (result) => ({
+    api: result.api ?? null, provider: result.provider, model: result.model, stopReason: result.stopReason, error: result.errorMessage ?? null, output: result.output ?? null, answers: result.answers ?? null,
+    timestampIsNumber: typeof result.timestamp === "number",
+  });
+  const o = createProvider({
+    id: "op", auth, models: [],
+    images: { "img-a": { generateImages: async (model) => ({ api: model.api, provider: model.provider, model: model.id, output: [{ type: "image", data: "x" }], stopReason: "stop", timestamp: 1 }) } },
+    classifiers: { "cls-a": { classify: async (model) => ({ api: model.api, provider: model.provider, model: model.id, answers: { q: "a" }, stopReason: "stop", timestamp: 1 }) } },
+  });
+  r.operations = {
+    methods: { stream: typeof o.stream, generateImages: typeof o.generateImages, classify: typeof o.classify },
+    image: pick(await o.generateImages(M("i1", "img-a", { type: "image" }), {})), imageMissing: pick(await o.generateImages(M("i2", "img-z", { type: "image" }), {})),
+    classify: pick(await o.classify(M("k1", "cls-a", { type: "classifier" }), {})), classifyMissing: pick(await o.classify(M("k2", "cls-z", { type: "classifier" }), {})),
+  };
+  const fetchCalls = [];
+  const publications = [];
+  const f = createProvider({
+    id: "fp", auth, models: [M("c1", "api-a", { name: "Base One" }), M("c2", "api-a")], api: impl("f"),
+    fetchModels: async (context) => {
+      fetchCalls.push(context.allowNetwork);
+      return [M("c1", "api-a", { name: "Fetched One" }), M("c3", "api-a"), M("u1", "api-a", { type: "future" }), M("i1", "img-a", { type: "image" })];
+    },
+  });
+  const catalog = () => f.getAllModels().map((model) => `${model.id}:${model.name}:${model.type ?? "chat"}`);
+  const refreshContext = (extra = {}) => ({
+    allowNetwork: true, signal: new AbortController().signal,
+    publish: async (publication) => {
+      publications.push({ persist: publication.persist === undefined ? "omitted" : { models: publication.persist.models.map((model) => model.id), checkedAt: typeof publication.persist.checkedAt }, update: typeof publication.update });
+      publication.update?.();
+      return true;
+    },
+    ...extra,
+  });
+  const stored = { models: [M("c1", "api-a", { name: "Stored One", provider: "fp" }), M("z9", "api-a", { provider: "other" })] };
+  r.refresh = { present: typeof f.refreshModels, absent: typeof p.refreshModels, initial: catalog() };
+  await f.refreshModels(refreshContext({ stored, allowNetwork: false }));
+  r.refresh.restoredOffline = { catalog: catalog(), fetchCalls: [...fetchCalls], publications: publications.splice(0) };
+  const controller = new AbortController();
+  controller.abort();
+  await f.refreshModels(refreshContext({ stored, signal: controller.signal }));
+  r.refresh.aborted = { fetchCalls: [...fetchCalls], publications: publications.splice(0) };
+  await f.refreshModels(refreshContext({ stored, publish: async () => false }));
+  r.refresh.refused = { catalog: catalog(), fetchCalls: [...fetchCalls] };
+  await f.refreshModels(refreshContext());
+  r.refresh.fetched = { catalog: catalog(), fetchCalls: [...fetchCalls], publications: publications.splice(0), chat: f.getModels().map((model) => model.id) };
+  return r;
+}
+
+// createCodemodeExtension, createToolSearchExtension and createMcpExtension: Pi's own factories are the expectation (extension_refs). The Go, Python and Rust scripts pass their SDK's references to a DefaultResourceLoader and must report the same.
+async function extensionRefsScript({ mrAuth, mrModels, mrStore, cwd, agentDir, refsProbe, dir }) {
+  const r = {};
+  const rt = await ModelRuntime.create({ authPath: mrAuth, modelsPath: mrModels, modelsStorePath: mrStore });
+  const settings = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false }, defaultProvider: "mr-local", defaultModel: "m1" });
+  const quiet = { cwd, agentDir, settingsManager: settings, noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true, additionalExtensionPaths: [refsProbe] };
+  const observe = async (loader, tools) => {
+    await loader.reload();
+    const manager = SessionManager.inMemory(cwd);
+    const { session } = await createAgentSession({ sessionManager: manager, settingsManager: settings, modelRuntime: rt, resourceLoader: loader, tools });
+    await session.bindExtensions({});
+    const seen = manager.getEntries().filter((entry) => entry.type === "custom" && entry.customType === "refs_seen").map((entry) => entry.data);
+    session.dispose();
+    return seen;
+  };
+  const factories = () => [createCodemodeExtension({ mode: "only", inlineBudget: 123, models: false }), createToolSearchExtension(), createMcpExtension({ logPath: join(dir, "mcp.log"), startupWaitMs: 0 })];
+  r.inactive = await observe(new DefaultResourceLoader({ ...quiet, extensionFactories: factories() }), undefined);
+  r.active = await observe(new DefaultResourceLoader({ ...quiet, extensionFactories: factories() }), ["codemode", "tool_search"]);
+  r.defaults = await observe(new DefaultResourceLoader({ ...quiet, extensionFactories: [createCodemodeExtension(), createToolSearchExtension()] }), ["codemode", "tool_search"]);
+  r.none = await observe(new DefaultResourceLoader(quiet), ["codemode", "tool_search"]);
+  return r;
+}
+
+// createMcpExtension's function options (loadConfig, createTransport, credentials, authProvider): Pi's own factory is the expectation (mcp_options). The in-process peer answers the MCP handshake, the tool list and a tool call; the report is what each function was asked, in order.
+const mcpPeerReply = (message) => {
+  if (message.id === undefined) return undefined;
+  const reply = (result) => ({ jsonrpc: "2.0", id: message.id, result });
+  switch (message.method) {
+    case "initialize": return reply({ protocolVersion: message.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: "fake", version: "1" } });
+    case "tools/list": return reply({ tools: [{ name: "echo", description: "Echo text", inputSchema: { type: "object", properties: { text: { type: "string" } }, required: ["text"] } }] });
+    case "tools/call": return reply({ content: [{ type: "text", text: `echo:${message.params.arguments.text}` }] });
+    case "ping": return reply({});
+    default: return { jsonrpc: "2.0", id: message.id, error: { code: -32601, message: "method not found" } };
+  }
+};
+
+async function mcpOptionsScript({ mrAuth, mrToolModels, mrStore, cwd, agentDir, mcpProbe }) {
+  const r = {};
+  const log = { demo: [], remote: [], credentials: [], loadConfig: [] };
+  const rt = await ModelRuntime.create({ authPath: mrAuth, modelsPath: mrToolModels, modelsStorePath: mrStore });
+  const settings = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false }, defaultProvider: "mr-tool", defaultModel: "m1" });
+  const state = { serverUrl: "http://127.0.0.1:9/mcp", tokens: { access_token: "tok-1", token_type: "Bearer" } };
+  const credentials = {
+    forServer: (name, url) => {
+      log.credentials.push(`forServer ${name} ${url}`);
+      return { load: () => (log.credentials.push(`load ${name}`), state), save: () => { log.credentials.push(`save ${name}`); }, withRefreshLock: async (fn) => (log.credentials.push(`lock ${name}`), fn()) };
+    },
+    tokens: (name, url) => (log.credentials.push(`tokens ${name} ${url}`), state.tokens),
+    remove: (name, url) => (log.credentials.push(`remove ${name} ${url}`), true),
+  };
+  const createTransport = (entry, transportCwd, authProvider) => {
+    const events = log[entry.name];
+    events.push(`create ${entry.name} cwd=${transportCwd} auth=${authProvider !== undefined}`);
+    const listeners = { message: new Set(), error: new Set(), close: new Set() };
+    let closeEmitted = false;
+    const transport = {
+      onMessage: (listener) => (listeners.message.add(listener), () => listeners.message.delete(listener)),
+      onError: (listener) => (listeners.error.add(listener), () => listeners.error.delete(listener)),
+      onClose: (listener) => (listeners.close.add(listener), () => listeners.close.delete(listener)),
+      start: async () => {
+        events.push("start");
+        if (authProvider) events.push(`token ${await authProvider.token()}`);
+      },
+      send: async (message) => {
+        events.push(`send ${message.method ?? "response"}`);
+        const reply = mcpPeerReply(message);
+        if (reply) for (const listener of listeners.message) listener(reply);
+      },
+      close: async () => {
+        events.push("close");
+        if (closeEmitted) return;
+        closeEmitted = true;
+        for (const listener of listeners.close) listener();
+      },
+    };
+    return transport;
+  };
+  const loader = new DefaultResourceLoader({
+    cwd, agentDir, settingsManager: settings, noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true, additionalExtensionPaths: [mcpProbe],
+    extensionFactories: [createMcpExtension({
+      loadConfig: (ctx) => {
+        log.loadConfig.push({ cwd: ctx.cwd, isProjectTrusted: ctx.isProjectTrusted() });
+        return { servers: [
+          { name: "demo", config: { command: "unused", exposure: "direct" }, source: "<config>", scope: "global" },
+          { name: "remote", config: { url: "http://127.0.0.1:9/mcp", exposure: "direct" }, source: "<config>", scope: "global" },
+        ], errors: [] };
+      },
+      createTransport, credentials, openUrl: () => {}, updateConfig: () => {}, logPath: join(agentDir, "mcp.log"),
+    })],
+  });
+  await loader.reload();
+  const manager = SessionManager.inMemory(cwd);
+  const { session } = await createAgentSession({ sessionManager: manager, settingsManager: settings, modelRuntime: rt, resourceLoader: loader });
+  await session.bindExtensions({});
+  await session.prompt("call the tool");
+  await session.prompt("/mcp reconnect demo");
+  await session.prompt("/mcp logout remote");
+  r.messages = session.messages.filter((message) => message.role === "toolResult").map((message) => message.content.map((part) => part.text).join(""));
+  r.seen = manager.getEntries().filter((entry) => entry.type === "custom" && entry.customType === "mcp_seen").map((entry) => entry.data);
+  r.log = log;
+  session.dispose();
+  return r;
+}
+
 export default function (pi) {
   pi.registerTool({
     name: "session_manager", label: "session_manager", description: "Runs the SessionManager script.", parameters: { type: "object" },
@@ -689,7 +1067,35 @@ export default function (pi) {
     execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await packagesScript(params)) }] }),
   });
   pi.registerTool({
+    name: "model_registry", label: "model_registry", description: "Runs the ModelRegistry over a ModelRuntime script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await modelRegistryScript(params)) }] }),
+  });
+  pi.registerTool({
     name: "child_handles", label: "child_handles", description: "Runs the createAgentSession handle options script.", parameters: { type: "object" },
     execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await childHandlesScript(params)) }] }),
+  });
+  pi.registerTool({
+    name: "services", label: "services", description: "Runs the createAgentSessionServices script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await servicesScript(params)) }] }),
+  });
+  pi.registerTool({
+    name: "create_provider", label: "create_provider", description: "Runs the createProvider script.", parameters: { type: "object" },
+    execute: async () => ({ content: [{ type: "text", text: JSON.stringify(await createProviderScript()) }] }),
+  });
+  pi.registerTool({
+    name: "mcp_options", label: "mcp_options", description: "Runs the createMcpExtension function options script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await mcpOptionsScript(params)) }] }),
+  });
+  pi.registerTool({
+    name: "extension_refs", label: "extension_refs", description: "Runs the compiled-in extension factories script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await extensionRefsScript(params)) }] }),
+  });
+  pi.registerTool({
+    name: "agent_session_runtime", label: "agent_session_runtime", description: "Runs the createAgentSessionRuntime script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await agentSessionRuntimeScript(params).catch((e) => { throw new Error(String(e.stack)); })) }] }),
+  });
+  pi.registerTool({
+    name: "extension_runner", label: "extension_runner", description: "Runs the createExtensionRuntime and ExtensionRunner script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await extensionRunnerScript(params).catch((e) => { throw new Error(String(e.stack)); })) }] }),
   });
 }

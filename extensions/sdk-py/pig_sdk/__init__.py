@@ -9,6 +9,7 @@ returned extension over a host-provided subprocess socket.
 """
 
 from __future__ import annotations
+# pig divergence (D204): this SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host (the Node SDK does); the 0.6.1 export ends this.
 
 import base64
 import copy
@@ -37,7 +38,18 @@ from .editor_component import EditorBase as EditorBase, EditorComponent as Edito
 from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
 from .session_manager import ReadonlySessionManager, SessionManager as SessionManager, SetupSessionManager
 from .settings_manager import SettingsManager as SettingsManager
-from .resource_loader import DefaultResourceLoader as DefaultResourceLoader
+from .resource_loader import DefaultResourceLoader as DefaultResourceLoader, LoadedExtension as LoadedExtension, LoadExtensionsResult as LoadExtensionsResult
+from .extension_runtime import ExtensionRuntime as ExtensionRuntime, create_extension_runtime as create_extension_runtime
+from .extension_runner import ExtensionCommandContext as ExtensionCommandContext, ExtensionContext as ExtensionContext, ExtensionRunner as ExtensionRunner, ExtensionToolContext as ExtensionToolContext, RunnerUIContext as RunnerUIContext
+from .agent_session_runtime import (
+    AgentSessionRuntime as AgentSessionRuntime,
+    CreateAgentSessionRuntimeFactoryOptions as CreateAgentSessionRuntimeFactoryOptions,
+    CreateAgentSessionRuntimeOptions as CreateAgentSessionRuntimeOptions,
+    CreateAgentSessionRuntimeResult as CreateAgentSessionRuntimeResult,
+    MissingSessionCwdError as MissingSessionCwdError,
+    SessionImportFileNotFoundError as SessionImportFileNotFoundError,
+    create_agent_session_runtime as create_agent_session_runtime,
+)
 from .model_runtime import ModelRuntime as ModelRuntime
 from .package_manager import DefaultPackageManager as DefaultPackageManager
 from .project_trust import ProjectTrustStore as ProjectTrustStore, has_trust_requiring_project_resources as has_trust_requiring_project_resources
@@ -53,12 +65,20 @@ from .branch_summary import (
     collect_entries_for_branch_summary as collect_entries_for_branch_summary,
     prepare_branch_entries as prepare_branch_entries,
 )
-from .child_session import AgentSession as AgentSession, CreateAgentSessionOptions as CreateAgentSessionOptions, ResourceOptions as ResourceOptions, _ChildSessions, create_agent_session as _create_agent_session
+from .child_session import AgentSession as AgentSession, CreateAgentSessionOptions as CreateAgentSessionOptions, ResourceOptions as ResourceOptions, SessionStartEvent as SessionStartEvent, _ChildSessions, create_agent_session as _create_agent_session
+from .agent_session_services import (
+    AgentSessionServices as AgentSessionServices,
+    CreateAgentSessionFromServicesOptions as CreateAgentSessionFromServicesOptions,
+    CreateAgentSessionServicesOptions as CreateAgentSessionServicesOptions,
+    create_agent_session_from_services as create_agent_session_from_services,
+    create_agent_session_services as create_agent_session_services,
+)
 from .image_dimension_note import ResizedImage as ResizedImage, format_dimension_note as format_dimension_note
 from .llm_convert import convert_to_llm as convert_to_llm
 from .serialize_conversation import _ordered_keys, serialize_conversation as serialize_conversation
 from .session_entry_messages import _truthy as _js_truthy, session_entry_to_context_messages as session_entry_to_context_messages
 from .session_context import SESSION_LEAF_LAST as SESSION_LEAF_LAST, build_session_context as build_session_context
+from .type_engine import BIGINT_STRINGIFY_ERROR, BigInt as BigInt, holds_bigint as _holds_bigint
 from .type_schema import Refinement as Refinement, TSchema as TSchema, TSchemaArray as TSchemaArray, Type as Type, count_refinements as _count_refinements, refinement_sites as refinement_sites, type_to_json as type_to_json, validation_schema as _validation_schema
 from .stored_credential import read_stored_credential as read_stored_credential
 from .pi_ai_helpers import (
@@ -107,6 +127,9 @@ from .kit import ViewComponent as ViewComponent
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
 from .state_feed import StateFeed
 from .user_bash import BashExecOptions as BashExecOptions, BashOperations as BashOperations, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
+from .mcp_options import McpAuthProvider as McpAuthProvider, McpOAuthCredentialStore as McpOAuthCredentialStore, McpOAuthServerStore as McpOAuthServerStore, McpTransport as McpTransport, McpTransportEvents as McpTransportEvents
+from .extension_factories import ExtensionFactory as ExtensionFactory, create_codemode_extension as create_codemode_extension, create_mcp_extension as create_mcp_extension, create_tool_search_extension as create_tool_search_extension
+from .create_provider import ProviderStreams as ProviderStreams, create_provider as create_provider
 from .provider import (
     Provider, ProviderSignal,
     ProviderAuth as ProviderAuth, APIKeyAuth as APIKeyAuth, OAuthAuth as OAuthAuth,
@@ -1224,6 +1247,8 @@ def _ensure_jsonable(value: Any, what: str) -> None:
     try:
         json.dumps(value)
     except (TypeError, ValueError) as exc:
+        if _holds_bigint(value):
+            raise TypeError(BIGINT_STRINGIFY_ERROR) from exc  # a schema that holds a bigint: JSON.stringify's message
         raise TypeError(f"{what} must be JSON-serializable") from exc
 
 
@@ -1543,8 +1568,29 @@ def _model_stream_error_event(error: Exception, model: dict[str, Any]) -> dict[s
     }
 
 
+def _provider_from_declaration(context: "Context", declaration: dict[str, Any]) -> Provider:
+    """The Provider object a declaration of the host names: the extension's own object when it registered it, else a proxy that calls the extension that did, cached by the host's handle."""
+    extension = context.extension
+    with extension._provider_lock:
+        local = extension._native_providers.get(declaration["key"])
+        if local is not None:
+            return local
+        key = declaration["id"]
+        cached = extension._remote_providers.get(key)
+        if cached is None or cached._provider_handle != declaration["handle"]:
+            extension._remote_providers[key] = _remote_provider(context, declaration)
+        return extension._remote_providers[key]
+
+
 class ModelRegistry:
-    """Session model discovery, request authentication, and model operations."""
+    """Session model discovery, request authentication, and model operations. ``ModelRegistry(runtime)`` is Pi's ``new ModelRegistry(runtime)`` (model-registry.ts:48-52): the facade over a :class:`ModelRuntime` the extension built, every member forwarding to that runtime (see model_registry_runtime.py)."""
+    def __new__(cls, source: Any) -> "ModelRegistry":
+        if cls is ModelRegistry and isinstance(source, ModelRuntime):
+            from .model_registry_runtime import RuntimeModelRegistry
+
+            return object.__new__(RuntimeModelRegistry)
+        return object.__new__(cls)
+
     def __init__(self, context: "Context") -> None:
         self._context = context
 
@@ -1668,17 +1714,7 @@ class ModelRegistry:
         for entry in self._state()["registered"]:
             if entry["name"] != provider or not entry.get("native"):
                 continue
-            declaration = entry["native"]
-            extension = self._context.extension
-            with extension._provider_lock:
-                local = extension._native_providers.get(declaration["key"])
-                if local is not None:
-                    return local
-                key = declaration["id"]
-                cached = extension._remote_providers.get(key)
-                if cached is None or cached._provider_handle != declaration["handle"]:
-                    extension._remote_providers[key] = _remote_provider(self._context, declaration)
-                return extension._remote_providers[key]
+            return _provider_from_declaration(self._context, entry["native"])
         return None
 
     # pig divergence (D78): builtin/composed Provider methods still need a native SDK carrier.
@@ -3870,16 +3906,25 @@ class OAuthAuthInfo:
 class OAuthDeviceCodeInfo:
     user_code: str = ""
     verification_uri: str = ""
+    # Offer best-effort browser opening on user confirmation. None means true; clients may ignore it.
+    open_browser_on_confirm: bool | None = None
+    # Offer copying user_code on user confirmation, replacing the clipboard. None means true.
+    copy_code_on_confirm: bool | None = None
     interval_seconds: float = 0.0
     expires_in_seconds: float = 0.0
 
     def _to_wire(self) -> dict[str, Any]:
-        return {
+        wire: dict[str, Any] = {
             "userCode": self.user_code,
             "verificationUri": self.verification_uri,
             "intervalSeconds": self.interval_seconds,
             "expiresInSeconds": self.expires_in_seconds,
         }
+        if self.open_browser_on_confirm is not None:
+            wire["openBrowserOnConfirm"] = self.open_browser_on_confirm
+        if self.copy_code_on_confirm is not None:
+            wire["copyCodeOnConfirm"] = self.copy_code_on_confirm
+        return wire
 
 
 @dataclass
@@ -4838,7 +4883,8 @@ class Extension:
         assistant Markdown in the interactive transcript, after its own
         transformers; a later registration replaces an earlier one. It receives
         the Markdown and Pi's MarkdownTransformContext (messageType,
-        isStreaming, availableWidth); anything but a str return, or a raise,
+        isStreaming, availableWidth, and messageId and timestamp when rendering a
+        persisted session entry); anything but a str return, or a raise,
         keeps the input."""
         self._markdown_transformer = transformer
 
@@ -6358,3 +6404,6 @@ class Extension:
                 raise EOFError
             got += count
         return buf
+
+# Loaded with the package: no function imports a submodule from disk after import (tests/test_staged_directory_independence.py).
+from .model_registry_runtime import RuntimeModelRegistry as RuntimeModelRegistry  # noqa: E402,F401

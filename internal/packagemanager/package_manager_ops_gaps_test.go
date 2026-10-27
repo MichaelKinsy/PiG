@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func packageSources(sm *codingagent.SettingsManager, local bool) []string {
@@ -354,8 +355,45 @@ func TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand(t *test
 		t.Fatal(err)
 	}
 	calls, _ := os.ReadFile(log)
-	if !strings.Contains(string(calls), "uninstall left-pad --prefix "+root) || !strings.Contains(string(calls), "--legacy-peer-deps") {
-		t.Fatalf("npm calls = %q, want an uninstall of left-pad with --prefix %s", calls, root)
+	// npm gets the real path of the install root, as package-manager.ts uninstallNpm passes it (a temporary directory may be a symlink).
+	realRoot, err := codingagent.RealPathSync(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(calls), "uninstall left-pad --prefix "+realRoot) || !strings.Contains(string(calls), "--legacy-peer-deps") {
+		t.Fatalf("npm calls = %q, want an uninstall of left-pad with --prefix %s", calls, realRoot)
+	}
+}
+
+// package-manager.ts getNpmInstallArgs and uninstallNpm (Pi 5f960a0e2, #11358): when the agent directory is reached through a symlink,
+// npm gets the real path as --prefix, or it writes ever deeper nested entries into package-lock.json.
+func TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a shell script as the npm command")
+	}
+	cwd, realAgent := t.TempDir(), t.TempDir()
+	agentLink := filepath.Join(t.TempDir(), "agent-link")
+	testenv.RequireDirectoryLink(t, realAgent, agentLink)
+	sm := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentLink, true)
+	pm := NewPackageManager(PackageManagerOptions{CWD: cwd, SettingsManager: sm})
+	command, log := fakeNpm(t, "1.0.0")
+	if err := sm.SetNpmCommand([]string{command}); err != nil {
+		t.Fatal(err)
+	}
+	if err := pm.Install("npm:left-pad", false); err != nil {
+		t.Fatal(err)
+	}
+	if err := pm.Remove("npm:left-pad", false); err != nil {
+		t.Fatal(err)
+	}
+	realRoot, err := codingagent.RealPathSync(filepath.Join(realAgent, "npm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls, _ := os.ReadFile(log)
+	want := "install left-pad --prefix " + realRoot + " --legacy-peer-deps\nuninstall left-pad --prefix " + realRoot + " --legacy-peer-deps\n"
+	if string(calls) != want {
+		t.Fatalf("npm calls = %q, want %q: the symlinked agent directory %s must not reach --prefix", calls, want, agentLink)
 	}
 }
 

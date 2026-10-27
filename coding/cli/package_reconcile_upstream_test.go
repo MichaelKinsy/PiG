@@ -76,7 +76,9 @@ func TestNpmUpdateSkipsExactVersionsAndIncludesBothScopes(t *testing.T) {
 				}
 				calls[args[3]] = args
 			}
-			for _, root := range []string{filepath.Join(agentDir, "npm"), filepath.Join(codingagent.ProjectConfigDir(cwd), "npm")} {
+			// npm gets the real path of each install root (Pi 5f960a0e2 getNpmInstallArgs), which the update created.
+			userRoot, projectRoot := realPathSync(t, filepath.Join(agentDir, "npm")), realPathSync(t, filepath.Join(codingagent.ProjectConfigDir(cwd), "npm"))
+			for _, root := range []string{userRoot, projectRoot} {
 				want := []string{"install", "shared@latest", "--prefix", root, "--legacy-peer-deps"}
 				if !reflect.DeepEqual(calls[root], want) {
 					t.Fatalf("scope %s calls=%q, want %q", root, calls[root], want)
@@ -85,8 +87,8 @@ func TestNpmUpdateSkipsExactVersionsAndIncludesBothScopes(t *testing.T) {
 			if len(calls) != 2 {
 				t.Fatalf("scope commands=%v", calls)
 			}
-			userArgs := append([]string(nil), calls[filepath.Join(agentDir, "npm")]...)
-			projectArgs := append([]string(nil), calls[filepath.Join(codingagent.ProjectConfigDir(cwd), "npm")]...)
+			userArgs := append([]string(nil), calls[userRoot]...)
+			projectArgs := append([]string(nil), calls[projectRoot]...)
 			userArgs[3], projectArgs[3] = "USER_NPM", "PROJECT_NPM"
 			row, err := json.Marshal([]any{target, userArgs, projectArgs})
 			if err != nil {
@@ -158,15 +160,18 @@ func TestNpmUpdateVersionReconciliationUpstream(t *testing.T) {
 			}
 			spec := strings.TrimPrefix(tc.source, "npm:")
 			want := [][]string{{"view", spec, "version", "--json"}}
+			projectRoot := filepath.Join(codingagent.ProjectConfigDir(cwd), "npm")
 			if tc.install {
-				want = append(want, []string{"install", spec, "--prefix", filepath.Join(codingagent.ProjectConfigDir(cwd), "npm"), "--legacy-peer-deps"})
+				// npm gets the real path of the install root (Pi 5f960a0e2 getNpmInstallArgs), which the install created.
+				projectRoot = realPathSync(t, projectRoot)
+				want = append(want, []string{"install", spec, "--prefix", projectRoot, "--legacy-peer-deps"})
 			}
 			if !reflect.DeepEqual(calls, want) {
 				t.Fatalf("commands=%q, want %q", calls, want)
 			}
 			for _, args := range calls {
 				for i, value := range args {
-					if value == filepath.Join(codingagent.ProjectConfigDir(cwd), "npm") {
+					if value == projectRoot {
 						args[i] = "PROJECT_NPM"
 					}
 				}

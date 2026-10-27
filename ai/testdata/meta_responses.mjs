@@ -4,6 +4,7 @@
 // usage: node meta_responses.mjs <path to meta.ts>
 import { readFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
+import { pathToFileURL } from "node:url";
 const source = readFileSync(process.argv[2], "utf8");
 const cut = (name) => {
 	const match = new RegExp(`^(?:async )?function ${name}[\\s\\S]*?\\n}\\n`, "m").exec(source);
@@ -11,8 +12,9 @@ const cut = (name) => {
 	return match[0];
 };
 const constants = source.match(/^const [A-Z_]+ = .*;$/gm).join("\n");
-const names = ["requestSignal", "readJson", "errorDetail", "trustedHttpUrl", "positiveNumber", "startDeviceAuthorization", "pollForIdentityToken", "mintApiKey"];
-const body = stripTypeScriptTypes(`${constants}\n${names.map(cut).join("\n")}`);
+const names = ["requestSignal", "readJson", "errorDetail", "positiveNumber", "startDeviceAuthorization", "pollForIdentityToken", "mintApiKey"];
+const trustedUrl = readFileSync(new URL("trusted-url.ts", pathToFileURL(process.argv[2])), "utf8").match(/^export (function trustedHttpUrl[\s\S]*?\n}\n)/m)[1];
+const body = stripTypeScriptTypes(`${constants}\n${trustedUrl}\n${names.map(cut).join("\n")}`);
 const fns = new Function("pollOAuthDeviceCodeFlow", `${body}; return { startDeviceAuthorization, pollForIdentityToken, mintApiKey };`)((options) => options.poll());
 Date.now = () => 1_700_000_000_000;
 let input = "";

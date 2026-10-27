@@ -639,7 +639,11 @@ func (p *FauxProviderHandle) streamWithDeltas(turn *continuationTurn, ctx contex
 					return
 				}
 				state := builder.toolCalls[index]
-				state.arguments.WriteString(chunk)
+				// Partial arguments come from the same parser real providers use, so consumers see them grow.
+				call := builder.partial.Content[state.contentIndex].(ToolCall)
+				arguments, order := state.args.Append(chunk)
+				builder.showStreamedArguments(state.contentIndex, &call, state.args, arguments, order)
+				builder.partial.Content[state.contentIndex] = call
 				builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: chunk, Partial: builder.partial})
 			}
 			contentIndex := builder.toolCalls[index].contentIndex
@@ -840,12 +844,12 @@ func (p *FauxProviderHandle) estimateUsage(request TranscriptContext, options St
 			common += commonUTF16Prefix(a.Bytes(), b.Bytes())
 		}
 		usage.CacheRead = (common + 3) / 4
-		//portlint:allow numbers (n+3)/4 is Math.ceil(n / 4) for n >= 0 (faux.ts estimateTokens of promptText.slice(cachedChars))
-		usage.CacheWrite = (units - common + 3) / 4
-		usage.Input = max(0, tokens-usage.CacheRead)
+		usage.CacheWrite = max(0, tokens-usage.CacheRead)
 	} else {
 		usage.CacheWrite = tokens
 	}
+	// Every prompt token is either read from or written to the simulated cache (Pi f3fa8bd92).
+	usage.Input = 0
 	// The previous prompt's storage holds the next one; its messages are dropped so it does not keep them alive.
 	clear(previous)
 	entry.messages, entry.spare = current, previous[:0]

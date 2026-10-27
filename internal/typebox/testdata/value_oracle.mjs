@@ -26,7 +26,7 @@ const answers = JSON.parse(input).map(({ schema: source, value }) => {
 	return {
 		schema: JSON.parse(JSON.stringify(schema)),
 		check: Value.Check(schema, absent),
-		errors: [...Value.Errors(schema, absent)].map((error) => ({ instancePath: error.instancePath, message: error.message })),
+		errors: [...Value.Errors(schema, absent)].map((error) => ({ keyword: error.keyword, schemaPath: error.schemaPath, instancePath: error.instancePath, params: error.params, message: error.message })),
 		clean: Value.Clean(schema, Value.Clone(absent)) ?? "<absent>",
 		default: defaulted === undefined ? "<absent>" : defaulted,
 	};

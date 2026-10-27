@@ -181,7 +181,11 @@ func (l *DefaultResourceLoader) loadFinalExtensions(ctx context.Context, preTrus
 			continue
 		}
 		info, found := l.findSourceInfo(ext.Path, extensionSourceInfos{}, l.resourceMetadata)
-		if !found {
+		switch {
+		case found:
+		case l.cliExtensionPaths[icodingagent.CanonicalizePath(ext.Path)]:
+			info = icodingagent.CLISourceInfo(ext.Path)
+		default:
 			info = icodingagent.DefaultSourceInfoForPath(l.cwd, l.agentDir, ext.Path)
 		}
 		ext.SourceInfo = info

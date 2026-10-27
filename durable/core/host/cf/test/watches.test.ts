@@ -53,10 +53,10 @@ test("watchDoc delivers the first value, then each published frame to the listen
   assert.deepEqual(apis(core)[0]!.body.target.address.definition, "example.notes")
   const seen: unknown[] = []
   let running = 0, overlap = false
-  watch.start(async (value, ops) => { if (++running > 1) overlap = true; await tick(); seen.push([value, ops]); running-- })
+  watch.start(async ({ value, ops }) => { if (++running > 1) overlap = true; await tick(); seen.push([value, ops]); running-- })
   pump(h)
   await tick(); await tick(); await tick()
-  assert.deepEqual(seen, [[{ n: 2 }, [["r", { n: 2 }]]], [{ n: 3 }, [["r", { n: 3 }]]]])
+  assert.deepEqual(seen, [[{ n: 3 }, [["r", { n: 3 }]]]], "frames that arrive before a call runs fold into it: the newest value and the folded ops")
   assert.equal(overlap, false, "the listener never runs twice at once")
   assert.deepEqual(watch.value, { n: 3 }, "value is the latest delivered revision")
 })
@@ -74,7 +74,7 @@ test("a frame published in the answer's own step is not lost", async () => {
   const h = await open(core)
   const watch = (await h.watchDoc(Notes, context))!
   const seen: unknown[] = []
-  watch.start(async value => { seen.push(value) })
+  watch.start(async ({ value }) => { seen.push(value) })
   await tick()
   assert.deepEqual(seen, [{ n: 2 }])
 })
@@ -84,7 +84,7 @@ test("stop() closes the core's watch once and ignores later frames", async () =>
   const h = await open(core)
   const watch = (await h.watchDoc(Notes, context))!
   const seen: unknown[] = []
-  watch.start(async value => { seen.push(value) })
+  watch.start(async ({ value }) => { seen.push(value) })
   assert.deepEqual(await watch.stop(), { reason: "stopped" })
   assert.deepEqual(await watch.stop(), { reason: "stopped" }, "stop is idempotent")
   pump(h)
@@ -94,15 +94,73 @@ test("stop() closes the core's watch once and ignores later frames", async () =>
   assert.equal(closes(core)[0]!.body.watchId, apis(core)[0]!.body.watchId)
 })
 
-test("a null frame retires the watch: the listener sees it, the watch ends retired and the core's watch is closed", async () => {
-  const core = watching({ n: 1 }, { frames: id => [published({ watchId: id, frame: { value: null, ops: [["r", null]] } })] })
+test("a retired frame is a retired change with the last value and no ops: the watch goes on, and a document created at the address arrives whole", async () => {
+  const core = watching({ n: 1 }, { frames: id => [
+    published({ watchId: id, frame: { retired: true } }),
+    published({ watchId: id, frame: { value: { n: 2 }, ops: [["r", { n: 2 }]] } }),
+  ] })
   const h = await open(core)
   const watch = (await h.watchDoc(Notes, context))!
   const seen: unknown[] = []
-  watch.start(async value => { seen.push(value) })
+  watch.start(async change => { seen.push(change) })
   pump(h)
-  assert.deepEqual(await watch.closed, { reason: "retired" })
-  assert.deepEqual(seen, [null])
+  await tick(); await tick()
+  assert.deepEqual(seen, [{ value: { n: 2 }, ops: [["r", { n: 2 }]], retired: true }], "folded into one call: the retirement shows, the later incarnation's value is the newest")
+  assert.equal(closes(core).length, 0, "the core's watch stays open: the watch follows the address")
+  assert.deepEqual(await watch.stop(), { reason: "stopped" })
+  assert.equal(closes(core).length, 1)
+})
+
+test("a retirement alone repeats the last value the watch was given, with no ops", async () => {
+  const core = watching({ n: 1 }, { frames: id => [published({ watchId: id, frame: { retired: true } })] })
+  const h = await open(core)
+  const watch = (await h.watchDoc(Notes, context))!
+  const seen: unknown[] = []
+  watch.start(async change => { seen.push(change) })
+  pump(h)
+  await tick(); await tick()
+  assert.deepEqual(seen, [{ value: { n: 1 }, ops: [], retired: true }])
+})
+
+test("an end frame ends the watch once the retirement was delivered, and the core's watch is closed", async () => {
+  const core = watching({ n: 1 }, { frames: id => [published({ watchId: id, frame: { retired: true } }), published({ watchId: id, frame: { end: true } })] })
+  const h = await open(core)
+  const watch = (await h.watchDoc(Notes, context))!
+  const seen: unknown[] = []
+  watch.start(async change => { seen.push(change) })
+  pump(h)
+  assert.deepEqual(await watch.closed, { reason: "ended" })
+  assert.deepEqual(seen, [{ value: { n: 1 }, ops: [], retired: true }])
+  assert.equal(closes(core).length, 1)
+})
+
+test("observeDoc hands the observer every change unfolded and ends it with the owner's end", async () => {
+  const core = watching({ n: 1 }, { frames: id => [
+    published({ watchId: id, frame: { value: { n: 2 }, ops: [["r", { n: 2 }]] } }),
+    published({ watchId: id, frame: { retired: true } }),
+    published({ watchId: id, frame: { end: true } }),
+  ] })
+  const h = await open(core)
+  const seen: unknown[] = []
+  const attached = (await (h as any).observeDoc(Notes, { advance: (change: unknown) => seen.push(change), end: (failure: unknown) => seen.push(["end", failure]) }, context))!
+  assert.deepEqual(attached.value, { n: 1 })
+  pump(h)
+  await tick()
+  assert.deepEqual(seen, [{ value: { n: 2 }, ops: [["r", { n: 2 }]], retired: false }, { value: { n: 2 }, ops: [], retired: true }, ["end", undefined]])
+  assert.equal(closes(core).length, 1, "the observer was released from its source")
+})
+
+test("an observer that throws is reported, detached and ended with the error", async () => {
+  const core = watching({ n: 1 }, { frames: id => [published({ watchId: id, frame: { value: { n: 2 }, ops: [["r", { n: 2 }]] } })] })
+  const reports: unknown[] = []
+  const h = await Harness.open(new MemoryStorage(), { models: models(), registry: createRegistry(), core: { newSession: () => core, sqlTable: [] }, onReport: (error: unknown) => reports.push(error) } as any, context)
+  const boom = new Error("boom")
+  const ended: unknown[] = []
+  await (h as any).observeDoc(Notes, { advance: () => { throw boom }, end: (failure: unknown) => ended.push(failure) }, context)
+  pump(h)
+  await tick()
+  assert.deepEqual(ended, [{ error: boom }])
+  assert.deepEqual(reports, [boom])
   assert.equal(closes(core).length, 1)
 })
 
@@ -120,13 +178,13 @@ test("a started document watch follows the published frames and stop releases th
   assert.equal(closes(core).length, 1)
 })
 
-test("closing the Harness ends every watch as session_closed without asking the core to close them", async () => {
+test("closing the Harness ends every watch as ended without asking the core to close them", async () => {
   const core = watching({ n: 1 })
   const h = await open(core)
   const watch = (await h.watchDoc(Notes, context))!
   watch.start(async () => {})
   await h.close(context)
-  assert.deepEqual(await watch.closed, { reason: "session_closed" })
+  assert.deepEqual(await watch.closed, { reason: "ended" })
   assert.equal(closes(core).length, 0)
 })
 
@@ -158,9 +216,9 @@ test("a view frame carries ops only: the host applies them to the value it holds
   const h = await open(core)
   const seen: any[] = []
   const sink = await (h as any).watches.attach({ kind: "view", conversationId: 1, changes: true }, context, (value: unknown, release: () => void) => ({
-    advance: (after: unknown, ops: unknown[]) => seen.push(["advance", after, ops]),
+    advance: ({ value: after, ops }: { value: unknown; ops: unknown[] }) => seen.push(["advance", after, ops]),
     publication: (before: unknown, after: unknown, ops: unknown[], c: unknown) => seen.push(["publication", before, after, ops.length, c]),
-    closeSession: release,
+    end: release,
   }))
   assert.ok(sink)
   assert.deepEqual(apis(core)[0]!.body.target, { kind: "view", conversationId: 1, changes: true }, "the open request asks for the commit's records")
@@ -185,8 +243,8 @@ test("a graph frame carries ops only: the host applies them to the graph it hold
   const h = await open(core)
   const seen: any[] = []
   const sink = await (h as any).watches.attach({ kind: "graph" }, context, (_value: unknown, release: () => void) => ({
-    advance: (after: unknown, ops: unknown[]) => seen.push([after, ops.length]),
-    closeSession: release,
+    advance: ({ value: after, ops }: { value: unknown; ops: unknown[] }) => seen.push([after, ops.length]),
+    end: release,
   }))
   assert.ok(sink)
   pump(h)
@@ -206,7 +264,7 @@ test("a view state and event observers of one conversation share one core watch;
   const core = watching(first, { frames: id => [published({ watchId: id, frame: { ops: [["p", ["entries"], 0, 0, [{ id: 4, kind: "b" }]]], changes: { entries: [{ id: 4, kind: "b" }], tasks: [], submissions: [] } } })] })
   const h = await open(core)
   const order: string[] = []
-  const observer = (name: string) => (_value: unknown, release: () => void) => ({ advance: () => order.push(`${name} advance`), publication: () => order.push(`${name} publication`), closeSession: release })
+  const observer = (name: string) => (_value: unknown, release: () => void) => ({ advance: () => order.push(`${name} advance`), publication: () => order.push(`${name} publication`), end: release })
   await (h as any).attachView(1, context, observer("a"))
   const state = await (h as any).conversationState(1, context)
   await (h as any).attachView(1, context, observer("b"))
@@ -297,7 +355,7 @@ test("watchEvents' completing generations come from the core's line job: watch.o
   const core = watching({ conversation: { id: 1 }, entries: [], docs: {} }, { completing: [5], attached: [6] })
   const h = await open(core)
   const seen: (readonly number[] | undefined)[] = []
-  const make = (_value: unknown, release: () => void, completing?: readonly number[]) => { seen.push(completing); return { advance: () => {}, closeSession: release } }
+  const make = (_value: unknown, release: () => void, completing?: readonly number[]) => { seen.push(completing); return { advance: () => {}, end: release } }
   await (h as any).attachView(1, context, make)
   await (h as any).attachView(1, context, make)
   assert.deepEqual(seen, [[5], [6]])
@@ -371,7 +429,7 @@ async function joinedAfterTheCreatorGaveUp(abortAfterAnswer: boolean) {
   send(); await tick() // the joiner's job answers
   const watch = await joiner
   const seen: unknown[] = [watch.value]
-  watch.start(async (value: unknown) => { seen.push(value) })
+  watch.start(async ({ value }: { value: unknown }) => { seen.push(value) })
   await tick(); await tick()
   return seen
 }
@@ -407,14 +465,14 @@ test("a view's creator takes the frames of its answer's step while an observer j
   send(2); await tick()
   const first = await creator
   const seenFirst: unknown[] = [first.value]
-  first.start(async (value: unknown) => { seenFirst.push(value) })
+  first.start(async ({ value }: { value: unknown }) => { seenFirst.push(value) })
   held.unshift(published({ watchId, frame: { ops: [["r", { n: 2 }]] } }))
   send(1); await tick()
   send(); await tick()
   const second = await joiner
   const seenSecond: unknown[] = [second.value]
-  second.start(async (value: unknown) => { seenSecond.push(value) })
+  second.start(async ({ value }: { value: unknown }) => { seenSecond.push(value) })
   await tick(); await tick()
-  assert.deepEqual(seenFirst, [{ n: 1 }, { n: 1.5 }, { n: 2 }])
+  assert.deepEqual(seenFirst, [{ n: 1 }, { n: 2 }], "the frames that arrive while the listener is not running fold into one call")
   assert.deepEqual(seenSecond, [{ n: 2 }])
 })

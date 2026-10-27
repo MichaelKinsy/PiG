@@ -160,13 +160,13 @@ func (m *InteractiveMode) renderSessionEntriesWithHistory(populateHistory bool) 
 // addUserMessageToChat is addMessageToChat case "user" (interactive-mode.ts:3927-3963), shared by the live message_start path and the
 // transcript rebuild: Spacer(1) after the first chat child, a skill block as a collapsible SkillInvocationMessageComponent followed by
 // its trailing user message (#5371 spacer), otherwise the user message itself.
-func (m *InteractiveMode) addUserMessageToChat(msg agent.AgentMessage, text string) {
+func (m *InteractiveMode) addUserMessageToChat(msg agent.AgentMessage, text string, meta messageMeta) {
 	if !m.chatContainer.IsEmpty() {
 		m.chatContainer.Add(tui.NewSpacer(1))
 	}
 	parsed := ParseSkillBlock(text)
 	if parsed == nil {
-		block := m.newUserMessageBlock(text)
+		block := m.newUserMessageBlock(text, meta)
 		block.SetImages(userMessageImages(msg))
 		m.chatContainer.Add(block)
 		return
@@ -181,7 +181,7 @@ func (m *InteractiveMode) addUserMessageToChat(msg agent.AgentMessage, text stri
 	m.chatContainer.Add(comp)
 	if parsed.UserMessage != "" {
 		m.chatContainer.Add(tui.NewSpacer(1))
-		block := m.newUserMessageBlock(parsed.UserMessage)
+		block := m.newUserMessageBlock(parsed.UserMessage, meta)
 		block.SetImages(userMessageImages(msg))
 		m.chatContainer.Add(block)
 	}
@@ -342,11 +342,11 @@ func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEnt
 	// into the chat container with all its sub-components.
 	// Extracted so it can be called from both the session-entry path
 	// (primary) and the agent-message fallback path.
-	renderMessage := func(msg agent.AgentMessage) {
+	renderMessage := func(msg agent.AgentMessage, meta messageMeta) {
 		switch {
 		case msg.User != nil:
 			if text := extractAgentMessageText(msg); text != "" {
-				m.addUserMessageToChat(msg, text)
+				m.addUserMessageToChat(msg, text, meta)
 				if populateHistory && m.editor != nil {
 					m.editor.AddToHistory(text)
 				}
@@ -357,7 +357,7 @@ func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEnt
 			// addMessageToChat → AssistantMessageComponent does. The runtime
 			// AssistantMessage.Thinking accumulator is not serialized, so it
 			// is empty for every message read back from the session file.
-			block := m.newAssistantMessageBlock()
+			block := m.newAssistantMessageBlock(meta)
 			// A message read back never streams.
 			block.FinishStreaming()
 			updateAssistantMessageBlock(block, msg.Assistant)
@@ -471,7 +471,7 @@ func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEnt
 		switch pe.entry.Base().Type {
 		case "message":
 			if pe.hasAgent {
-				renderMessage(pe.agent)
+				renderMessage(pe.agent, messageMeta{ID: pe.entry.Base().ID, Timestamp: pe.entry.Base().Timestamp})
 				if notice := cacheMissNotices[pe.entry.Base().ID]; notice != "" {
 					m.addCacheMissNotice(notice)
 				}
@@ -505,7 +505,7 @@ func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEnt
 	if len(branch) == 0 && trim && m.agent != nil {
 		// Fallback: no session available: render from agent messages only.
 		for _, msg := range m.agent.Messages() {
-			renderMessage(msg.Clone())
+			renderMessage(msg.Clone(), messageMeta{})
 		}
 	}
 	m.tuiInst.Render()

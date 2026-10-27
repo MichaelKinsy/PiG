@@ -225,8 +225,8 @@ func TestAssistantHeldToolUpdateObservesFinalization(t *testing.T) {
 					t.Error(encodeErr)
 					return
 				}
-				if !bytes.Contains(before, []byte(`"`+scratch+`":"{\"path\":\"target.txt\"}"`)) {
-					t.Errorf("pre-await missing scratch: %s", before)
+				if bytes.Contains(before, []byte(scratch)) || !bytes.Contains(before, []byte(`"arguments":{"path":"target.txt"}`)) {
+					t.Errorf("pre-await message carries scratch or lacks the partial arguments: %s", before)
 				}
 				releaseTail()
 				final := stream.Result()

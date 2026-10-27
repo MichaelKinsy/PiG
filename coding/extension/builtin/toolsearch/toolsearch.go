@@ -140,7 +140,33 @@ func CreateDocument(tool extension.ToolInfo, namespace *extension.ToolNamespace)
 	return Document{Name: tool.Name, Text: strings.Join(kept, " ")}
 }
 
-// Bm25Ranker is Okapi BM25 with the usual parameters. Ties keep document order.
+// normalizeName is tool.ts normalizeName: lowercase with every UTF-16 code unit that is not a script identifier character as `_`, so `dev-radius`
+// matches `dev_radius`.
+func normalizeName(name string) string {
+	var normalized strings.Builder
+	for _, char := range jsstring.ToLower(jsstring.Trim(name)) {
+		switch {
+		case char >= 'a' && char <= 'z', char >= '0' && char <= '9', char == '_', char == '$':
+			normalized.WriteRune(char)
+		case char > 0xFFFF:
+			// A character outside the BMP is two UTF-16 code units, each replaced.
+			normalized.WriteString("__")
+		default:
+			normalized.WriteByte('_')
+		}
+	}
+	return normalized.String()
+}
+
+// isNameQuery is tool.ts isNameQuery: whether query (already normalized) names the tool, by its full name or by a suffix after a `__` separator, so
+// `thread_read` and `app__thread_read` both name `mcp__app__thread_read`.
+func isNameQuery(query, name string) bool {
+	normalized := normalizeName(name)
+	return normalized == query || strings.HasSuffix(normalized, "__"+query)
+}
+
+// Bm25Ranker is Okapi BM25 with the usual parameters. A query that names a tool ranks that tool first, because length normalization can otherwise rank a
+// short description sharing the name's words above it. Ties keep document order.
 type Bm25Ranker struct{ K1, B float64 }
 
 // NewBm25Ranker returns a ranker with k1 1.2 and b 0.75.
@@ -187,7 +213,12 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 		}
 		idf[term] = jsmath.Log(1 + (float64(len(documents)-frequency)+0.5)/(float64(frequency)+0.5))
 	}
-	matches := []Match{}
+	nameQuery := normalizeName(query)
+	type rankedMatch struct {
+		Match
+		named bool
+	}
+	ranked := []rankedMatch{}
 	for i, document := range documents {
 		var score float64
 		for _, term := range queryTerms {
@@ -200,12 +231,21 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 			score += float64(idf[term] * ((float64(count) * (r.K1 + 1)) / (float64(count) + norm)))
 		}
 		if score > 0 {
-			matches = append(matches, Match{Name: document.Name, Score: score})
+			ranked = append(ranked, rankedMatch{Match: Match{Name: document.Name, Score: score}, named: isNameQuery(nameQuery, document.Name)})
 		}
 	}
-	sort.SliceStable(matches, func(a, b int) bool { return matches[a].Score > matches[b].Score })
-	if len(matches) > limit {
-		matches = matches[:limit]
+	sort.SliceStable(ranked, func(a, b int) bool {
+		if ranked[a].named != ranked[b].named {
+			return ranked[a].named
+		}
+		return ranked[a].Score > ranked[b].Score
+	})
+	if len(ranked) > limit {
+		ranked = ranked[:limit]
+	}
+	matches := make([]Match, len(ranked))
+	for i, match := range ranked {
+		matches[i] = match.Match
 	}
 	return matches
 }

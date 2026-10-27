@@ -18,6 +18,8 @@ type Failure struct {
 	Message string
 	Syscall string
 	Path    string
+	// pathSet records that the error names a path, even an empty one, as the daemon's error JSON then carries it.
+	pathSet bool
 	// Extra holds more fields for the client, such as spillPath.
 	Extra Object
 }
@@ -27,7 +29,7 @@ func (f *Failure) Error() string { return f.Message }
 func newFailure(code, message string) *Failure { return &Failure{Code: code, Message: message} }
 
 func (f *Failure) withPath(path string) *Failure {
-	f.Path = path
+	f.Path, f.pathSet = path, true
 	return f
 }
 
@@ -37,16 +39,17 @@ type synthetic string
 
 func (s synthetic) Error() string { return string(s) }
 
-// errorCode is libuv's name for err: a synthetic code, the code of a Node fs error, or the system's code.
+// errorCode is libuv's name for err: a synthetic code, the code of a Node fs error, or the system's code, as far as the
+// daemon's table names it (sys/unix.rs:os_error_name); any other error is UNKNOWN.
 func errorCode(err error) string {
 	if code, ok := errors.AsType[synthetic](err); ok {
 		return string(code)
 	}
 	if fsErr, ok := errors.AsType[*nodeerrno.FSError](err); ok && fsErr.Code != "" {
-		return fsErr.Code
+		return libuvName(fsErr.Code)
 	}
 	if code := nodeerrno.ErrorCode(err); code != "" {
-		return code
+		return libuvName(code)
 	}
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -68,8 +71,8 @@ func ioFailure(err error, syscallName, path string) *Failure {
 func ioFailureBetween(err error, syscallName, path, destination string) *Failure {
 	code := errorCode(err)
 	description, known := nodeerrno.Description(code)
-	if !known {
-		// Unknown to libuv's table: the OS text.
+	if !known || code == "UNKNOWN" {
+		// Unknown to the daemon's table: the OS text.
 		description = strings.ToLower(osText(err))
 	}
 	target := "'" + path + "'"
@@ -98,7 +101,7 @@ func (f *Failure) toJSON() Object {
 	if f.Syscall != "" {
 		value["syscall"] = f.Syscall
 	}
-	if f.Path != "" {
+	if f.Path != "" || f.pathSet {
 		value["path"] = f.Path
 	}
 	maps.Copy(value, f.Extra)

@@ -71,6 +71,24 @@ func TestBm25RankerRanksByTermRelevanceAndRespectsTheLimit(t *testing.T) {
 	}
 }
 
+// Ports tool-search.test.ts "ranks a tool first when the query is its name" (Pi #11331).
+func TestBm25RankerRanksAToolFirstWhenTheQueryIsItsName(t *testing.T) {
+	named := []toolsearch.Document{
+		toolsearch.CreateDocument(info("mcp__app__queue_read", "Read a queued message of this thread.", ""), nil),
+		toolsearch.CreateDocument(info("mcp__dev-app__thread_read", "Read durable state and a paginated timeline from any thread. The default view returns user messages, assistant messages and plans. Continue with afterPosition until hasMore is false.", ""), nil),
+	}
+	ranker := toolsearch.NewBm25Ranker()
+	for _, query := range []string{"thread_read", "dev_app__thread_read", "mcp__dev-app__thread_read", "Thread_Read", "thread read"} {
+		if got, want := names(ranker.Rank(query, named, 1)), []string{"mcp__dev-app__thread_read"}; !reflect.DeepEqual(got, want) {
+			t.Errorf("%q: %q, want %q", query, got, want)
+		}
+	}
+	// Partial names still rank by BM25.
+	if got, want := names(ranker.Rank("read", named, 1)), []string{"mcp__app__queue_read"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("read: %q, want %q", got, want)
+	}
+}
+
 func TestBm25RankerReturnsNothingForUnknownOrEmptyQueries(t *testing.T) {
 	ranker, documents := toolsearch.NewBm25Ranker(), rankerDocuments()
 	for _, query := range []string{"kubernetes", "the", "tickets"} { // "tickets": known v1 limit, no synonyms.

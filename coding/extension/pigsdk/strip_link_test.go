@@ -78,3 +78,40 @@ func TestStripExtensionSDKGoBuildOmitsSDKSource(t *testing.T) {
 		t.Errorf("a pig_strip_extension_sdk_go build of pigsdk references %s", symbol)
 	}
 }
+
+// The host's TypeBox type engine serves the Go, Rust and Python SDKs (the Node SDK runs TypeBox itself), so pigsdk registers it when it embeds any of the three and
+// links it for no other reason: a build that strips all three, or a program that links the extension host without pigsdk, links no engine through the host.
+func TestTypeEngineIsLinkedOnlyWhileAnSDKIsEmbedded(t *testing.T) {
+	if testing.Short() {
+		t.Skip("go list of pigsdk in -short mode")
+	}
+	const engine = pigModule + "/internal/typebox/engine"
+	deps := func(pkg, tags string) []string {
+		args := []string{"list"}
+		if tags != "" {
+			args = append(args, "-tags", tags)
+		}
+		out, err := exec.Command("go", append(args, "-deps", pkg)...).Output()
+		if err != nil {
+			t.Fatalf("go %s: %v", strings.Join(args, " "), err)
+		}
+		return strings.Fields(string(out))
+	}
+	all := "pig_strip_extension_sdk_go,pig_strip_extension_sdk_rust,pig_strip_extension_sdk_python"
+	for _, tc := range []struct {
+		name, tags string
+		linked     bool
+	}{
+		{"every SDK embedded", "", true},
+		{"only Go stripped", "pig_strip_extension_sdk_go", true},
+		{"only Python embedded", "pig_strip_extension_sdk_go,pig_strip_extension_sdk_rust", true},
+		{"every SDK stripped", all, false},
+	} {
+		if got := slices.Contains(deps(pigModule+"/coding/extension/pigsdk", tc.tags), engine); got != tc.linked {
+			t.Errorf("%s: pigsdk links the type engine = %v, want %v", tc.name, got, tc.linked)
+		}
+	}
+	if slices.Contains(deps(pigModule+"/coding/extension/host/subprocess", ""), engine) {
+		t.Errorf("the extension host links the type engine without pigsdk")
+	}
+}

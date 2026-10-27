@@ -12,9 +12,17 @@
 //     committed frame into delivery before the publishing commit returns, and
 //     a Harness wait awaits the deliveries scheduled before it resumes its
 //     caller (AwaitDeliveriesEntered): upstream's drain microtask enters the
-//     listener before the code awaiting the commit's promise resumes. A state
-//     attachment drains on the committing goroutine after the Session line is
-//     free and before the commit returns.
+//     listener before the code awaiting the commit's promise resumes.
+//   - A stored commit is published inside Storage's adopt, as upstream does:
+//     its telemetry events and the Session's own observers run there. The one
+//     microtask upstream queues for subscribeCommits listeners, and the waits
+//     and aborts the observers deferred (DeferUntilPublished), whose
+//     continuations run after it, form one publication that runs when the
+//     storage's synchronous step ends: on a goroutine armed by adopt as soon
+//     as the adopting goroutine is parked in a wait (a storage that works after
+//     adopt), or when Storage.Commit returns to the Session's guard
+//     (finishPublication), which then waits for it. The Session never sees a
+//     commit resolve before its publication ran.
 //   - An AbortSignal is the context's cancellation; withoutAbortSignal is
 //     context.WithoutCancel, which keeps context values.
 package session
@@ -23,12 +31,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/entered"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -54,6 +66,9 @@ type Hooks struct {
 	SetTimer durable.SetTimer
 	// ReadOnly refuses every commit with writes (HarnessOptions.ReadOnly).
 	ReadOnly bool
+	// PersistWithinMs is the default window of a deferred commit, read at each use (HarnessOptions.settings.progress.persistWithinMs);
+	// nil selects the default, 1,000 ms.
+	PersistWithinMs func() *float64
 }
 
 type commitListener struct {
@@ -69,18 +84,17 @@ type closeListener struct{ listener func() }
 // Storage settlement, adoption, and publication runs while the line is held;
 // asynchronous listeners run later.
 type SessionImpl struct {
-	// deferMu guards the publication in progress: its flag and the work listeners deferred past the listener loop.
-	deferMu    sync.Mutex
-	publishing bool
-	deferred   []func()
-	storage    *guardedStorage
-	hooks      Hooks
-	timers     durable.Timers
+	// deferMu guards pub, the publication in progress.
+	deferMu sync.Mutex
+	pub     *publication
+	storage *guardedStorage
+	hooks   Hooks
+	timers  durable.Timers
 	// documentTimersUnavailable is set once the host declined a background timer: then none is kept, and the end of
 	// each commit evicts what expired. Guarded by mu.
 	documentTimersUnavailable bool
 	host                      *transactionHost
-	scheduler                 *pending
+	scheduler                 *chord.DeliveryScheduler
 
 	lineMu   sync.Mutex
 	tail     chan struct{}
@@ -96,9 +110,14 @@ type SessionImpl struct {
 	commitOrder     []*commitListener
 	// internalOrder is the Session's own listeners, such as its scheduler's: they keep memory in step with storage, so a
 	// failure in one fails the Session. They run before the host's.
-	internalOrder []*commitListener
-	closeOrder    []*closeListener
-	closing       chan struct{}
+	internalOrder []*internalListener
+	// holds are the documents with held changes (durable.CommitPersistence), by incarnation (record ID), each pinned in the
+	// cache until they are stored; holdOrder is the same in the order they were first held. holdTimer is the armed store.
+	holds      map[durable.DocumentId]*heldDocument
+	holdOrder  []*heldDocument
+	holdTimer  *holdTimer
+	closeOrder []*closeListener
+	closing    chan struct{}
 	// listenersRan is closed once the close listeners ran; set together with closing.
 	listenersRan chan struct{}
 	closeErr     error
@@ -121,12 +140,17 @@ type CreateSessionOptions struct {
 	DocumentRetentionMs *float64
 	// SetTimer arms the timers that evict idle documents; nil selects Go timers (see durable.SetTimer).
 	SetTimer durable.SetTimer
+	// PersistWithinMs is the default window of a deferred commit (durable.CommitPersistence): how long it may stay in
+	// memory before it is stored. Nil selects the default, 1,000 ms; +Inf waits for a reading or writing commit or close.
+	// Anything else that is not a number of milliseconds, 0 or more, means the default.
+	PersistWithinMs *float64
 }
 
 // CreateSession opens a Session kernel over one storage backend.
 func CreateSession(storage durable.Storage, options ...CreateSessionOptions) *SessionImpl {
 	var now func() float64
 	var retention func() *float64
+	var persistWithin func() *float64
 	var setTimer durable.SetTimer
 	if len(options) > 0 {
 		now = options[0].Now
@@ -134,8 +158,11 @@ func CreateSession(storage durable.Storage, options ...CreateSessionOptions) *Se
 		if ms := options[0].DocumentRetentionMs; ms != nil {
 			retention = func() *float64 { return ms }
 		}
+		if ms := options[0].PersistWithinMs; ms != nil {
+			persistWithin = func() *float64 { return ms }
+		}
 	}
-	return NewSessionImpl(storage, Hooks{SetTimer: setTimer}, now, retention)
+	return NewSessionImpl(storage, Hooks{SetTimer: setTimer, PersistWithinMs: persistWithin}, now, retention)
 }
 
 // NewSessionImpl opens a Session kernel with extension hooks. now is the wall clock in milliseconds for task times;
@@ -145,7 +172,7 @@ func NewSessionImpl(storage durable.Storage, hooks Hooks, now func() float64, do
 	if now == nil {
 		now = func() float64 { return float64(time.Now().UnixMilli()) }
 	}
-	session := &SessionImpl{hooks: hooks, scheduler: newPending(), documents: map[string]*LoadedDocument{}, cache: newDocumentCache(), now: now, retentionSource: documentRetentionMs, failed: make(chan struct{}), closed: make(chan struct{})}
+	session := &SessionImpl{hooks: hooks, scheduler: chord.NewDeliveryScheduler(), documents: map[string]*LoadedDocument{}, holds: map[durable.DocumentId]*heldDocument{}, cache: newDocumentCache(), now: now, retentionSource: documentRetentionMs, failed: make(chan struct{}), closed: make(chan struct{})}
 	session.timers = durable.HostTimers(hooks.SetTimer, func(err error) {
 		session.report(unscoped, err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
 	})
@@ -352,19 +379,34 @@ func (session *SessionImpl) failIn(ctx context.Context, err error) {
 	session.report(ctx, err, durable.ReportInfo{Type: durable.ReportSessionFailed})
 }
 
-// Commit runs one atomic transaction on the Session mutation line.
-func (session *SessionImpl) Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error) {
-	return session.CommitWith(ctx, func(tx *Transaction) (any, error) { return change(tx) }, TransactionScope{})
+// Commit runs one atomic transaction on the Session mutation line. options.Persistence may defer storing it
+// (durable.CommitPersistence).
+func (session *SessionImpl) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
+	return session.CommitWith(ctx, func(tx *Transaction) (any, error) { return change(tx) }, TransactionScope{}, options...)
+}
+
+// admitCommit is the admission check of a commit: the Session must be usable, and the options valid. It returns how long
+// the commit may stay in memory before it is stored; nil when it is immediate.
+func (session *SessionImpl) admitCommit(options []durable.CommitOptions) (*float64, error) {
+	if err := session.assertUsable(); err != nil {
+		return nil, err
+	}
+	single, err := durable.SingleCommitOptions(options)
+	if err != nil {
+		return nil, err
+	}
+	return session.deferral(single.Persistence), nil
 }
 
 // CommitWith is the internal commit exposing the concrete transaction and its internal operations, such as the
 // reserved-ID root bootstrap and task replacement. scope sets the default task conversation and the task attributed
 // to appended entries.
-func (session *SessionImpl) CommitWith(ctx context.Context, change func(tx *Transaction) (any, error), scope TransactionScope) (any, error) {
-	if err := session.assertUsable(); err != nil {
+func (session *SessionImpl) CommitWith(ctx context.Context, change func(tx *Transaction) (any, error), scope TransactionScope, options ...durable.CommitOptions) (any, error) {
+	withinMs, err := session.admitCommit(options)
+	if err != nil {
 		return nil, err
 	}
-	result, err := enqueue(session, true, lineadmission.From(ctx), func() (any, error) { return session.runCommit(ctx, change, scope) })
+	result, err := enqueue(session, true, lineadmission.From(ctx), func() (any, error) { return session.runCommit(ctx, change, scope, withinMs) })
 	return result, err
 }
 
@@ -420,19 +462,20 @@ func (ticket *LineTicket) Release() {
 }
 
 // CommitWithTicket runs a commit at the ticket's position and releases it.
-func (session *SessionImpl) CommitWithTicket(ticket *LineTicket, ctx context.Context, change func(tx *Transaction) (any, error), scope TransactionScope) (any, error) {
+func (session *SessionImpl) CommitWithTicket(ticket *LineTicket, ctx context.Context, change func(tx *Transaction) (any, error), scope TransactionScope, options ...durable.CommitOptions) (any, error) {
 	if ticket == nil {
-		return session.CommitWith(ctx, change, scope)
+		return session.CommitWith(ctx, change, scope, options...)
 	}
 	result, err := func() (any, error) {
 		defer ticket.Release()
 		if ticket.previous != nil {
 			<-ticket.previous
 		}
-		if err := session.assertUsable(); err != nil {
+		withinMs, err := session.admitCommit(options)
+		if err != nil {
 			return nil, err
 		}
-		return session.runCommit(ctx, change, scope)
+		return session.runCommit(ctx, change, scope, withinMs)
 	}()
 	return result, err
 }
@@ -534,8 +577,10 @@ func (session *SessionImpl) SnapshotErased(ctx context.Context, token durable.An
 	return loaded.Tracker.Value(), nil
 }
 
-// WatchDocErased returns a watch of a document's committed value, or nil when absent. Cancelling ctx before the
-// watch is returned rejects with the cancellation cause; afterwards it ends the watch with reason cancelled.
+// WatchDocErased returns a watch of a document's committed value, or nil when absent. The watch follows the document's
+// address (kind, scope, and key) from the incarnation found at acquisition: a retirement is a call with Retired set, the last
+// value the watch was given and no ops, and a document created there later arrives on the same watch. Cancelling ctx before
+// the watch is returned rejects with the cancellation cause; afterwards it ends the watch with reason cancelled.
 func (session *SessionImpl) WatchDocErased(ctx context.Context, token durable.AnyDocToken, args ...any) (durable.WatchHandle[durable.JsonObject], error) {
 	watch, err := session.watchDoc(ctx, token, args)
 	if err != nil || watch == nil {
@@ -544,7 +589,18 @@ func (session *SessionImpl) WatchDocErased(ctx context.Context, token durable.An
 	return watch, nil
 }
 
-func (session *SessionImpl) watchDoc(ctx context.Context, token durable.AnyDocToken, args []any) (*CommittedWatch[durable.JsonObject], error) {
+// watchObserver is a document watch as the observer of its address: the Session feeds it, and its end is the watch's.
+type watchObserver struct {
+	watch *chord.Watch[durable.JsonObject]
+}
+
+func (observer watchObserver) Advance(ctx context.Context, change durable.WatchChange[durable.JsonObject]) {
+	observer.watch.Advance(ctx, change)
+}
+
+func (observer watchObserver) End(failure error) { observer.watch.SourceEnded(failure) }
+
+func (session *SessionImpl) watchDoc(ctx context.Context, token durable.AnyDocToken, args []any) (*chord.Watch[durable.JsonObject], error) {
 	if err := session.assertUsable(); err != nil {
 		return nil, err
 	}
@@ -553,36 +609,77 @@ func (session *SessionImpl) watchDoc(ctx context.Context, token durable.AnyDocTo
 	if err != nil {
 		return nil, err
 	}
-	watch, err := enqueue(session, true, nil, func() (*CommittedWatch[durable.JsonObject], error) {
-		if err := session.assertHealthy(); err != nil {
-			return nil, err
-		}
-		if ctx.Err() != nil {
-			return nil, context.Cause(ctx)
-		}
-		loaded, err := session.loadDocument(ctx, definition, resolved.Id, resolved.Address)
+	return attachDocument(session, ctx, definition, resolved, func(loaded *LoadedDocument) (*chord.Watch[durable.JsonObject], error) {
+		observer, err := session.observeDocument(definition, loaded, func(value durable.JsonObject, detach func(), _ func(error)) durable.Observer[durable.JsonObject] {
+			return watchObserver{NewSessionWatch(session, value, detach)}
+		}, func(observer durable.Observer[durable.JsonObject]) { observer.(watchObserver).watch.EndAfterDelivery() })
 		if err != nil {
 			return nil, err
 		}
-		if ctx.Err() != nil {
-			return nil, context.Cause(ctx)
+		watch := observer.(watchObserver).watch
+		if ctx.Done() != nil {
+			watch.ObserveCancellation(ctx)
 		}
-		if loaded == nil {
-			return nil, nil
-		}
-		return session.attachDocument(definition, loaded)
-	})
-	if err != nil || watch == nil {
+		return watch, nil
+	}, (*chord.Watch[durable.JsonObject]).Cancel)
+}
+
+// ObserveDocErased attaches a synchronous observer to a document address, atomically on the Session line, as
+// WatchDocErased acquires a watch; the observation is nil when the address is absent. ctx governs only the attachment.
+func (session *SessionImpl) ObserveDocErased(ctx context.Context, token durable.AnyDocToken, observer durable.Observer[durable.JsonObject], args ...any) (durable.Observation[durable.JsonObject], error) {
+	if err := session.assertUsable(); err != nil {
 		return nil, err
 	}
+	definition := token.AnyDefinition()
+	resolved, err := durable.ResolveAddress(definition, args)
+	if err != nil {
+		return nil, err
+	}
+	return attachDocument(session, ctx, definition, resolved, func(loaded *LoadedDocument) (durable.Observation[durable.JsonObject], error) {
+		var guarded *GuardedObserver[durable.JsonObject]
+		_, err := session.observeDocument(definition, loaded, func(_ durable.JsonObject, detach func(), report func(error)) durable.Observer[durable.JsonObject] {
+			guarded = GuardObserver(observer, detach, report)
+			return guarded
+		}, func(observer durable.Observer[durable.JsonObject]) { observer.End(nil) })
+		if err != nil {
+			return nil, err
+		}
+		return NewObservation(loaded.Tracker.Value(), guarded), nil
+	}, durable.Observation[durable.JsonObject].Detach)
+}
+
+// attachDocument runs, on the line as one job, the load of the document at resolved and attach to it, so the attachment
+// sees every commit after the value it starts from; it returns the zero value when the document is absent. Cancelling ctx
+// meanwhile rejects with the cancellation cause, after cancel undid an attachment made.
+func attachDocument[A comparable](session *SessionImpl, ctx context.Context, definition *durable.AnyDocDefinition, resolved durable.ResolvedAddress, attach func(*LoadedDocument) (A, error), cancel func(A)) (A, error) {
+	var none A
+	attached, err := enqueue(session, true, nil, func() (A, error) {
+		if err := session.assertHealthy(); err != nil {
+			return none, err
+		}
+		if ctx.Err() != nil {
+			return none, context.Cause(ctx)
+		}
+		loaded, err := session.loadDocument(ctx, definition, resolved.Id, resolved.Address)
+		if err != nil {
+			return none, err
+		}
+		if ctx.Err() != nil {
+			return none, context.Cause(ctx)
+		}
+		if loaded == nil {
+			return none, nil
+		}
+		return attach(loaded)
+	})
+	if err != nil || attached == none {
+		return none, err
+	}
 	if ctx.Err() != nil {
-		watch.Cancel()
-		return nil, context.Cause(ctx)
+		cancel(attached)
+		return none, context.Cause(ctx)
 	}
-	if ctx.Done() != nil {
-		watch.ObserveCancellation(ctx)
-	}
-	return watch, nil
+	return attached, nil
 }
 
 // SnapshotAsOfErased returns the committed value of a rewindable conversation document as of the visible entry at;
@@ -662,6 +759,12 @@ func (session *SessionImpl) beginClose(ctx context.Context) <-chan struct{} {
 			}
 			session.cache.sweep = nil
 		}
+		if timer := session.holdTimer; timer != nil {
+			if timer.disarm != nil {
+				timer.disarm()
+			}
+			session.holdTimer = nil
+		}
 		listeners := session.closeOrder
 		session.closeOrder = nil
 		session.mu.Unlock()
@@ -677,14 +780,25 @@ func (session *SessionImpl) beginClose(ctx context.Context) <-chan struct{} {
 				session.hooks.BeforeClose()
 			}
 			_, err := enqueue(session, false, nil, func() (struct{}, error) {
+				// Last, after the writes at close (BeforeClose), while the trackers are still here. A failed Session writes
+				// nothing; a failing store fails it, and the backend still closes.
+				var unstored error
+				if session.failure() == nil {
+					unstored = session.storeHolds(cleanup, session.allHolds())
+				}
 				session.mu.Lock()
 				session.commitOrder = nil
 				session.internalOrder = nil
 				clear(session.documents)
 				session.cache.clearIdle()
 				clear(session.cache.attached)
+				clear(session.holds)
+				session.holdOrder = nil
 				session.mu.Unlock()
-				return struct{}{}, session.storage.Close(cleanup)
+				if err := session.storage.Close(cleanup); err != nil {
+					return struct{}{}, err
+				}
+				return struct{}{}, unstored
 			})
 			session.mu.Lock()
 			session.closeErr = err
@@ -736,8 +850,9 @@ func contained(callback func(), onError func(error)) {
 	callback()
 }
 
-// SubscribeCommits registers a synchronous post-adoption listener. It must not panic, block, or call Session
-// operations.
+// SubscribeCommits registers a synchronous listener for every stored commit. It runs once adopt returned (at once when the
+// storage then waits, otherwise when Storage.Commit returns), on the line, before every wait the commit resolves and every abort it queues (in no order with watch listeners); a commit
+// adopted while no listener was registered has no dispatch. It must not panic, block, or call Session operations.
 func (session *SessionImpl) SubscribeCommits(listener func(ctx context.Context, publication durable.CommitPublication)) func() {
 	unsubscribe, err := session.subscribeCommits(listener)
 	if err != nil {
@@ -759,20 +874,31 @@ func (session *SessionImpl) subscribeCommits(listener func(ctx context.Context, 
 		defer session.mu.Unlock()
 		for index, candidate := range session.commitOrder {
 			if candidate == entry {
-				session.commitOrder = append(session.commitOrder[:index:index], session.commitOrder[index+1:]...)
+				session.commitOrder = slices.Delete(session.commitOrder, index, index+1)
 				return
 			}
 		}
 	}, nil
 }
 
-// ObserveCommits is SubscribeCommits for the Session's own components, whose state follows each commit. A panic leaves
-// that state behind storage, so it fails the Session instead of being reported. They run before the host's listeners.
-func (session *SessionImpl) ObserveCommits(listener func(ctx context.Context, publication durable.CommitPublication)) func() {
-	if err := session.assertUsable(); err != nil {
+// ObserveCommits observes every commit as memory adopts it (ObservedCommit), for the Session's own components, whose state
+// follows memory. A panic leaves that state behind, so it fails the Session instead of being reported: once Storage.Commit
+// returned, after the other observers and the host listeners got the commit. For a stored commit they run inside Storage's
+// adopt, so they call no Storage method, run no task code, and contain every host callback; the waits they resolve and the
+// aborts they queue (DeferUntilPublished) run after the host listeners.
+func (session *SessionImpl) ObserveCommits(listener func(ctx context.Context, commit ObservedCommit)) func() {
+	unsubscribe, err := session.observeCommits(listener)
+	if err != nil {
 		panic(err)
 	}
-	entry := &commitListener{listener: listener}
+	return unsubscribe
+}
+
+func (session *SessionImpl) observeCommits(listener func(ctx context.Context, commit ObservedCommit)) (func(), error) {
+	if err := session.assertUsable(); err != nil {
+		return nil, err
+	}
+	entry := &internalListener{listener: listener}
 	session.mu.Lock()
 	session.internalOrder = append(session.internalOrder, entry)
 	session.mu.Unlock()
@@ -781,11 +907,11 @@ func (session *SessionImpl) ObserveCommits(listener func(ctx context.Context, pu
 		defer session.mu.Unlock()
 		for index, candidate := range session.internalOrder {
 			if candidate == entry {
-				session.internalOrder = append(session.internalOrder[:index:index], session.internalOrder[index+1:]...)
+				session.internalOrder = slices.Delete(session.internalOrder, index, index+1)
 				return
 			}
 		}
-	}
+	}, nil
 }
 
 // CommitSubscriptions reports the number of live commit subscriptions. Upstream tests count them by wrapping
@@ -794,6 +920,14 @@ func (session *SessionImpl) CommitSubscriptions() int {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	return len(session.commitOrder)
+}
+
+// ObserverSubscriptions reports the number of live observers of the Session's own (ObserveCommits): a document watch holds
+// one, which sees a commit held in memory when it is adopted.
+func (session *SessionImpl) ObserverSubscriptions() int {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return len(session.internalOrder)
 }
 
 // LineJobs reports the number of admitted line jobs that have not finished, so a caller can wait until work is queued
@@ -827,16 +961,22 @@ func (session *SessionImpl) subscribeClose(listener func()) (func(), error) {
 		defer session.mu.Unlock()
 		for index, candidate := range session.closeOrder {
 			if candidate == entry {
-				session.closeOrder = append(session.closeOrder[:index:index], session.closeOrder[index+1:]...)
+				session.closeOrder = slices.Delete(session.closeOrder, index, index+1)
 				return
 			}
 		}
 	}, nil
 }
 
-// UnloadDocuments drops every loaded tracker on the mutation line; later access cold-loads from Storage.
+// UnloadDocuments drops every loaded tracker on the mutation line, held changes stored first; later access cold-loads from
+// Storage.
 func (session *SessionImpl) UnloadDocuments() error {
 	_, err := enqueue(session, false, nil, func() (struct{}, error) {
+		if session.failure() == nil {
+			if err := session.storeHolds(unscoped, session.allHolds()); err != nil {
+				return struct{}{}, err
+			}
+		}
 		session.mu.Lock()
 		clear(session.documents)
 		session.cache.clearIdle()
@@ -847,7 +987,7 @@ func (session *SessionImpl) UnloadDocuments() error {
 }
 
 // WaitDeliveries blocks until every scheduled watch delivery has drained.
-func (session *SessionImpl) WaitDeliveries() { session.scheduler.wait() }
+func (session *SessionImpl) WaitDeliveries() { session.scheduler.Wait() }
 
 // AwaitDeliveriesEntered blocks until every watch delivery scheduled before the call has entered: its listener returned,
 // is parked in a wait, or is blocked behind a lock, which a Go listener does where an upstream one awaits and which the
@@ -855,10 +995,10 @@ func (session *SessionImpl) WaitDeliveries() { session.scheduler.wait() }
 // before the code awaiting the wait's promise resumes; the listener a caller's own goroutine runs is not waited for, so
 // a listener may itself wait for the Harness. It returns the cause of ctx when ctx ends the wait.
 func (session *SessionImpl) AwaitDeliveriesEntered(ctx context.Context) error {
-	return session.scheduler.awaitEntered(ctx)
+	return session.scheduler.AwaitEntered(ctx)
 }
 
-func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Transaction) (any, error), scope TransactionScope) (result any, err error) {
+func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Transaction) (any, error), scope TransactionScope, withinMs *float64) (result any, err error) {
 	if err := session.assertHealthy(); err != nil {
 		return nil, err
 	}
@@ -902,28 +1042,50 @@ func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Trans
 		session.sweepDocuments()
 		return nil, durable.NewReadOnlySession("a commit with writes")
 	}
-	// Storage adopts the batch synchronously once it is durable, before its next commit; a panic here would reach
-	// Storage, so the callback keeps its own error.
+	if withinMs != nil {
+		if held, ok := tx.holdable(writes); ok {
+			if err := session.hold(ctx, tx, held, *withinMs); err != nil {
+				return nil, err
+			}
+			session.sweepDocuments()
+			return result, nil
+		}
+	}
+	// The last step before Storage: held changes leave their queue only once nothing but Storage can fail.
+	var taken []*heldDocument
+	session.mu.Lock()
+	holding := len(session.holds) > 0
+	session.mu.Unlock()
+	if holding {
+		writes, taken = tx.takeHeld(writes, session.heldOf)
+	}
+	// Storage adopts the batch synchronously once it is durable, before its next commit, and the commit is published in
+	// the same step, so every view changes with memory. A panic here would reach Storage, so the callback keeps its own
+	// error, and the first error of an own observer.
 	var adoption *commitAdoption
 	adopt := func(committed durable.Seq) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				if recoveredErr, ok := recovered.(error); ok {
-					adoption = &commitAdoption{err: recoveredErr}
-					return
-				}
-				adoption = &commitAdoption{err: fmt.Errorf("%v", recovered)}
+				adoption = &commitAdoption{err: panicError(recovered)}
 			}
 		}()
 		documents, err := tx.adopt(committed)
-		adoption = &commitAdoption{documents: documents, err: err}
+		if err != nil {
+			adoption = &commitAdoption{err: err}
+			return
+		}
+		adoption = &commitAdoption{documents: documents, failure: session.publish(ctx, committed, writes, documents)}
 	}
 	// Once admitted, caller cancellation does not interrupt Storage settlement.
-	seq, err := session.storage.Commit(context.WithoutCancel(ctx), writes, adopt)
+	_, err = session.storage.Commit(context.WithoutCancel(ctx), writes, adopt)
 	if err != nil {
-		// The guard has failed the Session. A rejection after adoption leaves nothing staged to discard.
+		// The guard has failed the Session with the storage error. A rejection after adoption leaves nothing staged to
+		// discard, and the commit, durable, stays published; an own observer's error that would have failed the Session is
+		// still reported.
 		if adoption == nil {
 			tx.discard()
+		} else if adoption.err == nil && adoption.failure != nil {
+			session.report(ctx, adoption.failure, listenerInfo)
 		}
 		return nil, err
 	}
@@ -938,30 +1100,148 @@ func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Trans
 		return nil, adoption.err
 	}
 	documents := adoption.documents
-	session.touchChanged(documents)
-	session.publish(ctx, seq, writes, documents)
+	if len(taken) > 0 {
+		session.release(taken)
+	}
+	session.touchChanged(documents.stored)
+	// The commit is durable and published, so it stands; memory behind an own observer's state fails the Session.
+	if adoption.failure != nil {
+		session.failIn(ctx, adoption.failure)
+	}
 	session.sweepDocuments()
 	return result, nil
 }
 
-// commitAdoption is what the Session's adopt callback made of one batch: the document changes, or the error that
-// failed the adoption.
+// commitAdoption is what the Session's adopt callback made of one batch: the document changes, the error that failed the
+// adoption (nothing was published then), or the first error of an own observer that saw the published commit.
 type commitAdoption struct {
-	documents []durable.DocumentCommitChange
+	documents adoptedDocuments
 	err       error
+	failure   error
 }
 
-func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes []durable.StorageWrite, documents []durable.DocumentCommitChange) {
+// panicError is the error a recovered panic value stands for.
+func panicError(recovered any) error {
+	if err, ok := recovered.(error); ok {
+		return err
+	}
+	return fmt.Errorf("%v", recovered)
+}
+
+// publication is the commit being published: the dispatch to SubscribeCommits listeners adopt queued, and the work the
+// observers deferred until after it (DeferUntilPublished). It is run once, by whoever claims it: the goroutine armed in
+// adopt once the adopting goroutine parked in a wait, or the Storage guard when Storage.Commit returned.
+type publication struct {
+	dispatch []func()
+	deferred []func()
+	claimed  bool
+	// claim is closed when the publication is claimed, and done when it ran.
+	claim, done chan struct{}
+}
+
+// beginPublication starts the publication of a commit: from here until it ran, the work its observers defer
+// (DeferUntilPublished) waits.
+func (session *SessionImpl) beginPublication() {
+	session.deferMu.Lock()
+	session.pub = &publication{claim: make(chan struct{}), done: make(chan struct{})}
+	session.deferMu.Unlock()
+}
+
+// armPublication, the last step of adopt, lets the publication run as soon as the goroutine inside Storage's adopt is
+// parked in a wait: upstream queues its one microtask there, which runs when the storage's synchronous step ends, also
+// when the storage then works before it resolves (a JSONL reclaim). A storage that returns at once never parks:
+// finishPublication runs it.
+func (session *SessionImpl) armPublication() {
+	session.deferMu.Lock()
+	pub := session.pub
+	session.deferMu.Unlock()
+	if pub == nil || (len(pub.dispatch) == 0 && len(pub.deferred) == 0) {
+		return
+	}
+	adopting := goroutineid.Current()
+	//portlint:allow asyncorder joined: finishPublication waits for the publication to run, and Storage.Commit never returns to the Session before it
+	go func() { //portlint:allow golifetime the goroutine ends when the publication is claimed (pub.claim closes), by it or by finishPublication, which waits for pub.done
+		entered.Await(adopting, pub.claim)
+		if session.claim(pub) {
+			session.run(pub)
+		}
+	}()
+}
+
+// claim takes the publication to run it; false when another goroutine has.
+func (session *SessionImpl) claim(pub *publication) bool {
+	session.deferMu.Lock()
+	defer session.deferMu.Unlock()
+	if pub.claimed {
+		return false
+	}
+	pub.claimed = true
+	close(pub.claim)
+	return true
+}
+
+// finishPublication ends the publication of a commit Storage adopted, once Storage.Commit returned: unless the
+// goroutine armed in adopt took it already, it runs the dispatch adopt queued with the listeners registered now, then the
+// work the observers deferred: the waits they resolved and the aborts they queued. It returns once the publication ran. It
+// does nothing for a commit that was not adopted.
+func (session *SessionImpl) finishPublication() {
+	session.deferMu.Lock()
+	pub := session.pub
+	session.deferMu.Unlock()
+	if pub == nil {
+		return
+	}
+	if session.claim(pub) {
+		session.run(pub)
+		return
+	}
+	<-pub.done
+}
+
+// run runs the dispatch of pub, then the work deferred past it, and ends the publication.
+func (session *SessionImpl) run(pub *publication) {
+	defer close(pub.done)
+	for {
+		session.deferMu.Lock()
+		if len(pub.dispatch) == 0 && len(pub.deferred) == 0 {
+			if session.pub == pub {
+				session.pub = nil
+			}
+			session.deferMu.Unlock()
+			return
+		}
+		var next func()
+		if len(pub.dispatch) > 0 {
+			next, pub.dispatch = pub.dispatch[0], pub.dispatch[1:]
+		} else {
+			next, pub.deferred = pub.deferred[0], pub.deferred[1:]
+		}
+		session.deferMu.Unlock()
+		next()
+	}
+}
+
+// endPublication runs the publication of a commit held in memory, which no Storage commit adopted.
+func (session *SessionImpl) endPublication() { session.finishPublication() }
+
+// publish publishes a stored commit, inside adopt: its telemetry events first, then the dispatch to SubscribeCommits
+// listeners, queued before the waits and aborts the observers defer, then the Session's own observers. It never panics: it
+// returns the first error of an own observer, which fails the Session once Storage.Commit returned.
+func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes []durable.StorageWrite, documents adoptedDocuments) error {
+	session.beginPublication()
+	defer session.armPublication()
+	// The watches the observers advance deliver once, for all the frames of this commit: upstream queues one microtask.
+	defer session.scheduler.Hold()()
 	session.mu.Lock()
-	internal := append([]*commitListener(nil), session.internalOrder...)
-	listeners := append([]*commitListener(nil), session.commitOrder...)
+	internal := append([]*internalListener(nil), session.internalOrder...)
+	hosts := len(session.commitOrder) > 0
 	session.mu.Unlock()
-	observed := len(listeners) > 0 || len(internal) > 0
+	observed := hosts || len(internal) > 0
 	span := chordctx.Telemetry(ctx)
 	traced := span != telemetry.NoopTelemetryContext
 	var changes []durable.CommitChange
 	if observed {
-		changes = make([]durable.CommitChange, 0, len(writes)+len(documents))
+		changes = make([]durable.CommitChange, 0, len(writes)+len(documents.stored))
 	}
 	for _, staged := range writes {
 		table, ok := staged.(durable.TableCommitChange)
@@ -973,7 +1253,7 @@ func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes
 			if !traced {
 				break
 			}
-			span.AddEvent("pi.durable.entry", telemetry.SpanAttributes{
+			session.event(ctx, span, "pi.durable.entry", telemetry.SpanAttributes{
 				telemetry.Attr("entry.id", float64(write.Value.Id)),
 				telemetry.Attr("entry.kind", write.Value.Kind),
 			})
@@ -986,7 +1266,7 @@ func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes
 				if write.Value.Answer != nil {
 					attributes = attributes.Set("answer.entry_id", float64(*write.Value.Answer))
 				}
-				span.AddEvent("pi.durable.submission", attributes)
+				session.event(ctx, span, "pi.durable.submission", attributes)
 			}
 		}
 		if observed {
@@ -994,119 +1274,252 @@ func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes
 		}
 	}
 	if !observed {
-		return
+		return nil
 	}
+	tables := len(changes)
+	for _, document := range documents.observed {
+		changes = append(changes, document)
+	}
+	commit := ObservedCommit{Seq: seq, Changes: changes}
+	if hosts {
+		// One publication for both, unless the commit also stored held changes, which only host listeners get.
+		stored := durable.CommitPublication{Seq: seq, Changes: changes}
+		if documents.split {
+			stored.Changes = append(slices.Clone(changes[:tables]), documentChanges(documents.stored)...)
+		}
+		session.notifyHosts(ctx, stored)
+	}
+	// The commit is durable: a failing observer neither fails the commit nor skips the others.
+	var failure error
+	for _, listener := range internal {
+		contained(func() { listener.listener(ctx, commit) }, func(err error) {
+			if failure == nil {
+				failure = err
+			}
+		})
+	}
+	return failure
+}
+
+// event records a commit's telemetry event inside adopt. A panicking adapter is reported, as adopt must not panic.
+func (session *SessionImpl) event(ctx context.Context, span telemetry.TelemetrySpan, name string, attributes telemetry.SpanAttributes) {
+	contained(func() { span.AddEvent(name, attributes) }, func(err error) {
+		session.report(ctx, err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackTelemetry})
+	})
+}
+
+// notifyHosts queues, inside adopt, the dispatch of publication to the SubscribeCommits listeners: it runs once adopt
+// returned (armPublication, finishPublication), with the listeners registered then, and a panic is reported.
+func (session *SessionImpl) notifyHosts(ctx context.Context, publication durable.CommitPublication) {
+	session.deferMu.Lock()
+	session.pub.dispatch = append(session.pub.dispatch, func() {
+		session.mu.Lock()
+		listeners := append([]*commitListener(nil), session.commitOrder...)
+		session.mu.Unlock()
+		for _, listener := range listeners {
+			contained(func() { listener.listener(ctx, publication) }, session.reportListenerIn(ctx))
+		}
+	})
+	session.deferMu.Unlock()
+}
+
+// documentChanges is documents as commit changes.
+func documentChanges(documents []durable.DocumentCommitChange) []durable.CommitChange {
+	changes := make([]durable.CommitChange, 0, len(documents))
 	for _, document := range documents {
 		changes = append(changes, document)
 	}
-	publication := durable.CommitPublication{Seq: seq, Changes: changes}
-	session.deferMu.Lock()
-	session.publishing = true
-	session.deferred = nil
-	session.deferMu.Unlock()
-	// The commit is durable: a failing listener neither fails the commit nor skips the others. Waiters that earlier
-	// listeners settled wake once the loop ends, and later publications start clean.
-	defer func() {
-		session.deferMu.Lock()
-		deferred := session.deferred
-		session.publishing, session.deferred = false, nil
-		session.deferMu.Unlock()
-		for _, run := range deferred {
-			run()
-		}
-	}()
-	for _, listener := range internal {
-		contained(func() { listener.listener(ctx, publication) }, func(err error) { session.failIn(ctx, err) })
-	}
-	for _, listener := range listeners {
-		contained(func() { listener.listener(ctx, publication) }, session.reportListenerIn(ctx))
-	}
+	return changes
 }
 
-// DeferUntilPublished runs run once every listener of the publication in progress has run, and at once when none is.
-// Upstream settles a waiter by resolving a promise inside a listener, and the awaiting code resumes after the
-// synchronous listener loop; a goroutine woken inside a listener would race the listeners that follow, so waiters
-// wake through this. Listeners call it from the publishing goroutine, as publications are serialized on the line.
+// DeferUntilPublished runs run once the publication in progress has run every host listener, and at once when none is.
+// Upstream settles a waiter by resolving a promise inside an observer, and the awaiting code resumes after the microtask
+// that dispatches the commit to host listeners; a goroutine woken inside an observer would race them, so waiters wake
+// through this, and so does the abort of a task the commit newly marks (upstream queues it in a microtask). Observers
+// call it from the publishing goroutine, as publications are serialized on the line.
 func (session *SessionImpl) DeferUntilPublished(run func()) {
 	session.deferMu.Lock()
-	if !session.publishing {
+	if session.pub == nil {
 		session.deferMu.Unlock()
 		run()
 		return
 	}
-	session.deferred = append(session.deferred, run)
+	session.pub.deferred = append(session.pub.deferred, run)
 	session.deferMu.Unlock()
 }
 
-// attachDocument attaches a watch to one committed incarnation: check the definition, then forward this incarnation's
-// committed changes, its retirement, and close. The watch's detach removes both subscriptions.
-func (session *SessionImpl) attachDocument(definition *durable.AnyDocDefinition, loaded *LoadedDocument) (*CommittedWatch[durable.JsonObject], error) {
+// observeDocument follows the address of the incarnation loaded, after checking the definition, with the observer create
+// makes from its value, the idempotent detach, and the report of a listener error; it returns that observer. The observer
+// gets each committed change there, a retirement as a Retired change with the last value it was given and no ops (a change
+// in the retiring commit is not published), and a later incarnation as a root replacement. When the commit makes the owner
+// task of a task document terminal, no later commit can change the address: after its changes the commit subscription and
+// the pin go, and ownerEnded tells the observer, which stays subscribed to the Session's close until it ends (its detach
+// drops that). End gets the Session's close. The current incarnation is pinned in the cache. The detach runs before End;
+// once it ran, nothing more of the commit underway reaches the observer or pins anything for it.
+func (session *SessionImpl) observeDocument(
+	definition *durable.AnyDocDefinition,
+	loaded *LoadedDocument,
+	create func(value durable.JsonObject, detach func(), report func(error)) durable.Observer[durable.JsonObject],
+	ownerEnded func(observer durable.Observer[durable.JsonObject]),
+) (durable.Observer[durable.JsonObject], error) {
 	if err := checkLoaded(definition, loaded); err != nil {
 		return nil, err
 	}
+	// The closures below keep only the address, as the cache's ID and first record, which the cache shares while the
+	// document is cached: loaded holds its incarnation's tracker, which a retirement frees.
+	addressId := loaded.AddressId
+	address := durable.DocumentAddress{Kind: loaded.Record.Kind, Scope: loaded.Record.Scope, Key: loaded.Record.Key}
 	var (
-		detachMu          sync.Mutex
+		mu sync.Mutex
+		// incarnation is the incarnation followed, with ok false while the address is absent.
+		incarnation       = loaded.Record.Id
+		followed          = true
+		value             = loaded.Tracker.Value()
+		version           = loaded.ValueVersion
+		attached          = true
+		unpin             = session.pinDocument(addressId, incarnation)
 		unsubscribeCommit = func() {}
 		unsubscribeClose  = func() {}
 	)
-	// Attached, the incarnation stays cached; once its last observer detaches, or it retires, it is idle again.
-	unpin := session.pinDocument(loaded.AddressId, loaded.Record.Id)
 	detach := func() {
-		detachMu.Lock()
-		commit, closer := unsubscribeCommit, unsubscribeClose
-		detachMu.Unlock()
+		mu.Lock()
+		if !attached {
+			mu.Unlock()
+			return
+		}
+		attached = false
+		commit, closer, release := unsubscribeCommit, unsubscribeClose, unpin
+		mu.Unlock()
 		commit()
 		closer()
-		unpin()
+		release()
 	}
-	watch := NewCommittedWatch(session, loaded.Tracker.Value(), detach, nil)
-	observed := loaded.ValueVersion
-	recordId := loaded.Record.Id
-	commit, err := session.subscribeCommits(func(ctx context.Context, publication durable.CommitPublication) {
-		for _, change := range publication.Changes {
-			document, ok := change.(durable.DocumentChange)
-			if !ok || document.Record.Id != recordId {
-				continue
-			}
-			// A retired incarnation never changes again: its watch delivers the retirement but pins nothing.
-			if document.Value == nil {
-				unpin()
-				watch.Retire(ctx)
-				continue
-			}
-			ops := observedOperations(&observed, document)
-			// A migration-only base changes nothing for a watch of the new version.
-			if len(ops) == 0 {
-				continue
-			}
-			watch.Advance(ctx, document.Value, ops)
+	observer := create(loaded.Tracker.Value(), detach, session.reportListener)
+	isAttached := func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return attached
+	}
+	commit, err := session.observeCommits(func(ctx context.Context, publication ObservedCommit) {
+		// Listeners run from a copy of the set: another observer's call may have detached this one.
+		if !isAttached() {
+			return
 		}
+		ownerEnds := false
+		for _, change := range publication.Changes {
+			var document durable.DocumentChange
+			switch typed := change.(type) {
+			case durable.TaskWrite:
+				if address.Scope.Kind == durable.ScopeTask && typed.Value.Id == address.Scope.TaskId && typed.Value.State.Status == durable.TaskTerminal {
+					ownerEnds = true
+				}
+				continue
+			case durable.DocumentChange:
+				document = typed
+			default:
+				continue
+			}
+			mu.Lock()
+			current := followed && document.Record.Id == incarnation
+			mu.Unlock()
+			// The incarnation followed is at the address by definition; only another record needs the address compared.
+			if !current && !atAddress(document.Record, address) {
+				continue
+			}
+			switch {
+			case document.Value == nil:
+				if !current {
+					continue
+				}
+				mu.Lock()
+				last := value
+				followed, value = false, nil
+				release := unpin
+				mu.Unlock()
+				release()
+				observer.Advance(ctx, durable.WatchChange[durable.JsonObject]{Value: last, Retired: true})
+			case !current || *document.Version != version:
+				// A new incarnation at the address, or a value of another definition version, whose shape the observer's
+				// value does not have: shown whole.
+				if !current {
+					mu.Lock()
+					previous := unpin
+					incarnation, followed = document.Record.Id, true
+					mu.Unlock()
+					previous()
+					pinned := session.pinDocument(addressId, document.Record.Id)
+					mu.Lock()
+					if attached {
+						unpin = pinned
+						mu.Unlock()
+					} else {
+						mu.Unlock()
+						pinned()
+					}
+				}
+				mu.Lock()
+				version, value = *document.Version, document.Value
+				mu.Unlock()
+				observer.Advance(ctx, durable.WatchChange[durable.JsonObject]{Value: document.Value, Ops: []durable.Op{{"r", document.Value}}})
+			default:
+				// A migration-only base changes nothing for an observer of the new version.
+				if len(document.Ops) == 0 {
+					continue
+				}
+				mu.Lock()
+				value = document.Value
+				mu.Unlock()
+				observer.Advance(ctx, durable.WatchChange[durable.JsonObject]{Value: document.Value, Ops: document.Ops})
+			}
+			// The observer may detach in its call, or panic and be detached: the rest of the commit is not its.
+			if !isAttached() {
+				return
+			}
+		}
+		if !ownerEnds {
+			return
+		}
+		mu.Lock()
+		unsubscribe, release := unsubscribeCommit, unpin
+		mu.Unlock()
+		unsubscribe()
+		release()
+		ownerEnded(observer)
 	})
 	if err != nil {
 		unpin()
 		return nil, err
 	}
-	closer, err := session.subscribeClose(func() { watch.SourceEnded(session.failure()) })
+	closer, err := session.subscribeClose(func() {
+		detach()
+		observer.End(session.failure())
+	})
 	if err != nil {
 		commit()
 		unpin()
 		return nil, err
 	}
-	detachMu.Lock()
+	mu.Lock()
 	unsubscribeCommit, unsubscribeClose = commit, closer
-	detachMu.Unlock()
-	return watch, nil
+	mu.Unlock()
+	return observer, nil
 }
 
-// observedOperations returns the operations a watch applies for one committed change of a live incarnation. A watch
-// hydrated under another definition version holds a differently shaped value, so it receives the new value as a root
-// replacement instead of operations for that shape.
-func observedOperations(observed *int, change durable.DocumentChange) []durable.Op {
-	if *change.Version == *observed {
-		return change.Ops
+// atAddress reports whether record is an incarnation at address.
+func atAddress(record durable.DocumentRecord, address durable.DocumentAddress) bool {
+	if record.Kind != address.Kind || (record.Key == nil) != (address.Key == nil) || (record.Key != nil && *record.Key != *address.Key) {
+		return false
 	}
-	*observed = *change.Version
-	return []durable.Op{{"r", change.Value}}
+	if record.Scope.Kind != address.Scope.Kind {
+		return false
+	}
+	switch record.Scope.Kind {
+	case durable.ScopeConversation:
+		return record.Scope.ConversationId == address.Scope.ConversationId
+	case durable.ScopeTask:
+		return record.Scope.TaskId == address.Scope.TaskId
+	}
+	return true
 }
 
 func (session *SessionImpl) loadDocument(ctx context.Context, definition *durable.AnyDocDefinition, addressId string, address durable.DocumentAddress) (*LoadedDocument, error) {
@@ -1118,10 +1531,18 @@ func (session *SessionImpl) loadDocument(ctx context.Context, definition *durabl
 		session.touchDocument(addressId)
 		return cached, nil
 	}
-	if cached != nil {
-		session.dropDocumentLocked(addressId)
-	}
 	session.mu.Unlock()
+	if cached != nil {
+		// The reload must find what memory holds: held changes are stored before their tracker goes.
+		if hold := session.heldOf(cached.Record.Id); hold != nil {
+			if err := session.storeHolds(ctx, []*heldDocument{hold}); err != nil {
+				return nil, err
+			}
+		}
+		session.mu.Lock()
+		session.dropDocumentLocked(addressId)
+		session.mu.Unlock()
+	}
 	record, err := session.storage.FindDocument(ctx, address, durable.CurrentPoint)
 	if err != nil || record == nil {
 		return nil, err

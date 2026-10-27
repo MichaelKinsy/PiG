@@ -58,21 +58,21 @@ func TestNodeExecutionEnvWatchLimits(t *testing.T) {
 		env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir(), Watch: NodeWatchOptions{MaxDirectories: new(3)}})
 		mustDo(t, env.CreateDir(background, "tree/a/b", nil))
 		mustDo(t, env.CreateDir(background, "tree/c", nil))
-		_, err := env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.WatchChange) {})
+		_, err := env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.FileChange) {})
 		if fileErr, ok := errors.AsType[*durableenv.FileError](err); !ok || fileErr.Code != durableenv.FileErrorInvalid {
 			t.Fatalf("Watch error = %v, want an invalid FileError", err)
 		}
 
 		mustDo(t, env.Remove(background, "tree/c", &durableenv.RemoveOptions{Recursive: true}))
-		changes := make(chan durableenv.WatchChange, 100)
-		watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(change durableenv.WatchChange) { changes <- change }))
+		changes := make(chan durableenv.FileChange, 100)
+		watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(change durableenv.FileChange) { changes <- change }))
 		defer func() { _ = watcher.Close(background) }()
 		mustDo(t, env.CreateDir(background, "tree/d", nil))
 		deadline := time.After(3 * time.Second)
 		for {
 			select {
 			case change := <-changes:
-				if failure, ok := change.(durableenv.WatchChangeError); ok {
+				if failure, ok := change.(durableenv.FileChangeError); ok {
 					if failure.Error.Code != durableenv.FileErrorInvalid {
 						t.Fatalf("error code = %s, want invalid", failure.Error.Code)
 					}
@@ -100,7 +100,7 @@ func TestNodeExecutionEnvWatchPermissionDenied(t *testing.T) {
 			mustDo(t, os.Chmod(filepath.Join(root, "locked"), 0))
 			t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "locked"), 0o700) })
 			// The target itself cannot be stat'ed.
-			_, err := env.Watch(background, []durableenv.WatchTarget{{Path: "locked/inner"}}, func(durableenv.WatchChange) {})
+			_, err := env.Watch(background, []durableenv.WatchTarget{{Path: "locked/inner"}}, func(durableenv.FileChange) {})
 			if fileErr, ok := errors.AsType[*durableenv.FileError](err); !ok || fileErr.Code != durableenv.FileErrorPermissionDenied {
 				t.Fatalf("Watch error = %v, want a permission_denied FileError", err)
 			}
@@ -108,7 +108,7 @@ func TestNodeExecutionEnvWatchPermissionDenied(t *testing.T) {
 			mustDo(t, os.Chmod(filepath.Join(root, "locked"), 0o700))
 			mustDo(t, os.Chmod(filepath.Join(root, "locked", "inner"), 0))
 			t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "locked", "inner"), 0o700) })
-			_, err = env.Watch(background, []durableenv.WatchTarget{{Path: "locked/inner"}}, func(durableenv.WatchChange) {})
+			_, err = env.Watch(background, []durableenv.WatchTarget{{Path: "locked/inner"}}, func(durableenv.FileChange) {})
 			if fileErr, ok := errors.AsType[*durableenv.FileError](err); !ok || fileErr.Code != durableenv.FileErrorPermissionDenied {
 				t.Fatalf("Watch error = %v, want a permission_denied FileError", err)
 			}

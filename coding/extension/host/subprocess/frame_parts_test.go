@@ -60,6 +60,28 @@ func TestSplitFrameIsTheEnvelopesEncoding(t *testing.T) {
 	}
 }
 
+// A byte reader of a fused connection rejects a frame over MaxFrameSize, by one of its parts or by their total, before it sizes the frame.
+func TestFusedConnByteReadRejectsAnOverFrame(t *testing.T) {
+	for name, args := range map[string][]byte{
+		"args alone":     make([]byte, MaxFrameSize+1),
+		"total of shell": make([]byte, MaxFrameSize-5),
+	} {
+		t.Run(name, func(t *testing.T) {
+			host, ext := newFusedConn()
+			done := make(chan error, 1)
+			go func() { done <- host.WriteFrameParts([]byte(`{"a":`), args, []byte(`}`)) }()
+			_, err := ext.Read(make([]byte, 16))
+			var tooLarge *FrameTooLargeError
+			if !errors.As(err, &tooLarge) || tooLarge.Max != MaxFrameSize || tooLarge.Size <= MaxFrameSize {
+				t.Fatalf("Read = %v, want a FrameTooLargeError over %d", err, MaxFrameSize)
+			}
+			if err := <-done; err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 // fusedConn hands frames over as net.Pipe hands bytes: a write waits for the reader, a close ends both sides, a deadline expires a blocked call (FD-6).
 func TestFusedConnBehavesAsAPipe(t *testing.T) {
 	host, ext := newFusedConn()

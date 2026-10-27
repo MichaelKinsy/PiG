@@ -453,8 +453,20 @@ export class Markdown {
                     const lineWithReappliedStyle = line.replace(/\x1b\[0m/g, `\x1b[0m${quoteStylePrefix}`);
                     return quoteStyle(lineWithReappliedStyle);
                 };
+                // With no room for another border ("│ " plus at least one content column), render the
+                // nested content without one. Otherwise each extra level re-wraps every child line at
+                // width 1 and the output grows exponentially with nesting depth.
+                if (width < 3) {
+                    const quoteTokens = token.tokens || [];
+                    for (let i = 0; i < quoteTokens.length; i++) {
+                        for (const line of this.renderToken(quoteTokens[i], width, quoteTokens[i + 1]?.type, styleContext)) {
+                            lines.push(line);
+                        }
+                    }
+                    break;
+                }
                 // Calculate available width for quote content (subtract border "│ " = 2 chars)
-                const quoteContentWidth = Math.max(1, width - 2);
+                const quoteContentWidth = width - 2;
                 // Blockquotes contain block-level tokens (paragraph, list, code, etc.), so render
                 // children with renderToken() instead of renderInlineTokens().
                 // Default message style should not apply inside blockquotes.
@@ -467,7 +479,9 @@ export class Markdown {
                 for (let i = 0; i < quoteTokens.length; i++) {
                     const quoteToken = quoteTokens[i];
                     const nextQuoteToken = quoteTokens[i + 1];
-                    renderedQuoteLines.push(...this.renderToken(quoteToken, quoteContentWidth, nextQuoteToken?.type, quoteInlineStyleContext));
+                    for (const line of this.renderToken(quoteToken, quoteContentWidth, nextQuoteToken?.type, quoteInlineStyleContext)) {
+                        renderedQuoteLines.push(line);
+                    }
                 }
                 // Avoid rendering an extra empty quote line before the outer blockquote spacing.
                 while (renderedQuoteLines.length > 0 && renderedQuoteLines[renderedQuoteLines.length - 1] === "") {

@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// However a block is cut into deltas, the converter holds what Pi's proxy holds after `content.text += delta` and `partialJson += delta; content.arguments = parseStreamingJson(partialJson) || {}` (proxy.ts:272, 304, 342-343): the concatenation and the arguments parsed from the whole text so far, at every delta. The arguments compare as JSON.stringify writes them, so member order (the model's, not sorted) and a non-object or falsy value count. A block that starts again at the same index starts from empty.
+// However a block is cut into deltas, the converter holds what Pi's proxy holds after `content.text += delta` and `arguments: args.append(delta)` (proxy.ts:272, 304, 342-343): the concatenation and the arguments the stream reads from the whole text so far, at every delta. The arguments compare as JSON.stringify writes them, so member order (the model's, not sorted) and a non-object or falsy value count. A block that starts again at the same index starts from empty.
 func TestStreamProxyDeltasEqualConcatenationAndWholeTextParse(t *testing.T) {
 	type stream struct{ kind, text string }
 	streams := []stream{
@@ -22,7 +22,7 @@ func TestStreamProxyDeltasEqualConcatenationAndWholeTextParse(t *testing.T) {
 	}
 	for _, shape := range streams {
 		for _, step := range []int{1, 3, 7, 64} {
-			converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolJSON: map[int]string{}}
+			converter := &proxyEventConverter{partial: newProxyPartial(proxyTestModel()), toolArguments: map[proxyArgumentsKey]*ai.ToolCallArgumentsStream{}}
 			for round := range 2 {
 				start := ProxyAssistantMessageEvent{Type: ProxyAssistantMessageEventType(shape.kind + "_start"), ContentIndex: 0, ID: "call", ToolName: "write"}
 				if _, err := converter.process(start); err != nil {
@@ -43,8 +43,7 @@ func TestStreamProxyDeltasEqualConcatenationAndWholeTextParse(t *testing.T) {
 						got, want = block.Thinking, so.String()
 					case ai.ToolCall:
 						var whole ai.ToolCall
-						whole.SetStreamingArguments(so.String())
-						whole.DefaultFalsyArguments()
+						whole.AppendStreamedArguments(ai.NewToolCallArgumentsStream(), so.String())
 						gotJSON, err := block.ArgumentsJSON()
 						if err != nil {
 							t.Fatal(err)
@@ -54,9 +53,6 @@ func TestStreamProxyDeltasEqualConcatenationAndWholeTextParse(t *testing.T) {
 							t.Fatal(err)
 						}
 						got, want = string(gotJSON), string(wantJSON)
-						if converter.toolJSON[0] != so.String() {
-							t.Fatalf("%q step %d: partialJson %q, want %q", shape.text, step, converter.toolJSON[0], so.String())
-						}
 					}
 					if got != want {
 						t.Fatalf("%s %q step %d round %d after %q: %s, want %s", shape.kind, shape.text, step, round, so.String(), got, want)

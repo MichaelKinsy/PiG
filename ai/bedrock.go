@@ -1346,7 +1346,7 @@ func (p *BedrockProvider) handleBedrockDeltaFields(ev btypes.ContentBlockDeltaEv
 		// ContentBlockStart for text blocks).
 		block, ok := blocks[idx]
 		if !ok {
-			block = &activeBlock{kind: "text", contentIndex: builder.textBlockStartWithBlock(TextContent{scratch: bedrockBlockScratch(builder, idx)})}
+			block = &activeBlock{kind: "text", contentIndex: builder.textBlockStart()}
 			blocks[idx] = block
 		}
 		if block.kind == "text" {
@@ -1367,7 +1367,7 @@ func (p *BedrockProvider) handleBedrockDeltaFields(ev btypes.ContentBlockDeltaEv
 		block, ok := blocks[idx]
 		if !ok {
 			// upstream: packages/ai/src/api/bedrock-converse-stream.ts:handleContentBlockDelta
-			block = &activeBlock{kind: "thinking", contentIndex: builder.thinkingBlockStartWithContent(ThinkingContent{thinkingSignatureEmpty: true, scratch: bedrockBlockScratch(builder, idx)})}
+			block = &activeBlock{kind: "thinking", contentIndex: builder.thinkingBlockStartWithContent(ThinkingContent{thinkingSignatureEmpty: true})}
 			blocks[idx] = block
 		}
 		if block.kind != "thinking" {

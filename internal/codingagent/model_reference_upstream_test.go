@@ -32,6 +32,8 @@ func referenceCatalog() []RuntimeModel {
 		{"gw-b", "claude-opus-4-8"},
 		{"gw-b", "gw-b/free"},
 		{"gw-b", "zz:free"},
+		// URL-derived provider id containing "/" (#11394)
+		{"llama=http://host:10800", "unsloth/qwen-gguf:BF16"},
 	} {
 		models = append(models, RuntimeModel{Provider: entry[0], ID: entry[1], Name: entry[1], Reasoning: true})
 	}
@@ -63,6 +65,8 @@ func TestResolveModelReferenceMatchesUpstream(t *testing.T) {
 		{name: "thinking suffix", text: "sonnet:high", want: expected{model: "anthropic/claude-sonnet-4-5", thinking: "high"}},
 		{name: "colon in a literal id is not a thinking suffix", text: "qwen/qwen3-coder:exacto", want: expected{model: "openrouter/qwen/qwen3-coder:exacto"}},
 		{name: "provider prefix, colon id, and thinking suffix", text: "openrouter/qwen/qwen3-coder:exacto:high", want: expected{model: "openrouter/qwen/qwen3-coder:exacto", thinking: "high"}},
+		{name: "provider id containing a slash", text: "llama=http://host:10800/unsloth/qwen-gguf:BF16", want: expected{model: "llama=http://host:10800/unsloth/qwen-gguf:BF16"}},
+		{name: "provider id containing a slash, with thinking suffix", text: "llama=http://host:10800/unsloth/qwen-gguf:BF16:high", want: expected{model: "llama=http://host:10800/unsloth/qwen-gguf:BF16", thinking: "high"}},
 		{name: "raw id wins when the provider prefix names no matching model", text: "openai/gpt-4o:extended", want: expected{model: "openrouter/openai/gpt-4o:extended"}},
 		{name: "fuzzy searches the prefixed provider first", text: "openrouter/qwen", want: expected{model: "openrouter/qwen/qwen3-coder:exacto"}},
 		{name: "strict keeps an invalid suffix in the id", text: "gpt-4o:random", want: notFound},

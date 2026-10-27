@@ -80,12 +80,46 @@ func remoteDeterministic(t *testing.T, options codemode.SandboxOptions, delayFir
 // recorded is a started run and what it reported.
 type recorded struct {
 	run *codemode.Run
+	// started is closed once the VM reported its start (OnStarted); ended, once the run has its result.
+	started     chan struct{}
+	startedOnce sync.Once
+	ended       chan struct{}
 
 	mu          sync.Mutex
 	calls       []codemode.HostCall
 	idles       [][2]int
 	events      []string
 	fingerprint string
+}
+
+// awaitVMStart waits for a VM to report its start, or for the run it belongs to to end without one (which fails the test).
+// Starting a VM compiles QuickJS and runs the prelude, which takes as long as the coverage and load of the run make it (more than
+// 10 s in a portmap shard on 4 CPUs) and is not what the tests of a run's behaviour measure, so this wait has no bound of its
+// own: a VM that never starts is left to go test's timeout, and the bounds of the tests start once it has.
+func awaitVMStart(t *testing.T, started, ended <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-started:
+	case <-ended:
+		select {
+		case <-started:
+		default:
+			t.Fatal("the run ended before its VM started")
+		}
+	}
+}
+
+// waitUntil waits for check to hold within 5 s of the VM's start.
+func (r *recorded) waitUntil(t *testing.T, check func() bool) {
+	t.Helper()
+	awaitVMStart(t, r.started, r.ended)
+	deadline := time.Now().Add(5 * time.Second)
+	for !check() {
+		if time.Now().After(deadline) {
+			t.Fatal("Condition was not reached")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 func (r *recorded) callCount() int { r.mu.Lock(); defer r.mu.Unlock(); return len(r.calls) }
@@ -118,7 +152,7 @@ func startRun(t *testing.T, sandbox *codemode.Sandbox, code string, mutate ...fu
 	if answer == nil {
 		answer = func(call codemode.HostCall) codemode.Outcome { return codemode.Outcome{OK: true, Value: call.Args} }
 	}
-	r := &recorded{}
+	r := &recorded{started: make(chan struct{}), ended: make(chan struct{})}
 	queue := make(chan codemode.HostCall, 1024)
 	// Pi answers in a microtask, after start() has returned the run; ready stands for that.
 	ready := make(chan struct{})
@@ -137,6 +171,7 @@ func startRun(t *testing.T, sandbox *codemode.Sandbox, code string, mutate ...fu
 		r.fingerprint = fingerprint
 		r.events = append(r.events, "started")
 		r.mu.Unlock()
+		r.startedOnce.Do(func() { close(r.started) })
 	}
 	run.OnCall = func(call codemode.HostCall) {
 		r.mu.Lock()
@@ -164,6 +199,10 @@ func startRun(t *testing.T, sandbox *codemode.Sandbox, code string, mutate ...fu
 		t.Fatal(err)
 	}
 	r.run = started
+	runs.Go(func() {
+		started.Result()
+		close(r.ended)
+	})
 	close(ready)
 	t.Cleanup(func() {
 		started.Result()
@@ -171,17 +210,6 @@ func startRun(t *testing.T, sandbox *codemode.Sandbox, code string, mutate ...fu
 		runs.Wait()
 	})
 	return r
-}
-
-func waitUntil(t *testing.T, check func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for !check() {
-		if time.Now().After(deadline) {
-			t.Fatal("Condition was not reached")
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
 }
 
 func numbers(t *testing.T, raw json.RawMessage) []float64 {
@@ -338,7 +366,7 @@ func TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn(
 		r := startRun(t, sandbox, `const order = [];
 				await Promise.all([tools.wait("a").then(() => order.push("a")), tools.wait("b").then(() => order.push("b"))]);
 				return order;`)
-		waitUntil(t, func() bool { return r.callCount() == 2 && len(r.idleList()) == 1 })
+		r.waitUntil(t, func() bool { return r.callCount() == 2 && len(r.idleList()) == 1 })
 		a, b := r.call(0), r.call(1)
 		// b is result 1 and a result 2, but a arrives first.
 		mustDeliver(t, r.run, 2, startedAt+2000, a.ID)
@@ -449,7 +477,7 @@ func TestDeterministicRunsKeepTheClockMonotonicAndRejectAClockValueThatIsNotFini
 	forEachBackend(t, func(t *testing.T, _ string, open func(codemode.SandboxOptions) *codemode.Sandbox) {
 		sandbox := open(codemode.SandboxOptions{})
 		r := startRun(t, sandbox, "const before = Date.now(); await tools.wait(1); return [before, Date.now(), performance.now()]")
-		waitUntil(t, func() bool { return r.callCount() == 1 })
+		r.waitUntil(t, func() bool { return r.callCount() == 1 })
 		if err := r.run.Deliver(1, math.NaN(), 1, codemode.Outcome{OK: true, Value: json.RawMessage("null")}); err == nil || !strings.Contains(err.Error(), "not a finite number") {
 			t.Fatalf("NaN clock: %v", err)
 		}
@@ -492,7 +520,7 @@ func TestDeterministicRunsLeaveACallWaitingWhenItsAnswerCannotBeSerialized(t *te
 	forEachBackend(t, func(t *testing.T, _ string, open func(codemode.SandboxOptions) *codemode.Sandbox) {
 		sandbox := open(codemode.SandboxOptions{})
 		r := startRun(t, sandbox, "return await tools.wait(1)")
-		waitUntil(t, func() bool { return r.callCount() == 1 })
+		r.waitUntil(t, func() bool { return r.callCount() == 1 })
 		// 1n has no JSON form: here an answer that is not JSON.
 		if err := r.run.Deliver(1, startedAt, 1, codemode.Outcome{OK: true, Value: json.RawMessage("1n")}); err == nil {
 			t.Fatal("an answer JSON cannot hold was accepted")
@@ -531,7 +559,7 @@ func TestDeterministicRunsRejectRejectionPropertiesThatAreNotAnObjectAndToolsSha
 	forEachBackend(t, func(t *testing.T, _ string, open func(codemode.SandboxOptions) *codemode.Sandbox) {
 		sandbox := open(codemode.SandboxOptions{})
 		r := startRun(t, sandbox, "return await tools.wait(1)")
-		waitUntil(t, func() bool { return r.callCount() == 1 })
+		r.waitUntil(t, func() bool { return r.callCount() == 1 })
 		for _, properties := range []string{`null`, `[1]`} {
 			err := r.run.Deliver(1, startedAt, 1, codemode.Outcome{Message: "x", Properties: json.RawMessage(properties)})
 			if err == nil || !strings.Contains(err.Error(), "not an object") {
@@ -573,7 +601,7 @@ func TestDeterministicRunsEndWithAnErrorTheScriptCannotCatchWhenTheCallerAborts(
 		defer cancel(nil)
 		r := startRun(t, sandbox, `try { await tools.wait(1); } catch { text("caught"); }
 				text("after");`, func(o *startOptions) { o.ctx = ctx })
-		waitUntil(t, func() bool { return r.callCount() == 1 })
+		r.waitUntil(t, func() bool { return r.callCount() == 1 })
 		cancel(&abortReason{"diverged"})
 		result := r.run.Result()
 		if result.OK || result.Error.Kind != codemode.ErrorAborted || result.Error.Message != "diverged" || len(result.Output) != 0 {
@@ -594,7 +622,7 @@ func TestDeterministicRunsAreFinishedOnceTheyHaveTheirOutcome(t *testing.T) {
 	forEachBackend(t, func(t *testing.T, _ string, open func(codemode.SandboxOptions) *codemode.Sandbox) {
 		sandbox := open(codemode.SandboxOptions{})
 		r := startRun(t, sandbox, "await tools.wait(1); return 2")
-		waitUntil(t, func() bool { return r.callCount() == 1 })
+		r.waitUntil(t, func() bool { return r.callCount() == 1 })
 		if r.run.Finished() {
 			t.Fatal("finished before the call was answered")
 		}
@@ -611,7 +639,7 @@ func TestDeterministicRunsRejectACallThatIsNotWaitingAndAResultNumberUsedTwice(t
 	forEachBackend(t, func(t *testing.T, _ string, open func(codemode.SandboxOptions) *codemode.Sandbox) {
 		sandbox := open(codemode.SandboxOptions{})
 		r := startRun(t, sandbox, "await Promise.all([tools.wait(1), tools.wait(2)])")
-		waitUntil(t, func() bool { return r.callCount() == 2 })
+		r.waitUntil(t, func() bool { return r.callCount() == 2 })
 		null := codemode.Outcome{OK: true, Value: json.RawMessage("null")}
 		if err := r.run.Deliver(1, startedAt, 99, null); err == nil || !strings.Contains(err.Error(), "Call 99 is not waiting") {
 			t.Fatalf("unknown call: %v", err)
@@ -635,7 +663,7 @@ func TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesS
 	r := startRun(t, sandbox, `const order = [];
 			await Promise.all([tools.wait("a").then(() => order.push("a")), tools.wait("b").then(() => order.push("b"))]);
 			return order;`)
-	waitUntil(t, func() bool { return r.callCount() == 2 })
+	r.waitUntil(t, func() bool { return r.callCount() == 2 })
 	a, b := r.call(0), r.call(1)
 	mustDeliver(t, r.run, 1, startedAt+1000, a.ID)
 	mustDeliver(t, r.run, 2, startedAt+2000, b.ID)
@@ -669,6 +697,10 @@ func TestAVMThatIsToldTheSameResultNumberTwiceCrashes(t *testing.T) {
 	var mu sync.Mutex
 	var crash string
 	done := make(chan struct{})
+	// started: the VM reported its start, as a VM that compiled QuickJS does; served: ServeRemote returned.
+	started := make(chan struct{})
+	var startedOnce sync.Once
+	served := make(chan struct{})
 	seq := 5
 	zero := 0.0
 	payload := "null"
@@ -676,21 +708,30 @@ func TestAVMThatIsToldTheSameResultNumberTwiceCrashes(t *testing.T) {
 		Globals: []codemode.VmStartGlobal{}, Deterministic: &codemode.VmDeterministic{StartedAt: startedAt, Seed: 1}}}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	go codemode.ServeRemote(ctx, request, func(_ context.Context, messages []codemode.RemoteMessage, reply func(*codemode.RemoteReply, error)) {
-		last := messages[len(messages)-1]
-		switch last.Type {
-		case codemode.MessageCall:
-			reply(&codemode.RemoteReply{HostToWorkerMessage: codemode.HostToWorkerMessage{Type: codemode.MessageResult, ID: last.ID, Ok: true, Payload: &payload, Seq: &seq, Now: &zero}}, nil)
-		case codemode.MessageCrash:
-			mu.Lock()
-			crash = last.Message
-			mu.Unlock()
-			reply(nil, nil)
-			close(done)
-		default:
-			reply(nil, nil)
-		}
-	}, codemode.ServeOptions{MaxInterruptBudget: deterministicBudget})
+	go func() {
+		defer close(served)
+		codemode.ServeRemote(ctx, request, func(_ context.Context, messages []codemode.RemoteMessage, reply func(*codemode.RemoteReply, error)) {
+			for _, message := range messages {
+				if message.Type == codemode.MessageStarted {
+					startedOnce.Do(func() { close(started) })
+				}
+			}
+			last := messages[len(messages)-1]
+			switch last.Type {
+			case codemode.MessageCall:
+				reply(&codemode.RemoteReply{HostToWorkerMessage: codemode.HostToWorkerMessage{Type: codemode.MessageResult, ID: last.ID, Ok: true, Payload: &payload, Seq: &seq, Now: &zero}}, nil)
+			case codemode.MessageCrash:
+				mu.Lock()
+				crash = last.Message
+				mu.Unlock()
+				reply(nil, nil)
+				close(done)
+			default:
+				reply(nil, nil)
+			}
+		}, codemode.ServeOptions{MaxInterruptBudget: deterministicBudget})
+	}()
+	awaitVMStart(t, started, served)
 	select {
 	case <-done:
 	case <-time.After(10 * time.Second):
@@ -698,7 +739,7 @@ func TestAVMThatIsToldTheSameResultNumberTwiceCrashes(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if crash != "Result 2 has sequence number 5, expected 1 or later, once" {
+	if crash != "Error: Result 2 has sequence number 5, expected 1 or later, once" {
 		t.Fatalf("crash = %q", crash)
 	}
 }

@@ -1032,7 +1032,7 @@ func randomUUID() string {
 }
 
 // Watch reports changes to files and directories; the daemon watches next to the files.
-func (e *RemoteExecutionEnv) Watch(ctx context.Context, targets []durableenv.WatchTarget, onChange func(durableenv.WatchChange)) (durableenv.FileWatcher, error) {
+func (e *RemoteExecutionEnv) Watch(ctx context.Context, targets []durableenv.WatchTarget, onChange func(durableenv.FileChange)) (durableenv.FileWatcher, error) {
 	if abort := abortError(ctx, ""); abort != nil {
 		return nil, abort
 	}

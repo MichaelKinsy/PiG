@@ -82,24 +82,6 @@ func truncateUTF8(text string, maxBytes int) string {
 	return text[:end]
 }
 
-// replaceControlCharacters is `text.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")`: each run of control characters becomes one space.
-func replaceControlCharacters(text string) string {
-	var out strings.Builder
-	inRun := false
-	for _, char := range text {
-		if char <= 0x1f || (char >= 0x7f && char <= 0x9f) {
-			if !inRun {
-				out.WriteByte(' ')
-				inRun = true
-			}
-			continue
-		}
-		inRun = false
-		out.WriteRune(char)
-	}
-	return out.String()
-}
-
 // FormatProgramStatus encodes a status report. Terminals discard reports whose text contains control characters, so they are replaced.
 func FormatProgramStatus(status ProgramStatus) string {
 	pairs := []string{"state=" + string(status.State)}
@@ -110,7 +92,7 @@ func FormatProgramStatus(status ProgramStatus) string {
 		pairs = append(pairs, "kind="+string(status.Kind))
 	}
 	// A message is UTF-8 text: bytes that are not valid become U+FFFD, as encoding a JavaScript string does for a lone surrogate.
-	message := truncateUTF8(widthx.JSTrim(replaceControlCharacters(strings.ToValidUTF8(status.Message, "\uFFFD"))), programStatusMaxMessageBytes)
+	message := truncateUTF8(widthx.JSTrim(widthx.ReplaceControlCharacters(strings.ToValidUTF8(status.Message, "\uFFFD"))), programStatusMaxMessageBytes)
 	if message != "" {
 		pairs = append(pairs, "msg="+base64.StdEncoding.EncodeToString([]byte(message)))
 	}

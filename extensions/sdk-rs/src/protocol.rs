@@ -700,7 +700,7 @@ pub(crate) type LoadingServer = Arc<dyn Fn(&Envelope<Box<serde_json::value::RawV
 
 /// The host calls the host answers while a factory runs, before the extension registers: the shared event bus and the pure helpers that read no session state (Go's loadingBusCall).
 fn loading_host_call(method: &str) -> bool {
-    method.starts_with("events.") || matches!(method, "frontmatter.parse" | "date.parse" | "diff.string" | "diff.patch" | "clipboard.copy" | "image.convertToPng" | "image.resize" | "highlight.code" | "theme.load" | "builtinTool.definition")
+    method.starts_with("events.") || matches!(method, "frontmatter.parse" | "date.parse" | "diff.string" | "diff.patch" | "clipboard.copy" | "image.convertToPng" | "image.resize" | "highlight.code" | "type.engine" | "theme.load" | "builtinTool.definition")
 }
 
 struct PendingCallSender {

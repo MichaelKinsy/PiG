@@ -382,6 +382,9 @@ func (l *Loop) tailDone() {
 	}
 }
 
+// HasPubs reports whether the finished job whose completion Hold holds has publications to deliver.
+func (l *Loop) HasPubs() bool { return len(l.pubs) != 0 }
+
 // QuietEnd reports whether the completion of the job whose end Hold holds has nothing to do but the tail tick Tail asks for:
 // no done to run, no publication, no continuation of its own and no load to reveal. Such a job and its tail need no step of their
 // own between them: the line stays held from the job's last tick to the tail's and QuietRelease frees it there.

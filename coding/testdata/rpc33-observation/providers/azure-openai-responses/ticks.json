@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0+74f46864",
+  "piVersion": "1.4.0+6c384aa3",
   "openaiVersion": "7.19.0",
   "gapCap": 64,
   "axes": {
@@ -75,7 +75,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178865
+            "timestamp": 1793072863737
           }
         },
         {
@@ -109,7 +109,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178865,
+            "timestamp": 1793072863737,
             "responseId": "response-r2"
           }
         },
@@ -145,7 +145,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178865,
+            "timestamp": 1793072863737,
             "responseId": "response-r2"
           }
         },
@@ -181,7 +181,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178865,
+            "timestamp": 1793072863737,
             "responseId": "response-r2"
           }
         },
@@ -217,7 +217,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178865,
+            "timestamp": 1793072863737,
             "responseId": "response-r2"
           }
         },
@@ -253,10 +253,10 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689178865,
+            "timestamp": 1793072863737,
             "responseId": "response-r2",
             "rawStopReason": "completed",
-            "durationMs": 42
+            "durationMs": 44
           }
         }
       ]
@@ -292,7 +292,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178909
+            "timestamp": 1793072863784
           }
         },
         {
@@ -326,7 +326,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178909,
+            "timestamp": 1793072863784,
             "responseId": "response-r2"
           }
         },
@@ -362,7 +362,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178909,
+            "timestamp": 1793072863784,
             "responseId": "response-r2"
           }
         },
@@ -398,7 +398,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178909,
+            "timestamp": 1793072863784,
             "responseId": "response-r2"
           }
         },
@@ -434,7 +434,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178909,
+            "timestamp": 1793072863784,
             "responseId": "response-r2"
           }
         },
@@ -470,7 +470,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689178909,
+            "timestamp": 1793072863784,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 9
@@ -509,7 +509,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178919
+            "timestamp": 1793072863794
           }
         },
         {
@@ -543,7 +543,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178919,
+            "timestamp": 1793072863794,
             "responseId": "response-r2"
           }
         },
@@ -579,7 +579,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178919,
+            "timestamp": 1793072863794,
             "responseId": "response-r2"
           }
         },
@@ -615,7 +615,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178919,
+            "timestamp": 1793072863794,
             "responseId": "response-r2"
           }
         },
@@ -651,7 +651,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178919,
+            "timestamp": 1793072863794,
             "responseId": "response-r2"
           }
         },
@@ -687,7 +687,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689178919,
+            "timestamp": 1793072863794,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 36
@@ -726,7 +726,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178955
+            "timestamp": 1793072863830
           }
         },
         {
@@ -760,7 +760,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178955,
+            "timestamp": 1793072863830,
             "responseId": "response-r2"
           }
         },
@@ -796,7 +796,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178955,
+            "timestamp": 1793072863830,
             "responseId": "response-r2"
           }
         },
@@ -832,7 +832,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178955,
+            "timestamp": 1793072863830,
             "responseId": "response-r2"
           }
         },
@@ -868,7 +868,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178955,
+            "timestamp": 1793072863830,
             "responseId": "response-r2"
           }
         },
@@ -904,7 +904,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689178955,
+            "timestamp": 1793072863830,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 4
@@ -943,7 +943,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178960
+            "timestamp": 1793072863835
           }
         },
         {
@@ -977,7 +977,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178960,
+            "timestamp": 1793072863835,
             "responseId": "response-r2"
           }
         },
@@ -1013,7 +1013,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178960,
+            "timestamp": 1793072863835,
             "responseId": "response-r2"
           }
         },
@@ -1049,7 +1049,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178960,
+            "timestamp": 1793072863835,
             "responseId": "response-r2"
           }
         },
@@ -1085,7 +1085,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178960,
+            "timestamp": 1793072863835,
             "responseId": "response-r2"
           }
         },
@@ -1121,7 +1121,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689178960,
+            "timestamp": 1793072863835,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 4
@@ -1160,7 +1160,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178964
+            "timestamp": 1793072863839
           }
         },
         {
@@ -1194,7 +1194,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178964,
+            "timestamp": 1793072863839,
             "responseId": "response-r2"
           }
         },
@@ -1230,7 +1230,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178964,
+            "timestamp": 1793072863839,
             "responseId": "response-r2"
           }
         },
@@ -1266,7 +1266,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178964,
+            "timestamp": 1793072863839,
             "responseId": "response-r2"
           }
         },
@@ -1302,7 +1302,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178964,
+            "timestamp": 1793072863839,
             "responseId": "response-r2"
           }
         },
@@ -1338,10 +1338,10 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689178964,
+            "timestamp": 1793072863839,
             "responseId": "response-r2",
             "rawStopReason": "completed",
-            "durationMs": 34
+            "durationMs": 35
           }
         }
       ]
@@ -1377,7 +1377,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178999
+            "timestamp": 1793072863875
           }
         },
         {
@@ -1392,8 +1392,7 @@
                 "type": "toolCall",
                 "id": "call-r2|fc_r2",
                 "name": "read",
-                "arguments": {},
-                "partialJson": ""
+                "arguments": {}
               }
             ],
             "api": "azure-openai-responses",
@@ -1414,7 +1413,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178999,
+            "timestamp": 1793072863875,
             "responseId": "response-r2"
           }
         },
@@ -1433,8 +1432,7 @@
                 "name": "read",
                 "arguments": {
                   "path": "target.txt"
-                },
-                "partialJson": "{\"path\":\"target.txt\"}"
+                }
               }
             ],
             "api": "azure-openai-responses",
@@ -1455,7 +1453,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178999,
+            "timestamp": 1793072863875,
             "responseId": "response-r2"
           }
         },
@@ -1494,7 +1492,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689178999,
+            "timestamp": 1793072863875,
             "responseId": "response-r2"
           }
         },
@@ -1533,10 +1531,10 @@
               }
             },
             "stopReason": "toolUse",
-            "timestamp": 1792689178999,
+            "timestamp": 1793072863875,
             "responseId": "response-r2",
             "rawStopReason": "completed",
-            "durationMs": 4
+            "durationMs": 7
           }
         }
       ]
@@ -1572,7 +1570,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179003
+            "timestamp": 1793072863883
           }
         },
         {
@@ -1587,8 +1585,7 @@
                 "type": "toolCall",
                 "id": "call-r2|fc_r2",
                 "name": "read",
-                "arguments": {},
-                "partialJson": ""
+                "arguments": {}
               }
             ],
             "api": "azure-openai-responses",
@@ -1609,7 +1606,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179003,
+            "timestamp": 1793072863883,
             "responseId": "response-r2"
           }
         },
@@ -1628,8 +1625,7 @@
                 "name": "read",
                 "arguments": {
                   "path": "target.txt"
-                },
-                "partialJson": "{\"path\":\"target.txt\"}"
+                }
               }
             ],
             "api": "azure-openai-responses",
@@ -1650,7 +1646,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179003,
+            "timestamp": 1793072863883,
             "responseId": "response-r2"
           }
         },
@@ -1689,7 +1685,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179003,
+            "timestamp": 1793072863883,
             "responseId": "response-r2"
           }
         },
@@ -1728,7 +1724,7 @@
               }
             },
             "stopReason": "toolUse",
-            "timestamp": 1792689179003,
+            "timestamp": 1793072863883,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 4
@@ -1767,7 +1763,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179007
+            "timestamp": 1793072863887
           }
         },
         {
@@ -1782,8 +1778,7 @@
                 "type": "toolCall",
                 "id": "call-r2|fc_r2",
                 "name": "read",
-                "arguments": {},
-                "partialJson": ""
+                "arguments": {}
               }
             ],
             "api": "azure-openai-responses",
@@ -1804,7 +1799,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179007,
+            "timestamp": 1793072863887,
             "responseId": "response-r2"
           }
         },
@@ -1823,8 +1818,7 @@
                 "name": "read",
                 "arguments": {
                   "path": "target.txt"
-                },
-                "partialJson": "{\"path\":\"target.txt\"}"
+                }
               }
             ],
             "api": "azure-openai-responses",
@@ -1845,7 +1839,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179007,
+            "timestamp": 1793072863887,
             "responseId": "response-r2"
           }
         },
@@ -1884,7 +1878,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179007,
+            "timestamp": 1793072863887,
             "responseId": "response-r2"
           }
         },
@@ -1923,10 +1917,10 @@
               }
             },
             "stopReason": "toolUse",
-            "timestamp": 1792689179007,
+            "timestamp": 1793072863887,
             "responseId": "response-r2",
             "rawStopReason": "completed",
-            "durationMs": 31
+            "durationMs": 29
           }
         }
       ]
@@ -1962,7 +1956,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179054
+            "timestamp": 1793072863931
           }
         },
         {
@@ -1996,7 +1990,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179054,
+            "timestamp": 1793072863931,
             "responseId": "response-r2"
           }
         },
@@ -2032,7 +2026,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179054,
+            "timestamp": 1793072863931,
             "responseId": "response-r2"
           }
         },
@@ -2069,7 +2063,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179054,
+            "timestamp": 1793072863931,
             "responseId": "response-r2"
           }
         },
@@ -2106,7 +2100,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179054,
+            "timestamp": 1793072863931,
             "responseId": "response-r2",
             "rawStopReason": "completed"
           }
@@ -2143,7 +2137,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179054,
+            "timestamp": 1793072863931,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 4
@@ -2182,7 +2176,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179065
+            "timestamp": 1793072863942
           }
         },
         {
@@ -2216,7 +2210,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179065,
+            "timestamp": 1793072863942,
             "responseId": "response-r2"
           }
         },
@@ -2252,7 +2246,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179065,
+            "timestamp": 1793072863942,
             "responseId": "response-r2"
           }
         },
@@ -2289,7 +2283,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179065,
+            "timestamp": 1793072863942,
             "responseId": "response-r2"
           }
         },
@@ -2326,7 +2320,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179065,
+            "timestamp": 1793072863942,
             "responseId": "response-r2",
             "rawStopReason": "completed"
           }
@@ -2363,7 +2357,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179065,
+            "timestamp": 1793072863942,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 3
@@ -2402,7 +2396,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179073
+            "timestamp": 1793072863950
           }
         },
         {
@@ -2436,7 +2430,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179073,
+            "timestamp": 1793072863950,
             "responseId": "response-r2"
           }
         },
@@ -2472,7 +2466,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179073,
+            "timestamp": 1793072863950,
             "responseId": "response-r2"
           }
         },
@@ -2508,7 +2502,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179073,
+            "timestamp": 1793072863950,
             "responseId": "response-r2"
           }
         },
@@ -2544,7 +2538,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179073,
+            "timestamp": 1793072863950,
             "responseId": "response-r2"
           }
         },
@@ -2580,10 +2574,10 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179073,
+            "timestamp": 1793072863950,
             "responseId": "response-r2",
             "rawStopReason": "completed",
-            "durationMs": 35
+            "durationMs": 34
           }
         }
       ]
@@ -2619,7 +2613,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179112
+            "timestamp": 1793072863992
           }
         },
         {
@@ -2653,7 +2647,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179112,
+            "timestamp": 1793072863992,
             "responseId": "response-r2"
           }
         },
@@ -2689,7 +2683,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179112,
+            "timestamp": 1793072863992,
             "responseId": "response-r2"
           }
         },
@@ -2726,7 +2720,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179112,
+            "timestamp": 1793072863992,
             "responseId": "response-r2"
           }
         },
@@ -2763,7 +2757,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179112,
+            "timestamp": 1793072863992,
             "responseId": "response-r2",
             "rawStopReason": "completed"
           }
@@ -2800,10 +2794,10 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179112,
+            "timestamp": 1793072863992,
             "responseId": "response-r2",
             "rawStopReason": "completed",
-            "durationMs": 3
+            "durationMs": 7
           }
         }
       ]
@@ -2839,7 +2833,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179120
+            "timestamp": 1793072864005
           }
         },
         {
@@ -2873,7 +2867,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179120,
+            "timestamp": 1793072864005,
             "responseId": "response-r2"
           }
         },
@@ -2909,7 +2903,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179120,
+            "timestamp": 1793072864005,
             "responseId": "response-r2"
           }
         },
@@ -2946,7 +2940,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179120,
+            "timestamp": 1793072864005,
             "responseId": "response-r2"
           }
         },
@@ -2983,7 +2977,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179120,
+            "timestamp": 1793072864005,
             "responseId": "response-r2",
             "rawStopReason": "completed"
           }
@@ -3020,10 +3014,10 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179120,
+            "timestamp": 1793072864005,
             "responseId": "response-r2",
             "rawStopReason": "completed",
-            "durationMs": 6
+            "durationMs": 3
           }
         }
       ]
@@ -3059,7 +3053,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179130
+            "timestamp": 1793072864012
           }
         },
         {
@@ -3093,7 +3087,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179130,
+            "timestamp": 1793072864012,
             "responseId": "response-r2"
           }
         },
@@ -3129,7 +3123,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179130,
+            "timestamp": 1793072864012,
             "responseId": "response-r2"
           }
         },
@@ -3165,7 +3159,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179130,
+            "timestamp": 1793072864012,
             "responseId": "response-r2"
           }
         },
@@ -3201,7 +3195,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179130,
+            "timestamp": 1793072864012,
             "responseId": "response-r2"
           }
         },
@@ -3237,7 +3231,7 @@
               }
             },
             "stopReason": "stop",
-            "timestamp": 1792689179130,
+            "timestamp": 1793072864012,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 33
@@ -3276,7 +3270,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179166
+            "timestamp": 1793072864051
           }
         },
         {
@@ -3293,8 +3287,7 @@
                 "name": "read",
                 "arguments": {
                   "path": "target.txt"
-                },
-                "partialJson": "{\"path\":\"target.txt\"}"
+                }
               }
             ],
             "api": "azure-openai-responses",
@@ -3315,7 +3308,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179166,
+            "timestamp": 1793072864051,
             "responseId": "response-r2"
           }
         },
@@ -3355,7 +3348,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179166,
+            "timestamp": 1793072864051,
             "responseId": "response-r2"
           }
         },
@@ -3395,7 +3388,7 @@
               }
             },
             "stopReason": "toolUse",
-            "timestamp": 1792689179166,
+            "timestamp": 1793072864051,
             "responseId": "response-r2",
             "rawStopReason": "completed"
           }
@@ -3435,7 +3428,7 @@
               }
             },
             "stopReason": "toolUse",
-            "timestamp": 1792689179166,
+            "timestamp": 1793072864051,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 2
@@ -3474,7 +3467,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179172
+            "timestamp": 1793072864058
           }
         },
         {
@@ -3491,8 +3484,7 @@
                 "name": "read",
                 "arguments": {
                   "path": "target.txt"
-                },
-                "partialJson": "{\"path\":\"target.txt\"}"
+                }
               }
             ],
             "api": "azure-openai-responses",
@@ -3513,7 +3505,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179172,
+            "timestamp": 1793072864058,
             "responseId": "response-r2"
           }
         },
@@ -3553,7 +3545,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179172,
+            "timestamp": 1793072864058,
             "responseId": "response-r2"
           }
         },
@@ -3593,7 +3585,7 @@
               }
             },
             "stopReason": "toolUse",
-            "timestamp": 1792689179172,
+            "timestamp": 1793072864058,
             "responseId": "response-r2",
             "rawStopReason": "completed"
           }
@@ -3633,7 +3625,7 @@
               }
             },
             "stopReason": "toolUse",
-            "timestamp": 1792689179172,
+            "timestamp": 1793072864058,
             "responseId": "response-r2",
             "rawStopReason": "completed",
             "durationMs": 2
@@ -3672,7 +3664,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179180
+            "timestamp": 1793072864066
           }
         },
         {
@@ -3687,8 +3679,7 @@
                 "type": "toolCall",
                 "id": "call-r2|fc_r2",
                 "name": "read",
-                "arguments": {},
-                "partialJson": ""
+                "arguments": {}
               }
             ],
             "api": "azure-openai-responses",
@@ -3709,7 +3700,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179180,
+            "timestamp": 1793072864066,
             "responseId": "response-r2"
           }
         },
@@ -3728,8 +3719,7 @@
                 "name": "read",
                 "arguments": {
                   "path": "target.txt"
-                },
-                "partialJson": "{\"path\":\"target.txt\"}"
+                }
               }
             ],
             "api": "azure-openai-responses",
@@ -3750,7 +3740,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179180,
+            "timestamp": 1793072864066,
             "responseId": "response-r2"
           }
         },
@@ -3789,7 +3779,7 @@
               }
             },
             "stopReason": "pending",
-            "timestamp": 1792689179180,
+            "timestamp": 1793072864066,
             "responseId": "response-r2"
           }
         },
@@ -3828,10 +3818,10 @@
               }
             },
             "stopReason": "toolUse",
-            "timestamp": 1792689179180,
+            "timestamp": 1793072864066,
             "responseId": "response-r2",
             "rawStopReason": "completed",
-            "durationMs": 28
+            "durationMs": 29
           }
         }
       ]

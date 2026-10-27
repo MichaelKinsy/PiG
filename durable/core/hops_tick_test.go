@@ -154,11 +154,12 @@ func TestContextReturnHopsOfAKeptAndAScannedRange(t *testing.T) {
 	}
 }
 
-// A commit job publishes its commit when #runCommit resumes from Storage.commit, two hops before the job's run resolves
-// (session.ts :446-449, :531): commit listeners and publication waiters see it there, while the job's caller resumes at the
-// job's end and the statements land at Pi's COMMIT, seven hops before it (capsql direct: the adapter resumes its caller three
-// hops after the COMMIT, the Session's guard adds two, the job's return two; Pi 1.2.0, F-ticks-tools-gate).
-func TestCommitJobPublishesTwoHopsBeforeItEnds(t *testing.T) {
+// A commit job publishes its commit when Storage adopts it (session.ts #runCommit publishes inside `adopt`), hopcost.AdoptTail
+// hops before #runCommit resumes from Storage.commit and two more before the job's run resolves (session.ts :446-449, :531):
+// commit listeners and publication waiters see it there, while the job's caller resumes at the job's end and the statements
+// land at Pi's COMMIT, seven hops before it (capsql direct: the adapter resumes its caller three hops after the COMMIT, the
+// Session's guard adds two, the job's return two; Pi 1.2.0, F-ticks-tools-gate), so the adoption comes two hops after the COMMIT.
+func TestCommitJobPublishesAtAdoptionBeforeItEnds(t *testing.T) {
 	mem := sessiontest.New()
 	s := session.New(mem, mem.NextID(), func() float64 { return 0 })
 	h := &handler{b: abi.NewBuilder(), sess: s, open: parsed(t, `{"storageProfile":"gate-capsql"}`)}
@@ -181,8 +182,8 @@ func TestCommitJobPublishesTwoHopsBeforeItEnds(t *testing.T) {
 	if done < 8 || c.commitAt != done-7 {
 		t.Fatalf("the job ended at %d and emitted its statements at %d: want them seven hops before its end", done, c.commitAt)
 	}
-	if published != done-2 {
-		t.Fatalf("published at %d, the job ended at %d: want two hops before its end", published, done)
+	if want := done - 2 - hopcost.AdoptTail(hopcost.GateCapsql); published != want || published != c.commitAt+2 {
+		t.Fatalf("published at %d, the job ended at %d and its statements landed at %d: want %d, two hops after the COMMIT", published, done, c.commitAt, want)
 	}
 }
 

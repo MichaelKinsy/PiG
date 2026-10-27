@@ -249,24 +249,24 @@ type WatchTarget struct {
 	Exclude   *WatchExclude
 }
 
-// WatchChange is what changed. It is WatchChangePaths, WatchChangeOverflow, or WatchChangeError.
-type WatchChange interface{ watchChange() }
+// FileChange is what changed. It is FileChangePaths, FileChangeOverflow, or FileChangeError.
+type FileChange interface{ fileChange() }
 
-// WatchChangePaths reports that something at or below each path may have changed (a directory path covers its whole
+// FileChangePaths reports that something at or below each path may have changed (a directory path covers its whole
 // subtree). Calls may be spurious; a change is never missed while the watcher is healthy.
-type WatchChangePaths struct{ Paths []string }
+type FileChangePaths struct{ Paths []string }
 
-// WatchChangeOverflow reports that coverage was uncertain for a while (lost events, reconnect): rescan everything that
+// FileChangeOverflow reports that coverage was uncertain for a while (lost events, reconnect): rescan everything that
 // is watched.
-type WatchChangeOverflow struct{}
+type FileChangeOverflow struct{}
 
-// WatchChangeError reports that the watcher stopped, for example because the watched tree grew past the environment's
+// FileChangeError reports that the watcher stopped, for example because the watched tree grew past the environment's
 // limit; no calls follow.
-type WatchChangeError struct{ Error *FileError }
+type FileChangeError struct{ Error *FileError }
 
-func (WatchChangePaths) watchChange()    {}
-func (WatchChangeOverflow) watchChange() {}
-func (WatchChangeError) watchChange()    {}
+func (FileChangePaths) fileChange()    {}
+func (FileChangeOverflow) fileChange() {}
+func (FileChangeError) fileChange()    {}
 
 // WatchMode is how a FileWatcher learns of changes.
 type WatchMode string
@@ -345,8 +345,8 @@ type FileSystem interface {
 	OpenDirReader(ctx context.Context, path string) (DirReader, error)
 	// Watch reports changes to files and directories, for hosts that load resources from the environment. When it
 	// returns a watcher, coverage is established: a host that watches before it loads cannot miss a change made during
-	// the load. See WatchChange for what is reported and FileWatcher.Mode for how reliably.
-	Watch(ctx context.Context, targets []WatchTarget, onChange func(WatchChange)) (FileWatcher, error)
+	// the load. See FileChange for what is reported and FileWatcher.Mode for how reliably.
+	Watch(ctx context.Context, targets []WatchTarget, onChange func(FileChange)) (FileWatcher, error)
 	CanonicalPath(ctx context.Context, path string) (string, error)
 	Exists(ctx context.Context, path string) (bool, error)
 	CreateDir(ctx context.Context, path string, options *CreateDirOptions) error

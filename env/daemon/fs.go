@@ -134,9 +134,12 @@ func writeFile(path string, appendMode, parents bool, content []byte) (*os.File,
 	if err != nil {
 		return nil, ioFailure(err, "open", path)
 	}
-	if _, err := file.Write(content); err != nil {
-		_ = file.Close()
-		return nil, ioFailure(err, "write", path)
+	// write_all of nothing makes no system call, which /dev/full would fail.
+	if len(content) > 0 {
+		if _, err := file.Write(content); err != nil {
+			_ = file.Close()
+			return nil, ioFailure(err, "write", path)
+		}
 	}
 	return file, nil
 }
@@ -187,7 +190,7 @@ func fsync(path string) (Object, *Failure) {
 }
 
 func rename(from, to string) (Object, *Failure) {
-	if err := os.Rename(from, to); err != nil {
+	if err := nodeerrno.Rename(from, to); err != nil {
 		return nil, ioFailureBetween(err, "rename", from, to)
 	}
 	return Object{}, nil
@@ -346,5 +349,17 @@ func decodeUTF8(name string) string {
 	return decoder.Decode([]byte(name)) + decoder.Flush()
 }
 
-// realPath resolves every symbolic link of an existing path.
-func realPath(path string) (string, error) { return filepath.EvalSymlinks(path) }
+// realPath is realpath(3): every symbolic link of an existing path resolved. A failure that names no system error, such
+// as a loop of links, is the error the system gives for the path itself.
+func realPath(path string) (string, error) {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved, nil
+	}
+	if _, ok := errors.AsType[syscall.Errno](err); !ok {
+		if _, statErr := os.Stat(path); statErr != nil {
+			return "", statErr
+		}
+	}
+	return "", err
+}

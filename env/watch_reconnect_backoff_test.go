@@ -45,7 +45,7 @@ func TestRemoteWatcherDoublesItsReconnectDelayAfterEachLostAttempt(t *testing.T)
 	_, _ = fmt.Fprintf(&script, `head -c %d >/dev/null; printf '%s'; head -c %d >/dev/null; exit 0`, len(hello)+len(watch), octal(mustFrame(frameEvent, 2, Json{"kind": "ready", "mode": "native"}, nil)), len(stop))
 	connection := scriptedConnection(t, script.String(), nil)
 
-	watcher, err := OpenRemoteWatcher(background, connection, targets, func(durableenv.WatchChange) {}, RemoteWatchOptions{})
+	watcher, err := OpenRemoteWatcher(background, connection, targets, func(durableenv.FileChange) {}, RemoteWatchOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

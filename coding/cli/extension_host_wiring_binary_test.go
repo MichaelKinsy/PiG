@@ -145,3 +145,20 @@ func TestExtensionContextModeIsTheRunMode(t *testing.T) {
 		}
 	}
 }
+
+// An SDK extension that computes a schema with a member of Type the host's type engine runs (Pick) loads in every mode of the stock pig binary: the Go, Rust and
+// Python SDKs send the call to the host (type.engine), and the engine is registered by coding/extension/pigsdk, which every pig program that embeds an SDK links, so no
+// host the command builds can meet the call without an engine. The subprocess package's own test binary links no pigsdk, so it registers the engine for its fixtures
+// (coding/extension/host/subprocess/type_engine_testmain_test.go); this test is the production path.
+func TestStockPigHostsTheTypeEngineForSDKExtensionsInEveryMode(t *testing.T) {
+	t.Parallel()
+	want := []string{`{"event":"type_engine","keys":["id","n"]}`}
+	for _, mode := range []string{"print", "json", "rpc"} {
+		t.Run(mode, func(t *testing.T) {
+			got := runHostWiringMode(t, mode, nil, "host-wiring-type-engine.py")
+			if !slices.Equal(got, want) {
+				t.Fatalf("records:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+			}
+		})
+	}
+}

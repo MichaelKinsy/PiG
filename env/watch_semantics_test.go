@@ -46,7 +46,7 @@ func TestRemoteWatcherStopsAfterAnErrorEventAndSurvivesAThrowingCallback(t *test
 	)
 	log := &changeLog{}
 	var calls atomic.Int32
-	watcher, err := OpenRemoteWatcher(background, connection, []durableenv.WatchTarget{target}, func(change durableenv.WatchChange) {
+	watcher, err := OpenRemoteWatcher(background, connection, []durableenv.WatchTarget{target}, func(change durableenv.FileChange) {
 		log.add(change)
 		if calls.Add(1) == 1 {
 			panic("the callback throws")
@@ -62,7 +62,7 @@ func TestRemoteWatcherStopsAfterAnErrorEventAndSurvivesAThrowingCallback(t *test
 	if len(changes) != 3 {
 		t.Fatalf("saw %d changes %v, want a, b and the error and nothing after it", len(changes), changes)
 	}
-	if _, ok := changes[2].(durableenv.WatchChangeError); !ok {
+	if _, ok := changes[2].(durableenv.FileChangeError); !ok {
 		t.Fatalf("third change %#v, want the error", changes[2])
 	}
 }
@@ -75,7 +75,7 @@ func TestRemoteWatcherReportsAFailedRequestBeforeAndAfterCoverage(t *testing.T) 
 	before := scriptedWatchFrames(t, target, failure)
 	ctx, cancel := context.WithTimeout(background, 10*time.Second)
 	defer cancel()
-	if _, err := OpenRemoteWatcher(ctx, before, []durableenv.WatchTarget{target}, func(durableenv.WatchChange) {}, RemoteWatchOptions{}); err == nil || errors.Is(err, context.DeadlineExceeded) {
+	if _, err := OpenRemoteWatcher(ctx, before, []durableenv.WatchTarget{target}, func(durableenv.FileChange) {}, RemoteWatchOptions{}); err == nil || errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("open over a failing request = %v, want the request's failure", err)
 	}
 	after := scriptedWatchFrames(t, target, mustFrame(frameEvent, 2, Json{"kind": "ready"}, nil), failure)
@@ -86,7 +86,7 @@ func TestRemoteWatcherReportsAFailedRequestBeforeAndAfterCoverage(t *testing.T) 
 	}
 	defer func() { _ = watcher.Close(background) }()
 	changes := log.wait(t, 1)
-	if reported, ok := changes[0].(durableenv.WatchChangeError); !ok || reported.Error == nil || !strings.Contains(reported.Error.Message, "boom") {
+	if reported, ok := changes[0].(durableenv.FileChangeError); !ok || reported.Error == nil || !strings.Contains(reported.Error.Message, "boom") {
 		t.Fatalf("first change %#v, want the failure as an error change", changes[0])
 	}
 }
@@ -104,7 +104,7 @@ func TestRemoteWatcherSendsEachTargetsExcludeAndThePollInterval(t *testing.T) {
 	watcher, err := OpenRemoteWatcher(background, connection, []durableenv.WatchTarget{
 		{Path: "/plain"},
 		{Path: "/excluded", Recursive: true, Exclude: &durableenv.WatchExclude{Hidden: true, Names: []string{"node_modules", ".git"}}},
-	}, func(durableenv.WatchChange) {}, RemoteWatchOptions{Mode: durableenv.WatchPolling, PollIntervalMs: &interval})
+	}, func(durableenv.FileChange) {}, RemoteWatchOptions{Mode: durableenv.WatchPolling, PollIntervalMs: &interval})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestRemoteWatcherSendsEachTargetsExcludeAndThePollInterval(t *testing.T) {
 func TestRemoteWatcherCloseReturnsOnlyAfterTheWatchRequestHasFinished(t *testing.T) {
 	env, _ := remoteEnvironment(t)
 	for range 3 {
-		watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "."}}, func(durableenv.WatchChange) {})).(*RemoteWatcher)
+		watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "."}}, func(durableenv.FileChange) {})).(*RemoteWatcher)
 		if err := watcher.Close(background); err != nil {
 			t.Fatal(err)
 		}

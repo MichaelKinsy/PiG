@@ -38,9 +38,63 @@ pub struct RefinementSite {
     pub refinements: Vec<Refinement>,
 }
 
-/// A member of a schema: a plain JSON value, a schema (which keeps its hidden members), a list or an object of members.
+/// What JSON.stringify throws for a bigint (a V8 TypeError). A schema that holds one fails with it where Pi's value fails: when it is written as JSON.
+pub const BIGINT_STRINGIFY_ERROR: &str = "Do not know how to serialize a BigInt";
+
+/// A JavaScript bigint a schema holds as a member, such as the `const` of `Type::script("1n")` or `Type::literal(BigInt)`: TypeBox's value holds it, and only `JSON.stringify` of it
+/// fails. Writing a schema that holds one as JSON ([`TSchema::try_to_json`], [`TSchema::try_to_value`], serializing it) fails with Pi's message; every other use of the value (the
+/// guards, passing it to another member) works. The digits are what JavaScript's `String(1n)` writes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BigInt {
+    digits: String,
+}
+
+impl BigInt {
+    /// The bigint written by `digits`: an optional `-`, then decimal digits without a leading zero (JavaScript's `BigInt("007")` is 7n, written here as `7`).
+    pub fn parse(digits: &str) -> Result<BigInt, String> {
+        let (negative, magnitude) = match digits.strip_prefix('-') {
+            Some(rest) => (true, rest),
+            None => (false, digits.strip_prefix('+').unwrap_or(digits)),
+        };
+        if magnitude.is_empty() || !magnitude.bytes().all(|byte| byte.is_ascii_digit()) {
+            return Err(format!("SyntaxError: Cannot convert {digits} to a BigInt"));
+        }
+        let trimmed = magnitude.trim_start_matches('0');
+        let trimmed = if trimmed.is_empty() { "0" } else { trimmed };
+        Ok(BigInt { digits: if negative && trimmed != "0" { format!("-{trimmed}") } else { trimmed.to_string() } })
+    }
+
+    /// The decimal digits, with a leading `-` for a negative bigint.
+    pub fn digits(&self) -> &str {
+        &self.digits
+    }
+}
+
+impl std::fmt::Display for BigInt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.digits)
+    }
+}
+impl From<i64> for BigInt {
+    fn from(number: i64) -> Self {
+        BigInt { digits: number.to_string() }
+    }
+}
+impl From<i128> for BigInt {
+    fn from(number: i128) -> Self {
+        BigInt { digits: number.to_string() }
+    }
+}
+impl From<u64> for BigInt {
+    fn from(number: u64) -> Self {
+        BigInt { digits: number.to_string() }
+    }
+}
+
+/// A member of a schema: a plain JSON value, a schema (which keeps its hidden members), a list or an object of members, or a bigint.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TValue {
+    BigInt(BigInt),
     Json(Value),
     Schema(TSchema),
     List(Vec<TValue>),
@@ -50,6 +104,11 @@ pub enum TValue {
 impl From<Value> for TValue {
     fn from(value: Value) -> Self {
         TValue::Json(value)
+    }
+}
+impl From<BigInt> for TValue {
+    fn from(value: BigInt) -> Self {
+        TValue::BigInt(value)
     }
 }
 impl From<TSchema> for TValue {
@@ -74,14 +133,21 @@ impl From<&str> for TValue {
 }
 
 impl TValue {
-    /// The member as JSON: the enumerable members of a schema, nested, in order.
+    /// The member as JSON: the enumerable members of a schema, nested, in order. A [`BigInt`] has no JSON form: this is `JSON.stringify` of it, which throws "Do not know how to
+    /// serialize a BigInt", so it panics with that message ([`TValue::try_to_value`] returns it as an error).
     pub fn to_value(&self) -> Value {
-        match self {
+        self.try_to_value().unwrap_or_else(|message| panic!("{message}"))
+    }
+
+    /// The member as JSON, or the message `JSON.stringify` throws when a [`BigInt`] is inside it.
+    pub fn try_to_value(&self) -> Result<Value, String> {
+        Ok(match self {
             TValue::Json(value) => value.clone(),
-            TValue::Schema(schema) => schema.to_value(),
-            TValue::List(items) => Value::Array(items.iter().map(TValue::to_value).collect()),
-            TValue::Object(pairs) => Value::Object(pairs.iter().map(|(key, value)| (key.clone(), value.to_value())).collect()),
-        }
+            TValue::Schema(schema) => schema.try_to_value()?,
+            TValue::List(items) => Value::Array(items.iter().map(TValue::try_to_value).collect::<Result<_, _>>()?),
+            TValue::Object(pairs) => Value::Object(pairs.iter().map(|(key, value)| Ok((key.clone(), value.try_to_value()?))).collect::<Result<_, String>>()?),
+            TValue::BigInt(_) => return Err(BIGINT_STRINGIFY_ERROR.to_string()),
+        })
     }
 
     /// The schema this member is, if it is one.
@@ -92,7 +158,7 @@ impl TValue {
         }
     }
 
-    fn member(&self, name: &str) -> Option<TValue> {
+    pub(crate) fn member(&self, name: &str) -> Option<TValue> {
         match self {
             TValue::Schema(schema) => schema.hidden.get(name).map(|value| TValue::Json(value.clone())).or_else(|| schema.get(name).cloned()),
             TValue::Json(Value::Object(map)) => map.get(name).map(|value| TValue::Json(value.clone())),
@@ -105,31 +171,37 @@ impl TValue {
 /// A TypeBox schema value; see the module documentation.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TSchema {
-    fields: Vec<(String, TValue)>,
-    hidden: BTreeMap<String, Value>,
+    pub(crate) fields: Vec<(String, TValue)>,
+    pub(crate) hidden: BTreeMap<String, Value>,
     /// The hidden `~refine` list.
-    refine: Vec<Refinement>,
+    pub(crate) refine: Vec<Refinement>,
     /// The list a schema made of a JavaScript array is (`Type::unsafe_`, `Type::optional` and the other updates accept an array, whose own members JSON.stringify ignores).
-    items: Option<Vec<TValue>>,
+    pub(crate) items: Option<Vec<TValue>>,
 }
 
 impl Serialize for TSchema {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.to_value().serialize(serializer)
+        self.try_to_value().map_err(serde::ser::Error::custom)?.serialize(serializer)
     }
 }
 
 impl TSchema {
-    /// The enumerable members as a JSON object, in order, with every nested schema as JSON too.
+    /// The enumerable members as a JSON object, in order, with every nested schema as JSON too. Panics, as `JSON.stringify` throws, when a [`BigInt`] is a member
+    /// ([`TSchema::try_to_value`] returns the message as an error).
     pub fn to_value(&self) -> Value {
+        self.try_to_value().unwrap_or_else(|message| panic!("{message}"))
+    }
+
+    /// The enumerable members as JSON, or "Do not know how to serialize a BigInt" when a [`BigInt`] is a member, as `JSON.stringify` throws.
+    pub fn try_to_value(&self) -> Result<Value, String> {
         if let Some(items) = &self.items {
-            return Value::Array(items.iter().map(TValue::to_value).collect());
+            return Ok(Value::Array(items.iter().map(TValue::try_to_value).collect::<Result<_, _>>()?));
         }
-        Value::Object(self.fields.iter().map(|(key, value)| (key.clone(), value.to_value())).collect())
+        Ok(Value::Object(self.fields.iter().map(|(key, value)| Ok((key.clone(), value.try_to_value()?))).collect::<Result<_, String>>()?))
     }
 
     /// The schema as the host validates arguments with it: the JSON with TypeBox's `~kind` appended to every node that has one (the Node runtime sends the same form as
-    /// `validation_parameters`).
+    /// `validation_parameters`). Panics when a [`BigInt`] is a member, as [`TSchema::to_value`] does.
     pub fn to_validation_value(&self) -> Value {
         fn convert(value: &TValue) -> Value {
             match value {
@@ -137,6 +209,7 @@ impl TSchema {
                 TValue::List(items) => Value::Array(items.iter().map(convert).collect()),
                 TValue::Object(pairs) => Value::Object(pairs.iter().map(|(key, member)| (key.clone(), convert(member))).collect()),
                 TValue::Json(value) => value.clone(),
+                TValue::BigInt(_) => panic!("{BIGINT_STRINGIFY_ERROR}"),
             }
         }
         if let Some(items) = &self.items {
@@ -151,10 +224,16 @@ impl TSchema {
 
     /// What JSON.stringify of the TypeBox value writes: the members in order, numbers as JavaScript prints them (`1e21`, `1e-7`, `0` for -0) through the SDK's one JavaScript
     /// number formatter, and only the escapes JSON.stringify writes.
+    /// Panics with "Do not know how to serialize a BigInt" when a [`BigInt`] is a member, as `JSON.stringify` throws ([`TSchema::try_to_json`] returns the message as an error).
     pub fn to_json(&self) -> String {
+        self.try_to_json().unwrap_or_else(|message| panic!("{message}"))
+    }
+
+    /// [`TSchema::to_json`], with the message of the throw as the error.
+    pub fn try_to_json(&self) -> Result<String, String> {
         let mut out = String::new();
-        write_js_json(&self.to_value(), &mut out);
-        out
+        write_js_json(&self.try_to_value()?, &mut out);
+        Ok(out)
     }
 
     /// The enumerable member `key`.
@@ -184,7 +263,7 @@ impl TSchema {
                 TValue::Schema(schema) => schema.refinement_count(),
                 TValue::List(items) => items.iter().map(count_value).sum(),
                 TValue::Object(pairs) => pairs.iter().map(|(_, member)| count_value(member)).sum(),
-                TValue::Json(_) => 0,
+                TValue::Json(_) | TValue::BigInt(_) => 0,
             }
         }
         self.refine.len() + self.fields.iter().map(|(_, value)| count_value(value)).sum::<usize>() + self.items.iter().flatten().map(count_value).sum::<usize>()
@@ -435,12 +514,18 @@ fn visit_refinements(schema: &TSchema, path: &str, sites: &mut Vec<RefinementSit
     }
 }
 
-/// What `Type.Literal` takes: a string, a boolean or a number.
+/// What `Type.Literal` takes: a string, a boolean, a number or a [`BigInt`].
 #[derive(Clone, Debug, PartialEq)]
 pub enum LiteralValue {
     String(String),
     Bool(bool),
     Number(f64),
+    BigInt(BigInt),
+}
+impl From<BigInt> for LiteralValue {
+    fn from(value: BigInt) -> Self {
+        LiteralValue::BigInt(value)
+    }
 }
 impl From<&str> for LiteralValue {
     fn from(text: &str) -> Self {
@@ -661,15 +746,17 @@ impl Type {
         update(&schema, &[], options)
     }
 
-    /// `Type.Literal(value, options)`: `{"type": <string|number|boolean>, "const": value}`. A number that is NaN or infinite is Pi's "Invalid Literal value".
+    /// `Type.Literal(value, options)`: `{"type": <string|number|boolean|bigint>, "const": value}`. A number that is NaN or infinite is Pi's "Invalid Literal value". A bigint literal
+    /// holds the [`BigInt`], which JSON cannot write.
     pub fn literal(value: impl Into<LiteralValue>, options: Options) -> Result<TSchema, String> {
         let (name, constant) = match value.into() {
-            LiteralValue::String(text) => ("string", json!(text)),
-            LiteralValue::Bool(flag) => ("boolean", json!(flag)),
-            LiteralValue::Number(number) if number.is_finite() => ("number", js_number(number)),
+            LiteralValue::String(text) => ("string", TValue::Json(json!(text))),
+            LiteralValue::Bool(flag) => ("boolean", TValue::Json(json!(flag))),
+            LiteralValue::Number(number) if number.is_finite() => ("number", TValue::Json(js_number(number))),
             LiteralValue::Number(_) => return Err("Invalid Literal value".to_string()),
+            LiteralValue::BigInt(value) => ("bigint", TValue::BigInt(value)),
         };
-        Ok(create("Literal", vec![("type", name.into()), ("const", TValue::Json(constant))], options))
+        Ok(create("Literal", vec![("type", name.into()), ("const", constant)], options))
     }
 
     /// `Type.Enum(value, options)`: `{"enum": values}`. `value` is a JSON array of values, or an object in the manner of a TypeScript enum, whose values for the keys that are not
@@ -688,7 +775,7 @@ impl Type {
 
     /// `Type.Record(key, value, options)`: for a string, number or integer key `{"type":"object","patternProperties":{<pattern>: value}}`; for a literal, boolean or
     /// union-of-literals key the object with those properties. A key Pi evaluates through a part of TypeBox this SDK has not ported (an enum, an intersection or a template
-    /// literal) is an error until it is.
+    /// literal) is evaluated by the host's type engine.
     pub fn record(key: impl Into<TValue>, value: impl Into<TValue>, options: Options) -> Result<TSchema, String> {
         let (key, value) = (key.into(), value.into());
         if Type::is_ref(key.clone()) {
@@ -709,7 +796,15 @@ guards!(
     is_any => "Any", is_array => "Array", is_big_int => "BigInt", is_boolean => "Boolean", is_enum => "Enum", is_integer => "Integer", is_intersect => "Intersect",
     is_literal => "Literal", is_never => "Never", is_null => "Null", is_number => "Number", is_object => "Object", is_record => "Record", is_ref => "Ref",
     is_string => "String", is_symbol => "Symbol", is_undefined => "Undefined", is_union => "Union", is_unknown => "Unknown", is_void => "Void",
+    is_call => "Call", is_constructor => "Constructor", is_cyclic => "Cyclic", is_dependent => "Dependent", is_function => "Function", is_generic => "Generic",
+    is_identifier => "Identifier", is_infer => "Infer", is_parameter => "Parameter", is_rest => "Rest", is_template_literal => "TemplateLiteral", is_this => "This",
+    is_tuple => "Tuple",
 );
+
+/// The value an Extends answer is: `{inferred}` with the hidden kind (see `ExtendsResult`).
+pub(crate) fn outcome(kind: &str, inferred: Option<TValue>) -> TSchema {
+    create(kind, inferred.into_iter().map(|inferred| ("inferred", inferred)).collect(), None)
+}
 
 fn literal_number(constant: &TValue) -> Option<f64> {
     match constant {
@@ -726,7 +821,11 @@ fn record_from_key(key: &TValue, value: TValue) -> Result<TSchema, String> {
         return Ok(Type::object([("true", value.clone()), ("false", value)], None));
     }
     if Type::is_enum(key.clone()) || Type::is_intersect(key.clone()) || Type::is_kind(key.clone(), "TemplateLiteral") {
-        return Err("Type.record: a key of this kind is evaluated by a part of TypeBox this SDK has not ported yet".to_string());
+        // The key kinds TypeBox evaluates with its type engine, which the host runs.
+        return crate::type_engine::engine_call("Record", vec![key.clone(), value]).and_then(|schema| match schema {
+            TValue::Schema(schema) => Ok(schema),
+            other => Err(format!("TypeError: the engine answered {other:?}, not a schema")),
+        });
     }
     if Type::is_integer(key.clone()) {
         return Ok(create_record(INTEGER_KEY, value));

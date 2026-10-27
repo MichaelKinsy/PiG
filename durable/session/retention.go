@@ -289,10 +289,12 @@ type DocumentCacheSizes struct {
 	Attached int
 	// Sweeps is the number of eviction jobs queued on the line so far.
 	Sweeps int
+	// Held is the number of documents with held changes: deferred commits adopted in memory and not stored yet.
+	Held int
 }
 
-// DocumentCacheSizes reports how many documents the cache holds, how many are idle, how many incarnations are pinned, and
-// how many eviction jobs were queued on the line so far.
+// DocumentCacheSizes reports how many documents the cache holds, how many are idle, how many incarnations are pinned, how
+// many eviction jobs were queued on the line so far, and how many documents have held changes.
 func (session *SessionImpl) DocumentCacheSizes() DocumentCacheSizes {
 	session.mu.Lock()
 	defer session.mu.Unlock()
@@ -301,6 +303,7 @@ func (session *SessionImpl) DocumentCacheSizes() DocumentCacheSizes {
 		Idle:     len(session.cache.idle),
 		Attached: len(session.cache.attached),
 		Sweeps:   session.cache.sweepJobs,
+		Held:     len(session.holds),
 	}
 }
 

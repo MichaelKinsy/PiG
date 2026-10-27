@@ -1,234 +1,60 @@
 # Reviewed per-file ledger for testprune lint: each entry satisfies the expected-value finding of exactly one commit+path.
 
 [[entry]]
-path = "ai/openai_record_validation_norace_test.go"
-commit = "af4aea65387d7eb84dcacb6b28f2ad309aa8c71e"
-class = "NOBEHAVIOR"
-cite = ""
-reason = "The test replaces a wall-clock CPU ratio with a count of the wire-record scans through recordScanHook, so a loaded machine cannot fail it; the asserted behavior (each record is scanned once beyond the decode) is unchanged and Pi has no counterpart."
-
-[[entry]]
-path = "ai/telemetry_upstream_test.go"
-commit = "7987ae7da13447ef81e271cc0e91c1d59859b143"
+path = "agent/proxy_non_object_arguments_test.go"
+commit = "76f780d05da3ad93c499858912fe47c5b61ab356"
 class = "CITE"
-cite = "packages/ai/src/telemetry.ts:145"
-reason = "The span, event and metric attribute expectations move from unordered maps to ordered SpanAttributes in Pi's key order: the start attributes are provider, model, api and then the scalar reasoning (telemetry.ts:145-149), and the end attributes follow. The values are the ones the test already asserted."
+cite = "packages/agent/src/proxy.ts:338"
+reason = "Pi f715a15c1 gives each streamed tool call of the proxy a ToolCallArgumentsStream (proxy.ts:338), whose append returns the arguments object of the text so far: a streamed value that is not an object (null, 0, false, \"\", [], 5, \"s\") shows as the empty object where it was kept as parsed. The test's table and its converter field (toolArguments by content index) follow."
 
 [[entry]]
-path = "telemetry/memory_ids_detached_test.go"
-commit = "4ca61cee8c939660e13fe5a86c60c7b98890c1f7"
-class = "NOBEHAVIOR"
-cite = ""
-reason = "SpanAttributes becomes an ordered list (Pi's JS objects keep insertion order, Go maps do not); the test builds and mutates the same attributes through Attr, Set and Value, and asserts the same detached copies and values."
-
-[[entry]]
-path = "telemetry/memory_recording_test.go"
-commit = "4ca61cee8c939660e13fe5a86c60c7b98890c1f7"
-class = "NOBEHAVIOR"
-cite = ""
-reason = "SpanAttributes becomes an ordered list (Pi's JS objects keep insertion order, Go maps do not); the test builds and mutates the same attributes through Attr, Set and Value, and asserts the same merged values and detached snapshots."
-
-[[entry]]
-path = "telemetry/conformance_capability_cases_test.go"
-commit = "8a01515289e7382bbefcc61ed66dff855ad5eccc"
+path = "agent/rpc33_observation_test.go"
+commit = "76f780d05da3ad93c499858912fe47c5b61ab356"
 class = "CITE"
-cite = "packages/telemetry/src/testing/conformance.ts:109"
-reason = "The expected case lists follow Pi d9025a5f: the capabilities case is new (conformance.ts:51), the metrics case is renamed to 'copies instrument metadata and measurement attributes' (:109), the links case to 'ignores links added after source settlement' (:149) and the propagation case 'absent and unknown carriers produce recorded roots' is new (:179)."
+cite = "packages/ai/src/utils/streaming-json.ts:452"
+reason = "Pi f715a15c1 moves the tool-call stream state off the content block into the ToolCallArgumentsStream (streaming-json.ts:452): the message a tool sees before the await carries the parsed arguments and none of the provider's scratch members, so the observation asserts the arguments and the absence of the scratch instead of the scratch text."
 
 [[entry]]
-path = "chord/context/chordctx_upstream_test.go"
-commit = "2ea25c07563ed54611f11698ce3b80bb983afd6a"
+path = "ai/rpc33_provider_scratch_test.go"
+commit = "76f780d05da3ad93c499858912fe47c5b61ab356"
 class = "CITE"
-cite = "packages/chord/src/context/index.ts:13"
-reason = "Pi 2ec55d80 narrows Context.telemetry from TelemetryContext to TelemetrySpan (index.ts:13); the test derives the context from spans started inside a recorder, as Pi's rewritten case does, and compares Telemetry(ctx) with the span."
+cite = "packages/ai/src/api/openai-completions.ts:655"
+reason = "Pi f715a15c1 sets a streamed tool call's arguments from its ToolCallArgumentsStream (openai-completions.ts:655, and the matching lines of every provider) instead of keeping partialArgs, partialJson, streamIndex and customInput on the content block: the observed blocks hold only type, id, name and arguments, so the expected block lists lose the scratch members."
 
 [[entry]]
-path = "durable/session/session_definitions_test.go"
-commit = "71b4b1e3b6a5cf2d9f2fb089267b91138c614e70"
+path = "chord/watch_upstream_test.go"
+commit = "3a73b5b282536ee64f5dd0e3e7712267ba564c74"
 class = "CITE"
-cite = "packages/durable/src/types.ts:78"
-reason = "Pi 5c1736f8 makes checkpointWhen required on a document definition (types.ts:78), so every definition in the test gains a checkpointWhen that returns false; no other expectation changes."
+cite = "packages/chord/src/watch.ts:248"
+reason = "Pi d8d99950a makes a serialized watch keep its undelivered frames in a PendingOps queue (watch.ts:248-253): the frames that arrive while a listener runs, or before start, are delivered in the next call as the newest value with the folded ops of every frame since the previous call, and past 10,000 pending ops as one root replacement; NewWatch loses its replace argument. The expectations that listed one call per frame list one call of folded ops."
 
 [[entry]]
-path = "durable/env/node/shell_test.go"
-commit = "4fd80d1cb2cd846ac6b4c6842f357121ff8aba0f"
+path = "durable/core/driver/docs_core_watches_test.go"
+commit = "3a73b5b282536ee64f5dd0e3e7712267ba564c74"
 class = "CITE"
-cite = "packages/durable/src/env/node.ts:211"
-reason = "Pi 28bea006 recognizes the legacy WSL bash launcher under the actual Windows directory taken from SystemRoot (node.ts:211-219); the case now runs over SystemRoot unset and set to a custom directory, as the upstream case does."
+cite = "packages/chord/src/watch.ts:248"
+reason = "Pi d8d99950a (watch.ts:248-253) folds the 101 pending commits of one field into one set of that field instead of replacing the root once more than 100 commits are pending, so the core watch tests expect one set of value to 101 (the in-flight frame is still never folded into the next call)."
 
 [[entry]]
-path = "internal/shellconfig/shellconfig_test.go"
-commit = "4fd80d1cb2cd846ac6b4c6842f357121ff8aba0f"
+path = "durable/session/watch_doc_admission_test.go"
+commit = "60a2b8b4fe0f3b263466ef0ae134fb61b76a0ce3"
 class = "CITE"
-cite = "packages/coding-agent/src/utils/shell.ts:15"
-reason = "Pi 28bea006 recognizes the legacy WSL bash launcher under the actual Windows directory taken from SystemRoot (shell.ts:15-26); the helper now takes the SystemRoot value, and the existing path cases pass it empty so they assert the conventional-path fallback unchanged."
+cite = "packages/durable/src/session/session.ts:1026"
+reason = "Pi 6c2fd73b0 builds a document watch on observeCommits(), the Session's own observers that see a commit held in memory when it is adopted (session.ts:1026), where it was built on subscribeCommits(), which now sees only stored commits. The test that counted the watch's commit subscription counts its observer subscription, and asserts it holds no host subscription."
 
 [[entry]]
-path = "ai/cache_affinity_e2e_upstream_test.go"
-commit = "4fe586eeb8"
-class = "NOBEHAVIOR"
-reason = "restores the gpt-5.4 cache-affinity request body that an earlier bulk edit had altered; the expected value returns to the one Pi's oracle produced"
-
-[[entry]]
-path = "ai/cache_affinity_e2e_upstream_test.go"
-commit = "ae40b2b820"
+path = "durable/harness/harness_inbox_test.go"
+commit = "8153bc7a9e2627452f2460cb96c9edd75098fcf6"
 class = "CITE"
-cite = "packages/ai/src/providers/openai-codex.models.ts:9"
-reason = "Pi fdce48eb (#11173) drops gpt-5.5 and gpt-5.3-codex-spark from the openai-codex catalog (OPENAI_CODEX_MODELS, flattened from data/openai-codex.json); the Codex cases take Pi's replacement model gpt-6.1-sol, and the remaining gpt-5.4 body is the request-tools resolution of openai-responses.ts:344."
+cite = "packages/durable/src/harness/generation.ts:729"
+reason = "Pi 38ff99177 makes a tool round that requests a handoff append the handoff's reset and continue the run in the new context (generation.ts:729-741), ending it only when the round also terminates: the cases that expected the run to end on the tool-calling answer expect the continuing run's answer, the transcript with the new generation's answer, and the follow-ups after it."
 
 [[entry]]
-path = "ai/registry_test.go"
-commit = "ae40b2b820"
+path = "codemode/deterministic_test.go"
+commit = "d1af7aece304c704c75b1bc32e8690dbeedf0d8f"
 class = "CITE"
-cite = "packages/ai/src/providers/openai-codex.models.ts:9"
-reason = "The Codex registry case takes Pi's replacement model gpt-5.6-sol with the context window and prices of Pi's regenerated openai-codex catalog (data/openai-codex.json), after Pi fdce48eb (#11173) removed gpt-5.3-codex-spark."
-
-[[entry]]
-path = "ai/usage_cost_test.go"
-commit = "ae40b2b820"
-class = "CITE"
-cite = "packages/ai/src/providers/openai-codex.models.ts:9"
-reason = "The Codex priority usage-cost case takes Pi's replacement model gpt-5.6-sol; the expected cost is recomputed from that model's prices in the regenerated catalog."
-
-[[entry]]
-path = "ai/transcript_tool_changes_test.go"
-commit = "c371a134cc"
-class = "CITE"
-cite = "packages/ai/src/api/openai-responses-shared.ts:159"
-reason = "Pi caa6967b and 530015d9 (#11142) declare every tool in additional_tools items from the head of the input, precede each later item with the incremental-tools notice and announce removals as text (openai-responses-shared.ts:159-176), so the expected request shape and instructions of the tool-change cases change with them."
-
-[[entry]]
-path = "ai/user_agent_release_cache_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
-class = "CITE"
-cite = "packages/ai/src/utils/identity.ts:75"
-reason = "Pi 04a93bad replaces getPiUserAgent() with formatUserAgent(identity?) (identity.ts:75); the test calls PiG's FormatUserAgent(nil) and asserts the same prefix, platform, release and architecture strings."
-
-[[entry]]
-path = "ai/user_agent_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
-class = "CITE"
-cite = "packages/ai/src/utils/identity.ts:75"
-reason = "Pi 04a93bad replaces getPiUserAgent() with formatUserAgent(identity?) (identity.ts:75); the test calls PiG's FormatUserAgent(nil) and asserts the same prefix, platform, release and architecture strings."
-
-[[entry]]
-path = "coding/model_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
-class = "CITE"
-cite = "packages/ai/src/utils/identity.ts:142"
-reason = "Pi adc5fa9f folds the install-telemetry-gated attribution headers into the request options of the client identity (getAttributionHeaders, identity.ts:142); the provider wrapper type the test asserts is renamed from providerAttributionProvider to requestOptionsProvider and the gating test goes with it."
-
-[[entry]]
-path = "coding/session_extension_hooks_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
-class = "CITE"
-cite = "packages/coding-agent/src/core/sdk.ts:353"
-reason = "The transformHeaders hook (sdk.ts:353) now runs after the OpenCode session header instead of after the removed x-opencode-client attribution header (Pi adc5fa9f); the test deletes x-opencode-session and builds the wrapper with newRequestOptionsProvider."
-
-[[entry]]
-path = "durable/harness/harness_tools_models_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
-class = "CITE"
-cite = "packages/durable/src/harness/types.ts:620"
-reason = "The Harness identity overrides the identity its Models was created with for every request through the Harness's models, including hooks and tools (types.ts:620); the models a tool or hook reads are now a view of the host's Models that adds that identity, so the test compares the catalog and a model lookup instead of Models identity."
-
-[[entry]]
-path = "coding/session_resume_default_tools_port_test.go"
-commit = "43d259770e32ed1996d955e6eda8cccf3766ee04"
-class = "CITE"
-cite = "packages/coding-agent/src/core/agent-session.ts:271"
-reason = "Pi bd3c9b82 restores the whole branch's loadout on resume, replacing the initial tools with the loadout the transcript records (agent-session.ts:271); the test records tool additions and removals as system messages through new helpers and expects the restored active tools."
-
-[[entry]]
-path = "coding/extension/builtin/codemode/worker_admission_test.go"
-commit = "2209c440d3f3751098801bda2383e7c855d07b12"
-class = "NOBEHAVIOR"
-cite = ""
-reason = "The admission tests run real scripts and read a count of started workers that execute.go adds for them; the result assertion becomes Pi's toContainEqual of an exact text item. No admission behavior changes."
-
-[[entry]]
-path = "coding/extension/builtin/codemode/worker_admission_test.go"
-commit = "e73e536f2c495000842febe6a778f750b738a205"
-class = "CITE"
-cite = "packages/coding-agent/src/extensions/codemode/execute.ts:75"
-reason = "At the worker limit a script waits for a free slot in arrival order instead of failing (execute.ts:75); the test starts runs without waiting and expects them queued, with slots released as the workers exit."
-
-[[entry]]
-path = "internal/codingagent/ext_ui_dialog_displace_test.go"
-commit = "90f69085ce4e7da8d8617b769dfc9960d0f98775"
-class = "CITE"
-cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:2693"
-reason = "Pi bdd9f039 stacks extension dialogs (pushExtensionDialog, interactive-mode.ts:2693): a dialog that opens while another is shown hides it without settling it, and the earlier one shows again when the new one closes; the displacement test becomes the stacking test."
-
-[[entry]]
-path = "automation/ci/changelogfrag/history_test.go"
-commit = "2719b6854d8fb4a81f69a6ef4bd3be561daa6f86"
-class = "NOBEHAVIOR"
-cite = ""
-reason = "Tests of PiG's own changelog tooling, not of a Pi behavior: a legacy fragment stays exempt from the reachability checks but now needs a fix marker, because the 0.5.2 fold carried 42 unmarked Fixed bullets from legacy-exempted fragments into CHANGELOG.md and the bug ledger refused them. The expected values follow that rule change."
-
-[[entry]]
-path = "automation/ci/changelogfrag/main_test.go"
-commit = "2719b6854d8fb4a81f69a6ef4bd3be561daa6f86"
-class = "NOBEHAVIOR"
-cite = ""
-reason = "Tests of PiG's own changelog tooling, not of a Pi behavior: a legacy fragment stays exempt from the reachability checks but now needs a fix marker, because the 0.5.2 fold carried 42 unmarked Fixed bullets from legacy-exempted fragments into CHANGELOG.md and the bug ledger refused them. The expected values follow that rule change."
-
-[[entry]]
-path = "durable/core/driver/harness_tasks_port2_core_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:10"
-reason = "Pi 92ab53602 renames the watch end reason session_closed to ended (watch.ts:10, 'the source closed'); the one changed expectation is a watch the Session close ends, which now reports ended, as Pi's close cases expect (harness-lifecycle.test.ts:321-323)."
-
-[[entry]]
-path = "durable/core/driver/watch_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:10"
-reason = "Pi 92ab53602 renames the end reason session_closed to ended (watch.ts:10) and removes Session.documentState, Conversation.viewState and Harness.taskGraph in favour of watchDoc, watch and watchTaskGraph: the Session-close case now expects ended, and the view-state, task-graph-state and document-state cases assert the same values through the watch handle's value (session-watches.test.ts:53 for the acquisition value that a started watch keeps current)."
-
-[[entry]]
-path = "durable/harness/harness_listener_errors_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/durable/src/session/observation.ts:94"
-reason = "Pi 92ab53602 makes a watch's source closure CommittedWatch.end(), which ends the watch ended, or failed with the Session's failure (observation.ts:94-95), and renames the graph and view observers' closeSession to end (task-graph.ts:100, view.ts:97); the two Session-close expectations now read ended and the throwing observer implements the renamed hook. The case for a view's or the task graph's replicated state is deleted with the removed viewState and taskGraph; nothing else in the file changes."
-
-[[entry]]
-path = "durable/harness/harness_tasks_scheduling_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:10"
-reason = "Pi 92ab53602 renames the watch end reason session_closed to ended (watch.ts:10); the one changed expectation is a watch ended by closing the harness, which now reports ended, as in Pi's harness-lifecycle.test.ts:321-323."
-
-[[entry]]
-path = "durable/session/observation_internal_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/durable/src/session/observation.ts:114"
-reason = "Pi 92ab53602 makes retirement an explicit source event, CommittedWatch.retire (observation.ts:111-118): it queues the last frame [['r', null]] with value null and the watch then ends retired, and a null value alone never ends a watch (session-watches.test.ts:511); an ended watch drops every reference into its source (observation.ts:165-171, session-watches.test.ts:536). The three new cases assert those; the two tests of the removed state-source attachment are deleted with it, and the overflow case is unchanged."
-
-[[entry]]
-path = "ai/openrouter_cost_test.go"
-commit = "a9015090a5"
-class = "CITE"
-cite = "packages/ai/test/openrouter-cost.test.ts:37"
-reason = "Pi cae8d69e5 makes an OpenRouter-reported cost set usage.cost.totalFromProvider: true for the reported and BYOK cases (openrouter-cost.test.ts:37, :52, :67) and leave it false when the accounting is incomplete (:76). The table gains that expectation per case, the OpenAI Completions chunk cases expect it (openai-completions-provider-stream-event.test.ts:126, :153) and the Anthropic Messages case expects it (anthropic-sse-parsing.test.ts:169); the custom non-OpenRouter provider keeps the catalog estimate, flag false."
-
-[[entry]]
-path = "ai/calculate_cost_any_model_test.go"
-commit = "7a49fc497e"
-class = "CITE"
-cite = "packages/ai/src/models.ts:1255"
-reason = "Pi 7c22a93d0 makes calculateCost end with usage.cost.totalFromProvider = false (models.ts:1255, tested at models-runtime.test.ts:162-172), so the zero-usage result expected here is a zero estimate carrying the flag false instead of the bare zero cost. The nil model and nil usage guards themselves are PiG's and have no Pi counterpart; only the flag follows Pi."
-
-[[entry]]
-path = "ai/usage_cost_test.go"
-commit = "7a49fc497e"
-class = "CITE"
-cite = "packages/ai/src/models.ts:1255"
-reason = "Pi 7c22a93d0 makes calculateCost write usage.cost.totalFromProvider = false after the total (models.ts:1255), so each catalog-priced usage JSON expected here carries \"totalFromProvider\":false right after \"total\", the position Pi's calculateCost gives the key; the commit verified the strings by running Pi's calculateCost. Pi has no test of these provider usage strings, so there is no upstream line for them beyond that write; the values around the flag are unchanged."
+cite = "packages/codemode/src/runtime/vm.ts:212"
+reason = "A deterministic VM that is told a result number it cannot take crashes with crashMessage of the Error vm.ts:212 throws, `Error: Result 2 has sequence number 5, expected 1 or later, once` (crashMessage, vm.ts:156-158, names the error). The test expected the message without `Error: `; Pi's own frames, recorded by TestWireBehaviorMatchesPi, carry the prefix."
 
 [[entry]]
 path = "tui/terminal_pipe_windows_test.go"
@@ -243,3 +69,346 @@ commit = "1ad7357814ccd6a54bfa35941c52f1124478b75d"
 class = "CITE"
 cite = "packages/coding-agent/src/core/provider-composer.ts:297"
 reason = "test-faux is now registered through the registry as an extension chat model, like Pi's harness, and Pi's extension model spreads its config (provider-composer.ts:297 returns { ...definition, api, provider, baseUrl, headers: undefined }), so a config with no type yields a model with no type member: the test expects no type for test-faux, as it does for custom-typeless."
+
+[[entry]]
+path = "chord/watch_upstream_test.go"
+commit = "832ba8ca17c8489b66d0f33e16df9f6b6eb3ff92"
+class = "CITE"
+cite = "packages/chord/src/watch.ts:28"
+reason = "Pi 8b0caefc gives a serialized watch's source frames and its listener calls one value, WatchChange<T> = { value, ops, retired } (watch.ts:28, the pending-op queue that folds frames into it at watch.ts:282-316): Advance takes a change instead of a value and ops, and a listener receives the change, so the tests' calls and collected frames are built from WatchChange values; what each call reports is unchanged except for the retired flag it now carries."
+
+[[entry]]
+path = "durable/core/driver/docs_core_watches_test.go"
+commit = "832ba8ca17c8489b66d0f33e16df9f6b6eb3ff92"
+class = "CITE"
+cite = "packages/durable/src/session/session.ts:1231"
+reason = "Pi 8b0caefc reports a retirement as a change with `retired: true`, the last value the watch was given and no ops (session.ts:1231), and the watch goes on, following its address: a recreation at the address arrives as a root replacement of the new incarnation (session.ts:1242). The core watch tests that expected a null root replacement and a closed watch expect the last value with a retirement flag and then the new incarnation, and the listener receives a WatchChange."
+
+[[entry]]
+path = "durable/core/hops_tick_test.go"
+commit = "832ba8ca17c8489b66d0f33e16df9f6b6eb3ff92"
+class = "CITE"
+cite = "packages/durable/src/session/session.ts:886"
+reason = "Pi 8b0caefc publishes a stored commit inside Storage's `adopt` (session.ts:886-896, `this.#publish(committed, ...)`) instead of when #runCommit resumes from Storage.commit, so a commit job publishes two hops after its COMMIT and adoption-tail hops before #runCommit resumes; the test that expected publication two hops before the job's end expects the position of the adoption."
+
+[[entry]]
+path = "durable/harness/scheduler_line_position_test.go"
+commit = "832ba8ca17c8489b66d0f33e16df9f6b6eb3ff92"
+class = "CITE"
+cite = "packages/durable/src/harness/scheduler.ts:384"
+reason = "Pi 8b0caefc publishes a commit inside Storage's adopt (session.ts:886-896): the dispatch to the subscribeCommits() listeners is queued first, and the scheduler, an observer of the Session's own observeCommits() (scheduler.ts:384), queues its #kick after them. A commit a host listener starts therefore lines up ahead of the reservation pass, which finds both tasks and starts them in one reservation commit, so the expected commit order is \"x pending\", \"m pending\", \"x running, m running\"."
+
+[[entry]]
+path = "durable/session/session_document_retention_test.go"
+commit = "832ba8ca17c8489b66d0f33e16df9f6b6eb3ff92"
+class = "CITE"
+cite = "packages/durable/src/session/session.ts:1188"
+reason = "Pi 8b0caefc makes a document watch follow its address (session.ts:1188): while the address is absent the Session keeps no retired value and pins nothing, and a recreation is pinned again as the new incarnation (session.ts:1242), where the retired watch used to end. The test that expected the retired watch to close with a nil value expects it to pin only what is at the address (nothing while retired, then the new incarnation) and to deliver the new count; the listener receives a WatchChange."
+
+[[entry]]
+path = "durable/session/session_watches_test.go"
+commit = "832ba8ca17c8489b66d0f33e16df9f6b6eb3ff92"
+class = "CITE"
+cite = "packages/durable/src/session/session.ts:1231"
+reason = "Pi 8b0caefc folds a retirement into the call of the pending commits, which reports it with the last value (`retired: true`, no ops, session.ts:1231; chord watch.ts:267-316 folds the pending frames), and the watch goes on instead of closing: the test that expected one nil delivery with a root ops list and a closed watch expects one change with the retirement flag and the last value; every listener receives a WatchChange."
+
+[[entry]]
+path = "ai/oauth_kimi_test.go"
+commit = "439c708ebc2fc1d5f19d1b06efa7ed390a76bc7e"
+class = "CITE"
+cite = "packages/ai/src/auth/oauth/trusted-url.ts:6"
+reason = "Pi 89c921d8 replaces the Kimi login's private check with the shared trustedHttpUrl (trusted-url.ts:6-9), which takes any value and returns the normalized href of an http(s) URL or null: the table's want changes from a boolean to the returned href (`HTTPS://Example.test` becomes `https://example.test/`, a control character is percent-encoded) and gains the empty string, nil and a number, which are not trusted."
+
+[[entry]]
+path = "ai/oauth_radius_test.go"
+commit = "439c708ebc2fc1d5f19d1b06efa7ed390a76bc7e"
+class = "CITE"
+cite = "packages/ai/src/auth/oauth/radius.ts:57"
+reason = "Pi 89c921d8 makes the Radius login take its authorization endpoint through trustedHttpUrl and throw `Invalid Radius OAuth config from ${gateway}` (radius.ts:55-58) for one that is not an http(s) URL, where the unparseable endpoint raised `Invalid URL`; a device verification_uri that is not trusted throws `Untrusted verification_uri` (radius.ts:217). The expected error text changes and the two radius-oauth.test.ts cases for a file: endpoint and URI are ported."
+
+[[entry]]
+path = "ai/trusted_url_oracle_test.go"
+commit = "439c708ebc2fc1d5f19d1b06efa7ed390a76bc7e"
+class = "CITE"
+cite = "packages/ai/src/auth/oauth/trusted-url.ts:6"
+reason = "Pi 89c921d8 moves the private trustedHttpUrl of kimi-coding.ts and meta.ts into the shared trusted-url.ts (trusted-url.ts:6-9) used by the Copilot, Kimi, Meta and Radius logins, so the Node oracle runs that one function and the test compares one `trusted` result (accepted or not, and the href) instead of separate kimi and meta results; the kimi accepts-only comparison is gone because Pi's function now returns the href too."
+
+[[entry]]
+path = "tui/scoped_models_list_test.go"
+commit = "c55a48a7a610eb44ca29605205b7811d65016ccd"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts:255"
+reason = "Pi 606af8662 shows a name after the id in the /scoped-models rows when getDistinctModelName (model-search.ts:25) finds words the id lacks (scoped-models-selector.ts:255): the refreshed row expects `model (New) [new]` where it was `model [new]`, and the ported scoped-models-selector.test.ts case checks `model-b (Renamed B) [openai]` next to `model-a [openai]`, whose name only restates the id."
+
+[[entry]]
+path = "ai/faux_provider_upstream_test.go"
+commit = "006a4963df9ea412989bd83fd463fa9344f040d0"
+class = "CITE"
+cite = "packages/ai/src/providers/faux.ts:267"
+reason = "Pi f3fa8bd92 makes the faux provider send every prompt token to cache read or cache write while it simulates caching (faux.ts:266-269: cacheRead = ceil(cachedChars / 4), cacheWrite = max(0, promptTokens - cacheRead), input stays 0): the expectations that kept the uncached rest as input (3 and 4) expect input 0, the first call writes its 4 prompt tokens, and a 13-character shared prefix of a 4-token prompt reads 4 and writes none instead of 1."
+
+[[entry]]
+path = "internal/codingagent/tools/tools_manager_test.go"
+commit = "fdbd6ca4f0e1f86affb014d2d6e1f2c87126f177"
+class = "CITE"
+cite = "packages/coding-agent/src/utils/tools-manager.ts:33"
+reason = "Pi c8ec752cf (#11209) names the fd and rg release asset from getReleaseTarget (tools-manager.ts:33), which maps only x64 and arm64 and returns undefined for ARM32, ia32, riscv64 and other platforms (the download refuses them, tools-manager.ts:362-363), so the Go table of archStr, whose fallback was the x86_64 archive for any other architecture, becomes the table of releaseTarget with an empty target for the architectures that no longer fall back to x86-64."
+
+[[entry]]
+path = "internal/codingagent/session_selector_search_semantics_test.go"
+commit = "65ff3467c950339b75a8b0e7c7e060c0446bd90b"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts:63"
+reason = "Pi 8c03fef4d (#11220) scores a session token by the best field it matches, in tiers of a million (session-selector-search.ts:33, tierScore at :62-64): name text in tier 0 with the fuzzy score, id, message and cwd text in tier 1 (:69-72), and only scattered name or cwd characters in tier 2 (:76-85, never messages or ids). The expected scores therefore become the tiered values (1000000, 2000000, 1999988.8 ...), a scattered match over message text no longer matches, and the table passes whole SessionInfo values instead of one message text."
+
+[[entry]]
+path = "internal/codingagent/session_selector_test.go"
+commit = "65ff3467c950339b75a8b0e7c7e060c0446bd90b"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts:80"
+reason = "Pi 8c03fef4d (#11220) lets a scattered (fuzzy) token match only the session's name or cwd (session-selector-search.ts:80-82: `for (const field of [session.name ?? \"\", session.cwd])`), never its message text, so the relevance test that expected `lgin` to find the session whose message text holds those scattered letters expects no match, and checks `gma` against the name or directory instead."
+
+[[entry]]
+path = "coding/extension/markdowntransform/markdowntransform_test.go"
+commit = "809ac2c8b958380038c709607e8bcff25ce50e6a"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/user-message.ts:62"
+reason = "Pi 64627838b (#11270) passes the entry's messageId and timestamp as the two trailing arguments of createMarkdownTransform (user-message.ts:62-68; the context fields are types.ts:1546-1548), undefined for a live message; the Go function takes the two trailing strings, empty for undefined, so the test's existing calls pass \"\", \"\" and expect the same output."
+
+[[entry]]
+path = "tui/message_component_options_test.go"
+commit = "809ac2c8b958380038c709607e8bcff25ce50e6a"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/user-message.ts:26"
+reason = "Pi 64627838b (#11270) gives the user and assistant message components the trailing optional `messageId` and `timestamp` constructor parameters (user-message.ts:26-27, the assistant component likewise), undefined for a live message; the Go constructors take the two strings, empty for undefined, so the existing constructions pass \"\", \"\" and expect the same rendering."
+
+[[entry]]
+path = "durable/core/driver/harness_tasks_port2_core_test.go"
+commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
+class = "CITE"
+cite = "packages/chord/src/watch.ts:157"
+reason = "Pi 92ab53602 names the end of a watch whose source closed `ended` (chord watch.ts:11, :157), where the Session closing used to end it `session_closed`; the expected end reason of the watch left open when the Session closes is `ended`."
+
+[[entry]]
+path = "durable/core/driver/watch_test.go"
+commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
+class = "CITE"
+cite = "packages/chord/src/watch.ts:157"
+reason = "Pi 92ab53602 ends the watches a closing Session leaves open as `ended` (chord watch.ts:11, :157) instead of `session_closed`, and replaces Session.documentState, Conversation.ViewState and Harness.TaskGraph by watches (session.ts watchDoc, task-graph.ts watchTaskGraph): the tests that read a replicated state's Value and Dispose it read the watch's Value and Stop it, and the end reason expected is `ended`."
+
+[[entry]]
+path = "durable/harness/harness_listener_errors_test.go"
+commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
+class = "CITE"
+cite = "packages/chord/src/watch.ts:157"
+reason = "Pi 92ab53602 ends the watch of a closing source `ended` (chord watch.ts:11, :157) instead of `session_closed`, and the task graph is observed through a watch with an explicit SourceEnded event instead of CloseSession; the expected end reasons change, and the case of the replicated states' observers is removed with the states themselves (Harness.TaskGraph and Conversation.ViewState no longer exist in Pi)."
+
+[[entry]]
+path = "durable/harness/harness_tasks_scheduling_test.go"
+commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
+class = "CITE"
+cite = "packages/chord/src/watch.ts:157"
+reason = "Pi 92ab53602 names the end of a watch whose source closed `ended` (chord watch.ts:11, :157), where the Session closing used to end it `session_closed`; the expected end reason of the watch left open when the Session closes is `ended`."
+
+[[entry]]
+path = "durable/session/observation_internal_test.go"
+commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
+class = "CITE"
+cite = "packages/durable/test/session-watches.test.ts:781"
+reason = "Pi 92ab53602 removes the replicated-state source attachments (the two attachment tests that isolate a listener failure and reset delivering are deleted with them) and gives the Session committed watches that end with an explicit source event and drop every reference into the Session once ended (session-watches.test.ts:781 \"retains neither its Session nor its listener once stopped, while still referenced\"; chord watch.ts:153-158 for the end). The added tests expect what the watch delivers and ends with on a null value, on retirement and when stopped (the retirement ending was superseded within this batch by the followed address of 8b0caefc, see the ledger entries of 832ba8ca17)."
+
+[[entry]]
+path = "ai/openrouter_cost_test.go"
+commit = "a9015090a506009d6d0354e68a229e39717d665a"
+class = "CITE"
+cite = "packages/ai/src/utils/openrouter-cost.ts:34"
+reason = "Pi cae8d69e5 (#10286) replaces usage.cost.total with OpenRouter's reported cost and sets usage.cost.totalFromProvider = true (openrouter-cost.ts:30-35 for a non-BYOK request, :53 for BYOK), and leaves the catalog total and the flag unset when the accounting is incomplete or invalid; the ported openrouter-cost.test.ts table gains the expected flag, true exactly for the cases that take the reported cost."
+
+[[entry]]
+path = "ai/calculate_cost_any_model_test.go"
+commit = "7a49fc497efa3e8674b98dc3fc3bcf1a1c8bf68d"
+class = "CITE"
+cite = "packages/ai/src/models.ts:1255"
+reason = "Pi 7c22a93d0 (#11178) makes calculateCost mark the cost it computes from catalog rates `totalFromProvider = false` (models.ts:1255), so the zero estimate of a model without rates is a zero cost carrying a false flag instead of the bare zero value."
+
+[[entry]]
+path = "ai/usage_cost_test.go"
+commit = "7a49fc497efa3e8674b98dc3fc3bcf1a1c8bf68d"
+class = "CITE"
+cite = "packages/ai/src/models.ts:1255"
+reason = "Pi 7c22a93d0 (#11178) writes `totalFromProvider: false` into the cost calculateCost prices from catalog rates (models.ts:1255), after total in the serialized cost (verified by running Pi's calculateCost, as the commit says), so each catalog-priced usage string expects the added `\"totalFromProvider\":false` member."
+
+[[entry]]
+path = "ai/cache_affinity_e2e_upstream_test.go"
+commit = "ae40b2b82015ae8fa212c7b33ff71dc9f3d01615"
+class = "CITE"
+cite = "packages/ai/test/openai-codex-cache-affinity-e2e.test.ts:10"
+reason = "Pi fdce48eb (#11173) removes gpt-5.5 from openai-codex, and Pi's codex cache-affinity e2e test takes openai-codex/gpt-6.1-sol (openai-codex-cache-affinity-e2e.test.ts:10), so the Codex case's provider model and the model of its expected request body change to gpt-6.1-sol. The same commit also dropped the `reasoning` member from the gpt-5.4 case's expected body by a bulk edit; that was a mistake and 4fe586eeb8 restores it (reviewed there)."
+
+[[entry]]
+path = "ai/registry_test.go"
+commit = "ae40b2b82015ae8fa212c7b33ff71dc9f3d01615"
+class = "CITE"
+cite = "packages/ai/scripts/generate-models.ts:462"
+reason = "Pi fdce48eb (#11173) drops openai-codex/gpt-5.3-codex-spark and gpt-5.5, so the registry case resolves openai-codex/gpt-5.6-sol, whose catalog entry has the rates of generate-models.ts:462 (input 4, output 20, cacheRead 0.4, cacheWrite 5), a 272000 context, text and image input and the max thinking level (the expected values are the regenerated catalog entry's)."
+
+[[entry]]
+path = "ai/usage_cost_test.go"
+commit = "ae40b2b82015ae8fa212c7b33ff71dc9f3d01615"
+class = "CITE"
+cite = "packages/ai/scripts/generate-models.ts:462"
+reason = "Pi fdce48eb (#11173) removes openai-codex/gpt-5.5, so the priority-tier case prices openai-codex/gpt-5.6-sol at the rates of generate-models.ts:462 (input 4, output 20): 100000 input and output tokens at priority cost 0.8 and 4, total 4.8, where gpt-5.5 cost 1.25 and 7.5."
+
+[[entry]]
+path = "ai/cache_affinity_e2e_upstream_test.go"
+commit = "4fe586eeb84a5fcbf7076f76fa17af6ec14d777c"
+class = "CITE"
+cite = "packages/ai/src/api/openai-responses.ts:409"
+reason = "A bulk edit of the preceding commit ae40b2b820 had dropped `\"reasoning\":{\"effort\":\"none\"}` from the expected body of the gpt-5.4 case; this commit restores it, which is Pi's own request: a reasoning model sent without a reasoning option gets reasoning.effort of its thinkingLevelMap off entry, `none` for gpt-5.4 (openai-responses.ts:409-411). The expected body is the one the test had before ae40b2b820."
+
+[[entry]]
+path = "ai/transcript_tool_changes_test.go"
+commit = "c371a134cc1a18c5b21f4a245961e550d7a24a63"
+class = "CITE"
+cite = "packages/ai/src/api/openai-responses-shared.ts:238"
+reason = "Pi caa6967b, 530015d9 (#11142) make a transport that takes additional_tools declare every tool in additional_tools items from the head of the input and precede each later item with the incremental-tools notice (openai-responses-shared.ts:236-245, renderIncrementalToolsNotice at :182), and announce removals as a text notice (:187-189, renderToolRemovalNotice) instead of anchoring additions at their developer message or falling back to the complete current tool state: the expected shapes, top-level tools (none) and instructions change to that sequence."
+
+[[entry]]
+path = "coding/extension/builtin/codemode/worker_admission_test.go"
+commit = "e73e536f2c495000842febe6a778f750b738a205"
+class = "CITE"
+cite = "packages/coding-agent/src/extensions/codemode/execute.ts:78"
+reason = "Pi 885a564b (#11184) makes a script wait for a free worker, in arrival order, up to CODEMODE_WORKER_WAIT_MS (60 s, execute.ts:69) instead of failing at once at the limit (execute.ts:69-106: reserveCodemodeWorker resolves reserved, aborted or timeout, and admitCodemodeWorkers hands freed slots to the waiters in order). The test that expected `Codemode worker limit reached` with no VM started expects the script to stay pending while every slot is held, to fail without running when aborted or past its deadline while it waits, and to be admitted exactly once a slot is freed; the slots are held with the reserve call the new code exposes."
+
+[[entry]]
+path = "coding/extension/builtin/codemode/worker_admission_test.go"
+commit = "2209c440d3f3751098801bda2383e7c855d07b12"
+class = "CITE"
+cite = "packages/coding-agent/src/extensions/codemode/execute.ts:600"
+reason = "Review fixes for Pi 885a564b and 22dc6c26 on the queued-worker tests: a running VM keeps its slot after the script's reservation is handed to the sandbox and gives it back only when the worker exits (execute.ts:598-601: `reserved = false; return releaseCodemodeWorker`, so the script's own release after Execute returns does not free it, :606-610), and a burst of real scripts queues behind the held slots and completes in arrival order (execute.ts:78-106). The expectations become text-item checks of the admitted scripts' results, the burst and PI_CODEMODE_MAX_WORKERS cases run real scripts instead of bare reservations, and the settled-launch case runs through Execute."
+
+[[entry]]
+path = "ai/openai_record_validation_norace_test.go"
+commit = "af4aea65387d7eb84dcacb6b28f2ad309aa8c71e"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test's assertion is a measurement method, not a behavior: it asserted that a completions stream costs at most a CPU-time ratio of a json.Valid floor (3.6 times for a third scan against about 1.5 times for a single one), which fails on a loaded machine, and now counts the record scans (recordScanHook passes of json.Valid and of the event observer's validity scan beyond the decode that reads each record) and asserts none for the stream whose records the chunk decode reads, with a control stream whose records fall back to both scans to show the count sees them. The rule pinned is the same, a record is scanned once, with a deterministic count instead of a timing; Pi, which parses each record once with JSON.parse, has no such test."
+
+[[entry]]
+path = "ai/telemetry_upstream_test.go"
+commit = "7987ae7da13447ef81e271cc0e91c1d59859b143"
+class = "CITE"
+cite = "packages/ai/src/telemetry.ts:24"
+reason = "Pi keeps a span's attributes in insertion order (a JS object, copied with Object.entries in telemetry memory.ts:110-115), and the request span records the start attributes in the order of its schema (provider, api, model, the scalar reasoning, ai telemetry.ts:24-29) followed by the end attributes (stop, usage.input, usage.output, usage.cache_read, usage.cache_write, cost.total, response.id, :31-38); the metrics take provider, model, then kind or stop (:76-90). The expected SpanAttributes are an ordered list in Pi's order (not a map), an event without attributes has none, and the metric attribute keys are compared in order instead of as a set."
+
+[[entry]]
+path = "telemetry/memory_ids_detached_test.go"
+commit = "4ca61cee8c939660e13fe5a86c60c7b98890c1f7"
+class = "CITE"
+cite = "packages/telemetry/src/memory.ts:110"
+reason = "Pi records a span's and an event's attributes as an object copied with Object.entries (memory.ts:110-115), keeping insertion order and copying array values, so PiG's SpanAttributes is an ordered list of Attr values (Set and Value replace the map index): the detached-copy test builds the attributes with Attr and reads them with Value, and expects the same copied values (n stays 1, the list keeps its first element)."
+
+[[entry]]
+path = "telemetry/memory_recording_test.go"
+commit = "4ca61cee8c939660e13fe5a86c60c7b98890c1f7"
+class = "CITE"
+cite = "packages/telemetry/src/memory.ts:221"
+reason = "Pi's setAttributes merges the new attributes over the span's (`{ ...recordedSpan.attributes, ...copyAttributes(attributes) }`, memory.ts:221), keeping the first position of an overridden name and appending the new ones in order, so PiG's recorder and its expected SpanAttributes are the ordered lists keep, over (new), added and the copy test reads the recorded value with Value; values are the same as before."
+
+[[entry]]
+path = "telemetry/conformance_capability_cases_test.go"
+commit = "8a01515289e7382bbefcc61ed66dff855ad5eccc"
+class = "CITE"
+cite = "packages/telemetry/src/testing/conformance.ts:51"
+reason = "The ported conformance suite of Pi (telemetry/src/testing/conformance.ts) names its cases \"carries adapter capabilities through contexts and spans\" (:51), \"copies instrument metadata and measurement attributes\" (:109) and \"links / ignores links added after source settlement\" (:149) where PiG's older suite had \"copies inputs and suppresses invalid measurements atomically\" and \"suppresses malformed links atomically and ignores settled sources\", so the lists of the cases each broken store must fail use Pi's names and gain the capabilities case."
+
+[[entry]]
+path = "chord/context/chordctx_upstream_test.go"
+commit = "2ea25c07563ed54611f11698ce3b80bb983afd6a"
+class = "CITE"
+cite = "packages/chord/src/context/index.ts:13"
+reason = "Pi 2ec55d80 and d9025a5f make Context.telemetry a TelemetrySpan (context/index.ts:13) and WithTelemetry take a span (:91-95), a caller's span, so the test derives telemetry from a caller span started in the recorder instead of the recorder; the recorded trace has the caller span as the parent of the outer span (three spans, not two) and a span link's context is the parent span."
+
+[[entry]]
+path = "durable/session/session_definitions_test.go"
+commit = "71b4b1e3b6a5cf2d9f2fb089267b91138c614e70"
+class = "CITE"
+cite = "packages/durable/src/documents.ts:89"
+reason = "Pi 5c1736f8 makes `checkpointWhen` a required member of every document definition (documents.ts:89, types.ts:78: `checkpointWhen(value, ops, info): boolean`, no optional marker), so DefineDoc and DefineDocFamily panic without CheckpointWhen or CheckpointWhenRaw; the definitions in the test (which defined none) carry `CheckpointWhen` returning false, and the cases that expect a rejection of a bad kind or version still reject for that reason, not for the missing member."
+
+[[entry]]
+path = "durable/env/node/shell_test.go"
+commit = "4fd80d1cb2cd846ac6b4c6842f357121ff8aba0f"
+class = "CITE"
+cite = "packages/durable/src/env/node.ts:209"
+reason = "Pi 28bea006 and 61060ddf match the legacy WSL bash launcher under the actual Windows directory (isLegacyWslBashPath, node.ts:209-218: SystemRoot's System32 and Sysnative, no match when SystemRoot is not a drive path, the conventional C:\\Windows paths only when SystemRoot is unset or empty), and Pi's env-node.test.ts \"selects command transport for %s (SystemRoot=%j)\" (env-node.test.ts:664) covers it: the single case becomes the table of shell path, SystemRoot and the expected argument (`-s` for a launcher under the actual directory, `-c` otherwise)."
+
+[[entry]]
+path = "internal/shellconfig/shellconfig_test.go"
+commit = "4fd80d1cb2cd846ac6b4c6842f357121ff8aba0f"
+class = "CITE"
+cite = "packages/coding-agent/src/utils/shell.ts:13"
+reason = "Pi 28bea006 and 61060ddf match the legacy WSL launcher under the actual SystemRoot (shell.ts:13-23; an empty SystemRoot is falsy, so it falls back to the conventional paths, :16 and :22), look for PowerShell 7 under ProgramFiles (:151-155), and take the first line of `where` output as the match, accepted when it passes the access check (:45-56, Store aliases): isLegacyWSLBashPath takes the SystemRoot, the existing path table passes \"\" for it, and the ported windows-shell-config.test.ts and shell-path-exists.test.ts cases add the expected detections and matches."
+
+[[entry]]
+path = "coding/session_resume_default_tools_port_test.go"
+commit = "43d259770e32ed1996d955e6eda8cccf3766ee04"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1845"
+reason = "Pi bd3c9b8237 (#11062/#11075) activates, on resume, the extension tools the branch never added or removed (agent-session.ts:1845-1856: `mentioned` is every tool in toolsAdded or toolsRemoved of the branch's system messages, the rest of the extension tools are activated like newly registered ones, built-in tools follow defaultTools), and the loadout is that of the recorded system messages with the removals applied (default-tools-setting.test.ts:369 and :376, \"activates extension tools the transcript never added or removed\" and \"keeps tools removed before a compaction inactive\"): the resume case's session records the removal of active_tool by a system message, and the new cases expect those activations."
+
+[[entry]]
+path = "internal/codingagent/ext_ui_dialog_displace_test.go"
+commit = "90f69085ce4e7da8d8617b769dfc9960d0f98775"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:2693"
+reason = "Pi 38847563 and bdd9f039 (#11166, #9909) stack extension dialogs (interactive-mode.ts:2693-2712 pushExtensionDialog, removeExtensionDialog, showTopExtensionDialog) instead of letting a new dialog displace the open one: a dialog opened over another hides it without settling it, the new one takes the keys, and when it closes the earlier dialog shows again and stays answerable, the editor returning only when the last closes. The displacement tests (the displaced dialog stays pending until its own abort, a submitted input restores the editor) expect the stack's behavior."
+
+[[entry]]
+path = "automation/ci/changelogfrag/history_test.go"
+commit = "2719b6854d8fb4a81f69a6ef4bd3be561daa6f86"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The changelog fragment tool is PiG-original CI automation (PiG's own changelog.d fragments, fix markers and bug ledger), which Pi does not have, so no Pi line governs it. The commit changes PiG's own rule, which the reason spells out: a legacy fragment is exempt from the name rule and from the reachability of its markers, no longer from the marker itself, because the fold copies its \"### Fixed\" bullets into CHANGELOG.md, where the bug ledger refuses a bullet without one (42 of them broke make bug-ledger-check on main). The test pins that rule with a marked and an unmarked legacy bullet, and that it needs no git checkout."
+
+[[entry]]
+path = "automation/ci/changelogfrag/main_test.go"
+commit = "2719b6854d8fb4a81f69a6ef4bd3be561daa6f86"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The changelog fragment tool is PiG-original CI automation with no Pi counterpart, so no Pi line governs it. The fold now refuses any fragment, legacy or not, whose \"### Fixed\" bullet has no `<!-- fix: <sha> -->` marker, so the fold tests' fixture bullets carry a marker and their expected CHANGELOG text carries it too, and a new test pins the refusal of an unmarked bullet and the acceptance of a marked one, for a legacy and a normal fragment."
+
+[[entry]]
+path = "ai/user_agent_release_cache_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/ai/src/utils/identity.ts:75"
+reason = "Pi adc5fa9f80 and 04a93bad8f move the client User-Agent into the ai package as formatUserAgent(identity?) (identity.ts:75), where PiG's PiUserAgent() was; with no identity it is the same string, so the test calls FormatUserAgent(nil) and expects the same kernel release in the string."
+
+[[entry]]
+path = "ai/user_agent_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/ai/src/utils/identity.ts:75"
+reason = "Pi adc5fa9f80 and 04a93bad8f make the User-Agent formatUserAgent(identity?) (identity.ts:75), computed from a ClientIdentity, whose absence gives the default string; the expected prefixes and the Codex WebSocket headers' User-Agent are those of FormatUserAgent(nil), and the Codex header builder takes the identity target and identity (identity.ts:141, getIdentityHeaders)."
+
+[[entry]]
+path = "coding/model_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/coding-agent/src/core/client-identity.ts:14"
+reason = "Pi adc5fa9f80 and 04a93bad8f make the session's client identity carry the attribution only while install telemetry is enabled (client-identity.ts:14: `attribution: isInstallTelemetryEnabled(settingsManager) ? PI_ATTRIBUTION : null`) and apply it through the ai package's request options (identity.ts:107, getAttributionHeaders) instead of a provider wrapper of the coding package: the model's provider type is the request-options provider, and the test of the install-telemetry gate on the wrapper is replaced by the identity's own gate."
+
+[[entry]]
+path = "coding/session_extension_hooks_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/ai/src/utils/identity.ts:130"
+reason = "Pi adc5fa9f80 and 04a93bad8f send the OpenCode session header through getOpenCodeSessionHeaders (identity.ts:130) from the ai package, instead of the attribution wrapper's x-opencode-client header, so the before-provider-headers hook (sdk.ts transformHeaders) sees x-opencode-session, and the hook that deletes a header deletes that one."
+
+[[entry]]
+path = "durable/harness/harness_tools_models_test.go"
+commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
+class = "CITE"
+cite = "packages/durable/src/harness/harness.ts:193"
+reason = "Pi adc5fa9f80 and 04a93bad8f give the Harness a view of the host's Models that adds the Harness identity, withClientIdentity (harness.ts:193-197 currentModels; identity.ts:154), shared by the tools and the hooks (harness-tools.test.ts: seen[0] is seen[1]): the models a tool reads are no longer the host's own value, so the test expects a view that lists the same models and returns the same model for faux/faux-1."

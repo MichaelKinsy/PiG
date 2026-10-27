@@ -52,7 +52,38 @@ func BuiltinToolDefinitionJSON(argsJSON []byte) ([]byte, error) {
 	if definition.RenderShell == extension.ToolRenderShellSelf {
 		result.RenderShell = string(extension.ToolRenderShellSelf)
 	}
+	result.PreparesArguments = definition.PrepareArguments != nil
 	return json.Marshal(result)
+}
+
+// BuiltinToolPrepareArgumentsJSON is CallBuiltinToolPrepareArguments over JSON: the built-in definition's prepareArguments applied to the arguments. The handler
+// and the fused extensions' SDK hook share it.
+func BuiltinToolPrepareArgumentsJSON(argsJSON []byte) ([]byte, error) {
+	var args BuiltinToolPrepareArgumentsArgs
+	if err := json.Unmarshal(argsJSON, &args); err != nil {
+		return nil, fmt.Errorf("decode %s: %w", CallBuiltinToolPrepareArguments, err)
+	}
+	tool, err := newBuiltinTool(args.Name, args.Cwd, args.Options, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	definition, err := tools.BuiltinToolDefinition(tool)
+	if err != nil {
+		return nil, err
+	}
+	if definition.PrepareArguments == nil {
+		return nil, fmt.Errorf("tool %s has no prepareArguments", args.Name)
+	}
+	return definition.PrepareArguments(args.Args)
+}
+
+// handleBuiltinToolPrepareArguments serves CallBuiltinToolPrepareArguments.
+func (h *Host) handleBuiltinToolPrepareArguments(call *CallPayload) (*CallResultPayload, error) {
+	data, err := BuiltinToolPrepareArgumentsJSON(call.Args)
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: data}, nil
 }
 
 // handleBuiltinToolDefinition serves CallBuiltinToolDefinition. The definition does not depend on the managed tools directory.

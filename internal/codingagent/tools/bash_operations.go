@@ -245,24 +245,7 @@ type shellSpawnError struct {
 	cause error
 }
 
-func (e *shellSpawnError) Error() string {
-	if spawnErr, ok := errors.AsType[*nodespawn.Error](e.cause); ok {
-		return spawnErr.Error()
-	}
-	code := nodeErrorCode(e.cause)
-	if e.notFound() {
-		code = "ENOENT"
-	}
-	if code != "" {
-		// child_process.spawn emits these errors with the file in the syscall and throws every other errno, such as ENOTDIR for a working directory that is a file, with the bare syscall "spawn" (internal/child_process.js ChildProcess.spawn).
-		switch code {
-		case "EACCES", "EAGAIN", "EMFILE", "ENFILE", "ENOENT":
-			return "spawn " + e.path + " " + code
-		}
-		return "spawn " + code
-	}
-	return e.cause.Error()
-}
+func (e *shellSpawnError) Error() string { return nodespawn.SpawnMessage(e.path, e.cause) }
 func (e *shellSpawnError) Unwrap() error { return e.cause }
 
 // Is reports a shell that os/exec could not find as fs.ErrNotExist.

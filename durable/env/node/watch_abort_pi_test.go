@@ -42,7 +42,7 @@ func TestWatchWithAnAbortedContextFailsBeforeOpening(t *testing.T) {
 	env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir(), Watch: NodeWatchOptions{MaxDirectories: new(0)}})
 	ctx, cancel := context.WithCancel(background)
 	cancel()
-	watcher, err := env.Watch(ctx, []durableenv.WatchTarget{{Path: "."}}, func(durableenv.WatchChange) {})
+	watcher, err := env.Watch(ctx, []durableenv.WatchTarget{{Path: "."}}, func(durableenv.FileChange) {})
 	if watcher != nil {
 		t.Fatal("an aborted watch returned a watcher")
 	}
@@ -56,7 +56,7 @@ func TestWatchAbortedWhileOpeningClosesTheWatcherAndFails(t *testing.T) {
 	cwd := t.TempDir()
 	env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: cwd, Watch: NodeWatchOptions{Mode: durableenv.WatchPolling, PollIntervalMs: new(5)}})
 	var delivered atomic.Int32
-	watcher, err := env.Watch(&abortAfterChecks{Context: background, after: 1}, []durableenv.WatchTarget{{Path: ".", Recursive: true}}, func(durableenv.WatchChange) { delivered.Add(1) })
+	watcher, err := env.Watch(&abortAfterChecks{Context: background, after: 1}, []durableenv.WatchTarget{{Path: ".", Recursive: true}}, func(durableenv.FileChange) { delivered.Add(1) })
 	if watcher != nil {
 		t.Fatal("a watch aborted while opening returned a watcher")
 	}

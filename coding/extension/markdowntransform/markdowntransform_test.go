@@ -20,7 +20,7 @@ func TestMarkdownTransformChainOrderContextAndThrow(t *testing.T) {
 		}
 	}
 	throwing := func(string, MarkdownTransformContext) string { panic("broken transformer") }
-	transform := CreateMarkdownTransform(MarkdownMessageAssistantThinking, true, []MarkdownTransformer{record("A"), throwing, record("B")})
+	transform := CreateMarkdownTransform(MarkdownMessageAssistantThinking, true, []MarkdownTransformer{record("A"), throwing, record("B")}, "", "")
 	if got := transform("x", 37); got != "xAB" {
 		t.Fatalf("chain result = %q, want xAB", got)
 	}
@@ -28,7 +28,7 @@ func TestMarkdownTransformChainOrderContextAndThrow(t *testing.T) {
 	if !slices.Equal(seen, []MarkdownTransformContext{want, want}) {
 		t.Fatalf("contexts = %+v", seen)
 	}
-	if got := CreateMarkdownTransform(MarkdownMessageUser, false, nil)("same", 5); got != "same" {
+	if got := CreateMarkdownTransform(MarkdownMessageUser, false, nil, "", "")("same", 5); got != "same" {
 		t.Fatalf("empty chain = %q", got)
 	}
 }

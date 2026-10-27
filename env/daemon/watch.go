@@ -81,13 +81,13 @@ func watchFailure(err error) *Failure {
 }
 
 // watchEvent is the event frame of one change. The watcher reports overflow only when it switches to polling, so an overflow is sent with the mode, as watch.rs switch_to_polling sends it (watch.rs:583), also when the switch happens while the watch opens.
-func watchEvent(change durableenv.WatchChange) Object {
+func watchEvent(change durableenv.FileChange) Object {
 	switch typed := change.(type) {
-	case durableenv.WatchChangePaths:
+	case durableenv.FileChangePaths:
 		return Object{"kind": "change", "paths": typed.Paths}
-	case durableenv.WatchChangeOverflow:
+	case durableenv.FileChangeOverflow:
 		return Object{"kind": "change", "overflow": true, "mode": "polling"}
-	case durableenv.WatchChangeError:
+	case durableenv.FileChangeError:
 		return Object{"kind": "error", "code": string(typed.Error.Code), "message": typed.Error.Message}
 	}
 	return nil
@@ -118,7 +118,7 @@ func (s *server) runWatch(id uint32, request Object, ctl *control) (Object, *Fai
 	ctl.attach(cancel)
 
 	send := func(event Object) { s.out.sendControl(&Frame{Kind: FrameEvent, ID: id, JSON: event}) }
-	onChange := func(change durableenv.WatchChange) {
+	onChange := func(change durableenv.FileChange) {
 		if event := watchEvent(change); event != nil {
 			send(event)
 		}

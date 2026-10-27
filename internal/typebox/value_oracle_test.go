@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -27,12 +28,33 @@ type valueAnswer struct {
 
 func (e *ValueError) UnmarshalJSON(data []byte) error {
 	var wire struct {
-		InstancePath string `json:"instancePath"`
-		Message      string `json:"message"`
+		Keyword      string          `json:"keyword"`
+		SchemaPath   string          `json:"schemaPath"`
+		InstancePath string          `json:"instancePath"`
+		Params       json.RawMessage `json:"params"`
+		Message      string          `json:"message"`
 	}
-	err := json.Unmarshal(data, &wire)
-	e.InstancePath, e.Message = wire.InstancePath, wire.Message
-	return err
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	e.Keyword, e.SchemaPath, e.InstancePath, e.Message = wire.Keyword, wire.SchemaPath, wire.InstancePath, wire.Message
+	e.params = errParams{}
+	if len(wire.Params) > 0 {
+		decoded, err := chordjson.Decode(wire.Params)
+		if err != nil {
+			return err
+		}
+		if object, _ := decoded.(*chordjson.Object); object != nil {
+			keys := object.Keys()
+			if len(keys) > 0 {
+				e.params.val1 = object.Value(keys[0])
+			}
+			if len(keys) > 1 {
+				e.params.val2 = object.Value(keys[1])
+			}
+		}
+	}
+	return nil
 }
 
 // absent stands for a JavaScript undefined value in a case.
@@ -121,7 +143,7 @@ func TestValueMatchesTypeboxOnCases(t *testing.T) {
 		if got := Check(answer.Schema, value); got != answer.Check {
 			t.Errorf("case %d %s: Check %v, typebox %v", index, valueCases[index].Schema, got, answer.Check)
 		}
-		if got := Errors(answer.Schema, value); !reflect.DeepEqual(got, answer.Errors) && (len(got) > 0 || len(answer.Errors) > 0) {
+		if got := Errors(answer.Schema, value); errorsJSON(t, got) != errorsJSON(t, answer.Errors) {
 			t.Errorf("case %d %s: errors\n  go %+v\n  tb %+v", index, valueCases[index].Schema, got, answer.Errors)
 		}
 		clean := Clean(answer.Schema, Clone(value))
@@ -144,4 +166,18 @@ func TestValueMatchesTypeboxOnCases(t *testing.T) {
 			t.Errorf("case %d %s: Default %#v, typebox %#v", index, valueCases[index].Schema, Plain(defaulted), answer.Default)
 		}
 	}
+}
+
+// errorsJSON is the errors as JSON text: the members of each error and of its params compared in TypeBox's order.
+func errorsJSON(t *testing.T, errors []ValueError) string {
+	t.Helper()
+	rows := make([]any, 0, len(errors))
+	for _, failure := range errors {
+		rows = append(rows, chordjson.ObjectOf("keyword", failure.Keyword, "schemaPath", failure.SchemaPath, "instancePath", failure.InstancePath, "params", failure.ParamsObject(), "message", failure.Message))
+	}
+	text, err := json.Marshal(rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(text)
 }

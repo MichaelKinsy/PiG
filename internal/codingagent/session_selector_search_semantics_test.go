@@ -32,22 +32,38 @@ func TestSessionSearchQueryTokens(t *testing.T) {
 	}
 }
 
-// Expected scores are direct matchSession results from the published Pi 0.87.1 package. Fuzzy scoring uses raw text, phrases normalize both sides, and regex/phrase positions use UTF-16 units.
+// Expected scores are direct matchSession results from Pi 1.4.0+936e5f40 (#11220): every field is matched on its own, name text scores in
+// tier 0, id, message and cwd text in tier 1 (a million per tier), and scattered name or cwd matches in tier 2; messages and ids never match
+// as scattered characters.
 func TestSessionSearchScores(t *testing.T) {
+	full := SessionInfo{ID: "019e9024-aaaa", Name: "Cache work", CWD: "/home/x/proj", AllMessagesText: "A discussion mentioning the Cache.\n  more"}
 	for _, tc := range []struct {
-		query, text string
-		matches     bool
-		score       float64
+		query   string
+		session SessionInfo
+		matches bool
+		score   float64
 	}{
-		{"ab", "a\n\n b", true, -13.200000000000001},
-		{`"ab"`, "😀 ab", true, 0.30000000000000004},
-		{"re:ab", "😀 ab", true, 0.5},
-		{"\"i\u0307\"", "İ", true, 0},
-		{`ab "c d"`, "ab c\n d", true, -14.2},
-		{"ab", "not matching", false, 0},
+		{"ab", SessionInfo{AllMessagesText: "a\n\n b"}, false, 0},
+		{`"ab"`, SessionInfo{AllMessagesText: "😀 ab"}, true, 1000000},
+		{"re:ab", SessionInfo{AllMessagesText: "😀 ab"}, true, 1000000},
+		{"\"i\u0307\"", SessionInfo{AllMessagesText: "İ"}, true, 1000000},
+		{`ab "c d"`, SessionInfo{AllMessagesText: "ab c\n d"}, true, 2000000},
+		{"ab", SessionInfo{AllMessagesText: "not matching"}, false, 0},
+		{"cache", full, true, -84},
+		{"ache", full, true, -29},
+		{`"cache work"`, full, true, -390.5},
+		{`"mentioning  the"`, full, true, 1000000},
+		{"re:Cache", full, true, 0},
+		{"re:zzz", full, false, 0},
+		{"proj", full, true, 1000000},
+		{"9024", full, true, 1000000},
+		{"chwk", full, true, 1999988.8},
+		{"cw", full, true, 1999985.6},
+		{"x proj", full, true, 2000000},
+		{"fuzzy cache", full, false, 0},
 	} {
-		t.Run(tc.query+tc.text, func(t *testing.T) {
-			matches, score := matchSession(SessionInfo{AllMessagesText: tc.text}, parseSearchQuery(tc.query))
+		t.Run(tc.query+tc.session.AllMessagesText, func(t *testing.T) {
+			matches, score := matchSession(tc.session, parseSearchQuery(tc.query))
 			if matches != tc.matches || score != tc.score {
 				t.Fatalf("match = %v, %v, want %v, %v", matches, score, tc.matches, tc.score)
 			}

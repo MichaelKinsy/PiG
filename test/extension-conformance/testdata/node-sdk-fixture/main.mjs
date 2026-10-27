@@ -25,6 +25,24 @@ export default function (pi) {
       tags: Type.Optional(Type.Array(Type.String())),
       filter: Type.Optional(Type.Record(Type.String(), Type.Number())),
     }, { additionalProperties: false }), execute: async () => ({ content: [{ type: "text", text: "ok" }] }) }); }
+  { // type-engine-tool (TestConformance_TypeEngineMembersAgreeAcrossSDKs): one property per member of Type that the host's type engine serves, built with Pi's own Type.
+    const Type = piAi.Type, S = Type.String(), N = Type.Number(), I = Type.Integer(), B = Type.Boolean(), L = (v) => Type.Literal(v), U = (...a) => Type.Union(a);
+    const base = Type.Object({ id: S, name: Type.Optional(S), n: I, tags: Type.Array(S) }), same = Type.Object({ a: S }), key = Type.Identifier("K");
+    pi.registerTool({ name: "type-engine-tool", description: "Parameters built with the engine members of Type", parameters: Type.Object({
+      picked: Type.Pick(base, ["id", "name"]), omitted: Type.Omit(base, ["tags"]), partial: Type.Partial(base), required: Type.Required(Type.Object({ a: Type.Optional(S), b: Type.Optional(N) })),
+      keys: Type.KeyOf(base), indexed: Type.Index(base, L("n")), readonlyObject: Type.ReadonlyObject(base), readonlyType: Type.ReadonlyType(Type.Array(S)),
+      evaluated: Type.Evaluate(Type.Intersect([same, Type.Object({ b: N })])), excluded: Type.Exclude(U(S, N, B), S), extracted: Type.Extract(U(S, N, B), U(S, N)),
+      nonNullable: Type.NonNullable(U(S, Type.Null())), uppercase: Type.Uppercase(L("abc")), lowercase: Type.Lowercase(L("ABC")), capitalize: Type.Capitalize(L("abc")),
+      uncapitalize: Type.Uncapitalize(L("ABC")), parameters: Type.Parameters(Type.Function([S, N], B)), constructorParameters: Type.ConstructorParameters(Type.Constructor([S], Type.Object({}))),
+      returnType: Type.ReturnType(Type.Function([S], N)), instanceType: Type.InstanceType(Type.Constructor([S], same)), fn: Type.Function([S], N), constructorType: Type.Constructor([S], same),
+      tuple: Type.Tuple([S, N]), template: Type.TemplateLiteral("a${string}"), conditional: Type.Conditional(S, S, L("yes"), L("no")),
+      mapped: Type.Mapped(key, U(L("a"), L("b")), Type.Ref("K"), S), cyclic: Type.Cyclic({ A: Type.Object({ next: Type.Optional(Type.Ref("A")) }) }, "A"),
+      module: Type.Module({ A: S, B: Type.Array(Type.Ref("A")) }), interface: Type.Interface([same], { b: N }), dependent: Type.Dependent(S, N, B), extends: Type.Extends({}, S, S),
+      instantiate: Type.Instantiate({ A: S }, Type.Ref("A")), call: Type.Instantiate({ Id: Type.Generic([Type.Parameter("T")], Type.Ref("T")) }, Type.Call(Type.Ref("Id"), [S])),
+      script: Type.Script("{ a: string; b?: number[] }"), rest: Type.Rest(Type.Tuple([S])), this: Type.This(), infer: Type.Infer("U", S), identifier: key,
+      generic: Type.Generic([Type.Parameter("T", S, S)], Type.Array(Type.Ref("T"))), recordKey: Type.RecordKey(Type.Record(S, N)), recordValue: Type.RecordValue(Type.Record(S, N)),
+      recordPattern: Type.String({ description: Type.RecordPattern(Type.Record(S, N)) }), enumKeyRecord: Type.Record(Type.Enum(["x", "y"]), N),
+    }, { additionalProperties: false }), execute: async () => ({ content: [{ type: "text", text: "ok" }] }) }); }
   { // refine-probe (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): Pi's own Type.Refine; every predicate and message function logs its call.
     const Type = piAi.Type, log = [];
     const checked = (tag, check) => (value) => { log.push(`check:${tag}`); return check(value); };
@@ -858,6 +876,17 @@ export default function (pi) {
       const bash = createBashToolDefinition(c.factoryCwd);
       pi.registerTool({ ...bash, async execute(...a) { const r = await bash.execute(...a); r.content = r.content.map((b, i) => i === 0 ? { ...b, text: `«${b.text}»` } : b); return r; } });
       return emit({ registered: [read.name, bash.name] });
+    }
+    if (c.kind === "registerEdit") {
+      const edit = piCodingAgent.createEditToolDefinition(c.factoryCwd);
+      pi.registerTool({ ...edit, async execute(...a) { const r = await edit.execute(...a); r.content = r.content.map((b, i) => i === 0 ? { ...b, text: `«edited:${b.text}»` } : b); return r; } });
+      return emit({ registered: [edit.name] });
+    }
+    if (c.kind === "prepare") {
+      const def = builtinFactories[c.tool][0](c.factoryCwd);
+      const report = { has: typeof def.prepareArguments === "function" };
+      if (report.has) { try { report.prepared = def.prepareArguments(c.params ?? {}); } catch (error) { report.error = error.message; } }
+      return emit(report);
     }
     if (c.kind === "sets") return emit({ coding: piCodingAgent.createCodingTools(c.factoryCwd).map((t) => t.name), readOnly: piCodingAgent.createReadOnlyTools(c.factoryCwd).map((t) => t.name) });
     if (c.kind === "local") {

@@ -90,11 +90,11 @@ const HOT: [name: string, limit: number, inlinedInto?: string][] = [
   // The commit path: each splits off the parts that most commits skip or that run on their own (document actions, the watch and
   // view frames, the operation walk). Each limit is crossed by inlining back the smallest part split off it: Store.Commit is 3.1 KB
   // and 4.0 KB with applyDocument, publish 2.2 KB and 3.4 KB with commitChanges, publishWatches 1.6 KB and 5.4 KB with
-  // advanceTaskGraph, Prepare 0.6 KB and 4.9 KB with emitOperations, emitOperations 4.4 KB and 5.8 KB with emitObject, and
+  // advanceTaskGraph (the open document watches are publishDocWatches', and the rest may be inlined into publish), Prepare 0.6 KB and 4.9 KB with emitOperations, emitOperations 4.4 KB and 5.8 KB with emitObject, and
   // mirror.Commit 1.0 KB and 2.6 KB with applyDocActions.
   ["store.Store).Commit", 3584],
   ["core.handler).publish$bound", 3072],
-  ["core.handler).publishWatches", 2048],
+  ["core.handler).publishWatches", 2048, "core.handler).publish$bound"],
   ["delta.Change).Prepare", 2048],
   ["delta.emitOperations", 5120],
   ["core.mirror).Commit", 2048],

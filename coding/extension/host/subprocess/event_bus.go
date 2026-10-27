@@ -34,7 +34,7 @@ const (
 // loadingBusCall reports whether a call may arrive while its factory is still loading, before the register handshake: the shared event bus, and the registry reads and checks of a Node factory's `pi` object, which Pi answers synchronously when the factory calls them, its exec, which Pi spawns directly, and the model stream (and its cancellation) of the pi-ai functions a module calls at load, which Pi runs in its own process with no registration gate.
 func loadingBusCall(method string) bool {
 	switch method {
-	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle, CallGetMcpServers, CallCheckMcpServer, "exec", CallLoadingExec, CallExecCancel, CallFileMutationEnter, CallFileMutationExit, CallParseFrontmatter, CallParseDate, CallGenerateDiffString, CallGenerateUnifiedPatch, CallCopyToClipboard, CallConvertToPng, CallResizeImage, CallBuiltinToolDefinition, CallHighlightCode, CallLoadTheme, "modelStream", "cancelModelStream":
+	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle, CallGetMcpServers, CallCheckMcpServer, "exec", CallLoadingExec, CallExecCancel, CallFileMutationEnter, CallFileMutationExit, CallParseFrontmatter, CallParseDate, CallGenerateDiffString, CallGenerateUnifiedPatch, CallCopyToClipboard, CallConvertToPng, CallResizeImage, CallBuiltinToolDefinition, CallHighlightCode, CallTypeEngine, CallLoadTheme, "modelStream", "cancelModelStream":
 		return true
 	}
 	return false

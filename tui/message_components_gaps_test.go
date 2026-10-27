@@ -158,7 +158,7 @@ func TestCustomMessageComponentLayoutRendererLifecycleAndLiveness(t *testing.T) 
 func TestUserMessageComponentSettersRerenderClampPadAndDispose(t *testing.T) {
 	joined := func(b *UserMessageComponent) string { return strings.Join(stripANSILines(b.Render(40)), "\n") }
 
-	block := NewUserMessageComponent("message", nil, 1, nil)
+	block := NewUserMessageComponent("message", nil, 1, nil, "", "")
 	_ = joined(block)
 	block.SetMarkdownTransform(func(text string, _ int) string { return text + " transformed" })
 	if got := joined(block); !strings.Contains(got, "message transformed") {
@@ -185,11 +185,11 @@ func TestUserMessageComponentSettersRerenderClampPadAndDispose(t *testing.T) {
 	}
 
 	// A negative output pad renders like zero, from the constructor and from SetOutputPad.
-	zero := joined(NewUserMessageComponent("pad", nil, 0, nil))
-	if got := joined(NewUserMessageComponent("pad", nil, -3, nil)); got != zero {
+	zero := joined(NewUserMessageComponent("pad", nil, 0, nil, "", ""))
+	if got := joined(NewUserMessageComponent("pad", nil, -3, nil, "", "")); got != zero {
 		t.Errorf("constructor with pad -3 = %q, want the pad-0 render %q", got, zero)
 	}
-	padded := NewUserMessageComponent("pad", nil, 2, nil)
+	padded := NewUserMessageComponent("pad", nil, 2, nil, "", "")
 	_ = joined(padded)
 	padded.SetOutputPad(-4)
 	if got := joined(padded); got != zero {
@@ -200,7 +200,7 @@ func TestUserMessageComponentSettersRerenderClampPadAndDispose(t *testing.T) {
 	var workers sync.WaitGroup
 	completed := 0
 	cancelled, started := make(chan struct{}), make(chan struct{})
-	asyncBlock := NewUserMessageComponent("raw", nil, 1, nil)
+	asyncBlock := NewUserMessageComponent("raw", nil, 1, nil, "", "")
 	_ = joined(asyncBlock)
 	asyncBlock.NeedsRedraw()
 	asyncBlock.SetAsyncMarkdownTransform(&AsyncMarkdownTransform{
@@ -224,7 +224,7 @@ func TestUserMessageComponentSettersRerenderClampPadAndDispose(t *testing.T) {
 	asyncBlock.SetAsyncMarkdownTransform(nil)
 
 	// Images mark the message dirty and reach the frontend decoding.
-	imaged := NewUserMessageComponent("pic", nil, 1, nil)
+	imaged := NewUserMessageComponent("pic", nil, 1, nil, "", "")
 	_ = joined(imaged)
 	imaged.NeedsRedraw()
 	imaged.SetImages([]ImageBlock{{Data: "aGk=", MIMEType: "image/png"}})
@@ -238,7 +238,7 @@ func TestUserMessageComponentSettersRerenderClampPadAndDispose(t *testing.T) {
 	// Dispose cancels the in-flight transform.
 	parent, stop := context.WithCancel(t.Context())
 	defer stop()
-	disposing := NewUserMessageComponent("raw", nil, 1, nil)
+	disposing := NewUserMessageComponent("raw", nil, 1, nil, "", "")
 	disposing.SetAsyncMarkdownTransform(&AsyncMarkdownTransform{
 		Context: parent, Start: func(run func()) { go run() },
 		Prepare: func(string, int) func(context.Context) string {

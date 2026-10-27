@@ -281,6 +281,11 @@ export function stripTerminalSequences(str) {
     }
     return result;
 }
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]+/g;
+/** Replace each run of C0 and C1 control characters (ESC, BEL, newlines, ...) with one space. */
+export function replaceControlCharacters(str) {
+    return str.replace(CONTROL_CHARACTERS, " ");
+}
 /** Return the terminal-cell range occupied by the grapheme at a visible column. */
 export function getGraphemeCellRange(line, column) {
     let currentCol = 0;

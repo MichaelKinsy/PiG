@@ -357,6 +357,18 @@ type ParseDateResult struct {
 // state, so it may arrive before the register frame.
 const CallHighlightCode = "highlight.code"
 
+// CallTypeEngine (ext→host) is one member of TypeBox's `Type` namespace that computes a schema (Pick, Omit, Partial, KeyOf, Mapped, Conditional, Extends, Script, ...), run by the
+// host's one port of TypeBox's type engine (internal/typebox/engine) so every SDK returns what Pi's `Type` returns. The args are a TypeEngineArgs: the member and its arguments in
+// the engine's wire form (JSON, with an envelope for the hidden members a schema carries); the result is `{"value": <wire>}`, or `{"error": {"name", "message"}}` for what TypeBox
+// throws. It reads no session or extension state, so it may arrive before the register frame (Type.X runs while the factory is loading).
+const CallTypeEngine = "type.engine"
+
+// TypeEngineArgs is the argument of CallTypeEngine. Args is the JSON list of the wire values of the member's arguments.
+type TypeEngineArgs struct {
+	Member string          `json:"member"`
+	Args   json.RawMessage `json:"args"`
+}
+
 // CallLoadTheme (ext→host) is the theme initTheme(name) installs as pi-coding-agent's process-global theme: the registered theme of that name, or the system theme
 // for an absent name or one no theme has, as initTheme falls back. The args are a LoadThemeArgs and the result a LoadThemeResult. It may arrive before the register frame.
 const CallLoadTheme = "theme.load"

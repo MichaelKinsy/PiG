@@ -172,15 +172,15 @@ data: [DONE]
 			want: `{"input":200000,"output":1500,"cacheRead":50000,"cacheWrite":0,"reasoning":500,"totalTokens":251500,"cost":{"input":0.5,"output":0.0225,"cacheRead":0.012499999999999999,"cacheWrite":0,"total":0.5349999999999999,"totalFromProvider":false}}`,
 		},
 		{
-			name: "mistral conversations", kind: "mistral", spec: "mistral/mistral-large-2411",
-			body: `data: {"id":"m1","model":"mistral-large-2411","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"},"finish_reason":null}]}
+			name: "mistral conversations", kind: "mistral", spec: "mistral/mistral-large-2512",
+			body: `data: {"id":"m1","model":"mistral-large-2512","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"},"finish_reason":null}]}
 
-data: {"id":"m1","model":"mistral-large-2411","choices":[{"index":0,"delta":{"content":""},"finish_reason":"stop"}],"usage":{"prompt_tokens":4000,"completion_tokens":300,"total_tokens":4300,"prompt_tokens_details":{"cached_tokens":1000}}}
+data: {"id":"m1","model":"mistral-large-2512","choices":[{"index":0,"delta":{"content":""},"finish_reason":"stop"}],"usage":{"prompt_tokens":4000,"completion_tokens":300,"total_tokens":4300,"prompt_tokens_details":{"cached_tokens":1000}}}
 
 data: [DONE]
 
 `,
-			want: `{"input":3000,"output":300,"cacheRead":1000,"cacheWrite":0,"totalTokens":4300,"cost":{"input":0.006,"output":0.0018,"cacheRead":0.0002,"cacheWrite":0,"total":0.008,"totalFromProvider":false}}`,
+			want: `{"input":3000,"output":300,"cacheRead":1000,"cacheWrite":0,"totalTokens":4300,"cost":{"input":0.0015,"output":0.00045,"cacheRead":0.00005,"cacheWrite":0,"total":0.002,"totalFromProvider":false}}`,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

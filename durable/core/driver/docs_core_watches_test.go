@@ -18,9 +18,9 @@ import (
 var watchStateDoc = defineDoc("test.state", 1, func() obj { return delta.JsonObjectOf("value", 0) })
 
 type frame struct {
-	value int
-	ops   []durable.Op
-	null  bool
+	value   int
+	ops     []durable.Op
+	retired bool
 }
 
 func (r *coreRig) setValue(t *testing.T, value int) {
@@ -47,10 +47,10 @@ func (r *coreRig) watchState(t *testing.T) durable.WatchHandle[durable.JsonObjec
 func collect(w durable.WatchHandle[durable.JsonObject], gate <-chan struct{}) chan frame {
 	frames := make(chan frame, 256)
 	n := 0
-	w.Start(func(_ context.Context, value durable.JsonObject, ops []durable.Op) error {
-		f := frame{ops: ops, null: value == nil}
-		if value != nil {
-			f.value = toInt(value.Value("value"))
+	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		f := frame{ops: change.Ops, retired: change.Retired}
+		if change.Value != nil {
+			f.value = toInt(change.Value.Value("value"))
 		}
 		frames <- f
 		if n++; n == 1 && gate != nil {
@@ -83,12 +83,13 @@ func quiet(t *testing.T, frames chan frame) {
 
 func isRoot(op durable.Op) bool { return len(op) > 0 && op[0] == "r" }
 
-func isRootReplacement(f frame, value int) bool {
-	return len(f.ops) == 1 && f.value == value && isRoot(f.ops[0])
+// isValueSet reports whether f is one set of the value field to value.
+func isValueSet(f frame, value int) bool {
+	return len(f.ops) == 1 && f.value == value && reflect.DeepEqual(f.ops[0], durable.Op{"s", []any{"value"}, float64(value)})
 }
 
-// session-watches.test.ts:142 "collapses 101 pending commits to one root replacement".
-func TestCoreWatchCollapsesPendingCommitsToOneRootReplacement(t *testing.T) {
+// session-watches.test.ts "folds 101 pending commits of one field into one set".
+func TestCoreWatchFoldsPendingCommitsOfOneFieldIntoOneSet(t *testing.T) {
 	r := openCoreDB(t)
 	w := r.watchState(t)
 	for v := 1; v <= 101; v++ {
@@ -96,15 +97,15 @@ func TestCoreWatchCollapsesPendingCommitsToOneRootReplacement(t *testing.T) {
 	}
 	frames := collect(w, nil)
 	f := next(t, frames)
-	if !isRootReplacement(f, 101) {
-		t.Fatalf("delivery = %+v, want one root replacement to 101", f)
+	if !isValueSet(f, 101) {
+		t.Fatalf("delivery = %+v, want one set of value to 101", f)
 	}
 	quiet(t, frames)
 	_, _ = w.Stop()
 }
 
-// session-watches.test.ts:159 "never folds the in-flight frame into an overflow reset".
-func TestCoreWatchNeverFoldsTheInFlightFrameIntoAnOverflowReset(t *testing.T) {
+// session-watches.test.ts "never folds the in-flight frame into the next call".
+func TestCoreWatchNeverFoldsTheInFlightFrameIntoTheNextCall(t *testing.T) {
 	r := openCoreDB(t)
 	w := r.watchState(t)
 	release := make(chan struct{})
@@ -119,15 +120,15 @@ func TestCoreWatchNeverFoldsTheInFlightFrameIntoAnOverflowReset(t *testing.T) {
 	}
 	close(release)
 	second := next(t, frames)
-	if !isRootReplacement(second, 102) {
-		t.Fatalf("second = %+v, want one root replacement to 102", second)
+	if !isValueSet(second, 102) {
+		t.Fatalf("second = %+v, want one set of value to 102", second)
 	}
 	quiet(t, frames)
 	_, _ = w.Stop()
 }
 
-// session-watches.test.ts:189 "folds retirement into an overflow reset and then closes".
-func TestCoreWatchFoldsRetirementIntoAnOverflowResetThenCloses(t *testing.T) {
+// session-watches.test.ts "folds a retirement into the pending commits' call, which reports it with the last value, and goes on".
+func TestCoreWatchFoldsARetirementIntoThePendingCommitsCallWhichReportsItWithTheLastValueAndGoesOn(t *testing.T) {
 	r := openCoreDB(t)
 	w := r.watchState(t)
 	for v := 1; v <= 100; v++ {
@@ -136,24 +137,27 @@ func TestCoreWatchFoldsRetirementIntoAnOverflowResetThenCloses(t *testing.T) {
 	r.commit(t, func(tx durable.Tx) error { return tx.RetireDoc(watchStateDoc) })
 	frames := collect(w, nil)
 	f := next(t, frames)
-	if !f.null || len(f.ops) != 1 || !isRoot(f.ops[0]) {
-		t.Fatalf("delivery = %+v, want one null root replacement", f)
+	if !f.retired || !isValueSet(f, 100) {
+		t.Fatalf("delivery = %+v, want the last value 100 with one set and a retirement", f)
 	}
-	select {
-	case <-w.Closed():
-	case <-time.After(10 * time.Second):
-		t.Fatal("the watch closes after retirement")
+	r.commit(t, func(tx durable.Tx) error {
+		o, err := tx.Doc(watchStateDoc)
+		if err != nil {
+			return err
+		}
+		return o.Set("value", 7)
+	})
+	if f := next(t, frames); f.retired || f.value != 7 || len(f.ops) != 1 || !isRoot(f.ops[0]) {
+		t.Fatalf("delivery = %+v, want the new incarnation as a root replacement", f)
 	}
-	if end := w.End(); end.Reason != durable.WatchRetired {
-		t.Fatalf("end = %+v", end)
-	}
+	_, _ = w.Stop()
 }
 
-// session-watches.test.ts:279 "delivers retirement and does not follow recreation".
-func TestCoreWatchDeliversRetirementAndDoesNotFollowRecreation(t *testing.T) {
+// session-watches.test.ts "follows its address across a retirement and a recreation in one commit, in one call".
+func TestCoreWatchFollowsItsAddressAcrossARetirementAndARecreationInOneCommitInOneCall(t *testing.T) {
 	r := openCoreDB(t)
-	old := r.watchState(t)
-	frames := collect(old, nil)
+	w := r.watchState(t)
+	frames := collect(w, nil)
 	r.commit(t, func(tx durable.Tx) error {
 		if err := tx.RetireDoc(watchStateDoc); err != nil {
 			return err
@@ -164,30 +168,22 @@ func TestCoreWatchDeliversRetirementAndDoesNotFollowRecreation(t *testing.T) {
 		}
 		return o.Set("value", 10)
 	})
-	if f := next(t, frames); !f.null {
-		t.Fatalf("the old watch delivers retirement: %+v", f)
-	}
-	select {
-	case <-old.Closed():
-	case <-time.After(10 * time.Second):
-		t.Fatal("the old watch closes")
-	}
-	if end := old.End(); end.Reason != durable.WatchRetired {
-		t.Fatalf("end = %+v", end)
-	}
-	if old.Value() != nil {
-		t.Fatalf("a retired watch holds null: %v", old.Value())
-	}
-	replacement, err := r.s.WatchDocErased(t.Context(), watchStateDoc)
-	if err != nil || replacement == nil || toInt(replacement.Value().Value("value")) != 10 {
-		t.Fatalf("replacement = %v %v", replacement, err)
+	if f := next(t, frames); !f.retired || f.value != 10 || len(f.ops) != 1 || !isRoot(f.ops[0]) {
+		t.Fatalf("the watch reports the retirement with the new incarnation: %+v", f)
 	}
 	r.setValue(t, 11)
-	quiet(t, frames)
-	if old.Value() != nil {
-		t.Fatal("the old watch stays null")
+	if f := next(t, frames); f.retired || !isValueSet(f, 11) {
+		t.Fatalf("the watch follows the recreation: %+v", f)
 	}
-	_, _ = replacement.Stop()
+	if got := toInt(w.Value().Value("value")); got != 11 {
+		t.Fatalf("value = %d", got)
+	}
+	select {
+	case <-w.Closed():
+		t.Fatalf("the watch ended: %+v", w.End())
+	default:
+	}
+	_, _ = w.Stop()
 }
 
 func expectPanicContaining(t *testing.T, text string, use func()) {
@@ -202,7 +198,7 @@ func expectPanicContaining(t *testing.T, text string, use func()) {
 	use()
 }
 
-func noopListener(context.Context, durable.JsonObject, []durable.Op) error { return nil }
+func noopListener(context.Context, durable.WatchChange[durable.JsonObject]) error { return nil }
 
 func awaitClosed(t *testing.T, w durable.WatchHandle[durable.JsonObject]) durable.WatchEnd {
 	t.Helper()
@@ -241,9 +237,14 @@ func TestCoreWatchListenerFailureSettlesOnlyTheAffectedWatch(t *testing.T) {
 	if err != nil || healthy == nil {
 		t.Fatalf("watch: %v %v", healthy, err)
 	}
-	failed.Start(func(context.Context, durable.JsonObject, []durable.Op) error { return errors.New("listener failed") })
+	failed.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		return errors.New("listener failed")
+	})
 	calls := make(chan struct{}, 8)
-	healthy.Start(func(context.Context, durable.JsonObject, []durable.Op) error { calls <- struct{}{}; return nil })
+	healthy.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		calls <- struct{}{}
+		return nil
+	})
 	r.setValue(t, 1)
 	end := awaitClosed(t, failed)
 	if end.Reason != durable.WatchListenerError || end.Error == nil || end.Error.Error() != "listener failed" {
@@ -307,7 +308,7 @@ func TestCoreSessionCloseDoesNotJoinAnInFlightCallbackNorCancelItsContext(t *tes
 	w := r.watchState(t)
 	entered := make(chan context.Context, 1)
 	release := make(chan struct{})
-	w.Start(func(ctx context.Context, _ durable.JsonObject, _ []durable.Op) error {
+	w.Start(func(ctx context.Context, change durable.WatchChange[durable.JsonObject]) error {
 		entered <- ctx
 		<-release
 		return nil
@@ -345,7 +346,8 @@ func TestCoreWatchFramesReplayFromTheAcquisitionRevision(t *testing.T) {
 	replica := any(w.Value())
 	type applied struct{ ok bool }
 	results := make(chan applied, 4)
-	w.Start(func(_ context.Context, value durable.JsonObject, ops []durable.Op) error {
+	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		value, ops := change.Value, change.Ops
 		next, err := delta.ApplyImmutable(replica, ops)
 		replica = next
 		results <- applied{err == nil && reflect.DeepEqual(next, any(value))}
@@ -394,7 +396,8 @@ func TestCoreWatchDeliversStructuralNoOpCommits(t *testing.T) {
 		return err
 	})
 	frames := make(chan []durable.Op, 8)
-	w.Start(func(_ context.Context, value durable.JsonObject, ops []durable.Op) error {
+	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		value, ops := change.Value, change.Ops
 		if !reflect.DeepEqual(value, initial) {
 			t.Errorf("the delivered value equals the initial one: %v vs %v", value, initial)
 		}
@@ -429,7 +432,8 @@ func TestCoreWatchHydratesMigrationWithoutWritingAndSeesTheLaterEdit(t *testing.
 	}
 	eq(t, "revisions after the watch", r.revisions(t, "watch.migration"), before)
 	values := make(chan int, 8)
-	w.Start(func(_ context.Context, value durable.JsonObject, _ []durable.Op) error {
+	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		value := change.Value
 		values <- toInt(value.Value("value"))
 		return nil
 	})
@@ -473,7 +477,11 @@ func TestCoreWatchKeepsEarlierRevisionsStable(t *testing.T) {
 	}
 	initial := w.Value()
 	got := make(chan durable.JsonObject, 2)
-	w.Start(func(_ context.Context, value durable.JsonObject, _ []durable.Op) error { got <- value; return nil })
+	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		value := change.Value
+		got <- value
+		return nil
+	})
 	r.commit(t, func(tx durable.Tx) error {
 		o, err := tx.Doc(watchItemsDoc)
 		if err != nil {
@@ -503,7 +511,7 @@ func TestCoreWatchCancellationEndsFutureDeliveryWithoutAbortingTheInFlightCallba
 	}
 	entered := make(chan context.Context, 1)
 	release := make(chan struct{})
-	w.Start(func(ctx context.Context, _ durable.JsonObject, _ []durable.Op) error {
+	w.Start(func(ctx context.Context, change durable.WatchChange[durable.JsonObject]) error {
 		entered <- ctx
 		<-release
 		return nil
@@ -535,7 +543,7 @@ func TestCoreWatchDeliveryCarriesTheCommitContextValuesButNotItsCancellation(t *
 	parent, cancelParent := context.WithCancel(context.WithValue(t.Context(), watchKey{}, "newest-commit"))
 	entered := make(chan context.Context, 1)
 	release := make(chan struct{})
-	w.Start(func(ctx context.Context, _ durable.JsonObject, _ []durable.Op) error {
+	w.Start(func(ctx context.Context, change durable.WatchChange[durable.JsonObject]) error {
 		entered <- ctx
 		<-release
 		return nil

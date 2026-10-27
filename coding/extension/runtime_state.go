@@ -5,6 +5,7 @@ package extension
 import (
 	"context"
 	"errors"
+	"maps"
 	"slices"
 	"sync"
 
@@ -43,6 +44,20 @@ func (r *ExtensionRuntime) FlagValue(name string) (any, bool) {
 	defer r.mu.Unlock()
 	value, has := r.FlagValues[name]
 	return value, has
+}
+
+// FlagValuesSnapshot is a copy of the flag values, the Map a caller of Pi's `new Map(runtime.flagValues)` holds.
+func (r *ExtensionRuntime) FlagValuesSnapshot() map[string]any {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return maps.Clone(r.FlagValues)
+}
+
+// SetFlagValue stores a flag's value, replacing the default or an earlier value (`runtime.flagValues.set`).
+func (r *ExtensionRuntime) SetFlagValue(name string, value any) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.FlagValues[name] = value
 }
 
 // SetFlagDefault sets a flag's value unless the flag already has one.

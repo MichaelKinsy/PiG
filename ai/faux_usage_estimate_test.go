@@ -42,11 +42,12 @@ func referenceEstimateUsage(p *FauxProviderHandle, cache map[string]string, requ
 				common++
 			}
 			usage.CacheRead = (common + 3) / 4
-			usage.CacheWrite = (len(b) - common + 3) / 4
-			usage.Input = max(0, tokens-usage.CacheRead)
+			usage.CacheWrite = max(0, tokens-usage.CacheRead)
 		} else {
 			usage.CacheWrite = tokens
 		}
+		// Every prompt token is either read from or written to the simulated cache (Pi f3fa8bd92).
+		usage.Input = 0
 	}
 	usage.TotalTokens = usage.Input + usage.Output + usage.CacheRead + usage.CacheWrite
 	return usage
@@ -306,11 +307,12 @@ func wholePromptEstimateUsage(cache map[string]string, request TranscriptContext
 				}
 			}
 			usage.CacheRead = (common + 3) / 4
-			usage.CacheWrite = (promptUnits - common + 3) / 4
-			usage.Input = max(0, tokens-usage.CacheRead)
+			usage.CacheWrite = max(0, tokens-usage.CacheRead)
 		} else {
 			usage.CacheWrite = tokens
 		}
+		// Every prompt token is either read from or written to the simulated cache (Pi f3fa8bd92).
+		usage.Input = 0
 	}
 	usage.TotalTokens = usage.Input + usage.Output + usage.CacheRead + usage.CacheWrite
 	return usage

@@ -1202,8 +1202,10 @@ function endsPrompt(request, declaredMode, runActive) {
 }
 
 // noteHostStep records env, read on conn, toward the host's next step: a request, shutdown or reload_started is the step; invalidate or a run beginning is the step once every open connection of the process has read its copy.
+// A run beginning stands for the loop turn Pi's run makes at the bash tool's I/O, which runs the immediates and due timers the prompt's last handler queued before anything the host does next. A process the OS scheduled late reads the run's later frames, the run's end and the shutdown request among them, in the same pass as the run beginning, and its serve loop would run that request in the microtasks that follow the wait, before the check phase and with the wait entered again, so the immediate never ran: the frames after the run beginning are held until an immediate queued now runs (holdAfterTurn), after those queued earlier.
 function noteHostStep(conn, env) {
   let broadcast = false;
+  let runBeginning = false;
   if (env.type === "notify" && env.notify?.method === "run_signal") {
     let args = env.notify.args;
     try {
@@ -1213,6 +1215,7 @@ function noteHostStep(conn, env) {
     }
     const run = typeof args?.run === "number" ? args.run : 0;
     broadcast = args?.active === true && run > hostStep.baseRun;
+    runBeginning = broadcast;
     if (run > hostStep.run) hostStep.run = run;
     if (!broadcast) return;
   } else if (env.type === "notify" && env.notify?.method === "invalidate") {
@@ -1224,6 +1227,7 @@ function noteHostStep(conn, env) {
   if (broadcast) {
     hostStep.broadcast.add(conn);
     if (!broadcastRead()) return;
+    if (runBeginning && !hostStep.arrived) holdAfterTurn();
   }
   hostStep.arrived = true;
 }
@@ -1991,6 +1995,8 @@ class OAuthLoginCallbacks {
     this.runtime.fireAndForget("oauth.cb.onDeviceCode", {
       userCode: info.userCode ?? "",
       verificationUri: info.verificationUri ?? "",
+      openBrowserOnConfirm: info.openBrowserOnConfirm,
+      copyCodeOnConfirm: info.copyCodeOnConfirm,
       intervalSeconds: info.intervalSeconds,
       expiresInSeconds: info.expiresInSeconds,
     });

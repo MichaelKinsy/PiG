@@ -75,7 +75,7 @@ func TestFauxSessionHeapRetentionAt4MTokens(t *testing.T) {
 	retained := int64(liveHeap()) - int64(before)
 	runtime.KeepAlive(messages)
 	runtime.KeepAlive(provider)
-	if last.Usage.CacheRead == 0 || last.Usage.Input+last.Usage.CacheRead < payload/4 {
+	if last.Usage.CacheRead == 0 || last.Usage.CacheRead+last.Usage.CacheWrite < payload/4 {
 		t.Fatalf("the last call's usage %+v does not cover the %d-byte history", last.Usage, payload)
 	}
 	t.Logf("payload %.1f MB, provider retains %.2f MB (%.2fx payload)", float64(payload)/1e6, float64(retained)/1e6, float64(retained)/float64(payload))

@@ -4,14 +4,19 @@
 //
 // A directory pattern such as `src` embeds every file under it, test files included, and go:embed has no way to leave files out of a pattern, so each bundle embeds an explicit list. TestBundleEmbedMatchesSource in each bundle fails when the list and the source tree disagree: run `go generate` in the bundle's directory.
 //
-// Usage: go run embed-bundle.go -pkg name -out file.go [-walk dir]... [-skip suffix]... pattern...
+// Usage: go run embed-bundle.go -pkg name -out file.go [-walk dir]... [-skip suffix]... [-gzip-over bytes] pattern...
 // Each pattern is a path or a glob relative to the working directory. Each -walk directory contributes every regular file under it. A file whose base name ends with a -skip suffix is left out.
+//
+// -gzip-over embeds a file of at least that many bytes as its gzip, <name>.gz, written beside it, and the stager writes the decompressed file back (coding/extension/pigsdk). The SDK sources are most of the weight the bundles add to every binary that links the stager, and source text is a fifth of its size compressed. A <name>.gz that holds the file's text is left alone, so a regeneration does not rewrite bytes another Go release would compress differently; any other is replaced. A matched file that is the gzip of another matched file is that file's copy, not a file of its own.
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"flag"
 	"fmt"
 	"go/format"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -30,6 +35,7 @@ func main() {
 	var walks, skips list
 	flag.Var(&walks, "walk", "directory whose files are all embedded")
 	flag.Var(&skips, "skip", "base name suffix of files left out")
+	gzipOver := flag.Int64("gzip-over", 0, "embed a file of at least this many bytes as its gzip (0: every file as it is)")
 	flag.Parse()
 	if *pkg == "" || *out == "" {
 		fmt.Fprintln(os.Stderr, "usage: embed-bundle -pkg name -out file.go [-walk dir]... [-skip suffix]... pattern...")
@@ -68,6 +74,19 @@ func main() {
 	}
 	names := make([]string, 0, len(files))
 	for name := range files {
+		if strings.HasSuffix(name, ".gz") && files[strings.TrimSuffix(name, ".gz")] {
+			continue
+		}
+		if *gzipOver > 0 {
+			compressed, err := embeddedAsGzip(name, *gzipOver)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "embed-bundle:", err)
+				os.Exit(1)
+			}
+			if compressed {
+				name += ".gz"
+			}
+		}
 		names = append(names, name)
 	}
 	slices.Sort(names)
@@ -81,4 +100,34 @@ func main() {
 		fmt.Fprintln(os.Stderr, "embed-bundle:", err)
 		os.Exit(1)
 	}
+}
+
+// embeddedAsGzip reports whether the file name is embedded as its gzip because it has at least limit bytes, and makes name+".gz" hold the file's text.
+func embeddedAsGzip(name string, limit int64) (bool, error) {
+	text, err := os.ReadFile(name)
+	if err != nil {
+		return false, err
+	}
+	if int64(len(text)) < limit || strings.HasSuffix(name, ".gz") {
+		return false, nil
+	}
+	if existing, err := os.ReadFile(name + ".gz"); err == nil {
+		if reader, err := gzip.NewReader(bytes.NewReader(existing)); err == nil {
+			if held, err := io.ReadAll(reader); err == nil && bytes.Equal(held, text) {
+				return true, nil
+			}
+		}
+	}
+	var packed bytes.Buffer
+	writer, err := gzip.NewWriterLevel(&packed, gzip.BestCompression)
+	if err != nil {
+		return false, err
+	}
+	if _, err := writer.Write(text); err != nil {
+		return false, err
+	}
+	if err := writer.Close(); err != nil {
+		return false, err
+	}
+	return true, os.WriteFile(name+".gz", packed.Bytes(), 0o644)
 }

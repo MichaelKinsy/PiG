@@ -111,6 +111,8 @@ type DefaultResourceLoaderOptions struct {
 	ExtensionFactories []extension.InlineExtension
 	// EventBus is the extension-to-extension bus the factories share; nil creates one.
 	EventBus extension.EventBus
+	// Runtime is the runtime every reload loads the extensions against, as Pi's loadExtensions takes one (loader.ts:689 `runtime ?? createExtensionRuntime()`); nil makes each reload create its own, as resource-loader.ts does. It is how an extension that created a runtime (createExtensionRuntime) loads extensions onto it.
+	Runtime *extension.ExtensionRuntime
 	// DisabledBuiltinExtensions names the built-in extensions whose `builtin:<name>` paths are left out of the extension set (resource-loader.ts disabledBuiltinExtensions).
 	DisabledBuiltinExtensions []string
 	// LoadExtensions loads the extension set of a reload; nil loads the extension files of the resolved Packages and settings and of AdditionalExtensionPaths through a subprocess Extension Host (resource-loader.ts:513-600). A reload with ResolveProjectTrust calls it first for the bootstrap pass, then once for the final set.
@@ -135,6 +137,8 @@ type DefaultResourceLoader struct {
 	files LoadExtensionsResult
 	// filesConfigs are the Host configurations of files, which the final pass of a trust reload does not attempt again.
 	filesConfigs []subprocess.ExtConfig
+	// cliExtensionPaths are the canonical paths of the extensions AdditionalExtensionPaths named in the last load; an extension at one of them has the source "cli" (resource-loader.ts :562-569).
+	cliExtensionPaths map[string]bool
 	// factoryRuntime is the runtime of the current reload: the Host adopts it and the factory extensions register against it. eventBus is the factories' bus.
 	factoryRuntime *extension.ExtensionRuntime
 	eventBus       extension.EventBus
@@ -164,9 +168,17 @@ func NewDefaultResourceLoader(opts DefaultResourceLoaderOptions) *DefaultResourc
 		skills:           SkillsResult{Skills: []*Skill{}, Diagnostics: []extension.ResourceDiagnostic{}},
 		prompts:          PromptsResult{Prompts: []PromptTemplate{}, Diagnostics: []extension.ResourceDiagnostic{}},
 		themes:           ThemesResult{Themes: []*tui.Theme{}, Diagnostics: []extension.ResourceDiagnostic{}},
-		extensions:       LoadExtensionsResult{Extensions: []extension.Extension{}, Errors: []ExtensionLoadError{}, Warnings: []ExtensionLoadWarning{}},
+		extensions:       LoadExtensionsResult{Extensions: []extension.Extension{}, Errors: []ExtensionLoadError{}, Warnings: []ExtensionLoadWarning{}, Runtime: initialRuntime(opts)},
 		resourceMetadata: &pathMetadataIndex{},
 	}
+}
+
+// initialRuntime is the runtime of the empty result of a loader that has not reloaded: Pi's constructor sets `runtime: createExtensionRuntime()` (resource-loader.ts:401).
+func initialRuntime(opts DefaultResourceLoaderOptions) *extension.ExtensionRuntime {
+	if opts.Runtime != nil {
+		return opts.Runtime
+	}
+	return extension.CreateExtensionRuntime()
 }
 
 // ResourceLoaderReloadOptions are the options of [DefaultResourceLoader.Reload] (resource-loader.ts ResourceLoaderReloadOptions).

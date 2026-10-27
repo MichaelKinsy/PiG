@@ -826,12 +826,6 @@ func (consumer *mistralChunkConsumer) terminalError() error {
 // fail is the catch block of upstream stream() (mistral-conversations.ts:169-179). It reports the error without ending open blocks: the message keeps whatever content had streamed.
 func (p *mistralProvider) fail(builder *assistantStreamBuilder, err error) {
 	partial := builder.partial
-	for index, block := range partial.Content {
-		if call, ok := block.(ToolCall); ok {
-			call.scratch = toolCallScratch{} // partialArgs is only a streaming scratch buffer; never persist it.
-			partial.Content[index] = call
-		}
-	}
 	reason := StopReasonError
 	if builder.ctx.Err() != nil {
 		reason = StopReasonAborted // :173 options?.signal?.aborted
@@ -1018,7 +1012,7 @@ func (consumer *mistralChunkConsumer) content(raw json.RawMessage) error {
 	return nil
 }
 
-// toolCalls is mistral-conversations.ts:685-731. The tool block carries the partialArgs scratch buffer until toolcall_end deletes it.
+// toolCalls is mistral-conversations.ts:685-731. The argument stream of each call is kept off the content block.
 func (consumer *mistralChunkConsumer) toolCalls(calls []mistralSSEToolCall) error {
 	builder := consumer.builder
 	for _, call := range calls {
@@ -1055,7 +1049,7 @@ func (consumer *mistralChunkConsumer) toolCalls(calls []mistralSSEToolCall) erro
 		if err := json.Unmarshal(call.Function, &function); err != nil {
 			return err
 		}
-		start := streamToolCallDelta{index: blockIndex, scratch: toolCallScratch{hasPartialArgs: true}}
+		start := streamToolCallDelta{index: blockIndex}
 		if !exists {
 			consumer.toolBlocks[key] = blockIndex
 			start.id, start.name = callID, function.Name

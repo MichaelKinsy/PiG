@@ -8,6 +8,7 @@ package daemon
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,6 +19,9 @@ import (
 
 // unsentPoll is how often a delivery waiting for the link to drain looks again.
 const unsentPoll = 20 * time.Millisecond
+
+// maxTimeoutMs is the longest timer Node arms (2^31-1 ms), which Durable accepts as a timeout.
+const maxTimeoutMs = 2_147_483_647
 
 type spillRequest struct {
 	afterBytes int64
@@ -72,7 +76,15 @@ func parseExecRequest(request Object) (*execRequest, *Failure) {
 	result.shellPath, _ = request["shellPath"].(string)
 	if milliseconds, ok := request["timeoutMs"].(float64); ok {
 		seconds := milliseconds / 1000
-		result.timeout = &seconds
+		if milliseconds == 0 {
+			// A deadline of now: the command is killed as soon as it runs. Durable's own check refuses a timeout of zero.
+			seconds = 1e-9
+		}
+		// Durable refuses a timer Node cannot arm (above 2^31-1 ms); the daemon's deadline is a Duration of any length, so
+		// such a command runs until it ends or is cancelled, as it does under Pi's daemon.
+		if milliseconds <= maxTimeoutMs {
+			result.timeout = &seconds
+		}
 	}
 	if spill, ok := request["spill"].(Object); ok {
 		afterBytes, okBytes := unsignedNumber(spill["afterBytes"])
@@ -246,11 +258,28 @@ func (s *server) runExec(id uint32, request *execRequest, ctl *control) (Object,
 	return value, nil
 }
 
+// spillFailurePrefix starts the message of a command whose complete output could not be kept (exec.rs:run).
+const spillFailurePrefix = "Failed to preserve complete shell output: "
+
 // execFailure is an ExecutionError as an error frame: its code and, for a timeout or abort after the output crossed
-// the spill thresholds, the spill file.
+// the spill thresholds, the spill file. The messages are the daemon's own: a timeout is "timeout", and a failure of the
+// system is the text Rust's io::Error shows.
 func execFailure(err error) *Failure {
 	if executionError, ok := errors.AsType[*durableenv.ExecutionError](err); ok {
-		failure := newFailure(string(executionError.Code), executionError.Message)
+		message := executionError.Message
+		switch executionError.Code {
+		case durableenv.ExecutionErrorTimeout:
+			message = "timeout"
+		case durableenv.ExecutionErrorSpawnError:
+			if text, ok := rustIOError(executionError.Cause); ok && strings.HasPrefix(message, "spawn ") {
+				message = text
+			}
+		case durableenv.ExecutionErrorUnknown:
+			if text, ok := rustIOError(executionError.Cause); ok && strings.HasPrefix(message, spillFailurePrefix) {
+				message = spillFailurePrefix + text
+			}
+		}
+		failure := newFailure(string(executionError.Code), message)
 		if executionError.SpillPath != "" {
 			failure.Extra = Object{"spillPath": executionError.SpillPath}
 		}

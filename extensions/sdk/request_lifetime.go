@@ -109,7 +109,7 @@ func (c *conn) parentIDLocked(parent *requestParent) (string, error) {
 // hostServesBeforeRegister reports whether the host answers method on a connection whose extension has not registered: the pure helpers that read no session state (loadingBusCall).
 func hostServesBeforeRegister(method string) bool {
 	switch method {
-	case callParseFrontmatter, callParseDate, callGenerateDiffString, callGenerateUnifiedPatch, callCopyToClipboard, callConvertToPng, callResizeImage, callHighlightCode, callLoadTheme, callBuiltinToolDefinition:
+	case callParseFrontmatter, callParseDate, callGenerateDiffString, callGenerateUnifiedPatch, callCopyToClipboard, callConvertToPng, callResizeImage, callHighlightCode, callTypeEngine, callLoadTheme, callBuiltinToolDefinition:
 		return true
 	}
 	return false

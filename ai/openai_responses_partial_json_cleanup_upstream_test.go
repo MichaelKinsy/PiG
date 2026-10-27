@@ -8,7 +8,7 @@ import (
 )
 
 // upstream: packages/ai/test/openai-responses-partial-json-cleanup.test.ts
-// Upstream keeps the streamed argument text in a partialJson property on the block and deletes it at response.output_item.done. A Go ToolCall keeps it in scratch state that MarshalJSON writes as partialJson while the call streams (types.go ToolCall, provider_tool_scratch.go), so the observable contract is the same: the finalized block, as persisted and as emitted on toolcall_end, carries no partialJson.
+// Upstream keeps the streamed argument text in a partialJson property on the block and deletes it at response.output_item.done. Since Pi f715a15c1 the provider keeps it in its own stream state (ToolCallArgumentsStream) and never on the block; a Go ToolCall has no such member either, so the observable contract is the same: no block, streaming, persisted or emitted on toolcall_end, carries partialJson.
 
 func TestOpenAIResponsesRemovesPartialJSONFromPersistedToolCallBlocksAtOutputItemDone(t *testing.T) {
 	// upstream: openai-responses-partial-json-cleanup.test.ts:68 "removes partialJson from persisted tool-call blocks at output_item.done"
@@ -41,31 +41,17 @@ data: {"type":"response.completed","sequence_number":5,"response":{"id":"resp_te
 	assertNoPartialJSON(t, "persisted block", persisted)
 
 	var end *ToolCallEndEvent
-	var sawPartialWhileStreaming bool
 	for _, event := range events {
 		switch event := event.(type) {
 		case ToolCallEndEvent:
 			end = &event
 		case ToolCallDeltaEvent:
-			// The streaming block still carries the argument text, so the cleanup assertion below can fail.
-			encoded, err := json.Marshal(event.Partial.Observe().Content[event.ContentIndex])
-			if err != nil {
-				t.Fatal(err)
-			}
-			var block map[string]any
-			if err := json.Unmarshal(encoded, &block); err != nil {
-				t.Fatal(err)
-			}
-			if _, ok := block["partialJson"]; ok {
-				sawPartialWhileStreaming = true
-			}
+			// Pi keeps the argument text in the provider's own stream state, so no block carries it while the call streams.
+			assertNoPartialJSON(t, "streaming block", event.Partial.Observe().Content[event.ContentIndex].(ToolCall))
 		}
 	}
 	if end == nil {
 		t.Fatal("no toolcall_end event")
-	}
-	if !sawPartialWhileStreaming {
-		t.Error("no streaming block carried partialJson; the cleanup assertion proves nothing")
 	}
 	assertNoPartialJSON(t, "toolcall_end tool call", end.ToolCall)
 	if !reflect.DeepEqual(end.ToolCall, persisted) {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"slices"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -28,6 +27,9 @@ type assistantStreamBuilder struct {
 	activeText     int
 	activeThinking int
 	toolCalls      map[int]*streamToolCall
+	// streamedArguments is, by content index, the immutable snapshot a tool call's ToolCallArgumentsStream last returned when the
+	// stream vouches for it (immutable): publishing keeps that map as the cell's copy instead of copying it.
+	streamedArguments map[int]JsonObject
 	// streamedBlocks appends deltas to open blocks without copying them again.
 	streamedBlocks
 
@@ -46,11 +48,29 @@ type assistantStreamBuilder struct {
 	providerEventWanted func() bool
 }
 
+// streamToolCall is the stream state of an open tool call, kept beside the content block and never on it, so it never reaches
+// partials: the JSON arguments of a function call, or the input of a custom (grammar) tool call.
 type streamToolCall struct {
 	contentIndex int
-	arguments    strings.Builder
-	// parser parses arguments, which only grow, from the point the last delta reached.
-	parser streamingArgumentsParser
+	// args reads a function call's argument deltas; nil for a custom call.
+	args *ToolCallArgumentsStream
+	// custom is a custom call's input; nil for a function call.
+	custom *customToolInput
+}
+
+// customToolInput is the stream state of a custom (grammar) tool call's input.
+type customToolInput struct {
+	property string
+	buffer   grammarToolInputJSONBuffer
+	// unsent is the JSON text of an initial input, sent with the first delta.
+	unsent string
+}
+
+// newCustomToolInput is the state of a custom tool call that starts with initialInput.
+func newCustomToolInput(property, initialInput string) *customToolInput {
+	input := &customToolInput{property: property}
+	input.unsent, _, _ = appendGrammarToolInputJSONDelta(&input.buffer, property, initialInput)
+	return input
 }
 
 type streamToolCallDelta struct {
@@ -60,7 +80,15 @@ type streamToolCallDelta struct {
 	argumentsDelta   string
 	initialArguments JsonObject
 	initialJSON      string
-	scratch          toolCallScratch
+	// custom starts the call as a custom tool call.
+	custom *customToolInput
+	// skipEmpty does not read an empty argumentsDelta (openai-completions and the Responses stream read a delta only when it has text);
+	// every other stream reads each delta, empty ones included.
+	skipEmpty bool
+	// initialUnparsed keeps initialJSON as the call's text without reading it (an added item's arguments that is not a string).
+	initialUnparsed bool
+	// recordOnly keeps the text for the final parse without reading it: the caller built the arguments itself (Google).
+	recordOnly       bool
 	thoughtSignature string
 	namespace        string
 }
@@ -121,7 +149,6 @@ func (builder *assistantStreamBuilder) textBlockEnd(contentIndex int, content, s
 	block := builder.partial.Content[contentIndex].(TextContent)
 	block.Text = content
 	block.TextSignature = signature
-	block.scratch = ""
 	builder.partial.Content[contentIndex] = block
 	builder.release(contentIndex)
 	builder.push(TextEndEvent{ContentIndex: contentIndex, Content: content, Partial: builder.partial})
@@ -160,7 +187,6 @@ func (builder *assistantStreamBuilder) thinkingBlockEnd(contentIndex int, conten
 	if signature != "" {
 		block.thinkingSignatureEmpty = false
 	}
-	block.scratch = ""
 	builder.partial.Content[contentIndex] = block
 	builder.release(contentIndex)
 	builder.push(ThinkingEndEvent{ContentIndex: contentIndex, Content: content, Partial: builder.partial})
@@ -247,16 +273,28 @@ func (builder *assistantStreamBuilder) toolCallStart(delta streamToolCallDelta) 
 	if builder.toolCalls[delta.index] != nil {
 		return
 	}
-	state := &streamToolCall{contentIndex: len(builder.partial.Content)}
-	state.arguments.WriteString(delta.initialJSON)
-	builder.toolCalls[delta.index] = state
+	state := &streamToolCall{contentIndex: len(builder.partial.Content), custom: delta.custom}
 	arguments := delta.initialArguments
+	var order schemaObjectOrder
+	if delta.custom != nil {
+		arguments = JsonObject{delta.custom.property: delta.custom.buffer.Input()}
+	} else {
+		state.args = NewToolCallArgumentsStream()
+		switch {
+		case delta.initialJSON == "":
+		case delta.initialUnparsed:
+			state.args.Record(delta.initialJSON)
+		default:
+			arguments, order = state.args.Append(delta.initialJSON)
+		}
+	}
 	if arguments == nil {
 		arguments = JsonObject{}
 	}
-	builder.partial.Content = append(builder.partial.Content, ToolCall{
-		ID: delta.id, Name: delta.name, Arguments: arguments, Namespace: delta.namespace, scratch: delta.scratch,
-	})
+	builder.toolCalls[delta.index] = state
+	call := ToolCall{ID: delta.id, Name: delta.name, Arguments: arguments, Namespace: delta.namespace}
+	call.argumentOrder = order
+	builder.partial.Content = append(builder.partial.Content, call)
 	builder.push(ToolCallStartEvent{ContentIndex: state.contentIndex, Partial: builder.partial})
 }
 
@@ -276,46 +314,125 @@ func (builder *assistantStreamBuilder) toolCallDelta(delta streamToolCallDelta) 
 	if delta.namespace != "" {
 		block.Namespace = delta.namespace
 	}
-	state.arguments.WriteString(delta.argumentsDelta)
-	if !block.scratch.customInput {
-		if text := state.arguments.String(); text != "" && builder.publishesViews() {
-			// Only readers of the published views see the partial arguments; they parse them when they read (deferArguments).
-			block.deferArguments(text)
-		} else {
-			block.setParsedArguments(state.parser.parse(text))
-		}
-	}
-	if block.scratch.hasPartialArgs {
-		block.scratch.partialArgs = state.arguments.String()
-	}
-	if block.scratch.hasPartialJson {
-		block.scratch.partialJson = state.arguments.String()
+	switch {
+	case state.args == nil:
+	case delta.recordOnly:
+		state.args.Record(delta.argumentsDelta)
+	case delta.argumentsDelta != "" || !delta.skipEmpty:
+		arguments, order := state.args.Append(delta.argumentsDelta)
+		builder.showStreamedArguments(state.contentIndex, &block, state.args, arguments, order)
 	}
 	builder.partial.Content[state.contentIndex] = block
 	builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta.argumentsDelta, Partial: builder.partial})
 }
 
-// Finalization updates the existing output slot without replacing its streamed identity.
-func (builder *assistantStreamBuilder) setToolCallFinal(index int, namespace, arguments string, final bool) {
+// convertToCustomToolCall makes the open call at index a custom (grammar) tool call with the empty input of custom, when it is
+// not one yet (openai-completions learns a call is custom from a later delta).
+func (builder *assistantStreamBuilder) convertToCustomToolCall(index int, custom *customToolInput) {
 	state := builder.toolCalls[index]
-	if state == nil {
+	if state == nil || state.custom != nil {
 		return
+	}
+	state.custom, state.args = custom, nil
+	block := builder.partial.Content[state.contentIndex].(ToolCall)
+	block.Arguments = JsonObject{custom.property: ""}
+	block.argumentOrder, block.nonObjectArguments = nil, nil
+	builder.partial.Content[state.contentIndex] = block
+}
+
+// replaceToolCallArguments takes the provider's complete argument text of a function call (ToolCallArgumentsStream.Replace): the
+// call shows the partial arguments of text, and delta is the piece of it the stream had not received, when text continues it.
+func (builder *assistantStreamBuilder) replaceToolCallArguments(index int, text string) (delta string, hasDelta bool) {
+	state := builder.toolCalls[index]
+	if state == nil || state.args == nil {
+		return "", false
+	}
+	delta, hasDelta, arguments, order := state.args.Replace(text)
+	block := builder.partial.Content[state.contentIndex].(ToolCall)
+	builder.showStreamedArguments(state.contentIndex, &block, state.args, arguments, order)
+	builder.partial.Content[state.contentIndex] = block
+	return delta, hasDelta
+}
+
+// showStreamedArguments makes the call at contentIndex show the partial arguments stream returned (arguments and their member order),
+// and records them as the snapshot the cell may keep as it is (streamedArguments) when the stream says it is immutable, forgetting any
+// earlier one otherwise.
+func (builder *assistantStreamBuilder) showStreamedArguments(contentIndex int, call *ToolCall, stream *ToolCallArgumentsStream, arguments JsonObject, order schemaObjectOrder) {
+	call.setParsedArguments(arguments, order, nil)
+	if !stream.immutable() {
+		delete(builder.streamedArguments, contentIndex)
+		return
+	}
+	if builder.streamedArguments == nil {
+		builder.streamedArguments = map[int]JsonObject{}
+	}
+	builder.streamedArguments[contentIndex] = arguments
+}
+
+// pushToolCallDelta pushes a toolcall_delta event for the call at index, whose arguments the caller already updated.
+func (builder *assistantStreamBuilder) pushToolCallDelta(index int, delta string) {
+	if state := builder.toolCalls[index]; state != nil {
+		builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta, Partial: builder.partial})
+	}
+}
+
+// takeFunctionCallItem gives the function call at index the complete argument text of its finished item, when it has one, and the
+// item's namespace; endToolCall then reads the final arguments from the text.
+func (builder *assistantStreamBuilder) takeFunctionCallItem(index int, namespace, text string) {
+	state := builder.toolCalls[index]
+	if state == nil || state.args == nil {
+		return
+	}
+	if text != "" {
+		state.args.Replace(text)
 	}
 	block := builder.partial.Content[state.contentIndex].(ToolCall)
 	if namespace != "" {
 		block.Namespace = namespace
 	}
-	state.arguments.Reset()
-	state.arguments.WriteString(arguments)
-	if final {
-		block.SetFinalArguments(arguments)
-	} else {
-		block.SetStreamingArguments(arguments)
-	}
-	if block.scratch.hasPartialJson {
-		block.scratch.partialJson = arguments
-	}
 	builder.partial.Content[state.contentIndex] = block
+}
+
+// appendCustomToolCallInput appends delta to the input of the custom tool call at index and returns the matching piece of its JSON
+// arguments text; the call shows the input so far.
+func (builder *assistantStreamBuilder) appendCustomToolCallInput(index int, delta string) (string, bool, error) {
+	state := builder.toolCalls[index]
+	if state == nil || state.custom == nil {
+		return "", false, nil
+	}
+	jsonDelta, ok, err := appendGrammarToolInputJSONDelta(&state.custom.buffer, state.custom.property, delta)
+	if err != nil {
+		return "", false, err
+	}
+	present := ok || state.custom.unsent != ""
+	return builder.sendCustomToolCallInput(state, jsonDelta), present, nil
+}
+
+// closeCustomToolCallInput closes the input of the custom tool call at index with the provider's complete input, if it sent one.
+func (builder *assistantStreamBuilder) closeCustomToolCallInput(index int, finalInput *string) (string, bool, error) {
+	state := builder.toolCalls[index]
+	if state == nil || state.custom == nil {
+		return "", false, nil
+	}
+	jsonDelta, ok, err := closeGrammarToolInputJSON(&state.custom.buffer, state.custom.property, finalInput)
+	if err != nil {
+		return "", false, err
+	}
+	present := ok || state.custom.unsent != ""
+	return builder.sendCustomToolCallInput(state, jsonDelta), present, nil
+}
+
+func (builder *assistantStreamBuilder) sendCustomToolCallInput(state *streamToolCall, jsonDelta string) string {
+	block := builder.partial.Content[state.contentIndex].(ToolCall)
+	block.Arguments = JsonObject{state.custom.property: state.custom.buffer.Input()}
+	block.argumentOrder, block.nonObjectArguments = nil, nil
+	builder.partial.Content[state.contentIndex] = block
+	if state.custom.unsent == "" {
+		return jsonDelta
+	}
+	sent := state.custom.unsent + jsonDelta
+	state.custom.unsent = ""
+	return sent
 }
 
 func (builder *assistantStreamBuilder) setResponseMetadata(responseID, responseModel, rawStopReason, providerThinkingLevel string, endTurn *bool) {
@@ -443,9 +560,8 @@ func (builder *assistantStreamBuilder) endToolCallWith(index int, finalize func(
 	}
 	block := builder.partial.Content[state.contentIndex].(ToolCall)
 	switch {
-	case block.scratch.customInput:
-		input, _ := block.Arguments[block.scratch.property].(string)
-		delta, emit, err := appendGrammarToolInputJSONDelta(&block.scratch.jsonBuffer, block.scratch.property, input, true)
+	case state.custom != nil:
+		delta, emit, err := closeGrammarToolInputJSONState(state)
 		if err != nil {
 			builder.failUnfinished(StopReasonError, err)
 			return
@@ -455,15 +571,14 @@ func (builder *assistantStreamBuilder) endToolCallWith(index int, finalize func(
 			builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta, Partial: builder.partial})
 		}
 	case finalArgumentsAPI(builder.partial.API):
-		block.SetFinalArguments(state.arguments.String())
+		block.SetFinalArguments(state.args.Text())
 	default:
-		block.SetStreamingArguments(state.arguments.String())
+		block.SetStreamingArguments(state.args.Text())
 	}
 	if block.ID == "" {
 		// pig divergence (D120): a call streamed without an id gets a unique one, so its tool result can name it.
 		block.ID = generatedToolCallID(block.Name)
 	}
-	block.scratch = toolCallScratch{}
 	builder.partial.Content[state.contentIndex] = block
 	ended := block
 	if finalize != nil {
@@ -503,42 +618,18 @@ func (builder *assistantStreamBuilder) publishPending() {
 	}
 }
 
-// publishesViews reports whether pushes publish live views of the partial (publish), which settle a tool call's deferred
-// arguments for each reader. A producer outside the executor pushes emission-time snapshots, whose readers read the
-// arguments directly, so its calls parse at once.
+// publishesViews reports whether pushes publish live views of the partial (publish). A producer outside the executor pushes
+// emission-time snapshots.
 func (builder *assistantStreamBuilder) publishesViews() bool {
 	return builder.managed && builder.turn != nil
 }
 
-// settleArguments parses the deferred arguments of the partial's tool calls, resuming each open call's parser, so the
-// final message a terminal event carries holds them as an eager parse would have left them.
-func (builder *assistantStreamBuilder) settleArguments() {
-	for index, block := range builder.partial.Content {
-		call, ok := block.(ToolCall)
-		if !ok || call.deferredArguments == "" {
-			continue
-		}
-		parser := &streamingArgumentsParser{}
-		for _, state := range builder.toolCalls {
-			if state.contentIndex == index {
-				parser = &state.parser
-			}
-		}
-		call.setParsedArguments(parser.parse(call.deferredArguments))
-		builder.partial.Content[index] = call
-	}
-}
-
 func (builder *assistantStreamBuilder) publish() *AssistantMessage {
 	builder.dirty = false
-	if !builder.publishesViews() {
-		// The construction message itself goes out (below), so its calls hold their parse, even one deferred while the builder still published views.
-		builder.settleArguments()
-	}
 	if builder.cell == nil {
 		builder.cell = newAssistantMessageCell(builder.partial)
 	} else {
-		builder.cell.publish(builder.partial, builder.replacements)
+		builder.cell.publishSharing(builder.partial, builder.replacements, builder.streamedArguments)
 	}
 	builder.replacements = assistantMessageReplacements{}
 	if !builder.publishesViews() {
@@ -549,10 +640,6 @@ func (builder *assistantStreamBuilder) publish() *AssistantMessage {
 }
 
 func (builder *assistantStreamBuilder) push(event AssistantMessageEvent) {
-	switch event.(type) {
-	case DoneEvent, ErrorEvent:
-		builder.settleArguments()
-	}
 	view := builder.publish()
 	if builder.partialCopy != nil {
 		view = builder.partialCopy(view)
@@ -582,7 +669,6 @@ func (builder *assistantStreamBuilder) failInvariant(err error) {
 	}
 	builder.partial.StopReason = StopReasonError
 	builder.partial.ErrorMessage = err.Error()
-	builder.settleArguments()
 	_ = builder.stream.Push(ErrorEvent{Reason: StopReasonError, Error: builder.partial})
 }
 
@@ -605,4 +691,26 @@ type endingBlock struct {
 // sortEndingBlocks orders blocks by content index, the order their end events follow. Content indices are distinct, so the unstable sort is deterministic; the typed comparison avoids sort.Slice's reflective swapper, which allocates on every stream end.
 func sortEndingBlocks(blocks []endingBlock) {
 	slices.SortFunc(blocks, func(a, b endingBlock) int { return cmp.Compare(a.contentIndex, b.contentIndex) })
+}
+
+// closeGrammarToolInputJSONState closes the input of a custom tool call that ends without a complete input of its own.
+func closeGrammarToolInputJSONState(state *streamToolCall) (string, bool, error) {
+	jsonDelta, ok, err := closeGrammarToolInputJSON(&state.custom.buffer, state.custom.property, nil)
+	if err != nil {
+		return "", false, err
+	}
+	return jsonDelta, ok, nil
+}
+
+// Errors preserve the last parsed arguments but do not synthesize successful block ends.
+// upstream: packages/ai/src/api/openai-completions.ts:stream
+// upstream: packages/ai/src/api/openai-responses.ts:stream
+func (builder *assistantStreamBuilder) failUnfinished(reason StopReason, err error) {
+	clear(builder.toolCalls)
+	builder.recordTransportFailure(err)
+	builder.partial.StopReason = reason
+	if err != nil {
+		builder.partial.ErrorMessage = builder.failureMessage(err)
+	}
+	builder.push(ErrorEvent{Reason: reason, Error: builder.partial})
 }

@@ -104,6 +104,10 @@ type MarkdownTransformContext struct {
 	MessageType    string `json:"messageType"`
 	IsStreaming    bool   `json:"isStreaming"`
 	AvailableWidth int    `json:"availableWidth"`
+	// MessageID is the persisted session-entry id, empty for a live message or live rendering.
+	MessageID string `json:"messageId,omitempty"`
+	// Timestamp is the persisted session-entry ISO timestamp, empty for a live message or live rendering.
+	Timestamp string `json:"timestamp,omitempty"`
 }
 
 // MarkdownTransformerFunc rewrites Markdown for display only, as Pi's

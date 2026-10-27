@@ -122,7 +122,7 @@ func TestCustomEntryIsInsertedBeforeTheStreamingMessage(t *testing.T) {
 	}
 	m.chatContainer.Clear()
 	m.chatContainer.Add(tui.NewText("earlier"))
-	block := m.newAssistantMessageBlock()
+	block := m.newAssistantMessageBlock(messageMeta{})
 	m.chatContainer.Add(block)
 	m.evCurrentBlock = block
 	m.addCustomEntryToChat(CustomEntry{CustomType: "note"})

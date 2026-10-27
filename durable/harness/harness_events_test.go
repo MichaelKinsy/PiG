@@ -12,9 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -46,7 +49,8 @@ func listen(t *testing.T, harness Harness, conversation Conversation) *listening
 	t.Helper()
 	stream := must(WatchEvents(testContext, harness, conversation.Id()))
 	recorded := &listening{stream: stream}
-	stream.Start(func(_ context.Context, events []AgentEvent) error {
+	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+		events := change.Value
 		recorded.mu.Lock()
 		defer recorded.mu.Unlock()
 		recorded.batches = append(recorded.batches, slices.Clone(events))
@@ -175,8 +179,8 @@ func livePartial(change durable.DocumentChange) (any, bool) {
 // partialsOf records the committed partials of the generation, one per commit that has one (harness-events.test.ts:94).
 func partialsOf(harness Harness) *partialLog {
 	log := &partialLog{}
-	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-		for _, change := range documentChanges(publication) {
+	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentChanges(publication.Changes) {
 			if message, ok := livePartial(change); ok {
 				log.mu.Lock()
 				log.partials = append(log.partials, message)
@@ -424,6 +428,45 @@ func TestAgentEvents(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
+	// harness-events.test.ts it("delivers each of 100 pending batches in its own call, in order, unlike state watches")
+	t.Run("delivers each of 100 pending batches in its own call, in order, unlike state watches", func(t *testing.T) {
+		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
+		stream := must(WatchEvents(testContext, harness, root.Id()))
+		for index := range 100 {
+			commitValue(t, root, func(tx durable.Tx) (durable.EntryRecord, error) {
+				return tx.AppendEntry(root.Id(), durable.EntryDraft{Kind: "note", Data: delta.JsonObjectOf("index", float64(index))})
+			})
+		}
+		var mu sync.Mutex
+		var batches [][]AgentEvent
+		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+			events := change.Value
+			mu.Lock()
+			defer mu.Unlock()
+			batches = append(batches, slices.Clone(events))
+			return nil
+		})
+		drained(harness)
+		mu.Lock()
+		got := slices.Clone(batches)
+		mu.Unlock()
+		if len(got) != 100 {
+			t.Fatalf("%d batches, want 100", len(got))
+		}
+		for index, batch := range got {
+			if len(batch) != 1 {
+				t.Fatalf("batch %d = %v", index, batch)
+			}
+			appended, ok := batch[0].(EntryAppendedEvent)
+			data, _ := appended.Entry.Data.(*delta.JsonObject)
+			if !ok || data == nil || data.Value("index") != float64(index) {
+				t.Fatalf("batch %d = %+v", index, batch[0])
+			}
+		}
+		must(stream.Stop())
+		closeHarness(t, harness)
+	})
+
 	// harness-events.test.ts:253 it("replaces undelivered batches with one snapshot after 100 pending batches")
 	t.Run("replaces undelivered batches with one snapshot after 100 pending batches", func(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
@@ -433,7 +476,8 @@ func TestAgentEvents(t *testing.T) {
 		}
 		var mu sync.Mutex
 		var batches [][]AgentEvent
-		stream.Start(func(_ context.Context, events []AgentEvent) error {
+		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+			events := change.Value
 			mu.Lock()
 			defer mu.Unlock()
 			batches = append(batches, slices.Clone(events))
@@ -533,8 +577,8 @@ func TestAgentEvents(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		var mu sync.Mutex
 		var outputs []string
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication) {
+		observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+			for _, change := range documentChanges(publication.Changes) {
 				if change.Record.Kind != "pi.live" || change.Value == nil {
 					continue
 				}
@@ -756,7 +800,8 @@ func TestAgentEvents(t *testing.T) {
 		}
 		var mu sync.Mutex
 		var batches [][]AgentEvent
-		stream.Start(func(_ context.Context, events []AgentEvent) error {
+		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
+			events := change.Value
 			mu.Lock()
 			defer mu.Unlock()
 			batches = append(batches, slices.Clone(events))

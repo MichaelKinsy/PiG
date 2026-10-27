@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/tools"
@@ -26,6 +27,7 @@ type oracleCase struct {
 	limits    tools.ImageLimits
 	tolerance float64 // mean absolute channel error of the decoded images, 0 = bytes must be equal
 	skipPix   bool    // compare size only (noise: JPEG encoders differ widely on it)
+	quantized bool    // a JPEG result must carry the quantization table of the quality Pi chose
 }
 
 func oracleCorpus(t *testing.T) []oracleCase {
@@ -65,8 +67,22 @@ func oracleCorpus(t *testing.T) []oracleCase {
 	return cases
 }
 
-func TestPhotonImagesMatchPiOnACorpus(t *testing.T) {
-	corpus := oracleCorpus(t)
+func TestPhotonImagesMatchPiOnACorpus(t *testing.T) { comparePhotonToPi(t, oracleCorpus(t)) }
+
+// piResult is what Pi's prepare answered for one case: nil when it could not prepare the image.
+type piResult struct {
+	Data          string `json:"data"`
+	MimeType      string `json:"mimeType"`
+	ConvertedFrom string `json:"convertedFrom"`
+	Resized       *struct {
+		From struct{ Width, Height int } `json:"from"`
+		To   struct{ Width, Height int } `json:"to"`
+	} `json:"resized"`
+}
+
+// askPi runs Pi's images/index.ts createPhotonImages over the corpus under Node and returns its answers.
+func askPi(t *testing.T, corpus []oracleCase) []*piResult {
+	t.Helper()
 	type wireCase struct {
 		Bytes    string         `json:"bytes"`
 		MimeType string         `json:"mimeType"`
@@ -91,18 +107,17 @@ func TestPhotonImagesMatchPiOnACorpus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
 	}
-	var pi []*struct {
-		Data          string `json:"data"`
-		MimeType      string `json:"mimeType"`
-		ConvertedFrom string `json:"convertedFrom"`
-		Resized       *struct {
-			From struct{ Width, Height int } `json:"from"`
-			To   struct{ Width, Height int } `json:"to"`
-		} `json:"resized"`
-	}
+	var pi []*piResult
 	if err := json.Unmarshal(output, &pi); err != nil || len(pi) != len(corpus) {
 		t.Fatalf("oracle output: %v", err)
 	}
+	return pi
+}
+
+// comparePhotonToPi prepares every case on Pi (images/index.ts under Node) and on PiG and compares the two.
+func comparePhotonToPi(t *testing.T, corpus []oracleCase) {
+	t.Helper()
+	pi := askPi(t, corpus)
 	for i, c := range corpus {
 		want := pi[i]
 		got := prepare(t, c.data, c.mime, c.limits)
@@ -122,6 +137,13 @@ func TestPhotonImagesMatchPiOnACorpus(t *testing.T) {
 		case want.Resized != nil && (got.Resized.From != (tools.ImageSize{Width: want.Resized.From.Width, Height: want.Resized.From.Height}) ||
 			got.Resized.To != (tools.ImageSize{Width: want.Resized.To.Width, Height: want.Resized.To.Height})):
 			t.Errorf("%s: PiG resized %+v, Pi resized %+v", c.name, *got.Resized, *want.Resized)
+		}
+		if c.quantized {
+			ours, theirs := jpegQuantizationTable(t, got.Data), jpegQuantizationTable(t, want.Data)
+			t.Logf("%s: first quantization table entries PiG %v, Pi %v (%d bytes, %d bytes)", c.name, ours[:2], theirs[:2], len(got.Data), len(want.Data))
+			if !slices.Equal(ours, theirs) {
+				t.Errorf("%s: PiG encoded at the quantization table %v, Pi at %v", c.name, ours, theirs)
+			}
 		}
 		if c.tolerance == 0 && !c.skipPix {
 			if got.Data != want.Data {

@@ -119,6 +119,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/auth/oauth/openai-codex.ts` | `ai/oauth_openai_codex.go` | ✅ |
 | `packages/ai/src/auth/oauth/pkce.ts` | `ai/pkce.go` | ✅ |
 | `packages/ai/src/auth/oauth/radius.ts` | `ai/oauth_radius.go + internal/codingagent/interactive_auth.go (ai/oauth_radius_test.go, internal/codingagent/radius_login_test.go)` | ✅ |
+| `packages/ai/src/auth/oauth/trusted-url.ts` | `ai/oauth_trusted_url.go trustedHTTPURL (shared by ai/githubcopilot.go via ai/copilot_verification_uri.go, ai/oauth_kimi.go, ai/oauth_meta.go and ai/oauth_radius.go; ai/trusted_url_oracle_test.go compares it with Pi's trustedHttpUrl over the verification-URI corpus)` | ✅ |
 | `packages/ai/src/auth/oauth/xai.ts` | `ai/oauth_xai.go (device-code login, polling, refresh, response validation, and owner-context cancellation; ai/oauth_xai_test.go including LoginContext/RefreshTokenContext cancellation, coding/cli/model_oauth_refresh_test.go caller cancellation, oauth/09 behavioral scenario)` | ✅ |
 | `packages/ai/src/bun-oauth.ts` | `(Bun-only OAuth flow registration; Go links OAuth implementations directly)` | n/a |
 | `packages/ai/src/compat.ts` | `ai/types.go`, `ai/compat.go`, `ai/builtin_providers.go`, `ai/registry.go`, `ai/faux.go` | ✅ |
@@ -244,6 +245,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/hash.ts` | `ai/openai.go shortHash32 (UTF-16 code units with uint32 Math.imul wrap), used by ai/openai.go normalizeCompletionsToolCallID, ai/openai_responses.go foreign fc_ ids, and ai/mistral.go deriveMistralToolCallID (upstream oracles in ai/openai_responses_foreign_toolcall_test.go and ai/mistral_test.go)` | ✅ |
 | `packages/ai/src/utils/headers.ts` | `ai/githubcopilot.go + ai/provider_response.go`, `ai/classifier_http.go` | ✅ |
 | `packages/ai/src/utils/json-parse.ts` | `ai/json_repair.go (repairJSON, ParseJSONWithRepair) + ai/streaming_json.go (ParseStreamingJson; ai/json_parse_upstream_test.go)` | ✅ |
+| `packages/ai/src/utils/streaming-json.ts` | `ai/streaming_json_parser.go (StreamingJSONParser, ToolCallArgumentsStream; ai/streaming_json_parser_oracle_test.go, ai/streaming_tool_arguments_upstream_test.go)` | ✅ |
 | `packages/ai/src/utils/diagnostics.ts` | `ai/diagnostics.go (FormatThrownValue, ExtractDiagnosticError, CreateAssistantMessageDiagnostic, AppendAssistantMessageDiagnostic; ai/diagnostics_upstream_test.go) + ai/types.go (DiagnosticErrorInfo, AssistantMessageDiagnostic)` | ✅ |
 | `packages/ai/src/utils/node-http-proxy.ts` | `ai/node_http_proxy.go + ai/bedrock.go` | ✅ |
 | `packages/ai/src/utils/overflow.ts` | `ai/overflow.go (IsContextOverflow, IsRecoverableLength, GetOverflowPatterns; overflow_test.go)`, `internal/codingagent/auto_recovery.go`, `durable/core/turn/patterns.go (generated)` | ✅ |
@@ -631,7 +633,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/codemode/src/index.ts` | `(Go has no barrel exports: the exports are the codemode package)` | n/a |
 | `packages/codemode/src/portable.ts` | `(Go has no barrel exports: the exports are the codemode package)` | n/a |
 | `packages/codemode/src/runtime/execution.ts` | `codemode/execution.go (Execution, the host's deadline and result handling); codemode/vmlauncher.go (VmLauncher, VmChannel, VmEvents); codemode/sandbox.go (CodemodeSandboxBase); codemode/run.go (CodemodeSandboxBase.start); codemode/remote.go (RemoteCodemodeSandbox.close)` | ✅ |
-| `packages/codemode/src/runtime/host.ts` | `codemode/sandbox.go; codemode/execution.go; codemode/workerlauncher.go (workerLauncher: acquireWorker admission, onWorkerStarted exit reporting, stop without waiting for exit)` | ✅ |
+| `packages/codemode/src/runtime/host.ts` | `codemode/sandbox.go; codemode/workerlauncher.go (workerLauncher: acquireWorker admission, onWorkerStarted exit reporting, stop without waiting for exit)` | ✅ |
 | `packages/codemode/src/runtime/inline.ts` | `codemode/inline.go; codemode/inlinechannel.go; codemode/inline_consts.go; the halt instrumentation behind the interrupt budget (haltcheck, halt_grace) and the wasm loader option (SandboxOptions.Wasm) live in the same package` | ✅ |
 | `packages/codemode/src/runtime/prelude-source.ts` | `codemode/assets/prelude.js; codemode/assets.go` | ✅ |
 | `packages/codemode/src/runtime/protocol.ts` | `codemode/vmdriver.go (WorkerToHostMessage, HostToWorkerMessage as the host/VM seam); codemode/remote_protocol.go (VmStartData and the remote wire forms)` | ✅ |
@@ -650,9 +652,10 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/types.ts` | `chord/host/types.go (Context is context.Context; JsonRepresentation, RemoteServiceContract, IsAny are compile-time TypeScript machinery with no Go form, replaced by reflection classification at provide time)` | ✅ |
 | `packages/chord/src/json.ts` | `internal/chord/chordjson/chordjson.go:70 Copy, Stored, IsValue; chord/json.go:12`, `chord/delta/delta.go`, `durable/json.go CopyJson` | ✅ |
 | `packages/chord/src/context/index.ts` | `chord/context/chordctx.go Background, TODO, NewKey, WithValue, WithAbortSignal, WithoutAbortSignal, WithCancel, Await, Telemetry, WithTelemetry, TraceIn (Pi 92ab5360 moves traceIn's context last, traceIn(options, fn, context); TraceIn keeps the context first, as every Go function does)` | ✅ |
-| `packages/chord/src/delta/index.ts` | `chord/delta/delta.go:317 AssertValidOpValue, apply.go:227 Apply, ApplyImmutable, apply.go:255 ApplyImmutableBatchesSeq, codec.go:17 Encoder/Decoder, overlap.go:17` | ✅ |
+| `packages/chord/src/delta/index.ts` | `chord/delta/delta.go:317 AssertValidOpValue, apply.go:227 Apply, ApplyImmutable, apply.go:255 ApplyImmutableBatchesSeq, codec.go:17 Encoder/Decoder, overlap.go:17; ownedSlice is a V8 string-view detail that Go strings.Clone covers where an op or value keeps a cut of a larger string` | ✅ |
+| `packages/chord/src/delta/pending.ts` | `chord/delta/pending.go (PendingOps, PendingTake, MaxPendingOps; chord/delta/pending_test.go)` | ✅ |
 | `packages/chord/src/delta/diff.ts` | `chord/delta/diff.go:611 DiffRevisions` | ✅ |
-| `packages/chord/src/delta/tracker.ts` | `chord/delta/tracker.go (overlay with Object/Array draft handles, the Proxy draft; array roots through TrackArray, Change.Elements, Tracker.Root, Prepared.ValueRoot, PrepareReplaceRoot)` | ✅ |
+| `packages/chord/src/delta/tracker.ts` | `chord/delta/tracker.go + chord/delta/handles.go (overlay with Object/Array draft handles, the Proxy draft; array roots through TrackArray, Change.Elements, Tracker.Root, Prepared.ValueRoot, PrepareReplaceRoot; AppendText, the draft's append of text to a string member)` | ✅ |
 | `packages/chord/src/delta/draft.ts` | `TypeScript mapped type; the Go draft is chord/delta Object/Array` | n/a |
 | `packages/chord/src/delta/apply-immutable-trusted.ts` | `self-produced-op fast path of the tracker; the Go trackers materialize candidates themselves and ApplyImmutable covers the checked path (apply_immutable_upstream_test.go)` | n/a |
 | `packages/chord/src/delta/revision-validator.ts` | `WeakSet memo of validated JS container identities; a decoded Go revision has no shared identity and is validated by chordjson.Validate (state.go:917)` | n/a |
@@ -681,7 +684,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/reload.ts` | `chord/host/reload.go (link protocol 4)` | ✅ |
 | `packages/chord/src/schema.ts` | `chord/host/schema.go` | ✅ |
 | `packages/chord/src/state.ts` | `chord/state.go` | ✅ |
-| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle (Durable's package re-exports them as type aliases, as Pi's durable index does)` | ✅ |
+| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask)` | ✅ |
 | `packages/chord/src/websocket.ts` | `chord/host/websocket.go (link protocol 4)` | ✅ |
 | `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
@@ -723,6 +726,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/harness/harness.ts` | `durable/harness/harness.go`, `durable/harness/types.go` | ✅ |
 | `packages/durable/src/harness/inbox.ts` | `durable/harness/inbox.go` | ✅ |
 | `packages/durable/src/harness/json.ts` | `durable/harness/json.go` | ✅ |
+| `packages/durable/src/harness/partial-changes.ts` | `durable/harness/partial_changes.go (PartialChanges; durable/harness/partial_changes_upstream_test.go)` | ✅ |
 | `packages/durable/src/harness/live.ts` | `durable/harness/live.go` | ✅ |
 | `packages/durable/src/harness/prompt.ts` | `durable/harness/prompt.go` | ✅ |
 | `packages/durable/src/harness/provider.ts` | `durable/harness/provider.go` | ✅ |
@@ -743,7 +747,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/images/photon-wasm.d.ts` | `(TypeScript declaration of the WebAssembly import; Go has no compiled module to import)` | n/a |
 | `packages/durable/src/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/session/forks.ts` | `durable/session/forks.go` | ✅ |
-| `packages/durable/src/session/observation.ts` | `durable/session/observation.go` | ✅ |
 | `packages/durable/src/session/session.ts` | `durable/session/session.go` | ✅ |
 | `packages/durable/src/session/transaction.ts` | `durable/session/transaction.go` | ✅ |
 | `packages/durable/src/storage/indexeddb.ts` | `(browser-only Storage backed by window IndexedDB: the file opens with /// <reference lib="dom" /> and every method drives IDBDatabase/IDBTransaction, which exist only in a browser; PiG is a Go process with no browser or WebAssembly build, so no caller can reach it. The Storage contract it implements is the one durable/storage/memory.go, jsonl, sqlite and the Cloudflare SQLite driver already satisfy; Pi 16f5f0af4d)` | n/a |
@@ -823,7 +826,7 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/env/daemon/src/scan.rs` | `durable/env/line_scan.go` (LineScanner; tests in env/daemon/scan_test.go) | ✅ |
 | `packages/env/daemon/src/sys/mod.rs` | `(Rust module barrel: Go selects sys_unix.go or sys_windows.go by build constraint)` | n/a |
 | `packages/env/daemon/src/sys/unix.rs` | `env/daemon/sys_unix.go` | ✅ |
-| `packages/env/daemon/src/sys/windows.rs` | `env/daemon/sys_windows.go (commands run through durable/env/node and os/exec, so quote_argument has no Go function; its test is ported as TestEscapeArgQuotesArgumentsLikeLibuv in env/daemon/sys_windows_test.go on syscall.EscapeArg, which runs on Windows only, so the row stays partial on this host)` | 🟡 |
+| `packages/env/daemon/src/sys/windows.rs` | `env/daemon/sys_windows.go (commands run through durable/env/node, whose spawn path builds the Windows command line with nodespawn.SetCommandLine, libuv's quote_cmd_arg, so quote_argument has no Go function; its test is ported as TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath in env/daemon/sys_windows_test.go, which sends each vector through the daemon's exec to a helper child and compares the command line and the received argv; Windows only, proven green and mutation-killed on windows-latest, but the ledger's coverage run is Linux and executes no statement of sys_windows.go, so the row stays partial on this host)` | 🟡 |
 | `packages/env/daemon/src/watch.rs` | `env/daemon/watch.go` | ✅ |
 | `packages/env/daemon/src/window.rs` | `env/daemon/window.go (tests in env/daemon/window_test.go)` | ✅ |
 

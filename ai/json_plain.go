@@ -423,22 +423,26 @@ func hasNonFiniteNumberWalk(value any, walk *plainWalk) bool {
 		if len(typed) == 0 || !walk.enterMap(typed) {
 			return false
 		}
-		defer walk.leave()
+		found := false
 		for _, item := range typed {
-			if hasNonFiniteNumberWalk(item, walk) {
-				return true
+			if found = hasNonFiniteNumberWalk(item, walk); found {
+				break
 			}
 		}
+		walk.leave()
+		return found
 	case []any:
 		if len(typed) == 0 || !walk.enterSlice(typed) {
 			return false
 		}
-		defer walk.leave()
+		found := false
 		for _, item := range typed {
-			if hasNonFiniteNumberWalk(item, walk) {
-				return true
+			if found = hasNonFiniteNumberWalk(item, walk); found {
+				break
 			}
 		}
+		walk.leave()
+		return found
 	}
 	return false
 }

@@ -168,9 +168,10 @@ type HarnessOptions struct {
 	// OnWake wakes the process for sleeping tasks instead of a SetTimer timer. Without it, while scheduling runs, a timer
 	// that keeps the process alive resumes sleeping tasks when they are due. With it, the Harness arms no timer for
 	// them: it calls OnWake after open and whenever Harness.Wake() changes, and the host arms its own wakeup, such as a
-	// Durable Object alarm, and calls Resume() when it fires. Called off the Session line, after the commit that changed
-	// the value, so a host arms a recovery wakeup before calls that can start work. It may call Wake and Resume, and
-	// must not block. A panic is reported, and the value is offered again at the next change.
+	// Durable Object alarm, and calls Resume() when it fires. Called in a goroutine the Session line never waits for,
+	// after the commit that changed the value was adopted, so a host arms a recovery wakeup before calls that can start
+	// work. It may call Wake and Resume, and must not block. A panic is reported, and the value is offered again at the
+	// next change.
 	OnWake func(wake Wake)
 	// OnReport receives failures that do not fail the calling operation, such as a panicking hook or listener, a task
 	// that faulted, and the error that fails the Session, once. info says what happened: a host can tell a failed
@@ -232,7 +233,7 @@ type HarnessInspection struct {
 	Submissions []durable.SubmissionRecord
 }
 
-// ConversationWatch is a serialized exact-frame watch of the structural view.
+// ConversationWatch is a serialized watch of the structural view.
 type ConversationWatch = durable.WatchHandle[ConversationView]
 
 // Conversation is a stateless handle for one conversation, bound to the Harness that returned it. Compare handles by Id.
@@ -248,8 +249,8 @@ type Conversation interface {
 	Reset(ctx context.Context, handoff *string) error
 	// Compact admits a manual compaction task and returns its ID (spec §8.7).
 	Compact(ctx context.Context, instructions *string) (durable.TaskId, error)
-	// Commit runs a Session commit whose tx.CreateTask defaults to this conversation.
-	Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error)
+	// Commit runs a Session commit whose tx.CreateTask defaults to this conversation; options are as for Session.Commit.
+	Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error)
 	// Context returns the committed raw active transcript and model context. With options.At, it returns the context as
 	// of that visible entry: the same view Fork(at) would start with, without creating a conversation.
 	Context(ctx context.Context, options *durable.ContextOptions) (durable.ContextView, error)
@@ -261,7 +262,8 @@ type Conversation interface {
 	Abort(ctx context.Context, options *durable.ConversationAbortOptions) error
 	// WaitForIdle returns when the ordinary ownership scope has no live non-background task.
 	WaitForIdle(ctx context.Context) error
-	// Watch returns the structural view (spec §9.3) as a serialized exact-frame watch with bounded pending frames.
+	// Watch returns the structural view (spec §9.3) as a serialized watch; commits made while its listener runs arrive folded.
+	// It is built on the same mount as Harness.ObserveConversation.
 	Watch(ctx context.Context) (ConversationWatch, error)
 }
 
@@ -301,8 +303,17 @@ type Harness interface {
 	// Usage is the Session total: every conversation's pi.usage summed.
 	Usage(ctx context.Context) (UsageState, error)
 	// WatchTaskGraph returns every live task with its owner edge, status, and owned conversations (spec §9.5), as a
-	// serialized exact-frame watch with bounded pending frames.
+	// serialized watch; commits made while its listener runs arrive folded.
 	WatchTaskGraph(ctx context.Context) (TaskGraphWatch, error)
+	// ObserveConversation attaches a synchronous Observer to a conversation's structural view (spec §9.3), atomically on
+	// the Session line, for adapters: Advance gets each next revision with its operations as memory adopts the commit,
+	// inside Storage's adopt for a stored one and before it is stored for a deferred one, so it only records it. ctx governs
+	// only the attachment.
+	ObserveConversation(ctx context.Context, id durable.ConversationId, observer durable.Observer[ConversationView]) (durable.Observation[ConversationView], error)
+	// ObserveTaskGraph attaches a synchronous Observer to the task graph (spec §9.5), as ObserveConversation does to a view. A
+	// blocked reason that changes without a commit (a registry change, a failed migration) advances it on the Session line
+	// outside any commit and adopt, with the background context.
+	ObserveTaskGraph(ctx context.Context, observer durable.Observer[TaskGraph]) (durable.Observation[TaskGraph], error)
 }
 
 // DefaultHarnessIdentity is the request identity of a Harness's model requests: the ai package's defaults with provider attribution to PiG.

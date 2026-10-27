@@ -4,6 +4,7 @@
 import { GITHUB_COPILOT_MODELS } from "../../providers/github-copilot.models.js";
 import { sleep } from "../../utils/sleep.js";
 import { pollOAuthDeviceCodeFlow } from "./device-code.js";
+import { trustedHttpUrl } from "./trusted-url.js";
 const decode = (s) => atob(s);
 const CLIENT_ID = decode("SXYxLmI1MDdhMDhjODdlY2ZlOTg=");
 const COPILOT_HEADERS = {
@@ -181,22 +182,14 @@ async function startDeviceFlow(domain, signal) {
         typeof expiresIn !== "number") {
         throw new Error("Invalid device code response fields");
     }
-    // The verification URI is opened in the user's browser and to prevent `open` from
-    // opening an executable or similar, we force it to be a URL.
-    let parsedUri;
-    try {
-        parsedUri = new URL(verificationUri);
-    }
-    catch {
-        throw new Error("Untrusted verification_uri in device code response");
-    }
-    if (parsedUri.protocol !== "https:" && parsedUri.protocol !== "http:") {
+    const trustedVerificationUri = trustedHttpUrl(verificationUri);
+    if (!trustedVerificationUri) {
         throw new Error("Untrusted verification_uri in device code response");
     }
     return {
         device_code: deviceCode,
         user_code: userCode,
-        verification_uri: parsedUri.href,
+        verification_uri: trustedVerificationUri,
         interval,
         expires_in: expiresIn,
     };

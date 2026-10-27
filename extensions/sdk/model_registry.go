@@ -39,10 +39,16 @@ func (r ModelRegistry) state() (registryState, error) {
 }
 
 func (r ModelRegistry) GetAll() ([]map[string]any, error) {
+	if r.runtime != nil {
+		return r.runtime.GetModels()
+	}
 	state, err := r.state()
 	return state.Models, err
 }
 func (r ModelRegistry) GetAvailable() ([]map[string]any, error) {
+	if r.runtime != nil {
+		return r.runtime.GetAvailableSnapshot()
+	}
 	state, err := r.state()
 	if err != nil {
 		return nil, err
@@ -59,24 +65,39 @@ func (r ModelRegistry) GetAvailable() ([]map[string]any, error) {
 	return models, nil
 }
 func (r ModelRegistry) GetError() (*string, error) {
+	if r.runtime != nil {
+		return r.runtime.GetError()
+	}
 	state, err := r.state()
 	return state.Error, err
 }
 func (r ModelRegistry) HasConfiguredAuth(model map[string]any) (bool, error) {
+	if r.runtime != nil {
+		return r.runtime.HasConfiguredAuth(modelProvider(model))
+	}
 	state, err := r.state()
 	provider, _ := model["provider"].(string)
 	return state.Providers[provider].Configured, err
 }
 func (r ModelRegistry) IsUsingOAuth(model map[string]any) (bool, error) {
+	if r.runtime != nil {
+		return r.runtime.IsUsingOAuth(modelProvider(model))
+	}
 	state, err := r.state()
 	provider, _ := model["provider"].(string)
 	return state.Providers[provider].UsingOAuth, err
 }
 func (r ModelRegistry) GetProviderAuthStatus(provider string) (ProviderAuthStatus, error) {
+	if r.runtime != nil {
+		return r.runtime.GetProviderAuthStatus(provider)
+	}
 	state, err := r.state()
 	return state.Providers[provider].AuthStatus, err
 }
 func (r ModelRegistry) GetProviderDisplayName(provider string) (string, error) {
+	if r.runtime != nil {
+		return r.runtime.providerDisplayName(provider)
+	}
 	state, err := r.state()
 	if p, ok := state.Providers[provider]; ok {
 		return p.Name, err
@@ -84,11 +105,29 @@ func (r ModelRegistry) GetProviderDisplayName(provider string) (string, error) {
 	return provider, err
 }
 func (r ModelRegistry) GetProviderAuth(provider string) (map[string]any, error) {
+	if r.runtime != nil {
+		result, err := r.runtime.GetAuth(provider, nil)
+		if err != nil || result == nil {
+			return nil, err
+		}
+		return authResultMap(result)
+	}
 	return hostValue[map[string]any](r.context, "getProviderAuth", map[string]string{"provider": provider})
 }
 
 // GetApiKeyForProvider returns nil when auth resolution fails, as Pi does.
 func (r ModelRegistry) GetApiKeyForProvider(provider string) *string {
+	if r.runtime != nil {
+		result, err := r.runtime.GetAuth(provider, nil)
+		if err != nil || result == nil {
+			return nil
+		}
+		key, ok := result.Auth["apiKey"].(string)
+		if !ok {
+			return nil
+		}
+		return &key
+	}
 	result, err := r.GetProviderAuth(provider)
 	if err != nil {
 		return nil
@@ -101,6 +140,9 @@ func (r ModelRegistry) GetApiKeyForProvider(provider string) *string {
 	return &key
 }
 func (r ModelRegistry) GetRegisteredProviderIDs() ([]string, error) {
+	if r.runtime != nil {
+		return r.runtime.GetRegisteredProviderIDs()
+	}
 	state, err := r.state()
 	if err != nil {
 		return nil, err
@@ -112,6 +154,10 @@ func (r ModelRegistry) GetRegisteredProviderIDs() ([]string, error) {
 	return ids, nil
 }
 func (r ModelRegistry) GetRegisteredProviderConfig(provider string) (ProviderConfig, error) {
+	if r.runtime != nil {
+		config, err := r.runtime.GetRegisteredProviderConfig(provider)
+		return ProviderConfig(config), err
+	}
 	state, err := r.state()
 	if err != nil {
 		return nil, err
@@ -126,6 +172,9 @@ func (r ModelRegistry) GetRegisteredProviderConfig(provider string) (ProviderCon
 
 // RegisterProvider applies a provider config at once, as Pi's pi.registerProvider does after the factory finished (types.ts:1766-1803, runner.ts:517-523). The config carries its callbacks (streamSimple, images, classifiers, oauth) as a factory registration does: they stay in the extension and the call names them. A registration the host refuses leaves the callbacks the provider had.
 func (r ModelRegistry) RegisterProvider(name string, config ProviderConfig) error {
+	if r.runtime != nil {
+		return r.runtime.RegisterProvider(name, config)
+	}
 	return r.context.ext.registerProviderNow(&r.context, nil, name, config)
 }
 
@@ -165,6 +214,9 @@ func (e *Extension) takeLateProviderDef(name string, config ProviderConfig) (kep
 
 // UnregisterProvider removes a provider and, once the host removed it, drops the callbacks the extension held for it.
 func (r ModelRegistry) UnregisterProvider(name string) error {
+	if r.runtime != nil {
+		return r.runtime.UnregisterProvider(name)
+	}
 	return r.context.ext.unregisterProviderNow(&r.context, nil, name)
 }
 
@@ -192,5 +244,8 @@ type ModelsRefreshResult struct {
 
 // Refresh waits for the host refresh and propagates cancellation through the handler context.
 func (r ModelRegistry) Refresh(options ModelsRefreshOptions) (ModelsRefreshResult, error) {
+	if r.runtime != nil {
+		return r.runtime.Refresh(options)
+	}
 	return hostValue[ModelsRefreshResult](r.context, "refreshModelRegistry", options)
 }

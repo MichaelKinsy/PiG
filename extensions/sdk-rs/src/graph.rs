@@ -31,6 +31,11 @@ impl GraphObject {
         Ok(GraphObject { context: context.clone(), handle })
     }
 
+    /// The extension's reference to the host object `handle` names, which the host made without a `sessionGraph.new` call (the log of a child session).
+    pub(crate) fn adopt(context: &Context, handle: String) -> GraphObject {
+        GraphObject { context: context.clone(), handle }
+    }
+
     /// The connection the object was made on, which names the functions of its later calls.
     pub(crate) fn context(&self) -> &Context {
         &self.context
@@ -88,15 +93,25 @@ pub type GraphCallback = Arc<dyn Fn(Vec<Value>) -> Result<Value, String> + Send 
 #[derive(Default)]
 pub(crate) struct GraphCallbacks {
     callbacks: Mutex<HashMap<String, GraphCallback>>,
+    sequence: std::sync::atomic::AtomicU64,
 }
 
 /// Names `callback` for the host. `None` is Pi's undefined option and has no name.
 pub(crate) fn callback_id(context: &Context, callback: Option<GraphCallback>) -> Value {
     let Some(callback) = callback else { return Value::Null };
-    let mut callbacks = context.conn.graph_callbacks.callbacks.lock().unwrap();
-    let id = format!("cb{}", callbacks.len() + 1);
-    callbacks.insert(id.clone(), callback);
-    json!(id)
+    json!(add_callback(context, callback))
+}
+
+/// Names `callback` for the host and returns the name.
+pub(crate) fn add_callback(context: &Context, callback: GraphCallback) -> String {
+    let id = format!("cb{}", context.conn.graph_callbacks.sequence.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1);
+    context.conn.graph_callbacks.callbacks.lock().unwrap().insert(id.clone(), callback);
+    id
+}
+
+/// Forgets a function the host will not call again (the callbacks of a closed transport).
+pub(crate) fn remove_callback(context: &Context, id: &str) {
+    context.conn.graph_callbacks.callbacks.lock().unwrap().remove(id);
 }
 
 /// Runs the function a `sessionGraph.callback` request names.

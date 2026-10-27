@@ -178,8 +178,8 @@ func (o *RadiusOAuth) loadOAuthDiscovery(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	endpoint, ok := discovery["authorizationEndpoint"].(string)
-	if !ok {
+	endpoint := trustedHTTPURL(discovery["authorizationEndpoint"])
+	if endpoint == "" {
 		return "", fmt.Errorf("Invalid Radius OAuth config from %s", o.gateway)
 	}
 	return endpoint, nil
@@ -392,6 +392,10 @@ func (o *RadiusOAuth) requestDeviceAuthorization(ctx context.Context) (radiusDev
 	}
 	if device.DeviceCode == "" || device.UserCode == "" || device.VerificationURI == "" || device.ExpiresIn == 0 {
 		return radiusDeviceAuthorization{}, errors.New("Radius OAuth device authorization response is missing required fields")
+	}
+	device.VerificationURI = trustedHTTPURL(device.VerificationURI)
+	if device.VerificationURI == "" {
+		return radiusDeviceAuthorization{}, errors.New("Untrusted verification_uri in Radius OAuth device authorization response")
 	}
 	return device, nil
 }

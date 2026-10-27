@@ -11,6 +11,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -49,7 +51,9 @@ func record(t *testing.T, conversation Conversation) *recording {
 	t.Helper()
 	watch := must(conversation.Watch(testContext))
 	recorded := &recording{initial: watch.Value(), watch: watch}
-	watch.Start(func(_ context.Context, value ConversationView, ops []durable.Op) error {
+	watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+		value := change.Value
+		ops := change.Ops
 		recorded.mu.Lock()
 		defer recorded.mu.Unlock()
 		recorded.frames = append(recorded.frames, viewFrame{value: value, ops: ops})
@@ -308,8 +312,11 @@ func TestConversationView(t *testing.T) {
 		b := noteEntry(t, root, "b")
 		noteEntry(t, root, "c")
 		recorded := record(t, root)
+		// Each awaited commit of Pi's test lets the delivery microtask finish before the next one; a commit made while a call is in flight is folded into the next call.
 		summary := noteEntry(t, root, "summary", b.Id)
+		drained(harness)
 		noteEntry(t, root, "d")
+		drained(harness)
 		if err := root.Reset(testContext, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -413,7 +420,7 @@ func TestConversationView(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	t.Run("replaces undelivered frames with the newest view after 100 pending frames", func(t *testing.T) {
+	t.Run("folds undelivered commits into one call whose ops reach the newest view", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-view.test.ts:231
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		watch := must(root.Watch(testContext))
@@ -422,7 +429,9 @@ func TestConversationView(t *testing.T) {
 		}
 		var mu sync.Mutex
 		var frames []viewFrame
-		watch.Start(func(_ context.Context, value ConversationView, ops []durable.Op) error {
+		watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+			value := change.Value
+			ops := change.Ops
 			mu.Lock()
 			defer mu.Unlock()
 			frames = append(frames, viewFrame{value: value, ops: ops})
@@ -435,7 +444,9 @@ func TestConversationView(t *testing.T) {
 		if len(got) != 1 {
 			t.Fatalf("%d frames", len(got))
 		}
-		expectSameJSON(t, got[0].ops, []any{[]any{"r", got[0].value}})
+		if len(got[0].ops) == 0 || durable.Op(got[0].ops[0])[0] == "r" {
+			t.Fatalf("ops %v, want folded ops, not a root replacement", got[0].ops)
+		}
 		if len(got[0].value.Entries) != 101 {
 			t.Fatalf("%d entries", len(got[0].value.Entries))
 		}
@@ -553,7 +564,7 @@ func TestConversationView(t *testing.T) {
 			t.Fatal("observers do not share one mount revision")
 		}
 		must(shared.Stop())
-		failing.Start(func(context.Context, ConversationView, []durable.Op) error { return errors.New("listener failed") })
+		failing.Start(func(context.Context, chord.WatchChange[ConversationView]) error { return errors.New("listener failed") })
 		noteEntry(t, root, "one")
 		noteEntry(t, root, "two")
 		drained(harness)
