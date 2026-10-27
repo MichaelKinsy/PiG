@@ -48,7 +48,7 @@ func describeToolResults(results []*agent.ToolResultMessage) string {
 // argument shape the schema would reject is rewritten first. Every SDK and realization must reach its tool's hook before
 // the host validates, which Definition.PrepareArguments plus Definition.Execute (the old row) never exercised.
 func TestToolPrepareArgumentsRunsBeforeValidationAcrossSDKs(t *testing.T) {
-	for _, tc := range allHarnessCases() {
+	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -86,7 +86,7 @@ func startOrderStrict(name string) bool {
 // startOrderStrict) the row requires every call to start exactly once and the results to stay in source order.
 func TestToolBatchStartsInSourceOrderAcrossSDKs(t *testing.T) {
 	const batch, rounds = 16, 12
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -133,7 +133,7 @@ func TestToolBatchStartsInSourceOrderAcrossSDKs(t *testing.T) {
 // SDK; prepared_tool does not. The host's loop owns the decision, so this proves the flag survives each SDK's wire and each realization (isolated,
 // packed and fused): a terminating batch takes no further model request, a mixed batch takes one.
 func TestToolTerminateEndsTheRunOnlyForAnAllTerminatingBatchAcrossSDKs(t *testing.T) {
-	for _, tc := range append(allHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(allHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

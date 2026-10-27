@@ -20,7 +20,7 @@ func TestConformance_ThrownToolErrorMessagesAgreeAcrossSDKs(t *testing.T) {
 	t.Parallel()
 
 	want := map[string]string{"unicode": "é😀 \n x", "empty": "", "long": strings.Repeat("x", 100000)}
-	for _, tc := range append(allHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(allHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

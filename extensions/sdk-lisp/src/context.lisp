@@ -247,10 +247,12 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
                 "selected"))
 
 (defun ctx-confirm (ctx title message &key timeout)
-  "Ask the user to confirm: true only when the user confirmed."
+  "Ask the user to confirm. (values confirmed-p confirmed): CONFIRMED-P is true only when the user confirmed; CONFIRMED is the JSON
+value the client answered with (RPC clients may send any), :false when it sent none."
   (block-for-user ctx)
-  (let ((result (ctx-call-host ctx "ui.confirm" (dialog-args (obj "title" title "message" message) timeout))))
-    (eq (and (hash-table-p result) (jget result "confirmed")) t)))
+  (let* ((result (ctx-call-host ctx "ui.confirm" (dialog-args (obj "title" title "message" message) timeout)))
+         (confirmed (if (hash-table-p result) (multiple-value-bind (v found) (gethash "confirmed" result) (if found v :false)) :false)))
+    (values (eq confirmed t) confirmed)))
 
 (defun ctx-input (ctx title &key placeholder timeout)
   "Ask the user for a line of text. (values text answered-p)."

@@ -80,7 +80,7 @@ func TestSessionBranchReadsFollowAppendsAndLeafMovesAcrossSDKs(t *testing.T) {
 		{"label removed", appendEntries(label("m", "h", "b", "")), "b", "branch=h>m leaf=m entry=b label=none"},
 	}
 
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
