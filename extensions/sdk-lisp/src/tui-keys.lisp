@@ -267,9 +267,12 @@ Return the digit groups (NIL for an absent one) and the final character, or NIL.
     (values key modifiers t)))
 
 (defun tui-matches-key (data key-id)
-  "Whether raw terminal DATA is the key KEY-ID (pi-tui's matchesKey)."
+  "Whether raw terminal DATA is the key KEY-ID (pi-tui's matchesKey): T or NIL."
+  (and (tk-matches-key data key-id) t))
+
+(defun tk-matches-key (data key-id)
   (multiple-value-bind (key names valid) (tk-parse-key-id key-id)
-    (unless valid (return-from tui-matches-key nil))
+    (unless valid (return-from tk-matches-key nil))
     (let* ((modifier (+ (if (member "shift" names :test #'string=) +tk-shift+ 0) (if (member "alt" names :test #'string=) +tk-alt+ 0)
                         (if (member "ctrl" names :test #'string=) +tk-ctrl+ 0) (if (member "super" names :test #'string=) +tk-super+ 0)))
            (kitty *tui-kitty-protocol-active*) (data (tui-simple data))
@@ -284,7 +287,7 @@ Return the digit groups (NIL for an absent one) and the final character, or NIL.
            (and (= modifier 0) (or (is (tstr 27)) (kit +tk-escape+ 0) (other +tk-escape+ 0))))
           ((is-key "space")
            (when (and (not kitty) (or (and (= modifier +tk-ctrl+) (is (tstr 0))) (and (= modifier +tk-alt+) (is (tesc " ")))))
-             (return-from tui-matches-key t))
+             (return-from tk-matches-key t))
            (if (= modifier 0)
                (or (is " ") (kit +tk-space+ 0) (other +tk-space+ 0))
                (or (kit +tk-space+ modifier) (other +tk-space+ modifier))))
@@ -335,9 +338,9 @@ Return the digit groups (NIL for an absent one) and the final character, or NIL.
           ((and (= (length key) 1) (or (char<= #\a (char key 0) #\z) (char<= #\0 (char key 0) #\9) (find (char key 0) *tk-symbol-keys*)))
            (let* ((char (char key 0)) (codepoint (char-code char)) (raw-ctrl (tk-raw-ctrl-char key)) (letter (char<= #\a char #\z)))
              (when (and (= modifier (+ +tk-ctrl+ +tk-alt+)) (not kitty) raw-ctrl (string= data (tui-cat (tstr 27) raw-ctrl)))
-               (return-from tui-matches-key t))
+               (return-from tk-matches-key t))
              (when (and (= modifier +tk-alt+) (not kitty) (string= data (tui-cat (tstr 27) key)))
-               (return-from tui-matches-key t))
+               (return-from tk-matches-key t))
              (cond ((= modifier +tk-ctrl+)
                     (or (and raw-ctrl (string= data raw-ctrl)) (kit codepoint +tk-ctrl+) (tk-matches-printable-modify-other data codepoint +tk-ctrl+)))
                    ((= modifier (+ +tk-shift+ +tk-ctrl+))
