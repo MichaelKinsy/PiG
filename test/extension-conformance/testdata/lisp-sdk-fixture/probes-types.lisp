@@ -175,7 +175,7 @@
                                      (lambda (case)
                                        (if (equal (pig:jget case "fn") "DEFAULT_MAX_AGENT_RETRY_DELAY_MS")
                                            (vector pig:+default-max-agent-retry-delay-ms+)
-                                           (destructuring-bind (function boolean-p) (rest (assoc (pig:jget case "fn") calls :test #'string=))
+                                           (destructuring-bind (function &optional boolean-p) (rest (assoc (pig:jget case "fn") calls :test #'string=))
                                              (let ((value (apply function (coerce (pig:jget case "args") 'list))))
                                                (cond (boolean-p (vector (if value t :false)))
                                                      ((null value) (vector))
