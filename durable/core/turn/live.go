@@ -290,8 +290,7 @@ func SettleSchedulerOutcome(tx *session.Tx, record, outcome *jv.Object) error {
 	if err != nil {
 		return err
 	}
-	switch kind {
-	case KindTool:
+	if kind == KindTool {
 		if slot := ToolSlotOf(live, session.ID(id)); slot != nil {
 			if err := FinishSlot(slot); err != nil {
 				return err
@@ -302,7 +301,7 @@ func SettleSchedulerOutcome(tx *session.Tx, record, outcome *jv.Object) error {
 	// Only an abort handler is faulted for the limit here (the built-in phases end themselves): the task was aborted, and keeps
 	// that meaning. Its run ends aborted, with the limit as detail, and an aborted compaction is no failure.
 	status, _ := outcome.Get("status")
-	cutOff := status == "faulted" && str(objField(objField(outcome, "error"), "detail"), "reason") == "restart_limit"
+	cutOff := status == "faulted" && strIn(objField(objField(outcome, "error"), "detail"), "reason") == "restart_limit"
 	if kind == KindCompaction {
 		if cutOff {
 			return RemoveCompactionStatus(live, session.ID(id))

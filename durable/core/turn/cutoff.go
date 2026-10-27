@@ -41,6 +41,14 @@ func cutOffCount(task *jv.Object) string {
 	return itoa(restarts) + " times in a row"
 }
 
+// strIn is str of an object that may be absent.
+func strIn(o *jv.Object, key string) string {
+	if o == nil {
+		return ""
+	}
+	return str(o, key)
+}
+
 // commitReporting is commitDone for a commit that may end the task for crashes: a terminal failure whose detail names the limit
 // or an interruption is reported as task_interrupted with the task's restart count (scheduler.ts commit).
 func (r *run) commitReporting(change func(tx *session.Tx, current *jv.Object) (*jv.Object, error)) {
@@ -50,10 +58,10 @@ func (r *run) commitReporting(change func(tx *session.Tx, current *jv.Object) (*
 		next, err := change(tx, current)
 		if err == nil && next != nil && str(next, "status") == "terminal" {
 			outcome := objField(next, "outcome")
-			if str(outcome, "status") == "failed" {
+			if strIn(outcome, "status") == "failed" {
 				failure := objField(outcome, "error")
-				if why := str(objField(failure, "detail"), "reason"); why == "restart_limit" || why == "interrupted" {
-					reason, message, restarts = why, str(failure, "message"), num(current, "restarts")
+				if why := strIn(objField(failure, "detail"), "reason"); why == "restart_limit" || why == "interrupted" {
+					reason, message, restarts = why, strIn(failure, "message"), num(current, "restarts")
 				}
 			}
 		}
