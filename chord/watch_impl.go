@@ -174,8 +174,17 @@ func (tracker *pending) awaitEntered(ctx context.Context) error {
 // one: the Durable Session for its watches, the native Durable core driver for its own.
 type DeliveryScheduler struct{ pending *pending }
 
-// defaultDeliveries runs the deliveries of a watch that no host moved to its own scheduler (Watch.On, NativeWatch.On).
-var defaultDeliveries = NewDeliveryScheduler()
+// defaultDeliveries runs the deliveries of a watch that no host moved to its own scheduler (Watch.On, NativeWatch.On). It is built
+// when the first such watch is, not by an initializer on every start.
+func defaultDeliveries() *DeliveryScheduler {
+	defaultDeliveriesOnce.Do(func() { defaultDeliveriesScheduler = NewDeliveryScheduler() })
+	return defaultDeliveriesScheduler
+}
+
+var (
+	defaultDeliveriesOnce      sync.Once
+	defaultDeliveriesScheduler *DeliveryScheduler
+)
 
 // NewDeliveryScheduler returns an idle delivery scheduler.
 func NewDeliveryScheduler() *DeliveryScheduler { return &DeliveryScheduler{pending: newPending()} }
@@ -239,7 +248,7 @@ type watchLifecycle[T, L any] struct {
 }
 
 func (watch *watchLifecycle[T, L]) setup(value T, detach func(), report func(error)) {
-	watch.scheduler = defaultDeliveries.pending
+	watch.scheduler = defaultDeliveries().pending
 	watch.detach = detach
 	watch.report = report
 	watch.value = value
