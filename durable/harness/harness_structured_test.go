@@ -1808,7 +1808,7 @@ func TestToolRounds(t *testing.T) {
 			calls = append(calls, result.ToolCallID)
 		}
 		expectEqualJSON(t, calls, `["c1","c2"]`)
-		expectEqualJSON(t, liveOf(t, harness, root.Id()), `{}`)
+		expectEqualJSON(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": generation, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
 		expectTaskOutcomeKind(t, harness, generation, "aborted")
 		closeHarness(t, harness)
 	})
@@ -1964,7 +1964,10 @@ func TestToolRounds(t *testing.T) {
 		reopenedHarness, reopenedRoot := openChat(t, store, setup)
 		again := must(reopenedHarness.Submission(testContext, submission.Id()))
 		expectSettled(t, must(again.Wait(testContext)), durable.SubmissionUnanswered, "faulted")
-		expectEqualJSON(t, liveOf(t, reopenedHarness, reopenedRoot.Id()), `{}`)
+		failure := liveOf(t, reopenedHarness, reopenedRoot.Id()).RunFailure
+		if failure == nil || failure.Reason != RunFaulted || !slices.Equal(failure.Inputs, []durable.SubmissionId{submission.Id()}) || failure.Detail == nil || !strings.Contains(*failure.Detail, "is not strict JSON") {
+			t.Fatalf("runFailure = %+v, want faulted with the strict JSON failure", failure)
+		}
 		expectKinds(t, allEntries(t, reopenedRoot), "pi.user", "pi.assistant")
 		closeHarness(t, reopenedHarness)
 	})

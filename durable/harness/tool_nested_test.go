@@ -23,6 +23,19 @@ import (
 // call. It is its own pi.tool task owned by the caller; its result goes to the caller, not the transcript.
 
 // expectLiveEmpty checks that the conversation's pi.live document is the empty object, as Pi's toEqual({}).
+// expectOnlyRunFailure fails unless pi.live holds only a runFailure of reason.
+func expectOnlyRunFailure(t *testing.T, harness Harness, conversation durable.ConversationId, reason RunFailureReason) {
+	t.Helper()
+	live, err := harness.SnapshotErased(testContext, LiveDoc, conversation)
+	if err != nil || live.Len() != 1 {
+		t.Fatalf("pi.live = %s, %v, want only a runFailure", mustJSON(t, live), err)
+	}
+	failure, _ := live.Get("runFailure")
+	if object, _ := failure.(durable.JsonObject); object == nil || object.Value("reason") != string(reason) {
+		t.Fatalf("pi.live = %s, want a runFailure of reason %s", mustJSON(t, live), reason)
+	}
+}
+
 func expectLiveEmpty(t *testing.T, harness Harness, conversation durable.ConversationId) {
 	t.Helper()
 	if live, err := harness.SnapshotErased(testContext, LiveDoc, conversation); err != nil || live.Len() != 0 {
@@ -676,7 +689,7 @@ func TestNestedCallsAreAbortedWithTheirCaller(t *testing.T) {
 		!strings.Contains(nestedOutcome(t, tasks[0]), `"outcome":{"status":"aborted","result":{"kind":"model"`) {
 		t.Fatalf("tasks = %v", tasks)
 	}
-	expectLiveEmpty(t, harness, root.Id())
+	expectOnlyRunFailure(t, harness, root.Id(), RunAborted)
 	mustClose(t, harness)
 }
 
