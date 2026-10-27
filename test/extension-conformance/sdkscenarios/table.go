@@ -10,5 +10,5 @@ func All() []Scenario {
 	all = append(all, abortRule()...)
 	all = append(all, registrations()...)
 	all = append(all, contextScenarios()...)
-	return slices.Clone(applyLispGaps(all))
+	return slices.Clone(all)
 }

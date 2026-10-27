@@ -17,7 +17,7 @@ func TestConformance_SetLabelAndShortcut(t *testing.T) {
 	}
 	t.Parallel()
 
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
