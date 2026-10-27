@@ -277,7 +277,7 @@ func TestPackageNpmCommandDefaultsRespectTrust(t *testing.T) {
 		if got := packagemanager.DefaultNpmCommand(sm); !slices.Equal(got, []string{"npm"}) {
 			t.Fatalf("default command = %v", got)
 		}
-		if got, err := packagemanager.GetGitDependencyInstallArgs(sm); err != nil || !slices.Equal(got, []string{"install", "--omit=dev", "--legacy-peer-deps"}) {
+		if got, err := packagemanager.GetGitDependencyInstallArgs(sm); err != nil || !slices.Equal(got, []string{"install", "--omit=dev", "--legacy-peer-deps", "--no-audit", "--no-fund"}) {
 			t.Fatalf("default dependency args = %v, %v", got, err)
 		}
 	}

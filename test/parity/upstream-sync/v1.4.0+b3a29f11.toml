@@ -2342,9 +2342,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/output_guard.go). 
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASymlink", "test:coding/cli/package_commands_test.go#TestNPMInstallArgsMatchUpstreamManagedInstallContract", "test:coding/cli/package_commands_test.go#TestGetGitDependencyInstallArgs", "test:coding/cli/package_npm_commands_upstream_test.go#TestPackageNpmCommandOriginal", "test:coding/cli/package_reconcile_upstream_test.go#TestNpmUpdateVersionReconciliationUpstream", "scenario:test/parity/scenarios/cli-utils/15-package-npm-name-lexical.toml"]
+rationale = "Pi 5f960a0e2 passes realpathSync of the install root to npm as --prefix. Ported in internal/packagemanager (b7d9b2b676, 54e3983c76). Delta at Pi 5fb9a0b1 (#11409): every npm argument list that carries --legacy-peer-deps also carries --no-audit --no-fund, so npm prints no audit or fund advice (npm audit fix would run without --legacy-peer-deps and install pi peers): getNpmInstallArgs, getGitDependencyInstallArgs and npm uninstall; bun and pnpm arguments are unchanged. Ported as internal/packagemanager NpmInstallArgs, GetGitDependencyInstallArgs and the uninstall arguments in package_manager.go, with the flags before --registry and the ignore-scripts arguments; the tests above expect the new argument lists, and the paired scenario 15 requires both CLIs to pass --no-audit and --no-fund."
 
 [[files]]
 path = "packages/coding-agent/src/core/pi-manifest.ts"

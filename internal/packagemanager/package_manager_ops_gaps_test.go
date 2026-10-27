@@ -391,7 +391,7 @@ func TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASy
 		t.Fatal(err)
 	}
 	calls, _ := os.ReadFile(log)
-	want := "install left-pad --prefix " + realRoot + " --legacy-peer-deps\nuninstall left-pad --prefix " + realRoot + " --legacy-peer-deps\n"
+	want := "install left-pad --prefix " + realRoot + " --legacy-peer-deps --no-audit --no-fund\nuninstall left-pad --prefix " + realRoot + " --legacy-peer-deps --no-audit --no-fund\n"
 	if string(calls) != want {
 		t.Fatalf("npm calls = %q, want %q: the symlinked agent directory %s must not reach --prefix", calls, want, agentLink)
 	}

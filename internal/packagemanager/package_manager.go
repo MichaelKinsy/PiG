@@ -326,7 +326,7 @@ func (m *PackageManager) uninstallManagedNPM(source string, local bool) error {
 	} else {
 		args = append(args, "uninstall", ref.NPMName, "--prefix", installRoot)
 		if manager != "pnpm" {
-			args = append(args, "--legacy-peer-deps")
+			args = append(args, "--legacy-peer-deps", "--no-audit", "--no-fund")
 		}
 	}
 	if ref.NPMRegistry != "" {
