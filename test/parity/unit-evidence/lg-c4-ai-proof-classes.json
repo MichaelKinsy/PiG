@@ -1100,8 +1100,7 @@
   "upstream": "packages/durable/src/harness/types.ts",
   "package": "./durable/harness",
   "tests": [
-   "TestAdmitSubmissionMatchesPiOnSeededPrograms",
-   "TestAgentEvents"
+   "TestAdmitSubmissionMatchesPiOnSeededPrograms"
   ],
   "upstream_reference": "packages/durable/src/harness/types.ts",
   "mutation": "durable/harness/tool.go:111: replace `if arguments == nil {` with `if arguments != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
