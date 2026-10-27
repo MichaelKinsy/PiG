@@ -2,7 +2,7 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 head=$(git rev-parse HEAD)
-for rev in "$head~1" "$head"; do
+for rev in "$head~2" "$head~1"; do
   echo "== $rev"
   git checkout -q -f "$rev"
   (cd extensions/sdk-lisp && go generate ./...) >/dev/null 2>&1
