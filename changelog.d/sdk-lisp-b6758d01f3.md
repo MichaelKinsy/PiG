@@ -1,0 +1,3 @@
+### Added
+
+- The Lisp SDK reaches the host calls the other SDKs already have for the session, models, themes and the editor text: `ctx-set-active-tools`, `ctx-get-commands`, `ctx-get-context-usage`, `ctx-get-system-prompt-options`, `ctx-get-model-info`, `ctx-get-model-auth`, `ctx-get-scoped-models`, `ctx-set-model`, `ctx-set-thinking-level`, `ctx-set-label`, `ctx-wait-for-idle`, `ctx-project-trusted-p`, `ctx-get-session-id`, `ctx-get-leaf-id`, the theme and editor-text getters, `registry-find`, `registry-get-provider-auth`, `registry-refresh` and `registry-get-available-of-type`, and `ctx-on-width-change` for terminal resizes. The wire-capability gate now covers Lisp and names every host call it does not serve yet.
