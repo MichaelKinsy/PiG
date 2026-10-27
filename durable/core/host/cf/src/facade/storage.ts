@@ -53,19 +53,27 @@ export abstract class SqlStorage implements Storage {
   async submission(id: number, _context?: unknown) { return (await this.reads()).submission(id) }
   async scanSubmissions(query: Parameters<StorageReads["scanSubmissions"]>[0], limit: number, cursor: Parameters<StorageReads["scanSubmissions"]>[2], _context?: unknown) { return (await this.reads()).scanSubmissions(query, limit, cursor) }
   async submissionByRequest(conversationId: number, requestId: string, _context?: unknown) { return (await this.reads()).submissionByRequest(conversationId, requestId) }
-  /** Commits the Harness's core hands to the Storage's own `commit` first (the gate): the call is a no-op, the core applies them afterwards. */
+  /** Commits the Harness's core hands to the Storage's own `commit` first (the gate): the call adopts at once, the core applies them in that call. */
   gating = 0
   /**
-   * Pi's `Storage.commit`. Under the Storage gate (PROTOCOL.md) it is a no-op the overriding subclasses call through `super.commit`: the
-   * core applies the commit itself once the call resolves. Called directly (a test seeding a store before a Harness opens it) it
-   * applies the writes through the core in storage mode (storage-direct.ts).
+   * Pi's `Storage.commit(writes, adopt, context)`: `adopt(seq)` is called once, synchronously, when the batch is durable, and the call then
+   * resolves with `seq`. Under the Storage gate (PROTOCOL.md) the core applies the commit itself inside `adopt`, so the batch is made durable
+   * there and this call adopts the sequence it consumes; the overriding subclasses call through `super.commit`. Called directly (a test
+   * seeding a store before a Harness opens it) it applies the writes through the core in storage mode (storage-direct.ts).
    */
-  async commit(writes: readonly unknown[], _context?: unknown): Promise<number> {
+  async commit(writes: readonly unknown[], adopt: (seq: number) => void, _context?: unknown): Promise<number> {
     const store = await this.open()
-    if (this.gating === 0) return (await import("./storage-direct.ts")).directCommit(store, writes)
+    if (this.gating === 0) {
+      const seq = await (await import("./storage-direct.ts")).directCommit(store, writes)
+      adopt(seq)
+      return seq
+    }
     // The commit being gated takes the store's next sequence number (CONTRACT section 3.1: a commit's seq is the next_seq it consumes);
     // a store the core has not initialized yet (an open that failed first) is at its first.
-    try { return Number(store.all("SELECT next_seq FROM durable_metadata", [])[0]?.[0] ?? 1) } catch { return 1 }
+    let seq = 1
+    try { seq = Number(store.all("SELECT next_seq FROM durable_metadata", [])[0]?.[0] ?? 1) } catch { /* the core has not created the schema yet */ }
+    adopt(seq)
+    return seq
   }
   private minted = 0
   /** Pi's `Storage.mintId`: a fresh candidate from the Session-global ID namespace (above every ID the store has claimed). */

@@ -57,6 +57,7 @@ func (h *handler) startScheduler() error {
 		Session: h.sess,
 		Started: func() { h.job = jobStats{mintStart: h.sess.NextID()}; h.sess.TakeTicks() },
 		Hold:    h.holdJob,
+		Adopted: h.adoptedRun,
 		Tail: func(release func()) bool {
 			if h.loop.Answered {
 				return h.holdFor(2, release)

@@ -172,7 +172,7 @@ export class CoreClient {
       const id = this.nextRequest++
       const bytes = apiBytes(id, { op, ...args })
       // Every api op the host sends is a read, a wait, or a registration the new core takes again; the storage-mode writes run on hosts without a renewal.
-      this.requests.set(id, { waits: op.startsWith("waitFor"), sent: { kind: EVENT.api, bytes, idempotent: !op.startsWith("storage."), bound: args.invocation !== undefined }, resolve: value => { settled = true; resolve(revive ? revive(value as T) : value as T) }, reject: error => {
+      this.requests.set(id, { waits: op.startsWith("waitFor"), sent: { kind: EVENT.api, bytes, idempotent: !op.startsWith("storage.") && op !== "adopt", bound: args.invocation !== undefined }, resolve: value => { settled = true; resolve(revive ? revive(value as T) : value as T) }, reject: error => {
         // A rejection the caller answers by repeating the request (a read that needs the definition's migration) is settled by the repeat's answer, so a success spends no pass of its own.
         let again: Record<string, unknown> | undefined
         try { again = retry?.(error) } catch (e) { settled = true; return reject(e as Error) }

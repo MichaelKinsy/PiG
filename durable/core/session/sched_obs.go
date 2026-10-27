@@ -89,7 +89,13 @@ func (s *Scheduler) observe(pub *Publication) {
 		if getBool(rec, "abortRequested") && (!hadPrev || !getBool(prev, "abortRequested")) {
 			s.cascadePending = true
 			if inv := s.invocations[id]; inv != nil && !inv.abortMode {
-				inv.signal.Abort()
+				// scheduler.ts #observe: `queueMicrotask(() => invocation.controller.abort())`, queued inside the Storage's adopt behind the
+				// host listeners' dispatch, so the run is signalled after they saw the mark and outside the adoption.
+				if s.env.After != nil {
+					s.env.After(1, inv.signal.Abort)
+				} else {
+					inv.signal.Abort()
+				}
 			}
 		}
 		// A request replacing a restart mark upgrades the marks of the work below.

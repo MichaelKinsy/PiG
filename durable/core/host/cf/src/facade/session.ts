@@ -30,6 +30,8 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
   }
   // Listeners subscribed before the core is open attach when it opens; the returned function removes them either way.
   const later = <L>(subscribe: (h: Harness, listener: L) => () => void) => (listener: L) => {
+    // An open Session takes the listener at once, as Pi's does: a commit adopted in this very tick (a Storage's step after `adopt`) sees it.
+    if (harness !== undefined) return subscribe(harness, listener)
     let off: (() => void) | undefined
     let cancelled = false
     void open().then(h => { if (!cancelled) off = subscribe(h, listener) }, () => {})

@@ -32,6 +32,7 @@ import { TimeoutTimers } from "../timers.ts"
 import type { TimerDriver } from "../host.ts"
 import { errorMessage, reviveError, SessionFailed, StorageRequestError } from "../errors.ts"
 import { contained } from "./session/session.ts"
+import { Transaction } from "./session/transaction.ts"
 import { structuredOutputError } from "./structured.ts"
 import { validateToolArguments } from "@earendil-works/pi-ai/utils/validation"
 import { type ClientIdentity, mergeClientIdentity, PI_ATTRIBUTION } from "@earendil-works/pi-ai/utils/identity"
@@ -61,6 +62,7 @@ function withHarnessIdentity(models: ModelsLike, identity: ClientIdentity): Mode
 }
 
 export const ROOT_CONVERSATION_ID = 1
+const SETTLED = Promise.resolve()
 const decoder = new TextDecoder()
 
 /** A compiled core module, or any object that serves ABI sessions: the Wasm core, the TypeScript control, a native binding. */
@@ -309,7 +311,31 @@ export class Harness {
             if (gated) gated.gating++
             for (const write of payload.writes) substituteWrite(client, write as never)
             admitWrites(client, payload.writes)
-            try { await (storage as unknown as { commit(writes: unknown[], context: Context): Promise<unknown> }).commit(payload.writes, BACKGROUND_CONTEXT) } catch (error) { harness.storageFailed(error); throw error } finally { if (gated) gated.gating-- }
+            // types.ts Storage.commit(writes, adopt, context): the Storage calls adopt(seq) once, synchronously, when the batch is durable; the core applies and
+            // publishes the commit inside that call (gate.go gateAdopt). A failing adoption never reaches the Storage, and the Session fails with its error.
+            const tx = new Transaction(seq => { void client.api("adopt", { seq }) })
+            harness.inStorage++
+            let adoption: { error: unknown } | undefined
+            const adopt = (seq: number): void => { try { tx.adopt(seq) } catch (error) { adoption = { error } } }
+            try {
+              await (storage as unknown as { commit(writes: unknown[], adopt: (seq: number) => void, context: Context): Promise<unknown> }).commit(payload.writes, adopt, BACKGROUND_CONTEXT)
+            } catch (error) {
+              // A rejection after adoption leaves nothing staged to discard: the commit, durable, stays published.
+              if (adoption === undefined && !tx.adopted) tx.discard()
+              // session.ts #runCommit: an own observer's error that would have failed the Session is still reported.
+              const observed = harness.takeAdoptedFailure()
+              if (observed !== undefined) harness.report(observed.error)
+              harness.storageFailed(error)
+              throw error
+            } finally { harness.inStorage--; if (gated) gated.gating-- }
+            if (adoption !== undefined) { harness.storageFailed(adoption.error); throw adoption.error }
+            if (!tx.adopted) {
+              const error = new Error("Storage committed without adopting the batch")
+              harness.storageFailed(error)
+              throw error
+            }
+            const observed = harness.takeAdoptedFailure()
+            if (observed !== undefined) harness.failedByListener(observed.error)
             return null
           },
           // A task runtime's context read reaches a Storage that overrides the Pi reads it makes (ctxread.go): one read of the bounds, and the range scan (context.ts scanRange).
@@ -470,8 +496,15 @@ export class Harness {
     if (body.changes !== undefined) {
       const publication = { seq: body.seq, changes: body.changes }
       // session.ts #publish: the Session's own components run first, and a throw leaves their state behind storage, so it fails the Session; a host listener's throw is reported.
-      for (const l of [...this.internalCommitListeners]) { try { l(publication, BACKGROUND_CONTEXT) } catch (error) { this.failedByListener(error) } }
-      for (const l of [...this.commitListeners]) contained(() => l(publication, BACKGROUND_CONTEXT), error => this.report(error))
+      let observerFailure: { error: unknown } | undefined
+      for (const l of [...this.internalCommitListeners]) { try { l(publication, BACKGROUND_CONTEXT) } catch (error) { observerFailure ??= { error } } }
+      // The commit is durable: a failing observer neither fails the commit nor skips the others, and the Session fails once Storage.commit() returned.
+      if (observerFailure !== undefined) {
+        if (this.inStorage > 0) this.adoptedFailure ??= observerFailure
+        else { const failure = observerFailure; void SETTLED.then(() => this.failedByListener(failure.error)) }
+      }
+      // session.ts #notifyHosts: the host's listeners are called one microtask after the adoption, outside it and before the waits the commit resolves; the ones registered when it runs, and no dispatch for a commit adopted with none.
+      if (this.commitListeners.size > 0) void SETTLED.then(() => { for (const l of [...this.commitListeners]) contained(() => l(publication, BACKGROUND_CONTEXT), error => this.report(error)) })
     }
     for (const w of [...this.waiters]) if (w.match(body)) { this.waiters.delete(w); w.resolve() }
     // submissions.ts #observe: a settled submission resolves the waits registered for it.
@@ -494,6 +527,7 @@ export class Harness {
     this.submissionWaiters.rejectAll(failed)
     this.client.failWaits(failed)
     // session.ts fail: close listeners run at the failure, so a watch ends session_failed before its invocation's signal aborts it.
+    this.runCloseListeners()
     this.watches.closeSession(this.failure)
     // The Session closes once the core has taken the failure (its report notice): sealing it first would answer what is in
     // flight with "Harness is closed" where Pi answers SessionFailed. A Session has no scheduler to report, so it closes after the failing step.
@@ -603,7 +637,7 @@ export class Harness {
     this.shut = true
     // Pi seals admission synchronously in close() (session.ts:352-366: close listeners, scheduler #seal); the terminal close event follows once caller transactions end.
     this.host.seal()
-    for (const l of [...this.closeListeners]) contained(l, error => this.report(error))
+    this.runCloseListeners()
     this.watches.closeSession(this.failure)
     for (const w of [...this.waiters]) w.reject(this.failed ?? new Error("Harness is closed"))
     this.waiters.clear()
@@ -627,11 +661,22 @@ export class Harness {
       this.end.resolve(this.failure === undefined ? { reason: "closed" } : { reason: "failed", error: this.failure.error })
     }
   }
+  /** session.ts: the close listeners run once, at the first of a failure and the close. */
+  private runCloseListeners() {
+    const listeners = [...this.closeListeners]
+    this.closeListeners.clear()
+    for (const l of listeners) contained(l, error => this.report(error))
+  }
+  takeAdoptedFailure() { const failure = this.adoptedFailure; this.adoptedFailure = undefined; return failure }
   /** session.ts report: a failure or a listener's error goes to HarnessOptions.onReport, which never fails what ran it. */
   report(error: unknown) { contained(() => this.options.onReport?.(error as Error), () => {}) }
 
+  /** Storage.commit() calls the core's gate has open, and the first error one of the Session's own observers threw for the commit they adopted. */
+  private inStorage = 0
+  private adoptedFailure?: { error: unknown }
+
   /** A Session component's listener threw: the Session fails, reports the error once and closes. */
-  private failedByListener(error: unknown) {
+  failedByListener(error: unknown) {
     const first = this.failure === undefined
     this.storageFailed(error)
     if (!first) return
