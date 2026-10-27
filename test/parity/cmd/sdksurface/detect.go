@@ -708,7 +708,7 @@ func rawStringEnd(b []byte, i int) int {
 // ── Lisp ─────────────────────────────────────────────────────────────────────
 
 // lispExportRE reads one exported symbol of the pig package: #:name inside the defpackage's (:export ...) clause.
-var lispExportRE = regexp.MustCompile(`#:([a-z0-9][a-z0-9*+-]*)`)
+var lispExportRE = regexp.MustCompile(`#:([a-z0-9*+][a-z0-9*+-]*)`)
 
 // lispConstructorRE finds a defstruct's keyword constructor: its lambda list starts at the end of the match.
 var lispConstructorRE = regexp.MustCompile(`\(:constructor\s+([a-z0-9][a-z0-9*+-]*)\s+\(`)
