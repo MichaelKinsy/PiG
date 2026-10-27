@@ -58,12 +58,7 @@ func makeSubprocessLispHarness(t *testing.T) *harness {
 	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
 }
 
-// lispPackedHarnessCase is the Lisp SDK's packed case of the SDK harness: the fixture in one shared cell beside a peer extension.
-func lispPackedHarnessCase() harnessCase {
-	return harnessCase{name: "subprocess-lisp-packed", extName: lispFixtureName, make: func(t *testing.T) *harness { return makePackedUIHarness(t, "lisp") }}
-}
-
-// lispHarnessCases are both placements of the Lisp SDK, for a test that loops over append(sdkHarnessCases(), packedSDKHarnessCases()...).
+// lispHarnessCases are both placements of the Lisp SDK (lispPackedHarnessCase is in session_graph_lisp_test.go), for a test that loops over append(sdkHarnessCases(), packedSDKHarnessCases()...).
 func lispHarnessCases() []harnessCase {
 	return []harnessCase{lispHarnessCase(), lispPackedHarnessCase()}
 }

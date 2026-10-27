@@ -11,6 +11,8 @@
         (if (stringp message) message "host call failed"))
       "host call failed"))
 
+(defvar *call-settle-slot* nil "The tool-order slot HOST-CALL gives the call it makes: the reader settles it when it reads the answer.")
+
 (defvar *after-call-sent* nil
   "When a function, HOST-CALL calls it once the call's frame is written, before it waits (the caller's order point).")
 
@@ -32,6 +34,7 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
               (t (setf request-id (request-id parent)))))
           (setf id (format nil "c~D" (incf (extension-call-counter ext)))
                 slot (make-call-slot method request-id))
+          (setf (call-slot-settle slot) *call-settle-slot*)
           (setf (gethash id (extension-pending ext)) slot))
         (let ((call (obj "method" method "args" args)))
           (when (plusp (length request-id)) (setf (gethash "parent_request_id" call) request-id))
@@ -71,7 +74,10 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
   (let ((slot (sb-thread:with-mutex ((extension-state-lock ext))
                 (let ((slot (gethash (jget env "id" "") (extension-pending ext))))
                   slot))))
-    (when slot (finish-slot slot (or (jget env "call_result") (obj))))))
+    ;; Pi resumes the handlers whose dialogs were answered in the order the answers arrived: this reader reads them in that order
+    (when slot
+      (when (call-slot-settle slot) (settle-slot-settle (call-slot-settle slot)))
+      (finish-slot slot (or (jget env "call_result") (obj))))))
 
 (defun notify-host (ext method &optional args)
   (send-frame (extension-conn ext) (obj "type" "notify" "notify" (obj "method" method "args" args))))
@@ -117,6 +123,7 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
   tool-context-p
   tool-args
   tool-index
+  (tool-start nil)              ; the request's place in its batch's orders (tool-order.lisp)
   (system-prompt nil))
 
 (defun ctx-cancel (ctx)
@@ -151,8 +158,14 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
                        (not (and rpc (member method *rpc-synchronous-ui-effects* :test #'string=))))))
     (when (and reports (not (member method *dialog-methods* :test #'string=)))
       (send-request-state ext request-id "blocked" "host_call" (ctx-request ctx)))
-    (unwind-protect (host-call ext method args (ctx-request ctx) request-id)
-      (when reports (send-request-state ext request-id "progress" nil (ctx-request ctx))))))
+    (let ((start (ctx-tool-start ctx)))
+      (unwind-protect
+           (progn
+             (when start (tool-start-before-call start))
+             (let ((*after-call-sent* (and start (lambda () (tool-start-after-call start))))
+                   (*call-settle-slot* (and start (member method *dialog-methods* :test #'string=) (tool-start-response-slot start))))
+               (host-call ext method args (ctx-request ctx) request-id)))
+        (when reports (send-request-state ext request-id "progress" nil (ctx-request ctx)))))))
 
 (defun block-for-user (ctx)
   (when (plusp (length (ctx-request-id ctx)))
@@ -273,7 +286,7 @@ value the client answered with (RPC clients may send any), :false when it sent n
 (defstruct (exec-result (:constructor make-exec-result (stdout stderr exit-code killed)))
   stdout stderr exit-code killed)
 
-(declaim (ftype function core-exec-with-signal))
+(declaim (ftype function core-exec-with-signal tool-start-before-call tool-start-after-call tool-start-response-slot settle-slot-settle))
 
 (defun ctx-exec (ctx command &key args timeout cwd signal)
   "Run COMMAND through the host's executor. TIMEOUT is in milliseconds; a command it kills reports KILLED.

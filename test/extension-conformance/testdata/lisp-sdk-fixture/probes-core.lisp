@@ -337,7 +337,7 @@
                                          (cons "C" (lambda () (if (pig:ctx-confirm ctx "C" "message") "true" "false")))
                                          (cons "I" (lambda () (multiple-value-call #'chosen (pig:ctx-input ctx "I" :placeholder "placeholder"))))
                                          (cons "E" (lambda () (multiple-value-call #'chosen (pig:ctx-editor ctx "E" :prefill "prefill"))))))
-                          (names (cond ((equal scenario "pair") '("A" "B")) ((equal scenario "mix") '("S" "C" "I" "E")) (t (error "unknown scenario ~A" scenario))))
+                          (names (if (equal scenario "mix") '("S" "C" "I" "E") '("A" "B")))
                           (failures '()) (threads '()))
                      (dolist (name names)
                        (let ((name name))
@@ -347,7 +347,8 @@
                                     (error (e) (push (format nil "~A: ~A" name e) failures)))))
                                threads)))
                      (dolist (thread (nreverse threads)) (sb-thread:join-thread thread :default nil))
-                     (when failures (error "~A" (core-join (reverse failures) "; "))))))))
+                     (when failures (error "~A" (car (last failures))))
+                     (core-info ctx "stack done"))))))
 
 (def-fixture "core-ui-state" (ext)
   (pig:command ext "ui-state-barrier" "Read UI state after a dialog"
