@@ -39313,13 +39313,49 @@
     },
     {
       "id": "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6faf4e9bd346cc30f976ae0f7e762f0d633f946d351228897180c4094f000d49"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6faf4e9bd346cc30f976ae0f7e762f0d633f946d351228897180c4094f000d49",
+      "rationale": "isStrictToolLimitErrorMessage: Go isStrictToolLimitErrorMessage has the upstream parameters and result (signatures reviewed); callers and tests attributed by go/types.",
+      "pigTargets": [
+        "ai/constrained_sampling.go#isStrictToolLimitErrorMessage"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:ai/anthropic.go#anthropicStrictToolLimitsExceeded",
+        "call:ai/providers/bedrock/bedrock.go#bedrockStrictToolLimitMessage"
+      ],
+      "evidence": [
+        "test:ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage",
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream"
+      ]
     },
     {
       "id": "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b350c14870bf68cc304b6ce2cf655767817bf780f3547c5b8a0e33fe26b51167"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b350c14870bf68cc304b6ce2cf655767817bf780f3547c5b8a0e33fe26b51167",
+      "rationale": "isStrictToolLimitErrorMessage::call:0: Go isStrictToolLimitErrorMessage has the upstream parameters and result (signatures reviewed); callers and tests attributed by go/types.",
+      "pigTargets": [
+        "ai/constrained_sampling.go#isStrictToolLimitErrorMessage"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:ai/anthropic.go#anthropicStrictToolLimitsExceeded",
+        "call:ai/providers/bedrock/bedrock.go#bedrockStrictToolLimitMessage"
+      ],
+      "evidence": [
+        "test:ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage",
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream"
+      ]
     },
     {
       "id": "pkg:ai/api/constrained-sampling#makeStrictJsonSchema",
@@ -39367,13 +39403,51 @@
     },
     {
       "id": "pkg:ai/api/constrained-sampling#prefersJsonSchemaStrictSampling",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:10ba61f72d8630c0ceb5aef181d13a95e44da69de7ee222a39ae3084d387b5c8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:10ba61f72d8630c0ceb5aef181d13a95e44da69de7ee222a39ae3084d387b5c8",
+      "rationale": "prefersJsonSchemaStrictSampling: Go prefersJSONSchemaStrictSampling has the upstream parameters and result (signatures reviewed); callers and tests attributed by go/types.",
+      "pigTargets": [
+        "ai/constrained_sampling.go#prefersJSONSchemaStrictSampling"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:ai/anthropic.go#anthConvertTools",
+        "call:ai/anthropic.go#anthropicMarksPreferredStrict",
+        "call:ai/providers/bedrock/bedrock.go#convertBedrockTools"
+      ],
+      "evidence": [
+        "test:ai/strict_tool_limit_upstream_test.go#TestPrefersJSONSchemaStrictSampling",
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockConvertToolsPreferredStrictTools"
+      ]
     },
     {
       "id": "pkg:ai/api/constrained-sampling#prefersJsonSchemaStrictSampling::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f54fa9e7489bf04f96fcbb4d7669942b4a37a5d946a03ab41c3185bb6a466e25"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f54fa9e7489bf04f96fcbb4d7669942b4a37a5d946a03ab41c3185bb6a466e25",
+      "rationale": "prefersJsonSchemaStrictSampling::call:0: Go prefersJSONSchemaStrictSampling has the upstream parameters and result (signatures reviewed); callers and tests attributed by go/types.",
+      "pigTargets": [
+        "ai/constrained_sampling.go#prefersJSONSchemaStrictSampling"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:ai/anthropic.go#anthConvertTools",
+        "call:ai/anthropic.go#anthropicMarksPreferredStrict",
+        "call:ai/providers/bedrock/bedrock.go#convertBedrockTools"
+      ],
+      "evidence": [
+        "test:ai/strict_tool_limit_upstream_test.go#TestPrefersJSONSchemaStrictSampling",
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockConvertToolsPreferredStrictTools"
+      ]
     },
     {
       "id": "pkg:ai/api/constrained-sampling#resolveGrammarConstrainedSampling",
