@@ -36,34 +36,54 @@
         (ignore-errors (conn-close (cdr entry)))
         t))))
 
-(defun helper-loading-call (path method args)
+(defvar *helper-owners* '() "(path . ext): the extension whose factory-time bus calls dialled PATH, which owns the listeners the host dispatches on it.")
+(defvar *helper-results* (make-hash-table :test 'equal) "id -> call_result of a factory-time call whose answer arrived while an inner call waited.")
+
+(declaim (ftype function event-dispatch event-release))
+
+(defun helper-answer-request (owner env)
+  "Answer a request of the host on a connection whose extension has not registered: its listener dispatches run, anything else is refused."
+  (let* ((request (or (jget env "request") (obj))) (method (jget request "method" "")))
+    (obj "result" :null
+         "error" (cond ((and owner (equal method "events.dispatch"))
+                        ;; a listener that runs while the factory loads has no request, hence no context
+                        (handler-case (progn (event-dispatch owner nil (jget request "args")) :null)
+                          (error (e) (obj "message" (format nil "~A" e)))))
+                       (t (obj "message" (format nil "~A: the extension has not registered with the host yet" method)))))))
+
+(defun helper-loading-call (path method args &optional owner)
+  "A host call made while a factory runs, over the connection its first such call dials and SERVE later takes. It never rides a running
+extension's connection: the host attributes a pi.events listener to the extension of the connection it arrives on. While it waits it answers pings
+and the events.dispatch requests of OWNER's listeners; the wait is re-entrant, so a listener may make a bus call of its own."
   (unless path
     (error 'host-call-error :message "not connected to the host: PIG_EXT_SOCKET is not set, so this extension was not launched by pig"))
   (sb-thread:with-recursive-lock (*helper-lock*)
+    (when owner (setf *helper-owners* (acons path owner (remove path *helper-owners* :key #'car :test #'string=))))
     (let ((conn (let ((entry (assoc path *helper-dialled* :test #'string=)))
                   (if entry
                       (cdr entry)
                       (let ((new (connect-unix path))) (push (cons path new) *helper-dialled*) new))))
           (id (format nil "h~D" (incf *helper-sequence*))))
       (send-frame conn (obj "type" "call" "id" id "call" (obj "method" method "args" args)))
-      (loop
-        (let ((env (read-frame conn)))
-          (when (eq env :eof) (error 'host-call-error :message "the host closed the connection"))
-          (let ((type (jget env "type")))
-            (cond
-              ((and (equal type "call_result") (equal (jget env "id") id))
-               (let* ((result (or (jget env "call_result") (obj))) (err (jget result "error")))
-                 (when (hash-table-p err)
-                   (error 'host-call-error :message (frame-error-message err)
-                                           :code (let ((code (jget err "code"))) (and (stringp code) code))))
-                 (let ((value (jget result "result"))) (return (if (eq value :null) nil value)))))
-              ((equal type "ping")
-               (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
-              ((equal type "request")
-               (send-frame conn (obj "type" "response" "id" (jget env "id")
-                                     "response" (obj "result" :null
-                                                     "error" (obj "message" (format nil "~A: the extension has not registered with the host yet"
-                                                                                    (jget (or (jget env "request") (obj)) "method" ""))))))))))))))
+      (loop until (nth-value 1 (gethash id *helper-results*))
+            do (let ((env (read-frame conn)))
+                 (when (eq env :eof) (error 'host-call-error :message "the host closed the connection"))
+                 (let ((type (jget env "type")))
+                   (cond
+                     ((equal type "call_result") (setf (gethash (jget env "id") *helper-results*) (or (jget env "call_result") (obj))))
+                     ((equal type "ping")
+                      (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
+                     ((equal type "request")
+                      (send-frame conn (obj "type" "response" "id" (jget env "id")
+                                            "response" (helper-answer-request (cdr (assoc path *helper-owners* :test #'string=)) env))))
+                     ((and (equal type "notify") (equal (jref env "notify" "method") "events.release"))
+                      (let ((owner (cdr (assoc path *helper-owners* :test #'string=))))
+                        (when owner (event-release owner (jref env "notify" "args" "handlerId")))))))))
+      (let* ((result (prog1 (gethash id *helper-results*) (remhash id *helper-results*))) (err (jget result "error")))
+        (when (hash-table-p err)
+          (error 'host-call-error :message (frame-error-message err)
+                                  :code (let ((code (jget err "code"))) (and (stringp code) code))))
+        (let ((value (jget result "result"))) (if (eq value :null) nil value))))))
 
 (defun running-extension ()
   "The running extension of the socket PIG_EXT_SOCKET names (with none named, the first that runs); an error when none runs."
