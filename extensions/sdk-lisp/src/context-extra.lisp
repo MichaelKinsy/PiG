@@ -402,24 +402,30 @@ Only available while a tool runs."
 
 (defun ctx-get-entries (ctx)
   "Every entry of the session log (a vector), from the local mirror the host keeps current."
-  (core-ensure-session-log ctx)
-  (with-core-state (cs ctx) (coerce (cs-entries cs) 'simple-vector)))
+  (if (ctx-replacement ctx)
+      ;; a replacement context reads the Session that requested the replacement
+      (or (session-get-entries (ctx-session-manager ctx)) (vector))
+      (progn (core-ensure-session-log ctx)
+             (with-core-state (cs ctx) (coerce (cs-entries cs) 'simple-vector)))))
 
 (defun ctx-get-branch (ctx)
   "The entries from the root to the current leaf (a vector); the whole log when the session has no leaf."
-  (core-ensure-session-log ctx)
-  (with-core-state (cs ctx)
-    (let ((entries (cs-entries cs)) (index (cs-index cs)))
-      (if (or (zerop (length (cs-leaf-id cs))) (zerop (hash-table-count index)))
-          (coerce entries 'simple-vector)
-          (let ((path '()) (seen (make-hash-table :test 'equal)) (current (cs-leaf-id cs)))
-            (loop while (and (plusp (length current)) (not (gethash current seen)))
-                  do (setf (gethash current seen) t)
-                     (let ((meta (gethash current index)))
-                       (unless meta (return))
-                       (push (aref entries (car meta)) path)
-                       (setf current (cdr meta))))
-            (coerce path 'simple-vector))))))
+  (if (ctx-replacement ctx)
+      (or (session-get-branch (ctx-session-manager ctx)) (vector))
+      (progn
+        (core-ensure-session-log ctx)
+        (with-core-state (cs ctx)
+          (let ((entries (cs-entries cs)) (index (cs-index cs)))
+            (if (or (zerop (length (cs-leaf-id cs))) (zerop (hash-table-count index)))
+                (coerce entries 'simple-vector)
+                (let ((path '()) (seen (make-hash-table :test 'equal)) (current (cs-leaf-id cs)))
+                  (loop while (and (plusp (length current)) (not (gethash current seen)))
+                        do (setf (gethash current seen) t)
+                           (let ((meta (gethash current index)))
+                             (unless meta (return))
+                             (push (aref entries (car meta)) path)
+                             (setf current (cdr meta))))
+                  (coerce path 'simple-vector))))))))
 
 ;;; ---------------------------------------------------------------- tool definitions
 
