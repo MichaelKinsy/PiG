@@ -12,8 +12,8 @@ func TestModelResolverDefaultsUpstream(t *testing.T) {
 		name string
 		want map[string]string
 	}{
-		// .upstream/v0.99.1/packages/coding-agent/test/model-resolver.test.ts:709
-		{"openai defaults track current models", map[string]string{"openai": "gpt-5.5", "openai-codex": "gpt-6.1-sol"}},
+		// .upstream/current/packages/coding-agent/test/model-resolver.test.ts:700
+		{"openai defaults track current models", map[string]string{"openai": "gpt-6.1-sol", "openai-codex": "gpt-6.1-sol"}},
 		// .upstream/v0.99.1/packages/coding-agent/test/model-resolver.test.ts:714
 		{"zai, minimax, cerebras, and ant-ling defaults track current models", map[string]string{"zai": "glm-5.3", "zai-coding-cn": "glm-5.3", "minimax": "MiniMax-M2.7", "minimax-cn": "MiniMax-M2.7", "cerebras": "gpt-oss-120b", "ant-ling": "Ring-2.6-1T"}},
 		// .upstream/v0.99.1/packages/coding-agent/test/model-resolver.test.ts:738

@@ -2090,9 +2090,9 @@ rationale = "ported as coding/client_identity.go (getClientIdentity), set per re
 [[files]]
 path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/compaction/03-branch-summarize-via-tree.toml", "scenario:test/parity/scenarios/compaction/09-branch-summary-provider-responses.toml", "scenario:test/parity/scenarios/tree/13-tree-navigation-request-flow.toml", "test:internal/codingagent/compaction/branch_summarization_test.go#TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels", "test:coding/session_branch_summary_upstream_test.go#TestNavigateTreeSummaryPassesTheSessionThinkingLevel"]
+rationale = "PORT_MAP row is ✅ ported (internal/codingagent/compaction/branch_summarization.go (internal/codingagent/compaction/branch_summarization_test.go; coding/session_branch_summary_upstream_test.go verifies current Agent stream selection, request auth, usage and cancellation through NavigateTree), ai/types.go). coverage.md reports 3 behavioral verifications for this file (3 scenarios whose covers list it, 0 named unit tests); the first of each are cited. Delta at Pi 269afc66 (#11444): GenerateBranchSummaryOptions gains thinkingLevel, and generateBranchSummary sets the request's reasoning when the model supports reasoning and the level is not off (the rule createSummarizationOptions applies to compaction), so a reasoning model on OpenAI Responses no longer gets effort \"none\" for a branch summary. Ported as GenerateBranchSummaryOptions.ThinkingLevel, which GenerateBranchSummary hands to the shared createSummarizationOptions, and Session.NavigateTree passes the summary request's thinking level (the session's, or the router's for a virtual model) as agent-session.ts does through _getSummarizationRequestAuth. TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels ports the three cases (reasoning model at xhigh, at off, and a model without reasoning) and TestNavigateTreeSummaryPassesTheSessionThinkingLevel checks the request a /tree summary sends."
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/compaction.ts"
@@ -2307,9 +2307,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/model_registry.go 
 [[files]]
 path = "packages/coding-agent/src/core/model-resolver.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/model_reference_upstream_test.go#TestResolveModelReferenceMatchesUpstream", "test:internal/codingagent/model_resolver_oracle_test.go#TestModelResolverMatchesPi", "test:coding/cli/model_resolver_defaults_upstream_test.go#TestModelResolverDefaultsUpstream", "test:coding/cli/model_test.go#TestDefaultModelPerProviderMatchesPinnedUpstream", "test:internal/codingagent/interactive_post_login_test.go#TestAPIKeyLoginSelectsProviderDefault", "test:coding/cli/startup_model_test.go#TestSelectStartupModelUsesStoredLoginProvider", "scenario:test/parity/scenarios/oauth/11-post-login-api-key-model.toml"]
+rationale = "Pi 984cf6643: splitProviderPrefix finds the slash in the lowercased text and cuts the original text there. Ported in internal/codingagent/model_pattern.go (7744a0bd9a); the oracle test runs Pi's resolver on the same models and terms. Delta at Pi f049787d (#11442): defaultModelPerProvider.openai is gpt-6.1-sol, not gpt-5.5, so the model picked after /login with no model set, the startup fallback and --provider openai select it. Ported as the openai entry of DefaultModelPerProviderOrder (internal/codingagent/default_models.go), the one table startup and login share; TestModelResolverDefaultsUpstream asserts the entry, TestDefaultModelPerProviderMatchesPinnedUpstream compares the whole table with the pinned Pi source, and the login, startup and findInitialModel tests plus oauth scenario 11 (paired with Pi) selects the new default, and scenario 13 (paired with Pi) reports it in the login status."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-runtime.ts"
@@ -2342,9 +2342,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/output_guard.go). 
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASymlink", "test:coding/cli/package_commands_test.go#TestNPMInstallArgsMatchUpstreamManagedInstallContract", "test:coding/cli/package_commands_test.go#TestGetGitDependencyInstallArgs", "test:coding/cli/package_npm_commands_upstream_test.go#TestPackageNpmCommandOriginal", "test:coding/cli/package_reconcile_upstream_test.go#TestNpmUpdateVersionReconciliationUpstream", "scenario:test/parity/scenarios/cli-utils/15-package-npm-name-lexical.toml"]
+rationale = "Pi 5f960a0e2 passes realpathSync of the install root to npm as --prefix. Ported in internal/packagemanager (b7d9b2b676, 54e3983c76). Delta at Pi 5fb9a0b1 (#11409): every npm argument list that carries --legacy-peer-deps also carries --no-audit --no-fund, so npm prints no audit or fund advice (npm audit fix would run without --legacy-peer-deps and install pi peers): getNpmInstallArgs, getGitDependencyInstallArgs and npm uninstall; bun and pnpm arguments are unchanged. Ported as internal/packagemanager NpmInstallArgs, GetGitDependencyInstallArgs and the uninstall arguments in package_manager.go, with the flags before --registry and the ignore-scripts arguments; the tests above expect the new argument lists, and the paired scenario 15 requires both CLIs to pass --no-audit and --no-fund."
 
 [[files]]
 path = "packages/coding-agent/src/core/pi-manifest.ts"
@@ -2433,9 +2433,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/session_export.go 
 [[files]]
 path = "packages/coding-agent/src/core/session-manager.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_manager_test.go#TestSessionManagerForkFromFile_CopiesAllEntriesUnchangedIntoTheForkedSession", "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileCreationUpstream"]
+rationale = "Pi 8ddc44ec8 (#11253) makes forkFrom write the header and every entry through one fd instead of reopening the file per entry; ForkFromFile already writes the whole fork through one handle (internal/codingagent/session_manager.go), so only its comment changes, and the test ports Pi's 50-entry copy case byte for byte. Delta at Pi 807a5c05 (#11460, #10166, #10661): _appendEntry undoes its in-memory append (entry, byId, leaf) when _persist throws, then rethrows, so an entry that was not written never becomes the parent of a later one. Ported in internal/codingagent/session.go appendEntryRecordOf, which writes the record (the first write creates the file from the header, the buffered entries and this one) before the entry joins the session, under appendMu so the file and memory take entries in one order: a failed write returns its error with the entries, leaf, branch, counts, name and file gate untouched, which is the state Pi restores. Persist shares the planning and writing of the record. TestSessionFileCreationUpstream ports both cases: a read-only session file (failed append) and a read-only session directory (failed first file creation); each checks the leaf, the entries, the parent of the next entry and the file that a reopened session replays."
 
 [[files]]
 path = "packages/coding-agent/src/core/settings-defaults.ts"
@@ -2545,9 +2545,9 @@ rationale = "Missing cases: PORT_MAP records native Windows validation of the fi
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/tools_search_port_test.go#TestToolsGrepPort", "test:internal/codingagent/tools/spawn_arguments_test.go#TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes", "test:internal/codingagent/tools/grep_context_memory_test.go#TestGrepLineWindowMatchesTheWholeFileSplit"]
+rationale = "Pi 8c4e8738 passes --no-config first in ripgrep's argument list so RIPGREP_CONFIG_PATH cannot change the tool contract (#11203). Ported in internal/codingagent/tools/grep.go with the same argument order; TestToolsGrepPort sets a config of --fixed-strings and requires the regex a.b to match aXb, and the spawn-argument test compares the exact argv with Node's spawn. Delta at Pi fecc19e4 (#11398): getFileLines splits the context file at LF only after normalizing CRLF, because ripgrep counts lines at LF; a lone CR stays in its line and is removed when the line is displayed, so a context line after it is no longer off by one. Ported in internal/codingagent/tools/grep_line_window.go (a CR neither ends nor counts toward a stored line); TestToolsGrepPort ports the lone-CR case (before\\rprogress\\nneedle\\nafter, context 1) and TestGrepLineWindowMatchesTheWholeFileSplit compares the window with the LF-only whole-file split for every chunking and context."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/index.ts"

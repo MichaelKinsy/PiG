@@ -49,7 +49,7 @@ func TestPackageBatchedConcurrentUpdatesOriginal(t *testing.T) {
 	expectedGit := []string{"user-repo-a", "user-repo-b", "user-repo-pinned", "project-repo-a"}
 	// npm gets the real paths of the install roots (package-manager.ts getNpmInstallArgs); a temporary directory may be a symlink.
 	realUserRoot, realProjectRoot := realPathSync(t, userRoot), realPathSync(t, projectRoot)
-	expectedInstalls := [][]string{{"install", "user-old@latest", "user-unknown@latest", "--prefix", realUserRoot, "--legacy-peer-deps"}, {"install", "project-old@latest", "project-missing@latest", "--prefix", realProjectRoot, "--legacy-peer-deps"}}
+	expectedInstalls := [][]string{{"install", "user-old@latest", "user-unknown@latest", "--prefix", realUserRoot, "--legacy-peer-deps", "--no-audit", "--no-fund"}, {"install", "project-old@latest", "project-missing@latest", "--prefix", realProjectRoot, "--legacy-peer-deps", "--no-audit", "--no-fund"}}
 	var mu sync.Mutex
 	counts, active, maxActive := map[string]int{}, map[string]int{}, map[string]int{}
 	limits := map[string]int{"npm": len(expectedInstalls), "git": len(expectedGit)}

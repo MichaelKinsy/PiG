@@ -165101,8 +165101,26 @@
     },
     {
       "id": "pkg:coding-agent/.#GenerateBranchSummaryOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4b06f422aaa8d0936d2a2aa3f8c601738afe89a381d5892dfac8e4f36fe459d0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4b06f422aaa8d0936d2a2aa3f8c601738afe89a381d5892dfac8e4f36fe459d0",
+      "rationale": "Derived by the interface gap detector: GenerateBranchSummaryOptions is Go internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummaryOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummaryOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummary"
+      ],
+      "evidence": [
+        "test:coding/session_branch_summary_upstream_test.go#TestBranchSummarizationUpstream",
+        "test:internal/codingagent/compaction/branch_summarization_test.go#TestBranchSummaryFailureMatchesPi",
+        "test:internal/codingagent/compaction/branch_summarization_test.go#TestBranchSummaryMaxTokens"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:coding-agent/.#GenerateBranchSummaryOptions::property:apiKey",
@@ -165337,8 +165355,23 @@
     },
     {
       "id": "pkg:coding-agent/.#GenerateBranchSummaryOptions::property:thinkingLevel",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f316118732f3b9292e59cf701f77b0c43f423ea62ea2f86c68f2a48cf29db575"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f316118732f3b9292e59cf701f77b0c43f423ea62ea2f86c68f2a48cf29db575",
+      "rationale": "Derived by the interface gap detector: GenerateBranchSummaryOptions::property:thinkingLevel is Go internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummaryOptions.ThinkingLevel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummaryOptions.ThinkingLevel"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/compaction/branch_summarization.go#summarizeBranchMessages"
+      ],
+      "evidence": [
+        "test:internal/codingagent/compaction/branch_summarization_test.go#TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#generateDiffString",

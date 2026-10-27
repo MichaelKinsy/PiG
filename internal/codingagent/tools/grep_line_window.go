@@ -16,19 +16,19 @@ const (
 // pig divergence (D151): grepLineWindow reads a file's lines in order and keeps the lines a later match can still need,
 // so the context of consecutive matches is served without holding the
 // file. Lines split as upstream getFileLines splits them: the text is decoded
-// as UTF-8, then "\r\n", "\r" and "\n" each end a line, and the text after the
-// last separator is a line, even when empty.
+// as UTF-8, then "\r\n" and "\n" each end a line, a lone "\r" does not (ripgrep
+// numbers lines at "\n"), and the text after the last separator is a line, even
+// when empty. A "\r" never reaches the output, so no line stores one.
 type grepLineWindow struct {
-	open      func() (io.ReadCloser, error)
-	src       io.ReadCloser
-	started   bool
-	done      bool
-	failed    bool
-	decoder   utf8StreamDecoder
-	pendingCR bool
-	chunk     []byte
-	partial   []byte
-	runes     int
+	open    func() (io.ReadCloser, error)
+	src     io.ReadCloser
+	started bool
+	done    bool
+	failed  bool
+	decoder utf8StreamDecoder
+	chunk   []byte
+	partial []byte
+	runes   int
 	// next is the number of lines read; lines holds the last len(lines) of them that are numbered keepFrom or higher.
 	next     int
 	keepFrom int
@@ -114,20 +114,15 @@ func (w *grepLineWindow) add(text string) {
 	for _, r := range text {
 		switch r {
 		case '\r':
-			w.endLine()
-			w.pendingCR = true
-			continue
+			// Never part of a displayed line: it neither ends a line nor counts toward its length.
 		case '\n':
-			if !w.pendingCR {
-				w.endLine()
-			}
+			w.endLine()
 		default:
 			if w.runes < grepStoredLineRunes && w.next+1 >= w.keepFrom {
 				w.partial = utf8.AppendRune(w.partial, r)
 			}
 			w.runes++
 		}
-		w.pendingCR = false
 	}
 }
 

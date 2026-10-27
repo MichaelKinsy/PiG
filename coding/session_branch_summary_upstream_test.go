@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -56,6 +57,50 @@ func TestBranchSummaryAmbientAuthUpstream(t *testing.T) {
 	}
 	if entry.Usage == nil || entry.Usage.Cost.Total != 0.25 {
 		t.Fatalf("summary usage = %+v, want total cost 0.25", entry.Usage)
+	}
+}
+
+// agent-session.ts:4120-4129 builds the branch summary request from _getSummarizationRequestAuth, which carries the session's thinking level
+// (269afc66): a reasoning model summarizes at that level and a model without reasoning requests none.
+func TestNavigateTreeSummaryPassesTheSessionThinkingLevel(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		maxThinking   ai.ThinkingLevel
+		level         ai.ModelThinkingLevel
+		wantReasoning ai.ThinkingLevel
+	}{
+		{"reasoning model", ai.ThinkingLevelHigh, ai.ThinkingHigh, ai.ThinkingLevelHigh},
+		{"thinking off", ai.ThinkingLevelHigh, ai.ThinkingOff, ""},
+		{"non-reasoning model", "", ai.ThinkingHigh, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newRecoveryHarness(t, harnessOptions{emptySessionManager: true})
+			h.session.Model().Capabilities.MaxThinking = tc.maxThinking
+			if err := h.session.SetThinkingLevel(tc.level); err != nil {
+				t.Fatal(err)
+			}
+			var seen []ai.ThinkingLevel
+			h.session.Agent().SetStreamFunction(func(_ context.Context, model *ai.Model, _ ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+				seen = append(seen, options.Thinking)
+				message := &ai.AssistantMessage{
+					Content: []ai.AssistantContentBlock{ai.TextContent{Text: "branch summary text"}},
+					API:     model.ProviderMeta.API, Provider: providerID(model), Model: model.ID,
+					StopReason: ai.StopReasonStop, Timestamp: time.Now().UnixMilli(),
+				}
+				return newSessionTestStream(ai.DoneEvent{Reason: ai.StopReasonStop, Message: message}), nil
+			})
+			target := appendTreeUser(t, h.session, "first branch")
+			appendTreeAssistant(t, h.session, "first reply")
+			appendTreeUser(t, h.session, "abandoned branch work")
+			appendTreeAssistant(t, h.session, "abandoned reply")
+
+			if _, err := h.session.NavigateTree(t.Context(), target, NavigateTreeOptions{Summarize: true}); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(seen, []ai.ThinkingLevel{tc.wantReasoning}) {
+				t.Fatalf("branch summary reasoning = %q, want %q", seen, []ai.ThinkingLevel{tc.wantReasoning})
+			}
+		})
 	}
 }
 
