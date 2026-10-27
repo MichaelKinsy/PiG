@@ -118,6 +118,8 @@ type run struct {
 	phaseAgent *Agent
 	// hookIndex is the index of the hook handler eachHookRaw is calling, which names the extension of a failure.
 	hookIndex int
+	// task is the task record of the invocation, which carries the restart count the phases check.
+	task *jv.Object
 }
 
 func (g *Generation) newRun(rt *session.Runtime, done func(error)) *run {
@@ -131,6 +133,7 @@ func (r *run) fail(err error) { r.done(err) }
 
 func (g *Generation) phase(rt *session.Runtime, task *jv.Object, done func(error)) {
 	r := g.newRun(rt, done)
+	r.task = task
 	cp := checkpointOf(task)
 	switch str(cp, "phase") {
 	case phasePrepare:
@@ -361,6 +364,10 @@ var ProviderDef = &session.DocDef{
 // ---- prepare ---------------------------------------------------------------------------------------------------
 
 func (r *run) prepare(cp *jv.Object) {
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
 	r.agent(func(agent *Agent) { r.prepareWith(cp, agent) })
 }
 

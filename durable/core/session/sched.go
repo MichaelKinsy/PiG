@@ -194,6 +194,15 @@ func (s *Scheduler) restartLimit() float64 {
 	return defaultRestartLimit
 }
 
+// limitsRestarts reports whether the phases of the task's kind end it themselves at the restart limit.
+func (s *Scheduler) limitsRestarts(rec *jv.Object) bool {
+	if s.env.LimitsRestarts == nil {
+		return false
+	}
+	kind, _ := getStr(rec, "kind")
+	return s.env.LimitsRestarts(kind)
+}
+
 // defaultRestartLimit is the default of settings.restartLimit.
 const defaultRestartLimit = 5
 
