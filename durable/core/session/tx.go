@@ -43,6 +43,10 @@ type Ownership struct {
 type TxScope struct {
 	ConversationID ID
 	TaskID         ID
+	// Deferred marks the commit deferrable (durable CommitPersistence): see held.go. WithinMs is its window in milliseconds,
+	// or negative for the Session's default (PersistWithin).
+	Deferred bool
+	WithinMs float64
 }
 
 type txTask struct {
@@ -108,6 +112,10 @@ type docPlan struct {
 	content   *Write
 	change    *planChange
 	convID    ID
+	// held is set (hasHeld) when this commit also stores held changes of the incarnation (held.go takeHeld), whose content is stored.
+	held    heldPlan
+	hasHeld bool
+	stored  Write
 }
 
 // Tx stages one atomic commit. Every method must run inside the callback that
@@ -121,6 +129,10 @@ type Tx struct {
 
 	writes  []Write
 	settled []Write // the writes of a commit a *NeedGate held
+	// taken is the holds whose changes this commit stores with its own (held.go takeHeld); settledTaken marks the settled writes
+	// as already carrying them.
+	taken        []*loadedDoc
+	settledTaken bool
 	// The maps below are made by their first write: most transactions of a step write none of them, and a nil map reads as empty.
 	createdConvs      map[ID]bool
 	forkSourceConvs   map[ID]bool
@@ -144,6 +156,10 @@ type Tx struct {
 	// Scheduler wrapper's).
 	ticks int
 }
+
+// DeferWithin marks the commit deferrable (durable CommitPersistence) with a window of ms milliseconds, negative for the Session's
+// default: a transaction of a task invocation takes its scope from the task (Runtime.BeginHost).
+func (tx *Tx) DeferWithin(ms float64) { tx.scope.Deferred, tx.scope.WithinMs = true, ms }
 
 // charge adds the ticks of one Transaction method await.
 func (tx *Tx) charge(n int) { tx.ticks += n }

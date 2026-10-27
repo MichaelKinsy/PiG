@@ -228,7 +228,12 @@ func (h *handler) holdJobNow(release func()) bool {
 			return h.holdFor(n+tailHops, h.loop.QuietRelease())
 		}
 		if h.loop.HasPubs() {
-			return h.holdSteps(n, []holdStep{{h.publishAt(n), h.loop.Publish}}, release)
+			at := h.publishAt(n)
+			if h.loop.MemoryPubsOnly() {
+				// A deferred commit held in memory has no Storage adoption to wait for: it publishes as #runCommit returns (session.ts #hold).
+				at = max(n-pubBeforeEnd, 0)
+			}
+			return h.holdSteps(n, []holdStep{{at, h.loop.Publish}}, release)
 		}
 		return h.holdFor(n, release)
 	}

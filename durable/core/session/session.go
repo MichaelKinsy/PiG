@@ -12,8 +12,25 @@ import (
 
 // Publication is what one applied commit changed.
 type Publication struct {
-	Seq     Seq
+	Seq Seq
+	// Changes is what the Session's own observers see: this commit's own changes. A deferred commit adopted in memory only
+	// (Memory) has the document changes and no Seq.
 	Changes []Change
+	// Memory is set for a commit held in memory (held.go): it is not stored, and the commit listeners that follow the Storage
+	// (the host's subscribeCommits) get nothing.
+	Memory bool
+	// Stored is every change one Storage transaction stored, tables included, when that differs from Changes: a commit that
+	// also stored held changes of the documents it reads or writes (its document change carries the held operations first), or
+	// a deadline's store of held documents (no Changes: nothing is shown again). Nil: it is Changes.
+	Stored []Change
+}
+
+// StoredChanges is what the Storage transaction of the publication stored.
+func (p *Publication) StoredChanges() []Change {
+	if p.Stored != nil {
+		return p.Stored
+	}
+	return p.Changes
 }
 
 // Session is the Session kernel: the mutation line's committed-state cache and
@@ -40,13 +57,27 @@ type Session struct {
 	sweepToken         int
 	attached           map[ID]int
 	sweepCancel        func()
-	// SweepJobs counts the sweep jobs queued on the line so far (documentCacheSizes.sweeps). EnqueueSweep queues a job on the
-	// Session line, Microtask runs fn as a microtask, ArmTimer arms a host timer that calls fire at the time at; a Session without
-	// them keeps no sweep job or timer.
-	SweepJobs    int
-	EnqueueSweep func(job func())
-	Microtask    func(fn func())
-	ArmTimer     func(at float64, fire func()) (cancel func())
+	// SweepJobs counts the sweep jobs queued on the line so far (documentCacheSizes.sweeps). EnqueueSweep queues a detached job on
+	// the Session line (a *NeedGate its job returns runs it again once the host's Storage answered), Microtask runs fn as a
+	// microtask, ArmTimer arms a host timer that calls fire at the time at, ArmForeground one that paces or resumes work (the
+	// deadline of deferred commits); a Session without them keeps no sweep job or timer.
+	SweepJobs     int
+	EnqueueSweep  func(job func() error)
+	Microtask     func(fn func())
+	ArmTimer      func(at float64, fire func()) (cancel func())
+	ArmForeground func(at float64, fire func()) (cancel func())
+	// PersistWithin is the default window of a deferred commit in milliseconds, read at each use (settings.progress.persistWithinMs);
+	// false means the default.
+	PersistWithin func() (float64, bool)
+	// holdOrder is the documents with held changes, in the order they were first held; each is pinned in
+	// the cache until its changes are stored (held.go).
+	holdOrder []*loadedDoc
+	holdTimer holdTimer
+	holdArmed bool
+	// holdFiredFn and holdJobFn are the timer's callbacks, made once; scratchHolds is reused by each store of held changes.
+	holdFiredFn  func()
+	holdJobFn    func() error
+	scratchHolds []*loadedDoc
 	// DocumentRetention is the document retention in milliseconds read at each use (HarnessSettings.documentRetentionMs); nil or
 	// a nil result means the default.
 	DocumentRetention func() *float64
@@ -151,6 +182,7 @@ func (s *Session) Seal() {
 		return
 	}
 	s.closed = true
+	s.cancelHoldTimer()
 	listeners := s.closeListeners
 	s.closeListeners = nil
 	for _, l := range listeners {
@@ -166,6 +198,7 @@ func (s *Session) Close() {
 	s.docs = map[string]*loadedDoc{}
 	s.clearIdle()
 	s.attached = nil
+	s.closeHolds()
 }
 
 // Admit is the admission check of an operation as it is enqueued on the Session line (session.ts #assertUsable in
@@ -284,6 +317,15 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 		s.sweepDocuments()
 		return nil, errReadOnlyCommit
 	}
+	if tx.scope.Deferred {
+		if tx.holdable(writes) {
+			return s.hold(tx)
+		}
+	}
+	if !tx.settledTaken {
+		writes = tx.takeHeld(writes)
+		tx.settledTaken = true
+	}
 	seq, err := s.store.Commit(writes, s.nextID)
 	if err != nil {
 		if IsNeedGate(err) {
@@ -297,10 +339,13 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 		s.fail(err)
 		return nil, err
 	}
-	docs, err := tx.adopt(seq)
+	docs, storedDocs, err := tx.adopt(seq)
 	if err != nil {
 		s.fail(err)
 		return nil, err
+	}
+	if len(tx.taken) > 0 {
+		s.release(tx.taken)
 	}
 	changes := make([]Change, 0, len(writes)+len(docs))
 	for _, w := range writes {
@@ -309,8 +354,13 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 			changes = append(changes, Change{Kind: ChangeTable, Table: w.Kind, Record: w.Record})
 		}
 	}
+	tables := len(changes)
 	changes = append(changes, docs...)
-	pub := &Publication{Seq: seq, Changes: changes}
+	pub := s.newPublication(Publication{Seq: seq, Changes: changes})
+	if storedDocs != nil {
+		pub.Stored = append(append([]Change(nil), changes[:tables]...), storedDocs...)
+		docs = storedDocs
+	}
 	for _, change := range docs {
 		s.touchDocument(addressID(recordAddress(change.Record)))
 	}
@@ -322,6 +372,9 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	s.sweepDocuments()
 	return pub, nil
 }
+
+// newPublication is the one place a Publication is allocated.
+func (s *Session) newPublication(p Publication) *Publication { return &p }
 
 // InJob reports whether a Loop line job body is running.
 func (s *Session) InJob() bool { return s.inJob }
@@ -366,6 +419,10 @@ func (s *Session) loadDocument(def *DocDef, id string, addr Address) (*loadedDoc
 		if cached.valueVersion == def.Version {
 			s.touchDocument(id)
 			return cached, nil
+		}
+		// The reload must find what memory holds: held changes are stored before their tracker goes.
+		if err := s.dropHeld(cached); err != nil {
+			return nil, err
 		}
 		s.dropDocument(id)
 	}
@@ -441,10 +498,17 @@ func (s *Session) revealLoads() {
 	s.unpublished = 0
 }
 
-// UnloadDocuments drops every cached document; later access loads from the store.
-func (s *Session) UnloadDocuments() {
+// UnloadDocuments drops every cached document, held changes stored first; later access loads from the store. A *NeedGate error
+// means the host's Storage holds the store of the held changes: nothing was dropped, and the call is made again once it answered.
+func (s *Session) UnloadDocuments() error {
+	if s.failure == nil {
+		if err := s.StoreHolds(); err != nil {
+			return err
+		}
+	}
 	s.docs = map[string]*loadedDoc{}
 	s.clearIdle()
+	return nil
 }
 
 // SetHopProfile names the Storage profile whose await ticks transactions are charged (open.storageProfile).

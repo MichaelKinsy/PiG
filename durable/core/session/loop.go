@@ -431,6 +431,16 @@ func (l *Loop) tailDone() {
 	}
 }
 
+// MemoryPubsOnly reports whether every publication of the finished job is a deferred commit held in memory (Publication.Memory).
+func (l *Loop) MemoryPubsOnly() bool {
+	for _, pub := range l.pubs {
+		if !pub.Memory {
+			return false
+		}
+	}
+	return len(l.pubs) != 0
+}
+
 // HasPubs reports whether the finished job whose completion Hold holds has publications to deliver.
 func (l *Loop) HasPubs() bool { return len(l.pubs) != 0 }
 

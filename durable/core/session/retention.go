@@ -114,13 +114,14 @@ func (s *Session) scheduleDocumentSweep() {
 		if s.EnqueueSweep == nil {
 			return
 		}
-		s.EnqueueSweep(func() {
+		s.EnqueueSweep(func() error {
 			if s.sweepToken == token {
 				s.sweepPending, s.sweepCancel = false, nil
 			}
 			if !s.closed {
 				s.sweepDocuments()
 			}
+			return nil
 		})
 	}
 	delay := at - s.now()
@@ -175,7 +176,11 @@ func (s *Session) PinDocument(def *DocDef, args DocArgs) (release func()) {
 	if cached == nil {
 		return nil
 	}
-	recordID := mustInt(cached.record, "id")
+	return s.pinDocument(id, mustInt(cached.record, "id"))
+}
+
+// pinDocument is session.ts #pinDocument: pin the cached incarnation recordID of the document at address id.
+func (s *Session) pinDocument(id string, recordID ID) (release func()) {
 	if s.attached == nil {
 		s.attached = map[ID]int{}
 	}
