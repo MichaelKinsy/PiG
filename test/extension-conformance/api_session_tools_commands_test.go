@@ -23,7 +23,7 @@ func TestConformance_ExtensionAPISessionToolsCommandsMessages(t *testing.T) {
 	}
 	t.Parallel()
 
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -111,7 +111,7 @@ func TestConformance_ExtensionAPISendUserMessage(t *testing.T) {
 	}
 	t.Parallel()
 
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

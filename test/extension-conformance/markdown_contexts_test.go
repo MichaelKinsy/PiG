@@ -12,8 +12,8 @@ import (
 // Pi markdown-transform.ts:18-29 passes the current display context to each callback. Use the existing common fixture and compare all SDKs and placements to the real native reference without polling away a missing first answer.
 func TestMarkdownContextsAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	cases := allHarnessCases()
-	for _, language := range []string{"go", "python", "rust"} {
+	cases := append(allHarnessCases(), lispHarnessCase())
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	for _, tc := range cases {

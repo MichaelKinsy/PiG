@@ -18,7 +18,7 @@ import (
 // behavior across runtimes: awaited response notifications and active tool metadata.
 func TestProviderResponseAndToolPromptsAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	for _, test := range allHarnessCases() {
+	for _, test := range append(allHarnessCases(), lispHarnessCase()) {
 		t.Run(test.name, func(t *testing.T) {
 			h := test.make(t)
 			t.Cleanup(func() {

@@ -21,8 +21,3 @@ func TestSessionGraphLispPackedAcrossSDKs(t *testing.T) {
 		})
 	}
 }
-
-// lispPackedHarnessCase is the Lisp SDK harness fixture beside a peer extension in one shared cell.
-func lispPackedHarnessCase() harnessCase {
-	return harnessCase{name: "subprocess-lisp-packed", extName: lispFixtureName, make: func(t *testing.T) *harness { return makePackedUIHarness(t, "lisp") }}
-}

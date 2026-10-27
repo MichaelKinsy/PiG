@@ -12,7 +12,7 @@
    #:extension #:make-extension #:define-extension #:extension-name
    #:tool #:command #:shortcut #:flag #:on #:on-loaded #:run-extension #:tool-result
    ;; cancellation signal
-   #:abort-signal #:abort-signal-set-p #:abort-signal-wait
+   #:abort-signal #:abort-signal-set-p #:abort-signal-wait #:make-abort-signal #:signal-abort #:abort-signal-subscribe
    ;; context
    #:ctx-extension #:ctx-cwd #:ctx-mode #:ctx-has-ui-p #:ctx-cancelled-p #:ctx-cancellation-reason
    #:ctx-wait-cancelled #:ctx-signal #:ctx-tool-call-id #:ctx-request-id #:ctx-on-update
@@ -34,6 +34,14 @@
    #:session-get-branch #:session-get-children #:session-get-tree
    #:ctx-model-registry #:registry-has-configured-auth #:registry-is-using-oauth
    #:registry-get-registered-native-provider #:registry-get-provider-name
+   #:ctx-model #:ctx-model-provider #:ctx-model-qualified #:ctx-session-name #:ctx-get-session-name #:ctx-get-session-file
+   #:ctx-extension-source-info #:ctx-get-settings #:ctx-config-home #:ctx-tool-call-index #:ctx-tool-input #:ctx-tool-params
+   #:ctx-tools #:ctx-execute-tool #:ctx-set-editor-text #:ctx-paste-to-editor #:ctx-refresh-tools #:ctx-get-entries #:ctx-get-branch
+   #:register-tool #:ctx-register-tool #:tool-loadout #:tool-loadout-declared #:tool-loadout-callable #:tool-loadout-registered #:tool-loadout-exposures
+   #:tool-loadout-namespaces #:tool-loadout-prompt-guidelines
+   #:tool-loadout-get-exposure #:tool-loadout-get-namespace #:tool-loadout-get-prompt-guidelines #:on-project-trust
+   #:bash-operations #:make-bash-operations #:bash-operations-exec #:bash-exec-options #:make-bash-exec-options
+   #:bash-exec-options-on-data #:bash-exec-options-signal #:bash-exec-options-timeout #:bash-exec-options-env
    #:ctx-footer-data #:footer-get-git-branch #:footer-get-extension-statuses
    #:footer-get-available-provider-count #:footer-on-branch-change
    ;; ==== lane T: type engine, tool schema, pi-ai ====
@@ -63,6 +71,13 @@
    ;; ==== lane C: pi-coding-agent pure helpers ====
    ;; ==== end lane C ====
    ;; ==== lane M: model calls and streams, model types ====
+   #:ctx-complete #:registry-stream #:registry-stream-simple #:registry-complete #:registry-classify #:registry-generate-images
+   #:registry-get-all #:registry-get-available #:registry-get-error #:registry-get-models-of-type #:registry-get-model-of-type
+   #:registry-find-of-type #:registry-get-api-key-and-headers #:registry-get-api-key-for-provider #:registry-get-provider-auth-status
+   #:registry-get-provider-display-name #:registry-get-registered-provider-ids #:registry-get-registered-provider-config
+   #:registry-register-provider #:registry-unregister-provider #:registry-register-virtual-model #:registry-unregister-virtual-model
+   #:model-event-stream #:make-model-event-stream #:create-assistant-message-event-stream
+   #:model-stream-push #:model-stream-end #:model-stream-result #:model-stream-events #:model-stream-next
    ;; ==== end lane M ====
    ;; ==== lane S2: session manager, settings manager, resource loader, package manager, project trust ====
     #:has-trust-requiring-project-resources #:host-agent-dir #:host-config-dir-name #:host-info-unavailable
@@ -191,6 +206,60 @@
    ;; ==== lane S1: session operations, child sessions, agent session runtime and services ====
    ;; ==== end lane S1 ====
    ;; ==== lane P: providers, OAuth, renderers, virtual models, MCP registration ====
+   #:abort-signal-subscribe #:make-abort-signal #:signal-abort #:registry-get-provider #:register-native-provider
+   #:register-provider #:unregister-provider #:register-oauth-provider #:ctx-register-provider #:ctx-unregister-provider
+   #:ctx-register-native-provider #:oauth-cancelled #:oauth-credentials #:oauth-on-auth #:oauth-on-device-code #:oauth-on-progress
+   #:oauth-on-prompt #:oauth-on-select #:oauth-on-manual-code-input #:register-virtual-model #:unregister-virtual-model
+   #:ctx-register-virtual-model #:ctx-unregister-virtual-model #:register-mcp-server #:unregister-mcp-server
+   #:ctx-register-mcp-server #:ctx-unregister-mcp-server #:ctx-get-mcp-servers #:tool-renderer #:message-renderer
+   #:message-view-renderer #:entry-renderer #:entry-view-renderer #:markdown-transformer #:ctx-set-login #:ctx-register-sprite
+   #:auth-context #:make-auth-context #:auth-context-p #:auth-context-env #:auth-context-file-exists #:api-key-auth-input
+   #:make-api-key-auth-input #:api-key-auth-input-p #:api-key-auth-input-ctx #:api-key-auth-input-credential
+   #:api-key-auth-input-signal #:auth-result #:make-auth-result #:auth-result-p #:auth-result-auth #:auth-result-env
+   #:auth-result-source #:auth-check #:make-auth-check #:auth-check-p #:auth-check-type #:auth-check-source #:auth-interaction
+   #:make-auth-interaction #:auth-interaction-p #:auth-interaction-prompt #:auth-interaction-notify #:auth-interaction-signal
+   #:login-options #:make-login-options #:login-options-p #:login-options-get-device-id #:login-options-agent-name #:api-key-auth
+   #:make-api-key-auth #:api-key-auth-p #:api-key-auth-name #:api-key-auth-resolve #:api-key-auth-check #:api-key-auth-login
+   #:oauth-auth #:make-oauth-auth #:oauth-auth-p #:oauth-auth-name #:oauth-auth-login #:oauth-auth-refresh #:oauth-auth-to-auth
+   #:oauth-auth-is-subscription #:oauth-auth-login-label #:provider-auth #:make-provider-auth #:provider-auth-p
+   #:provider-auth-api-key #:provider-auth-oauth #:provider-stream-options #:make-provider-stream-options
+   #:provider-stream-options-p #:provider-stream-options-values #:provider-stream-options-signal
+   #:provider-stream-options-on-payload #:provider-stream-options-on-response #:provider-stream-options-on-provider-stream-event
+   #:provider-operation-options #:make-provider-operation-options #:provider-operation-options-p
+   #:provider-operation-options-values #:provider-operation-options-signal #:models-publication #:make-models-publication
+   #:models-publication-p #:models-publication-persist #:models-publication-update #:refresh-models-context
+   #:make-refresh-models-context #:refresh-models-context-p #:refresh-models-context-publish #:refresh-models-context-credential
+   #:refresh-models-context-stored #:refresh-models-context-allow-network #:refresh-models-context-force
+   #:refresh-models-context-signal #:refresh-models-context-base-url #:provider #:make-provider #:provider-p #:provider-id
+   #:provider-name #:provider-auth #:provider-get-models #:provider-stream #:provider-stream-simple #:provider-base-url
+   #:provider-headers #:provider-filter-models #:provider-get-all-models #:provider-filter-all-models #:provider-refresh-models
+   #:provider-fetch-deferred #:provider-cancel-deferred #:provider-generate-images #:provider-classify #:provider-handle
+   #:oauth-auth-info #:make-oauth-auth-info #:oauth-auth-info-p #:oauth-auth-info-url #:oauth-auth-info-instructions
+   #:oauth-device-code-info #:make-oauth-device-code-info #:oauth-device-code-info-p #:oauth-device-code-info-user-code
+   #:oauth-device-code-info-verification-uri #:oauth-device-code-info-open-browser-on-confirm
+   #:oauth-device-code-info-copy-code-on-confirm #:oauth-device-code-info-interval-seconds
+   #:oauth-device-code-info-expires-in-seconds #:oauth-prompt #:make-oauth-prompt #:oauth-prompt-p #:oauth-prompt-message
+   #:oauth-prompt-placeholder #:oauth-prompt-allow-empty #:oauth-select-option #:make-oauth-select-option #:oauth-select-option-p
+   #:oauth-select-option-id #:oauth-select-option-label #:oauth-select-prompt #:make-oauth-select-prompt #:oauth-select-prompt-p
+   #:oauth-select-prompt-message #:oauth-select-prompt-options #:oauth-credential-status #:make-oauth-credential-status
+   #:oauth-credential-status-p #:oauth-credential-status-present #:oauth-credential-status-auth-type
+   #:oauth-credential-status-source #:oauth-credential-store #:make-oauth-credential-store #:oauth-credential-store-p
+   #:oauth-credential-store-credential-status #:oauth-credential-store-store-credentials
+   #:oauth-credential-store-delete-credentials #:oauth-provider #:make-oauth-provider #:oauth-provider-p #:oauth-provider-name
+   #:oauth-provider-login #:oauth-provider-refresh-token #:oauth-provider-get-api-key #:oauth-provider-credential-store
+   #:oauth-provider-is-subscription #:virtual-model #:make-virtual-model #:virtual-model-p #:virtual-model-provider
+   #:virtual-model-id #:virtual-model-name #:virtual-model-route #:virtual-model-thinking-levels #:virtual-model-context-window
+   #:virtual-model-max-tokens #:virtual-model-input #:tool-renderers #:make-tool-renderers #:tool-renderers-p
+   #:tool-renderers-render-call #:tool-renderers-render-result #:tool-renderers-render-shell #:tool-renderers-call-view
+   #:tool-renderers-result-view #:tool-render-context #:make-tool-render-context #:tool-render-context-p
+   #:tool-render-context-args #:tool-render-context-tool-call-id #:tool-render-context-cwd #:tool-render-context-execution-started
+   #:tool-render-context-args-complete #:tool-render-context-is-partial #:tool-render-context-expanded
+   #:tool-render-context-show-images #:tool-render-context-is-error #:tool-render-context-output-pad
+   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate #:login-definition
+   #:make-login-definition #:login-definition-p #:login-definition-brand #:login-definition-hero #:login-definition-mascot
+   #:login-definition-palette #:login-definition-name #:login-definition-description #:login-definition-tagline
+   #:sprite-definition #:make-sprite-definition #:sprite-definition-p #:sprite-definition-id #:sprite-definition-name
+   #:sprite-definition-tagline #:sprite-definition-mascot #:sprite-definition-palette
    ;; ==== end lane P ====
    ;; ==== lane U1: component kit, ui.custom, overlays, widgets, theme ====
    ;; ==== end lane U1 ====
