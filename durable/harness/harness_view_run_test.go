@@ -331,8 +331,9 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		if len(runs) == 0 || !slices.Equal(runs[0], []durable.SubmissionId{first.Id()}) || !slices.Equal(runs[len(runs)-1], []durable.SubmissionId{followUp.Id()}) {
 			t.Fatalf("runs %v, want the first input's, then the follow-up's", runs)
 		}
+		views = history.All()
 		if items := inboxIn(t, views[len(views)-1]); len(items) != 0 {
-			t.Fatalf("inbox %v at the start, want none after the run", items)
+			t.Fatalf("inbox %v after the run, want none", items)
 		}
 		closeHarness(t, harness)
 	})
