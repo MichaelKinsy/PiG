@@ -24708,7 +24708,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#Message",
-        "go:github.com/MichaelKinsy/PiG/ai#bedrockWire.message",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockWire.message",
         "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#fusedHazard.message",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Message"
       ],
@@ -42563,7 +42563,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#bedrockWire.tool",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockWire.tool",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Tool",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinSpec.tool"
       ],
@@ -44172,7 +44172,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -44183,6 +44183,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#CalculateCost",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.CalculateCost",
         "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.calculateCost",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#CalculateCost"
       ],
@@ -48846,7 +48847,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -48856,13 +48857,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -48871,6 +48872,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -50765,7 +50767,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -50775,13 +50777,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -50790,6 +50792,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -51871,7 +51874,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -51881,13 +51884,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -51896,6 +51899,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -53547,22 +53551,24 @@
     {
       "id": "pkg:ai/api/constrained-sampling#getJsonSchemaToolParameters",
       "upstreamShapeHash": "sha256:efef0d93ebf498111d43981e88241070fdd900218fe6774308d24d5cf36d7a57",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#GetJSONSchemaToolParameters",
         "go:github.com/MichaelKinsy/PiG/ai#getJSONSchemaToolParameters"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -53718,22 +53724,24 @@
     {
       "id": "pkg:ai/api/constrained-sampling#resolveJsonSchemaStrictSampling",
       "upstreamShapeHash": "sha256:6eafca0bb16ee9541b8a5b394e4a7b179d58b31503c475ce163c64dcc1cc5a1a",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#ResolveJSONSchemaStrictSampling",
         "go:github.com/MichaelKinsy/PiG/ai#resolveJSONSchemaStrictSampling"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -54620,7 +54628,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -54630,13 +54638,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -54645,6 +54653,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -56531,7 +56540,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -56541,13 +56550,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -56556,6 +56565,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -58242,7 +58252,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -58252,13 +58262,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -58267,6 +58277,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -59799,7 +59810,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -59809,13 +59820,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -59824,6 +59835,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -60826,7 +60838,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -60836,13 +60848,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -60851,6 +60863,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -61979,7 +61992,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -61989,13 +62002,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -62004,6 +62017,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -64060,7 +64074,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -64070,13 +64084,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -64085,6 +64099,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -82131,7 +82146,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#Message",
-        "go:github.com/MichaelKinsy/PiG/ai#bedrockWire.message",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockWire.message",
         "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#fusedHazard.message",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Message"
       ],
@@ -99986,7 +100001,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#bedrockWire.tool",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockWire.tool",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Tool",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinSpec.tool"
       ],
@@ -101766,7 +101781,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -101777,6 +101792,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#CalculateCost",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.CalculateCost",
         "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.calculateCost",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#CalculateCost"
       ],
@@ -106969,7 +106985,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -106979,13 +106995,13 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#Models.stream",
         "go:github.com/MichaelKinsy/PiG/ai#Stream",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexProvider.Stream",
@@ -106994,6 +107010,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.Stream",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
@@ -113562,7 +113579,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -113573,6 +113590,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#CalculateCost",
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.CalculateCost",
         "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.calculateCost",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#CalculateCost"
       ],
@@ -133667,22 +133685,24 @@
     {
       "id": "pkg:ai/utils/provider-env#getProviderEnvValue",
       "upstreamShapeHash": "sha256:d58f5163ba4559a4c1c404325dae3482ca6a8c08ad6b6a1f29088cb1471f4736",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#GetProviderEnvValue",
         "go:github.com/MichaelKinsy/PiG/ai#getProviderEnvValue"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -134243,22 +134263,24 @@
     {
       "id": "pkg:ai/utils/sanitize-unicode#sanitizeSurrogates",
       "upstreamShapeHash": "sha256:fc450fc16409e94dcbf1bca2b354301c1c37e4aca5492d92d698a2c86521cde2",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#SanitizeSurrogates",
         "go:github.com/MichaelKinsy/PiG/ai#sanitizeSurrogates"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -281077,7 +281099,6 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#AnthropicOAuthProvider.ID",
-        "go:github.com/MichaelKinsy/PiG/ai#BedrockProvider.ID",
         "go:github.com/MichaelKinsy/PiG/ai#CodexOAuthProvider.ID",
         "go:github.com/MichaelKinsy/PiG/ai#FauxProviderHandle.ID",
         "go:github.com/MichaelKinsy/PiG/ai#OpenAIChatGPTOAuthProvider.ID",
@@ -281086,7 +281107,6 @@
         "go:github.com/MichaelKinsy/PiG/ai#RadiusProvider.ID",
         "go:github.com/MichaelKinsy/PiG/ai#TestFauxProvider.ID",
         "go:github.com/MichaelKinsy/PiG/ai#anthropicProvider.ID",
-        "go:github.com/MichaelKinsy/PiG/ai#bedrockHeadersMiddleware.ID",
         "go:github.com/MichaelKinsy/PiG/ai#copilotOAuthRegistryProvider.ID",
         "go:github.com/MichaelKinsy/PiG/ai#fauxModelProvider.ID",
         "go:github.com/MichaelKinsy/PiG/ai#googleProvider.ID",
@@ -281099,6 +281119,8 @@
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.ID",
         "go:github.com/MichaelKinsy/PiG/ai#wrappedStreamsProvider.ID",
         "go:github.com/MichaelKinsy/PiG/ai#xaiOAuthProvider.ID",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.ID",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockHeadersMiddleware.ID",
         "go:github.com/MichaelKinsy/PiG/coding#Session.ID",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.ID",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.ID",
@@ -300788,7 +300810,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "10 normalized-name Pig candidates are ambiguous."
+        "11 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -300799,6 +300821,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/agent#runDeadlineContext.Err",
+        "go:github.com/MichaelKinsy/PiG/ai#bodyReadSignal.Err",
         "go:github.com/MichaelKinsy/PiG/ai#codexSSEDecoder.Err",
         "go:github.com/MichaelKinsy/PiG/ai#modelsRefreshSignal.Err",
         "go:github.com/MichaelKinsy/PiG/ai#openAIStreamDecoder.Err",
@@ -321817,7 +321840,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#TextContent.contentBlock",
         "go:github.com/MichaelKinsy/PiG/ai#ThinkingContent.contentBlock",
         "go:github.com/MichaelKinsy/PiG/ai#ToolCall.contentBlock",
-        "go:github.com/MichaelKinsy/PiG/ai#bedrockWire.contentBlock",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockWire.contentBlock",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#ContentBlock"
       ],
       "missingClosure": [
@@ -330299,7 +330322,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#bedrockWire.tool",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockWire.tool",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Tool",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinSpec.tool"
       ],
@@ -352049,7 +352072,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#bedrockObject.key",
+        "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockObject.key",
         "go:github.com/MichaelKinsy/PiG/coding/cli#placementMetadata.key",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sparse.key",
         "go:github.com/MichaelKinsy/PiG/coding/packagecontent#packageGlobPattern.key",

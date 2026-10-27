@@ -4,15 +4,20 @@
 (*github.com/MichaelKinsy/PiG/durable/core.Session).Step
 (*github.com/MichaelKinsy/PiG/durable/core.Session).Step$1
 (*github.com/MichaelKinsy/PiG/durable/core.Session).dispatch
+(*github.com/MichaelKinsy/PiG/durable/core.Session).flushOrigins
+(*github.com/MichaelKinsy/PiG/durable/core.Session).park
+(*github.com/MichaelKinsy/PiG/durable/core.Session).releaseOrigin
 (*github.com/MichaelKinsy/PiG/durable/core.Session).rows
 (*github.com/MichaelKinsy/PiG/durable/core.adapter).Commit
 (*github.com/MichaelKinsy/PiG/durable/core.convTable).has
+(*github.com/MichaelKinsy/PiG/durable/core.convTable).index
 (*github.com/MichaelKinsy/PiG/durable/core.convTable).put
 (*github.com/MichaelKinsy/PiG/durable/core.docTable).get
 (*github.com/MichaelKinsy/PiG/durable/core.docTable).put
 (*github.com/MichaelKinsy/PiG/durable/core.entryTable).conv
 (*github.com/MichaelKinsy/PiG/durable/core.entryTable).held
 (*github.com/MichaelKinsy/PiG/durable/core.entryTable).put
+(*github.com/MichaelKinsy/PiG/durable/core.handler).FlushOrigins
 (*github.com/MichaelKinsy/PiG/durable/core.handler).StepStart
 (*github.com/MichaelKinsy/PiG/durable/core.handler).advanceTaskGraph
 (*github.com/MichaelKinsy/PiG/durable/core.handler).after$bound
@@ -21,6 +26,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core.handler).apiOK
 (*github.com/MichaelKinsy/PiG/durable/core.handler).apiTasks$1
 (*github.com/MichaelKinsy/PiG/durable/core.handler).apiTasks$2
+(*github.com/MichaelKinsy/PiG/durable/core.handler).apiTasks$3
 (*github.com/MichaelKinsy/PiG/durable/core.handler).arm
 (*github.com/MichaelKinsy/PiG/durable/core.handler).arm$1
 (*github.com/MichaelKinsy/PiG/durable/core.handler).armBackgroundTimer$bound
@@ -38,6 +44,8 @@
 (*github.com/MichaelKinsy/PiG/durable/core.handler).contextWindow$bound
 (*github.com/MichaelKinsy/PiG/durable/core.handler).conversationCreated$bound
 (*github.com/MichaelKinsy/PiG/durable/core.handler).documentRetentionMs$bound
+(*github.com/MichaelKinsy/PiG/durable/core.handler).dropOrigin
+(*github.com/MichaelKinsy/PiG/durable/core.handler).dropOrigin$bound
 (*github.com/MichaelKinsy/PiG/durable/core.handler).dropStepHops
 (*github.com/MichaelKinsy/PiG/durable/core.handler).finishClose
 (*github.com/MichaelKinsy/PiG/durable/core.handler).flush
@@ -55,6 +63,9 @@
 (*github.com/MichaelKinsy/PiG/durable/core.handler).holdJob$bound
 (*github.com/MichaelKinsy/PiG/durable/core.handler).holdJobNow
 (*github.com/MichaelKinsy/PiG/durable/core.handler).holdJobNow$2
+(*github.com/MichaelKinsy/PiG/durable/core.handler).holdLate
+(*github.com/MichaelKinsy/PiG/durable/core.handler).holdOrigin
+(*github.com/MichaelKinsy/PiG/durable/core.handler).holdOrigin$bound
 (*github.com/MichaelKinsy/PiG/durable/core.handler).holdReadJob$1
 (*github.com/MichaelKinsy/PiG/durable/core.handler).holdSteps
 (*github.com/MichaelKinsy/PiG/durable/core.handler).holdSteps$1
@@ -95,7 +106,12 @@
 (*github.com/MichaelKinsy/PiG/durable/core.handler).onSubmit$1$1
 (*github.com/MichaelKinsy/PiG/durable/core.handler).onSubmit$2
 (*github.com/MichaelKinsy/PiG/durable/core.handler).onTx
+(*github.com/MichaelKinsy/PiG/durable/core.handler).origin
+(*github.com/MichaelKinsy/PiG/durable/core.handler).origin$bound
+(*github.com/MichaelKinsy/PiG/durable/core.handler).parkChain
+(*github.com/MichaelKinsy/PiG/durable/core.handler).pin
 (*github.com/MichaelKinsy/PiG/durable/core.handler).publish$bound
+(*github.com/MichaelKinsy/PiG/durable/core.handler).publishAt
 (*github.com/MichaelKinsy/PiG/durable/core.handler).publishDocCache
 (*github.com/MichaelKinsy/PiG/durable/core.handler).publishIndexSizes
 (*github.com/MichaelKinsy/PiG/durable/core.handler).publishViews
@@ -126,9 +142,12 @@
 (*github.com/MichaelKinsy/PiG/durable/core.handler).settleRows
 (*github.com/MichaelKinsy/PiG/durable/core.handler).startEffect
 (*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$1
+(*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$10
 (*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$2
 (*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$3
+(*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$4
 (*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$5
+(*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$6
 (*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$7
 (*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$8
 (*github.com/MichaelKinsy/PiG/durable/core.handler).startScheduler$9
@@ -187,6 +206,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core.mirror).scanEntries
 (*github.com/MichaelKinsy/PiG/durable/core.mirror).scanEntries$1
 (*github.com/MichaelKinsy/PiG/durable/core.mirror).scanEntries$2
+(*github.com/MichaelKinsy/PiG/durable/core.mirror).scanTaskRows$1
 (*github.com/MichaelKinsy/PiG/durable/core.mirror).storedBelow
 (*github.com/MichaelKinsy/PiG/durable/core.mirror).storedBound
 (*github.com/MichaelKinsy/PiG/durable/core.mirror).submission
@@ -198,6 +218,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core.subTable).setRequest$1
 (*github.com/MichaelKinsy/PiG/durable/core/abi.Builder).Commit
 (*github.com/MichaelKinsy/PiG/durable/core/abi.Builder).Effect
+(*github.com/MichaelKinsy/PiG/durable/core/abi.Builder).EffectBare
 (*github.com/MichaelKinsy/PiG/durable/core/abi.Builder).Notice
 (*github.com/MichaelKinsy/PiG/durable/core/abi.Builder).Read
 (*github.com/MichaelKinsy/PiG/durable/core/abi.Builder).Reset
@@ -268,6 +289,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/jv.Object).Get
 (*github.com/MichaelKinsy/PiG/durable/core/jv.Object).Has
 (*github.com/MichaelKinsy/PiG/durable/core/jv.Object).Len
+(*github.com/MichaelKinsy/PiG/durable/core/jv.Object).Members
 (*github.com/MichaelKinsy/PiG/durable/core/jv.Object).Set
 (*github.com/MichaelKinsy/PiG/durable/core/jv.Object).Shallow
 (*github.com/MichaelKinsy/PiG/durable/core/jv.Object).find
@@ -302,6 +324,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).ClientReadLine
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).ClientReadLine$1
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).Defer
+(*github.com/MichaelKinsy/PiG/durable/core/session.Loop).DeferResumer
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).EndingClient
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).Line
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).LineAfterTail
@@ -313,9 +336,12 @@
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).complete
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).complete$1
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).complete$bound
+(*github.com/MichaelKinsy/PiG/durable/core/session.Loop).deferItem
+(*github.com/MichaelKinsy/PiG/durable/core/session.Loop).enqueue
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).fns
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).kickLine
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).pushJob
+(*github.com/MichaelKinsy/PiG/durable/core/session.Loop).quiet$bound
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).runJob$bound
 (*github.com/MichaelKinsy/PiG/durable/core/session.Loop).tailDone$bound
 (*github.com/MichaelKinsy/PiG/durable/core/session.Runtime).Commit
@@ -333,6 +359,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/session.Runtime).Signal
 (*github.com/MichaelKinsy/PiG/durable/core/session.Runtime).TaskID
 (*github.com/MichaelKinsy/PiG/durable/core/session.Runtime).gated
+(*github.com/MichaelKinsy/PiG/durable/core/session.Runtime).gated$1
 (*github.com/MichaelKinsy/PiG/durable/core/session.Runtime).gated$2
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).CloseWrites
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).KeepContext
@@ -344,6 +371,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).WaitForIdle
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).Wake
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).above
+(*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).awaitInvocation$1$1
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).awaitInvocation$2
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).awaitInvocation$3
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).belowCancelled
@@ -356,6 +384,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).commitJobAfter$1
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).commitState
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).commitWith
+(*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).deliverIdle
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).drain$1
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).drain$2
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).drain$2$1
@@ -364,6 +393,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).dropTaskKey
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).edge
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).endInvocation
+(*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).failSession
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).fit
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).gateRead
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).hasOwnedLive
@@ -420,6 +450,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).sweep$1
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).track
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).track$1
+(*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).waitForIdle
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).waitingOn
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).wakeDue
 (*github.com/MichaelKinsy/PiG/durable/core/session.Scheduler).walkDown
@@ -487,6 +518,8 @@
 (*github.com/MichaelKinsy/PiG/durable/core/session.Tx).validateOwners
 (*github.com/MichaelKinsy/PiG/durable/core/session.Tx).write
 (*github.com/MichaelKinsy/PiG/durable/core/session.docPlan).publishes
+(*github.com/MichaelKinsy/PiG/durable/core/session.invocation).Resume
+(*github.com/MichaelKinsy/PiG/durable/core/session.invocation).afterSpan
 (*github.com/MichaelKinsy/PiG/durable/core/session.invocation).finish
 (*github.com/MichaelKinsy/PiG/durable/core/session.orderedSet[K]).Add[basic:int64]
 (*github.com/MichaelKinsy/PiG/durable/core/session.orderedSet[K]).Add[named:github.com/MichaelKinsy/PiG/durable/core/session.treeNode]
@@ -552,6 +585,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).eachHookRaw$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).eachHookRaw$2
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).eachHookRaw$3
+(*github.com/MichaelKinsy/PiG/durable/core/turn.run).eachHookRaw$4
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).entry
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).entry$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).finishToolRound$1
@@ -581,6 +615,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).requestContext$2
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).requestContext$2$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).snapshot$1
+(*github.com/MichaelKinsy/PiG/durable/core/turn.run).snapshotCached
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).snapshotResult
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).snapshotResult$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).snapshotResult$2
@@ -592,6 +627,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).streamResponse$4
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).streamResponse$4$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.run).streamResponse$4$2
+(*github.com/MichaelKinsy/PiG/durable/core/turn.run).withAgent$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).beforeTool$3
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).beforeTool$3$2
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).beforeTool$3$2$1
@@ -600,11 +636,15 @@
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).call$1$1$3
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).call$1$1$3$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).execute$1$1$2
+(*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).finalResult$1
+(*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).finalResult$1$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).finalResult$3
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).finalResult$3$1
+(*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).finalResultPure
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).findTool
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).findTool$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).isNested
+(*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).madeNested
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).nestedCallIds$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).readCall
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).readCall$1
@@ -617,6 +657,7 @@
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).runTool$4$2$1$1$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).runTool$4$2$1$1$1$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).runTool$4$2$1$1$1$2
+(*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).settleCommit
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).settleCommit$1
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).settleThen
 (*github.com/MichaelKinsy/PiG/durable/core/turn.toolRun).settleThen$1
@@ -665,10 +706,13 @@ errors.asType[pointer:named:github.com/MichaelKinsy/PiG/durable/core/session.Nee
 errors.is
 github.com/MichaelKinsy/PiG/durable/core.agentOf$1
 github.com/MichaelKinsy/PiG/durable/core.aliveAt
+github.com/MichaelKinsy/PiG/durable/core.answerOK
 github.com/MichaelKinsy/PiG/durable/core.appendScopeKey
 github.com/MichaelKinsy/PiG/durable/core.boolOf
 github.com/MichaelKinsy/PiG/durable/core.cmpRequest
 github.com/MichaelKinsy/PiG/durable/core.currentOnly
+github.com/MichaelKinsy/PiG/durable/core.deferAnswer
+github.com/MichaelKinsy/PiG/durable/core.detach
 github.com/MichaelKinsy/PiG/durable/core.docDef
 github.com/MichaelKinsy/PiG/durable/core.firstAbove
 github.com/MichaelKinsy/PiG/durable/core.has
@@ -680,11 +724,13 @@ github.com/MichaelKinsy/PiG/durable/core.jobj
 github.com/MichaelKinsy/PiG/durable/core.num
 github.com/MichaelKinsy/PiG/durable/core.objectOf
 github.com/MichaelKinsy/PiG/durable/core.orNull
+github.com/MichaelKinsy/PiG/durable/core.ownerOf
 github.com/MichaelKinsy/PiG/durable/core.pageOf
 github.com/MichaelKinsy/PiG/durable/core.parseRaw
 github.com/MichaelKinsy/PiG/durable/core.pointJSON
 github.com/MichaelKinsy/PiG/durable/core.recordAddrKey
 github.com/MichaelKinsy/PiG/durable/core.recordText
+github.com/MichaelKinsy/PiG/durable/core.resumeHop
 github.com/MichaelKinsy/PiG/durable/core.revision
 github.com/MichaelKinsy/PiG/durable/core.scopeKey
 github.com/MichaelKinsy/PiG/durable/core.settledStatus
@@ -750,6 +796,7 @@ github.com/MichaelKinsy/PiG/durable/core/jv.AppendNumber
 github.com/MichaelKinsy/PiG/durable/core/jv.AppendString
 github.com/MichaelKinsy/PiG/durable/core/jv.Clone
 github.com/MichaelKinsy/PiG/durable/core/jv.Equal
+github.com/MichaelKinsy/PiG/durable/core/jv.Equal$1
 github.com/MichaelKinsy/PiG/durable/core/jv.IsIndexKey
 github.com/MichaelKinsy/PiG/durable/core/jv.NewObject
 github.com/MichaelKinsy/PiG/durable/core/jv.NewObjectCap
@@ -804,6 +851,8 @@ github.com/MichaelKinsy/PiG/durable/core/session.taskStatus
 github.com/MichaelKinsy/PiG/durable/core/session.with
 github.com/MichaelKinsy/PiG/durable/core/session.withState
 github.com/MichaelKinsy/PiG/durable/core/session.without
+github.com/MichaelKinsy/PiG/durable/core/session/hopcost.AdoptTail
+github.com/MichaelKinsy/PiG/durable/core/session/hopcost.CommitTail
 github.com/MichaelKinsy/PiG/durable/core/session/hopcost.CurrentTask
 github.com/MichaelKinsy/PiG/durable/core/session/hopcost.ReadHops
 github.com/MichaelKinsy/PiG/durable/core/session/hopcost.RequireConversation
@@ -811,6 +860,7 @@ github.com/MichaelKinsy/PiG/durable/core/session/hopcost.Settle
 github.com/MichaelKinsy/PiG/durable/core/session/hopcost.TxDoc
 github.com/MichaelKinsy/PiG/durable/core/session/hopcost.TxTask
 github.com/MichaelKinsy/PiG/durable/core/session/hopcost.backend
+github.com/MichaelKinsy/PiG/durable/core/session/hopcost.commitTailBackend
 github.com/MichaelKinsy/PiG/durable/core/session/hopcost.readBackend
 github.com/MichaelKinsy/PiG/durable/core/session/hopcost.statement
 github.com/MichaelKinsy/PiG/durable/core/store.estimateSize
@@ -843,6 +893,7 @@ github.com/MichaelKinsy/PiG/durable/core/turn.handOver
 github.com/MichaelKinsy/PiG/durable/core/turn.idField
 github.com/MichaelKinsy/PiG/durable/core/turn.idList
 github.com/MichaelKinsy/PiG/durable/core/turn.init$1
+github.com/MichaelKinsy/PiG/durable/core/turn.init$10
 github.com/MichaelKinsy/PiG/durable/core/turn.init$6
 github.com/MichaelKinsy/PiG/durable/core/turn.init$7
 github.com/MichaelKinsy/PiG/durable/core/turn.init$9
@@ -859,6 +910,7 @@ github.com/MichaelKinsy/PiG/durable/core/turn.startRun
 github.com/MichaelKinsy/PiG/durable/core/turn.str
 github.com/MichaelKinsy/PiG/durable/core/turn.streamOrEmpty
 github.com/MichaelKinsy/PiG/durable/core/turn.systemEntry
+github.com/MichaelKinsy/PiG/durable/core/turn.thinkingOf
 hashmapKeyEqual.struct{bool; int64}
 hashmapKeyHash.struct{bool; int64}
 interface:{Bounds:func:{}{basic:int64,basic:int64},Messages:func:{}{slice:pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object},PromptView:func:{}{named:github.com/MichaelKinsy/PiG/durable/core/turn.PromptView},SystemMessages:func:{}{slice:pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object},Threshold:func:{slice:slice:basic:uint8,basic:float64,named:github.com/MichaelKinsy/PiG/durable/core/history.Policy}{named:github.com/MichaelKinsy/PiG/durable/core/history.Threshold}}.SystemMessages$invoke
@@ -870,6 +922,7 @@ interface:{Commit:func:{slice:named:github.com/MichaelKinsy/PiG/durable/core/ses
 interface:{Commit:func:{slice:named:github.com/MichaelKinsy/PiG/durable/core/session.Write,basic:int64}{basic:int64,named:error},Conversation:func:{basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},Document:func:{basic:int64,named:github.com/MichaelKinsy/PiG/durable/core/session.Point}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/session.StoredDoc,named:error},Entry:func:{basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,basic:int64,named:error},EntryIn:func:{basic:int64,basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,basic:int64,named:error},FindDocument:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.Address,named:github.com/MichaelKinsy/PiG/durable/core/session.Point}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},LatestHeadMarker:func:{basic:int64,basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},ScanConversations:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.ConversationQuery,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},ScanDocuments:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.Scope,named:github.com/MichaelKinsy/PiG/durable/core/session.Point,basic:string,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},ScanEntries:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.EntryQuery,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},ScanSubmissions:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.SubmissionQuery,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},ScanTasks:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.TaskQuery,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},Submission:func:{basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},SubmissionByRequest:func:{basic:int64,basic:string}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},Task:func:{basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error}}.Submission$invoke
 interface:{Commit:func:{slice:named:github.com/MichaelKinsy/PiG/durable/core/session.Write,basic:int64}{basic:int64,named:error},Conversation:func:{basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},Document:func:{basic:int64,named:github.com/MichaelKinsy/PiG/durable/core/session.Point}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/session.StoredDoc,named:error},Entry:func:{basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,basic:int64,named:error},EntryIn:func:{basic:int64,basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,basic:int64,named:error},FindDocument:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.Address,named:github.com/MichaelKinsy/PiG/durable/core/session.Point}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},LatestHeadMarker:func:{basic:int64,basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},ScanConversations:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.ConversationQuery,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},ScanDocuments:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.Scope,named:github.com/MichaelKinsy/PiG/durable/core/session.Point,basic:string,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},ScanEntries:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.EntryQuery,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},ScanSubmissions:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.SubmissionQuery,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},ScanTasks:func:{named:github.com/MichaelKinsy/PiG/durable/core/session.TaskQuery,basic:int,basic:int64}{named:github.com/MichaelKinsy/PiG/durable/core/session.Page,named:error},Submission:func:{basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},SubmissionByRequest:func:{basic:int64,basic:string}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error},Task:func:{basic:int64}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/jv.Object,named:error}}.Task$invoke
 interface:{Error:func:{}{basic:string}}.$typeassert
+interface:{Resume:func:{}{}}.Resume$invoke
 interface:{Task:func:{basic:string}{pointer:named:github.com/MichaelKinsy/PiG/durable/core/session.TaskImpl}}.Task$invoke
 internal/reflectlite.Swapper$1
 internal/strconv.FormatInt

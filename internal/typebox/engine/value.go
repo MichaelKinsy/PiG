@@ -128,11 +128,15 @@ func (o *Obj) Value(name string) any {
 	return Undef
 }
 
-// objectPrototype lists the members `key in {}` finds through Object.prototype.
-var objectPrototype = map[string]bool{
-	"constructor": true, "__defineGetter__": true, "__defineSetter__": true, "hasOwnProperty": true, "__lookupGetter__": true,
-	"__lookupSetter__": true, "isPrototypeOf": true, "propertyIsEnumerable": true, "toString": true, "valueOf": true,
-	"__proto__": true, "toLocaleString": true,
+// inObjectPrototype reports whether key is one of the members `key in {}` finds through Object.prototype. A switch rather than a
+// package-level set: a set is built by an initializer on every start of the program.
+func inObjectPrototype(key string) bool {
+	switch key {
+	case "constructor", "__defineGetter__", "__defineSetter__", "hasOwnProperty", "__lookupGetter__", "__lookupSetter__", "isPrototypeOf",
+		"propertyIsEnumerable", "toString", "valueOf", "__proto__", "toLocaleString":
+		return true
+	}
+	return false
 }
 
 // isObject is Guard.IsObject: typeof "object" and not null (arrays count).
@@ -195,7 +199,7 @@ func hasKey(value any, key string) bool {
 		if v.Has(key) {
 			return true
 		}
-		return !isUnsafeKey(key) && objectPrototype[key]
+		return !isUnsafeKey(key) && inObjectPrototype(key)
 	case []any:
 		if key == "length" {
 			return true
@@ -203,13 +207,22 @@ func hasKey(value any, key string) bool {
 		if n, ok := jsstring.ArrayIndex(key); ok {
 			return int(n) < len(v)
 		}
-		return !isUnsafeKey(key) && (objectPrototype[key] || arrayPrototype[key])
+		return !isUnsafeKey(key) && (inObjectPrototype(key) || inArrayPrototype(key))
 	}
 	throw("TypeError", "Cannot use 'in' operator to search for '%s' in %s", key, toDisplay(value))
 	return false
 }
 
-var arrayPrototype = map[string]bool{"at": true, "concat": true, "copyWithin": true, "entries": true, "every": true, "fill": true, "filter": true, "find": true, "findIndex": true, "findLast": true, "findLastIndex": true, "flat": true, "flatMap": true, "forEach": true, "includes": true, "indexOf": true, "join": true, "keys": true, "lastIndexOf": true, "map": true, "pop": true, "push": true, "reduce": true, "reduceRight": true, "reverse": true, "shift": true, "slice": true, "some": true, "sort": true, "splice": true, "toLocaleString": true, "toReversed": true, "toSorted": true, "toSpliced": true, "unshift": true, "values": true, "with": true}
+// inArrayPrototype reports whether key is one of the members `key in []` finds through Array.prototype.
+func inArrayPrototype(key string) bool {
+	switch key {
+	case "at", "concat", "copyWithin", "entries", "every", "fill", "filter", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap",
+		"forEach", "includes", "indexOf", "join", "keys", "lastIndexOf", "map", "pop", "push", "reduce", "reduceRight", "reverse", "shift", "slice",
+		"some", "sort", "splice", "toLocaleString", "toReversed", "toSorted", "toSpliced", "unshift", "values", "with":
+		return true
+	}
+	return false
+}
 
 func toDisplay(v any) string {
 	switch x := v.(type) {
@@ -235,7 +248,7 @@ func get(value any, key string) any {
 		if p, ok := v.props[key]; ok {
 			return p.value
 		}
-		if objectPrototype[key] {
+		if inObjectPrototype(key) {
 			return &Opaque{}
 		}
 		return Undef
@@ -246,7 +259,7 @@ func get(value any, key string) any {
 		if n, ok := jsstring.ArrayIndex(key); ok && int(n) < len(v) {
 			return v[n]
 		}
-		if arrayPrototype[key] || objectPrototype[key] {
+		if inArrayPrototype(key) || inObjectPrototype(key) {
 			return &Opaque{}
 		}
 		return Undef

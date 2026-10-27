@@ -24,6 +24,48 @@ type invocation struct {
 	finished       bool
 	doneWaiters    []func()
 	watches        []func()
+	loop           *Loop
+	// next is what afterSpan resumes, and stage where it is on the way: the span's hops, the microtask after them, then next itself.
+	next  func()
+	stage spanStage
+	tick  bool
+}
+
+type spanStage uint8
+
+const (
+	spanHops spanStage = iota + 1
+	spanDeferred
+)
+
+// afterSpan runs then once the span of a phase that just ended has returned (span: it has one), a tick later still when tick: the
+// phaseSpanHops hops and the microtask after them are the invocation's own Resume, so no closure is made for them.
+func (inv *invocation) afterSpan(span bool, then func(), tick bool) {
+	inv.next, inv.tick = then, tick
+	if span && inv.loop.Hops != nil {
+		inv.stage = spanHops
+		if inv.loop.Hops(phaseSpanHops, inv) {
+			return
+		}
+	}
+	inv.stage = 0
+	inv.Resume()
+}
+
+// Resume is the Resumer of afterSpan.
+func (inv *invocation) Resume() {
+	if inv.stage == spanHops {
+		inv.stage = spanDeferred
+		inv.loop.DeferResumer(inv)
+		return
+	}
+	then := inv.next
+	inv.next, inv.stage = nil, 0
+	if inv.tick {
+		inv.loop.NextTick(then)
+		return
+	}
+	then()
 }
 
 func (inv *invocation) finish() {
@@ -253,7 +295,10 @@ func (s *Scheduler) commitWith(cancel *Cancel, change func(tx *Tx) error, scope 
 
 // commitQueued is commit for a call a caller makes through `Session.commitWith` (session.ts :95-102): on an idle line the job starts
 // a tick after the call.
-func (s *Scheduler) commitQueued(change func(tx *Tx) error, scope TxScope, then func(error)) {
+func (s *Scheduler) commitQueued(late bool, change func(tx *Tx) error, scope TxScope, then func(error)) {
+	if late {
+		s.loop.LateNext()
+	}
 	s.commitJob(s.loop.LineAfterTail, nil, change, scope, then)
 }
 
@@ -607,23 +652,39 @@ func (s *Scheduler) resolveTaskWaiters(id ID, rec *jv.Object) {
 	}
 }
 
+// IsIdle reports whether WaitForIdle(conversationID) answers at once: the Scheduler is open and the scope has no live task.
+func (s *Scheduler) IsIdle(conversationID ID) bool { return !s.closing && s.idle(conversationID) }
+
 // WaitForIdle calls then when the conversation (0: every root) has no live
 // non-background task or queued input below it.
 func (s *Scheduler) WaitForIdle(conversationID ID, cancel *Cancel, then func(error)) {
+	s.waitForIdle(conversationID, cancel, false, then)
+}
+
+// deliverIdle calls then with err in a job of its own, a hop later when late.
+func (s *Scheduler) deliverIdle(then func(error), late bool, err error) {
+	if late {
+		s.loop.Defer(func() { s.deliverIdle(then, false, err) })
+		return
+	}
+	s.loop.Defer(func() { then(err) })
+}
+
+func (s *Scheduler) waitForIdle(conversationID ID, cancel *Cancel, late bool, then func(error)) {
 	if s.closing {
-		s.loop.Defer(func() { then(s.closedErr()) })
+		s.deliverIdle(then, late, s.closedErr())
 		return
 	}
 	if s.idle(conversationID) {
-		s.loop.Defer(func() { then(nil) })
+		s.deliverIdle(then, late, nil)
 		return
 	}
 	s.scheduleReconcile()
 	if cancel.Aborted() {
-		s.loop.Defer(func() { then(ErrAborted) })
+		s.deliverIdle(then, late, ErrAborted)
 		return
 	}
-	w := &idleWaiter{done: then}
+	w := &idleWaiter{done: then, late: late}
 	if _, ok := s.idleWaiters[conversationID]; !ok {
 		s.idleWaitKeys = append(s.idleWaitKeys, conversationID)
 	}
@@ -640,7 +701,7 @@ func (s *Scheduler) WaitForIdle(conversationID ID, cancel *Cancel, then func(err
 			if len(s.idleWaiters[conversationID]) == 0 {
 				s.dropIdleKey(conversationID)
 			}
-			s.loop.Defer(func() { then(ErrAborted) })
+			s.deliverIdle(w.done, w.late, ErrAborted)
 		})
 	}
 }
@@ -693,7 +754,7 @@ func (s *Scheduler) AbortConversation(conversationID ID, background bool, cancel
 			if !background || i >= len(reached) {
 				// abortConversation is an async function whose last await is waitForIdle: its caller resumes a hop after the
 				// waiter does.
-				s.WaitForIdle(conversationID, cancel, func(err error) { s.loop.Defer(func() { then(err) }) })
+				s.waitForIdle(conversationID, cancel, true, then)
 				return
 			}
 			s.WaitForTask(reached[i], cancel, func(_ *jv.Object, err error) {
@@ -744,8 +805,7 @@ func (s *Scheduler) Seal() {
 			if w.remove != nil {
 				w.remove()
 			}
-			err := s.closedErr()
-			s.loop.Defer(func() { w.done(err) })
+			s.deliverIdle(w.done, w.late, s.closedErr())
 		}
 	}
 	s.idleWaiters, s.idleWaitKeys = map[ID][]*idleWaiter{}, nil
@@ -832,7 +892,7 @@ func (s *Scheduler) settleIdle() {
 			if w.remove != nil {
 				w.remove()
 			}
-			s.loop.Defer(func() { w.done(nil) })
+			s.deliverIdle(w.done, w.late, nil)
 		}
 	}
 }

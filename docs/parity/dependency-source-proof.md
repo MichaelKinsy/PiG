@@ -58,8 +58,8 @@ The capture follows the same steps as for undici, with `lib/credentials/types.mj
 | License | `test/parity/dependency-sources/@smithy/core/3.33.3/LICENSE` |
 | Symbols | `DEFAULT_RETRY_DELAY_BASE`, `THROTTLING_RETRY_DELAY_BASE`, `MAXIMUM_RETRY_DELAY`, `THROTTLING_ERROR_CODES`, `refreshRetryTokenForRetry` |
 | Rule | The SDK's standard retry waits floor(random() * min(base * 2^attempts, 20 * 1000)) ms, with base 500 for a throttling error and 100 otherwise, and raises it to a retry-after hint by at most 5_000 ms |
-| Literal consumer | `ai/bedrock_retry_backoff.go` |
-| Behavioral proof | `ai/bedrock_retry_backoff_test.go` |
+| Literal consumer | `ai/providers/bedrock/bedrock_retry_backoff.go` |
+| Behavioral proof | `ai/providers/bedrock/bedrock_retry_backoff_test.go` |
 
 A package that no workspace manifest declares is admitted through the root lockfile: the guard requires the record's version and archive integrity to equal the lockfile entry's.
 

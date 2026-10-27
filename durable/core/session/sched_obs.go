@@ -690,7 +690,7 @@ func (s *Scheduler) unparkRaised() {
 
 func (s *Scheduler) createInvocation(rec *jv.Object, abortMode bool, extension string) *invocation {
 	kind, _ := getStr(rec, "kind")
-	inv := &invocation{taskID: mustInt(rec, "id"), kind: kind, extension: extension, conversationID: mustInt(rec, "conversationId"), abortMode: abortMode, signal: &Cancel{}}
+	inv := &invocation{taskID: mustInt(rec, "id"), kind: kind, extension: extension, conversationID: mustInt(rec, "conversationId"), abortMode: abortMode, signal: &Cancel{}, loop: s.loop}
 	s.invocations[inv.taskID] = inv
 	return inv
 }

@@ -69,6 +69,12 @@ import (
 // the macOS and Windows allocation profiles of the two differ by 14 objects at most in any function, so the whole delta is the registration. Its parts match the Linux profile: Models.Refresh 644-656, refresh signals 344, provider
 // refresh phase 166-175, json type caches 523-527. Windows is about 245 objects above Linux because the availability reload checks every provider's auth once more (env lookups 456 -> 684 objects) and an
 // os.LookupEnv costs two allocations on Windows and none on Linux. Byte budgets are unchanged.
+//
+// The 0.6.0 batch (Pi 6c384aa3, the SDK batch, the Type engine) raised --version on the Linux host from main d9210cd1d0's 718,320 bytes / 3,798 objects to 724,168 / 3,821, and the
+// Windows runner over its 824,000 (825,016) and its models.json budget (3,268,928 against 3,265,000). GODEBUG=inittrace=1 put 6.6 KB / 28 allocations of it in package initializers: the Type
+// engine's member table and its two prototype name sets (4,264 bytes / 12), the JSON Schema keyword sets of ai/google.go (1.2 KB / 6), the tui word selection joiners (256 / 2), chord's default
+// delivery scheduler (136 / 2) and the compiled-in registry (304 / 2). Each is now built on first use or is a switch: --version measures 718,056-718,696 bytes / 3,798-3,802 objects (main
+// 718,000-718,480 / 3,796-3,799, same test, six runs each; one run of each of the six read 5.3 KB more, the extra OS thread's allocation); with models.json 2,920,472-2,921,736 / 21,720-21,724 (main 2,921,920).
 type startupAllocBudget struct{ versionBytes, versionObjects, promptBytes, promptObjects uint64 }
 
 func startupAllocBudgetFor(goos string) startupAllocBudget {

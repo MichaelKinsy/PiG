@@ -1,4 +1,4 @@
-//go:build !pig_strip_mistral_conversations && !pig_strip_bedrock_converse_stream
+//go:build !pig_strip_mistral_conversations
 
 package ai
 
@@ -8,10 +8,6 @@ import (
 	"io"
 	"strings"
 	"testing"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-
-	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 func assertWireStopReason(t *testing.T, stream *AssistantMessageEventStream, want StopReason) {
@@ -153,31 +149,6 @@ data: [DONE]
 	builder := newAssistantStreamBuilder(context.Background(), APIMistralConversations, "mistral", "mistral-test")
 	provider.consumeStream(context.Background(), io.NopCloser(strings.NewReader(wire)), builder)
 	assertWireStopReason(t, builder.stream, StopReasonStop)
-}
-
-func TestBedrockWireToolCallsPreserveSuccessfulStopReason(t *testing.T) {
-	for _, stopReason := range []btypes.StopReason{btypes.StopReasonEndTurn, btypes.StopReasonStopSequence} {
-		t.Run(string(stopReason), func(t *testing.T) {
-			result, events := runBedrockEvents(t,
-				&btypes.ConverseStreamOutputMemberMessageStart{Value: btypes.MessageStartEvent{Role: btypes.ConversationRoleAssistant}},
-				&btypes.ConverseStreamOutputMemberContentBlockStart{Value: btypes.ContentBlockStartEvent{
-					ContentBlockIndex: aws.Int32(0),
-					Start:             &btypes.ContentBlockStartMemberToolUse{Value: btypes.ToolUseBlockStart{ToolUseId: aws.String("call-1"), Name: aws.String("read")}},
-				}},
-				&btypes.ConverseStreamOutputMemberContentBlockDelta{Value: btypes.ContentBlockDeltaEvent{
-					ContentBlockIndex: aws.Int32(0), Delta: &btypes.ContentBlockDeltaMemberToolUse{Value: btypes.ToolUseBlockDelta{Input: aws.String(`{}`)}},
-				}},
-				&btypes.ConverseStreamOutputMemberContentBlockStop{Value: btypes.ContentBlockStopEvent{ContentBlockIndex: aws.Int32(0)}},
-				&btypes.ConverseStreamOutputMemberMessageStop{Value: btypes.MessageStopEvent{StopReason: stopReason}},
-			)
-			if result.StopReason != StopReasonStop {
-				t.Fatalf("message stop reason = %q, want %q", result.StopReason, StopReasonStop)
-			}
-			if done, ok := events[len(events)-1].(DoneEvent); !ok || done.Reason != StopReasonStop {
-				t.Fatalf("terminal event = %#v, want stop done", events[len(events)-1])
-			}
-		})
-	}
 }
 
 func TestPiMessagesWireToolCallPreservesStop(t *testing.T) {
