@@ -8,4 +8,4 @@
 
 ### Changed
 
-- A program that embeds PiG and links no Bedrock package is smaller: `import _ "github.com/MichaelKinsy/PiG/ai"` no longer links the AWS SDK and smithy (89 packages). The `pig_strip_bedrock_converse_stream` build tag still works: with it, `ai/providers/bedrock` compiles to the strip registration alone.
+- A program that embeds PiG and links no Bedrock package is smaller (39.9 MB to 36.7 MB for `examples/headless` on linux/amd64, and 18.3 MB to 15.0 MB for a program that only imports `ai`): `import _ "github.com/MichaelKinsy/PiG/ai"` no longer links the AWS SDK and smithy (89 packages). The `pig_strip_bedrock_converse_stream` build tag still works: with it, `ai/providers/bedrock` compiles to the strip registration alone.

@@ -365,7 +365,7 @@ A program that embeds PiG without a terminal still links everything the session 
 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o headless ./examples/headless
 ```
 
-On linux/amd64 this is 40.1 MB, against 69.8 MB for the `pig` command. Three things are already left out of such a program without any option: the terminal MCP view and tool renderers (package `mcptui`, see below), the terminal editor with the word dictionaries behind it (6.3 MB), and the announcement image of the interactive mode (0.5 MB). The rest is features you can remove with build tags.
+On linux/amd64 this is 36.7 MB, against 69.7 MB for the `pig` command. Four things are already left out of such a program without any option: the Amazon Bedrock provider and the AWS SDK behind it (3.3 MB, package `ai/providers/bedrock`, which only `ai/all` and the `pig` command import), the terminal MCP view and tool renderers (package `mcptui`, see below), the terminal editor with the word dictionaries behind it (6.3 MB), and the announcement image of the interactive mode (0.5 MB). The rest is features you can remove with build tags.
 
 ### Strip tags
 
@@ -381,7 +381,7 @@ Every feature that can be left out of a build has a Go build tag, `pig_strip_<id
 | `pig_strip_mermaid` | Mermaid diagram drawing | 0.07 MB |
 | `pig_strip_word_dictionaries` | The CJK, Thai, Lao, Khmer and Burmese word dictionaries | 0, already absent (6.3 MB in the `pig` command) |
 
-The remaining tags (`pig_strip_llama_cpp`, `pig_strip_codemode`, `pig_strip_tool_search`, `pig_strip_pig_login`, `pig_strip_docs`, `pig_strip_changelog`, `pig_strip_export_html`, `pig_strip_self_update`, `pig_strip_piglet_builder`, `pig_strip_extension_sdk_go`, `pig_strip_extension_sdk_python` and `pig_strip_extension_sdk_rust`) remove features the session API does not link by itself. They matter when your program also links the `pig` command's packages, and they do no harm here. Passing all of them except `pig_strip_mcp` takes `examples/headless` to 30.4 MB on linux/amd64, 29.0 MB on darwin/arm64 and 31.7 MB on windows/amd64.
+The remaining tags (`pig_strip_llama_cpp`, `pig_strip_codemode`, `pig_strip_tool_search`, `pig_strip_pig_login`, `pig_strip_docs`, `pig_strip_changelog`, `pig_strip_export_html`, `pig_strip_self_update`, `pig_strip_piglet_builder`, `pig_strip_extension_sdk_go`, `pig_strip_extension_sdk_python` and `pig_strip_extension_sdk_rust`) remove features the session API does not link by itself. They matter when your program also links the `pig` command's packages, and they do no harm here. Passing all of them except `pig_strip_mcp` takes `examples/headless` to 30.2 MB on linux/amd64, 28.8 MB on darwin/arm64 and 31.5 MB on windows/amd64.
 
 Notes:
 
