@@ -46,6 +46,7 @@ function prefixedDatabase(db: SqliteDatabase, rewrite: (sql: string) => string):
   const executor = (x: SqliteExecutor): SqliteExecutor => ({
     exec: sql => x.exec(rewrite(sql)),
     run: (sql, ...params) => x.run(rewrite(sql), ...params),
+    runCounted: (sql, ...params) => x.runCounted(rewrite(sql), ...params),
     get: (sql, ...params) => x.get(rewrite(sql), ...params),
     all: (sql, ...params) => x.all(rewrite(sql), ...params),
   })

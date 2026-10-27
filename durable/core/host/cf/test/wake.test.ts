@@ -1,4 +1,4 @@
-// Harness.wake() and Harness.retryTask() of Pi after 1.3.0 (harness.ts :282-285, :324-327) through the facade against a scripted core.
+// Harness.wake() of Pi after 1.3.0 (harness.ts :282-285) through the facade against a scripted core.
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
@@ -32,20 +32,4 @@ test("wake throws on a closed Harness, as assertUsable does", async () => {
   const { harness } = await open(() => undefined)
   await harness.close(context)
   assert.throws(() => harness.wake(), /Harness is closed/)
-})
-
-test("retryTask sends the task ID, resolves with undefined when the core answers, and rejects with the core's error for an unknown task", async () => {
-  const { core, harness } = await open(ev => {
-    if (ev.kind !== EVENT.api || ev.body.op !== "retryTask") return undefined
-    return { notices: [apiResult(ev.id!, ev.body.taskId === 7 ? { ok: null } : { error: { name: "Error", message: `Task ${ev.body.taskId} does not exist` } })] }
-  })
-  assert.equal(await harness.retryTask(7, context), undefined)
-  await assert.rejects(harness.retryTask(8, context), /Task 8 does not exist/)
-  assert.deepEqual(core.ofKind(EVENT.api).filter(e => e.body.op === "retryTask").map(e => e.body.taskId), [7, 8])
-})
-
-test("retryTask throws synchronously on a closed Harness, not through the returned promise", async () => {
-  const { harness } = await open(() => undefined)
-  await harness.close(context)
-  assert.throws(() => harness.retryTask(1, context), /Harness is closed/)
 })

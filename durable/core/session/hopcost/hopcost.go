@@ -475,19 +475,16 @@ func ReadOnLine(body int, direct bool) int {
 	return body + 3
 }
 
-// The ticks between the Storage reads of ConversationViews #build (view.ts :156-175, context.ts :23-40, :217-225), where an
-// async function returns to an awaiting caller.
+// The ticks between the Storage reads of ConversationViews attach (view.ts :140-175, :226-243), where an async function returns
+// to an awaiting caller.
 const (
-	// ViewEmptyBounds: captureContextBounds returns undefined to #build (1) and `await activeEntries` of a conversation without
-	// entries resolves an async function that awaits nothing (1).
-	ViewEmptyBounds = 2
-	// ViewBoundsReturn: captureContextBounds returns the bounds of a conversation with entries to #build.
-	ViewBoundsReturn = 1
-	// ViewActiveReturn: scanRange returns to activeEntries (1), and activeEntries returns to #build (1).
-	ViewActiveReturn = 2
 	// ViewDocReturn: `await #loadDocument` resumes conversationDocumentOnLine (1), which returns to #build (1); a Session-cached
 	// document costs only these.
 	ViewDocReturn = 2
 	// ViewBuildReturn: #build returns the mount to attach's job.
 	ViewBuildReturn = 1
+	// ViewScanReturn: scanUpTo returns to loadWindow.
+	ViewScanReturn = 1
+	// ViewWindowReturn: loadWindow returns to attach's job.
+	ViewWindowReturn = 1
 )

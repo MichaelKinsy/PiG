@@ -6,6 +6,7 @@ import { admitWrites, adoptTables } from "./table-identity.ts"
 import { forgetColdLoads, trackColdLoads } from "./coldload.ts"
 import { BACKGROUND_CONTEXT, awaitWithContext, withoutAbortSignal } from "@earendil-works/chord/context"
 import type { Context } from "@earendil-works/chord"
+import type { ConversationWindow } from "@earendil-works/pi-durable"
 import { EVENT, NOTICE } from "../abi.ts"
 import { CoreClient } from "../client.ts"
 import { forgetSnapshots, substitutePublished, substituteWrite } from "./snapshots.ts"
@@ -694,12 +695,6 @@ export class Harness {
     return wake
   }
 
-  /** harness.ts retryTask :324-327: assertUsable (a synchronous throw), then scheduler.ts retry(): a commit on the Session line that clears a parked task's restart count (an error for an unknown task), then resume(). The promise is the core's answer as it is. */
-  retryTask(id: number, context: Context): Promise<void> {
-    this.assertOpen()
-    return awaitWithContext(this.client.api<void>("retryTask", { taskId: id }, () => undefined), context)
-  }
-
   // Not async: harness.ts root :314-319 and createConversation :326-329 return #create's promise itself.
   root(context: Context, options: { agent?: unknown; init?: (tx: TxProxy, id: number) => unknown } = {}): Promise<Conversation> {
     return this.create({ kind: "root" }, options, context)
@@ -784,24 +779,19 @@ export class Harness {
     this.assertReadable()
     return (await this.watches.observe({ kind: "graph" }, observer, context))!
   }
-  /** `observeConversation(id, observer, context)`: a synchronous Observer of a conversation's structural view (harness.ts observeConversation). */
-  async observeConversation(conversationId: number, observer: Observer<unknown>, context: Context) {
+  /** `observeConversation(id, observer, context, window?)`: a synchronous Observer of a conversation's structural view (harness.ts observeConversation); `window` is the observer's own. */
+  async observeConversation(conversationId: number, observer: Observer<unknown>, context: Context, window?: ConversationWindow) {
     this.assertReadable()
-    return (await this.watches.observe({ kind: "view", conversationId }, observer, context))!
+    return (await this.watches.observe({ kind: "view", conversationId, ...(window === undefined ? {} : { window }) }, observer, context))!
   }
+  /** The core's view of a conversation with a custom observer (conversationViews().attach): `make` receives the window's first value and the release function. */
+  attachView(conversationId: number, window: ConversationWindow | undefined, context: Context, make: Parameters<WatchHub["attach"]>[2]) {
+    return this.watches.attach({ kind: "view", conversationId, ...(window === undefined ? {} : { window }) }, context, make)
+  }
+
   /** The view state and watch of one conversation. */
-  /** The core's view of a conversation with a custom observer (watchEvents): every commit that touches it reaches `publication` with the commit's records. */
-  attachView(conversationId: number, context: Context, make: Parameters<WatchHub["attach"]>[2]) {
-    return this.watches.attach({ kind: "view", conversationId, changes: true, completing: true }, context, make)
-  }
-
-  /** Generation tasks of a conversation in `completing`: the turns whose end watchEvents already counted. */
-  completingGenerations(conversationId: number): number[] {
-    return this.store.all("SELECT id FROM tasks WHERE conversation_id = ? AND kind = '\"pi.generation\"' AND status = 'completing'", [conversationId]).map(row => Number(row[0]))
-  }
-
   conversationState(conversationId: number, context: Context) { return this.watches.state({ kind: "view", conversationId }, context) }
-  watchConversation(conversationId: number, context: Context) { return this.watches.watch({ kind: "view", conversationId }, context) }
+  watchConversation(conversationId: number, context: Context, window?: ConversationWindow) { return this.watches.watch({ kind: "view", conversationId, ...(window === undefined ? {} : { window }) }, context) }
 
   /** Resolve when the ordinary ownership scope of `conversationId` (or of every ownerless conversation) has no live non-background task. */
   async idle(conversationId: number | undefined, context: Context): Promise<void> {
@@ -945,7 +935,7 @@ export class Conversation {
   }
   waitForIdle(context: Context) { return this.harness.waitIdle(this.id, context) }
   viewState(context: Context) { return this.harness.conversationState(this.id, context) }
-  watch(context: Context) { return this.harness.watchConversation(this.id, context) }
+  watch(context: Context, window?: ConversationWindow) { return this.harness.watchConversation(this.id, context, window) }
 }
 
 /**

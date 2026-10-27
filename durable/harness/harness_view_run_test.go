@@ -4,9 +4,7 @@
 //
 // Go mappings forced by language mechanics. An in-flight partial is compared by content where Pi compares object identity, as a
 // view revision's partial is decoded per read. The two cases that measure V8's heap (a cost per commit that follows the new text,
-// and a watcher's retained memory) have no Go form: a Go revision holds its own copy of each string, so the allocation per commit and
-// the memory of recorded frames grow with the strings (the append behavior they protect is asserted by
-// partial_changes_upstream_test.go).
+// and a watcher's retained memory) measure Go's instead, in streamed_partials_memory_test.go.
 
 package harness
 

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
@@ -54,6 +55,8 @@ type specNames struct {
 	models         durable.Models
 	session        durable.Session
 	conversationId durable.ConversationId
+	conversation   harness.Conversation
+	render         func(view *harness.TranscriptView)
 	message        durable.EntryDraft
 	haiku          durable.ModelRef
 	sonnet         durable.ModelRef
@@ -439,6 +442,34 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 			return err
 		},
 
+		// Section 9.3: a client's transcript over the windowed view.
+		"transcript": func(ctx context.Context) error {
+			transcript, err := harness.NewConversationTranscript(func(ctx context.Context, query durable.EntryQuery, limit int) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+				return names.conversation.Entries(ctx, query, limit, nil)
+			}, nil)
+			if err != nil {
+				return err
+			}
+			watch, err := names.conversation.Watch(ctx, nil)
+			if err != nil {
+				return err
+			}
+			names.render(transcript.Merge(watch.Value()))
+			watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+				names.render(transcript.Merge(change.Value))
+				return nil
+			})
+			// A marker scrolled into view:
+			earlier, err := transcript.LoadEarlier(ctx)
+			if err != nil {
+				return err
+			}
+			names.render(earlier)
+			// Reconnect after a drop:
+			_, err = names.conversation.Watch(ctx, transcript.Resume())
+			return err
+		},
+
 		// Section 4: table reads before the first table write; documents stay usable.
 		"tableRules": func(ctx context.Context) error {
 			_, err := names.session.Commit(ctx, func(tx durable.Tx) (any, error) {
@@ -479,7 +510,7 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 // spec-usage.test.ts:377 it("compiles the spec's usage examples"), the durable/harness and durable/tools half.
 func TestSpecUsageCompilesTheHarnessExamples(t *testing.T) {
 	sequences := specUsageHarnessExamples(specNames{})
-	want := []string{"childInToolCommit", "containerEnv", "liveSettings", "host", "spawn", "tableRules", "revokedDraft"}
+	want := []string{"childInToolCommit", "containerEnv", "liveSettings", "host", "spawn", "transcript", "tableRules", "revokedDraft"}
 	got := make([]string, 0, len(sequences))
 	for name := range sequences {
 		got = append(got, name)

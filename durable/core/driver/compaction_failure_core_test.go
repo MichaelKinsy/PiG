@@ -5,8 +5,10 @@ package driver_test
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -136,48 +138,30 @@ func TestCoreAFailedBlockingCompactionFailsTheRunAndIsRecorded(t *testing.T) {
 	})
 }
 
-// harness-compaction.test.ts:1007 over the core and the reference: compaction_end carries a failed compaction's error, the agent
-// events' snapshot carries pi.live.compactionFailure, and a compaction that produces a summary removes it and ends without an
-// error.
+// harness-compaction.test.ts:1009 over the core and the reference: pi.live.compactionFailure is recorded in the commit that
+// ends the compaction, a late watch starts with it, and a compaction that produces a summary removes it in the commit that ends it.
 func TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced(t *testing.T) {
 	eachEngine(t, func(t *testing.T, core bool) {
 		r := openCompactionFailureRig(t, core,
 			ai.FauxStaticStep(ai.FauxResponse{StopReason: "error", ErrorMessage: "bad request"}),
 			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("SUMMARY")}, StopReason: "stop"}),
 		)
-		var mu sync.Mutex
-		var events []harness.AgentEvent
-		stream, err := harness.WatchEvents(t.Context(), r.h, r.root.Id())
-		if err != nil {
-			t.Fatal(err)
-		}
-		stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
-			batch := change.Value
-			mu.Lock()
-			defer mu.Unlock()
-			events = append(events, batch...)
-			return nil
-		})
-		endOf := func(taskId durable.TaskId) (harness.CompactionEndEvent, bool) {
-			mu.Lock()
-			defer mu.Unlock()
-			for _, event := range events {
-				if end, ok := event.(harness.CompactionEndEvent); ok && end.TaskId == taskId {
-					return end, true
-				}
-			}
-			return harness.CompactionEndEvent{}, false
-		}
-		waitEnd := func(taskId durable.TaskId) harness.CompactionEndEvent {
+		views := viewHistory(t, r.h, r.root.Id())
+		// ended is the value that drops the compaction of taskId from pi.live.compactions; the views arrive on the core's own
+		// goroutine, so a test waits for it.
+		ended := func(taskId durable.TaskId) harness.LiveState {
 			t.Helper()
-			for deadline := time.Now().Add(20 * time.Second); ; time.Sleep(5 * time.Millisecond) {
-				if end, ok := endOf(taskId); ok {
-					return end
-				}
-				if time.Now().After(deadline) {
-					t.Fatalf("no compaction_end for task %d", taskId)
-				}
+			listsTask := func(state harness.LiveState) bool {
+				return slices.ContainsFunc(state.Compactions, func(status harness.CompactionStatus) bool { return status.TaskId == taskId })
 			}
+			var index int
+			var states []harness.LiveState
+			pollUntil(t, fmt.Sprintf("the value that ends the compaction of task %d", taskId), func() bool {
+				states = views.Live()
+				index = liveIndexAfter(states, slices.IndexFunc(states, listsTask), func(state harness.LiveState) bool { return !listsTask(state) })
+				return index >= 0
+			})
+			return states[index]
 		}
 		r.firstTurn(t)
 		expectUnansweredModelError(t, r.submit(t, strings.Repeat("y", 500)), "Compaction failed: Summarization failed: bad request")
@@ -185,25 +169,25 @@ func TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced(t *testing.T) {
 		if recorded == nil || recorded.Reason != "threshold" || recorded.Error != "Summarization failed: bad request" {
 			t.Fatalf("compactionFailure = %+v", recorded)
 		}
-		if end := waitEnd(recorded.TaskId); end.TaskId != recorded.TaskId || end.Reason != "threshold" || end.Error == nil || *end.Error != "Summarization failed: bad request" {
-			t.Fatalf("compaction_end = %+v", end)
+		if got := ended(recorded.TaskId).CompactionFailure; got == nil || *got != *recorded {
+			t.Fatalf("the value that ends the compaction has compactionFailure %+v, want %+v", got, recorded)
 		}
-		reopened, err := harness.WatchEvents(t.Context(), r.h, r.root.Id())
+		late, err := r.root.Watch(t.Context(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := reopened.Snapshot.CompactionFailure; got == nil || *got != *recorded {
-			t.Fatalf("snapshot compactionFailure = %+v, want %+v", got, recorded)
+		if got := liveValue(t, late.Value()).CompactionFailure; got == nil || *got != *recorded {
+			t.Fatalf("a late watch's compactionFailure = %+v, want %+v", got, recorded)
 		}
-		if _, err := reopened.Stop(); err != nil {
+		if _, err := late.Stop(); err != nil {
 			t.Fatal(err)
 		}
 		manual, err := r.root.Compact(t.Context(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if end := waitEnd(manual); end.Error != nil || end.Reason != "manual" {
-			t.Fatalf("a produced summary ended with %+v", end)
+		if got := ended(manual).CompactionFailure; got != nil {
+			t.Fatalf("the commit that ended the compaction kept the failure: %+v", got)
 		}
 		if err := r.h.WaitForIdle(t.Context()); err != nil {
 			t.Fatal(err)
@@ -211,9 +195,7 @@ func TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced(t *testing.T) {
 		if failure := r.live(t).CompactionFailure; failure != nil {
 			t.Fatalf("a summary left compactionFailure = %+v", failure)
 		}
-		if _, err := stream.Stop(); err != nil {
-			t.Fatal(err)
-		}
+		views.Detach()
 	})
 }
 

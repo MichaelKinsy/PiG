@@ -124,11 +124,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 			// A read that returns the Storage promise itself (readOnLine(() => storage.submission(id)): status, get) settles one tick earlier than
 			// Submissions.wait's async arrow, which awaits it (submissions.ts :63-86).
 			h.job.direct = op == "conversation" || op == "getTask" || op == "entry" || op == "scanEntries" || (op == "submission" && !req.Has("wait"))
-			if op == "view.attach" {
-				value, err = h.viewAttach(req)
-			} else {
-				value, err = h.api(op, req)
-			}
+			value, err = h.api(op, req)
 			return err
 		}, func(err error) {
 			if err != nil {
@@ -157,7 +153,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 // snapshot whose document is not loaded.
 func (h *handler) onLine(op string, req *jv.Object) bool {
 	switch op {
-	case "conversation", "getTask", "submission", "scanEntries", "context", "entry", "taskGraph", "snapshotAsOf", "view.attach":
+	case "conversation", "getTask", "submission", "scanEntries", "context", "entry", "taskGraph", "snapshotAsOf":
 		return true
 	case "snapshot":
 		def, args, err := docDef(req)

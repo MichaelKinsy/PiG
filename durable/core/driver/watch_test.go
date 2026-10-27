@@ -176,7 +176,7 @@ func TestConversationWatchFollowsCommits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	watch, err := root.Watch(t.Context())
+	watch, err := root.Watch(t.Context(), nil)
 	if err != nil || watch == nil {
 		t.Fatalf("watch: %v %v", watch, err)
 	}

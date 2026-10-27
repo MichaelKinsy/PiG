@@ -54,16 +54,70 @@ func anySlotRunning(value *jv.Object) bool {
 	return false
 }
 
-// EndRun is endRun: it settles each input of the run owned by taskID with settlement and removes `run`, and always
-// removes `generation` and `tools`, whose presentation belongs to the ending run.
-func EndRun(tx *session.Tx, live *delta.Obj, taskID session.ID, settlement *jv.Object) error {
+// RunEnd is how a run ends (live.ts RunEnd): with an answer, or without one, settling its inputs unanswered and recording why.
+type RunEnd struct {
+	// Answer is the entry a run that ended with an answer produced; it is used when Reason is empty.
+	Answer ID
+	// Reason is why a run that ended without an answer did: model_error, no_model, aborted, reset, faulted or orphaned.
+	Reason string
+	// Detail is the failure's detail when HasDetail.
+	Detail    string
+	HasDetail bool
+	// Settlement is the inputs' settlement when it is not unanswered with Reason and Detail.
+	Settlement *jv.Object
+}
+
+// Answered is the end of a run with the answer entry.
+func Answered(answer ID) RunEnd { return RunEnd{Answer: answer} }
+
+// Unanswered is the end of a run without an answer, settling its inputs unanswered with reason.
+func Unanswered(reason string) RunEnd { return RunEnd{Reason: reason} }
+
+// UnansweredWith is Unanswered with the failure's detail.
+func UnansweredWith(reason, detail string) RunEnd {
+	return RunEnd{Reason: reason, Detail: detail, HasDetail: true}
+}
+
+// EndRun is endRun: it settles each input of the run owned by taskID, removes `run` and, without an answer, records `runFailure`,
+// and always removes `generation` and `tools`, whose presentation belongs to the ending run.
+func EndRun(tx *session.Tx, live *delta.Obj, taskID session.ID, end RunEnd) error {
 	if run := live.Obj("run"); run != nil && sameID(run.Get("taskId"), taskID) {
-		if inputs := run.Arr("inputs"); inputs != nil {
-			for i := range inputs.Len() {
-				id, _ := inputs.Get(i).(float64)
-				if err := tx.SettleSubmission(session.ID(id), settlement); err != nil {
-					return err
+		var inputs []any
+		if list := run.Arr("inputs"); list != nil {
+			for i := range list.Len() {
+				inputs = append(inputs, list.Get(i))
+			}
+		}
+		// The failure's members are boxed once, for the settlement and for `runFailure`.
+		var reason, detail any
+		settlement := end.Settlement
+		if end.Reason == "" {
+			settlement = jobj("status", "done", "answer", float64(end.Answer))
+		} else {
+			reason = end.Reason
+			if end.HasDetail {
+				detail = end.Detail
+			}
+			if settlement == nil {
+				settlement = jobj("status", "unanswered", "reason", reason)
+				if end.HasDetail {
+					settlement.Set("detail", detail)
 				}
+			}
+		}
+		for _, input := range inputs {
+			id, _ := input.(float64)
+			if err := tx.SettleSubmission(session.ID(id), settlement); err != nil {
+				return err
+			}
+		}
+		if end.Reason != "" {
+			failure := jobj("taskId", run.Get("taskId"), "inputs", inputs, "reason", reason)
+			if end.HasDetail {
+				failure.Set("detail", detail)
+			}
+			if err := live.Set("runFailure", failure); err != nil {
+				return err
 			}
 		}
 		live.Delete("run")
@@ -259,18 +313,26 @@ func SettleSchedulerOutcome(tx *session.Tx, record, outcome *jv.Object) error {
 		return err
 	}
 	status, _ := outcome.Get("status")
-	settlement := jobj("status", "unanswered")
 	if status == "faulted" {
-		settlement.Set("reason", "faulted")
+		end := Unanswered("faulted")
 		if e, ok := outcome.Get("error"); ok {
 			if eo, ok := e.(*jv.Object); ok {
 				if m, ok := eo.Get("message"); ok {
-					settlement.Set("detail", m)
+					if message, ok := m.(string); ok {
+						end = UnansweredWith("faulted", message)
+					}
 				}
 			}
 		}
-	} else if reason, ok := outcome.Get("reason"); ok {
-		settlement.Set("reason", reason)
+		return EndRun(tx, live, session.ID(id), end)
 	}
-	return EndRun(tx, live, session.ID(id), settlement)
+	// An orphaned outcome's reason settles the inputs and is the detail of the failure.
+	reason, _ := outcome.Get("reason")
+	text, _ := reason.(string)
+	end := UnansweredWith("orphaned", text)
+	end.Settlement = jobj("status", "unanswered")
+	if reason != nil {
+		end.Settlement.Set("reason", reason)
+	}
+	return EndRun(tx, live, session.ID(id), end)
 }

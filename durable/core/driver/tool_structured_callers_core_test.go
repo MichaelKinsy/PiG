@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -228,111 +227,91 @@ func TestCoreTheModelIsOfferedOnlyToolsItMayCallAndToolsCallOnlyToolsTheyMayCall
 	}
 }
 
-// coreAwaitRunEnd waits until the stream has delivered the run's end event. The core delivers a stream's batches on its own
-// goroutine, so a finished submission and an idle harness do not mean the events are delivered, and Stop ends the batches
-// still queued: stopping first loses the tail of the run.
-func coreAwaitRunEnd(t *testing.T, mu *sync.Mutex, events *[]harness.AgentEvent) {
-	t.Helper()
-	pollUntil(t, "the run_end event", func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return slices.ContainsFunc(*events, func(event harness.AgentEvent) bool { return event.EventType() == "run_end" })
-	})
-}
-
-// harness-events.test.ts:106 and :154 over the core: a run streams as lifecycle events, and a tool run reports its start, its
-// output and its result entry before the result message, in two turns.
-func TestCoreStreamsTheLifecycleAndTheToolEventsOfARun(t *testing.T) {
-	gate := make(chan struct{})
+// harness-view-run.test.ts:111 over the core: a tool call's slot is listed pending with the answer that calls it, shows its
+// running output, and is done with its result entry, appended in the same commit.
+func TestCoreShowsAToolCallsSlotFromPendingThroughItsRunningOutputToItsResultEntry(t *testing.T) {
+	gate, finish := make(chan struct{}), make(chan struct{})
 	printer := nestedCoreTool("batch", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		api.Output("one\n")
-		select {
-		case <-gate:
-		case <-ctx.Done():
-			return durable.ToolExecutionResult{}, ctx.Err()
+		for _, wait := range []chan struct{}{gate, finish} {
+			select {
+			case <-wait:
+			case <-ctx.Done():
+				return durable.ToolExecutionResult{}, ctx.Err()
+			}
+			if wait == gate {
+				api.Output("two\n")
+			}
 		}
-		api.Output("two\n")
 		return durable.ToolExecutionResult{}, nil
 	})
 	h, root, submit := nestedCoreOpen(t, &durable.Extension{Name: "s", Tools: []*durable.ToolRegistration{printer}})
-	var mu sync.Mutex
-	var events []harness.AgentEvent
-	stream, err := harness.WatchEvents(t.Context(), h, root.Id())
-	if err != nil {
-		t.Fatal(err)
-	}
-	stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		events = append(events, batch...)
-		return nil
-	})
+	history := viewHistory(t, h, root.Id())
 	sub := submit()
-	// The output events rebuild the retained window while the tool still runs.
-	deadline := time.Now().Add(20 * time.Second)
-	for {
-		mu.Lock()
-		updates := 0
-		for _, event := range events {
-			if event.EventType() == "tool_execution_update" {
-				updates++
-			}
-		}
-		mu.Unlock()
-		if updates > 0 {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("no tool_execution_update while the tool ran")
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
+	// The output shows in the slot while the tool still runs.
+	pollUntil(t, "the running output of the tool", func() bool {
+		slot := firstSlot(slotsOf(history.Live(), "c1"), func(slot *slotView) bool { return slot.Output != nil && *slot.Output == "one\n" })
+		return slot != nil
+	})
 	close(gate)
+	pollUntil(t, "the second output of the tool", func() bool {
+		return firstSlot(slotsOf(history.Live(), "c1"), func(slot *slotView) bool { return slot.Output != nil && *slot.Output == "one\ntwo\n" }) != nil
+	})
+	close(finish)
 	nestedCoreWait(t, sub, durable.SubmissionDone)
 	if err := h.WaitForIdle(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	coreAwaitRunEnd(t, &mu, &events)
-	if _, err := stream.Stop(); err != nil {
-		t.Fatal(err)
+	pollUntil(t, "the end of the run", func() bool {
+		states := history.Live()
+		return liveIndexAfter(states, slices.IndexFunc(states, func(state harness.LiveState) bool { return state.Run != nil }), func(state harness.LiveState) bool { return state.Run == nil && state.RunFailure == nil }) >= 0
+	})
+	history.Detach()
+	views := history.All()
+	slots := slotsOf(history.Live(), "c1")
+	listed := slices.IndexFunc(slots, func(slot *slotView) bool { return slot != nil })
+	// Listed pending with the tool-calling answer, in the same commit.
+	if slot := slots[listed]; slot.CallId != "c1" || slot.Name != "batch" || slot.Status != harness.ToolSlotPending || slot.TaskId == nil || slot.Output != nil || slot.Entry != nil {
+		t.Fatalf("slot when listed = %+v", slot)
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	var types []string
-	for _, event := range events {
-		if kind := event.EventType(); len(types) == 0 || types[len(types)-1] != kind {
-			types = append(types, kind)
+	if kind := views[listed].Entries[len(views[listed].Entries)-1].Kind; kind != "pi.assistant" {
+		t.Fatalf("the slot is listed with an entry of kind %s, want pi.assistant", kind)
+	}
+	var outputs []string
+	for _, slot := range slots {
+		if slot != nil && slot.Status == harness.ToolSlotRunning {
+			output := ""
+			if slot.Output != nil {
+				output = *slot.Output
+			}
+			if !slices.Contains(outputs, output) {
+				outputs = append(outputs, output)
+			}
 		}
 	}
-	for _, want := range []string{"submission", "run_start", "turn_start", "tool_execution_start", "tool_execution_update", "tool_execution_end", "turn_end", "run_end"} {
-		if !slices.Contains(types, want) {
-			t.Errorf("event types %v lack %s", types, want)
+	if want := []string{"", "one\n", "one\ntwo\n"}; !slices.Equal(outputs, want) {
+		t.Fatalf("outputs of the running slot %q, want %q", outputs, want)
+	}
+	// Done with its result entry, appended in the same commit.
+	done := slices.IndexFunc(slots, func(slot *slotView) bool { return slot != nil && slot.Status == harness.ToolSlotDone })
+	last := views[done].Entries[len(views[done].Entries)-1]
+	if slot := slots[done]; slot.TaskId == nil || slot.Entry == nil || *slot.Entry != last.Id || last.Kind != "pi.tool-result" {
+		t.Fatalf("done slot = %+v, want the result entry %d", slot, last.Id)
+	}
+	// The run's two generations, the tool round and the answer, hand the run over.
+	runTasks := map[durable.TaskId]bool{}
+	for _, state := range history.Live() {
+		if state.Run != nil {
+			runTasks[state.Run.TaskId] = true
 		}
 	}
-	endIndex := slices.IndexFunc(events, func(event harness.AgentEvent) bool { return event.EventType() == "tool_execution_end" })
-	if endIndex < 0 || endIndex+2 >= len(events) || events[endIndex+1].EventType() != "message_start" || events[endIndex+2].EventType() != "message_end" {
-		t.Fatalf("event types %v: the tool must end directly before its result message", types)
-	}
-	if end, ok := events[endIndex].(harness.ToolExecutionEndEvent); !ok || end.ToolCallId != "c1" || end.Entry == nil || end.Entry.Kind != "pi.tool-result" {
-		t.Fatalf("end event %+v, want call c1 with a pi.tool-result entry", events[endIndex])
-	}
-	starts, ends := 0, 0
-	for _, event := range events {
-		switch event.EventType() {
-		case "turn_start":
-			starts++
-		case "turn_end":
-			ends++
-		}
-	}
-	if starts != 2 || ends != 2 {
-		t.Fatalf("turns %d/%d, want the tool round and the answer", starts, ends)
+	if len(runTasks) != 2 {
+		t.Fatalf("%d run tasks, want the tool round and the answer", len(runTasks))
 	}
 }
 
-// harness-events.test.ts:404 over the core: a call that never runs (a tool that is not offered) ends after its calling message and
-// directly before its result message, and a tool aborted with its generation ends with its aborted result.
+// harness-view-run.test.ts:331 over the core: a call that never runs (a tool that is not offered) is done with its result entry in
+// the commit of its calling answer, and a tool aborted with its generation ends with its result entry before the run ends.
 func TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration(t *testing.T) {
 	wait := nestedCoreTool("wait", func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		<-ctx.Done()
@@ -359,33 +338,14 @@ func TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration(t *testing.T
 		t.Fatal(err)
 	}
 	h.Resume()
-	var mu sync.Mutex
-	var events []harness.AgentEvent
-	stream, err := harness.WatchEvents(t.Context(), h, root.Id())
-	if err != nil {
-		t.Fatal(err)
-	}
-	stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		events = append(events, batch...)
-		return nil
-	})
+	history := viewHistory(t, h, root.Id())
 	sub, err := root.Submit(t.Context(), durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("go")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	started := func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return slices.ContainsFunc(events, func(event harness.AgentEvent) bool { return event.EventType() == "tool_execution_start" })
-	}
-	for deadline := time.Now().Add(20 * time.Second); !started(); time.Sleep(5 * time.Millisecond) {
-		if time.Now().After(deadline) {
-			t.Fatal("no tool_execution_start")
-		}
-	}
+	pollUntil(t, "the running tool", func() bool {
+		return slices.ContainsFunc(slotsOf(history.Live(), "c2"), func(slot *slotView) bool { return slot != nil && slot.Status == harness.ToolSlotRunning })
+	})
 	// Aborting the generation aborts its round: the tool ends with its aborted result first (spec 8.5).
 	live, err := durable.Snapshot(t.Context(), h, harness.LiveDoc, root.Id())
 	if err != nil || live == nil || live.Run == nil {
@@ -413,47 +373,35 @@ func TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration(t *testing.T
 	if err := h.WaitForIdle(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	coreAwaitRunEnd(t, &mu, &events)
-	if _, err := stream.Stop(); err != nil {
-		t.Fatal(err)
+	// The core delivers on its own goroutine, so a settled submission does not mean the last view was delivered.
+	pollUntil(t, "the run's failure", func() bool {
+		states := history.Live()
+		return states[len(states)-1].RunFailure != nil
+	})
+	history.Detach()
+	states, views := history.Live(), history.All()
+	// The call not offered is listed done, with its result entry, in the commit of its calling answer.
+	ghostSlots := slotsOf(states, "c1")
+	listed := slices.IndexFunc(ghostSlots, func(slot *slotView) bool { return slot != nil })
+	ghost := ghostSlots[listed]
+	if ghost.Status != harness.ToolSlotDone {
+		t.Fatalf("the call not offered is %s when listed, want done", ghost.Status)
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	var round []string
-	var tool []string
-	for _, event := range events {
-		switch typed := event.(type) {
-		case harness.MessageEndEvent:
-			round = append(round, "end:"+typed.Entry.Kind)
-		case harness.MessageStartEvent:
-			round = append(round, "start:"+messageRole(typed.Message))
-		default:
-			round = append(round, event.EventType())
-		}
-		switch typed := event.(type) {
-		case harness.ToolExecutionStartEvent:
-			tool = append(tool, "tool_execution_start "+typed.ToolCallId)
-		case harness.ToolExecutionEndEvent:
-			tool = append(tool, "tool_execution_end "+typed.ToolCallId+" entry="+strconv.FormatBool(typed.Entry != nil))
-		}
+	listing := views[listed].Entries
+	if kinds := []string{listing[len(listing)-2].Kind, listing[len(listing)-1].Kind}; !slices.Equal(kinds, []string{"pi.assistant", "pi.tool-result"}) {
+		t.Fatalf("the call not offered is listed with entries %v", kinds)
 	}
-	ghostEnd := slices.Index(round, "tool_execution_end")
-	if ghostEnd < 1 || ghostEnd+3 >= len(round) || !slices.Equal(round[ghostEnd-1:ghostEnd+3], []string{"end:pi.assistant", "tool_execution_end", "start:toolResult", "end:pi.tool-result"}) {
-		t.Fatalf("round %v: the call that never ran must end after its calling message and directly before its result", round)
+	if ghost.Entry == nil || *ghost.Entry != listing[len(listing)-1].Id {
+		t.Fatalf("the call not offered names entry %v, want %d", ghost.Entry, listing[len(listing)-1].Id)
 	}
-	if want := []string{"tool_execution_end c1 entry=true", "tool_execution_start c2", "tool_execution_end c2 entry=true"}; !slices.Equal(tool, want) {
-		t.Fatalf("tool events %v, want %v", tool, want)
+	// The aborted tool ends with its result entry, then the run ends without an answer.
+	waitSlots := slotsOf(states, "c2")
+	done := slices.IndexFunc(waitSlots, func(slot *slotView) bool { return slot != nil && slot.Status == harness.ToolSlotDone })
+	if done < 0 || waitSlots[done].Entry == nil || *waitSlots[done].Entry != views[done].Entries[len(views[done].Entries)-1].Id {
+		t.Fatalf("the aborted tool's done slot = %+v", waitSlots[done])
 	}
-}
-
-func messageRole(message ai.Message) string {
-	switch message.(type) {
-	case ai.ToolResultMessage:
-		return "toolResult"
-	case ai.AssistantMessage:
-		return "assistant"
-	case ai.UserMessage:
-		return "user"
+	failure := states[len(states)-1].RunFailure
+	if failure == nil || failure.Reason != harness.RunAborted || !slices.Equal(failure.Inputs, []durable.SubmissionId{sub.Id()}) {
+		t.Fatalf("runFailure = %+v, want aborted for the submission", failure)
 	}
-	return "?"
 }

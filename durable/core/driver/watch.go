@@ -35,8 +35,6 @@ type rawFrame struct {
 	ops   []durable.Op
 	// retired and end are the document frames {retired: true} and {end: true}; they carry no value.
 	retired, end bool
-	// changes are the records the commit wrote for the conversation of a view opened with changes: true.
-	changes json.RawMessage
 }
 
 // watchHub routes the core's watch frames to the watches the session opened.
@@ -159,16 +157,15 @@ func (h *watchHub) notice(n abi.Notice) {
 			Value json.RawMessage `json:"value"`
 			// Ops decode through chord's JSON, so an object an operation carries keeps its key order and the applier can
 			// traverse it: encoding/json would hold map[string]any objects the applier cannot enter.
-			Ops     delta.Ops       `json:"ops"`
-			Changes json.RawMessage `json:"changes"`
-			Retired bool            `json:"retired"`
-			End     bool            `json:"end"`
+			Ops     delta.Ops `json:"ops"`
+			Retired bool      `json:"retired"`
+			End     bool      `json:"end"`
 		} `json:"frame"`
 	}
 	if json.Unmarshal(n.Payload, &p) != nil || p.WatchID == nil || p.Frame == nil {
 		return
 	}
-	frame := rawFrame{value: p.Frame.Value, ops: p.Frame.Ops, changes: p.Frame.Changes, retired: p.Frame.Retired, end: p.Frame.End}
+	frame := rawFrame{value: p.Frame.Value, ops: p.Frame.Ops, retired: p.Frame.Retired, end: p.Frame.End}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if advance, bound := h.sinks[*p.WatchID]; bound {

@@ -483,8 +483,8 @@ func TestGenerationFailsAFatalError(t *testing.T) {
 	if got := outcomeOf(t, r.tasks(turn.KindGeneration)[0]); got != `{"status":"failed","error":{"message":"invalid api key","detail":{"reason":"model_error"}}}` {
 		t.Fatalf("outcome = %s", got)
 	}
-	if got := r.doc(turn.LiveDef, conv); got != `{}` {
-		t.Fatalf("live = %s", got)
+	if got, want := r.doc(turn.LiveDef, conv), fmt.Sprintf(`{"runFailure":{"taskId":%d,"inputs":[%d],"reason":"model_error","detail":"invalid api key"}}`, taskID(t, r.tasks(turn.KindGeneration)[0]), submission); got != want {
+		t.Fatalf("live = %s, want %s", got, want)
 	}
 }
 

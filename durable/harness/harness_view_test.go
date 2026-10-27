@@ -702,7 +702,14 @@ func TestConversationViewWindow(t *testing.T) {
 		written := notes(t, root, 4)
 		recorded := record(t, root, &ConversationWindow{Min: new(3), Max: new(5)})
 		expectIds(t, entryIdsOf(recorded.initial.Entries), entryIdsOf(written[1:]))
-		appended := notes(t, root, 3)
+		// Each commit is delivered before the next: a watch folds commits that arrive while its listener runs, where Pi's microtask
+		// delivery runs one call per commit.
+		var appended []durable.EntryRecord
+		for range 3 {
+			delivered := len(recorded.snapshot())
+			appended = append(appended, notes(t, root, 1)...)
+			waitFor(t, func() bool { return len(recorded.snapshot()) > delivered })
+		}
 		drained(harness)
 		frames := recorded.snapshot()
 		var sizes []int
