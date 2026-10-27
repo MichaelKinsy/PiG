@@ -2457,17 +2457,6 @@
     "upstream_reference": "output.ts Progress (:310-384: #schedule :350-359, #flush :361-383; moved from durable harness/output.ts by Pi 4a5d3729); usage.ts addUsage; generation.ts appendAssistant"
   },
   {
-    "mutation": "SnapshotEvent (durable/harness/events.go snapshotOf, queuedItems): 13 hand mutants (empty-list defaults of tools/compactions/inbox, agent/usage defaults and their present branches, generation retry/deferred/message, run inputs, queued mode); 12 killed by the Pi-oracle TestTranslateEventsMatchPi and TestAgentEvents, 1 (run inputs dropped) is a build failure. The autobind type-mismatch of the flip row is union-versus-struct shape only: the Go struct carries every field of the Pi type.",
-    "package": "./durable/harness",
-    "tests": [
-      "TestTranslateEventsMatchPi",
-      "TestAgentEvents",
-      "TestCompactionEventsAndLiveStatus"
-    ],
-    "upstream": "packages/durable/src/harness/events.ts",
-    "upstream_reference": "events.ts SnapshotEvent (:35-52), snapshotOf (:117-130), queued (:132-134)"
-  },
-  {
     "mutation": "ai/transcript.go lines 185-330 (the generic TranscriptMessages consumers): 11 operator mutants (genop.py), all killed by the Pi-oracle replay test and the named tests (L311 by a panic).",
     "package": "./ai",
     "tests": [
