@@ -274,7 +274,7 @@ An `api` event is `u32 requestId` then JSON `{op, ...args}`. The answer is an `a
 | `context` | conversationId, at | the ContextView `{head?, entries, contributions, messages}`, or `{"$context":{conversationId, head, tail}}` for a conversation with a visible entry: the core does not build a long context, it names it (the same bounds a `model_context` range names, §10.2) and the host that serves the read derives the ContextView from storage with pi-durable's range algorithm and resolves the request with it. A conversation without a visible entry answers the empty view | at once |
 | `conversation` | conversationId | the conversation handle data or null | at once |
 | `agent` | conversationId | the resolved agent | at once |
-| `sleepUntil` | taskId, until, checkpoint | null | once the sleep is committed (the task's sleeping state, `checkpoint` its next state); the task then holds no invocation |
+| `sleepUntil` | taskId, until (a number; NaN and the infinities as the strings `"NaN"`, `"Infinity"`, `"-Infinity"`, which the scheduler rejects), checkpoint | null | once the sleep is committed (the task's sleeping state, `checkpoint` its next state); the task then holds no invocation |
 | `wake` | none | `{active, at?}`, the Harness's wake | at once; a `harness`-mode core only |
 | `retryTask` | taskId | null | once a parked task's restart count is cleared and scheduling is enabled; an error for an unknown task |
 | `usage` | none | the UsageState of the Session | at once |

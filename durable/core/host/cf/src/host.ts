@@ -110,6 +110,8 @@ export interface TimerDriver {
   liveness(at: number): void
   /** The handle was recycled: forget every timer, the reopened core arms its own from the store. */
   reset?(): void
+  /** The Harness closed: disarm every pending timer. */
+  dispose?(): void
 }
 
 /**
