@@ -75,6 +75,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Linux / toolchains | queue | 7 | Race, integration, SDK and extension corpus gates |
 | Node extensions | queue | 11 | |
 | Durable Cloudflare host | queue | 25 | |
+| Durable contract / pi, wasm-tinygo, native | queue | 60 | The Durable core conformance gate (`make ci-durable-contract`), one build of the core per job; the limit is the job's, not yet a measured run time |
 | Windows cli-2 cli-5, cli-1 cli-3, cli-4 cli-7, cli-6 cli-8 | queue | 96 | |
 | Windows native-2, native-3, native-4 | queue | 56 | |
 | Windows extension-host-1, extension-host-2, extension-host-3 | queue | 35 | |
