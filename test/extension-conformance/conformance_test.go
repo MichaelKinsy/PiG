@@ -3619,8 +3619,8 @@ func TestConformance_TerminalInput(t *testing.T) {
 	}
 	t.Parallel()
 
-	cases := allHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	cases := append(allHarnessCases(), lispHarnessCase())
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 

@@ -16,7 +16,7 @@ import (
 // editor ever binds. A factory that calls super would otherwise wait for a bind that cannot come.
 func TestEditorComponentFactoryDoesNotRunInRPCMode(t *testing.T) {
 	t.Parallel()
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			t.Parallel()
 			notify, status, actions := &[]string{}, &[]string{}, &[]string{}
@@ -36,6 +36,8 @@ func TestEditorComponentFactoryDoesNotRunInRPCMode(t *testing.T) {
 				config.Name, config.Path, config.RuntimeLanguage = "python-sdk-fixture", buildPythonSDKFixture(t), "python"
 			case "rust":
 				config.Name, config.Path = "rust-sdk-fixture", buildRustSDKFixture(t)
+			case "lisp":
+				config = lispFixtureConfig(t, "lisp-sdk-fixture", lispFixtureName)
 			}
 			ext, err := host.Load(context.Background(), config)
 			if err != nil {
