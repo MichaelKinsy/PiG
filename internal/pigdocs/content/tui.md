@@ -75,6 +75,8 @@ For subprocess extensions:
 
 PiG suppresses identical frames. The host render path reads only the latest completed local frame.
 
+A custom component does not report PiG as waiting for the user, because `ui.custom` also hosts loaders and other non-blocking UI. When an inline component waits for an answer, pass `blocked: { kind: "question", message: "Pick a color" }` (Go SDK `RemoteOverlayOptions.Blocked`; the options object of the Rust and Python SDKs) so terminals that support OSC 7501 program status show PiG as blocked while the component is visible. `kind` is `"question"`, `"permission"`, or `"auth"`. Overlays ignore this option.
+
 ## Timer-driven components
 
 Go, Rust, Python, and Node custom components can request a new frame after timer-owned state changes. PiG coalesces requests, limits timer frames to the 16 ms TUI interval, and preserves immediate input frames.

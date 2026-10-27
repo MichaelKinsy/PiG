@@ -417,29 +417,38 @@ func (b *AssistantMessageComponent) Render(width int) []string {
 // streamed delta neither allocates them again nor makes the container render them again.
 func (b *AssistantMessageComponent) updateContent() {
 	children := b.childScratch[:0]
-	if len(b.segments) > 0 {
-		children = append(children, b.spacer(0))
-	}
+	// Spacers are added lazily, right before the next visible block: one before the first visible block and one after each visible
+	// thinking run that is followed by more visible content. A hidden run with an empty label renders nothing, including no spacing.
+	needsSpacer, spacerIndex := true, 0
 	run := 0
-	for i, seg := range b.segments {
+	for _, seg := range b.segments {
 		if seg.md.paddingX != b.outputPad {
 			seg.md.paddingX = b.outputPad
 			seg.md.Invalidate()
 		}
 		if !seg.thinking {
+			if needsSpacer {
+				children = append(children, b.spacer(spacerIndex))
+				needsSpacer = false
+			}
 			children = append(children, seg.md)
 			continue
 		}
 		hidden := b.thinkingRunHidden(run)
+		runIndex := run
+		run++
+		if hidden && jsstring.Trim(b.hiddenLabel) == "" {
+			continue
+		}
 		if hidden && b.finished {
 			seg.md.dropStreamingMemos() // a run hidden after FinishStreaming does not render its Markdown again
 		}
-		children = append(children, b.thinkingRun(run, seg.md, hidden))
-		run++
-		// Upstream adds a spacer after a thinking run only when visible content follows it.
-		if i+1 < len(b.segments) {
-			children = append(children, b.spacer(run))
+		if needsSpacer {
+			children = append(children, b.spacer(spacerIndex))
 		}
+		children = append(children, b.thinkingRun(runIndex, seg.md, hidden))
+		// Spacing follows only when another visible block follows, which avoids a blank line before separately rendered tool executions.
+		needsSpacer, spacerIndex = true, run
 	}
 	children = append(children, b.terminalErrorChildren()...)
 	b.contentContainer.SetChildren(children...)

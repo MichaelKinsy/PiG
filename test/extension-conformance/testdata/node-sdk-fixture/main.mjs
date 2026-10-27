@@ -1893,6 +1893,15 @@ export default function (pi) {
       ctx.ui.notify(`overlay-width default=${defaultWidth} percent=${percentWidth}`, "info");
     },
   });
+  pi.registerCommand("blocked-custom-probe", {
+    description: "Open inline custom components with and without the blocked option",
+    handler: async (_args, ctx) => {
+      const probe = (_tui, _theme, _keys, done) => ({ render() { return ["blocked probe"]; }, invalidate() {}, handleInput(data) { if (data === "\r") done(1); } });
+      await ctx.ui.custom(probe, { blocked: { kind: "permission", message: "Approve?" } });
+      await ctx.ui.custom(probe);
+      ctx.ui.notify("blocked-custom done", "info");
+    },
+  });
   pi.registerCommand("timer-focused-probe", {
     description: "Exercise timer-driven focused UI",
     handler: async (_args, ctx) => {

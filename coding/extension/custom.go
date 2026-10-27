@@ -25,8 +25,17 @@ type OverlayOptionsFunc func() tui.OverlayOptions
 func (OverlayOptionsValue) overlayOptionsSource() {}
 func (OverlayOptionsFunc) overlayOptionsSource()  {}
 
+// CustomBlocked is the `blocked` option of [UIContext.Custom]: what an inline component waits for. The terminal's program status
+// shows pi as blocked on it while the component is visible. Kind is "question", "permission" or "auth" (a tui.ProgramStatusKind); Message
+// is the line the terminal shows. The values are not validated, as Pi's runtime does not validate them.
+// upstream: packages/coding-agent/src/core/extensions/types.ts `blocked?: { kind: NonNullable<ProgramStatus["kind"]>; message: string }`
+type CustomBlocked struct {
+	Kind    tui.ProgramStatusKind `json:"kind"`
+	Message string                `json:"message"`
+}
+
 // CustomOptions is the `options` of an in-process [UIContext.Custom].
-// upstream: packages/coding-agent/src/core/extensions/types.ts:187 `{ overlay?: boolean; overlayOptions?: OverlayOptions | (() => OverlayOptions); onHandle?: (handle: OverlayHandle) => void }`
+// upstream: packages/coding-agent/src/core/extensions/types.ts:187 `{ overlay?: boolean; overlayOptions?: OverlayOptions | (() => OverlayOptions); onHandle?: (handle: OverlayHandle) => void; blocked?: { kind; message } }`
 type CustomOptions struct {
 	// Overlay shows the component over the screen instead of in the editor slot.
 	Overlay bool
@@ -34,4 +43,6 @@ type CustomOptions struct {
 	OverlayOptions OverlayOptionsSource
 	// OnHandle receives the overlay's handle as soon as the overlay is shown, to hide, focus or unfocus it.
 	OnHandle func(handle *tui.OverlayHandle)
+	// Blocked reports pi as blocked on user input (OSC 7501 program status) while an inline component is visible. An overlay ignores it.
+	Blocked *CustomBlocked
 }

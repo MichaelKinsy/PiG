@@ -2625,6 +2625,13 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("overlay-width-probe", "Report the width overlay components render at", overlay_width_probe)
 
+    def blocked_custom_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.custom(OverlayWidthProbe(), {"blocked": {"kind": "permission", "message": "Approve?"}})
+        ctx.custom(OverlayWidthProbe())
+        ctx.notify("blocked-custom done", "info")
+
+    ext.command("blocked-custom-probe", "Open inline custom components with and without the blocked option", blocked_custom_probe)
+
     def project_trust_error(_ctx: pig_sdk.Context, _data: dict[str, object]) -> dict[str, object]:
         raise RuntimeError("trust-boom")
 

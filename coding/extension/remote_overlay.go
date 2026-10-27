@@ -34,6 +34,9 @@ type RemoteOverlayOptions struct {
 	// when no legacy Title/fractions are given, an overlay is mounted
 	// component-framed with exactly upstream's showOverlay geometry.
 	Layout *OverlayLayout `json:"overlayOptions,omitempty"`
+	// Blocked mirrors upstream ui.custom()'s blocked option: while an inline component is visible the program status reports pi as
+	// blocked on it. An overlay ignores it.
+	Blocked *CustomBlocked `json:"blocked,omitempty"`
 }
 
 // OverlayLayout is the serialisable subset of upstream pi-tui

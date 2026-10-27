@@ -2216,9 +2216,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/extension/host/inproc/runner.go 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/extensions-runtime/01-print-extension-tool-bridge.toml", "scenario:test/parity/scenarios/extension-host/01-register-handshake.toml", "scenario:test/parity/scenarios/extensions-runtime/03-tool-call-blocker.toml", "test:coding/extension/extensiontest/factory_handlers_test.go#TestFactoryRegisteredEntryRendererIsTheRunnersRendererForItsType", "test:coding/extension/extensiontest/factory_handlers_test.go#TestFactoryRegisteredProjectTrustHandlersDecideInRegistrationOrder", "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRoutes", "test:test/extension-conformance/custom_blocked_test.go#TestConformance_CustomBlockedOption", "test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsReportBlockedStatusForAnInlineCustomComponentThatOptsIn"]
+rationale = "PORT_MAP row is ✅ ported (coding/extension/*.go (Layer 0, including synchronized late tool registrations in coding/extension/tool_registry.go); setEditorComponent factories work in the Go, Rust, Python and Node SDKs (the delegated base is a fresh stock editor per factory), and addAutocompleteProvider uses retained current-provider factories across all SDKs; tracked in docs/extension-api-parity.md, coding/resource_loader_extend.go, coding/extension/markdowntransform/markdowntransform.go, internal/codingagent/tool_renderer_factory.go, coding/define_tool.go). coverage.md reports 82 behavioral verifications for this file (14 scenarios whose covers list it, 68 named unit tests); the first of each are cited. Delta at Pi c1810bf7: ExtensionUIContext.custom gains the optional `blocked: {kind, message}` option; Go carries it as extension.CustomOptions.Blocked and extension.RemoteOverlayOptions.Blocked (extension.CustomBlocked), the subprocess ui.custom open payload as `blocked`, and the Go SDK as sdk.RemoteOverlayOptions.Blocked (Rust and Python pass their options object through, Node forwards options.blocked); recorded in docs/extension-api-parity.md and test/parity/sdk-surface.toml."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/virtual-modules.ts"
@@ -2930,9 +2930,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/armin.go + interna
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/assistant-message.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/interactive-rendering/01-assistant-message-text.toml", "scenario:test/parity/scenarios/interactive-rendering/04-conversation-layout.toml", "scenario:test/parity/scenarios/interactive-rendering/05-multi-turn-spacing.toml", "test:tui/assistant_message_terminal_test.go#TestAssistantMessageComponentIsAContainerOfAContentContainer", "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream"]
+rationale = "PORT_MAP row is ✅ ported (tui/assistant_message_block.go). coverage.md reports 13 behavioral verifications for this file (12 scenarios whose covers list it, 1 named unit tests); the first of each are cited. Delta at Pi a6a7bac8 (#11402): updateContent adds spacers lazily before the next visible block and skips a hidden thinking run whose label is empty while still advancing its run index, so hidden thinking with an empty label renders no rows (tui/assistant_message_block.go updateContent; TestAssistantMessageUpstream subtests \"renders nothing for hidden thinking with an empty label\", \"keeps label row and spacing for hidden thinking with a label\" and the skipped-run spacing case)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/auth-url.ts"
@@ -3266,9 +3266,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/external_editor.go
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered", "test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts", "test:test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs", "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity", "test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsStayVisibleWhenTheEditorComponentIsReplaced", "test:internal/codingagent/ext_ui_dialog_stack_test.go#TestEditorComponentReplacementKeepsTheActiveSelectorWhileADialogIsOpen", "test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsReportBlockedStatusForAnInlineCustomComponentThatOptsIn"]
+rationale = "Pi 38847563 (#11166, #9909): select, confirm, input, editor and inline custom dialogs form a stack (pushExtensionDialog, removeExtensionDialog, showTopExtensionDialog) instead of replacing each other, the visible one is the last, closing it shows the previous one, a hidden dialog's abort removes only itself, and resetExtensionUI disposes every dialog; internal/codingagent/ext_ui_dialog_stack.go owns the stack for in-process, remote and custom dialogs, session replacement and /reload reset it, and a conformance row covers every SDK realization. Pi 64627838 (#11270) gives addMessageToChat and renderSessionItems a messageMeta (entry id and timestamp per message) that reaches the user and assistant components and then every Markdown transformer as the context's messageId and timestamp. Ported as the messageMeta value of newUserMessageBlock and newAssistantMessageBlock, filled from the entry in the transcript rebuild and empty for live messages and the no-session fallback; the transformer context (markdowntransform, the extension SDKs) carries MessageID and Timestamp. Delta at Pi 7853186d (#11431): setCustomEditorComponent leaves the editor slot and focus alone while an extension dialog is open; PiG's editor widget is stable, so the dialog already stayed visible and the port skips the active-selector disposal while a dialog is open (internal/codingagent/ext_editor_component.go). Delta at Pi c1810bf7 (#11428): showExtensionCustom passes options.blocked to pushExtensionDialog for an inline component (internal/codingagent/ext_ui_custom.go and the remote editor-slot component in ext_ui_context.go); overlays ignore it."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
