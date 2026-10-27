@@ -12,8 +12,8 @@ import (
 
 // Recovery (CONTRACT 3.8): a restart loses every volatile effect; the committed state decides what resumes.
 
-// TestRecoverResendsAnUnansweredRequest: a model request that never answered is sent again after a restart, and the
-// answer commits once.
+// TestRecoverResendsAnUnansweredRequest: a model request that never answered is a failed attempt after a restart (Pi b3a29f11,
+// spec section 8.3): it is sent again once the retry backoff ends, and the answer commits once.
 func TestRecoverResendsAnUnansweredRequest(t *testing.T) {
 	r := newRig(t)
 	conv, _ := r.start("hi")
@@ -23,8 +23,12 @@ func TestRecoverResendsAnUnansweredRequest(t *testing.T) {
 	}
 	first := viewText(r.requests[0].req.Context.(turn.ViewContext).View)
 	r.restart()
+	if len(r.requests) != 0 {
+		t.Fatalf("requests after the restart = %d, want none during the backoff (reports %v)", len(r.requests), r.reports)
+	}
+	r.advance(2000)
 	if len(r.requests) != 1 {
-		t.Fatalf("requests after the restart = %d (reports %v)", len(r.requests), r.reports)
+		t.Fatalf("requests after the backoff = %d (reports %v)", len(r.requests), r.reports)
 	}
 	if got := viewText(r.requests[0].req.Context.(turn.ViewContext).View); got != first {
 		t.Fatalf("resent context differs:\n%s\n%s", first, got)
@@ -112,7 +116,7 @@ func lastEntryOf(r *rig, kind string) string {
 }
 
 // TestRecoverPartialBecomesAnAbortedEntry: a restart with a streamed partial in pi.live keeps the text as an aborted
-// assistant entry (convertPartial) and sends the request again.
+// assistant entry (convertPartial) and sends the request again once the retry backoff of the charged attempt ends.
 func TestRecoverPartialBecomesAnAbortedEntry(t *testing.T) {
 	r := newRig(t)
 	conv, _ := r.start("hi")
@@ -128,6 +132,7 @@ func TestRecoverPartialBecomesAnAbortedEntry(t *testing.T) {
 	if !strings.Contains(got, "half an ans") || !strings.Contains(got, `"stopReason":"aborted"`) {
 		t.Fatalf("partial entry = %s (reports %v)", got, r.reports)
 	}
+	r.advance(2000)
 	if len(r.requests) != 1 {
 		t.Fatalf("requests = %d", len(r.requests))
 	}

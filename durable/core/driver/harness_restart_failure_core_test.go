@@ -1070,19 +1070,16 @@ func TestCoreDeferredGenerationPartialsAfterACrash(t *testing.T) {
 		h, root := rig.open()
 		h.Resume()
 		submission := submitInput(t, root, "hi")
-		var stored string
 		pollUntil(t, "a stored partial", func() bool {
 			live := restartLive(t, h, root)
-			if live.Generation == nil || live.Generation.Message == nil {
-				return false
-			}
-			stored = messageTextOf(*live.Generation.Message)
-			return len(stored) > 40
+			return live.Generation != nil && live.Generation.Message != nil && len(messageTextOf(*live.Generation.Message)) > 40
 		})
 		rig.crash()
 
 		rig.faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("answer")})
 		reopened, reopenedRoot := rig.open()
+		// What the store held at the crash, behind memory by at most the window, is what becomes the aborted entry.
+		stored := messageTextOf(*restartLive(t, reopened, reopenedRoot).Generation.Message)
 		reopened.Resume()
 		expectRestartDone(t, restartSettled(t, submission.Id(), reopened))
 		var got []string
@@ -1092,7 +1089,7 @@ func TestCoreDeferredGenerationPartialsAfterACrash(t *testing.T) {
 				got = append(got, fmt.Sprintf("%s|%s", messageTextOf(message), message.StopReason))
 			}
 		}
-		if len(got) != 2 || !strings.HasSuffix(got[0], "|"+string(ai.StopReasonAborted)) || !strings.HasPrefix(strings.TrimSuffix(got[0], "|"+string(ai.StopReasonAborted)), stored) || got[1] != "answer|"+string(ai.StopReasonStop) {
+		if len(got) != 2 || !strings.HasSuffix(got[0], "|"+string(ai.StopReasonAborted)) || strings.TrimSuffix(got[0], "|"+string(ai.StopReasonAborted)) != stored || got[1] != "answer|"+string(ai.StopReasonStop) {
 			t.Fatalf("answers = %q, want the stored partial %q aborted, then the answer", got, stored)
 		}
 		if live := restartLive(t, reopened, reopenedRoot); !reflect.DeepEqual(live, harness.LiveState{}) {
