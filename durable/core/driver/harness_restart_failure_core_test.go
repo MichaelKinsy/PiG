@@ -768,7 +768,7 @@ func deferredRig(t *testing.T, core bool, pollAfterMs int64) (rig *restartRig, f
 			return fetch(ctx, model, handle, options)
 		}
 		fetching.open()
-		return nil, blockedUntil(options.Signal)
+		return nil, blockedUntil(ctx)
 	}
 	models := ai.CreateModels()
 	models.SetProvider(provider)
