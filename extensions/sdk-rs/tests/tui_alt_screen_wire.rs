@@ -5,7 +5,7 @@
 
 use pig_sdk::{
     Component, ComponentRef, CopySelectionOutcome, Extension, ProgramStatus, Terminal, TerminalInputFn, TerminalResizeFn, ToolResult, TuiAltScreen,
-    TuiAltScreenOptions, WheelScrollLines, empty_schema,
+    TuiAltScreenOptions, TuiOverlayOptions, WheelScrollLines, empty_schema,
 };
 use serde_json::{Value, json};
 use std::io::{Read, Write};
@@ -246,4 +246,49 @@ fn calls_carry_the_terminal_block_and_callbacks_run_while_a_call_is_blocked() {
     let statuses = terminal.statuses.lock().unwrap();
     assert_eq!(statuses.len(), 1);
     assert_eq!((statuses[0].state.as_str(), statuses[0].kind.as_deref(), statuses[0].app.as_deref()), ("blocked", Some("auth"), None));
+}
+
+#[test]
+fn show_overlay_names_its_visible_callback_and_answers_the_hosts_size_asks() {
+    let mut ext = Extension::new("tui-alt-visible");
+    ext.tool("alt", "Show an overlay with a visible callback", empty_schema(), |ctx, _| {
+        let run = || -> std::io::Result<()> {
+            let screen = TuiAltScreen::new(ctx, Arc::new(Recording::default()), TuiAltScreenOptions::default())?;
+            let component: ComponentRef = Arc::new(Doc::default());
+            screen.show_overlay(&component, Some(TuiOverlayOptions { layout: None, visible: Some(Arc::new(|width, _| width >= 20)) }))?;
+            Ok(())
+        };
+        match run() {
+            Ok(()) => ToolResult::text("ok"),
+            Err(err) => ToolResult::Error(err.to_string()),
+        }
+    });
+    let mut rt = Runtime::start("visible", ext);
+    let s = &mut rt.stream;
+    request(s, "alt", "tool_call", "alt", json!({}));
+    let create = next(s);
+    assert_eq!(create["call"]["args"], json!({"id": "t1", "op": "create", "terminal": {"columns": 20, "rows": 6, "kitty": false}}));
+    answer(s, &create, json!({}));
+
+    let show = next(s);
+    assert_eq!(
+        show["call"]["args"],
+        json!({
+            "id": "t1", "op": "showOverlay", "key": "c1", "visible": true,
+            "caps": {"input": true, "mouse": false, "focusable": true, "wantsKeyRelease": false},
+            "terminal": {"columns": 20, "rows": 6, "kitty": false},
+        })
+    );
+    for (id, width, want) in [("v1", 20, true), ("v2", 19, false)] {
+        request(s, id, "tui.alt.cb", "", json!({"id": "t1", "kind": "visible", "key": "c1", "termWidth": width, "termHeight": 6}));
+        let response = next(s);
+        assert_eq!(response["id"], id);
+        assert_eq!(response["response"]["result"], json!({"value": want}), "{response}");
+    }
+    answer(s, &show, json!({"hidden": false, "focused": true, "visible": true}));
+    let dispose = next(s);
+    assert_eq!(dispose["call"]["args"]["op"], "dispose");
+    answer(s, &dispose, json!({}));
+    assert_eq!(next(s)["type"], "response");
+    rt.shutdown();
 }

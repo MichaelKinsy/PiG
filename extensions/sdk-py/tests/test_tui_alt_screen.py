@@ -230,9 +230,29 @@ def test_overlay_and_its_handle() -> None:
     screen.hide_overlay()
     assert host.last()["op"] == "hideOverlay"
     with pytest.raises(ValueError):
-        screen.show_overlay(over, {"visible": lambda w, h: True})
-    with pytest.raises(ValueError):
         screen.show_overlay(over, {"bogus": 1})
+    with pytest.raises(TypeError):
+        screen.show_overlay(over, {"visible": True})
+
+
+def test_overlay_visible_callback() -> None:
+    ext, host, _, screen = _screen()
+    over = _Lines("o")
+    asked: list[tuple[int, int]] = []
+
+    def visible(width: int, height: int) -> bool:
+        asked.append((width, height))
+        return width >= 20
+
+    screen.show_overlay(over, {"width": 8, "visible": visible})
+    assert host.last()["options"] == {"width": 8, "visible": True}  # the callback itself stays here
+    assert _cb(ext, screen, kind="visible", key="c1", termWidth=20, termHeight=6) == {"value": True}
+    assert _cb(ext, screen, kind="visible", key="c1", termWidth=10, termHeight=6) == {"value": False}
+    assert asked == [(20, 6), (10, 6)]
+    screen.show_overlay(over, {"width": 8})  # the latest show of the component names its callback
+    assert host.last()["options"] == {"width": 8}
+    with pytest.raises(RuntimeError):
+        _cb(ext, screen, kind="visible", key="c1", termWidth=20, termHeight=6)
 
 
 def test_input_listeners() -> None:

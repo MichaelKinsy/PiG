@@ -76,7 +76,7 @@ class TuiInputListenerResult(TypedDict, total=False):
 
 
 class TuiOverlayOptions(TypedDict, total=False):
-    """pi-tui's ``OverlayOptions`` as the host takes them. ``visible`` (a callback) has no wire form and is rejected."""
+    """pi-tui's ``OverlayOptions``. ``visible(term_width, term_height) -> bool`` runs in this process each time the host composites the overlay."""
 
     width: int | float | str
     minWidth: int | float
@@ -88,6 +88,7 @@ class TuiOverlayOptions(TypedDict, total=False):
     col: int | float | str
     margin: int | float | dict[str, int | float]
     nonCapturing: bool
+    visible: Callable[[int, int], bool]
 
 
 class OverlayBounds(TypedDict):
@@ -205,13 +206,18 @@ def _mouse_wire(event: "MouseEvent | Mapping[str, Any]") -> dict[str, Any]:
     return wire
 
 
-def _overlay_wire(options: Mapping[str, Any]) -> dict[str, Any]:
+def _overlay_wire(options: Mapping[str, Any]) -> tuple[dict[str, Any], Callable[[int, int], Any] | None]:
+    """The options as the host takes them, and the ``visible`` callback, which stays here: the wire carries ``"visible": true`` instead."""
     for key in options:
-        if key == "visible":
-            raise ValueError("overlay option 'visible' is a callback and has no wire form; show or hide the overlay with its handle instead")
-        if key not in _OVERLAY_OPTION_KEYS:
+        if key != "visible" and key not in _OVERLAY_OPTION_KEYS:
             raise ValueError(f"unknown overlay option {key!r}")
-    return dict(options)
+    visible = options.get("visible")
+    if visible is not None and not callable(visible):
+        raise TypeError("overlay option 'visible' must be a callable (term_width, term_height) -> bool")
+    wire = {key: value for key, value in options.items() if key != "visible"}
+    if visible is not None:
+        wire["visible"] = True
+    return wire, visible
 
 
 class _TuiAltScreens:
@@ -313,6 +319,7 @@ class TuiAltScreen:
         self._listener_seq = 0
         self._scheme_listeners: list[Callable[[str], Any]] = []
         self._on_debug: Callable[[], Any] | None = None
+        self._visible: dict[str, Callable[[int, int], Any]] = {}
         self._late_colors: dict[str, Callable[[TerminalColors], Any]] = {}
         self._query_seq = 0
         options = options or TuiAltScreenOptions()
@@ -497,9 +504,25 @@ class TuiAltScreen:
 
     def show_overlay(self, component: Any, options: TuiOverlayOptions | Mapping[str, Any] | None = None) -> TuiAltOverlayHandle:
         fields = self._component_fields(component)
+        visible = None
         if options is not None:
-            fields["options"] = _overlay_wire(options)
-        self._call("showOverlay", fields)
+            fields["options"], visible = _overlay_wire(options)
+        # The host asks from the moment it knows the overlay, which can be before the call returns; the latest show of a component names its callback.
+        with self._lock:
+            previous = self._visible.get(fields["key"])
+            if visible is None:
+                self._visible.pop(fields["key"], None)
+            else:
+                self._visible[fields["key"]] = visible
+        try:
+            self._call("showOverlay", fields)
+        except BaseException:
+            with self._lock:
+                if previous is None:
+                    self._visible.pop(fields["key"], None)
+                else:
+                    self._visible[fields["key"]] = previous
+            raise
         return TuiAltOverlayHandle(self, fields["key"])
 
     def hide_overlay(self) -> None:
@@ -672,6 +695,12 @@ class TuiAltScreen:
             if callable(invalidate):
                 invalidate()
             return {}
+        if kind == "visible":
+            with self._lock:
+                visible = self._visible.get(str(args.get("key") or ""))
+            if visible is None:
+                raise RuntimeError(f"no visible callback for component {args.get('key')}")
+            return {"value": bool(visible(int(args.get("termWidth") or 0), int(args.get("termHeight") or 0)))}
         if kind == "listener":
             return self._listener_callback(args)
         if kind == "debug":

@@ -168,7 +168,7 @@ mod tui_alt_screen;
 pub use tui_alt_screen::{
     AltScreenOverlayHandle, Component, ComponentRef, CopySelectionOutcome, InputListener, InputListenerResult, LateColorsFn, MouseEventResult, ProgramStatus,
     QueryTerminalColorsOptions, Terminal, TerminalColorScheme, TerminalColors, TerminalInputFn, TerminalResizeFn, TuiAltScreen, TuiAltScreenOptions,
-    TuiStopOptions, Unsubscribe, OverlayUnfocusTarget, WheelScrollLines,
+    TuiStopOptions, Unsubscribe, OverlayVisibleFn, TuiOverlayOptions, OverlayUnfocusTarget, WheelScrollLines,
 };
 mod login;
 mod oauth;

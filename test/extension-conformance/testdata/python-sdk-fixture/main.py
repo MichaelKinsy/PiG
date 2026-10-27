@@ -2882,6 +2882,7 @@ def new_extension() -> pig_sdk.Extension:
     _register_state_push_probe(ext)
     _register_signal_abort(ext)
     _register_tui_alt_screen_probe(ext)
+    _register_tui_alt_frame_probe(ext)
     return ext
 
 
@@ -3227,6 +3228,66 @@ def _register_tui_alt_screen_probe(ext: pig_sdk.Extension) -> None:
         ctx.notify("tui-alt: " + "; ".join(facts), "info")
 
     ext.command("tui-alt-screen-probe", "Drive every TuiAltScreen member over a recording terminal", tui_alt_screen_probe)
+
+
+class _AltCounted(_AltLines):
+    """A plain component that counts its invalidate calls."""
+
+    def __init__(self, fn) -> None:
+        super().__init__(fn)
+        self.invalidated = 0
+
+    def invalidate(self) -> None:
+        self.invalidated += 1
+
+
+def _register_tui_alt_frame_probe(ext: pig_sdk.Extension) -> None:
+    """Read the screen from inside a component's render, and drive an overlay's visible callback, over a recording terminal. Every SDK fixture runs the
+    same steps as the Pi oracle probe and must print its exact text."""
+
+    def b(value: bool) -> str:
+        return "true" if value else "false"
+
+    def tui_alt_frame_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        seen: list[str] = []
+
+        def render_doc(_width: int) -> list[str]:
+            seen.append(
+                f"{screen.viewport_top}/{b(screen.is_following_output)}/{len(screen.get_screen_lines())}/{b(screen.has_active_selection())}"
+                f"/{b(screen.has_overlay())}/{b(screen.get_show_hardware_cursor())}"
+            )
+            return [f"row {i + 1}" for i in range(12)]
+
+        doc = _AltCounted(render_doc)
+        screen.add_child(doc)
+        screen.start()
+        screen.render_now()
+        screen.render_now()
+        facts = [f"frame1={seen[0]}", f"frame2={seen[-1]}"]
+        widths: list[str] = []
+        over = _AltCounted(lambda _w: ["OVER"])
+
+        def visible_on(width: int, height: int) -> bool:
+            widths.append(f"{width}x{height}")
+            return width >= 20
+
+        hide_on = screen.show_overlay(over, {"width": 8, "visible": visible_on})
+        screen.render_now()
+        facts.append(f"visibleOn={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}/{b('20x6' in widths)}")
+        hide_on.hide()
+        hide_off = screen.show_overlay(_AltCounted(lambda _w: ["X"]), {"visible": lambda _w, _h: False})
+        facts.append(f"visibleOff={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}")
+        hide_off.hide()
+        screen.show_overlay(over, {"width": 8})
+        doc.invalidated = over.invalidated = 0
+        screen.invalidate()
+        facts.append(f"invalidate={b(doc.invalidated > 0)}/{b(over.invalidated > 0)}")
+        screen.stop()
+        ctx.notify("tui-alt-frame: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-frame-probe", "Read the screen from a component's render and drive an overlay's visible callback", tui_alt_frame_probe)
 
 
 if __name__ == "__main__":

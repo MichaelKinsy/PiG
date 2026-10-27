@@ -212,6 +212,17 @@ pub struct QueryTerminalColorsOptions {
     pub on_late_reply: Option<LateColorsFn>,
 }
 
+/// Pi's `visible(termWidth, termHeight)` overlay callback: the host asks it whenever it decides whether the overlay shows.
+pub type OverlayVisibleFn = Arc<dyn Fn(u32, u32) -> bool + Send + Sync>;
+
+/// pi-tui's `OverlayOptions` for [`TuiAltScreen::show_overlay`]: `layout` is the serialisable part as JSON (`width`, `minWidth`, `maxHeight`,
+/// `anchor`, `offsetX`, `offsetY`, `row`, `col`, `margin`, `nonCapturing`), `visible` Pi's callback (`None` is always visible).
+#[derive(Clone, Default)]
+pub struct TuiOverlayOptions {
+    pub layout: Option<Value>,
+    pub visible: Option<OverlayVisibleFn>,
+}
+
 /// pi-tui's `WheelScrollLines`: logical lines per wheel event, or `Auto` to accelerate fast spins.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WheelScrollLines {
@@ -351,6 +362,8 @@ struct Inner {
     debug: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
     schemes: Mutex<(u64, Vec<(u64, SchemeFn)>)>,
     late_colors: Mutex<HashMap<String, LateColorsFn>>,
+    /// The `visible` callback of the overlay each component was last shown with, by component key.
+    visible: Mutex<HashMap<String, OverlayVisibleFn>>,
     query_seq: AtomicU64,
 }
 
@@ -631,6 +644,11 @@ impl Inner {
                 }
                 Ok(json!({}))
             }
+            "visible" => {
+                let size = |name: &str| args.get(name).and_then(Value::as_u64).unwrap_or(0) as u32;
+                let visible = self.visible.lock().unwrap().get(key).cloned();
+                Ok(json!({"value": visible.is_none_or(|visible| visible(size("termWidth"), size("termHeight")))}))
+            }
             "option" => self.option_callback(args),
             other => Err(format!("unknown tui.alt callback kind {other:?}")),
         }
@@ -670,6 +688,7 @@ impl TuiAltScreen {
             debug: Mutex::default(),
             schemes: Mutex::default(),
             late_colors: Mutex::default(),
+            visible: Mutex::default(),
             query_seq: AtomicU64::new(0),
         });
         registry.screens.lock().unwrap().insert(id, Arc::downgrade(&inner));
@@ -867,15 +886,28 @@ impl TuiAltScreen {
         self.inner.named_call("setFocus", component, Value::Null).map(|_| ())
     }
 
-    /// Shows `component` as an overlay. `options` is Pi's `OverlayOptions` as JSON (`width`, `minWidth`, `maxHeight`, `anchor`, `offsetX`,
-    /// `offsetY`, `row`, `col`, `margin`, `nonCapturing`).
-    pub fn show_overlay(&self, component: &ComponentRef, options: Option<Value>) -> io::Result<AltScreenOverlayHandle> {
-        let extra = match options {
-            Some(options) => json!({"options": options}),
-            None => Value::Null,
-        };
-        self.inner.named_call("showOverlay", Some(component), extra)?;
-        let key = self.inner.held_component_key(component).ok_or_else(|| invalid("overlay component is not registered"))?;
+    /// Shows `component` as an overlay; `None` options are Pi's defaults.
+    pub fn show_overlay(&self, component: &ComponentRef, options: Option<TuiOverlayOptions>) -> io::Result<AltScreenOverlayHandle> {
+        let inner = &self.inner;
+        let options = options.unwrap_or_default();
+        let (key, caps) = inner.component_fields(component);
+        let mut fields = Map::new();
+        fields.insert("key".into(), Value::from(key.clone()));
+        fields.insert("caps".into(), caps);
+        if let Some(layout) = options.layout {
+            fields.insert("options".into(), layout);
+        }
+        // The host may ask `visible` as soon as it mounts the overlay, before this call returns.
+        match options.visible {
+            Some(visible) => {
+                fields.insert("visible".into(), Value::Bool(true));
+                inner.visible.lock().unwrap().insert(key.clone(), visible);
+            }
+            None => {
+                inner.visible.lock().unwrap().remove(&key);
+            }
+        }
+        inner.call("showOverlay", Value::Object(fields))?;
         Ok(AltScreenOverlayHandle { inner: self.inner.clone(), key })
     }
 

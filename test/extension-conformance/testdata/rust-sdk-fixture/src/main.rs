@@ -3702,6 +3702,7 @@ fn main() {
     register_state_push_probe(&mut ext);
     register_signal_abort(&mut ext);
     register_tui_alt_screen_probe(&mut ext);
+    register_tui_alt_frame_probe(&mut ext);
     ext.run().unwrap();
 }
 
@@ -4791,7 +4792,7 @@ fn visible_text(text: &str) -> String {
 fn tui_alt_screen_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     use pig_sdk::{
         ComponentRef, InputListener, InputListenerResult, MouseEvent, QueryTerminalColorsOptions, Terminal, TuiAltScreen, TuiAltScreenOptions,
-        TuiStopOptions, WheelScrollLines,
+        TuiOverlayOptions, TuiStopOptions, WheelScrollLines,
     };
     use std::sync::atomic::AtomicUsize;
     let probe = Arc::new(ProbeTerminal::default());
@@ -4844,7 +4845,7 @@ fn tui_alt_screen_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     screen.render_now(false)?;
     f.push(format!("flash={}", sl(&screen)?.iter().any(|line| line.contains("hello"))));
     let ov = lines(|_| vec!["OVER".to_string()]);
-    let handle = screen.show_overlay(&ov, Some(json!({"width": 8, "anchor": "center"})))?;
+    let handle = screen.show_overlay(&ov, Some(TuiOverlayOptions { layout: Some(json!({"width": 8, "anchor": "center"})), ..Default::default() }))?;
     screen.render_now(false)?;
     let width = handle.bounds()?.map_or_else(|| "undefined".to_string(), |bounds| bounds.width.to_string());
     f.push(format!("overlay={}/{}/{}/{}", screen.has_overlay()?, screen.has_overlay_entries()?, handle.is_focused()?, width));
@@ -4915,6 +4916,123 @@ fn tui_alt_screen_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
 /// Contributes tui-alt-screen-probe (TestConformance_TuiAltScreenAgreesAcrossSDKs): one info notify with the facts.
 fn register_tui_alt_screen_probe(ext: &mut Extension) {
     ext.command("tui-alt-screen-probe", "Drive every TuiAltScreen member and report the facts", |ctx, _args| match tui_alt_screen_probe(ctx) {
+        Ok(report) => {
+            ctx.notify(&report, "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
+}
+
+/// A Component that counts its invalidations, and draws the lines it was given.
+struct CountingLines {
+    lines: Vec<String>,
+    invalidations: std::sync::atomic::AtomicUsize,
+}
+
+impl pig_sdk::Component for CountingLines {
+    fn render(&self, _width: u32) -> Vec<String> {
+        self.lines.clone()
+    }
+    fn invalidate(&self) {
+        self.invalidations.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+/// The document of tui-alt-frame-probe: while it renders it reads the screen's state, as a component that asks the screen about its own frame does.
+struct FrameDoc {
+    screen: Arc<std::sync::OnceLock<std::sync::Weak<pig_sdk::TuiAltScreen>>>,
+    seen: Mutex<Vec<String>>,
+    invalidations: std::sync::atomic::AtomicUsize,
+}
+
+impl pig_sdk::Component for FrameDoc {
+    fn render(&self, _width: u32) -> Vec<String> {
+        let state = self.screen.get().and_then(std::sync::Weak::upgrade).map(|screen| -> std::io::Result<String> {
+            Ok(format!(
+                "{}/{}/{}/{}/{}/{}",
+                screen.viewport_top()?,
+                screen.is_following_output()?,
+                screen.get_screen_lines()?.len(),
+                screen.has_active_selection()?,
+                screen.has_overlay()?,
+                screen.get_show_hardware_cursor()?
+            ))
+        });
+        let state = match state {
+            Some(Ok(state)) => state,
+            Some(Err(err)) => format!("error: {err}"),
+            None => "no screen".to_string(),
+        };
+        self.seen.lock().unwrap().push(state);
+        (1..=12).map(|i| format!("row {i}")).collect()
+    }
+    fn invalidate(&self) {
+        self.invalidations.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+/// tui-alt-frame-probe: a component reads the screen's state from inside its own render, and an overlay's `visible` callback is asked the terminal's size.
+fn tui_alt_frame_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
+    use pig_sdk::{ComponentRef, Terminal, TuiAltScreen, TuiAltScreenOptions, TuiOverlayOptions};
+    use std::sync::atomic::AtomicUsize;
+    let terminal: Arc<dyn Terminal> = Arc::new(ProbeTerminal::default());
+    let screen = Arc::new(TuiAltScreen::new(
+        ctx,
+        terminal,
+        TuiAltScreenOptions { show_hardware_cursor: Some(false), mouse: Some(false), ..Default::default() },
+    )?);
+    let link = Arc::new(std::sync::OnceLock::new());
+    let doc = Arc::new(FrameDoc { screen: link.clone(), seen: Mutex::new(Vec::new()), invalidations: AtomicUsize::new(0) });
+    let _ = link.set(Arc::downgrade(&screen));
+    let doc_ref: ComponentRef = doc.clone();
+    screen.add_child(&doc_ref)?;
+    screen.start()?;
+    screen.render_now(false)?;
+    screen.render_now(false)?;
+    let (first, last) = {
+        let seen = doc.seen.lock().unwrap();
+        (seen.first().cloned().unwrap_or_else(|| "undefined".to_string()), seen.last().cloned().unwrap_or_else(|| "undefined".to_string()))
+    };
+    let mut f = vec![format!("frame1={first}"), format!("frame2={last}")];
+    let widths = Arc::new(Mutex::new(Vec::<String>::new()));
+    let ov = Arc::new(CountingLines { lines: vec!["OVER".to_string()], invalidations: AtomicUsize::new(0) });
+    let ov_ref: ComponentRef = ov.clone();
+    let asked = widths.clone();
+    let on = screen.show_overlay(
+        &ov_ref,
+        Some(TuiOverlayOptions {
+            layout: Some(json!({"width": 8})),
+            visible: Some(Arc::new(move |width, height| {
+                asked.lock().unwrap().push(format!("{width}x{height}"));
+                width >= 20
+            })),
+        }),
+    )?;
+    screen.render_now(false)?;
+    f.push(format!(
+        "visibleOn={}/{}/{}",
+        screen.has_overlay()?,
+        screen.has_overlay_entries()?,
+        widths.lock().unwrap().iter().any(|size| size == "20x6")
+    ));
+    on.hide()?;
+    let hidden: ComponentRef = Arc::new(ProbeLines(Box::new(|_| vec!["X".to_string()])));
+    let off = screen.show_overlay(&hidden, Some(TuiOverlayOptions { layout: None, visible: Some(Arc::new(|_, _| false)) }))?;
+    f.push(format!("visibleOff={}/{}", screen.has_overlay()?, screen.has_overlay_entries()?));
+    off.hide()?;
+    let _shown = screen.show_overlay(&ov_ref, Some(TuiOverlayOptions { layout: Some(json!({"width": 8})), visible: None }))?;
+    doc.invalidations.store(0, Ordering::SeqCst);
+    ov.invalidations.store(0, Ordering::SeqCst);
+    screen.invalidate()?;
+    f.push(format!("invalidate={}/{}", doc.invalidations.load(Ordering::SeqCst) > 0, ov.invalidations.load(Ordering::SeqCst) > 0));
+    screen.stop(Default::default())?;
+    Ok(format!("tui-alt-frame: {}", f.join("; ")))
+}
+
+/// Contributes tui-alt-frame-probe (TestConformance_TuiAltScreenAgreesAcrossSDKs): one info notify with the facts.
+fn register_tui_alt_frame_probe(ext: &mut Extension) {
+    ext.command("tui-alt-frame-probe", "Read screen state from a component render and drive an overlay's visible callback", |ctx, _args| match tui_alt_frame_probe(ctx) {
         Ok(report) => {
             ctx.notify(&report, "info");
             CommandResult::Ok
