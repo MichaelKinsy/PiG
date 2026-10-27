@@ -1,6 +1,6 @@
 // Run Pi's conversation views (packages/durable/src/harness/view.ts, with agent.ts configure and addTools, imported as-is with types stripped) over programs from stdin.
-// Program: [{op: "commit", ops: [{t: "append", conv, head?: ref | "self", model?} | {t: "configure", change} | {t: "addTools", names}]} | {op: "attach", label} | {op: "detach", label}]
-// A ref is an index into the entries appended to the root conversation (modulo their count). Conversation 0 is the root, 1 another one the views must ignore. `change` carries model-free fields; extensions and tools are name lists, lists or edits.
+// Program: [{op: "commit", ops: [{t: "append", conv, head?: ref | "self", model?} | {t: "configure", change} | {t: "addTools", names}]} | {op: "attach", label, window?: {min?, max?, fromRef?, fromPlus?}} | {op: "detach", label}]
+// A ref is an index into the entries appended to the root conversation (modulo their count); a window's `from` is the ID of the entry fromRef refers to, plus fromPlus. Conversation 0 is the root, 1 another one the views must ignore. `change` carries model-free fields; extensions and tools are name lists, lists or edits.
 // stdout: per program, one {ok} / {err} per step, then {views: {label: {initial, events: [{step, value, ops}]}}}.
 // usage: node view_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-ai and typebox)
 import module from "node:module";
@@ -77,8 +77,10 @@ for (const program of JSON.parse(input)) {
 				if (conversations.length === 0) throw new Error("no conversation yet");
 				const events = [];
 				let initial;
+				const window = op.window === undefined ? undefined : { ...(op.window.min === undefined ? {} : { min: op.window.min }), ...(op.window.max === undefined ? {} : { max: op.window.max }), ...(op.window.fromRef === undefined || entries.length === 0 ? {} : { from: entries[op.window.fromRef % entries.length] + (op.window.fromPlus ?? 0) }) };
 				const { detach } = await views.attach(
 					conversations[0],
+					window,
 					(value, release) => {
 						initial = clone(value);
 						return { advance: (change) => events.push({ step: current, value: clone(change.value), ops: clone(change.ops) }), end() {}, release };
