@@ -4,3 +4,15 @@
 #
 # Empty: every differential ordering row passes on every build (the former causes A, client-call hop schedule, and B, tool progress commit order,
 # are closed). A row that differs from Pi again is listed here with its owner, cause and repro in the change that finds it.
+
+[[known]]
+id = "F-ticks-output-gate"
+owner = "dcore-loop"
+cause = "Pi 6c384aa3 stores a tool's throttled output commit deferred (CommitPersistence, Pi 6c2fd73b): watches see the chunk at once and Storage gets it with the next commit that reads pi.live. The core still stores every throttled commit at its own turn, so commit 9 differs and the chunk's update event arrives later."
+repro = "node durable/contract/cli/contract.mjs run F-ticks-output-gate --impl native"
+
+[[known]]
+id = "F-ticks-output-node"
+owner = "dcore-loop"
+cause = "Same as F-ticks-output-gate, on the node storage profile."
+repro = "node durable/contract/cli/contract.mjs run F-ticks-output-node --impl native"

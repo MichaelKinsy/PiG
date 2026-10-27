@@ -339,6 +339,21 @@ func (h *handler) holdFor(n int, release func()) bool {
 // holdChain parks release on the hops chain c names: the host runs c.N hops, applies c.Commits after hop c.At, and sends
 // hopped after the last. A payload over abi.ChunkSize (a 20,000-task commit's is 7 MB) goes out in blocks.
 func (h *handler) holdChain(c abi.Hops, release func()) bool {
+	return h.parkChain(c, parkedHops{release: release})
+}
+
+// holdLate parks on a chain of n hops the call of fn(h, id, val) rather than a closure: what the work needs is kept in the parked record. A
+// closure that carries a value costs a heap allocation per site (and one for each variable it captures) in TinyGo; fn is a function
+// declared at the top level of the package, which costs none.
+func (h *handler) holdLate(n int, fn func(h *handler, id uint32, val any), id uint32, val any) bool {
+	if n <= 0 {
+		return false
+	}
+	return h.parkChain(abi.Hops{N: uint32(n)}, parkedHops{fn: fn, rid: id, val: val})
+}
+
+// parkChain opens the chain c and parks p, whose chain fields it fills in, on it.
+func (h *handler) parkChain(c abi.Hops, p parkedHops) bool {
 	size := abi.HopsSize(c)
 	if h.hopArena == nil {
 		h.hopArena = make([]byte, 0, hopArenaSize)
@@ -362,7 +377,8 @@ func (h *handler) holdChain(c abi.Hops, release func()) bool {
 	}
 	origin := h.origin()
 	h.holdOrigin(origin)
-	h.hops = append(h.hops, parkedHops{id, due, release, h.stepNo, origin})
+	p.id, p.due, p.step, p.origin = id, due, h.stepNo, origin
+	h.hops = append(h.hops, p)
 	return true
 }
 
@@ -371,8 +387,12 @@ type parkedHops struct {
 	id      uint32
 	due     int // the virtual tick the chain ends (capsql.go); zero without a statement queue
 	release func()
-	step    uint64 // the step that opened the chain: a rejected step takes its chains back (dropStepHops)
-	origin  uint32 // the host async context of the code that parked the work: it continues in it (origin.go)
+	// fn, when set, is what runs instead of release, with the id and value the work parked with (holdLate).
+	fn     func(h *handler, id uint32, val any)
+	rid    uint32
+	val    any
+	step   uint64 // the step that opened the chain: a rejected step takes its chains back (dropStepHops)
+	origin uint32 // the host async context of the code that parked the work: it continues in it (origin.go)
 }
 
 // onHopped runs the work parked on a hops chain (ABI section 5, event 18).
@@ -386,7 +406,11 @@ func (h *handler) onHopped(ev *abi.Event) error {
 				h.vnow = max(h.vnow, p.due)
 			}
 			h.setOrigin(p.origin)
-			p.release()
+			if p.fn != nil {
+				p.fn(h, p.rid, p.val)
+			} else {
+				p.release()
+			}
 			h.dropOrigin(p.origin)
 			break
 		}

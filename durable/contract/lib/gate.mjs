@@ -14,7 +14,7 @@ import { boundApplies, memoryDescribe, memorySummary, overBound, readSamples } f
 import { matrix, sample } from "./matrix.mjs"
 import { diffTraces, readTrace } from "./rowdiff.mjs"
 import { copyStore } from "./store.mjs"
-import { CONTRACT_DIR, piSource, runScenario } from "./run.mjs"
+import { CONTRACT_DIR, piSource, referenceSource, runScenario } from "./run.mjs"
 
 const once = new Map()
 /** Memoise an async computation by key, so concurrent rows share one reference capture. */
@@ -98,7 +98,8 @@ export async function runProgramRow(row, impl, ctx) {
 	}
 	// A diff row names the storage backend's hop profile (S7): `node` runs the reference's own Node SQLite adapter, for Pi and the candidate alike.
 	const rowEnv = row.profile === "node" ? { CONTRACT_STORAGE_PROFILE: "node" } : {}
-	const common = { script, scenario: row.id, tmpKey: row.id }
+	// A row names the reference it runs against (`reference = "ticks"`: the tick rows, PIN `ticks`); the candidate runs over the same checkout.
+	const common = { script, scenario: row.id, tmpKey: row.id, source: referenceSource(row) }
 	const ref = await memo(`ref:${row.id}`, async () => runScenario({ ...common, args: await withFixture(join(ctx.out, "ref")), out: join(ctx.out, "ref"), name: row.id, env: rowEnv }))
 	if (ref.code !== 0) return referenceFailed("scenario", ref)
 	const candidate = { impl: impl.name, candidate: impl.control ? undefined : impl.candidateDir }
