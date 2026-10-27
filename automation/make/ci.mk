@@ -19,6 +19,10 @@ ci-toolchains: ci-race ci-integration ci-sdk ci-extensions
 # CI runs test-fast and test-cli in halves on separate jobs; each pair together is the whole target.
 ci-test-fast: test-fast-parallel
 ci-test-fast-sharded: test-fast-sharded
+# The light pull-request run's test-fast shard (automation/ci/ci-tiers.txt): the fast-parallel packages the change affects (TEST_BASE names the pull request's base), no -race so it runs what the full run does, and the whole ci-test-fast when the change touches go.mod, go.sum, go.work or go.work.sum or a file no package test reads.
+ci-test-changed: export TEST_CHANGED_FOR := fast-parallel
+ci-test-changed: export TEST_CHANGED_RACE := none
+ci-test-changed: test-changed
 ci-test-cli-1: test-cli-1
 ci-test-cli-2: test-cli-2
 ci-test-subprocess: test-subprocess
@@ -107,4 +111,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: test-provenance test-expectation-lint ci-preflight ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance
+.PHONY: test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance

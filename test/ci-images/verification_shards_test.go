@@ -286,6 +286,10 @@ var fakeTests = func() []string {
 // groupedTestFixture copies test-grouped.sh and the scripts it runs into a fresh root whose fake go lists five packages, lists fakeTests for go test -list, and appends the packages each go test receives to $TEST_LOG and each -run pattern, after its package, to $RUN_LOG. LIST_FAIL fails the listing, LIST_EXTRA adds a name to it, FAIL_TEST fails each go test whose -run pattern names that test, and FAIL_PACKAGE fails each go test that receives that package. When LEAK_TMP is set, the fake go test leaves a file in the TMPDIR it runs under, as a leaking test package would; when LEAK_PROCESS is set it leaves a sleep of that many seconds running, as a test that leaks a child process would. ARGS_LOG receives each go test command line, and FD_LOG the targets of the file descriptors each go test holds (Linux). When WIPE_AGENT_AUTH is set it rewrites auth.json in the agent directory its environment names, as the 2026-10-06 lane wipe did, and RECORD_AGENT_ENV names a file that receives the agent environment each go test sees.
 func groupedTestFixture(t *testing.T) string {
 	t.Helper()
+	// A CI shard exports these for the run it keeps events and a summary of; the fake go below must see the plain run.
+	for _, name := range []string{"PIG_TEST_JSON_DIR", "GITHUB_STEP_SUMMARY", "TEST_CHANGED_FOR"} {
+		t.Setenv(name, "")
+	}
 	root := t.TempDir()
 	copyCIFixture(t, root, "automation/ci/test-grouped.sh")
 	copyCIFixture(t, root, "automation/ci/test-shard-pattern.sh")
