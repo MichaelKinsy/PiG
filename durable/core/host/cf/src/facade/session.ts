@@ -4,6 +4,7 @@
 import type { Context } from "@earendil-works/chord"
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import { Harness } from "./harness.ts"
+import type { SetTimer } from "../timers.ts"
 import type { Storage } from "./storage.ts"
 
 const NO_MODELS = {
@@ -12,17 +13,20 @@ const NO_MODELS = {
 }
 const NO_REGISTRY = { snapshot: () => ({ installed: () => [], extension: () => undefined, tools: () => [], sections: () => [], task: () => undefined, tasks: () => [] }), subscribe: () => () => {} }
 
-export function createLazySession(storage: Storage, options: { now?: () => number; documentRetentionMs?: () => number | undefined } = {}): unknown {
+export function createLazySession(storage: Storage, options: { now?: () => number; documentRetentionMs?: () => number | undefined; setTimer?: SetTimer; readOnly?: boolean; persistWithinMs?: () => number | undefined } = {}): unknown {
   let opened: Promise<Harness> | undefined
   // types.ts Session.closed: why the Session ended. A Session nobody used closes without opening the core.
   const ended = Promise.withResolvers<unknown>()
   let harness: Harness | undefined
   const open = () => {
     if (opened === undefined) {
-      const { now, documentRetentionMs } = options
-      // The retention is read live at each use, as Session reads its callback.
-      const settings = documentRetentionMs === undefined ? undefined : { get documentRetentionMs() { return documentRetentionMs() } }
-      opened = Harness.open(storage, { models: NO_MODELS, registry: NO_REGISTRY as never, mode: "session", ...(now === undefined ? {} : { now }), ...(settings === undefined ? {} : { settings }) }, BACKGROUND_CONTEXT)
+      const { now, documentRetentionMs, setTimer, readOnly, persistWithinMs } = options
+      // The retention and the default window of a deferred commit are read live at each use, as Session reads its callbacks.
+      const settings = documentRetentionMs === undefined && persistWithinMs === undefined ? undefined : {
+        ...(documentRetentionMs === undefined ? {} : { get documentRetentionMs() { return documentRetentionMs() } }),
+        ...(persistWithinMs === undefined ? {} : { progress: { get persistWithinMs() { return persistWithinMs() } } }),
+      }
+      opened = Harness.open(storage, { models: NO_MODELS, registry: NO_REGISTRY as never, mode: "session", ...(now === undefined ? {} : { now }), ...(settings === undefined ? {} : { settings }), ...(setTimer === undefined ? {} : { setTimer }), ...(readOnly === true ? { readOnly } : {}) } as never, BACKGROUND_CONTEXT)
       void opened.then(h => { harness = h })
       void opened.then(h => h.closed).then(r => ended.resolve(r), () => {})
     }
@@ -41,8 +45,8 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     /** Internal: run a read-only job on the mutation line (session.ts readOnLine): a commit that writes nothing holds the line for it. */
     readOnLine: async <T>(job: () => Promise<T>): Promise<T> => (await open()).readOnLine(job),
     /** Internal, for tests: the document cache sizes the core last reported. */
-    get documentCacheSizes() { return harness?.documentCacheSizes ?? { cached: 0, idle: 0, attached: 0, sweeps: 0 } },
-    commit: async <T>(change: (tx: never) => T | Promise<T>, context: Context): Promise<T> => (await open()).commit(change as never, context),
+    get documentCacheSizes() { return harness?.documentCacheSizes ?? { cached: 0, idle: 0, attached: 0, sweeps: 0, held: 0 } },
+    commit: async <T>(change: (tx: never) => T | Promise<T>, context: Context, commitOptions?: unknown): Promise<T> => (await open()).commit(change as never, context, commitOptions as never),
     // Closing a Session nobody used must not cold-open the core just to seal it.
     close: async (context: Context) => { if (opened) await (await opened).close(context); else ended.resolve({ reason: "closed" }) },
     subscribeCommits: later<(publication: unknown, context: Context) => void>((h, l) => h.subscribeCommits(l)),

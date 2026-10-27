@@ -43,6 +43,8 @@ type handler struct {
 	payloadFree, payloadUsed [][]byte
 
 	b *abi.Builder
+	// closeErr is the error of the store of held changes at close, which close() rejects with.
+	closeErr error
 	// refs counts what holds each origin of a host call; pinned are the holds a parked Loop's queue has taken; bareOrigin is the
 	// current origin of a core without a Loop (origin.go).
 	refs       originRefs
@@ -70,7 +72,7 @@ type handler struct {
 	// stepNo numbers the steps the handler ran; hops chains carry the number of the step that opened them.
 	stepNo     uint64
 	cacheSent  bool
-	cacheSizes [4]int
+	cacheSizes [5]int
 	indexSent  bool
 	indexSizes [7]int
 	open       *jv.Object
@@ -205,6 +207,45 @@ func (h *handler) handle(ev *abi.Event) error {
 			}
 			return nil
 		}
+		// Last, after the writes at close and while the trackers are still here, the held changes of deferred commits are stored: a
+		// failed Session writes nothing, a failing store fails it, and the close still ends (session.ts close, #storeHolds).
+		storeHolds := func() error {
+			if h.sess.Failure() != nil {
+				return nil
+			}
+			err := h.sess.StoreHolds()
+			if err != nil && !session.IsNeedGate(err) {
+				h.closeErr = err
+				return nil
+			}
+			return err
+		}
+		finish := func() {
+			if h.loop != nil && h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
+				h.loop.LineBare(func() error {
+					if err := storeHolds(); err != nil {
+						return err
+					}
+					h.flushHeld()
+					h.closeWhenQuiet()
+					return nil
+				})
+				return
+			}
+			if h.loop == nil && h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
+				var again func()
+				again = func() {
+					if err := storeHolds(); err != nil {
+						h.cg.resume = again
+						return
+					}
+					h.closeWhenQuiet()
+				}
+				again()
+				return
+			}
+			h.closeWhenQuiet()
+		}
 		if h.loop != nil && (h.loop.Busy() || (h.sched != nil && len(h.sched.CloseWrites()) > 0)) {
 			// A bare job: the write-back takes no job duration of its own, and its statements go out with the close.
 			h.loop.LineBare(func() error {
@@ -212,12 +253,12 @@ func (h *handler) handle(ev *abi.Event) error {
 					return err
 				}
 				h.flushHeld()
-				h.closeWhenQuiet()
+				finish()
 				return nil
 			})
 			return nil
 		}
-		h.closeWhenQuiet()
+		finish()
 		return nil
 	case abi.EventTx:
 		return h.onTx(ev)
@@ -260,6 +301,11 @@ func (h *handler) closeWhenQuiet() {
 func (h *handler) finishClose() {
 	h.sess.Close()
 	h.closed = true
+	if h.closeErr != nil {
+		// The store of the held changes failed: close() rejects with that error, the backend closed all the same.
+		h.apiError(0, h.closeErr)
+		return
+	}
 	h.apiOK(0, nil)
 }
 
@@ -309,6 +355,8 @@ func (h *handler) onOpen(ev *abi.Event) error {
 	h.sess.Microtask = h.sweepMicrotask
 	h.sess.ArmTimer = h.armBackgroundTimer
 	h.sess.EnqueueSweep = h.enqueueSweep
+	h.sess.ArmForeground = h.armTimer
+	h.sess.PersistWithin = h.persistWithinMs
 	// The host admits calls itself (the native driver's Close seals ahead of events its admitted callers have not posted yet): a
 	// call it admitted runs after the seal, as a call that entered Pi's line before close() does.
 	h.sess.HostAdmits, _ = boolOf(h.open, "hostAdmission")

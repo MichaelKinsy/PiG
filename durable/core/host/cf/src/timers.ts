@@ -121,3 +121,65 @@ export class TimeoutTimers implements TimerDriver {
   /** The host recycled its handle: the reopened core arms its own timers from the store. */
   reset() { this.dispose() }
 }
+
+/** `HarnessOptions.setTimer` (types.ts SetTimer): arms a timer, or returns undefined to decline it. */
+export type SetTimer = (callback: () => void, delayMs: number, options: { readonly background: boolean }) => (() => void) | undefined
+
+/** Longest delay `setTimeout` supports (timers.ts MAX_TIMER_DELAY). */
+const MAX_TIMER_DELAY = 2_147_483_647
+
+/**
+ * Timers through the host's `setTimer` (timers.ts hostTimers). A background timer (class 2) is the host's to decline, and the core then frees the
+ * memory at a later commit instead. A foreground timer must fire or work stalls: one the host throws on or declines is armed with `setTimeout`, and
+ * the first such failure is reported.
+ */
+export class SetTimerTimers implements TimerDriver {
+  private readonly handles = new Map<number, () => void>()
+  private reported = false
+  private readonly setTimer: SetTimer
+  private readonly fire: (timerId: number) => void
+  private readonly clock: () => number
+  private readonly report: (error: unknown) => void
+
+  constructor(setTimer: SetTimer, fire: (timerId: number) => void, clock: () => number = Date.now, report: (error: unknown) => void = () => {}) {
+    this.setTimer = setTimer; this.fire = fire; this.clock = clock; this.report = report
+  }
+
+  set(timerId: number, at: number, timerClass: number = 0) {
+    this.clear(timerId)
+    const delayMs = Math.max(0, at - this.clock())
+    const background = timerClass === 2
+    const callback = () => { this.handles.delete(timerId); this.fire(timerId) }
+    let disarm: (() => void) | undefined
+    try { disarm = this.setTimer(callback, delayMs, { background }) } catch (error) {
+      this.once(error)
+      if (background) return
+    }
+    if (disarm === undefined && !background) {
+      if (!this.reported) this.once(new Error("HarnessOptions.setTimer declined a timer that paces work; using setTimeout"))
+      const arm = (remaining: number): ReturnType<typeof setTimeout> => setTimeout(() => { if (remaining > MAX_TIMER_DELAY) handle = arm(remaining - MAX_TIMER_DELAY); else callback() }, Math.min(remaining, MAX_TIMER_DELAY))
+      let handle = arm(delayMs)
+      disarm = () => clearTimeout(handle)
+    }
+    if (disarm !== undefined) this.handles.set(timerId, disarm)
+  }
+
+  private once(error: unknown) {
+    if (this.reported) return
+    this.reported = true
+    this.report(error)
+  }
+
+  clear(timerId: number) {
+    const disarm = this.handles.get(timerId)
+    if (disarm !== undefined) { this.handles.delete(timerId); disarm() }
+  }
+
+  liveness() {}
+
+  /** Disarm every pending timer: the handle was closed or discarded. */
+  dispose() { for (const disarm of this.handles.values()) disarm(); this.handles.clear() }
+
+  /** The host recycled its handle: the reopened core arms its own timers from the store. */
+  reset() { this.dispose() }
+}

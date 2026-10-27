@@ -18,7 +18,7 @@ import { nestedExecutor } from "./nested.ts"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, OutputBuffer, type OutputLimits } from "./output.ts"
 import type { HostRegistry } from "./registry.ts"
 import type { Effect } from "./wire.ts"
-import { documentReader, invocationApi, invocationBinding, invocationCommit, type HostApiOptions } from "./facade/hostapi.ts"
+import { documentReader, invocationApi, invocationBinding, invocationCommit, type CommitOptions, type HostApiOptions } from "./facade/hostapi.ts"
 import { runCommit, type TxProxy } from "./facade/tx.ts"
 
 const dec = new TextDecoder()
@@ -243,9 +243,9 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
         await Promise.race([settled, abortion(detailsContext)])
       },
       // tool.ts commit: the call's own result is the caller's, never the task's next state.
-      commit: async <T>(change: (tx: TxProxy) => T | Promise<T>, commitContext: Context): Promise<T> => {
+      commit: async <T>(change: (tx: TxProxy) => T | Promise<T>, commitContext: Context, options?: CommitOptions): Promise<T> => {
         let result: T | undefined
-        await invocationCommit(rt.hostApi, { invocation: p.taskId, conversationId: p.conversationId }, invocation.binding)(async (tx: TxProxy) => { result = await change(tx); return undefined }, commitContext)
+        await invocationCommit(rt.hostApi, { invocation: p.taskId, conversationId: p.conversationId }, invocation.binding)(async (tx: TxProxy) => { result = await change(tx); return undefined }, commitContext, options)
         return result as T
       },
       // tool.ts createTask: a child the call owns is abandoned on restart unless the tool itself resumes.

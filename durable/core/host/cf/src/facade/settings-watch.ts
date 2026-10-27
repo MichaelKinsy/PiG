@@ -5,7 +5,7 @@
 // The fast path answers `true` ONLY when it has proven every sent leaf equal, in the sent order; it answers `false` for anything it
 // cannot prove (a value JSON would convert, a class instance, a throwing getter), and the caller then runs the exact text comparison.
 // So a wrong `false` costs one stringify and a wrong `true` is the only defect: every branch below returns `false` when unsure.
-import { DEFAULT_COMPACTION_POLICY, DEFAULT_CONTEXT_RETENTION_MS, DEFAULT_PROGRESS_POLICY, DEFAULT_RETRY_POLICY, documentRetentionWire } from "./agent.ts"
+import { DEFAULT_COMPACTION_POLICY, DEFAULT_CONTEXT_RETENTION_MS, DEFAULT_PROGRESS_POLICY, DEFAULT_RETRY_POLICY, documentRetentionWire, persistWithin, persistWithinWire } from "./agent.ts"
 
 const hasOwn = Object.prototype.hasOwnProperty
 const ownEnumerable = Object.prototype.propertyIsEnumerable
@@ -129,8 +129,9 @@ export class SentSettings {
       const p = raw?.progress
       const partial = p?.partialIntervalMs ?? DEFAULT_PROGRESS_POLICY.partialIntervalMs
       const output = p?.outputIntervalMs ?? DEFAULT_PROGRESS_POLICY.outputIntervalMs
-      if (!same(partial, progress.partialIntervalMs) || !same(output, progress.outputIntervalMs)) return false
-      if (this.progress !== 2) return false
+      const persist = persistWithinWire(persistWithin(p?.persistWithinMs))
+      if (!same(partial, progress.partialIntervalMs) || !same(output, progress.outputIntervalMs) || !same(persist, progress.persistWithinMs)) return false
+      if (this.progress !== 3) return false
       if (top[i++] !== "contextRetentionMs" || !same(raw?.contextRetentionMs ?? DEFAULT_CONTEXT_RETENTION_MS, sent.contextRetentionMs)) return false
       if (top[i++] !== "toolExecution" || !same(raw?.toolExecution ?? "parallel", sent.toolExecution)) return false
       if (top[i++] !== "steeringMode" || !same(raw?.steeringMode ?? "one-at-a-time", sent.steeringMode)) return false

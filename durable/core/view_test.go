@@ -143,14 +143,14 @@ func TestViewAdvanceCarriesTheCommitsRecordsWhenAsked(t *testing.T) {
 // carries its record, conversation, version, value and ops, with a null value and no version for a retirement; a copy
 // names its source.
 func TestCommitChangesAreTheSessionPublicationShape(t *testing.T) {
-	got := jv.Stringify(commitChanges(&session.Publication{Seq: 5, Changes: []session.Change{
+	got := jv.Stringify(commitChanges([]session.Change{
 		{Kind: session.ChangeTable, Table: session.WriteTask, Record: parsed(t, `{"id":7}`)},
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":2}`), Version: 1, Value: parsed(t, `{"a":1}`),
 			Ops: []delta.Op{{Verb: delta.Set, Path: delta.Path{delta.Key("a")}, Value: 1.0}}},
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":3}`), Version: 1},
 		{Kind: session.ChangeDocumentCopy, ConversationID: 4, Record: parsed(t, `{"id":8}`), Source: session.DocCopySource{ID: 2, At: session.AsOf(6)}},
 		{Kind: session.ChangeDocumentCopy, ConversationID: 4, Record: parsed(t, `{"id":9}`), Source: session.DocCopySource{ID: 3, At: session.Current}},
-	}}))
+	}))
 	want := `[{"type":"task","value":{"id":7}},` +
 		`{"type":"document","record":{"id":2},"conversationId":1,"version":1,"value":{"a":1},"ops":[["s",["a"],1]]},` +
 		`{"type":"document","record":{"id":3},"conversationId":1,"value":null,"ops":[]},` +

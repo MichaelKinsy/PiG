@@ -280,7 +280,7 @@ func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.
 		}
 		inFlight = true
 		message := parseObjectText(partial)
-		r.rt.Commit(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		r.rt.CommitDeferred(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 			live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 			if err != nil {
 				return nil, err

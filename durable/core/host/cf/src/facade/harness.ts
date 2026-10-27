@@ -17,18 +17,19 @@ import { Waiters } from "./waiters.ts"
 import type { Store } from "../store.ts"
 import { CorePool, type Lease } from "../pool.ts"
 import { CoreTrap } from "../wasm.ts"
-import { AgentDoc, agentJSON, applyChange, configure, resolveAgent, resolveSettings, type AgentState } from "./agent.ts"
+import { AgentDoc, agentJSON, applyChange, configure, persistWithinWire, resolveAgent, resolveSettings, type AgentState } from "./agent.ts"
 import { SentSettings } from "./settings-watch.ts"
 import { bindContext, documentReader, invocationApi, invocationCommit, invocationOf, type InvocationBinding } from "./hostapi.ts"
 import { resolveAddress, wireAddress, type AnyDocToken } from "./documents.ts"
 import { WatchHub } from "./watches.ts"
 import type { Observer } from "./watch-types.ts"
 import { runCommit, TxProxy, wireDefinition } from "./tx.ts"
+import type { CommitOptions } from "./hostapi.ts"
 import { recordPublication } from "./publications.ts"
 import { overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
 import { coreFromEnvironment } from "./core-env.ts"
 import { customTaskRunner } from "./taskruntime.ts"
-import { TimeoutTimers } from "../timers.ts"
+import { SetTimerTimers, TimeoutTimers, type SetTimer } from "../timers.ts"
 import type { TimerDriver } from "../host.ts"
 import { errorMessage, reviveError, SessionFailed, StorageRequestError } from "../errors.ts"
 import { contained } from "./session/session.ts"
@@ -94,6 +95,8 @@ export interface FacadeOptions {
   onReport?: (error: unknown) => void
   /** PiG addition: the timer driver (a Durable Object passes its alarm timers). Default: setTimeout timers, cancelled at close. */
   timers?: TimerDriver
+  /** `HarnessOptions.setTimer` (types.ts): arms the foreground timers that pace or resume work, and the background ones that only free memory, which it may decline. Ignored with `timers`. */
+  setTimer?: SetTimer
   /** PiG addition: the compiled core module (default: `useCore()`). */
   core?: CoreSource
   /** PiG addition: the pool of Wasm instances this Harness's session lives in (default: the module's own, shared by every Harness of the isolate). Its high-water mark decides when an instance is recycled at a quiet point. */
@@ -237,7 +240,7 @@ export class Harness {
     track(core)
     const registry = new HostRegistry(options.registry)
     const handlers: Record<number, any> = {}
-    const timers = options.timers ?? new TimeoutTimers(id => host.timerFired(id), options.now)
+    const timers = options.timers ?? (options.setTimer === undefined ? new TimeoutTimers(id => host.timerFired(id), options.now) : new SetTimerTimers(options.setTimer, id => host.timerFired(id), options.now, error => (options.onReport ?? (() => {}))(error)))
     const host: HostSession = new HostSession({
       core: session, sqlTable: core.sqlTable, store, clock: options.now, handlers, timers,
       onNotice: n => self.harness?.onNotice(n.kind, n.payload),
@@ -384,7 +387,7 @@ export class Harness {
 
   private settingsWire() {
     const settings = this.settings
-    return { ...settings, extensions: settings.extensions?.map((e: { name: string }) => e.name) }
+    return { ...settings, progress: { ...settings.progress, persistWithinMs: persistWithinWire(settings.progress.persistWithinMs) }, extensions: settings.extensions?.map((e: { name: string }) => e.name) }
   }
 
   /** The core reads settings from what it was last sent: send them again before an event when the caller changed them. */
@@ -561,7 +564,7 @@ export class Harness {
 
   // Session
 
-  commit<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context): Promise<T> { return this.commitWith(change, context) }
+  commit<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context, options?: CommitOptions): Promise<T> { return this.commitWith(change, context, {}, options) }
   /** Internal, for tests that bound the scheduler's memory: the ownership index sizes the core last reported (harness.ts SCHEDULER_INDEX_SIZES). */
   get [Symbol.for("pi-durable.schedulerIndexSizes")]() { return this.client.indexSizes }
   /** Internal, for tests: the document cache sizes the core last reported (session.ts documentCacheSizes is synchronous). */
@@ -574,9 +577,9 @@ export class Harness {
   }
 
   // Not async: session.ts commitWith :161-168 rejects an unusable Session with Promise.reject and otherwise returns #enqueue's promise itself.
-  commitWith<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context, binding: { conversationId?: number } = {}): Promise<T> {
+  commitWith<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context, binding: { conversationId?: number } = {}, options?: CommitOptions): Promise<T> {
     try { this.assertOpen() } catch (error) { return Promise.reject(error) }
-    return invocationCommit({ client: this.client, failed: () => { if (this.failure !== undefined) throw new SessionFailed(this.failure.error) } }, binding)(change, context)
+    return invocationCommit({ client: this.client, failed: () => { if (this.failure !== undefined) throw new SessionFailed(this.failure.error) } }, binding)(change, context, options)
   }
 
   /**
@@ -613,7 +616,7 @@ export class Harness {
     if (this.client.busy) await this.client.idle()
     await this.host.closeAndJoin()
     this.client.close()
-    if (this.timers instanceof TimeoutTimers) this.timers.dispose()
+    if (this.timers instanceof TimeoutTimers || this.timers instanceof SetTimerTimers) this.timers.dispose()
     // Session.close awaits the Storage close with the caller's context; a close that fails rejects this one. A failing close of the Storage
     // fails the Session unless it failed already (session.ts close), and `closed` settles after the Storage is closed.
     try { await (this.storage.close as ((context: Context) => unknown) | undefined)?.call(this.storage, context) } catch (error) {
@@ -919,7 +922,7 @@ export class Conversation {
     const model = handoff === undefined ? {} : { model: [{ role: "user", content: handoff, timestamp: this.harness.now() }] }
     await this.harness.submit(this.id, { type: "write", entry: { kind: "pi.reset", head: "self", ...model } }, context)
   }
-  commit<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context) { return this.harness.commitWith(change, context, { conversationId: this.id }) }
+  commit<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context, options?: CommitOptions) { return this.harness.commitWith(change, context, { conversationId: this.id }, options) }
   /** The model context; `{at}` reads it as of that entry, as a fork at it would start. */
   context(context: Context, options?: { at?: number }) {
     const readers = this.harness.contextReaders

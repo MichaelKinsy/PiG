@@ -220,6 +220,13 @@ func (h *handler) txBegin(id uint32, op *jv.Object) error {
 	}
 	t := &hostTx{id: id, docs: map[string]*hostDoc{}}
 	t.scope.ConversationID = session.ID(numOf(op, "conversationId"))
+	if persistence := objOf(op, "persistence"); persistence != nil && strOf(persistence, "kind") == "deferred" {
+		// CommitOptions.persistence (spec section 4.1): the host checked withinMs; absent means the Session's default window.
+		t.scope.Deferred, t.scope.WithinMs = true, -1
+		if within, ok := valueOf(persistence, "withinMs").(float64); ok {
+			t.scope.WithinMs = within
+		}
+	}
 	if invocation := session.ID(numOf(op, "invocation")); invocation != 0 {
 		if t.rt = h.runtimes[invocation]; t.rt == nil {
 			return &Rejection{"Error", "transaction begin: no running invocation of task " + itoa(int64(invocation))}
@@ -260,6 +267,9 @@ func (h *handler) grant(t *hostTx) error {
 		delete(h.txs, t.id)
 		h.txRejected(t.id, err)
 		return nil
+	}
+	if t.scope.Deferred {
+		tx.DeferWithin(t.scope.WithinMs)
 	}
 	t.tx = tx
 	h.holder = t.id
@@ -370,11 +380,26 @@ func (h *handler) txCommitted(t *hostTx, pubs []*session.Publication) {
 		answer()
 		return
 	}
-	s := hostCommitSchedule(total, hopcost.AdoptTail(h.hopProfile()))
+	adoptTail := hopcost.AdoptTail(h.hopProfile())
+	if memoryOnly(pubs) {
+		// A deferred commit held in memory publishes as #runCommit returns: there is no Storage adoption to wait for.
+		adoptTail = 0
+	}
+	s := hostCommitSchedule(total, adoptTail)
 	steps := []holdStep{{s.publish, publish}, {s.answer, answer}}
 	if !h.holdSteps(s.release, steps, end) {
 		end()
 	}
+}
+
+// memoryOnly reports whether every publication is a deferred commit held in memory.
+func memoryOnly(pubs []*session.Publication) bool {
+	for _, pub := range pubs {
+		if !pub.Memory {
+			return false
+		}
+	}
+	return len(pubs) != 0
 }
 
 // hostCommitSchedule is when, in hops after the transaction's last host operation, the core publishes a host-driven commit, answers its end and frees the
@@ -398,6 +423,16 @@ const hostAnswerTicks = 3
 // publish emits the published notice of one commit (durable/core/host/PROTOCOL.md, Notices). The notice is written an
 // item at a time into abi.Chunks, so a 20,000-task commit's (megabytes) needs no block of its size.
 func (h *handler) publish(pub *session.Publication) {
+	if pub.Memory {
+		// A commit held in memory (session/held.go) is shown to watches and views now and to the host's subscribeCommits listeners
+		// once stored. The host's internal observers (observeCommits) see it in a notice with no sequence number and no tables.
+		if h.changes {
+			out := jv.Append(append(make([]byte, 0, 128), `{"memory":true,"changes":`...), commitChanges(pub.Changes))
+			h.b.Notice(abi.NoticePublished, append(out, '}'))
+		}
+		h.publishWatches(pub)
+		return
+	}
 	var out abi.Chunks
 	item := append(make([]byte, 0, 128), `{"seq":`...)
 	out.Append(jv.AppendNumber(item, float64(pub.Seq)))
@@ -451,7 +486,7 @@ func (h *handler) publish(pub *session.Publication) {
 		out.Append(append(item[:0], ']'))
 	}
 	if h.changes {
-		out.Append(jv.Append(append(item[:0], `,"changes":`...), commitChanges(pub)))
+		out.Append(jv.Append(append(item[:0], `,"changes":`...), commitChanges(pub.StoredChanges())))
 	}
 	out.Append(append(item[:0], '}'))
 	h.b.NoticeChunks(abi.NoticePublished, out)
@@ -914,9 +949,9 @@ func asObject(v any) *jv.Object {
 // Not inlined: only a commit listener asks for changes, and an inlined copy would be compiled by V8 with its hot caller, publish.
 //
 //go:noinline
-func commitChanges(pub *session.Publication) []any {
-	out := make([]any, 0, len(pub.Changes))
-	for _, c := range pub.Changes {
+func commitChanges(changes []session.Change) []any {
+	out := make([]any, 0, len(changes))
+	for _, c := range changes {
 		o := jv.NewObject()
 		switch c.Kind {
 		case session.ChangeTable:

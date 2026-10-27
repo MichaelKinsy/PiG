@@ -7,7 +7,7 @@ import type { HostExtension, HostRegistrySource, HostSection, HostTool } from ".
 
 export const DEFAULT_RETRY_POLICY = { enabled: true, maxRetries: 3, baseDelayMs: 2000, maxAgentDelayMs: 60000 }
 export const DEFAULT_COMPACTION_POLICY = { enabled: true, reserveTokens: 16384, keepRecentTokens: 20000, backgroundTokens: 32768 }
-export const DEFAULT_PROGRESS_POLICY = { partialIntervalMs: 100, outputIntervalMs: 100 }
+export const DEFAULT_PROGRESS_POLICY = { partialIntervalMs: 100, outputIntervalMs: 100, persistWithinMs: 1_000 }
 export const INSTRUCTIONS_KEY = "instructions"
 
 export const AgentDoc = defineDoc({ kind: "pi.agent", version: 1, scope: "conversation", history: "rewindable", fork: "asOf", initial: () => ({}), checkpointWhen: () => true })
@@ -31,6 +31,14 @@ export function documentRetention(ms: unknown): number {
   return typeof ms === "number" && ms >= 0 ? ms : defaultDocumentRetention
 }
 
+/** A deferred commit's default window as given, when it is a number of milliseconds, `0` or more (`Infinity` waits for a reading or writing commit or close); otherwise the default (session.ts persistWithin). */
+export function persistWithin(ms: unknown): number {
+  return typeof ms === "number" && ms >= 0 ? ms : DEFAULT_PROGRESS_POLICY.persistWithinMs
+}
+
+/** A deferred commit's window as it travels to the core: `Infinity` is the largest finite number, which no commit outlives. */
+export const persistWithinWire = (ms: number): number => Number.isFinite(ms) ? ms : Number.MAX_VALUE
+
 /** `settings.documentRetentionMs` as the core is told, which defaults to ten minutes: undefined when it equals the default. Infinity travels as the largest finite number. */
 export function documentRetentionWire(settings: any): number | undefined {
   let ms: number
@@ -52,6 +60,7 @@ export function resolveSettings(settings: any) {
     progress: {
       partialIntervalMs: settings?.progress?.partialIntervalMs ?? DEFAULT_PROGRESS_POLICY.partialIntervalMs,
       outputIntervalMs: settings?.progress?.outputIntervalMs ?? DEFAULT_PROGRESS_POLICY.outputIntervalMs,
+      persistWithinMs: persistWithin(settings?.progress?.persistWithinMs),
     },
     contextRetentionMs: settings?.contextRetentionMs ?? DEFAULT_CONTEXT_RETENTION_MS,
     toolExecution: settings?.toolExecution ?? "parallel",
