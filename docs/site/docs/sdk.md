@@ -374,7 +374,7 @@ Every feature that can be left out of a build has a Go build tag, `pig_strip_<id
 | Tag | Leaves the binary | Saves on `examples/headless` (linux/amd64) |
 | --- | --- | ---: |
 | `pig_strip_node_extensions` | The embedded Node runtime that runs TypeScript and JavaScript extensions | 5.07 MB |
-| `pig_strip_bedrock_converse_stream` | The Amazon Bedrock API and the AWS SDK | 3.29 MB |
+| `pig_strip_bedrock_converse_stream` | The Amazon Bedrock API and the AWS SDK | 0, already absent (3.29 MB in the `pig` command) |
 | `pig_strip_syntax_highlight` | Code highlighting grammars | 0.63 MB |
 | `pig_strip_google_vertex` | The Google Vertex API and its OAuth code | 0.46 MB |
 | `pig_strip_mistral_conversations` | The Mistral conversations API | 0.10 MB |
@@ -387,7 +387,7 @@ Notes:
 
 - Leave `pig_strip_mcp` out. It removes MCP from the `pig` command's built-in extension list. A program that calls `mcpext` itself, as `examples/headless` does, needs the package.
 - `pig_strip_node_extensions` means the program cannot load TypeScript or JavaScript extension files. Set `DefaultResourceLoaderOptions.NoExtensions` if the program loads none, as the example does.
-- There is no tag that keeps one provider and removes the others. The tags above remove whole APIs that bring their own large dependencies (Bedrock, Vertex, Mistral). The other providers share one code path and stay linked. The code of one provider is small next to these dependencies.
+- There is no tag that keeps one provider and removes the others. Of the APIs that bring their own large dependencies, Bedrock has its own package, `ai/providers/bedrock`, that `import ai` does not link: a program imports `github.com/MichaelKinsy/PiG/ai/providers/bedrock` (or `ai/all`, which is what the `pig` command imports) to get it, and the `pig_strip_bedrock_converse_stream` tag then compiles the package down to the strip registration. Vertex and Mistral are still part of `ai` and need their tags. The other providers share one code path and stay linked. The code of one provider is small next to these dependencies.
 - The tags apply to the whole program and to every package it links. Check the result with `go build -tags` and the size of the file.
 
 ### MCP without a terminal
