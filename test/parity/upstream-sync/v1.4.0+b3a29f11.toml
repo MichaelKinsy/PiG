@@ -4603,9 +4603,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/loader.go). coverage.md reports 2 b
 [[files]]
 path = "packages/tui/src/components/markdown.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource", "test:tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi"]
+rationale = "PORT_MAP row is ported (tui/markdown.go, tui/markdown_latex.go). Pi cd1ea342 (#11483): the latexBlock case renders the raw source instead of the 2D layout when any layout row is wider than the content width, so a fraction is never wrapped row by row. Ported as renderBlockLatex(tok, width) and hasRowWiderThan in tui/markdown_latex.go; the Pi case is ported verbatim and a live-Pi comparison covers closed, pending, quoted and listed display math at widths 1 to 80."
 
 [[files]]
 path = "packages/tui/src/components/mouse-region.ts"
@@ -4701,9 +4701,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/keybindings.go, internal/codingagen
 [[files]]
 path = "packages/tui/src/keys.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/keys_function_keys_upstream_test.go#TestMatchesKittyFunctionKeysF1ToF12WithAndWithoutModifiers", "test:tui/keys_function_keys_upstream_test.go#TestDecodeKittyPrintableIgnoresUnmappedKittyFunctionalKeys", "test:tui/keys_oracle_test.go#TestParseAndMatchKeyMatchPiOnSeededInput", "test:tui/decode_printable_oracle_test.go#TestDecodePrintableKeyMatchesPi", "test:tui/key_repeat_oracle_test.go#TestIsKeyRepeatAndReleaseMatchPi"]
+rationale = "PORT_MAP row is ported (tui/key_match.go, tui/key_parse.go, tui/keys_decode.go, tui/keybindings.go). Pi deb12d78 (#11419, #11345): F1-F12 get internal codepoints, the ~ numbers 11-15, 17-21, 23 and 24 and the CSI [1;mod[:event]] P/Q/S forms parse to them (F3 stays on 13~), matchesKey for f1..f12 falls back to the Kitty sequence so modifiers work, parseKey names the keys, isKeyRelease and isKeyRepeat accept :3/:2 on P/Q/S, and decodeKittyPrintable drops the Kitty functional-key Private Use Area (57344-63743). Ported as cpF1..cpF12, fKeyFinals, parseModifiedFKey, matchesFunctionKey, parsedKeyName and the kittyFunctionalPUAStart/End check; the sdk/tui engine copies are regenerated from them. The seeded Pi comparators (parse and match over f1/f4/f5/f12 with every modifier mask, decodePrintableKey over the PUA codepoints, isKeyRepeat/isKeyRelease) were red before the port."
 
 [[files]]
 path = "packages/tui/src/kill-ring.ts"

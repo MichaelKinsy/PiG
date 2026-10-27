@@ -8051,8 +8051,22 @@
     },
     {
       "path": "packages/tui/test/keys.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b9d1087a1de2d235b8572ee2e41c28e332786ca16feb0aa1825b43c92f40f25e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b9d1087a1de2d235b8572ee2e41c28e332786ca16feb0aa1825b43c92f40f25e",
+      "evidence": [
+        "tui/key_match_test.go#TestMatchesKeyDynamic",
+        "tui/keys_decode_test.go#TestDecodeKittyPrintable_KeypadFunctionalKeys",
+        "tui/key_csiu_text_test.go#TestDecodePrintableKey_ModifyOtherKeysShift",
+        "tui/keys_alternates_test.go#TestMatchesKey_KittyAlternateKeys",
+        "tui/keys_alternates_test.go#TestParseKey_KittyAlternateKeys",
+        "tui/keys_shifted_symbols_upstream_test.go#TestShiftedSymbolsMatchByTheirProducedCharacterUpstream",
+        "tui/keys_oracle_test.go#TestParseAndMatchKeyMatchPiOnSeededInput",
+        "tui/keys_function_keys_upstream_test.go#TestMatchesKittyFunctionKeysF1ToF12WithAndWithoutModifiers",
+        "tui/keys_function_keys_upstream_test.go#TestDecodeKittyPrintableIgnoresUnmappedKittyFunctionalKeys",
+        "tui/decode_printable_oracle_test.go#TestDecodePrintableKeyMatchesPi",
+        "tui/key_repeat_oracle_test.go#TestIsKeyRepeatAndReleaseMatchPi"
+      ],
+      "rationale": "Reviewed against the 1.1.0 -> 42a3497d delta: 42a3497d adds the shifted-symbol, modifyOtherKeys ctrl++ and plain '+' cases. They are ported literally (added after the fix, not red-proven there); the seeded comparator was red on the same inputs before the TUI batch. Earlier evidence is retained. Pi deb12d78 (#11419, #11345) adds the Kitty F1-F12 case and the unmapped functional keys case: both are ported with their inputs and expected results (TestMatchesKittyFunctionKeysF1ToF12WithAndWithoutModifiers, TestDecodeKittyPrintableIgnoresUnmappedKittyFunctionalKeys). The seeded Pi comparators (TestParseAndMatchKeyMatchPiOnSeededInput over f1/f4/f5/f12 with every modifier mask and the P/Q/S and ~ forms, TestDecodePrintableKeyMatchesPi over the Private Use Area, TestIsKeyRepeatAndReleaseMatchPi over P/Q/S) were red against the unported code and are green after it."
     },
     {
       "path": "packages/tui/test/latex.test.ts",
@@ -8082,8 +8096,32 @@
     },
     {
       "path": "packages/tui/test/markdown.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:18125d5bf3650384e6a4ed7c6899821712b3a667fe781bd1a258a00d9401db42"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:18125d5bf3650384e6a4ed7c6899821712b3a667fe781bd1a258a00d9401db42",
+      "evidence": [
+        "tui/markdown_test.go#TestMarkdownTableSimple",
+        "tui/w3_sessions_test.go#TestMarkdownRuleWidthCap",
+        "internal/codingagent/w3_pi_test.go#TestW3SessionPiComparison",
+        "tui/markdown_codeblock_wrap_test.go#TestCodeBlockKeepsEveryCharacterAtNarrowWidth",
+        "tui/markdown_row_invariant_test.go#TestRealMarkdownNeverEmitsAnOverWideRow",
+        "tui/markdown_width_test.go#TestMarkdownRender_NeverExceedsWidth",
+        "tui/markdown_latex_test.go#TestMarkdownLatexMatchesUpstream",
+        "tui/markdown_upstream_test.go#TestUpstreamMarkdown",
+        "tui/markdown_upstream_fixture_test.go",
+        "tui/markdown_port_regressions_test.go",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisPiCases",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisMatchesPi",
+        "tui/markdown_cjk_test.go#TestMarkedCJKClassMatchesPinnedPackage",
+        "tui/markdown_marked_test.go#TestMarkedRightDelimiterScanMatchesRegexps",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTables",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi",
+        "tui/markdown_latex_table_test.go#TestMarkdownContainsTableStart",
+        "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi"
+      ],
+      "rationale": "All 81 upstream cases are ported with source-line citations, original names, exact inputs and assertion predicates, including every table row, callback/cache transition and terminal-cell style check. The strict generator rejects unknown source constructs; six complex cases have explicit Go ports. Red failures expose constructor options, nested list blocks, style restoration, escapes and streamed fences. Compiling mutations and complete ANSI/padding observations against real Pi prove the fixes. D54 is retired because current Pi wraps every non-image rendered row in its final pass. Pi 2ed3118b (#11159): the eight 'unclosed display math before tables' cases are TestMarkdownUnclosedDisplayMathBeforeTables (seven fail on the old tokenizer), plus a live-Pi comparison of them and about thirty neighbouring documents. Pi 8a2ebd385 (#11321) adds \"Deeply nested blockquotes\": 60 nested > at width 80 render one line that keeps the content; the Go case asserts the same. Pi cd1ea342 (#11483): the case 'falls back to raw source when display math is wider than the content width' is ported verbatim as TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource (red before the port), and TestMarkdownDisplayMathWidthFallbackMatchesPi compares closed, pending, quoted and listed display math with the live Pi at widths 1 to 80."
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",

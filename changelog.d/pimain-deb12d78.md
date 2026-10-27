@@ -1,0 +1,3 @@
+### Fixed
+
+- F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and `CSI 1;<mod> P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5, so shortcuts bound to `f1` or `ctrl+f5` fire and `parseKey` names them. Releases and repeats of F1, F2 and F4 are no longer taken for presses. F13-F35 and the other Kitty functional keys in the Private Use Area are dropped instead of inserting invisible characters into the prompt. Ports Pi's `matchesKey`, `parseKey`, `isKeyRelease`, `isKeyRepeat` and `decodeKittyPrintable` changes. <!-- fix: eaa4ed7eaa -->
