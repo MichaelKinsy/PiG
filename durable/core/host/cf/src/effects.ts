@@ -4,6 +4,7 @@
 // HostSession discards the handle (ADR D16).
 import { errorMessage } from "./errors.ts"
 import { expandRecipe } from "./recipe.ts"
+import { PartialPatcher } from "./partial.ts"
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context"
 import { copyJson, type Context, type JsonValue } from "@earendil-works/chord"
 import { EFFECT } from "./abi.ts"
@@ -18,7 +19,7 @@ import { nestedExecutor } from "./nested.ts"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, OutputBuffer, type OutputLimits } from "./output.ts"
 import type { HostRegistry } from "./registry.ts"
 import type { Effect } from "./wire.ts"
-import { documentReader, invocationApi, invocationBinding, invocationCommit, type HostApiOptions } from "./facade/hostapi.ts"
+import { documentReader, invocationApi, invocationBinding, invocationCommit, type CommitOptions, type HostApiOptions } from "./facade/hostapi.ts"
 import { runCommit, type TxProxy } from "./facade/tx.ts"
 
 const dec = new TextDecoder()
@@ -72,10 +73,12 @@ const MAX_BATCH = 64
 
 class EventBatch {
   private readonly events: any[] = []
+  private readonly patcher = new PartialPatcher()
   private armed = false
   private readonly deliver: (json: string) => void
   constructor(deliver: (json: string) => void) { this.deliver = deliver }
   push(event: any) {
+    this.patcher.observe(event)
     const terminal = event.type === "done" || event.type === "error"
     const partial = event.partial
     const slim = partial === undefined ? event : partial.content?.length === 0 ? { ...event, partial: { ...partial, content: [] } } : { ...event, partial: null, __partial: partial }
@@ -90,7 +93,7 @@ class EventBatch {
     const json = JSON.stringify(this.events.map((event, i) => {
       if (event.__partial === undefined) return event
       const { __partial, ...rest } = event
-      return i === last ? { ...rest, partial: __partial } : rest
+      return i === last ? { ...rest, partial: this.patcher.patch(__partial) } : rest
     }))
     this.events.length = 0
     this.deliver(json)
@@ -254,9 +257,9 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
         await Promise.race([settled, abortion(detailsContext)])
       },
       // tool.ts commit: the call's own result is the caller's, never the task's next state.
-      commit: async <T>(change: (tx: TxProxy) => T | Promise<T>, commitContext: Context): Promise<T> => {
+      commit: async <T>(change: (tx: TxProxy) => T | Promise<T>, commitContext: Context, options?: CommitOptions): Promise<T> => {
         let result: T | undefined
-        await invocationCommit(rt.hostApi, { invocation: p.taskId, conversationId: p.conversationId }, invocation.binding)(async (tx: TxProxy) => { result = await change(tx); return undefined }, commitContext)
+        await invocationCommit(rt.hostApi, { invocation: p.taskId, conversationId: p.conversationId }, invocation.binding)(async (tx: TxProxy) => { result = await change(tx); return undefined }, commitContext, options)
         return result as T
       },
       // tool.ts createTask: a child the call owns is abandoned on restart unless the tool itself resumes.

@@ -14,11 +14,11 @@ import * as entries from "./entries.ts"
 import { Harness as Core } from "./harness.ts"
 import { createRegistry as createHostRegistry } from "./registry.ts"
 import { watchEvents as hostWatchEvents } from "./events.ts"
-import { createLazySession } from "./session.ts"
+import { createSession as createSessionOver } from "./session/session.ts"
 import * as storage from "./storage.ts"
 
 export type * from "@earendil-works/pi-durable"
-export { ConversationBusy, ReadAfterWrite, SessionFailed, StorageRequestError } from "../errors.ts"
+export { ConversationBusy, ReadAfterWrite, ReadOnlySession, SessionFailed, StorageRequestError } from "../errors.ts"
 export { DEFAULT_HARNESS_IDENTITY, ROOT_CONVERSATION_ID, useCore } from "./harness.ts"
 
 export const AgentDoc = agent.AgentDoc as unknown as typeof P.AgentDoc
@@ -63,7 +63,7 @@ export const Harness: typeof P.Harness = {
 }
 
 /** `createSession` opens lazily: it returns at once, as pi-durable's does, and each method waits for the core's cold open. */
-export const createSession = ((store: P.Storage) => createLazySession(store as never)) as typeof P.createSession
+export const createSession = ((store: P.Storage, options?: object) => createSessionOver(store as never, options)) as typeof P.createSession
 
 /** Storage constructors of the subpath exports (`storage/sqlite/node`, `storage/cloudflare`): a store handle for `Harness.open`. */
 export const openNodeSqliteStorage = (path: string) => Promise.resolve(storage.openNodeSqliteStorage(path) as unknown as P.Storage)

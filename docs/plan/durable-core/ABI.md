@@ -216,7 +216,7 @@ The host keeps a snapshot until the core says it holds no work for it. The core 
 | 4 | `report` | JSON for `HarnessOptions.onReport` |
 | 5 | `sidecar` | JSON `{conversationId, rows}`: the core wrote a sidecar chunk in this step's commits (diagnostics only) |
 | 6 | `progress_ack` | `u32 waitId`, `u8 outcome` (0 committed, 1 rejected), JSON error when rejected: settles the promise of a tool's `api.details()` |
-| 7 | `doc_cache` | JSON `{cached, idle, attached, sweeps}`: the core's document cache sizes, published after a step in which they changed; the host's synchronous `documentCacheSizes` replicates them (`attached` counts the incarnations a document watch pins) |
+| 7 | `doc_cache` | JSON `{cached, idle, attached, sweeps, held}`: the core's document cache sizes, published after a step in which they changed; the host's synchronous `documentCacheSizes` replicates them (`attached` counts the incarnations a document watch or a held document pins; `held` the incarnations with changes a deferred commit holds in memory, section 8.2) |
 | 8 | `index_sizes` | JSON `{live, settled, edges, below, roots, unloaded, dropQueue}`: a `harness`-mode core's scheduler ownership index sizes, published after a step in which they changed; the host's synchronous `SCHEDULER_INDEX_SIZES` getter replicates them |
 | 9 | `wake` | JSON `{active, at?}`: the `Harness.wake()` value of a `harness`-mode core whose `open` payload sets `onWake`, published after each recomputation (`HarnessOptions.onWake`); the host delivers a changed value to its callback, and again after a throw, so it keeps the last value it delivered. With `onWake` the core arms no timer for sleeping tasks: the host arms its own alarm from `at` |
 | 10 | `origin_free` | `u32 n`, then `n` × `u32 origin` | the origins the core holds no work for any more (section 5.4): the host drops their async contexts. The host consumes it; it reaches no listener |
@@ -228,7 +228,7 @@ Sidecar writes, including the `CREATE TABLE IF NOT EXISTS` on first use, are ord
 
 `runtime.commit(tx => ...)`, `session.commit(...)` and other host-side commits use one protocol:
 
-1. `tx {op: "begin", invocation?, conversationId?}` → `tx_result ready` with a `txId`, or `waiting` when the Session line is held; the host awaits the `ready` notice that a later step delivers.
+1. `tx {op: "begin", invocation?, conversationId?, persistence?}` → `tx_result ready` with a `txId`, or `waiting` when the Session line is held; the host awaits the `ready` notice that a later step delivers.
 2. `tx {op: ..., ...}` for each `Tx` operation (`conversation`, `doc`, `appendEntry`, `createTask`, `placeSubmission`, `settleSubmission`, `entry`, ...). Document mutations travel as Chord `Op[]` produced by the host's draft proxy. The core enforces `ReadAfterWrite` and every other §4 rule and answers each op with `tx_result`.
 3. `tx {op: "end", state?}` with the callback's returned next task state, or `{op: "abort", error}` → a step carrying the commit, or `rejected`.
 

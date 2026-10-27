@@ -11,9 +11,17 @@ const schedScanPage = 256
 // Read-only: assigned once at initialization.
 var liveStatuses = [...]string{StatusPending, StatusRunning, StatusWaiting, StatusSleeping, StatusCompleting}
 
+// abortResumer signals the run of its invocation once the hops chain Scheduler.abortLater parked it on ends (Loop.Hops); it lives in the invocation.
+type abortResumer struct{ inv *invocation }
+
+func (a *abortResumer) of(inv *invocation) *abortResumer { a.inv = inv; return a }
+
+func (a *abortResumer) Resume() { a.inv.signal.Abort() }
+
 type invocation struct {
-	taskID ID
-	kind   string
+	aborter abortResumer
+	taskID  ID
+	kind    string
 	// extension is the extension that installed the definition this invocation runs, as of its reservation; empty for a
 	// built-in task.
 	extension      string
@@ -224,6 +232,9 @@ type Scheduler struct {
 	dirty              bool
 	draining           bool
 	reserveSkip        uint8 // the decision of the reservation job's first run, which a later run of the same job keeps (reserve)
+
+	// observing is set while the commit observer runs (it runs inside the Storage's adopt).
+	observing bool
 }
 
 // NewScheduler returns a scheduler over the Session, on the Loop.
@@ -400,6 +411,10 @@ func (s *Scheduler) Open(done func(error)) {
 			for _, rec := range recs {
 				s.track(nil, rec)
 				s.addResumed(mustInt(rec, "id"))
+				// Read-only, open only loads them: a running task stays as committed, running in another process.
+				if s.sess.ReadOnly {
+					continue
+				}
 				if getBool(rec, "abandonOnRestart") {
 					s.abandoned.Add(mustInt(rec, "id"))
 				}
@@ -424,7 +439,7 @@ func (s *Scheduler) Open(done func(error)) {
 		}
 		return nil
 	}, TxScope{}, func(err error) {
-		if err == nil {
+		if err == nil && !s.sess.ReadOnly {
 			for _, rec := range parked {
 				kind, _ := getStr(rec, "kind")
 				restarts := restartsOf(rec) + 1
@@ -454,7 +469,9 @@ func (s *Scheduler) Retry(id ID, cancel *Cancel, then func(error)) {
 		}
 		return tx.stageTask(progressed(current))
 	}, TxScope{}, func(err error) {
-		if err == nil {
+		if err == nil && s.sess.ReadOnly {
+			err = errReadOnlyRunning
+		} else if err == nil {
 			s.Resume()
 		}
 		then(err)
@@ -470,13 +487,21 @@ func (s *Scheduler) addFailFast(id ID) {
 // Resume enables scheduling, makes sleeping tasks that are due runnable (a host wakeup, such as an alarm, calls this), and
 // starts any reservable task.
 func (s *Scheduler) Resume() {
+	// A read-only Harness runs nothing; the host refuses the call before it reaches here (scheduler.ts resume throws ReadOnlySession).
+	if s.sess.ReadOnly {
+		return
+	}
 	s.enabled = true
 	s.wakeDue()
 	s.kick()
 }
 
-// RegistryChanged is the registry subscription: a new snapshot may make blocked tasks runnable.
-func (s *Scheduler) RegistryChanged() { s.kick() }
+// RegistryChanged is the registry subscription (scheduler.ts open): a new snapshot may change the blocked reasons, which the graph derives
+// again at once, and may make blocked tasks runnable.
+func (s *Scheduler) RegistryChanged() {
+	s.notifyBlocked()
+	s.kick()
+}
 
 // Join calls then once every running invocation has ended.
 func (s *Scheduler) Join(then func()) {
@@ -861,6 +886,11 @@ func (s *Scheduler) Seal() {
 // running task back as pending: its invocation was stopped by the close, or its reservation settled while the close began. It
 // reads the records as they stand now, so the write keeps what commits admitted before the seal wrote, such as an abort mark.
 func (s *Scheduler) CloseWrites() []*jv.Object {
+	// A read-only Harness reserved nothing: the running tasks it loaded run in another process (scheduler.ts join writes back only the tasks
+	// its own invocations ran).
+	if s.sess.ReadOnly {
+		return nil
+	}
 	var records []*jv.Object
 	for _, rec := range s.live.values() {
 		if taskStatus(rec) != StatusRunning {

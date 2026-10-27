@@ -835,16 +835,28 @@ export class HostSession {
     this.send(EVENT.seal)
   }
 
-  async closeAndJoin(): Promise<void> {
+  /** Resolves with whether the core's close failed: the store of held changes at close failed (session.ts close: the Session fails and close() rejects after the backend closed). */
+  async closeAndJoin(): Promise<boolean> {
     // Pi's close joins the invocations the seal signalled before it closes the Session (harness.ts close: scheduler.join(), then session.close()): a handler that outlives its signal still delivers its completion to the core, which is open until the terminal close.
     while (this.handlers.size > 0 && !this.dead) await Promise.allSettled([...this.handlers])
-    if (this.dead) return
+    if (this.dead) return false
     // The core closes behind its Session line (handler.go EventClose) and reports it as the api_result of request 0: work admitted before the close settles first, and its hop chains must still run.
     const closed = this.waitForNotice(n => n.kind === NOTICE.api_result && new DataView(n.payload.buffer, n.payload.byteOffset, 4).getUint32(0, true) === 0)
     closed.catch(() => {})
-    try { this.send(EVENT.close) } catch (error) { this.discard(new FatalError("closed")); throw error }
-    try { await closed } catch { /* the handle was discarded while it closed */ }
+    try { this.send(EVENT.close) } catch (error) {
+      this.discard(new FatalError("closed"))
+      // scheduler.ts join: a failed write-back of the tasks the close stopped is caught (`.catch(() => {})`): the Session fails and reports it, and the
+      // close still resolves. Another process that advanced the store (the single-writer guard) fails it this way.
+      if (error instanceof FatalError && error.message.startsWith("a commit failed")) return false
+      throw error
+    }
+    let failed = false
+    try {
+      const answer = await closed
+      failed = new TextDecoder().decode(answer.payload.subarray(4)).startsWith('{"error"')
+    } catch { /* the handle was discarded while it closed */ }
     this.discard(new FatalError("Harness is closed"))
+    return failed
   }
 }
 

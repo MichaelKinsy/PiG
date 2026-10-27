@@ -6,6 +6,7 @@ import { admitWrites, adoptTables } from "./table-identity.ts"
 import { forgetColdLoads, trackColdLoads } from "./coldload.ts"
 import { BACKGROUND_CONTEXT, awaitWithContext, withoutAbortSignal } from "@earendil-works/chord/context"
 import type { Context } from "@earendil-works/chord"
+import { lazyValue, Revision } from "./valuechain.ts"
 import type { ConversationId, ReportInfo } from "@earendil-works/pi-durable"
 import { EVENT, NOTICE } from "../abi.ts"
 import { CoreClient } from "../client.ts"
@@ -18,23 +19,25 @@ import { Waiters } from "./waiters.ts"
 import type { Store } from "../store.ts"
 import { CorePool, type Lease } from "../pool.ts"
 import { CoreTrap } from "../wasm.ts"
-import { AgentDoc, agentJSON, applyChange, configure, resolveAgent, resolveSettings, type AgentState } from "./agent.ts"
+import { AgentDoc, agentJSON, applyChange, configure, persistWithinWire, resolveAgent, resolveSettings, type AgentState } from "./agent.ts"
 import { SentSettings } from "./settings-watch.ts"
 import { bindContext, documentReader, invocationApi, invocationCommit, invocationOf, type InvocationBinding } from "./hostapi.ts"
 import { resolveAddress, wireAddress, type AnyDocToken } from "./documents.ts"
 import { WatchHub } from "./watches.ts"
 import type { Observer } from "./watch-types.ts"
 import { runCommit, TxProxy, wireDefinition } from "./tx.ts"
+import type { CommitOptions } from "./hostapi.ts"
 import { recordPublication } from "./publications.ts"
-import { overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
+import { adaptStorage, overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
 import { coreFromEnvironment } from "./core-env.ts"
 import { customTaskRunner } from "./taskruntime.ts"
 import { hostTimers, SetTimerTimers, TimeoutTimers, type SetTimer } from "../timers.ts"
 import type { TimerDriver } from "../host.ts"
-import { errorMessage, reviveError, SessionFailed, StorageRequestError, type WireErrorBody } from "../errors.ts"
+import { errorMessage, ReadOnlySession, reviveError, SessionFailed, StorageRequestError, type WireErrorBody } from "../errors.ts"
 import { contained } from "./session/session.ts"
 import { HarnessTelemetry, spansOf } from "./telemetry.ts"
 import type { TelemetryContext } from "@earendil-works/pi-telemetry"
+import { Transaction } from "./session/transaction.ts"
 import { structuredOutputError } from "./structured.ts"
 import { validateToolArguments } from "@earendil-works/pi-ai/utils/validation"
 import { type ClientIdentity, mergeClientIdentity, PI_ATTRIBUTION } from "@earendil-works/pi-ai/utils/identity"
@@ -64,6 +67,7 @@ function withHarnessIdentity(models: ModelsLike, identity: ClientIdentity): Mode
 }
 
 export const ROOT_CONVERSATION_ID = 1
+const SETTLED = Promise.resolve()
 const decoder = new TextDecoder()
 
 /** A compiled core module, or any object that serves ABI sessions: the Wasm core, the TypeScript control, a native binding. */
@@ -109,6 +113,12 @@ export interface FacadeOptions {
   core?: CoreSource
   /** PiG addition: the pool of Wasm instances this Harness's session lives in (default: the module's own, shared by every Harness of the isolate). Its high-water mark decides when an instance is recycled at a quiet point. */
   pool?: CorePool
+  /**
+   * Open for reading only, as a viewer of a session that another process drives (types.ts HarnessOptions.readOnly). Open recovers nothing: a
+   * `running` task stays as committed. A commit with writes rejects with `ReadOnlySession` before it reaches Storage, and so does `resume()` and
+   * every call that enables scheduling; the Harness stays usable for reads and watches.
+   */
+  readOnly?: boolean
   /** PiG addition: `session` opens the tables-and-documents Session without the Harness (createSession). */
   mode?: "session" | "harness"
   /** PiG addition: the sidecar mode of ADR D6. Default `index`. */
@@ -191,6 +201,8 @@ export class Harness {
   private readonly commitListeners = new Set<(p: unknown, c: Context) => void>()
   /** The Session's own components' commit listeners (session.ts observeCommits): a throw fails the Session. */
   private readonly internalCommitListeners = new Set<(p: unknown, c: Context) => void>()
+  /** The latest value of each document a published notice carried, by record ID: a memory notice of a document held here has its operations only (core/tx.go sentValues). Empty while no commit listener is subscribed, as the core's. */
+  private readonly documentValues = new Map<number, Revision>()
   private readonly closeListeners = new Set<() => void>()
   private resumeQueued = false
   private shut = false
@@ -212,8 +224,9 @@ export class Harness {
   }
 
   /** Open a Harness over a storage: a cold open of the core (ABI section 5, `open`). */
-  static async open(storage: Storage, rawOptions: FacadeOptions, context: Context = BACKGROUND_CONTEXT): Promise<Harness> {
+  static async open(given: Storage | object, rawOptions: FacadeOptions, context: Context = BACKGROUND_CONTEXT): Promise<Harness> {
     context.abortSignal?.throwIfAborted()
+    const storage = await adaptStorage(given)
     // harness.ts constructor: `onReport` cannot fail what reports to it, and a clock that throws falls back to Date.now (reported once).
     const reported = safeReport(rawOptions.onReport)
     // A clock that throws is reported under the Harness's telemetry (a counter) once the Harness exists.
@@ -286,7 +299,7 @@ export class Harness {
         // The host freed its session; a trap took the instance (pool.ts broken), and the lease is returned either way.
         if (error.cause2 instanceof CoreTrap) lease?.broke(error)
         lease?.release()
-        self.harness?.fail(error)
+        self.harness?.hostDiscarded(error)
       },
       onCancel: id => self.phases?.ended(id),
       renew: renewal,
@@ -308,6 +321,8 @@ export class Harness {
       harness.timers = timers
       harness.currentModels = currentModels
       const report = options.onReport ?? (() => {})
+      // harness.ts resolveAgent: a wrapper that fails reports the extension that installed it and the conversation whose agent was resolved.
+      const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
       if (options.onWake !== undefined) {
         // scheduler.ts #scheduleWake: only a changed value is offered; one whose delivery threw is reported and offered again at the next change.
         const onWake = options.onWake
@@ -317,8 +332,6 @@ export class Harness {
           try { onWake(wake); last = wake } catch (error) { report(error, { type: "host_error", callback: "onWake" }) }
         }
       }
-      // harness.ts resolveAgent: a wrapper that fails reports the extension that installed it and the conversation whose agent was resolved.
-      const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), documentState: (token: any, ...args: unknown[]) => harness.documentState(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
         client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info as ReportInfo, context), now: options.now,
@@ -364,7 +377,31 @@ export class Harness {
             if (gated) gated.gating++
             for (const write of payload.writes) substituteWrite(client, write as never)
             admitWrites(client, payload.writes)
-            try { await (storage as unknown as { commit(writes: unknown[], context: Context): Promise<unknown> }).commit(payload.writes, BACKGROUND_CONTEXT) } catch (error) { harness.storageFailed(error); throw error } finally { if (gated) gated.gating-- }
+            // types.ts Storage.commit(writes, adopt, context): the Storage calls adopt(seq) once, synchronously, when the batch is durable; the core applies and
+            // publishes the commit inside that call (gate.go gateAdopt). A failing adoption never reaches the Storage, and the Session fails with its error.
+            const tx = new Transaction(seq => { void client.api("adopt", { seq }) })
+            harness.inStorage++
+            let adoption: { error: unknown } | undefined
+            const adopt = (seq: number): void => { try { tx.adopt(seq) } catch (error) { adoption = { error } } }
+            try {
+              await (storage as unknown as { commit(writes: unknown[], adopt: (seq: number) => void, context: Context): Promise<unknown> }).commit(payload.writes, adopt, BACKGROUND_CONTEXT)
+            } catch (error) {
+              // A rejection after adoption leaves nothing staged to discard: the commit, durable, stays published.
+              if (adoption === undefined && !tx.adopted) tx.discard()
+              // session.ts #runCommit: an own observer's error that would have failed the Session is still reported.
+              const observed = harness.takeAdoptedFailure()
+              if (observed !== undefined) harness.report(observed.error)
+              harness.storageFailed(error)
+              throw error
+            } finally { harness.inStorage--; if (gated) gated.gating-- }
+            if (adoption !== undefined) { harness.storageFailed(adoption.error); throw adoption.error }
+            if (!tx.adopted) {
+              const error = new Error("Storage committed without adopting the batch")
+              harness.storageFailed(error)
+              throw error
+            }
+            const observed = harness.takeAdoptedFailure()
+            if (observed !== undefined) harness.failedByListener(observed.error)
             return null
           },
           // A task runtime's context read reaches a Storage that overrides the Pi reads it makes (ctxread.go): one read of the bounds, and the range scan (context.ts scanRange).
@@ -440,7 +477,7 @@ export class Harness {
 
   private settingsWire() {
     const settings = this.settings
-    return { ...settings, extensions: settings.extensions?.map((e: { name: string }) => e.name) }
+    return { ...settings, progress: { ...settings.progress, persistWithinMs: persistWithinWire(settings.progress.persistWithinMs) }, extensions: settings.extensions?.map((e: { name: string }) => e.name) }
   }
 
   /** The core reads settings from what it was last sent: send them again before an event when the caller changed them. */
@@ -507,6 +544,7 @@ export class Harness {
       mode: this.options.mode ?? "harness", models, registry: this.registry.snapshot(), sidecar: this.options.sidecar ?? "index", delta: true,
       hasEnv: this.options.env !== undefined,
       ...(this.options.telemetry === undefined ? {} : { telemetry: true }),
+      ...(this.options.readOnly === true ? { readOnly: true } : {}),
       onWake: this.options.onWake !== undefined,
       ...(this.gate.length === 0 ? {} : { storageGate: this.gate }),
       ...(this.profile() === undefined ? {} : { storageProfile: this.profile() }),
@@ -525,17 +563,34 @@ export class Harness {
     if (kind === NOTICE.telemetry) { this.telemetry.notice(JSON.parse(decoder.decode(payload))); return }
     if (kind !== NOTICE.published) return
     const body = JSON.parse(decoder.decode(payload)) as PublishedNotice
+    // A commit adopted in memory only (session.ts ObservedCommit `memory`): only the Session's own components observe it. It stored nothing, resolves no wait and settles no submission.
+    if (body.memory === true) {
+      for (const change of body.changes as never[]) { substitutePublished(this.client, change); this.restoreValue(change) }
+      const observed = { kind: "memory", changes: body.changes }
+      for (const l of [...this.internalCommitListeners]) { try { l(observed, BACKGROUND_CONTEXT) } catch (error) { this.failedByListener(error) } }
+      return
+    }
     if ((body.tasks?.length ?? 0) > 0) this.taskPublications++
-    if (body.changes !== undefined && body.seq !== undefined) recordPublication(this.client, body.seq, body.changes)
     if (body.watchId !== undefined) this.watches.deliver(body.watchId, body.frame as { value: unknown; ops: never[] })
-    if (body.changes !== undefined) { for (const change of body.changes as never[]) substitutePublished(this.client, change); adoptTables(this.client, body.changes as never) }
+    // The commit's own changes first: a document the storage transaction also stored held changes of has its value (`current`) after them.
+    if (body.observed !== undefined) for (const change of body.observed as never[]) { substitutePublished(this.client, change); this.restoreValue(change) }
+    if (body.changes !== undefined) { for (const change of body.changes as never[]) { substitutePublished(this.client, change); this.restoreValue(change) }; adoptTables(this.client, body.changes as never) }
+    if (body.changes !== undefined && body.seq !== undefined) recordPublication(this.client, body.seq, body.changes)
     if (body.changes !== undefined) {
       const publication = { seq: body.seq, changes: body.changes }
+      const observed = { kind: "stored", seq: body.seq, changes: body.observed ?? body.changes }
       // session.ts #publish: the Session's own components run first, and a throw leaves their state behind storage, so it fails the Session; a host listener's throw is reported.
-      for (const l of [...this.internalCommitListeners]) { try { l(publication, BACKGROUND_CONTEXT) } catch (error) { this.failedByListener(error) } }
-      // session.ts #notifyHosts: a synchronous listener's throw is reported under the Context of the commit that published.
+      let observerFailure: { error: unknown } | undefined
+      if (body.observed === undefined || (body.observed as unknown[]).length > 0) for (const l of [...this.internalCommitListeners]) { try { l(observed, BACKGROUND_CONTEXT) } catch (error) { observerFailure ??= { error } } }
+      // The commit is durable: a failing observer neither fails the commit nor skips the others, and the Session fails once Storage.commit() returned.
+      if (observerFailure !== undefined) {
+        if (this.inStorage > 0) this.adoptedFailure ??= observerFailure
+        else { const failure = observerFailure; void SETTLED.then(() => this.failedByListener(failure.error)) }
+      }
+      // The Context of the commit that published: a synchronous listener's throw is reported under its span (session.ts #notifyHosts).
       const committing = body.span === undefined ? undefined : this.telemetry.spanContext(body.span, BACKGROUND_CONTEXT)
-      for (const l of [...this.commitListeners]) contained(() => l(publication, BACKGROUND_CONTEXT), error => this.report(error, LISTENER, committing))
+      // session.ts #notifyHosts: the host's listeners are called one microtask after the adoption, outside it and before the waits the commit resolves; the ones registered when it runs, and no dispatch for a commit adopted with none.
+      if (this.commitListeners.size > 0) void SETTLED.then(() => { for (const l of [...this.commitListeners]) contained(() => l(publication, BACKGROUND_CONTEXT), error => this.report(error, LISTENER, committing)) })
     }
     for (const w of [...this.waiters]) if (w.match(body)) { this.waiters.delete(w); w.resolve() }
     // submissions.ts #observe: a settled submission resolves the waits registered for it.
@@ -558,10 +613,20 @@ export class Harness {
     this.submissionWaiters.rejectAll(failed)
     this.client.failWaits(failed)
     // session.ts fail: close listeners run at the failure, so a watch ends session_failed before its invocation's signal aborts it.
+    this.runCloseListeners()
     this.watches.closeSession(this.failure)
     // The Session closes once the core has taken the failure (its report notice): sealing it first would answer what is in
     // flight with "Harness is closed" where Pi answers SessionFailed. A Session has no scheduler to report, so it closes after the failing step.
     if (this.options.mode === "session") this.closeAfterFailure()
+  }
+
+  /** session.ts fail (internal): fail the Session with `error`: the core stores nothing more, watches end session_failed, and the Session closes, ending `closed` with `failed`. */
+  fail(error: unknown) {
+    if (this.failure !== undefined) return
+    this.client.api("fail", { message: errorMessage(error) }).catch(() => {})
+    this.storageFailed(error)
+    this.report(error, SESSION_FAILED)
+    this.closeAfterFailure()
   }
 
   private closeAfterFailure() {
@@ -597,7 +662,7 @@ export class Harness {
   }
 
   /** The host discarded the core session: waits for publications can never end, so they reject with the cause. */
-  private fail(error: Error) {
+  private hostDiscarded(error: Error) {
     if (this.failed) return
     this.failed = error
     for (const w of [...this.waiters]) w.reject(error)
@@ -625,7 +690,7 @@ export class Harness {
 
   // Session
 
-  commit<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context): Promise<T> { return this.commitWith(change, context) }
+  commit<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context, options?: CommitOptions): Promise<T> { return this.commitWith(change, context, {}, options) }
   /** Internal, for tests that bound the scheduler's memory: the ownership index sizes the core last reported (harness.ts SCHEDULER_INDEX_SIZES). */
   get [Symbol.for("pi-durable.schedulerIndexSizes")]() { return this.client.indexSizes }
   /** Internal, for tests: the document cache sizes the core last reported (session.ts documentCacheSizes is synchronous). */
@@ -638,9 +703,9 @@ export class Harness {
   }
 
   // Not async: session.ts commitWith :161-168 rejects an unusable Session with Promise.reject and otherwise returns #enqueue's promise itself.
-  commitWith<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context, binding: { conversationId?: number } = {}): Promise<T> {
+  commitWith<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context, binding: { conversationId?: number } = {}, options?: CommitOptions): Promise<T> {
     try { this.assertOpen() } catch (error) { return Promise.reject(error) }
-    return invocationCommit({ client: this.client, failed: () => { if (this.failure !== undefined) throw new SessionFailed(this.failure.error) } }, binding)(change, context)
+    return invocationCommit({ client: this.client, failed: () => { if (this.failure !== undefined) throw new SessionFailed(this.failure.error) } }, binding)(change, context, options)
   }
 
   /**
@@ -667,7 +732,7 @@ export class Harness {
     this.shut = true
     // Pi seals admission synchronously in close() (session.ts:352-366: close listeners, scheduler #seal); the terminal close event follows once caller transactions end.
     this.host.seal()
-    for (const l of [...this.closeListeners]) contained(l, error => this.report(error))
+    this.runCloseListeners()
     this.watches.closeSession(this.failure)
     for (const w of [...this.waiters]) w.reject(this.failed ?? new Error("Harness is closed"))
     this.waiters.clear()
@@ -675,7 +740,7 @@ export class Harness {
     // Admitted work settles before the store closes (session.ts close enqueues the Storage close behind the line); the
     // close event is final, so open transactions end first.
     if (this.client.busy) await this.client.idle()
-    await this.host.closeAndJoin()
+    const unstored = await this.host.closeAndJoin()
     this.client.close()
     this.telemetry.endAll()
     this.timers?.dispose?.()
@@ -691,7 +756,16 @@ export class Harness {
     } finally {
       this.end.resolve(this.failure === undefined ? { reason: "closed" } : { reason: "failed", error: this.failure.error })
     }
+    // The store of held changes at close failed (the Storage threw: the Session failed with that error): close() rejects with it, the backend closed all the same.
+    if (unstored && this.failure !== undefined) throw this.failure.error
   }
+  /** session.ts: the close listeners run once, at the first of a failure and the close. */
+  private runCloseListeners() {
+    const listeners = [...this.closeListeners]
+    this.closeListeners.clear()
+    for (const l of listeners) contained(l, error => this.report(error))
+  }
+  takeAdoptedFailure() { const failure = this.adoptedFailure; this.adoptedFailure = undefined; return failure }
   /** session.ts report: a failure or a listener's error goes to HarnessOptions.onReport, which never fails what ran it. */
   report(error: unknown, info: ReportInfo = LISTENER, context?: Context) {
     contained(() => this.options.onReport?.(error, info), () => {})
@@ -699,8 +773,12 @@ export class Harness {
     this.telemetry.reported(info, context)
   }
 
+  /** Storage.commit() calls the core's gate has open, and the first error one of the Session's own observers threw for the commit they adopted. */
+  private inStorage = 0
+  private adoptedFailure?: { error: unknown }
+
   /** A Session component's listener threw: the Session fails, reports the error once and closes. */
-  private failedByListener(error: unknown) {
+  failedByListener(error: unknown) {
     const first = this.failure === undefined
     this.storageFailed(error)
     if (!first) return
@@ -723,7 +801,35 @@ export class Harness {
       if (this.commitListeners.delete(listener) && this.commitListeners.size === 0 && this.internalCommitListeners.size === 0) this.setCommitChanges(false)
     }
   }
-  private setCommitChanges(on: boolean) { if (!this.shut) this.client.api("commits", { on }).catch(() => {}) }
+  private setCommitChanges(on: boolean) {
+    if (!on) this.documentValues.clear()
+    if (!this.shut) this.client.api("commits", { on }).catch(() => {})
+  }
+
+  /**
+   * A document change whose value the core left out (it knows this host holds the previous one) gets the value its operations make of it,
+   * when something reads it; `current` says it is the value memory has, which the newest revision is. A value that came is kept.
+   */
+  private restoreValue(change: { type?: string; record?: { id?: number }; value?: unknown; ops?: unknown; current?: boolean }): void {
+    if (change.type !== "document" || typeof change.record?.id !== "number") return
+    const id = change.record.id
+    if (change.value === null) { this.documentValues.delete(id); return }
+    const before = this.documentValues.get(id)
+    if (change.current === true) {
+      delete change.current
+      if (before === undefined) { this.report(new Error(`the core left out the value of document ${id}, which the host does not hold`), LISTENER); return }
+      lazyValue(change, before)
+      return
+    }
+    if (change.value === undefined) {
+      if (before === undefined) { this.report(new Error(`the core left out the value of document ${id}, which the host does not hold`), LISTENER); return }
+      const revision = before.next((change.ops ?? []) as never)
+      this.documentValues.set(id, revision)
+      lazyValue(change, revision)
+      return
+    }
+    this.documentValues.set(id, Revision.of(change.value))
+  }
   subscribeClose(listener: () => void) { this.closeListeners.add(listener); return () => { this.closeListeners.delete(listener) } }
   snapshot = (...args: unknown[]) => (documentReader(this.client).snapshot as (...a: unknown[]) => unknown)(...args)
   snapshotAsOf = (...args: unknown[]) => (documentReader(this.client).snapshotAsOf as (...a: unknown[]) => unknown)(...args)
@@ -734,12 +840,20 @@ export class Harness {
   }
   /** `observeDoc(token, ...owner, [key], observer, context)`: a synchronous Observer of one document address, or undefined when absent. */
   observeDoc(token: AnyDocToken, ...args: unknown[]) {
-    const { address, nextArgument } = resolveAddress(token.definition, args)
+    // Not async, as session.ts observeDoc: a throw (a closed or failed Session, a missing scope ID) still rejects.
+    try { this.assertReadable() } catch (error) { return Promise.reject(error) }
+    let resolved: ReturnType<typeof resolveAddress>
+    try { resolved = resolveAddress(token.definition, args) } catch (error) { return Promise.reject(error) }
+    const { address, nextArgument } = resolved
     return this.watches.observe({ kind: "doc", address: wireAddress(address), def: wireDefinition(token.definition) }, args[nextArgument] as Observer<never>, args[nextArgument + 1] as Context)
   }
   /** `watchDoc(token, ...owner, [key], context)`: the serialized exact-frame watch of a document, or undefined when absent. */
   watchDoc(token: AnyDocToken, ...args: unknown[]) {
-    const { address, nextArgument } = resolveAddress(token.definition, args)
+    // Not async, as session.ts watchDoc: a throw (a closed or failed Session, a missing scope ID) still rejects.
+    try { this.assertReadable() } catch (error) { return Promise.reject(error) }
+    let resolved: ReturnType<typeof resolveAddress>
+    try { resolved = resolveAddress(token.definition, args) } catch (error) { return Promise.reject(error) }
+    const { address, nextArgument } = resolved
     return this.watches.watch({ kind: "doc", address: wireAddress(address), def: wireDefinition(token.definition) }, args[nextArgument] as Context)
   }
 
@@ -747,6 +861,8 @@ export class Harness {
 
   resume(): void {
     this.assertOpen()
+    // scheduler.ts resume: a read-only Harness runs nothing.
+    if (this.options.readOnly === true) throw new ReadOnlySession("running tasks")
     // Every call kicks: scheduler.ts resume() :267-270 sets dirty and, when no drain is queued or running, queues a drain whose reserve pass is a Session line job. Calls in one synchronous section share the drain queued by the first (#kick returns while #draining), so only the first sends the event; skipping later sections would leave the line idle where Pi's holds it.
     if (this.resumeQueued) return
     this.resumeQueued = true
@@ -835,13 +951,13 @@ export class Harness {
   }
 
   /** harness.ts :275-278: the scheduler's own resume never fails (a closed Harness is rejected by the core's answer) and the promise is returned as it is. */
-  waitForTask(id: number, context: Context) { try { this.resume() } catch { /* rejected by the core's answer */ } return awaitWithContext(this.client.api("waitForTask", { taskId: id }), context) }
+  waitForTask(id: number, context: Context) { try { this.resume() } catch (error) { if (error instanceof ReadOnlySession) return Promise.reject(error) /* else rejected by the core's answer */ } return awaitWithContext(this.client.api("waitForTask", { taskId: id }), context) }
   waitForIdle(context: Context): Promise<void> { return this.waitIdle(undefined, context) }
 
   /** scheduler.ts waitForIdle: idle returns an already-resolved promise (the caller's await takes one pass), a closed Harness rejects, otherwise the core's waiter settles with the scope's last live task and the caller's context cancels only this wait. */
   waitIdle(conversationId: number | undefined, context: Context): Promise<void> {
     // The scheduler's own resume never fails (scheduler.ts resume); only Harness.resume asserts open.
-    try { this.resume() } catch { /* a closed Harness is rejected by the core's answer below */ }
+    try { this.resume() } catch (error) { if (error instanceof ReadOnlySession) return Promise.reject(error) /* else a closed Harness is rejected by the core's answer below */ }
     const { promise, settled } = this.client.apiNow<void>("waitForIdle", conversationId === undefined ? {} : { conversationId })
     return settled ? promise : awaitWithContext(promise, context)
   }
@@ -992,7 +1108,7 @@ export class Conversation {
     const model = handoff === undefined ? {} : { model: [{ role: "user", content: handoff, timestamp: this.harness.now() }] }
     await this.harness.submit(this.id, { type: "write", entry: { kind: "pi.reset", head: "self", ...model } }, context)
   }
-  commit<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context) { return this.harness.commitWith(change, context, { conversationId: this.id }) }
+  commit<T>(change: (tx: TxProxy) => T | Promise<T>, context: Context, options?: CommitOptions) { return this.harness.commitWith(change, context, { conversationId: this.id }, options) }
   /** The model context; `{at}` reads it as of that entry, as a fork at it would start. */
   context(context: Context, options?: { at?: number }) {
     const readers = this.harness.contextReaders

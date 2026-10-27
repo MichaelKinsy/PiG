@@ -55,6 +55,9 @@ type Loop struct {
 	// origin the line holds a job for, from the job's queuing to the end of its run.
 	Origin          uint32
 	Retain, Release func(origin uint32)
+	// Adopted, when set, is asked as each line job finishes whether the host's Storage adopted its commit and has not answered
+	// yet (Storage gate): the job's publication is then made at once, and its completion waits for Answer.
+	Adopted func() bool
 	// Started, when set, runs as each line job starts.
 	Started func()
 	// Reading is set while a Session.readOnLine job (ReadLine) runs and when it finishes: Hold asks it for the job's duration.
@@ -76,6 +79,9 @@ type Loop struct {
 	// after holds what the running job asked to run at its completion, right after its publication and before the line's
 	// next job: the code a caller runs on resuming from `await commitWith(...)`, which follows the commit's publication.
 	after []func()
+
+	// awaiting is set while a finished job's commit was adopted and its completion waits for the Storage's answer (Answer).
+	awaiting bool
 }
 
 // Resumer is a continuation that keeps its own state: the Loop runs it as a microtask (DeferResumer) or the host after a chain of
@@ -361,6 +367,14 @@ func (l *Loop) runJob() {
 		l.jobs, l.jhead = l.jobs[:0], 0
 	}
 	l.ending, l.endErr = j, err
+	if l.Adopted != nil && l.Adopted() {
+		// The Storage adopted this job's commit and has not resolved: the commit is published now, inside the adoption, and the
+		// job ends when the Storage answers (Answer), as Pi's #runCommit resumes from `await storage.commit()`.
+		l.holding = true
+		l.awaiting = true
+		l.Publish()
+		return
+	}
 	if l.Hold != nil && !j.bare && l.Hold(l.fns().completeFn) {
 		l.holding = true
 		return
@@ -417,6 +431,16 @@ func (l *Loop) tailDone() {
 	}
 }
 
+// MemoryPubsOnly reports whether every publication of the finished job is a deferred commit held in memory (Publication.Memory).
+func (l *Loop) MemoryPubsOnly() bool {
+	for _, pub := range l.pubs {
+		if !pub.Memory {
+			return false
+		}
+	}
+	return len(l.pubs) != 0
+}
+
 // HasPubs reports whether the finished job whose completion Hold holds has publications to deliver.
 func (l *Loop) HasPubs() bool { return len(l.pubs) != 0 }
 
@@ -451,6 +475,22 @@ func (l *Loop) Publish() {
 		l.Session.publish(pub)
 	}
 }
+
+// Answer takes the Storage's answer to the commit a finished job adopted: a failure of the call after the adoption is the job's own
+// error (the commit stays published). The job ends when Completer's function runs. It reports whether a job waited.
+func (l *Loop) Answer(err error) bool {
+	if !l.awaiting {
+		return false
+	}
+	l.awaiting = false
+	if err != nil {
+		l.endErr = err
+	}
+	return true
+}
+
+// Completer is the function that ends the job Answer released.
+func (l *Loop) Completer() func() { return l.fns().completeFn }
 
 // Ungate runs the job that returned a *NeedGate again, from the start, after the host's Storage answered.
 func (l *Loop) Ungate() {

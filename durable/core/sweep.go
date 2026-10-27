@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
+	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
 
 // The Session's document sweep (session/retention.go) runs as a job on the Session line. In Harness mode that line is the Loop. A
@@ -19,13 +20,15 @@ func (h *handler) sweepMicrotask(fn func()) {
 		h.loop.Defer(fn)
 		return
 	}
-	h.sweeps = append(h.sweeps, fn)
+	h.microtasks = append(h.microtasks, fn)
 }
 
-// enqueueSweep queues job on the Session line.
-func (h *handler) enqueueSweep(job func()) {
+// enqueueSweep queues job on the Session line. A job that returns a *session.NeedGate (the store of held changes, while the
+// host's Storage holds the commit) runs again from the start once the host answered: the Loop reruns a line job, and a
+// Session-mode core keeps it first in its queue (runSessionSweeps).
+func (h *handler) enqueueSweep(job func() error) {
 	if h.loop != nil {
-		h.loop.LineAfterTail(func() error { job(); return nil }, nil)
+		h.loop.LineAfterTail(job, nil)
 		return
 	}
 	h.sweeps = append(h.sweeps, job)
@@ -33,10 +36,19 @@ func (h *handler) enqueueSweep(job func()) {
 
 // runSessionSweeps runs the sweeps a Session-mode core queued, unless a host transaction holds the line.
 func (h *handler) runSessionSweeps() {
-	for len(h.sweeps) > 0 && h.holder == 0 {
-		job := h.sweeps[0]
+	for (len(h.microtasks) > 0 || len(h.sweeps) > 0) && h.holder == 0 {
+		if len(h.microtasks) > 0 {
+			fn := h.microtasks[0]
+			h.microtasks = h.microtasks[1:]
+			fn()
+			continue
+		}
+		if err := h.sweeps[0](); session.IsNeedGate(err) {
+			// The host's Storage holds the commit the job made: it runs again, first, once the Storage answered.
+			h.cg.retry = retrySweeps
+			return
+		}
 		h.sweeps = h.sweeps[1:]
-		job()
 	}
 }
 
@@ -55,14 +67,16 @@ func (h *handler) publishDocCache() {
 	cached, idle := h.sess.DocumentCacheSizes()
 	sweeps := h.sess.SweepJobs
 	attached := h.sess.DocumentsAttached()
-	if h.cacheSent && h.cacheSizes == [4]int{cached, idle, attached, sweeps} {
+	held := h.sess.HeldDocuments()
+	if h.cacheSent && h.cacheSizes == [5]int{cached, idle, attached, sweeps, held} {
 		return
 	}
-	h.cacheSent, h.cacheSizes = true, [4]int{cached, idle, attached, sweeps}
+	h.cacheSent, h.cacheSizes = true, [5]int{cached, idle, attached, sweeps, held}
 	body := append([]byte(`{"cached":`), strconv.Itoa(cached)...)
 	body = append(append(body, `,"idle":`...), strconv.Itoa(idle)...)
 	body = append(append(body, `,"attached":`...), strconv.Itoa(attached)...)
 	body = append(append(body, `,"sweeps":`...), strconv.Itoa(sweeps)...)
+	body = append(append(body, `,"held":`...), strconv.Itoa(held)...)
 	h.b.Notice(abi.NoticeDocCache, append(body, '}'))
 }
 
