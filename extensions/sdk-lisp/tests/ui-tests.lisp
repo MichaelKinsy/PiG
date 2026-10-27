@@ -352,7 +352,7 @@
 (defstruct kth host (events '()) (lock (sb-thread:make-mutex)) (queue (sb-thread:make-waitqueue)) pump (pending '()))
 
 (defun kth-start (ext &key state)
-  "Serve EXT against a fake host that answers every call except the ui.custom ones (kept pending) and records every frame."
+  "Serve EXT against a fake host that answers every call except ui.custom and ui.custom.control (kept pending: a test answers them itself) and records every frame."
   (multiple-value-bind (host register) (start-host ext)
     (declare (ignore register))
     (let ((kth (make-kth :host host)))
@@ -366,7 +366,7 @@
                          (cond ((equal type "call")
                                 (let* ((call (pig:jget frame "call")) (method (pig:jget call "method")))
                                   (kth-record kth (list :call method (pig:jget call "args") frame))
-                                  (unless (equal method "ui.custom")
+                                  (unless (member method '("ui.custom" "ui.custom.control") :test #'equal)
                                     (hsend host "type" "call_result" "id" (pig:jget frame "id") "call_result" (pig:obj)))))
                                ((equal type "notify")
                                 (kth-record kth (list :notify (pig:jget (pig:jget frame "notify") "method") (pig:jget (pig:jget frame "notify") "args") frame)))
