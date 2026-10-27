@@ -1,6 +1,6 @@
 package harness
 
-// pi: packages/durable/src/harness/live.ts (endRun, addCompactionStatus, compactionStatus, removeCompactionStatus, toolSlot, finishSlot, clearProgress), generation.ts (handOver)
+// pi: packages/durable/src/harness/live.ts (endRun with runFailure, addCompactionStatus, compactionStatus, removeCompactionStatus, toolSlot, finishSlot, clearProgress), generation.ts (handOver)
 
 import (
 	"bytes"
@@ -25,7 +25,7 @@ type liveStep struct {
 	Entry      *int           `json:"entry,omitempty"`
 	Attempt    int            `json:"attempt"`
 	Status     map[string]any `json:"status,omitempty"`
-	Settlement map[string]any `json:"settlement,omitempty"`
+	End        map[string]any `json:"end,omitempty"`
 }
 
 type liveProgram struct {
@@ -89,7 +89,12 @@ func livePrograms() []liveProgram {
 			step := liveStep{}
 			switch random.Intn(7) {
 			case 0:
-				step = liveStep{Op: "endRun", Task: task(), Settlement: pick(map[string]any{"status": "done", "answer": random.Intn(5) + 1}, map[string]any{"status": "unanswered", "reason": "gone"}).(map[string]any)}
+				step = liveStep{Op: "endRun", Task: task(), End: pick(
+					map[string]any{"status": "done", "answer": random.Intn(5) + 1},
+					map[string]any{"status": "unanswered", "reason": "aborted"},
+					map[string]any{"status": "unanswered", "reason": "model_error", "detail": "overloaded"},
+					map[string]any{"status": "unanswered", "reason": "no_model", "detail": "No model is configured", "settlement": map[string]any{"status": "unanswered", "reason": "no_model"}},
+				).(map[string]any)}
 			case 1:
 				step = liveStep{Op: "addCompaction", Status: map[string]any{"taskId": task(), "reason": "manual", "blocking": random.Intn(2) == 0, "attempt": 1}}
 			case 2:
@@ -152,9 +157,7 @@ func TestLiveDocHelpersMatchPi(t *testing.T) {
 			var err error
 			switch step.Op {
 			case "endRun":
-				err = EndRun(tx, live, durable.TaskId(step.Task), durable.SubmissionSettlement{
-					Status: durable.SubmissionStatus(step.Settlement["status"].(string)), Answer: durable.EntryId(intOf(step.Settlement["answer"])), Reason: stringOf(step.Settlement["reason"]),
-				})
+				err = EndRun(tx, live, durable.TaskId(step.Task), runEndOf(step.End))
 			case "addCompaction":
 				err = AddCompactionStatus(live, CompactionStatus{TaskId: durable.TaskId(intOf(step.Status["taskId"])), Reason: durable.CompactionReason(step.Status["reason"].(string)), Blocking: step.Status["blocking"].(bool), Attempt: 1})
 			case "removeCompaction":
@@ -206,6 +209,31 @@ func TestLiveDocHelpersMatchPi(t *testing.T) {
 	if differing > 0 {
 		t.Fatalf("%d programs differ from Pi", differing)
 	}
+}
+
+// runEndOf is the RunEnd a program step describes.
+func runEndOf(end map[string]any) RunEnd {
+	if end["status"] == "done" {
+		return runDone(durable.EntryId(intOf(end["answer"])))
+	}
+	var detail *string
+	if text, ok := end["detail"].(string); ok {
+		detail = &text
+	}
+	result := runUnanswered(RunFailureReason(end["reason"].(string)), detail)
+	if settlement, ok := end["settlement"].(map[string]any); ok {
+		result.Settlement = &durable.SubmissionSettlement{Status: durable.SubmissionStatus(settlement["status"].(string)), Reason: stringOf(settlement["reason"])}
+	}
+	return result
+}
+
+func eventsJSON(t *testing.T, value any) []byte {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return encoded
 }
 
 func intOf(value any) int {

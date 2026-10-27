@@ -520,7 +520,7 @@ func TestConversationView(t *testing.T) {
 		var acquiring *future[struct{}]
 		queueOnLine(t, harness, func() <-chan struct{} {
 			acquiring = asyncErr(func() error {
-				_, err := root.Watch(cancelled)
+				_, err := root.Watch(cancelled, nil)
 				return err
 			})
 			return acquiring.done

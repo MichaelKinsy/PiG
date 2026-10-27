@@ -1253,4 +1253,3 @@ func TestSeveralRunningNestedCallsReportTheirOutputAndShowToALateSubscriber(t *t
 	replay(t, initial, delivered)
 	mustClose(t, harness)
 }
-
