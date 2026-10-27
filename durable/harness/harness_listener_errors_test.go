@@ -12,7 +12,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
-	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
 // Ports the "listener and report errors" group of packages/durable/test/harness-storage-failure.test.ts (Pi 1.2.0). The

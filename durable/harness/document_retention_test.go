@@ -2,16 +2,12 @@ package harness
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"slices"
 	"strings"
-	"sync"
 	"testing"
 	"time"
-
-	"github.com/MichaelKinsy/PiG/chord"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"

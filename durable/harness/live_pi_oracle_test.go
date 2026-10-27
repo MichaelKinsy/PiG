@@ -18,14 +18,14 @@ import (
 )
 
 type liveStep struct {
-	Op         string         `json:"op"`
-	Task       int            `json:"task,omitzero"`
-	From       int            `json:"from,omitzero"`
-	To         int            `json:"to,omitzero"`
-	Entry      *int           `json:"entry,omitempty"`
-	Attempt    int            `json:"attempt"`
-	Status     map[string]any `json:"status,omitempty"`
-	End        map[string]any `json:"end,omitempty"`
+	Op      string         `json:"op"`
+	Task    int            `json:"task,omitzero"`
+	From    int            `json:"from,omitzero"`
+	To      int            `json:"to,omitzero"`
+	Entry   *int           `json:"entry,omitempty"`
+	Attempt int            `json:"attempt"`
+	Status  map[string]any `json:"status,omitempty"`
+	End     map[string]any `json:"end,omitempty"`
 }
 
 type liveProgram struct {
