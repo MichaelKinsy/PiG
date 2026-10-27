@@ -110,6 +110,10 @@ func (s *Session) fail(err error) {
 	}
 }
 
+// Fail fails the Session with err, as a failing Storage call does (session.ts fail): the host's Storage rejected a commit it had
+// adopted, which stays applied and published.
+func (s *Session) Fail(err error) { s.fail(err) }
+
 // OnFailed registers f to run once with the error that fails the Session, before the seal (a race against session.ts `failed`),
 // and returns its removal. It never runs for a Session that has already failed: the caller reads Failure.
 func (s *Session) OnFailed(f func(error)) (remove func()) {
