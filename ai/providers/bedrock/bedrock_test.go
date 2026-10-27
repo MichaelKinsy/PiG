@@ -335,7 +335,7 @@ func TestBedrockConvertTools(t *testing.T) {
 	tools := []ai.ToolSchema{
 		{Name: "bash", Description: "run a command", Parameters: map[string]any{"type": "object"}},
 	}
-	cfg, err := convertBedrockTools(tools, nil, false)
+	cfg, _, err := convertBedrockTools(tools, nil, false, false)
 	if err != nil {
 		t.Fatalf("convertBedrockTools: %v", err)
 	}
@@ -362,7 +362,7 @@ func TestBedrockConvertStrictTools(t *testing.T) {
 		}},
 		ConstrainedSampling: &ai.ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"},
 	}}
-	cfg, err := convertBedrockTools(tools, nil, true)
+	cfg, _, err := convertBedrockTools(tools, nil, true, false)
 	if err != nil {
 		t.Fatalf("convertBedrockTools: %v", err)
 	}
@@ -385,10 +385,10 @@ func TestBedrockConvertStrictTools(t *testing.T) {
 }
 
 func TestBedrockConvertTools_Empty(t *testing.T) {
-	if cfg, err := convertBedrockTools(nil, nil, false); err != nil || cfg != nil {
+	if cfg, _, err := convertBedrockTools(nil, nil, false, false); err != nil || cfg != nil {
 		t.Errorf("nil tools must yield nil ToolConfiguration, got %+v, %v", cfg, err)
 	}
-	if cfg, err := convertBedrockTools([]ai.ToolSchema{}, nil, false); err != nil || cfg != nil {
+	if cfg, _, err := convertBedrockTools([]ai.ToolSchema{}, nil, false, false); err != nil || cfg != nil {
 		t.Errorf("empty tools must yield nil ToolConfiguration, got %+v, %v", cfg, err)
 	}
 }

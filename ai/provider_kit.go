@@ -52,6 +52,10 @@ func IsGoTransportError(err error) bool {
 	return isGoTransportError(err)
 }
 
+func IsStrictToolLimitErrorMessage(message string) bool {
+	return isStrictToolLimitErrorMessage(message)
+}
+
 type JsAsyncGenerator[T any] = jsAsyncGenerator[T]
 
 func JsAwait[T any](awaiter jsAwaiter, operand jsOperand[T]) (T, error) {
@@ -115,6 +119,10 @@ func ObserveProviderResponse(ctx context.Context, opts StreamOptions, response *
 }
 
 type ObservedResponseBody = observedResponseBody
+
+func PrefersJSONSchemaStrictSampling(tool ToolSchema) bool {
+	return prefersJSONSchemaStrictSampling(tool)
+}
 
 func ProviderEventModel(selected *Model, api API, providerID string, id string) *Model {
 	return providerEventModel(selected, api, providerID, id)

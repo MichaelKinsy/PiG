@@ -132,19 +132,9 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript ai.TranscriptCo
 		return normalizeBedrockToolID(id)
 	})
 	cacheRetention := resolveBedrockCacheRetention(opts.CacheRetention, opts.Env)
-	system := buildBedrockSystemPrompt(p.model, p.modelName, ai.GetCurrentSystemPrompt(messages[:min(1, len(messages))]), cacheRetention, opts.Env)
 	conversation := ai.BorrowedWithoutInitialSystemMessage(messages)
-	convertedMessages, err := convertBedrockMessages(conversation, p.model, p.modelName, cacheRetention, opts.Env)
-	if err != nil {
-		return nil, fmt.Errorf("amazon-bedrock: convert messages: %w", err)
-	}
 	supportsStrictTools := modelMeta.ProviderMeta.Compat != nil && modelMeta.ProviderMeta.Compat.SupportsStrictMode != nil && *modelMeta.ProviderMeta.Compat.SupportsStrictMode
-	tools, err := convertBedrockTools(ai.BorrowedCurrentTools(messages), opts.ToolChoice, supportsStrictTools)
-	if err != nil {
-		return nil, fmt.Errorf("amazon-bedrock: convert tools: %w", err)
-	}
 
-	inf := &btypes.InferenceConfiguration{}
 	maxTokens := opts.MaxTokens
 	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:streamSimple sends adjustMaxTokensForThinking's maxTokens, clamped to the context, with the matching thinking budget.
 	var adjusted int
@@ -159,47 +149,66 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript ai.TranscriptCo
 	if maxTokens == 0 && isAnthropicClaudeBedrockModel(modelMeta.ID, modelMeta.DisplayName) {
 		maxTokens = modelMeta.Capabilities.MaxOutputTokens
 	}
-	if maxTokens > 0 {
-		mt := int32(maxTokens)
-		inf.MaxTokens = &mt
-	}
-	if opts.TemperatureSet || opts.Temperature != 0 {
-		t := float32(opts.Temperature)
-		inf.Temperature = &t
-	}
 
-	input := &bedrockruntime.ConverseStreamInput{
-		ModelId:         aws.String(p.model),
-		Messages:        convertedMessages,
-		System:          system,
-		InferenceConfig: inf,
-		ToolConfig:      tools,
-		RequestMetadata: opts.RequestMetadata,
-	}
-	if extra := buildBedrockAdditionalFieldsWithBudget(modelMeta, p.modelName, opts, thinkingBudget); extra != nil {
-		encoded, err := ai.MarshalSchemaWithOrder(extra, bedrockAdditionalFieldsOrder, "")
+	// buildInput is one pass of upstream's request loop up to the send: the converted request, passed through onPayload. It is built again, from
+	// the transcript, for the strict tool fallback, because the hook may have changed the first request. hasPreferredStrictTools is true when the
+	// request sends a strict: "prefer" tool strict.
+	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:stream (the request loop)
+	buildInput := func(disablePreferredStrictTools bool) (input *bedrockruntime.ConverseStreamInput, hasPreferredStrictTools bool, err error) {
+		tools, hasPreferredStrictTools, err := convertBedrockTools(ai.BorrowedCurrentTools(messages), opts.ToolChoice, supportsStrictTools, disablePreferredStrictTools)
 		if err != nil {
-			return nil, fmt.Errorf("amazon-bedrock: additional model request fields: %w", err)
+			return nil, false, fmt.Errorf("amazon-bedrock: convert tools: %w", err)
 		}
-		input.AdditionalModelRequestFields = newBedrockDocument(extra, encoded)
-	}
-	if opts.OnPayload != nil {
-		next, err := opts.OnPayload(input, modelMeta)
+		convertedMessages, err := convertBedrockMessages(conversation, p.model, p.modelName, cacheRetention, opts.Env)
 		if err != nil {
-			return nil, fmt.Errorf("amazon-bedrock: onPayload: %w", err)
+			return nil, false, fmt.Errorf("amazon-bedrock: convert messages: %w", err)
 		}
-		switch v := next.(type) {
-		case nil:
-		case *bedrockruntime.ConverseStreamInput:
-			input = v
-		case bedrockruntime.ConverseStreamInput:
-			input = &v
-		default:
-			return nil, fmt.Errorf("amazon-bedrock: onPayload returned %T, want *bedrockruntime.ConverseStreamInput", next)
+		inf := &btypes.InferenceConfiguration{}
+		if maxTokens > 0 {
+			mt := int32(maxTokens)
+			inf.MaxTokens = &mt
 		}
+		if opts.TemperatureSet || opts.Temperature != 0 {
+			t := float32(opts.Temperature)
+			inf.Temperature = &t
+		}
+		input = &bedrockruntime.ConverseStreamInput{
+			ModelId:         aws.String(p.model),
+			Messages:        convertedMessages,
+			System:          buildBedrockSystemPrompt(p.model, p.modelName, ai.GetCurrentSystemPrompt(messages[:min(1, len(messages))]), cacheRetention, opts.Env),
+			InferenceConfig: inf,
+			ToolConfig:      tools,
+			RequestMetadata: opts.RequestMetadata,
+		}
+		if extra := buildBedrockAdditionalFieldsWithBudget(modelMeta, p.modelName, opts, thinkingBudget); extra != nil {
+			encoded, err := ai.MarshalSchemaWithOrder(extra, bedrockAdditionalFieldsOrder, "")
+			if err != nil {
+				return nil, false, fmt.Errorf("amazon-bedrock: additional model request fields: %w", err)
+			}
+			input.AdditionalModelRequestFields = newBedrockDocument(extra, encoded)
+		}
+		if opts.OnPayload != nil {
+			next, err := opts.OnPayload(input, modelMeta)
+			if err != nil {
+				return nil, false, fmt.Errorf("amazon-bedrock: onPayload: %w", err)
+			}
+			switch v := next.(type) {
+			case nil:
+			case *bedrockruntime.ConverseStreamInput:
+				input = v
+			case bedrockruntime.ConverseStreamInput:
+				input = &v
+			default:
+				return nil, false, fmt.Errorf("amazon-bedrock: onPayload returned %T, want *bedrockruntime.ConverseStreamInput", next)
+			}
+		}
+		checkBedrockRequest(ctx, input)
+		return input, hasPreferredStrictTools, nil
 	}
-
-	checkBedrockRequest(ctx, input)
+	input, hasPreferredStrictTools, err := buildInput(false)
+	if err != nil {
+		return nil, err
+	}
 	converse := p.converseStream
 	if converse == nil {
 		converse = client.ConverseStream
@@ -208,43 +217,86 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript ai.TranscriptCo
 	requestContext, abort := context.WithCancel(ctx)
 	builder.SetAbort(abort)
 	go builder.RunResponse(func() error {
-		p.streamResponse(ctx, requestContext, converse, input, opts, modelMeta, builder)
+		p.streamResponse(ctx, requestContext, converse, input, hasPreferredStrictTools, buildInput, opts, modelMeta, builder)
 		return nil
 	})
 	return builder.Stream(), nil
 }
 
-// streamResponse sends the request and runs the stream loop. A body the transport can observe is read by the provider as an executor turn; any other body is read by the SDK's event-stream reader.
-func (p *BedrockProvider) streamResponse(ctx, requestContext context.Context, converse func(context.Context, *bedrockruntime.ConverseStreamInput, ...func(*bedrockruntime.Options)) (*bedrockruntime.ConverseStreamOutput, error), input *bedrockruntime.ConverseStreamInput, opts ai.StreamOptions, modelMeta *ai.Model, builder *ai.AssistantStreamBuilder) {
-	tap := &bedrockBodyTap{}
-	defer tap.close()
-	resp, err := converse(requestContext, input, tap.option, func(options *bedrockruntime.Options) {
-		if opts.OnResponse != nil {
-			options.APIOptions = append(options.APIOptions, func(stack *smithymiddleware.Stack) error {
-				return stack.Deserialize.Add(smithymiddleware.DeserializeMiddlewareFunc("PiGProviderResponse", func(ctx context.Context, input smithymiddleware.DeserializeInput, next smithymiddleware.DeserializeHandler) (smithymiddleware.DeserializeOutput, smithymiddleware.Metadata, error) {
-					output, metadata, err := next.HandleDeserialize(ctx, input)
-					if err == nil {
-						if response, ok := output.RawResponse.(*smithyhttp.Response); ok {
-							err = ai.ObserveProviderResponse(ctx, opts, response.Response, modelMeta)
-							if err != nil {
-								if result, ok := output.Result.(*bedrockruntime.ConverseStreamOutput); ok && result.GetStream() != nil {
-									_ = result.GetStream().Close()
-								} else {
-									_ = response.Body.Close()
+// bedrockRequestBuilder builds the request again from the transcript, with every strict: "prefer" tool sent non-strict when disablePreferredStrictTools is set.
+type bedrockRequestBuilder func(disablePreferredStrictTools bool) (input *bedrockruntime.ConverseStreamInput, hasPreferredStrictTools bool, err error)
+
+// bedrockStrictToolLimitMessage returns the message of a send error that is a ValidationException saying the request's strict tools exceed Claude's limits.
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:stream (error instanceof BedrockRuntimeServiceException, name ValidationException and isStrictToolLimitErrorMessage)
+func bedrockStrictToolLimitMessage(err error) (string, bool) {
+	apiError, ok := errors.AsType[smithy.APIError](err)
+	if !ok || apiError.ErrorCode() != "ValidationException" {
+		return "", false
+	}
+	message := apiError.ErrorMessage()
+	return message, ai.IsStrictToolLimitErrorMessage(message)
+}
+
+// streamResponse sends the request and runs the stream loop. A rejection of the request's strict tool limits is sent once more with every strict: "prefer" tool non-strict: Bedrock checks the tool schemas before it starts the stream, so a retry never repeats streamed output. A body the transport can observe is read by the provider as an executor turn; any other body is read by the SDK's event-stream reader.
+func (p *BedrockProvider) streamResponse(ctx, requestContext context.Context, converse func(context.Context, *bedrockruntime.ConverseStreamInput, ...func(*bedrockruntime.Options)) (*bedrockruntime.ConverseStreamOutput, error), input *bedrockruntime.ConverseStreamInput, hasPreferredStrictTools bool, buildInput bedrockRequestBuilder, opts ai.StreamOptions, modelMeta *ai.Model, builder *ai.AssistantStreamBuilder) {
+	send := func(input *bedrockruntime.ConverseStreamInput) (*bedrockBodyTap, *bedrockruntime.ConverseStreamOutput, error) {
+		tap := &bedrockBodyTap{}
+		resp, err := converse(requestContext, input, tap.option, func(options *bedrockruntime.Options) {
+			if opts.OnResponse != nil {
+				options.APIOptions = append(options.APIOptions, func(stack *smithymiddleware.Stack) error {
+					return stack.Deserialize.Add(smithymiddleware.DeserializeMiddlewareFunc("PiGProviderResponse", func(ctx context.Context, input smithymiddleware.DeserializeInput, next smithymiddleware.DeserializeHandler) (smithymiddleware.DeserializeOutput, smithymiddleware.Metadata, error) {
+						output, metadata, err := next.HandleDeserialize(ctx, input)
+						if err == nil {
+							if response, ok := output.RawResponse.(*smithyhttp.Response); ok {
+								err = ai.ObserveProviderResponse(ctx, opts, response.Response, modelMeta)
+								if err != nil {
+									if result, ok := output.Result.(*bedrockruntime.ConverseStreamOutput); ok && result.GetStream() != nil {
+										_ = result.GetStream().Close()
+									} else {
+										_ = response.Body.Close()
+									}
 								}
 							}
 						}
-					}
-					return output, metadata, err
-				}), smithymiddleware.Before)
-			})
-		}
-		options.APIOptions = append(options.APIOptions, bedrockUserAgent(opts.Identity), withBedrockHeaders(opts.Headers), withBedrockConverseBody(opts.RequestMetadataOrder))
-	})
-	if err != nil {
-		failBedrockResponse(ctx, builder, tap.piError(bedrockSendError(ctx, err, p.baseURL, opts.Env)), "", false)
-		return
+						return output, metadata, err
+					}), smithymiddleware.Before)
+				})
+			}
+			options.APIOptions = append(options.APIOptions, bedrockUserAgent(opts.Identity), withBedrockHeaders(opts.Headers), withBedrockConverseBody(opts.RequestMetadataOrder))
+		})
+		return tap, resp, err
 	}
+	disablePreferredStrictTools := false
+	var (
+		tap  *bedrockBodyTap
+		resp *bedrockruntime.ConverseStreamOutput
+	)
+	for {
+		var err error
+		tap, resp, err = send(input)
+		if err == nil {
+			break
+		}
+		limitMessage, strictToolLimit := bedrockStrictToolLimitMessage(err)
+		if ctx.Err() != nil || disablePreferredStrictTools || !hasPreferredStrictTools || !strictToolLimit {
+			failBedrockResponse(ctx, builder, tap.piError(bedrockSendError(ctx, err, p.baseURL, opts.Env)), "", false)
+			tap.close()
+			return
+		}
+		tap.close()
+		disablePreferredStrictTools = true
+		ai.AppendAssistantMessageDiagnostic(builder.Partial(), ai.AssistantMessageDiagnostic{
+			Type:      "bedrock_strict_tools_fallback",
+			Timestamp: time.Now().UnixMilli(),
+			Error:     &ai.DiagnosticErrorInfo{Message: limitMessage},
+			Details:   map[string]any{"reason": "strict_tool_limits_exceeded"},
+		})
+		if input, hasPreferredStrictTools, err = buildInput(true); err != nil {
+			failBedrockResponse(ctx, builder, err, "", false)
+			return
+		}
+	}
+	defer tap.close()
 	stream := resp.GetStream()
 	if body := tap.body(); body != nil {
 		if stream != nil {
@@ -967,9 +1019,11 @@ func bedrockImageBlock(mime, dataB64 string) (btypes.ImageBlock, error) {
 
 // ─── Tool config ─────────────────────────────────────────────────────────
 
-func convertBedrockTools(tools []ai.ToolSchema, toolChoice any, supportsStrictMode bool) (*btypes.ToolConfiguration, error) {
+// convertBedrockTools is upstream convertToolConfig. disablePreferredStrictTools sends every tool whose constrainedSampling prefers strict without strict, for the
+// strict tool fallback; hasPreferredStrictTools reports that a strict: "prefer" tool was sent strict.
+func convertBedrockTools(tools []ai.ToolSchema, toolChoice any, supportsStrictMode, disablePreferredStrictTools bool) (config *btypes.ToolConfiguration, hasPreferredStrictTools bool, err error) {
 	if len(tools) == 0 {
-		return nil, nil
+		return nil, false, nil
 	}
 	switch value := toolChoice.(type) {
 	case nil, string, map[string]any:
@@ -986,23 +1040,30 @@ func convertBedrockTools(tools []ai.ToolSchema, toolChoice any, supportsStrictMo
 	default:
 		value, err := ai.NormalizeJSONValue(toolChoice)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		toolChoice = value
 	}
 	choice, _ := ai.ToolChoiceName(toolChoice)
 	if choice == "none" {
-		return nil, nil
+		return nil, false, nil
 	}
 	out := make([]btypes.Tool, 0, len(tools))
 	for _, tool := range tools {
-		strict, err := ai.ResolveJSONSchemaStrictSampling(tool, supportsStrictMode, nil)
-		if err != nil {
-			return nil, err
+		preferred := ai.PrefersJSONSchemaStrictSampling(tool)
+		var strict *bool
+		if !disablePreferredStrictTools || !preferred {
+			var err error
+			if strict, err = ai.ResolveJSONSchemaStrictSampling(tool, supportsStrictMode, nil); err != nil {
+				return nil, false, err
+			}
+		}
+		if strict != nil && *strict && preferred {
+			hasPreferredStrictTools = true
 		}
 		toolParameters, err := ai.GetJSONSchemaToolParameters(tool, strict)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		parameters := toolParameters.Schema
 		if parameters == nil {
@@ -1010,7 +1071,7 @@ func convertBedrockTools(tools []ai.ToolSchema, toolChoice any, supportsStrictMo
 		}
 		schema, err := ai.MarshalToolParameters(parameters, toolParameters.Order())
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		toolSpec := btypes.ToolSpecification{
 			Name:        aws.String(tool.Name),
@@ -1022,7 +1083,7 @@ func convertBedrockTools(tools []ai.ToolSchema, toolChoice any, supportsStrictMo
 		}
 		out = append(out, &btypes.ToolMemberToolSpec{Value: toolSpec})
 	}
-	config := &btypes.ToolConfiguration{Tools: out}
+	config = &btypes.ToolConfiguration{Tools: out}
 	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:convertToolConfig
 	switch choice {
 	case "auto":
@@ -1033,12 +1094,12 @@ func convertBedrockTools(tools []ai.ToolSchema, toolChoice any, supportsStrictMo
 		if object, ok := toolChoice.(map[string]any); ok && object["type"] == "tool" {
 			name, ok := object["name"].(string)
 			if !ok {
-				return nil, fmt.Errorf("toolChoice tool name must be a string")
+				return nil, false, fmt.Errorf("toolChoice tool name must be a string")
 			}
 			config.ToolChoice = &btypes.ToolChoiceMemberTool{Value: btypes.SpecificToolChoice{Name: aws.String(name)}}
 		}
 	}
-	return config, nil
+	return config, hasPreferredStrictTools, nil
 }
 
 // ─── Additional model request fields (thinking) ──────────────────────────

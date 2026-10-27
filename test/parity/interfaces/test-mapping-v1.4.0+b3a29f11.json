@@ -458,8 +458,15 @@
     },
     {
       "path": "packages/ai/test/bedrock-strict-tool-fallback.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a9e1e9b9148ccd27602af2fc991f7a0b80e0e83fdcf25e9a538c72254b06752a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a9e1e9b9148ccd27602af2fc991f7a0b80e0e83fdcf25e9a538c72254b06752a",
+      "evidence": [
+        "ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream",
+        "ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockConvertToolsPreferredStrictTools",
+        "ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage",
+        "ai/strict_tool_limit_upstream_test.go#TestPrefersJSONSchemaStrictSampling"
+      ],
+      "rationale": "New in Pi 842c7317 (#11416). All 4 cases are ported as subtests of TestBedrockPreferredStrictToolFallbackUpstream with Pi's titles, inputs and expected results: a strict tool limit ValidationException (the union-parameter message observed from live Bedrock) is retried with the preferred tool non-strict and its original schema while the required and ordinary tools stay byte-identical, onPayload runs for both requests and its requestMetadata reaches the second, and the result carries one bedrock_strict_tools_fallback diagnostic with the message and reason strict_tool_limits_exceeded; no preferred strict tool means one request and the error text 'Validation error: <message>'; another ValidationException is not retried; a rejection that repeats is retried only once. Upstream mocks the AWS SDK client and clones each command input; the port serves the same replies from an httptest Bedrock endpoint (a 400 with x-amzn-errortype ValidationException, then an event stream) and decodes each serialized request body, so the assertions are on the wire shape of toolConfig. TestBedrockConvertToolsPreferredStrictTools checks the converter's hasPreferredStrictTools and disablePreferredStrictTools, and the strict_tool_limit tests the two shared helpers. Red: before the port the first case ends with stopReason error and 'retries only once' sees 1 request, want 2."
     },
     {
       "path": "packages/ai/test/bedrock-thinking-payload.test.ts",
