@@ -426,3 +426,17 @@ commit = "42fc4e620ef0b4ccf6a3c4a7b1a1818a98955298"
 class = "CITE"
 cite = "packages/durable/src/harness/view.ts:358"
 reason = "Pi f3255de7 makes ConversationView.entries a window over the transcript (view.ts advance, :358-396): an entry is appended wherever it was written, a head marker included, and past the window's max the oldest leave in one splice with a set of `before`, so the core's view frames carry those ops where a head marker used to replace the entries before its head."
+
+[[entry]]
+path = "internal/jsstring/localecompare/localecompare_test.go"
+commit = "40b9b1829f2cc3afb197746fa40d7412d31e6cf5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit moves the root-locale collator from internal/jsstring into internal/jsstring/localecompare and renames LocaleCompare to Compare, so the three changed lines are the oracle tests' calls and failure messages (got := Compare(a, b) against the Node localeCompare answer, and the Errorf that names the function). The expected values are Node's own localeCompare results computed in each test, and they are unchanged: no Pi line moves, the ordering stays the one Pi's localeCompare call sites get."
+
+[[entry]]
+path = "coding/extension/pigsdk/strip_test.go"
+commit = "2eec1d23fb5778618c8cdd80dcce6905738c645c"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The multi-language extension SDK bridges are PiG-only (docs/additive-features.md D19), so no Pi line governs them. The commit adds the Lisp SDK as a fourth strippable SDK language: the strip test gains its Lisp row, and the count of SDKs left unstripped after stripping one language is three where it was two. The expectation follows the number of SDK languages the build carries."

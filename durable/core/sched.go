@@ -64,6 +64,7 @@ func (h *handler) startScheduler() error {
 			return h.holdFor(tailHops, release)
 		},
 		Begin:   func(start func()) bool { return h.holdFor(1, start) },
+		Hops:    func(n int, r session.Resumer) bool { return h.holdLate(n, resumeHop, 0, r) },
 		Retain:  h.holdOrigin,
 		Release: h.dropOrigin,
 	}
