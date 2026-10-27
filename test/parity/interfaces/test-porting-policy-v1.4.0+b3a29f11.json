@@ -6238,6 +6238,13 @@
       "rationale": "New in 1.0.4 with the pi-env package (remote execution over SSH). No coding-agent package reaches it, so it is not tagged hot-path."
     },
     {
+      "path": "packages/env/test/connection.test.ts",
+      "upstreamTestHash": "sha256:6e62c374797c9a7956a396c9b05af2c80a33991327f9c2ea62b19d781db5fe2a",
+      "area": "tools",
+      "tags": [],
+      "rationale": "New in Pi 479d6e5e with the pi-env startup error text (the daemon's stderr tail). The pi-env connection is the remote execution transport; no coding-agent package reaches it in a default run, so it is not tagged hot-path."
+    },
+    {
       "path": "packages/env/test/differential.test.ts",
       "upstreamTestHash": "sha256:1d23a7febb4346b79df4b7eebce7575f1e3cee8d618a880e11b4c6254f736ecc",
       "area": "tools",
