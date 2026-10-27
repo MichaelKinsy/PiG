@@ -12,7 +12,7 @@
 (defun cancel-request-p (content)
   (or (equal content "cancel") (and (vectorp content) (not (stringp content)) (plusp (length content)) (equal (pig:jref content 0 "text") "cancel"))))
 
-(defun stream (ctx model request options)
+(defun produce-stream (ctx model request options)
   (unless (equal (pig:jget options "apiKey") "extension-key") (error "wrong key"))
   (when (cancel-request-p (last-content request))
     (pig:ctx-exec ctx "provider-started")
@@ -36,5 +36,5 @@
                                     "models" (vector (pig:obj "id" "faux" "name" "Faux" "reasoning" :false "input" (vector "text")
                                                               "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
                                                               "contextWindow" 128000 "maxTokens" 4096))
-                                    "streamSimple" #'stream))
+                                    "streamSimple" #'produce-stream))
     ext))
