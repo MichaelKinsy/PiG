@@ -40,8 +40,8 @@
                ;; ==== lane C ====
                (:file "compaction")
                (:file "truncate")
-               (:file "conversation")
                (:file "coding-helpers")
+               (:file "conversation")
                ;; ==== end lane C ====
                ;; ==== lane M ====
                (:file "event-stream")

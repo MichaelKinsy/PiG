@@ -117,7 +117,7 @@ func requireProbeLog(t *testing.T, name string, run *queueProbeRun, want ...stri
 }
 
 func queueHarnessCases() []harnessCase {
-	return append(sdkHarnessCases(), packedSDKHarnessCases()...)
+	return append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...)
 }
 
 func openQueueHarness(t *testing.T, tc harnessCase) *harness {
