@@ -150,6 +150,25 @@
       (mp-fail "plain stream did not stop"))
     (pig:ctx-notify ctx "model-fetch=ok" "info")))
 
+;;; Context.complete and a model stream cancelled with its request (lisp_model_calls_test.go)
+
+(defvar *mp-cancel-result* nil)
+
+(defun mp-complete-probe (ctx)
+  (let ((result (pig:ctx-complete ctx (pig:obj "provider" "p" "id" "m") (mp-hello-request "complete") (pig:obj "apiKey" "sk-complete"))))
+    (pig:ctx-notify ctx (format nil "complete=~A" (pig:jget result "text")) "info")))
+
+(defun mp-cancel-probe (ctx)
+  (setf *mp-cancel-result*
+        (pig:registry-complete (pig:ctx-model-registry ctx) (pig:obj "provider" "conformance" "modelId" "hang" "api" "openai-responses")
+                               (mp-hello-request "cancel"))))
+
+(defun mp-cancel-report (ctx)
+  (pig:ctx-notify ctx (if *mp-cancel-result*
+                          (format nil "cancel=~A:~A" (pig:jget *mp-cancel-result* "stopReason") (pig:jget *mp-cancel-result* "model"))
+                          "cancel=pending")
+                  "info"))
+
 ;;; the typed model tools (model_types_test.go): each answers one JSON object
 
 (defun mp-ids (models) (map 'list (lambda (model) (format nil "~A/~A" (pig:jget model "provider") (pig:jget model "id"))) models))
@@ -329,6 +348,13 @@
     :stream (lambda (&rest arguments) (declare (ignore arguments)) nil)
     :stream-simple (lambda (&rest arguments) (declare (ignore arguments)) nil)
     :generate-images #'mp-image-impl :classify #'mp-classify-impl)))
+
+(def-fixture "model-call-extras" (ext)
+  (pig:command ext "complete-probe" "Exercise Context.complete" (lambda (ctx args) (declare (ignore args)) (mp-complete-probe ctx)))
+  (pig:command ext "model-stream-cancel-probe" "Start a model stream that the host never ends"
+               (lambda (ctx args) (declare (ignore args)) (mp-cancel-probe ctx)))
+  (pig:command ext "model-stream-cancel-report" "Report how the cancelled model stream ended"
+               (lambda (ctx args) (declare (ignore args)) (mp-cancel-report ctx))))
 
 (def-fixture "model-types" (ext)
   (mp-register-providers ext)
