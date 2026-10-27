@@ -41,16 +41,19 @@ type tuiAltCall struct {
 	ShowHardwareCursor *bool  `json:"showHardwareCursor,omitempty"`
 	LogDirectory       string `json:"logDirectory,omitempty"`
 	// Options is create's tuiAltOptions or showOverlay's overlay options.
-	Options        json.RawMessage `json:"options,omitempty"`
-	Key            *string         `json:"key"`
-	Caps           *tuiAltCaps     `json:"caps,omitempty"`
-	Width          int             `json:"width"`
-	Lines          json.RawMessage `json:"lines"`
-	Message        string          `json:"message"`
-	DurationMs     int             `json:"durationMs"`
-	Enabled        bool            `json:"enabled"`
-	Force          bool            `json:"force"`
-	Visible        bool            `json:"visible"`
+	Options    json.RawMessage `json:"options,omitempty"`
+	Key        *string         `json:"key"`
+	Caps       *tuiAltCaps     `json:"caps,omitempty"`
+	Width      int             `json:"width"`
+	Lines      json.RawMessage `json:"lines"`
+	Message    string          `json:"message"`
+	DurationMs int             `json:"durationMs"`
+	Enabled    bool            `json:"enabled"`
+	Force      bool            `json:"force"`
+	Visible    bool            `json:"visible"`
+	// InFrame marks a call the extension makes from inside a callback the frame waits on (a component's render, an overlay's visible callback, a style
+	// callback): the SDK knows its calling thread is in one. Only such a call must not wait on the frame lock.
+	InFrame        bool            `json:"inFrame"`
 	PreserveScreen bool            `json:"preserveScreen"`
 	ListenerID     string          `json:"listenerId"`
 	TimeoutMs      float64         `json:"timeoutMs"`
@@ -420,7 +423,7 @@ func (b *UIBridge) handleTuiAlt(owner *Conn, args json.RawMessage) (*CallResultP
 	if s.term.update(call.Terminal) {
 		s.screen.RequestRender()
 	}
-	if s.inFrame.Load() > 0 {
+	if call.InFrame && s.inFrame.Load() > 0 {
 		return s.opInFrame(&call)
 	}
 	return s.op(&call)
@@ -873,8 +876,7 @@ func tuiAltColorsWire(colors tui.TerminalColors) map[string]any {
 	return out
 }
 
-// opInFrame answers a call made while the frame waits on a callback of the extension, which is a call from that callback (or from another thread of
-// the extension, in the same window). Pi's single thread lets a render read the screen and even change it; here the frame goroutine holds the
+// opInFrame answers a call the extension marked as made from a callback the frame waits on. Pi's single thread lets a render read the screen and even change it; here the frame goroutine holds the
 // frame lock, so a call that takes it would wait on a frame that waits on the call. A read answers from the state as the frame began, which is
 // what Pi's render reads. A change returns at once and applies after the frame, in call order. What needs the frame itself (render, renderNow,
 // start, stop, the selection copy) is an error: Pi would re-enter its own frame.

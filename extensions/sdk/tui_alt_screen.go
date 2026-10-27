@@ -1,10 +1,12 @@
 package sdk
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"strconv"
 	"sync"
 )
@@ -222,12 +224,52 @@ type tuiAltRegistry struct {
 	mu      sync.Mutex
 	next    int
 	screens map[string]*TuiAltScreen
+	// frames counts, per goroutine, the frame callbacks (render, visible, style) it is running: a call from one carries inFrame, which tells the
+	// host not to wait on the frame that waits for this callback.
+	frames map[uint64]int
+}
+
+// goroutineID is the calling goroutine's number, read from its stack header ("goroutine 12 [running]:").
+func goroutineID() uint64 {
+	var buf [64]byte
+	header := buf[:runtime.Stack(buf[:], false)]
+	header = bytes.TrimPrefix(header, []byte("goroutine "))
+	id, _ := strconv.ParseUint(string(header[:bytes.IndexByte(header, ' ')]), 10, 64)
+	return id
+}
+
+// enterFrame marks the calling goroutine as running a frame callback until the returned function runs.
+func (r *tuiAltRegistry) enterFrame() func() {
+	id := goroutineID()
+	r.mu.Lock()
+	if r.frames == nil {
+		r.frames = map[uint64]int{}
+	}
+	r.frames[id]++
+	r.mu.Unlock()
+	return func() {
+		r.mu.Lock()
+		if r.frames[id]--; r.frames[id] <= 0 {
+			delete(r.frames, id)
+		}
+		r.mu.Unlock()
+	}
+}
+
+func (r *tuiAltRegistry) inFrame() bool {
+	id := goroutineID()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.frames[id] > 0
 }
 
 func (s *TuiAltScreen) call(op string, fields map[string]any, out any) error {
 	args := map[string]any{"id": s.id, "op": op}
 	for k, v := range fields {
 		args[k] = v
+	}
+	if op != "dispose" && s.ext.tuiAlt.inFrame() {
+		args["inFrame"] = true
 	}
 	args["terminal"] = map[string]any{"columns": s.terminal.Columns(), "rows": s.terminal.Rows(), "kitty": s.terminal.KittyProtocolActive()}
 	result, err := Context{ext: s.ext}.callHost("tui.alt", args)
@@ -839,7 +881,11 @@ func (e *Extension) dispatchTuiAlt(raw json.RawMessage) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		lines := c.Render(request.Width)
+		var lines []string
+		func() {
+			defer e.tuiAlt.enterFrame()()
+			lines = c.Render(request.Width)
+		}()
 		if lines == nil {
 			lines = []string{}
 		}
@@ -929,8 +975,16 @@ func (e *Extension) dispatchTuiAlt(raw json.RawMessage) (any, error) {
 		s.mu.Lock()
 		visible := s.visible[request.Key]
 		s.mu.Unlock()
-		return map[string]any{"value": visible == nil || visible(request.TermWidth, request.TermHeight)}, nil
+		if visible == nil {
+			return map[string]any{"value": true}, nil
+		}
+		defer e.tuiAlt.enterFrame()()
+		return map[string]any{"value": visible(request.TermWidth, request.TermHeight)}, nil
 	case "option":
+		switch request.Name {
+		case "searchMatchStyle", "searchCurrentMatchStyle", "searchNavigationButtonStyle", "scrollToEndIndicator":
+			defer e.tuiAlt.enterFrame()()
+		}
 		return s.runOption(request.Name, request.Args)
 	}
 	return nil, fmt.Errorf("tui.alt: unknown callback %q", request.Kind)
