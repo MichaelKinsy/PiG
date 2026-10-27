@@ -78,7 +78,7 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("6c384aa30f619d7b28963f2bab24d8dacbe73cb6")}`, `ticks_commit = ${q("6c384aa30f619d7b28963f2bab24d8dacbe73cb6")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("6c384aa30f619d7b28963f2bab24d8dacbe73cb6")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
@@ -133,18 +133,15 @@ for (const profile of ["gate", "node"]) for (const seed of [...Array.from({ leng
 	emit("[[scenario]]", `id = ${q(`F-${profile}-${seed}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/diff-ordering.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-loop"`,
 		`about = ${q(`seed ${seed}: random parallel tools, hooks, observers and inbox arrivals on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
-// The tick rows (F-ticks*, F-split*) run against the `ticks` reference of PIN (Pi 6c384aa3, the commit PiG pins: a Session wraps its calls in
-// telemetry spans there, which moved the hops of submit and of every scheduler phase), the other rows against `main`. The rows move to
-// one reference when the core follows the commits of Pi between the two (sleeping tasks, deferred partial commits, observers, reports).
 // F-ticks: the tick cost of each public client call (scenarios/client-ticks.mjs), compared as printed counts (output level).
 for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/client-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/client-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes each client call spends (submit, wait, entries, inspect, abort) on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-ticks-tools: the pass at which each of three parallel tool calls runs its beforeTool hook, `execute`, return and afterTool hook
 // (scenarios/tool-start-ticks.mjs): the gap between two calls' hooks decides whose hook wait starts first (F-gate seeds 26, 61, 67, 77).
 for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-tools-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/tool-start-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-tools-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/tool-start-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes between the beforeTool hook, execute, return and afterTool hook of three parallel tool calls on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-split: the passes between observable points inside one call (scenarios/split-ticks.mjs; the seed picks the part), so two tick
@@ -152,7 +149,7 @@ for (const profile of ["gate", "node"]) {
 // client (the publication before `submit` resolves, `wait` after the turn's last event) and context (a custom task's runtime.context
 // on a scanned, kept, cut and extended range).
 for (const [seed, part, about] of [[1, "generation", "a turn's model call and last events, counted from the submission's publication"], [2, "client", "the submission's publication before submit resolves and wait after the turn's last event"], [3, "context", "a custom task's runtime.context on a scanned, kept, cut and extended range"]]) for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-split-${part}-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/split-ticks.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-split-${part}-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/split-ticks.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes between points of one call: ${about}, on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-ticks-runtime: the tick cost of the calls F-ticks leaves out (scenarios/runtime-ticks.mjs; the seed picks the part): runtime.context
@@ -160,19 +157,19 @@ for (const [seed, part, about] of [[1, "generation", "a turn's model call and la
 // Pi today (seed 1, F-ticks-runtime-drift): waitForTask on a settled and a live custom task, runtime.getTask,
 // and status behind a running turn.
 for (const [seed, suffix, about] of [[0, "", "runtime.context in a custom task (scan, kept, extend, cut), client reads behind a running turn and a wait under an abortable context"], [1, "-drift", "waitForTask on a settled and on a live custom task, runtime.getTask in a custom task and a single-row client read behind a running turn"]]) for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-runtime${suffix}-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/runtime-ticks.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-runtime${suffix}-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/runtime-ticks.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes of ${about} on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-ticks-watch: the microtask passes `watchEvents` and `Conversation.watch` take to settle on an idle conversation (scenarios/watch-ticks.mjs):
 // an observer that attaches in fewer passes than Pi lands before a submit's commit Pi orders first (F-gate seed 175).
 for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-watch-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/watch-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-watch-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/watch-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes of watchEvents and viewState on an idle conversation on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-ticks-output: a tool's streamed chunk and its return (scenarios/output-ticks.mjs): passes from api.output() to the tool_execution_update event, and from the
 // tool's return to the tool_execution_end event on an attached event stream. F-gate-11 (commits 87/88) orders a sibling's completion ahead of a chunk when the return costs fewer passes than Pi's.
 for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-output-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/output-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-output-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/output-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes from a tool's api.output() to its update event and from its return to its end event, on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-fail: a Storage `commit` that throws fails the Session (Pi 42a SessionEnd; scenarios/storage-failure.mjs): the commit number k throws once,
