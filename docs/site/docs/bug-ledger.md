@@ -1030,6 +1030,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-db12780](#bf-db12780) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
 | [BF-db7007d](#bf-db7007d) | A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-db9a315](#bf-db9a315) | Codemode peak memory is now measured and guarded through the normal tool path in a fresh process with 40… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-dbce96c](#bf-dbce96c) | On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and… | PiG's own defect | macOS | Unreleased |
 | [BF-dbe1ad3](#bf-dbe1ad3) | `pig setup` now flags a go on PATH older than Go 1.26, the extension SDK minimum, naming the version found… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-dbe25ef](#bf-dbe25ef) | CI: `make interface-gaps` passes on main again | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dbe25ef-10](#bf-dbe25ef-10) | The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit | PiG's own defect | All platforms | 0.5.2 |
@@ -5953,7 +5954,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Commit that wrote the release note (the fix commit is not identified):** `61300bb3e8` (2026-10-10)
-- **Tests:** `internal/codingagent/interactive_native_login_test.go::TestLoginListsARegisteredNativeAPIKeyProviderInNameOrder`, `internal/codingagent/session_listing_race_test.go::TestSessionListingSortsConcurrentlyWithoutARace`, `internal/jsstring/locale_compare_test.go::TestLocaleCompareIsSafeForConcurrentUse`, `internal/jsstring/locale_compare_test.go::TestLocaleCompareOrdersAsNodeDoes`, `mcp/oauth/parse_url_node_test.go::TestParseURLMatchesNodeNewURL`
+- **Tests:** `internal/codingagent/interactive_native_login_test.go::TestLoginListsARegisteredNativeAPIKeyProviderInNameOrder`, `internal/codingagent/session_listing_race_test.go::TestSessionListingSortsConcurrentlyWithoutARace`, `mcp/oauth/parse_url_node_test.go::TestParseURLMatchesNodeNewURL`
 - **Release note:** MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a default `ws` or `ftp` port is dropped, and a malformed percent escape such as `/%zz` is kept.
 
 ### BF-61300bb-2
@@ -5967,7 +5968,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `433d232815` (2026-10-09), `61300bb3e8` (2026-10-10)
-- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow` and 5 more in docs/bug-ledger.json
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow` and 3 more in docs/bug-ledger.json
 - **Release note:** Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists, Hugging Face results) no longer shares one collator between goroutines, which raced when sessions were listed concurrently, and uses ICU root collation for every name instead of an ASCII weight table.
 
 ### BF-6132277
@@ -15287,6 +15288,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `db9a31538f` (2026-10-14)
 - **Tests:** `coding/extension/builtin/codemode/baseline_rss_test.go::TestPeakRSSOfCodemodeScenarios`, `coding/extension/builtin/codemode/baseline_rss_test.go::TestRSSScenarioChild`
 - **Release note:** Codemode peak memory is now measured and guarded through the normal tool path in a fresh process with 40 extension tools exposed. Peak RSS is about 62-67 MiB cold (no compilation cache) for a no-op with or without extension tools, about 36 MiB with the compilation cache, about the same for a script passing a 96-record, 18 KB state to a tool, and 41 MiB for the two concurrent scripts the worker limit allows; before the on-demand memory fix a concurrent run reached about 355 MiB. Reported by @kayis-rahman (#211)
+
+### BF-dbce96c
+
+**On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and local execution environments or the JSONL session storage could lose the other end's bytes: a signal that ended the wait for the writer (the Go runtime's SIGURG preemption signal, a child's SIGCHLD) made macOS drop the open from the pipe, so the writer failed with EPIPE and the reader returned an empty file or waited for a writer that had gone (about one open in seven under a steady stream of signals).
+- **Root cause:** On macOS a signal that ends a blocking open of a FIFO (Go's SIGURG preemption, SIGCHLD) makes fifo_open drop the open from the FIFO while the other end, whose open completed because it saw the opener, goes on: the writer's write fails with EPIPE or the reader sees an empty file or waits for a writer that has gone. Node avoids it because libuv opens on a worker thread that signals are not delivered to (fs.readFileSync on the main thread loses bytes at the same rate as Go).
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `dbce96c6a2` (2026-10-27)
+- **Tests:** `internal/nodefs/open_fifo_test.go::TestFIFOOpenLosesNoBytesToSignals`
+- **Release note:** On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and local execution environments or the JSONL session storage could lose the other end's bytes: a signal that ended the wait for the writer (the Go runtime's SIGURG preemption signal, a child's SIGCHLD) made macOS drop the open from the pipe, so the writer failed with EPIPE and the reader returned an empty file or waited for a writer that had gone (about one open in seven under a steady stream of signals). Pi does not lose them, as Node opens on a libuv worker thread that signals are not delivered to; PiG now opens a FIFO on a thread that blocks every signal. Other platforms and files that are not FIFOs are unchanged.
 
 ### BF-dbe1ad3
 
