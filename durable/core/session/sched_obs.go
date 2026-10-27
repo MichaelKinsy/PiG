@@ -8,7 +8,8 @@ import (
 )
 
 func (s *Scheduler) scheduleReconcile() {
-	if s.reconcileScheduled || s.closing {
+	// A read-only reconcile could only fail: what it writes is refused.
+	if s.reconcileScheduled || s.closing || s.sess.ReadOnly {
 		return
 	}
 	s.reconcileScheduled = true
@@ -29,7 +30,7 @@ func (s *Scheduler) microtask(fn func()) {
 // scheduleReconcileAfterRead is scheduleReconcile for a chain load: Pi's #loadChain schedules it after its Storage read
 // resolved, so the microtask runs once the job's reads so far have taken their ticks, not at the job's start.
 func (s *Scheduler) scheduleReconcileAfterRead() {
-	if s.reconcileScheduled || s.closing {
+	if s.reconcileScheduled || s.closing || s.sess.ReadOnly {
 		return
 	}
 	if s.env.ReadTicks == nil || s.env.After == nil {

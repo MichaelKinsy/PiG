@@ -18,7 +18,7 @@ import { createSession as createSessionOver } from "./session/session.ts"
 import * as storage from "./storage.ts"
 
 export type * from "@earendil-works/pi-durable"
-export { ConversationBusy, ReadAfterWrite, SessionFailed, StorageRequestError } from "../errors.ts"
+export { ConversationBusy, ReadAfterWrite, ReadOnlySession, SessionFailed, StorageRequestError } from "../errors.ts"
 export { DEFAULT_HARNESS_IDENTITY, ROOT_CONVERSATION_ID, useCore } from "./harness.ts"
 
 export const AgentDoc = agent.AgentDoc as unknown as typeof P.AgentDoc

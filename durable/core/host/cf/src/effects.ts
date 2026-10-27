@@ -46,6 +46,8 @@ export interface EffectRuntime {
   env?: (target: { conversationId: number; cwd?: string; read: unknown }, context: Context) => unknown | Promise<unknown>
   /** `HarnessOptions.onReport`: extension failures that do not fail the calling operation. */
   report(error: unknown, info: { type: string }): void
+  /** `HarnessOptions.now`, the Harness clock a tool's `api.now()` reads; `Date.now` when absent. */
+  now?: () => number
   /** Credentials for a wire-plane request (`model_http`'s `auth`): headers to add. */
   authorize?: (auth: unknown) => Record<string, string> | Promise<Record<string, string>>
   fetch?: typeof fetch
@@ -219,6 +221,8 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
       get models() { return rt.models },
       registry: rt.snapshot?.(),
       env: envs.get(p.taskId),
+      // tool.ts now: the Harness clock, which throws once the invocation has ended (scheduler.ts runtime).
+      now: () => { invocation.binding.check(); return (rt.now ?? Date.now)() },
       outputWindow: p.outputWindow ?? undefined,
       output: (chunk: string | Uint8Array, skipped?: { bytes: number; newlines: number; endsWithNewline: boolean }) => {
         live()

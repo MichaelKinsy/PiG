@@ -348,6 +348,8 @@ func (h *handler) onOpen(ev *abi.Event) error {
 	// The host admits calls itself (the native driver's Close seals ahead of events its admitted callers have not posted yet): a
 	// call it admitted runs after the seal, as a call that entered Pi's line before close() does.
 	h.sess.HostAdmits, _ = boolOf(h.open, "hostAdmission")
+	// HarnessOptions.readOnly: the Session refuses commits with writes, and the scheduler loads live tasks as committed and runs nothing.
+	h.sess.ReadOnly, _ = boolOf(h.open, "readOnly")
 	h.sess.SubscribeCommits(h.publish)
 	h.opened = true
 	h.mintNext = live.NextID
@@ -492,6 +494,8 @@ func errorName(err error) string {
 	// First: a SessionFailed carries the Storage error that failed the Session as its cause, which may be a thrown error.
 	case errors.Is(err, session.ErrSessionFailed):
 		return "SessionFailed"
+	case errors.Is(err, session.ErrReadOnlySession):
+		return "ReadOnlySession"
 	case errors.As(err, &rej):
 		return rej.Name
 	case errors.As(err, &thrown):

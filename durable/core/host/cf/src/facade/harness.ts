@@ -33,7 +33,7 @@ import { coreFromEnvironment } from "./core-env.ts"
 import { customTaskRunner } from "./taskruntime.ts"
 import { hostTimers, SetTimerTimers, TimeoutTimers, type SetTimer } from "../timers.ts"
 import type { TimerDriver } from "../host.ts"
-import { errorMessage, reviveError, SessionFailed, StorageRequestError, type WireErrorBody } from "../errors.ts"
+import { errorMessage, ReadOnlySession, reviveError, SessionFailed, StorageRequestError, type WireErrorBody } from "../errors.ts"
 import { contained } from "./session/session.ts"
 import { Transaction } from "./session/transaction.ts"
 import { structuredOutputError } from "./structured.ts"
@@ -109,6 +109,12 @@ export interface FacadeOptions {
   core?: CoreSource
   /** PiG addition: the pool of Wasm instances this Harness's session lives in (default: the module's own, shared by every Harness of the isolate). Its high-water mark decides when an instance is recycled at a quiet point. */
   pool?: CorePool
+  /**
+   * Open for reading only, as a viewer of a session that another process drives (types.ts HarnessOptions.readOnly). Open recovers nothing: a
+   * `running` task stays as committed. A commit with writes rejects with `ReadOnlySession` before it reaches Storage, and so does `resume()` and
+   * every call that enables scheduling; the Harness stays usable for reads and watches.
+   */
+  readOnly?: boolean
   /** PiG addition: `session` opens the tables-and-documents Session without the Harness (createSession). */
   mode?: "session" | "harness"
   /** PiG addition: the sidecar mode of ADR D6. Default `index`. */
@@ -306,6 +312,8 @@ export class Harness {
       harness.timers = timers
       harness.currentModels = currentModels
       const report = options.onReport ?? (() => {})
+      // harness.ts resolveAgent: a wrapper that fails reports the extension that installed it and the conversation whose agent was resolved.
+      const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
       if (options.onWake !== undefined) {
         // scheduler.ts #scheduleWake: only a changed value is offered; one whose delivery threw is reported and offered again at the next change.
         const onWake = options.onWake
@@ -315,11 +323,9 @@ export class Harness {
           try { onWake(wake); last = wake } catch (error) { report(error, { type: "host_error", callback: "onWake" }) }
         }
       }
-      // harness.ts resolveAgent: a wrapper that fails reports the extension that installed it and the conversation whose agent was resolved.
-      const reportWrap = (conversationId: ConversationId) => (error: unknown, extension: string | undefined) => report(error, { type: "extension_error", conversationId, ...(extension === undefined ? {} : { extension }) })
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), documentState: (token: any, ...args: unknown[]) => harness.documentState(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
-        client, registry, get models() { return currentModels() }, env: options.env, report,
+        client, registry, get models() { return currentModels() }, env: options.env, report, now: options.now,
         hostApi: runtimeHostApi,
         readTarget: () => self.harness,
         snapshot: () => options.registry.snapshot(),
@@ -525,6 +531,7 @@ export class Harness {
       settings: this.settingsWire(),
       mode: this.options.mode ?? "harness", models, registry: this.registry.snapshot(), sidecar: this.options.sidecar ?? "index", delta: true,
       hasEnv: this.options.env !== undefined,
+      ...(this.options.readOnly === true ? { readOnly: true } : {}),
       onWake: this.options.onWake !== undefined,
       ...(this.gate.length === 0 ? {} : { storageGate: this.gate }),
       ...(this.profile() === undefined ? {} : { storageProfile: this.profile() }),
@@ -833,6 +840,8 @@ export class Harness {
 
   resume(): void {
     this.assertOpen()
+    // scheduler.ts resume: a read-only Harness runs nothing.
+    if (this.options.readOnly === true) throw new ReadOnlySession("running tasks")
     // Every call kicks: scheduler.ts resume() :267-270 sets dirty and, when no drain is queued or running, queues a drain whose reserve pass is a Session line job. Calls in one synchronous section share the drain queued by the first (#kick returns while #draining), so only the first sends the event; skipping later sections would leave the line idle where Pi's holds it.
     if (this.resumeQueued) return
     this.resumeQueued = true
@@ -921,13 +930,13 @@ export class Harness {
   }
 
   /** harness.ts :275-278: the scheduler's own resume never fails (a closed Harness is rejected by the core's answer) and the promise is returned as it is. */
-  waitForTask(id: number, context: Context) { try { this.resume() } catch { /* rejected by the core's answer */ } return awaitWithContext(this.client.api("waitForTask", { taskId: id }), context) }
+  waitForTask(id: number, context: Context) { try { this.resume() } catch (error) { if (error instanceof ReadOnlySession) return Promise.reject(error) /* else rejected by the core's answer */ } return awaitWithContext(this.client.api("waitForTask", { taskId: id }), context) }
   waitForIdle(context: Context): Promise<void> { return this.waitIdle(undefined, context) }
 
   /** scheduler.ts waitForIdle: idle returns an already-resolved promise (the caller's await takes one pass), a closed Harness rejects, otherwise the core's waiter settles with the scope's last live task and the caller's context cancels only this wait. */
   waitIdle(conversationId: number | undefined, context: Context): Promise<void> {
     // The scheduler's own resume never fails (scheduler.ts resume); only Harness.resume asserts open.
-    try { this.resume() } catch { /* a closed Harness is rejected by the core's answer below */ }
+    try { this.resume() } catch (error) { if (error instanceof ReadOnlySession) return Promise.reject(error) /* else a closed Harness is rejected by the core's answer below */ }
     const { promise, settled } = this.client.apiNow<void>("waitForIdle", conversationId === undefined ? {} : { conversationId })
     return settled ? promise : awaitWithContext(promise, context)
   }

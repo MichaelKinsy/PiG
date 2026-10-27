@@ -44,6 +44,8 @@ ci-drift: ci-drift-pr module-size
 ci-drift-pr: port-lint any-trap perf-lint
 ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps behavior-contracts test-inventory-drift test-inventory test-porting-release format-version-inventory sdk-surface-drift sdk-apidiff piglet-strip-build
 ci-closure: closure-check
+# The Durable core conformance gate in CI: the host's npm tree linked to the pinned Pi build first (durable-contract only checks out the reference); the job picks one build with DURABLE_CONTRACT_ARGS="--impls <pi|wasm-tinygo|native> -j 4".
+ci-durable-contract: durable-core-host-deps durable-contract
 # portmap-check runs the evidence tests of every proven PORT_MAP row under coverage. It builds each evidence package's test binary once and
 # caches each green row in build/portmap-coverage, but a cold run is still about 18 CPU-minutes of 4-CPU runner time, so CI runs it as
 # PORTMAP_SHARDS parallel jobs; every shard computes the same plan, judges its own rows and skips the rest, and the Linux verification
@@ -111,4 +113,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance
+.PHONY: ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance
