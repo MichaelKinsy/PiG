@@ -92,8 +92,7 @@ func TestANestedCallIsItsOwnToolTaskAndItsResultGoesToTheCaller(t *testing.T) {
 	mustClose(t, run.harness)
 }
 
-// harness-nested-tools.test.ts:432 it("reports nested calls in pi.live.nestedTools and as tool events with their parent"): the
-// pi.live.nestedTools half; the events half is TestNestedCallsAreToolEventsWithTheirParent.
+// harness-nested-tools.test.ts:428 it("reports nested calls in pi.live.nestedTools with their parent")
 func TestARunningNestedCallIsInTheLiveNestedToolSlots(t *testing.T) {
 	setup := chatSetup(t)
 	running, release := make(chan struct{}), make(chan struct{})
@@ -113,6 +112,11 @@ func TestARunningNestedCallIsInTheLiveNestedToolSlots(t *testing.T) {
 	}))
 	setup.Faux.SetResponses([]ai.FauxResponseStep{tlCallsStep(tlCall{"batch", map[string]any{}, "c1"}), tlDone()})
 	harness, root := openChat(t, storage.NewMemoryStorage(), setup)
+	history := viewHistory(t, harness, root.Id())
+	if first := history.Live()[0]; first.NestedTools != nil {
+		t.Fatalf("nestedTools of the first view = %+v, want none", first.NestedTools)
+	}
+	nested := nestedResults(harness)
 	submission := ownSubmit(t, root, ownInput("go"))
 	<-running
 	live, err := durable.Snapshot[LiveState](testContext, harness, LiveDoc, root.Id())
@@ -130,6 +134,27 @@ func TestARunningNestedCallIsInTheLiveNestedToolSlots(t *testing.T) {
 	}
 	if err := root.WaitForIdle(testContext); err != nil {
 		t.Fatal(err)
+	}
+	history.Detach()
+	states := history.Live()
+	if started := startOrder(states); !slices.Equal(started, []string{"c1", "c1/1"}) {
+		t.Fatalf("start order %v, want c1 then c1/1", started)
+	}
+	if endedAt(states, "c1/1") >= endedAt(states, "c1") {
+		t.Fatalf("the nested call ended at %d, its caller at %d", endedAt(states, "c1/1"), endedAt(states, "c1"))
+	}
+	if result, found := nested.nestedResultOf(states, "c1/1"); !found || result.StructuredOutput != "slow done" || result.IsError {
+		t.Fatalf("nested result = %+v, %v", result, found)
+	}
+	// Slots name the call's task and, for a nested call, the calling one.
+	tasks := tlToolTasks(tlScanTasks(t, harness, root.Id()))
+	parent, child := tasks[0], tasks[1]
+	childSlot := firstSlot(slotsOf(states, "c1/1"), func(*slotView) bool { return true })
+	if childSlot == nil || childSlot.Nested == nil || *childSlot.TaskId != child.Id || childSlot.Nested.ParentCallId != "c1" || childSlot.Nested.ParentTaskId != parent.Id {
+		t.Fatalf("slot of the nested call = %+v", childSlot)
+	}
+	if parentSlot := firstSlot(slotsOf(states, "c1"), func(slot *slotView) bool { return slot.TaskId != nil }); parentSlot == nil || *parentSlot.TaskId != parent.Id {
+		t.Fatalf("slot of the calling call = %+v", parentSlot)
 	}
 	expectLiveEmpty(t, harness, root.Id())
 	mustClose(t, harness)
@@ -280,24 +305,6 @@ func TestANestedCallSlotShowsTheArgumentsItRunsWith(t *testing.T) {
 	}))
 	setup.Faux.SetResponses([]ai.FauxResponseStep{tlCallsStep(tlCall{"batch", map[string]any{}, "c1"}), tlDone()})
 	harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-	stream := must(WatchEvents(testContext, harness, root.Id()))
-	var mu sync.Mutex
-	var starts []ToolExecutionStartEvent
-	var runEnded bool
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		for _, event := range batch {
-			switch typed := event.(type) {
-			case ToolExecutionStartEvent:
-				starts = append(starts, typed)
-			case RunEndEvent:
-				runEnded = true
-			}
-		}
-		return nil
-	})
 	submission := ownSubmit(t, root, ownInput("go"))
 	slot := func() NestedToolSlot {
 		t.Helper()
@@ -323,19 +330,7 @@ func TestANestedCallSlotShowsTheArgumentsItRunsWith(t *testing.T) {
 	if err := root.WaitForIdle(testContext); err != nil {
 		t.Fatal(err)
 	}
-	untilDelivered(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return runEnded
-	})
-	_, _ = stream.Stop()
-	// The start event carries the arguments the call runs with; the task input keeps the ones it was made with.
-	mu.Lock()
-	index := slices.IndexFunc(starts, func(start ToolExecutionStartEvent) bool { return start.ToolCallId == "c1/1" })
-	mu.Unlock()
-	if index < 0 || starts[index].Args == nil || starts[index].Args.Value("text") != large {
-		t.Fatalf("the nested call's start event = %v, want the replaced arguments", index)
-	}
+	// The slot showed the arguments the call runs with; the task input keeps the ones it was made with.
 	nested := 0
 	for _, task := range tlToolTasks(tlScanTasks(t, harness, root.Id())) {
 		input, err := durable.FromJsonValue[ToolTaskInput](task.Input)
@@ -404,35 +399,9 @@ func TestANestedCallKeepsTheCallersArgumentOrder(t *testing.T) {
 			}))
 			setup.Faux.SetResponses([]ai.FauxResponseStep{tlCallsStep(tlCall{"batch", map[string]any{}, "c1"}), tlDone()})
 			harness, root := openChat(t, open(t), setup)
-			stream := must(WatchEvents(testContext, harness, root.Id()))
-			var mu sync.Mutex
-			var startArgs string
-			var runEnded bool
-			stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-				batch := change.Value
-				mu.Lock()
-				defer mu.Unlock()
-				for _, event := range batch {
-					switch typed := event.(type) {
-					case ToolExecutionStartEvent:
-						if typed.ToolCallId == "c1/1" {
-							startArgs = mustJSON(t, typed.Args)
-						}
-					case RunEndEvent:
-						runEnded = true
-					}
-				}
-				return nil
-			})
 			if settled := must(ownSubmit(t, root, ownInput("go")).Wait(testContext)); settled.Status != durable.SubmissionDone {
 				t.Fatalf("submission %s, want done", settled.Status)
 			}
-			untilDelivered(t, func() bool {
-				mu.Lock()
-				defer mu.Unlock()
-				return runEnded
-			})
-			_, _ = stream.Stop()
 			if !strings.Contains(slots, `"arguments":`+ordered+`,"status":"running"`) {
 				t.Errorf("stored nestedTools = %s, want the arguments %s", slots, ordered)
 			}
@@ -442,105 +411,9 @@ func TestANestedCallKeepsTheCallersArgumentOrder(t *testing.T) {
 			if want := `{"phase":"execute","arguments":` + ordered + `,"replay":"unsafe"}`; checkpoint != want {
 				t.Errorf("stored checkpoint = %s, want %s", checkpoint, want)
 			}
-			mu.Lock()
-			defer mu.Unlock()
-			if startArgs != ordered {
-				t.Errorf("start event arguments = %s, want %s", startArgs, ordered)
-			}
 			mustClose(t, harness)
 		})
 	}
-}
-
-// harness-nested-tools.test.ts:432 it("reports nested calls in pi.live.nestedTools and as tool events with their parent"): the
-// events half, with the empty snapshot nestedTools.
-func TestNestedCallsAreToolEventsWithTheirParent(t *testing.T) {
-	setup := chatSetup(t)
-	running, release := make(chan struct{}), make(chan struct{})
-	addTool(t, setup.Registry, tlTool("slow", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-		api.Output("working\n")
-		if err := api.Details(ctx, map[string]any{"step": 1.0}); err != nil {
-			return durable.ToolExecutionResult{}, err
-		}
-		close(running)
-		<-release
-		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "slow done"}}}, nil
-	}))
-	addTool(t, setup.Registry, tlTool("batch", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-		result, err := api.ExecuteTool(ctx, "slow", map[string]any{})
-		text, _ := result.StructuredOutput.(string)
-		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}}, err
-	}))
-	setup.Faux.SetResponses([]ai.FauxResponseStep{tlCallsStep(tlCall{"batch", map[string]any{}, "c1"}), tlDone()})
-	harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-	stream, err := WatchEvents(testContext, harness, root.Id())
-	if err != nil || stream.Snapshot.NestedTools == nil || len(stream.Snapshot.NestedTools) != 0 {
-		t.Fatalf("snapshot nestedTools = %#v, %v, want an empty list", stream.Snapshot.NestedTools, err)
-	}
-	var mu sync.Mutex
-	var events []AgentEvent
-	var runEnded bool
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		events = append(events, batch...)
-		for _, event := range batch {
-			if _, ok := event.(RunEndEvent); ok {
-				runEnded = true
-			}
-		}
-		mu.Unlock()
-		return nil
-	})
-	submission := ownSubmit(t, root, ownInput("go"))
-	<-running
-	close(release)
-	if _, err := submission.Wait(testContext); err != nil {
-		t.Fatal(err)
-	}
-	if err := root.WaitForIdle(testContext); err != nil {
-		t.Fatal(err)
-	}
-	untilDelivered(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return runEnded
-	})
-	_, _ = stream.Stop()
-	tasks := tlToolTasks(tlScanTasks(t, harness, root.Id()))
-	parent, child := tasks[0], tasks[1]
-	var summary []string
-	var nestedEnd, parentEnd *ToolExecutionEndEvent
-	var nestedUpdate bool
-	for _, event := range events {
-		switch typed := event.(type) {
-		case ToolExecutionStartEvent:
-			summary = append(summary, "start "+typed.ToolCallId+" parent="+typed.ParentToolCallId)
-		case ToolExecutionEndEvent:
-			summary = append(summary, "end "+typed.ToolCallId+" parent="+typed.ParentToolCallId)
-			if typed.ToolCallId == "c1/1" {
-				nestedEnd = &typed
-			} else {
-				parentEnd = &typed
-			}
-		case ToolExecutionUpdateEvent:
-			nestedUpdate = nestedUpdate || typed.ToolCallId == "c1/1" && typed.ParentToolCallId == "c1"
-		}
-	}
-	if got, want := strings.Join(summary, ";"), "start c1 parent=;start c1/1 parent=c1;end c1/1 parent=c1;end c1 parent="; got != want {
-		t.Fatalf("tool events = %s, want %s", got, want)
-	}
-	if nestedEnd.Result == nil || nestedEnd.Result.StructuredOutput != "slow done" || nestedEnd.Result.IsError {
-		t.Fatalf("nested end = %+v", nestedEnd)
-	}
-	if nestedEnd.TaskId == nil || *nestedEnd.TaskId != child.Id || nestedEnd.ParentTaskId == nil || *nestedEnd.ParentTaskId != parent.Id ||
-		parentEnd.TaskId == nil || *parentEnd.TaskId != parent.Id || parentEnd.ParentTaskId != nil || parentEnd.Result != nil {
-		t.Fatalf("task ids: nested %+v, parent %+v", nestedEnd, parentEnd)
-	}
-	if !nestedUpdate {
-		t.Fatal("no tool_execution_update for the nested call")
-	}
-	mustClose(t, harness)
 }
 
 func nestedBatch(t *testing.T, setup *chatState, body func(ctx context.Context, api durable.ToolExecutionApi) error) tlRunResult {
@@ -745,27 +618,8 @@ func TestACallerThatReturnsAbortsTheNestedCallsItLeftRunning(t *testing.T) {
 	}))
 	setup.Faux.SetResponses([]ai.FauxResponseStep{tlCallsStep(tlCall{"batch", map[string]any{}, "c1"}), tlDone()})
 	harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-	stream, err := WatchEvents(testContext, harness, root.Id())
-	if err != nil {
-		t.Fatal(err)
-	}
-	var mu sync.Mutex
-	var ends []ToolExecutionEndEvent
-	var runEnded bool
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		for _, event := range batch {
-			if end, ok := event.(ToolExecutionEndEvent); ok {
-				ends = append(ends, end)
-			}
-			if _, ok := event.(RunEndEvent); ok {
-				runEnded = true
-			}
-		}
-		return nil
-	})
+	history := viewHistory(t, harness, root.Id())
+	nested := nestedResults(harness)
 	settled, err := ownSubmit(t, root, ownInput("go")).Wait(testContext)
 	if err != nil || settled.Status != durable.SubmissionDone {
 		t.Fatalf("settled %+v, %v", settled, err)
@@ -773,12 +627,7 @@ func TestACallerThatReturnsAbortsTheNestedCallsItLeftRunning(t *testing.T) {
 	if err := root.WaitForIdle(testContext); err != nil {
 		t.Fatal(err)
 	}
-	untilDelivered(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return runEnded
-	})
-	_, _ = stream.Stop()
+	history.Detach()
 	if results := tlResults(allEntries(t, root)); len(results) == 0 || tlResultText(results[0]) != "returned early" {
 		t.Fatalf("results %+v, want the caller's \"returned early\"", results)
 	}
@@ -789,16 +638,15 @@ func TestACallerThatReturnsAbortsTheNestedCallsItLeftRunning(t *testing.T) {
 	if state := nestedOutcome(t, tasks[1]); !strings.Contains(state, `"outcome":{"status":"aborted","result":{"kind":"nested"}}`) {
 		t.Fatalf("child state = %s", state)
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	// The aborted call's result keeps its details; programs get no partial output, which only the model read. The nested
-	// call ends, with its result, before its caller.
-	if len(ends) != 2 || ends[0].ToolCallId != "c1/1" || ends[1].ToolCallId != "c1" || ends[1].Result != nil {
-		t.Fatalf("ends = %+v", ends)
+	// The aborted call's result keeps its details; programs get no partial output, which only the model read.
+	result, found := nested.nestedResultOf(history.Live(), "c1/1")
+	if !found || !result.IsError || !result.HasDetails || mustJSON(t, result.Details) != `{"step":1}` || result.HasStructuredOutput {
+		t.Fatalf("nested end result = %+v, %v", result, found)
 	}
-	result := ends[0].Result
-	if result == nil || !result.IsError || !result.HasDetails || mustJSON(t, result.Details) != `{"step":1}` || result.HasStructuredOutput {
-		t.Fatalf("nested end result = %+v", result)
+	// The nested call ends before its caller.
+	live := history.Live()
+	if ended := endedAt(live, "c1/1"); ended <= 0 || ended >= endedAt(live, "c1") {
+		t.Fatalf("the nested call ended at %d, its caller at %d", ended, endedAt(live, "c1"))
 	}
 	expectLiveEmpty(t, harness, root.Id())
 	mustClose(t, harness)
@@ -1105,41 +953,14 @@ func TestNestedCallsOfNestedCallsEndChildrenFirst(t *testing.T) {
 	addTool(t, setup.Registry, relay("outer", "inner", map[string]any{}, durable.NestedCallOptions{}))
 	setup.Faux.SetResponses([]ai.FauxResponseStep{tlCallsStep(tlCall{"outer", map[string]any{}, "c1"}), tlDone()})
 	harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-	stream, err := WatchEvents(testContext, harness, root.Id())
-	if err != nil {
-		t.Fatal(err)
-	}
-	var mu sync.Mutex
-	var tools []string
-	var runEnded bool
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		for _, event := range batch {
-			switch typed := event.(type) {
-			case RunEndEvent:
-				runEnded = true
-			case ToolExecutionStartEvent:
-				tools = append(tools, "start "+typed.ToolCallId+" <"+typed.ParentToolCallId+">")
-			case ToolExecutionEndEvent:
-				tools = append(tools, "end "+typed.ToolCallId+" <"+typed.ParentToolCallId+">")
-			}
-		}
-		return nil
-	})
+	history := viewHistory(t, harness, root.Id())
 	if _, err := ownSubmit(t, root, ownInput("go")).Wait(testContext); err != nil {
 		t.Fatal(err)
 	}
 	if err := root.WaitForIdle(testContext); err != nil {
 		t.Fatal(err)
 	}
-	untilDelivered(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return runEnded
-	})
-	_, _ = stream.Stop()
+	history.Detach()
 	if results := tlResults(allEntries(t, root)); len(results) == 0 || tlResultText(results[0]) != "echo deep" {
 		t.Fatalf("results %+v, want \"echo deep\"", results)
 	}
@@ -1147,11 +968,16 @@ func TestNestedCallsOfNestedCallsEndChildrenFirst(t *testing.T) {
 	if len(all) != 3 || all[1].Owner == nil || *all[1].Owner != all[0].Id || all[2].Owner == nil || *all[2].Owner != all[1].Id {
 		t.Fatalf("tasks = %v", all)
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	want := []string{"start c1 <>", "start c1/1 <c1>", "start c1/1/x <c1/1>", "end c1/1/x <c1/1>", "end c1/1 <c1>", "end c1 <>"}
-	if !slices.Equal(tools, want) {
-		t.Fatalf("tool events = %q", tools)
+	states := history.Live()
+	if started := startOrder(states); !slices.Equal(started, []string{"c1", "c1/1", "c1/1/x"}) {
+		t.Fatalf("start order %v", started)
+	}
+	if slot := firstSlot(slotsOf(states, "c1/1/x"), func(*slotView) bool { return true }); slot == nil || slot.Nested == nil || slot.Nested.ParentCallId != "c1/1" {
+		t.Fatalf("slot of c1/1/x = %+v, want parent c1/1", slot)
+	}
+	// Children end first.
+	if deep, inner, outer := endedAt(states, "c1/1/x"), endedAt(states, "c1/1"), endedAt(states, "c1"); deep >= inner || inner >= outer {
+		t.Fatalf("calls ended at c1/1/x %d, c1/1 %d, c1 %d, want children first", deep, inner, outer)
 	}
 	expectLiveEmpty(t, harness, root.Id())
 	mustClose(t, harness)
@@ -1319,45 +1145,20 @@ func TestAnAbortedNestedCallWithoutProgressLosesItsRunningOutput(t *testing.T) {
 	}))
 	setup.Faux.SetResponses([]ai.FauxResponseStep{tlCallsStep(tlCall{"batch", map[string]any{}, "c1"}), tlDone()})
 	harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-	stream, err := WatchEvents(testContext, harness, root.Id())
-	if err != nil {
-		t.Fatal(err)
-	}
-	var mu sync.Mutex
-	var nestedEnd *ToolExecutionEndEvent
-	var runEnded bool
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		for _, event := range batch {
-			if end, ok := event.(ToolExecutionEndEvent); ok && end.ToolCallId == "c1/1" {
-				nestedEnd = &end
-			}
-			if _, ok := event.(RunEndEvent); ok {
-				runEnded = true
-			}
-		}
-		return nil
-	})
+	history := viewHistory(t, harness, root.Id())
+	nested := nestedResults(harness)
 	if _, err := ownSubmit(t, root, ownInput("go")).Wait(testContext); err != nil {
 		t.Fatal(err)
 	}
 	if err := root.WaitForIdle(testContext); err != nil {
 		t.Fatal(err)
 	}
-	untilDelivered(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return runEnded
-	})
-	_, _ = stream.Stop()
-	mu.Lock()
-	defer mu.Unlock()
-	if nestedEnd == nil || nestedEnd.Result == nil {
-		t.Fatalf("nested end = %+v", nestedEnd)
+	history.Detach()
+	// The abort's result is built from the slot, which never got the output.
+	result, found := nested.nestedResultOf(history.Live(), "c1/1")
+	if !found {
+		t.Fatal("no result of the nested call")
 	}
-	result := nestedEnd.Result
 	if !result.IsError || result.HasStructuredOutput || result.HasDetails || len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "aborted" {
 		t.Fatalf("result = %+v", result)
 	}
@@ -1396,68 +1197,60 @@ func TestSeveralRunningNestedCallsReportTheirOutputAndShowToALateSubscriber(t *t
 	submission := ownSubmit(t, root, ownInput("go"))
 	<-running["one"]
 	<-running["two"]
-	stream, err := WatchEvents(testContext, harness, root.Id())
-	if err != nil {
-		t.Fatal(err)
-	}
+	watch := must(root.Watch(testContext, nil))
+	nestedOf := func(view ConversationView) []NestedToolSlot { return liveValue(t, view).NestedTools }
 	var ids []string
-	for _, slot := range stream.Snapshot.NestedTools {
+	for _, slot := range nestedOf(watch.Value()) {
 		ids = append(ids, slot.CallId+" "+string(slot.Status))
 	}
 	if !slices.Equal(ids, []string{"c1/1 running", "c1/2 running"}) {
-		t.Fatalf("snapshot nestedTools = %v", ids)
+		t.Fatalf("nestedTools of the late view = %v", ids)
 	}
+	// Each value's operations rebuild the next one, the late subscriber's starting value included.
+	initial := watch.Value()
 	var mu sync.Mutex
-	var updates []string
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
+	var frames []viewFrame
+	watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
 		mu.Lock()
 		defer mu.Unlock()
-		for _, event := range batch {
-			if update, ok := event.(ToolExecutionUpdateEvent); ok && update.Output != nil {
-				updates = append(updates, update.ToolCallId+" "+*update.Output.Set)
-			}
-		}
+		frames = append(frames, viewFrame{value: change.Value, ops: change.Ops})
 		return nil
 	})
-	count := func() int { mu.Lock(); defer mu.Unlock(); return len(updates) }
-	waitFor := func(n int) {
-		t.Helper()
-		for range 400 {
-			if count() >= n {
-				return
-			}
-			time.Sleep(10 * time.Millisecond)
+	outputs := func() [2]string {
+		mu.Lock()
+		defer mu.Unlock()
+		var latest [2]string
+		if len(frames) == 0 {
+			return latest
 		}
-		t.Fatalf("updates = %v, want %d", updates, n)
+		for index, slot := range nestedOf(frames[len(frames)-1].value) {
+			if slot.Output != nil && index < 2 {
+				latest[index] = *slot.Output
+			}
+		}
+		return latest
 	}
 	// The second slot writes first, so a wrong slot index in the update path would show.
 	close(wrote["two"])
-	waitFor(1)
+	eventually(t, func() bool { return outputs()[1] == "two\n" })
+	if got := outputs(); got != [2]string{"", "two\n"} {
+		t.Fatalf("outputs = %q, want only the second slot's", got)
+	}
 	close(wrote["one"])
-	waitFor(2)
+	eventually(t, func() bool { return outputs()[0] == "one\n" })
+	if got := outputs(); got != [2]string{"one\n", "two\n"} {
+		t.Fatalf("outputs = %q", got)
+	}
 	close(release)
 	if _, err := submission.Wait(testContext); err != nil {
 		t.Fatal(err)
 	}
 	<-nestedDone
-	_, _ = stream.Stop()
+	must(watch.Stop())
 	mu.Lock()
-	defer mu.Unlock()
-	if !slices.Equal(updates, []string{"c1/2 two\n", "c1/1 one\n"}) {
-		t.Fatalf("updates = %q", updates)
-	}
+	delivered := slices.Clone(frames)
+	mu.Unlock()
+	replay(t, initial, delivered)
 	mustClose(t, harness)
 }
 
-// untilDelivered waits until the stream delivered the run's end. The stream delivers on its own goroutine, so idle does not
-// mean delivered (Pi drains in a microtask before waitForIdle resolves), and Stop drops undelivered batches.
-func untilDelivered(t *testing.T, delivered func() bool) {
-	t.Helper()
-	for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); time.Sleep(time.Millisecond) {
-		if delivered() {
-			return
-		}
-	}
-	t.Fatal("the run's end event was not delivered")
-}

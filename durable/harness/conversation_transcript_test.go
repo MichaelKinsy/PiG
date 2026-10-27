@@ -139,7 +139,7 @@ func transcriptShape(view *TranscriptView) []string {
 	return shape
 }
 
-func entryIds(entries []durable.EntryRecord) []string {
+func transcriptIds(entries []durable.EntryRecord) []string {
 	ids := make([]string, len(entries))
 	for index, entry := range entries {
 		ids[index] = fmt.Sprint(entry.Id)
@@ -179,7 +179,7 @@ func expectShape(t *testing.T, view *TranscriptView, want ...[]string) {
 }
 
 func earlierThen(entries []durable.EntryRecord) []string {
-	return slices.Concat([]string{"earlier"}, entryIds(entries))
+	return slices.Concat([]string{"earlier"}, transcriptIds(entries))
 }
 
 func TestConversationTranscript(t *testing.T) {
@@ -191,7 +191,7 @@ func TestConversationTranscript(t *testing.T) {
 			t.Fatalf("newest %d %v, want %d", newest, present, all[19].Id)
 		}
 		whole := newTranscript(t, (&countingLoader{entries: all}).load)
-		expectShape(t, whole.Merge(windowOf(all, 0, 19)), entryIds(all))
+		expectShape(t, whole.Merge(windowOf(all, 0, 19)), transcriptIds(all))
 	})
 
 	t.Run("appends, keeps entries the window dropped, and returns the same items when nothing is added", func(t *testing.T) {
@@ -234,7 +234,7 @@ func TestConversationTranscript(t *testing.T) {
 		if gap != (TranscriptGap{After: all[159].Id, UpTo: all[190].Id}) {
 			t.Fatalf("gap %+v", gap)
 		}
-		expectShape(t, stalled, []string{"earlier"}, entryIds(all[150:160]), []string{fmt.Sprintf("gap %d..%d", all[159].Id, all[190].Id)}, entryIds(all[190:]))
+		expectShape(t, stalled, []string{"earlier"}, transcriptIds(all[150:160]), []string{fmt.Sprintf("gap %d..%d", all[159].Id, all[190].Id)}, transcriptIds(all[190:]))
 		// 30 entries are missing; one page loads them all and closes the gap.
 		filled := must(helper.FillGap(testContext, gap))
 		expectShape(t, filled, earlierThen(all[150:]))
@@ -267,7 +267,7 @@ func TestConversationTranscript(t *testing.T) {
 		expectShape(t, view, earlierThen(all[20:]))
 		// A page without a next cursor reaches the start.
 		view = must(helper.LoadEarlier(testContext))
-		expectShape(t, view, entryIds(all))
+		expectShape(t, view, transcriptIds(all))
 		calls := load.calls.Load()
 		if again := must(helper.LoadEarlier(testContext)); again != view {
 			t.Fatal("loadEarlier at the start returned another view")
@@ -306,7 +306,7 @@ func TestConversationTranscript(t *testing.T) {
 		if gated.inner.calls.Load() != 2 {
 			t.Fatalf("%d loads, want 2", gated.inner.calls.Load())
 		}
-		expectShape(t, must(helper.LoadEarlier(testContext)), entryIds(all))
+		expectShape(t, must(helper.LoadEarlier(testContext)), transcriptIds(all))
 	})
 
 	t.Run("resumes after `newest`: an empty window right after it adds nothing; one past it opens a gap", func(t *testing.T) {
@@ -342,7 +342,7 @@ func TestConversationTranscript(t *testing.T) {
 		helper.Merge(windowOf(all, 90, 99))
 		// A wider window, such as a new watch with a larger `max`, covers the second half of the gap.
 		view := helper.Merge(windowOf(all, 70, 99))
-		expectShape(t, view, []string{"earlier"}, entryIds(all[40:50]), []string{fmt.Sprintf("gap %d..%d", all[49].Id, all[70].Id)}, entryIds(all[70:]))
+		expectShape(t, view, []string{"earlier"}, transcriptIds(all[40:50]), []string{fmt.Sprintf("gap %d..%d", all[49].Id, all[70].Id)}, transcriptIds(all[70:]))
 	})
 
 	t.Run("rejects loadEarlier before the first merge and returns the view for a gap that is gone", func(t *testing.T) {
@@ -391,8 +391,8 @@ func TestConversationTranscriptLoads(t *testing.T) {
 			t.Fatalf("fillGap: %v", err)
 		}
 		offline.Store(false)
-		expectShape(t, must(helper.LoadEarlier(testContext)), entryIds(all[:50]), []string{fmt.Sprintf("gap %d..%d", all[49].Id, all[90].Id)}, entryIds(all[90:]))
-		expectShape(t, must(helper.FillGap(testContext, firstGap(t, stalled))), entryIds(all))
+		expectShape(t, must(helper.LoadEarlier(testContext)), transcriptIds(all[:50]), []string{fmt.Sprintf("gap %d..%d", all[49].Id, all[90].Id)}, transcriptIds(all[90:]))
+		expectShape(t, must(helper.FillGap(testContext, firstGap(t, stalled))), transcriptIds(all))
 		if calls.Load() != 4 {
 			t.Fatalf("%d loads, want 4", calls.Load())
 		}
@@ -415,7 +415,7 @@ func TestConversationTranscriptLoads(t *testing.T) {
 			t.Fatalf("loadEarlier: %v", err)
 		}
 		fail.Store(false)
-		expectShape(t, must(helper.LoadEarlier(testContext)), entryIds(all))
+		expectShape(t, must(helper.LoadEarlier(testContext)), transcriptIds(all))
 	})
 
 	t.Run("keeps one gap for an empty window whose `before` lies inside it", func(t *testing.T) {
@@ -483,7 +483,7 @@ func TestConversationTranscriptLoads(t *testing.T) {
 		}
 		must(helper.LoadEarlier(testContext))
 		view = must(helper.LoadEarlier(testContext))
-		expectShape(t, view, entryIds(all[:50]))
+		expectShape(t, view, transcriptIds(all[:50]))
 	})
 
 	t.Run("resumes with `resume`: nil before a merge, an empty window for an empty transcript, `from` after the newest", func(t *testing.T) {
@@ -536,7 +536,7 @@ func TestConversationTranscriptOverAHarness(t *testing.T) {
 		for range 15 {
 			note()
 		}
-		eventually(t, func() bool { return len(entriesOf(current())) == 25 })
+		eventually(t, func() bool { return len(transcriptEntriesIn(current())) == 25 })
 		if len(gapsOf(current())) != 0 {
 			t.Fatalf("a gap in %v", transcriptShape(current()))
 		}
@@ -561,7 +561,7 @@ func TestConversationTranscriptOverAHarness(t *testing.T) {
 			}
 			merged = must(helper.LoadEarlier(testContext))
 		}
-		if got, want := entryIds(entriesOf(merged)), entryIds(allEntries(t, root)); !slices.Equal(got, want) {
+		if got, want := transcriptIds(transcriptEntriesIn(merged)), transcriptIds(allEntries(t, root)); !slices.Equal(got, want) {
 			t.Fatalf("transcript %v, want every entry of the conversation %v", got, want)
 		}
 		// A short drop resumes without a gap.
@@ -586,8 +586,8 @@ func TestConversationTranscriptOverAHarness(t *testing.T) {
 	})
 }
 
-// entriesOf is the entries among the items of view, in order.
-func entriesOf(view *TranscriptView) []durable.EntryRecord {
+// transcriptEntriesIn is the entries among the items of view, in order.
+func transcriptEntriesIn(view *TranscriptView) []durable.EntryRecord {
 	var entries []durable.EntryRecord
 	for _, item := range view.Items {
 		if entry, ok := item.(TranscriptEntry); ok {

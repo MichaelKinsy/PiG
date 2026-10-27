@@ -203,27 +203,10 @@ func TestTheHarnessStoresExactlyWhatCallersAndEventsGetAndKeepsAStoredNull(t *te
 			}
 		}
 	})
-	stream := must(WatchEvents(testContext, harness, root.Id()))
-	var mu sync.Mutex
-	var ends []string
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		for _, event := range batch {
-			if end, ok := event.(ToolExecutionEndEvent); ok && end.ParentToolCallId != "" {
-				ends = append(ends, encodedJSON(t, end.Result))
-			}
-		}
-		return nil
-	})
 	if _, err := ownSubmit(t, root, ownInput("go")).Wait(testContext); err != nil {
 		t.Fatal(err)
 	}
 	if err := harness.WaitForIdle(testContext); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := stream.Stop(); err != nil {
 		t.Fatal(err)
 	}
 	mustClose(t, harness)
@@ -238,15 +221,13 @@ func TestTheHarnessStoresExactlyWhatCallersAndEventsGetAndKeepsAStoredNull(t *te
 	storedMu.Lock()
 	gotStored := slices.Clone(stored)
 	storedMu.Unlock()
-	mu.Lock()
-	gotEnds := slices.Clone(ends)
-	mu.Unlock()
-	if len(gotStored) != 2 || len(gotEnds) != 2 {
-		t.Fatalf("stored %v, events %v, want two of each", gotStored, gotEnds)
+	// A client reads a live caller's nested results from the same documents.
+	if len(gotStored) != 2 {
+		t.Fatalf("stored %v, want two", gotStored)
 	}
 	for i := range want {
-		if !equalJSONText(t, gotStored[i], want[i]) || !equalJSONText(t, gotEnds[i], want[i]) {
-			t.Errorf("result %d: stored %s, event %s, callers got %s", i, gotStored[i], gotEnds[i], want[i])
+		if !equalJSONText(t, gotStored[i], want[i]) {
+			t.Errorf("result %d: stored %s, callers got %s", i, gotStored[i], want[i])
 		}
 	}
 }

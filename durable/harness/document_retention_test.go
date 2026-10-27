@@ -96,10 +96,10 @@ func TestHarnessDocumentRetentionFollowsSettings(t *testing.T) {
 	}
 }
 
-// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:497 "gives the same events with documents evicted right after use as with
-// documents kept": a run that streams a tool's output yields the same sequence of event types and tool outputs whether the Session
-// drops every unattached document at once or keeps them ten minutes.
-func TestTheEventsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept(t *testing.T) {
+// packages/durable/test/session-document-retention.test.ts "gives the same views with documents evicted right after use as with
+// documents kept": a run that streams a tool's output yields the same sequence of entries, run states, and tool outputs whether
+// the Session drops every unattached document at once or keeps them ten minutes.
+func TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept(t *testing.T) {
 	run := func(retentionMs float64) []string {
 		setup := chatSetup(t)
 		setup.SetSettings(func(settings *HarnessSettings) {
@@ -109,14 +109,19 @@ func TestTheEventsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept
 		// Each step waits for the update of the one before it. Upstream paces the steps with a 5 ms timer, which only keeps two
 		// steps out of one commit while a commit takes less than 5 ms; under load here it does not, and the steps coalesce into
 		// fewer updates in one run than the other. Waiting for the update delivered puts every step in a commit of its own.
-		updated := make(chan struct{}, 3)
+		var history *viewRecording
 		addTool(t, setup.Registry, tlTool("steps", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			shown := ""
 			for _, step := range []string{"a\n", "b\n", "c\n"} {
 				api.Output(step)
-				select {
-				case <-updated:
-				case <-ctx.Done():
-					return durable.ToolExecutionResult{}, context.Cause(ctx)
+				shown += step
+				for !slices.ContainsFunc(history.Live(), func(state LiveState) bool { return toolOutputIs(state, shown) }) {
+					select {
+					case <-ctx.Done():
+						return durable.ToolExecutionResult{}, context.Cause(ctx)
+					default:
+						flush()
+					}
 				}
 			}
 			return durable.ToolExecutionResult{}, nil
@@ -126,55 +131,45 @@ func TestTheEventsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept
 			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}),
 		})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		var mu sync.Mutex
-		var events []AgentEvent
-		stream := must(WatchEvents(testContext, harness, root.Id()))
-		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-			batch := change.Value
-			mu.Lock()
-			defer mu.Unlock()
-			events = append(events, batch...)
-			for _, event := range batch {
-				if _, ok := event.(ToolExecutionUpdateEvent); ok {
-					select {
-					case updated <- struct{}{}:
-					default:
-					}
-				}
-			}
-			return nil
-		})
+		history = viewHistory(t, harness, root.Id())
 		must(submitInput(t, root, "go").Wait(testContext))
 		if err := harness.WaitForIdle(testContext); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := stream.Stop(); err != nil {
-			t.Fatal(err)
-		}
+		history.Detach()
 		if err := harness.Close(testContext); err != nil {
 			t.Fatal(err)
 		}
-		mu.Lock()
-		defer mu.Unlock()
-		out := make([]string, 0, len(events))
-		for _, event := range events {
-			if update, ok := event.(ToolExecutionUpdateEvent); ok {
-				encoded, err := json.Marshal(update.Output)
-				if err != nil {
-					t.Fatal(err)
+		// Ids and times differ between runs; the sequence of entries, run states, and tool outputs must not.
+		var out []string
+		for _, view := range history.All() {
+			live := liveValue(t, view)
+			var tools []string
+			for _, slot := range live.Tools {
+				output := ""
+				if slot.Output != nil {
+					output = *slot.Output
 				}
-				out = append(out, "update:"+string(encoded))
-				continue
+				tools = append(tools, fmt.Sprintf("%s:%s:%s", slot.CallId, slot.Status, output))
 			}
-			out = append(out, event.EventType())
+			var kinds []string
+			for _, entry := range view.Entries {
+				kinds = append(kinds, entry.Kind)
+			}
+			out = append(out, fmt.Sprintf("%s run:%t generation:%t %s", strings.Join(kinds, ","), live.Run != nil, live.Generation != nil, strings.Join(tools, " ")))
 		}
 		return out
 	}
 	evicted, kept := run(0), run(600_000)
 	if !slices.Equal(evicted, kept) {
-		t.Fatalf("events with retention 0 = %v\nwith retention 600000 = %v", evicted, kept)
+		t.Fatalf("views with retention 0 = %v\nwith retention 600000 = %v", evicted, kept)
 	}
-	if !slices.ContainsFunc(evicted, func(event string) bool { return len(event) > 7 && event[:7] == "update:" }) {
-		t.Fatalf("events = %v, want the streamed tool output among them", evicted)
+	if !slices.ContainsFunc(evicted, func(view string) bool { return strings.Contains(view, "s1:running:a\nb\n") }) {
+		t.Fatalf("views = %v, want the streamed tool output among them", evicted)
 	}
+}
+
+// toolOutputIs reports whether a tool slot of state holds exactly output so far.
+func toolOutputIs(state LiveState, output string) bool {
+	return slices.ContainsFunc(state.Tools, func(slot ToolSlot) bool { return slot.Output != nil && *slot.Output == output })
 }

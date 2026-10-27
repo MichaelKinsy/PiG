@@ -92,6 +92,8 @@ type slotView struct {
 	// TaskId is nil for a model-issued call not started yet.
 	TaskId *durable.TaskId
 	Status ToolSlotStatus
+	// Entry is the result entry of a done model-issued slot.
+	Entry *durable.EntryId
 	// Nested is the nested slot, nil for a model-issued one.
 	Nested *NestedToolSlot
 }
@@ -99,7 +101,7 @@ type slotView struct {
 func slotsIn(live LiveState) []slotView {
 	var slots []slotView
 	for _, slot := range live.Tools {
-		slots = append(slots, slotView{CallId: slot.CallId, Name: slot.Name, TaskId: slot.TaskId, Status: slot.Status})
+		slots = append(slots, slotView{CallId: slot.CallId, Name: slot.Name, TaskId: slot.TaskId, Status: slot.Status, Entry: slot.Entry})
 	}
 	for index := range live.NestedTools {
 		nested := &live.NestedTools[index]
@@ -246,4 +248,24 @@ func generations(graph TaskGraph) []TaskGraphNode {
 	}
 	slices.SortFunc(nodes, func(a, b TaskGraphNode) int { return int(a.Id - b.Id) })
 	return nodes
+}
+
+// liveIndexAfter is the index of the first pi.live value after index from that satisfies match; -1 when none does.
+func liveIndexAfter(states []LiveState, from int, match func(LiveState) bool) int {
+	for index := from + 1; index < len(states); index++ {
+		if match(states[index]) {
+			return index
+		}
+	}
+	return -1
+}
+
+// firstSlot is the first slot of slots that is present and satisfies match; nil when none is.
+func firstSlot(slots []*slotView, match func(*slotView) bool) *slotView {
+	for _, slot := range slots {
+		if slot != nil && match(slot) {
+			return slot
+		}
+	}
+	return nil
 }

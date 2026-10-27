@@ -137,7 +137,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		opened := tkOpenRoot(t, nil, tkOptions{storage: store})
 		harness, root := opened.harness, opened.root
 		view := newCallRecorder[ConversationView](store)
-		viewObservation := must(harness.ObserveConversation(testContext, root.Id(), view))
+		viewObservation := must(harness.ObserveConversation(testContext, root.Id(), view, nil))
 		graph := newCallRecorder[TaskGraph](store)
 		graphObservation := must(harness.ObserveTaskGraph(testContext, graph))
 		if viewObservation.Value().Conversation.Id != root.Id() {
@@ -146,7 +146,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		if len(graphObservation.Value().Tasks) != 0 {
 			t.Fatalf("graph %+v", graphObservation.Value())
 		}
-		watch := must(root.Watch(testContext))
+		watch := must(root.Watch(testContext, nil))
 		var watchedMu sync.Mutex
 		var watched []chord.WatchChange[ConversationView]
 		watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
@@ -216,9 +216,9 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		must(harness.ObserveConversation(testContext, root.Id(), observerFuncs[ConversationView]{
 			advance: func(context.Context, chord.WatchChange[ConversationView]) { panic(bug) },
 			end:     func(failure error) { endsMu.Lock(); ends = append(ends, failure); endsMu.Unlock() },
-		}))
+		}, nil))
 		healthy := newCallRecorder[ConversationView](store)
-		must(harness.ObserveConversation(testContext, root.Id(), healthy))
+		must(harness.ObserveConversation(testContext, root.Id(), healthy, nil))
 		appendPlainNote(t, root)
 		appendPlainNote(t, root)
 		if reports := opened.reports.all(); len(reports) != 1 || !errors.Is(reports[0], bug) {
@@ -250,7 +250,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		store := newControlledStorage()
 		opened := tkOpenRoot(t, nil, tkOptions{storage: store})
 		mustClose(t, opened.harness)
-		_, viewErr := opened.harness.ObserveConversation(testContext, opened.root.Id(), newCallRecorder[ConversationView](store))
+		_, viewErr := opened.harness.ObserveConversation(testContext, opened.root.Id(), newCallRecorder[ConversationView](store), nil)
 		_, graphErr := opened.harness.ObserveTaskGraph(testContext, newCallRecorder[TaskGraph](store))
 		for _, err := range []error{viewErr, graphErr} {
 			if err == nil || !strings.Contains(err.Error(), "Session is closed") {
@@ -274,7 +274,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		jobs := harness.(*harnessImpl).LineJobs()
 		attachingView := make(chan error, 1)
 		attachingGraph := make(chan error, 1)
-		go func() { _, err := harness.ObserveConversation(ctx, root.Id(), view); attachingView <- err }()
+		go func() { _, err := harness.ObserveConversation(ctx, root.Id(), view, nil); attachingView <- err }()
 		go func() { _, err := harness.ObserveTaskGraph(ctx, graph); attachingGraph <- err }()
 		eventually(t, func() bool { return harness.(*harnessImpl).LineJobs() >= jobs+2 })
 		cancel(errors.New("gone"))
@@ -341,7 +341,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		attach := func(detach bool) attached {
 			view := &observerFuncs[ConversationView]{advance: func(context.Context, chord.WatchChange[ConversationView]) {}, end: func(error) {}}
 			graph := &observerFuncs[TaskGraph]{advance: func(context.Context, chord.WatchChange[TaskGraph]) {}, end: func(error) {}}
-			viewObservation := must(harness.ObserveConversation(testContext, root.Id(), view))
+			viewObservation := must(harness.ObserveConversation(testContext, root.Id(), view, nil))
 			graphObservation := must(harness.ObserveTaskGraph(testContext, graph))
 			detachAll := func() { viewObservation.Detach(); graphObservation.Detach() }
 			if detach {

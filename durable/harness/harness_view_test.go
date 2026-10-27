@@ -49,7 +49,7 @@ func (r *recording) stop(t *testing.T) {
 // record starts a watch of conversation that records its acquisition revision and every delivered frame (harness-view.test.ts:24).
 func record(t *testing.T, conversation Conversation) *recording {
 	t.Helper()
-	watch := must(conversation.Watch(testContext))
+	watch := must(conversation.Watch(testContext, nil))
 	recorded := &recording{initial: watch.Value(), watch: watch}
 	watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
 		value := change.Value
@@ -65,7 +65,7 @@ func record(t *testing.T, conversation Conversation) *recording {
 // fresh returns a freshly built view of conversation, for comparing with an advanced one (harness-view.test.ts:36).
 func fresh(t *testing.T, conversation Conversation) ConversationView {
 	t.Helper()
-	watch := must(conversation.Watch(testContext))
+	watch := must(conversation.Watch(testContext, nil))
 	value := watch.Value()
 	must(watch.Stop())
 	return value
@@ -423,7 +423,7 @@ func TestConversationView(t *testing.T) {
 	t.Run("folds undelivered commits into one call whose ops reach the newest view", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-view.test.ts:231
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
-		watch := must(root.Watch(testContext))
+		watch := must(root.Watch(testContext, nil))
 		for range 101 {
 			noteEntry(t, root, "note")
 		}
@@ -484,7 +484,7 @@ func TestConversationView(t *testing.T) {
 	t.Run("ends watches at close and rejects later acquisition", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-view.test.ts:270
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
-		watch := must(root.Watch(testContext))
+		watch := must(root.Watch(testContext, nil))
 		closeHarness(t, harness)
 		<-watch.Closed()
 		if end := watch.End(); end.Reason != durable.WatchEnded || end.Error != nil {
@@ -493,7 +493,7 @@ func TestConversationView(t *testing.T) {
 		if entries := watch.Value().Entries; len(entries) != 0 {
 			t.Fatalf("entries %v", entries)
 		}
-		if _, err := root.Watch(testContext); err == nil {
+		if _, err := root.Watch(testContext, nil); err == nil {
 			t.Fatal("watch after close")
 		}
 	})
@@ -537,7 +537,7 @@ func TestConversationView(t *testing.T) {
 		var closedWhileQueued *future[struct{}]
 		queueOnLine(t, harness, func() <-chan struct{} {
 			closedWhileQueued = asyncErr(func() error {
-				_, err := root.Watch(testContext)
+				_, err := root.Watch(testContext, nil)
 				return err
 			})
 			return closedWhileQueued.done
@@ -557,9 +557,9 @@ func TestConversationView(t *testing.T) {
 	t.Run("shares one mount between concurrent observers and isolates a failing listener", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-view.test.ts:307
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
-		failing := must(root.Watch(testContext))
+		failing := must(root.Watch(testContext, nil))
 		recorded := record(t, root)
-		shared := must(root.Watch(testContext))
+		shared := must(root.Watch(testContext, nil))
 		if !sameEntries(failing.Value().Entries, shared.Value().Entries) || failing.Value().Docs != shared.Value().Docs {
 			t.Fatal("observers do not share one mount revision")
 		}
