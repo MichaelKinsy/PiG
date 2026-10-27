@@ -53,4 +53,3 @@
 //   - Extension → Host: widget_push (a string list widget)
 //   - Host → Extension: shutdown
 package sdk
-

@@ -37,35 +37,35 @@ type tuiAltCall struct {
 	Op       string               `json:"op"`
 	Terminal *tuiAltTerminalBlock `json:"terminal,omitempty"`
 
-	ShowHardwareCursor *bool           `json:"showHardwareCursor,omitempty"`
-	LogDirectory       string          `json:"logDirectory,omitempty"`
+	ShowHardwareCursor *bool  `json:"showHardwareCursor,omitempty"`
+	LogDirectory       string `json:"logDirectory,omitempty"`
 	// Options is create's tuiAltOptions or showOverlay's overlay options.
-	Options json.RawMessage `json:"options,omitempty"`
-	Key                *string         `json:"key"`
-	Caps               *tuiAltCaps     `json:"caps,omitempty"`
-	Width              int             `json:"width"`
-	Lines              json.RawMessage `json:"lines"`
-	Message            string          `json:"message"`
-	DurationMs         int             `json:"durationMs"`
-	Enabled            bool            `json:"enabled"`
-	Force              bool            `json:"force"`
-	PreserveScreen     bool            `json:"preserveScreen"`
-	ListenerID         string          `json:"listenerId"`
-	TimeoutMs          float64         `json:"timeoutMs"`
-	OnLateReply        bool            `json:"onLateReply"`
-	QueryID            string          `json:"queryId"`
-	Action             string          `json:"action"`
-	Hidden             bool            `json:"hidden"`
-	Target             json.RawMessage `json:"target"`
-	Data               string          `json:"data"`
-	Event              json.RawMessage `json:"event"`
+	Options        json.RawMessage `json:"options,omitempty"`
+	Key            *string         `json:"key"`
+	Caps           *tuiAltCaps     `json:"caps,omitempty"`
+	Width          int             `json:"width"`
+	Lines          json.RawMessage `json:"lines"`
+	Message        string          `json:"message"`
+	DurationMs     int             `json:"durationMs"`
+	Enabled        bool            `json:"enabled"`
+	Force          bool            `json:"force"`
+	PreserveScreen bool            `json:"preserveScreen"`
+	ListenerID     string          `json:"listenerId"`
+	TimeoutMs      float64         `json:"timeoutMs"`
+	OnLateReply    bool            `json:"onLateReply"`
+	QueryID        string          `json:"queryId"`
+	Action         string          `json:"action"`
+	Hidden         bool            `json:"hidden"`
+	Target         json.RawMessage `json:"target"`
+	Data           string          `json:"data"`
+	Event          json.RawMessage `json:"event"`
 }
 
 type tuiAltOptions struct {
 	WheelScrollLines json.RawMessage `json:"wheelScrollLines,omitempty"`
 	Mouse            *bool           `json:"mouse,omitempty"`
 	CopyOnSelect     *bool           `json:"copyOnSelect,omitempty"`
-	Callbacks        []string        `json:"callbacks,omitempty"`
+	Callbacks        []string        `json:"callbacks"`
 }
 
 // tuiAltScreenState is one screen the extension constructed.
@@ -99,7 +99,7 @@ func (s *tuiAltScreenState) callback(kind string, fields map[string]any, result 
 	for k, v := range fields {
 		args[k] = v
 	}
-	//portlint:allow ctxmapping the screen outlives the call that built it; a callback ends with the connection (Request returns when it closes)
+	//portlint:allow ctxbackground the screen outlives the call that built it; a callback ends with the connection (Request returns when it closes)
 	return autocompleteRequest(context.Background(), s.conn, RequestTuiAltCallback, args, result)
 }
 
@@ -206,7 +206,9 @@ func (c *tuiAltComponent) Render(width int) []string {
 	return result.Lines
 }
 
-func (c *tuiAltComponent) Invalidate() { _ = c.state.callback("invalidate", map[string]any{"key": c.key}, nil) }
+func (c *tuiAltComponent) Invalidate() {
+	_ = c.state.callback("invalidate", map[string]any{"key": c.key}, nil)
+}
 
 func (c *tuiAltComponent) HandleInput(data string) {
 	if c.caps.Input {

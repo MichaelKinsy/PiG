@@ -590,7 +590,7 @@ func (s *TuiAltScreen) AddInputListener(listener TuiInputListener) (func(), erro
 	if err := s.call("addInputListener", map[string]any{"listenerId": id}, nil); err != nil {
 		return nil, err
 	}
-	return func() { s.removeListener(id) }, nil
+	return func() { _ = s.removeListener(id) }, nil
 }
 
 func (s *TuiAltScreen) removeListener(id string) error {
