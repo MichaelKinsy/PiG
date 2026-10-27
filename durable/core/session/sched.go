@@ -44,8 +44,8 @@ type invocation struct {
 	spanFirst bool
 	// spanAsk makes the phase continuation ask the host for the span first (start is that continuation, run again when the host answered).
 	spanAsk bool
-	s         *Scheduler
-	abort     abortRun
+	s       *Scheduler
+	abort   abortRun
 	// links are the record's creation-time carriers, kept for the invocation that finds the task unstarted (invocation.links).
 	links any
 }

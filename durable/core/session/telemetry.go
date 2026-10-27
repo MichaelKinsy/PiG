@@ -60,7 +60,6 @@ func (p *PhaseInfo) Started(span uint32, carrier any) {
 	start()
 }
 
-
 // Answered is Started for the host's answer to the span hook, `{span, carrier?}`: a failed hook starts the phase without a span.
 func (p *PhaseInfo) Answered(v any, err error) {
 	var span uint32
