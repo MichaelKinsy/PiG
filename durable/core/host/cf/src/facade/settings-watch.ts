@@ -5,7 +5,7 @@
 // The fast path answers `true` ONLY when it has proven every sent leaf equal, in the sent order; it answers `false` for anything it
 // cannot prove (a value JSON would convert, a class instance, a throwing getter), and the caller then runs the exact text comparison.
 // So a wrong `false` costs one stringify and a wrong `true` is the only defect: every branch below returns `false` when unsure.
-import { DEFAULT_COMPACTION_POLICY, DEFAULT_CONTEXT_RETENTION_MS, DEFAULT_PROGRESS_POLICY, DEFAULT_RETRY_POLICY, documentRetentionWire } from "./agent.ts"
+import { DEFAULT_COMPACTION_POLICY, DEFAULT_CONTEXT_RETENTION_MS, DEFAULT_PROGRESS_POLICY, DEFAULT_RETRY_POLICY, documentRetentionWire, restartLimitWire } from "./agent.ts"
 
 const hasOwn = Object.prototype.hasOwnProperty
 const ownEnumerable = Object.prototype.propertyIsEnumerable
@@ -138,6 +138,9 @@ export class SentSettings {
       // The retention is live too and travels last, only when it is not the core's default.
       const retention = documentRetentionWire(raw)
       if (retention !== undefined && (top[i++] !== "documentRetentionMs" || !same(retention, sent.documentRetentionMs))) return false
+      // The restart limit is live too and travels after it, only when it is not the default.
+      const limit = restartLimitWire(raw)
+      if (limit !== undefined && (top[i++] !== "restartLimit" || !same(limit, sent.restartLimit))) return false
       return i === top.length
     } catch {
       return false

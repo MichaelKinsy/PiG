@@ -38,6 +38,23 @@ export function documentRetentionWire(settings: any): number | undefined {
   return ms === 600_000 ? undefined : Number.isFinite(ms) ? ms : Number.MAX_VALUE
 }
 
+/** A restart limit as given when it is a number of restarts, 1 or more, rounded down; else the default (harness/agent.ts restartLimit). */
+export function restartLimit(limit: unknown): number {
+  return typeof limit === "number" && limit >= 1 ? Math.floor(limit) : 5
+}
+
+/** `settings.restartLimit` as the core is told: undefined when it is the default, five. Infinity (never parks) travels as the largest finite number. */
+export function restartLimitWire(settings: any): number | undefined {
+  let limit: number
+  try { limit = restartLimit(settings?.restartLimit) } catch { limit = 5 }
+  return limit === 5 ? undefined : Number.isFinite(limit) ? limit : Number.MAX_VALUE
+}
+
+function restartLimitEntry(settings: any): { restartLimit?: number } {
+  const limit = restartLimitWire(settings)
+  return limit === undefined ? {} : { restartLimit: limit }
+}
+
 function documentRetentionEntry(settings: any): { documentRetentionMs?: number } {
   const ms = documentRetentionWire(settings)
   return ms === undefined ? {} : { documentRetentionMs: ms }
@@ -58,6 +75,7 @@ export function resolveSettings(settings: any) {
     steeringMode: settings?.steeringMode ?? "one-at-a-time",
     followUpMode: settings?.followUpMode ?? "one-at-a-time",
     ...documentRetentionEntry(settings),
+    ...restartLimitEntry(settings),
   }
 }
 
