@@ -32,6 +32,8 @@
    #:session-get-session-file #:session-get-session-name #:session-get-leaf-id #:session-get-header
    #:session-get-leaf-entry #:session-get-entry #:session-get-label #:session-get-entries
    #:session-get-branch #:session-get-children #:session-get-tree
+   #:session-build-context-entries #:session-build-session-projection #:session-build-session-context #:session-is-persisted
+   #:session-uses-default-session-dir
    #:ctx-model-registry #:registry-has-configured-auth #:registry-is-using-oauth
    #:registry-get-registered-native-provider #:registry-get-provider-name
    #:ctx-model #:ctx-model-provider #:ctx-model-qualified #:ctx-session-name #:ctx-get-session-name #:ctx-get-session-file

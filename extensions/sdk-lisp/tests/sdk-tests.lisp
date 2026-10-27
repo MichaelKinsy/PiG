@@ -244,7 +244,12 @@ Returns the host and the register envelope."
       (check-read (lambda (c) (pig:session-get-entries (pig:ctx-session-manager c))) "getEntries")
       (check-read (lambda (c) (pig:session-get-branch (pig:ctx-session-manager c) "b")) "getBranch" (pig:obj "fromId" "b"))
       (check-read (lambda (c) (pig:session-get-children (pig:ctx-session-manager c) "p")) "getChildren" (pig:obj "parentId" "p"))
-      (check-read (lambda (c) (pig:session-get-tree (pig:ctx-session-manager c))) "getTree"))))
+      (check-read (lambda (c) (pig:session-get-tree (pig:ctx-session-manager c))) "getTree")
+      (check-read (lambda (c) (pig:session-build-context-entries (pig:ctx-session-manager c))) "buildContextEntries")
+      (check-read (lambda (c) (pig:session-build-session-projection (pig:ctx-session-manager c))) "buildSessionProjection")
+      (check-read (lambda (c) (pig:session-build-session-context (pig:ctx-session-manager c))) "buildSessionContext")
+      (check-read (lambda (c) (pig:session-is-persisted (pig:ctx-session-manager c))) "isPersisted")
+      (check-read (lambda (c) (pig:session-uses-default-session-dir (pig:ctx-session-manager c))) "usesDefaultSessionDir"))))
 
 (deftest registry-reads-the-providers-state
   (with-host (host (probe-extension))

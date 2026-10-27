@@ -569,6 +569,7 @@ node = "read:entry.callback"
 go = "WithSessionFunc"
 rust = "Context::new_session_with"
 python = "ReplacedSessionContext"
+lisp = "pig:ctx-new-session(with-session)"
 wire = "subprocess.WithSessionArgs.handle"
 
 [[row]]
@@ -595,6 +596,7 @@ node = "read:entry.callback"
 go = "WithSessionFunc"
 rust = "Context::fork_with"
 python = "ReplacedSessionContext"
+lisp = "pig:ctx-fork(with-session)"
 wire = "subprocess.WithSessionArgs.handle"
 
 [[row]]
@@ -657,6 +659,7 @@ node = "read:entry.callback"
 go = "WithSessionFunc"
 rust = "Context::switch_session_with"
 python = "ReplacedSessionContext"
+lisp = "pig:ctx-switch-session(with-session)"
 wire = "subprocess.WithSessionArgs.handle"
 
 [[row]]
@@ -913,6 +916,7 @@ wire = "subprocess.RemoteOverlayOpenPayload.hasHandle"
 go = "RemoteOverlayOptions.OnHandle"
 rust = "Context::custom_component_with_handle"
 python = "_RemoteOverlayState.on_handle"
+lisp = "pig:ctx-custom(on-handle)"
 
 [[row]]
 key = "ctx.ui.addAutocompleteProvider"
@@ -1347,6 +1351,7 @@ node = "read:oauth.name"
 go = "OAuthProvider.Name"
 rust = "OAuthProvider.name"
 python = "OAuthProvider.name"
+lisp = "pig:oauth-provider-name"
 wire = "subprocess.ProviderOAuthConfig.name"
 
 [[row]]
@@ -1355,6 +1360,7 @@ node = "read:oauth.isSubscription"
 go = "OAuthProvider.IsSubscription"
 rust = "OAuthProvider.is_subscription"
 python = "OAuthProvider.is_subscription"
+lisp = "pig:oauth-provider-is-subscription"
 wire = "subprocess.ProviderOAuthConfig.isSubscription"
 
 [[row]]
@@ -1371,6 +1377,7 @@ node = "read:oauth.login"
 go = "OAuthProvider.Login"
 rust = "OAuthProvider.login"
 python = "OAuthProvider.login"
+lisp = "pig:oauth-provider-login"
 wire = "subprocess.ProviderOAuthConfig.has_login"
 
 [[row]]
@@ -1379,6 +1386,7 @@ node = "read:oauth.refreshToken"
 go = "OAuthProvider.RefreshToken"
 rust = "OAuthProvider.refresh_token"
 python = "OAuthProvider.refresh_token"
+lisp = "pig:oauth-provider-refresh-token"
 wire = "subprocess.ProviderOAuthConfig.has_refresh"
 
 [[row]]
@@ -1387,6 +1395,7 @@ node = "read:oauth.getApiKey"
 go = "OAuthProvider.GetAPIKey"
 rust = "OAuthProvider.get_api_key"
 python = "OAuthProvider.get_api_key"
+lisp = "pig:oauth-provider-get-api-key"
 wire = "subprocess.ProviderOAuthConfig.has_get_api_key"
 
 [[row]]
@@ -1649,6 +1658,7 @@ node = "read:Container.prototype"
 go = "kit.NewContainer"
 rust = "kit::Container::new"
 python = "kit.Container"
+lisp = "pig:kit-container"
 
 [[row]]
 key = "kit node Box"
@@ -1658,6 +1668,7 @@ node = "read:tui.Box"
 go = "kit.NewBox"
 rust = "kit::Box::new"
 python = "kit.Box"
+lisp = "pig:kit-box"
 
 [[row]]
 key = "kit node Text"
@@ -1667,6 +1678,7 @@ node = "read:tui.Text"
 go = "kit.NewText"
 rust = "kit::Text::new"
 python = "kit.Text"
+lisp = "pig:kit-text"
 
 [[row]]
 key = "kit node TruncatedText"
@@ -1676,6 +1688,7 @@ node = "read:tui.TruncatedText"
 go = "kit.NewTruncatedText"
 rust = "kit::TruncatedText::new"
 python = "kit.TruncatedText"
+lisp = "pig:kit-truncated-text"
 
 [[row]]
 key = "kit node Markdown"
@@ -1685,6 +1698,7 @@ node = "read:tui.Markdown"
 go = "kit.NewMarkdown"
 rust = "kit::Markdown::new"
 python = "kit.Markdown"
+lisp = "pig:kit-markdown"
 
 [[row]]
 key = "kit node Spacer"
@@ -1694,6 +1708,7 @@ node = "read:tui.Spacer"
 go = "kit.NewSpacer"
 rust = "kit::Spacer::new"
 python = "kit.Spacer"
+lisp = "pig:kit-spacer"
 
 [[row]]
 key = "kit node DynamicBorder"
@@ -1703,6 +1718,7 @@ node = "read:codingAgent.DynamicBorder"
 go = "kit.NewDynamicBorder"
 rust = "kit::DynamicBorder::new"
 python = "kit.DynamicBorder"
+lisp = "pig:kit-dynamic-border"
 
 [[row]]
 key = "kit node SelectList"
@@ -1712,6 +1728,7 @@ node = "read:tui.SelectList"
 go = "kit.NewSelectList"
 rust = "kit::SelectList::new"
 python = "kit.SelectList"
+lisp = "pig:kit-select-list"
 
 [[row]]
 key = "kit node SettingsList"
@@ -1721,6 +1738,7 @@ node = "read:tui.SettingsList"
 go = "kit.NewSettingsList"
 rust = "kit::SettingsList::new"
 python = "kit.SettingsList"
+lisp = "pig:kit-settings-list"
 
 [[row]]
 key = "kit node Image"
@@ -1730,6 +1748,7 @@ node = "read:tui.Image"
 go = "kit.NewImage"
 rust = "kit::Image::new"
 python = "kit.Image"
+lisp = "pig:kit-image"
 
 [[row]]
 key = "kit node Loader"
@@ -1739,6 +1758,7 @@ node = "read:tui.Loader"
 go = "kit.NewLoader"
 rust = "kit::Loader::new"
 python = "kit.Loader"
+lisp = "pig:kit-loader"
 
 [[row]]
 key = "kit node HStack"
@@ -1748,6 +1768,7 @@ node = "read:tui.HStack"
 go = "kit.NewHStack"
 rust = "kit::HStack::new"
 python = "kit.HStack"
+lisp = "pig:kit-hstack"
 
 [[row]]
 key = "kit node VStack"
@@ -1757,6 +1778,7 @@ node = "read:tui.VStack"
 go = "kit.NewVStack"
 rust = "kit::VStack::new"
 python = "kit.VStack"
+lisp = "pig:kit-vstack"
 
 [[row]]
 key = "kit node Lines"
@@ -1766,6 +1788,7 @@ node = "read:component.viewLines"
 go = "kit.NewLines"
 rust = "kit::Lines::new"
 python = "kit.Lines"
+lisp = "pig:kit-lines"
 
 [[row]]
 key = "kit node UserMessage"
@@ -1775,6 +1798,7 @@ node = "read:codingAgent.UserMessageComponent"
 go = "kit.NewUserMessage"
 rust = "kit::UserMessage::new"
 python = "kit.UserMessage"
+lisp = "pig:kit-user-message"
 
 [[row]]
 key = "kit node AssistantMessage"
@@ -1784,6 +1808,7 @@ node = "read:codingAgent.AssistantMessageComponent"
 go = "kit.NewAssistantMessage"
 rust = "kit::AssistantMessage::new"
 python = "kit.AssistantMessage"
+lisp = "pig:kit-assistant-message"
 
 [[row]]
 key = "kit node ToolExecution"
@@ -1793,6 +1818,7 @@ node = "read:codingAgent.ToolExecutionComponent"
 go = "kit.NewToolExecution"
 rust = "kit::ToolExecution::new"
 python = "kit.ToolExecution"
+lisp = "pig:kit-tool-execution"
 
 [[row]]
 key = "kit node BashExecution"
@@ -1802,6 +1828,7 @@ node = "read:codingAgent.BashExecutionComponent"
 go = "kit.NewBashExecution"
 rust = "kit::BashExecution::new"
 python = "kit.BashExecution"
+lisp = "pig:kit-bash-execution"
 
 [[row]]
 key = "kit node Diff"
@@ -1811,6 +1838,7 @@ node = "read:diff.filePath"
 go = "kit.NewDiff"
 rust = "kit::Diff::new"
 python = "kit.Diff"
+lisp = "pig:kit-diff"
 
 [[row]]
 key = "kit view"
@@ -1820,6 +1848,7 @@ node = "read:component.viewTheme"
 go = "kit.View"
 rust = "kit::View"
 python = "kit.View"
+lisp = "pig:kit-view"
 
 [[row]]
 key = "kit ctx.ui.custom(view)"
@@ -1829,6 +1858,7 @@ node = "RuntimeUI.custom"
 go = "ViewComponent.View"
 rust = "ViewComponent::view"
 python = "kit.ViewComponent.view"
+lisp = "pig:make-custom-component(view)"
 
 [[row]]
 key = "ReadonlyFooterDataProvider.getGitBranch"
@@ -1867,6 +1897,7 @@ node = "-"
 go = "ViewEventHandler.HandleViewEvent"
 rust = "ViewComponent::handle_view_event"
 python = "kit.ViewEventHandler.handle_view_event"
+lisp = "pig:make-custom-component(handle-view-event)"
 
 [[row]]
 key = "kit event"
@@ -1876,6 +1907,7 @@ node = "-"
 go = "kit.Event"
 rust = "kit::Event"
 python = "kit.Event"
+lisp = "pig:kit-event-type"
 
 [[row]]
 key = "kit ctx.ui.setWidget(view)"
@@ -1955,7 +1987,16 @@ node = "read:list.selectedIndex"
 go = "kit.Lines.List"
 rust = "kit::List"
 python = "kit.List"
+lisp = "pig:kit-list"
 
 [[row]]
 key = "ctx.scopedModels"
 lisp = "pig:ctx-get-scoped-models"
+
+[[row]]
+key = "ctx.sessionManager.buildContextEntries"
+lisp = "pig:session-build-context-entries"
+
+[[row]]
+key = "ctx.sessionManager.buildSessionProjection"
+lisp = "pig:session-build-session-projection"
