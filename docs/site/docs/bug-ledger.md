@@ -2584,7 +2584,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `0ae4683246` (2026-10-08), `0b4e1e3376` (2026-10-09), `15a5c0b670` (2026-10-09), `1ee7dea3e4` (2026-10-09), `23aa78b173` (2026-10-09), `66b0fc0539` (2026-10-09), `7c4d874438` (2026-10-09), `a739b6dcf2` (2026-10-09), `c4d51d5c1a` (2026-10-09), `d80c1cd150` (2026-10-09), `da8a8704c6` (2026-10-09)
-- **Tests:** `ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK`, `ai/bedrock_region_oracle_test.go::TestBedrockEndpointRegionMatchesPi`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/mistral_url_oracle_test.go::TestMistralChatCompletionsURLMatchesPiOnSeededProbes`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi` and 2 more in docs/bug-ledger.json
+- **Tests:** `ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/mistral_url_oracle_test.go::TestMistralChatCompletionsURLMatchesPiOnSeededProbes`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode` and 1 more in docs/bug-ledger.json
 - **Release note:** The Mistral request URL for a base URL with a non-special scheme or a host or port the WHATWG parser rejects (for example a port above 65535) follows Pi's `new URL`: it fails where Pi throws and keeps the base path where Pi does.
 
 ### BF-1f7fa2f
@@ -3155,7 +3155,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `2c88c5fd2e` (2026-10-10), `80c797da93` (2026-10-10), `afa1dd5185` (2026-10-10), `f02269c6e1` (2026-10-10), `fe625bb5dd` (2026-10-10)
-- **Tests:** `ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder`, `ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi`, `ai/bedrock_wire_metadata_order_test.go::TestBedrockStringMapEnumeratesLikeAJavaScriptObject`, `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralTypedWirePayloadMatchesTheGeneralLowering`, `ai/openai_codex_websocket_frame_oracle_test.go::TestCodexWebSocketFramesMatchPi`, `ai/provider_ecmascript_whitespace_test.go::TestMistralAssistantBlankUsesECMAScriptTrim` and 17 more in docs/bug-ledger.json
+- **Tests:** `ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder`, `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralTypedWirePayloadMatchesTheGeneralLowering`, `ai/openai_codex_websocket_frame_oracle_test.go::TestCodexWebSocketFramesMatchPi`, `ai/provider_ecmascript_whitespace_test.go::TestMistralAssistantBlankUsesECMAScriptTrim`, `ai/provider_wire_defaults_test.go::TestMistralAssistantReplayPrefixAndToolIndex`, `ai/raw_payload_replacement_oracle_test.go::TestRawPayloadReplacementsAreSentAsPiSendsThem` and 15 more in docs/bug-ledger.json
 - **Release note:** Ill-formed UTF-8 in a string that PiG re-encodes as JSON (an extension's raw JSON, tool schemas, code-mode keys, Bedrock and Google request members) is written as `JSON.stringify` writes the decoded text: one literal U+FFFD for each ill-formed sequence, instead of one `\ufffd` escape per byte.
 
 ### BF-2d05dc8
@@ -3502,7 +3502,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `33dc8a0a22` (2026-10-21)
-- **Tests:** `ai/identity_bedrock_oracle_test.go::TestBedrockUserAgentMatchesPi`, `ai/identity_bedrock_test.go::TestBedrockUserAgentCarriesTheClientIdentity`
+- **Tests:** None recorded.
 
 ### BF-33ea9e4
 
@@ -6133,7 +6133,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `6323c8eb2f` (2026-10-10)
-- **Tests:** `ai/bedrock_uncataloged_model_test.go::TestBedrockUncatalogedModelIsTheSameModelAsItsOwnReplay`
+- **Tests:** None recorded.
 
 ### BF-633152d
 
@@ -7839,7 +7839,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `0b4e1e3376` (2026-10-09), `15a5c0b670` (2026-10-09), `2c04c1445a` (2026-10-09), `31f4517fbe` (2026-10-09), `66b0fc0539` (2026-10-09), `7c4d874438` (2026-10-09), `90882933f6` (2026-10-09), `a739b6dcf2` (2026-10-09), `c4d51d5c1a` (2026-10-09), `d1b3ad0151` (2026-10-09), `d1cbde3321` (2026-10-09), `d80c1cd150` (2026-10-09), `da8a8704c6` (2026-10-09)
-- **Tests:** `ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK`, `ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi`, `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/bedrock_region_oracle_test.go::TestBedrockEndpointRegionMatchesPi`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi` and 6 more in docs/bug-ledger.json
+- **Tests:** `ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK`, `ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi`, `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes` and 5 more in docs/bug-ledger.json
 - **Release note:** The Anthropic workload-identity token endpoint check parses the base URL with the WHATWG parser, as the Anthropic SDK does: loopback hosts reached with userinfo, mixed case or unusual spellings are accepted, and a base URL containing a backslash, quote or non-ASCII text appears unescaped in the error message.
 
 ### BF-66db311
@@ -8048,7 +8048,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `0b4e1e3376` (2026-10-09), `15a5c0b670` (2026-10-09), `1ee7dea3e4` (2026-10-09), `31f4517fbe` (2026-10-09), `66b0fc0539` (2026-10-09), `69f63414c1` (2026-10-09), `7c4d874438` (2026-10-09), `90882933f6` (2026-10-09), `97e178f7f6` (2026-10-09), `a739b6dcf2` (2026-10-09), `d1b3ad0151` (2026-10-09), `d1cbde3321` (2026-10-09), `d80c1cd150` (2026-10-09), `da8a8704c6` (2026-10-09)
-- **Tests:** `ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK`, `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/bedrock_region_oracle_test.go::TestBedrockEndpointRegionMatchesPi`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/mistral_url_oracle_test.go::TestMistralChatCompletionsURLMatchesPiOnSeededProbes`, `ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes` and 6 more in docs/bug-ledger.json
+- **Tests:** `ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK`, `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/mistral_url_oracle_test.go::TestMistralChatCompletionsURLMatchesPiOnSeededProbes`, `ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes`, `ai/radius_urls_oracle_test.go::TestRadiusURLsMatchPiOnSeededProbes` and 5 more in docs/bug-ledger.json
 - **Release note:** The Radius relay WebSocket URL is built with the WHATWG URL parser, as Pi's `new URL` does: gateway hosts are normalized, userinfo and ports follow Pi, an unparseable gateway reports "Invalid URL", and an unsupported scheme is reported with its trailing colon.
 
 ### BF-6a6fffa
@@ -8411,7 +8411,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `6a6fffa638` (2026-10-10), `6fb1307525` (2026-10-11), `81e584bdba` (2026-10-11)
-- **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi`, `ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi` and 5 more in docs/bug-ledger.json
+- **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi`, `ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi` and 4 more in docs/bug-ledger.json
 - **Release note:** openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before `transformMessages` drops an errored or aborted assistant turn (`ai/openai_responses.go`, openai-codex-responses.ts:551): a transcript that starts with such a turn followed by a system message no longer sends that message as the prompt. Found by drawing the responses compat members the payload oracle never drew (`supportsDeveloperRole`, `supportsAdditionalTools`, `supportsToolSearch`, `supportsExplicitPromptCacheMode`, `sessionAffinityFormat`, `supportsOpenAIGrammarTools`) in `checkResponsesPayload`; 5 mutants of those flags and the codex initial-system source go red (grammar tools stay inert there: the drawn tools carry no `constrainedSampling`, covered by `constrained_sampling_oracle_test.go`).
 
 ### BF-70d51e5
@@ -9420,7 +9420,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** Pi merges or otherwise alternates adjacent same-role messages in its Converse converter.
 - **Commit that wrote the release note (the fix commit is not identified):** `a00c6eda58` (2026-10-10), `ee4d7a20b0` (2026-10-10), `80bb5229b5` (2026-10-12)
-- **Tests:** `ai/bedrock_alternation_d116_test.go::TestBedrockMergesAdjacentSameRoleMessagesD116`, `ai/bedrock_convert_upstream_test.go::TestBedrockUpstreamConvertMessages`, `ai/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi`, `ai/bedrock_test.go::TestBedrockConvertMessages_SkipsEmptyAssistant`
+- **Tests:** None recorded.
 - **Release note:** Amazon Bedrock Converse requests merge adjacent messages that have the same role. A prompt sent after an abort during tool execution, or after a dropped assistant turn, no longer makes every later turn fail with a role-alternation error. Pi 1.2.0 sends two consecutive user messages (D116).
 
 ### BF-80c797d
@@ -9434,7 +9434,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `80c797da93` (2026-10-10), `afa1dd5185` (2026-10-10)
-- **Tests:** `ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi`, `ai/bedrock_wire_metadata_order_test.go::TestBedrockStringMapEnumeratesLikeAJavaScriptObject`, `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `coding/extension/host/subprocess/native_stream_options_union_test.go::TestNativeProviderOptionsKeepRawValuesAndNumericPresence`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestCompleteRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestModelStreamRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestProviderOptionsWireKeepsRequestMetadataOrder`, `internal/codingagent/native_thinking_options_test.go::TestSubprocessRequestMetadataKeepsKeyOrder` and 4 more in docs/bug-ledger.json
+- **Tests:** `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `coding/extension/host/subprocess/native_stream_options_union_test.go::TestNativeProviderOptionsKeepRawValuesAndNumericPresence`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestCompleteRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestModelStreamRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestProviderOptionsWireKeepsRequestMetadataOrder`, `internal/codingagent/native_thinking_options_test.go::TestSubprocessRequestMetadataKeepsKeyOrder`, `internal/jsparity/node_differential_test.go::TestAppendBoolAndOpt`, `internal/jsparity/node_differential_test.go::TestAppendNumberMatchesNode` and 2 more in docs/bug-ledger.json
 - **Release note:** Text that holds ill-formed UTF-8 is written with one U+FFFD for each ill-formed sequence, as Node decodes it, instead of one per byte (Durable core records and the new `internal/jsparity` writers).
 
 ### BF-8153bc7
@@ -9476,7 +9476,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `6a6fffa638` (2026-10-10), `81e584bdba` (2026-10-11)
-- **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi`, `ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi` and 4 more in docs/bug-ledger.json
+- **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi`, `internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries` and 3 more in docs/bug-ledger.json
 - **Release note:** anthropic-messages payload now matches Pi for four cases found by the new live-Pi oracle `TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi` (`ai/anthropic.go`, anthropic-messages.ts:1132, 949-990, 1154-1164; 1,500 probes over `supportsMidConvoEffort`/`supportsMidConvoSystemMessages`/`supportsMidConvoToolChanges`/`allowedFallbackModels`/`forceAdaptiveThinking`, `interleavedThinking`, `thinkingBudgets`, env cache retention, object tool choices, odd metadata, model `maxTokens`, `thinkingLevelMap`, and mid-conversation system messages with sections and tool changes): (1) the initial system message is the transcript's first message as given, so a mid-conversation system message after a dropped errored/aborted assistant turn is no longer taken for the prompt; (2) a managed-effort request without `forceAdaptiveThinking` takes the effort `high` (streamSimple derives it only for adaptive models); (3) an unmapped `xhigh`/`max` level is `high` (mapThinkingLevelToEffort has no such case); (4) a managed-effort simple request still gets the budget-adjusted `max_tokens`. openai-codex-responses now picks the instruction role of a mid-conversation system message from the selected model's `reasoning` flag instead of always `developer`; the bedrock, google and responses payload oracles now draw mid-conversation system messages too. Mutation-checked: 10 mutants red (initial from transformed list, effort default, managed max_tokens, xhigh case, fallbacks model/beta, interleaved beta, mid-convo effort beta, native tool changes anchor).
 
 ### BF-81e584b-2
@@ -9490,7 +9490,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `6a6fffa638` (2026-10-10), `81e584bdba` (2026-10-11)
-- **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi`, `ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi` and 5 more in docs/bug-ledger.json
+- **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi`, `ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi` and 4 more in docs/bug-ledger.json
 - **Release note:** Live-Pi oracle `TestMistralMessagesPayloadMatchesPi` (`ai/mistral_messages_payload_oracle_test.go`, mistral-conversations.ts toChatMessages and options; 1,200 random transcripts with thinking, errored/aborted turns, foreign tool calls, tool results with images and mid-conversation system messages, thinking level maps, sampling options, tool choices): the earlier Mistral payload oracles drew one user message, so the message conversion was only checked by two hand-written bodies. No payload difference. Mutation-checked: dropping the initial-system slice, the tool-result error text and the image data-URL prefix go red; `sanitizeSurrogates` on the system prompt is not drawn (generated text has no lone surrogate).
 
 ### BF-8241433
@@ -9546,7 +9546,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** Windows
 - **Fixed in:** 0.5.0
 - **Fix commits:** `83fea11dbf` (2026-10-15)
-- **Tests:** `ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi`, `ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText`, `ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage`
+- **Tests:** `ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText`, `ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage`
 - **Release note:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
 
 ### BF-844d215
@@ -9740,7 +9740,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `77790f284b` (2026-10-11), `869cef866a` (2026-10-11), `e720ec0d0a` (2026-10-11)
-- **Tests:** `ai/bedrock_eventstream_integer_float_test.go::TestBedrockStreamAcceptsIntegerValuedFloats`, `ai/bedrock_eventstream_integer_float_test.go::TestBedrockStreamEventReadsIntegerValuedFloats`, `ai/openai_stream_oracle_test.go::TestOpenAICompletionsProviderStreamMatchesPi`, `ai/pi_messages_non_object_event_test.go::TestPiMessagesNonObjectEventIsSkippedLikeAnUnknownEvent`, `internal/jsjson/normalize_test.go::TestNormalizeIntegers`
+- **Tests:** `ai/openai_stream_oracle_test.go::TestOpenAICompletionsProviderStreamMatchesPi`, `ai/pi_messages_non_object_event_test.go::TestPiMessagesNonObjectEventIsSkippedLikeAnUnknownEvent`, `internal/jsjson/normalize_test.go::TestNormalizeIntegers`
 - **Release note:** A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of unknown type, instead of ending the reply with a JSON decode error.
 
 ### BF-86c411a
@@ -10208,7 +10208,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `7c4d874438` (2026-10-09), `9101bc880b` (2026-10-09)
-- **Tests:** `ai/bedrock_model_match_oracle_test.go::TestBedrockModelMatchingMatchesPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/overflow_oracle_test.go::TestContextOverflowMatchesPiOnSeededMessages`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`
+- **Tests:** `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/overflow_oracle_test.go::TestContextOverflowMatchesPiOnSeededMessages`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`
 - **Release note:** Bedrock model matching follows Pi: separator runs in a model id or display name become a single `-` (so "Opus 4.6" and "sonnet...5" match the adaptive-thinking and caching families), no-break spaces count as separators, and a model counts as Anthropic Claude only when its id carries an `anthropic.claude` or `anthropic/claude` prefix or its display name mentions claude.
 
 ### BF-918f21c
@@ -12071,7 +12071,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** Pi or its AWS SDK treats an empty `AWS_BEARER_TOKEN_BEDROCK` as unset (Pi passes `authSchemePreference` itself, or the SDK tests for a non-empty value), or an owner decision reverses this one; then the marker, the D195 cases of the test and this record go.
 - **Fix commits:** `cca788e454` (2026-10-24)
-- **Tests:** `ai/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi`, `ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi`
+- **Tests:** None recorded.
 
 ### BF-D196
 
@@ -12086,7 +12086,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** Pi refuses to send a bearer token over HTTP (its SDK adds an HTTPS check, or Pi installs a signer that does), or PiG installs `bedrockBearerSigner` under skip-auth and the owner approves sending the token over HTTP there; then the markers, the D196 case of the test and this record go.
 - **Fix commits:** `cca788e454` (2026-10-24)
-- **Tests:** `ai/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi`
+- **Tests:** None recorded.
 
 ### BF-D197
 
@@ -12507,7 +12507,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `7c4d874438` (2026-10-09), `90882933f6` (2026-10-09), `a739b6dcf2` (2026-10-09), `d80c1cd150` (2026-10-09)
-- **Tests:** `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/bedrock_region_oracle_test.go::TestBedrockEndpointRegionMatchesPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL`
+- **Tests:** `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL`
 - **Release note:** The Bedrock endpoint region is read from the WHATWG hostname of the base URL, as Pi's `new URL` does: full-width and mixed-case hosts, tabs and newlines inside the URL, and other schemes are handled as in Pi, and a URL without a scheme no longer yields a region.
 
 ### BF-a7be906
@@ -12661,7 +12661,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `0ae4683246` (2026-10-08), `8070fcc38b` (2026-10-10), `a882d85b79` (2026-10-10), `c4d7bd0b2f` (2026-10-10), `212fece3ec` (2026-10-11), `869cef866a` (2026-10-11), `aabd300c94` (2026-10-11), `e720ec0d0a` (2026-10-11)
-- **Tests:** `ai/bedrock_eventstream_integer_float_test.go::TestBedrockStreamAcceptsIntegerValuedFloats`, `ai/bedrock_eventstream_integer_float_test.go::TestBedrockStreamEventReadsIntegerValuedFloats`, `ai/fetch_request_url_test.go::TestCodexAndAzureRequestTargetIsParsedLikeFetch`, `ai/fetch_request_url_test.go::TestCodexRequestTargetDropsTheFragmentOfAnOpaquePath`, `ai/openrouter_exchange_oracle_test.go::TestOpenRouterExchangeMatchesPi`, `ai/pi_messages_non_object_event_test.go::TestPiMessagesNonObjectEventIsSkippedLikeAnUnknownEvent`, `ai/provider_error_oracle_test.go::TestProviderErrorResponsesMatchPi`, `ai/provider_stream_non_object_oracle_test.go::TestProviderStreamNonObjectEventsMatchPi` and 1 more in docs/bug-ledger.json
+- **Tests:** `ai/fetch_request_url_test.go::TestCodexAndAzureRequestTargetIsParsedLikeFetch`, `ai/fetch_request_url_test.go::TestCodexRequestTargetDropsTheFragmentOfAnOpaquePath`, `ai/openrouter_exchange_oracle_test.go::TestOpenRouterExchangeMatchesPi`, `ai/pi_messages_non_object_event_test.go::TestPiMessagesNonObjectEventIsSkippedLikeAnUnknownEvent`, `ai/provider_error_oracle_test.go::TestProviderErrorResponsesMatchPi`, `ai/provider_stream_non_object_oracle_test.go::TestProviderStreamNonObjectEventsMatchPi`, `ai/whatwg_request_target_test.go::TestWHATWGRequestTargetSurvivesGoHTTPSerialization`
 - **Release note:** An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or array is skipped as Pi skips it, instead of ending the reply with a decode error; a null Responses event fails with Pi's TypeError message.
 
 ### BF-ab0ee71
@@ -12913,7 +12913,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `afa1dd5185` (2026-10-10), `f02269c6e1` (2026-10-10)
-- **Tests:** `ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder`, `ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi`, `ai/bedrock_wire_metadata_order_test.go::TestBedrockStringMapEnumeratesLikeAJavaScriptObject`, `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `coding/extension/host/subprocess/native_stream_options_union_test.go::TestNativeProviderOptionsKeepRawValuesAndNumericPresence`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestCompleteRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestModelStreamRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestProviderOptionsWireKeepsRequestMetadataOrder` and 1 more in docs/bug-ledger.json
+- **Tests:** `ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder`, `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `coding/extension/host/subprocess/native_stream_options_union_test.go::TestNativeProviderOptionsKeepRawValuesAndNumericPresence`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestCompleteRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestModelStreamRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestProviderOptionsWireKeepsRequestMetadataOrder`, `internal/codingagent/native_thinking_options_test.go::TestSubprocessRequestMetadataKeepsKeyOrder`
 - **Release note:** Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the object. Go callers set the new `StreamOptions.RequestMetadataOrder` (keys missing from it follow in sorted order); an extension's `requestMetadata` keeps its order through `streamModel`, `complete` and an extension provider's options.
 
 ### BF-afa1dd5-2
@@ -12927,7 +12927,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `433d232815` (2026-10-09), `afa1dd5185` (2026-10-10)
-- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi` and 9 more in docs/bug-ledger.json
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi` and 7 more in docs/bug-ledger.json
 - **Release note:** `make port-lint` has three more checks: `regexpinfunc` (a constant pattern compiled inside a function), `jsonclone` (a value encoded to JSON and decoded again in one function) and `ctxbackground` (`context.Background()`/`TODO()` in a library function with no context). Today's findings are in the ratchet baseline.
 
 ### BF-affc944
@@ -13106,7 +13106,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `433d232815` (2026-10-09), `da99854d1b` (2026-10-09), `2309604d80` (2026-10-10), `25a75ebc88` (2026-10-10), `8e4a778324` (2026-10-10), `b4504dd82c` (2026-10-10), `b4e83dbe17` (2026-10-10), `c10cde302d` (2026-10-10), `eeac307095` (2026-10-10), `f29e906cb3` (2026-10-10), `fc886e3bd2` (2026-10-10), `fe16108cc7` (2026-10-10)
-- **Tests:** `agent/assistant_member_order_oracle_test.go::TestAssistantLateMembersFollowPiCreationOrder`, `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses` and 19 more in docs/bug-ledger.json
+- **Tests:** `agent/assistant_member_order_oracle_test.go::TestAssistantLateMembersFollowPiCreationOrder`, `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses` and 18 more in docs/bug-ledger.json
 - **Release note:** Amazon Bedrock request bodies match Pi's: PiG writes the ConverseStream body itself in the member order Pi's AWS SDK writes (`messages`, `system`, `inferenceConfig`, `toolConfig`, `additionalModelRequestFields`; `role` before `content`; `toolUseId`, `name`, `input`), tool schemas and tool call inputs keep their authored member order, and a tool schema with an empty property name no longer fails the request.
 
 ### BF-b47b6bc
@@ -14648,7 +14648,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `f5190b9c48` (2026-10-04), `591f095784` (2026-10-05), `613c997d21` (2026-10-05), `d1c9dfddbb` (2026-10-05), `171aa56d63` (2026-10-06), `c20aeb351d` (2026-10-06), `ca7160566a` (2026-10-06), `1f98a7c315` (2026-10-07), `c0addf92cc` (2026-10-07), `44f92ab2d8` (2026-10-08), `d276c00c53` (2026-10-08)
-- **Tests:** `ai/bedrock_option_fields_upstream_test.go::TestBedrockBearerTokenOptionPrecedence`, `ai/bedrock_option_fields_upstream_test.go::TestBedrockThinkingDisplayOption`, `ai/bedrock_provider_options_wire_test.go::TestBedrockAppliesPreparedHeadersAndRequestEnvironment`, `ai/bedrock_provider_options_wire_test.go::TestBedrockReservedHeaderMiddlewarePreservesSDKValues`, `ai/bedrock_provider_options_wire_test.go::TestBedrockReservedHeadersCannotBeOverriddenOrDeleted`, `ai/bedrock_provider_response_test.go::TestBedrockResponseHeadersUpstream`, `ai/bedrock_stream_events_upstream_test.go::TestBedrockProviderStreamEventsUpstream`, `ai/bedrock_transport_error_test.go::TestBedrockMidStreamTransportFailureMatchesTerminated` and 85 more in docs/bug-ledger.json
+- **Tests:** `ai/google_vertex_option_fields_upstream_test.go::TestGoogleVertexProjectAndLocationOptions`, `ai/mistral_map_tool_choice_test.go::TestMistralToolChoiceMatchesPiMapToolChoice`, `ai/mistral_provider_options_wire_test.go::TestMistralAppliesPreparedHeadersAndRequestSessionID`, `ai/mistral_sse_parity_test.go::TestMistralSSEFramingAndEOFRules`, `ai/mistral_stream_events_upstream_test.go::TestMistralProviderStreamEventsUpstream`, `ai/mistral_transport_error_test.go::TestMistralTransportCancellationRemainsAborted`, `ai/provider_request_shape_test.go::TestGoogleRequestPreservesEmptyText`, `ai/provider_response_test.go::TestProviderResponseBoundaries` and 75 more in docs/bug-ledger.json
 - **Release note:** `pig piglet schema` lists the `apis` strip list.
 
 ### BF-d2b1fc1
@@ -18233,7 +18233,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `433d232815` (2026-10-09), `afa1dd5185` (2026-10-10), `d8c227b7f5` (2026-10-10), `f02269c6e1` (2026-10-10), `fe625bb5dd` (2026-10-10)
-- **Tests:** `agent/assistant_member_order_oracle_test.go::TestAssistantLateMembersFollowPiCreationOrder`, `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses` and 16 more in docs/bug-ledger.json
+- **Tests:** `agent/assistant_member_order_oracle_test.go::TestAssistantLateMembersFollowPiCreationOrder`, `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses` and 14 more in docs/bug-ledger.json
 - **Release note:** Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed `max_tokens`, `tool_choice`, `reasoning_effort`, `prompt_mode`, `prompt_cache_key`; a tool result's `tool_call_id` last; thinking parts as `type`, `text`) instead of sorted, and the body is built about 3 times faster.
 
 ### BF-fe625bb-2
@@ -18247,7 +18247,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `e8cc072521` (2026-10-08), `433d232815` (2026-10-09), `afa1dd5185` (2026-10-10), `f02269c6e1` (2026-10-10), `fe625bb5dd` (2026-10-10)
-- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi` and 18 more in docs/bug-ledger.json
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi` and 16 more in docs/bug-ledger.json
 - **Release note:** When an extension's `before_provider_request` handler returns a replacement body for OpenAI Completions, OpenAI Responses, Codex, Pi Messages, Mistral or Google, PiG sends it as Pi's `JSON.stringify` writes what `JSON.parse` read: `\u00e9` becomes `é`, `1.50` becomes `1.5`, a repeated key keeps its first place with its last value, and array-index keys come first. PiG sent the handler's text unchanged.
 
 ### BF-ffcd800
