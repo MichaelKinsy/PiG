@@ -94,7 +94,7 @@ func (r *compactionRun) failCutOff() {
 		if err := FailCompactionStatus(live, r.rt.TaskID(), message); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", "restart_limit")))), nil
+		return failedTerminal(message, "restart_limit"), nil
 	})
 }
 
@@ -111,7 +111,7 @@ func (r *compactionRun) failNoModel(ref *ModelRef) {
 		if err := FailCompactionStatus(live, r.rt.TaskID(), message); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", "no_model")))), nil
+		return failedTerminal(message, "no_model"), nil
 	})
 }
 
@@ -291,7 +291,7 @@ func (r *compactionRun) settleSummary(cp *jv.Object, attempt float64, message *j
 		if err := FailCompactionStatus(live, r.rt.TaskID(), string(outcome.FailText)); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", modelErrorOutcome(string(outcome.FailText))), nil
+		return failedTerminal(string(outcome.FailText), "model_error"), nil
 	})
 }
 

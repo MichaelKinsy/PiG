@@ -349,9 +349,9 @@ func (r *toolRun) settleThen(call *jv.Object, end ending, build func(slot *delta
 }
 
 func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64, made bool, then func()) {
-	var restarts float64
+	var restarts any
 	r.commit(func(tx *session.Tx, current *jv.Object) (*jv.Object, error) {
-		restarts = num(current, "restarts")
+		restarts, _ = current.Get("restarts")
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
@@ -415,7 +415,7 @@ func (r *toolRun) settleCommit(call *jv.Object, end ending, build func(slot *del
 		return jobj("status", "terminal", "outcome", jobj("status", "completed", "result", settled)), nil
 	}, func() {
 		if end.reason != "" {
-			_ = r.rt.ReportInterrupted(errors.New(end.message), end.reason, int(restarts))
+			_ = r.rt.ReportInterrupted(errors.New(end.message), "restart_limit", restarts)
 		}
 		then()
 	})

@@ -63,7 +63,7 @@ func (r *run) interrupted(cp *jv.Object) {
 			if err := r.endFailedRun(tx, live, failed, UnansweredWith("interrupted", text)); err != nil {
 				return nil, err
 			}
-			return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", text, "detail", jobj("reason", "interrupted")))), nil
+			return failedTerminal(text, "interrupted"), nil
 		})
 	}
 	// A run that ends does not leave the provider's job running.
@@ -98,7 +98,7 @@ func (r *run) endCutOff(cp *jv.Object) {
 			if err := r.endFailedRun(tx, live, failed, UnansweredWith("restart_limit", text)); err != nil {
 				return nil, err
 			}
-			return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", text, "detail", jobj("reason", "restart_limit")))), nil
+			return failedTerminal(text, "restart_limit"), nil
 		})
 	}
 	if model, handle := deferredOf(cp); salvage && handle != nil {

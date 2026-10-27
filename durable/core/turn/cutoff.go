@@ -52,23 +52,23 @@ func strIn(o *jv.Object, key string) string {
 // commitReporting is commitDone for a commit that may end the task for crashes: a terminal failure whose detail names the limit
 // or an interruption is reported as task_interrupted with the task's restart count (scheduler.ts commit).
 func (r *run) commitReporting(change func(tx *session.Tx, current *jv.Object) (*jv.Object, error)) {
-	var reason, message string
-	var restarts float64
+	var reason, message, restarts any
 	r.commit(func(tx *session.Tx, current *jv.Object) (*jv.Object, error) {
 		next, err := change(tx, current)
-		if err == nil && next != nil && str(next, "status") == "terminal" {
-			outcome := objField(next, "outcome")
-			if strIn(outcome, "status") == "failed" {
-				failure := objField(outcome, "error")
-				if why := strIn(objField(failure, "detail"), "reason"); why == "restart_limit" || why == "interrupted" {
-					reason, message, restarts = why, strIn(failure, "message"), num(current, "restarts")
+		if err == nil && next != nil && strIn(next, "status") == "terminal" {
+			failure := objField(objField(next, "outcome"), "error")
+			if detail := objField(failure, "detail"); detail != nil {
+				if why, _ := detail.Get("reason"); why == "restart_limit" || why == "interrupted" {
+					reason = why
+					message, _ = failure.Get("message")
+					restarts, _ = current.Get("restarts")
 				}
 			}
 		}
 		return next, err
 	}, func() {
-		if reason != "" {
-			_ = r.rt.ReportInterrupted(errors.New(message), reason, int(restarts))
+		if reason != nil {
+			_ = r.rt.ReportInterrupted(errors.New(message.(string)), reason, restarts)
 		}
 		r.done(nil)
 	})

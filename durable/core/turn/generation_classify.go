@@ -163,7 +163,7 @@ func (r *run) retryOrFail(req requestInfo, message *jv.Object, settings Settings
 		if err := r.endFailedRun(tx, live, failed, UnansweredWith("model_error", text)); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", modelErrorOutcome(text)), nil
+		return failedTerminal(text, "model_error"), nil
 	})
 }
 

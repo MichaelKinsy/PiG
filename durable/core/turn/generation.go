@@ -209,8 +209,9 @@ func systemMessagesOf(v *history.View) []*jv.Object {
 	return out
 }
 
-func modelErrorOutcome(text string) *jv.Object {
-	return jobj("status", "failed", "error", jobj("message", text, "detail", jobj("reason", "model_error")))
+// failedTerminal is the terminal state of a task that failed with message and detail {reason}.
+func failedTerminal(message, reason string) *jv.Object {
+	return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", reason))))
 }
 
 // failModelError settles the run's inputs unanswered with model_error and fails with text.
@@ -227,7 +228,7 @@ func (r *run) failModelError(text string) {
 		if err := r.endFailedRun(tx, live, failed, UnansweredWith("model_error", text)); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", modelErrorOutcome(text)), nil
+		return failedTerminal(text, "model_error"), nil
 	})
 }
 
@@ -249,7 +250,7 @@ func (r *run) failNoModel(ref *ModelRef) {
 		if err := r.endFailedRun(tx, live, failed, RunEnd{Reason: "no_model", Detail: message, HasDetail: true, Settlement: jobj("status", "unanswered", "reason", "no_model")}); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", "no_model")))), nil
+		return failedTerminal(message, "no_model"), nil
 	})
 }
 
