@@ -1414,7 +1414,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		e.dispatchOAuth(id, req)
 
 	case "tui.alt.cb":
-		result, err := e.dispatchTuiAlt(req.Args)
+		result, err := e.dispatchTuiAlt(ctx, req.Args)
 		_ = e.conn.respond(id, result, err)
 
 	case "terminal_input":

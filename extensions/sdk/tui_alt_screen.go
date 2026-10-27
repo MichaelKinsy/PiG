@@ -227,6 +227,41 @@ type tuiAltRegistry struct {
 	// frames counts, per goroutine, the frame callbacks (render, visible, style) it is running: a call from one carries inFrame, which tells the
 	// host not to wait on the frame that waits for this callback.
 	frames map[uint64]int
+	// callbacks holds, per goroutine, the request of the host callback it is serving: a call it makes is that request's child, in its own
+	// ordering lane, because a call in the lane of the call the callback answers would wait for it.
+	callbacks map[uint64]Context
+}
+
+// serveCallback records ctx as the request the calling goroutine serves until the returned function runs.
+func (r *tuiAltRegistry) serveCallback(ctx Context) func() {
+	id := goroutineID()
+	r.mu.Lock()
+	if r.callbacks == nil {
+		r.callbacks = map[uint64]Context{}
+	}
+	previous, nested := r.callbacks[id]
+	r.callbacks[id] = ctx
+	r.mu.Unlock()
+	return func() {
+		r.mu.Lock()
+		if nested {
+			r.callbacks[id] = previous
+		} else {
+			delete(r.callbacks, id)
+		}
+		r.mu.Unlock()
+	}
+}
+
+// callContext is the context a call of the calling goroutine goes out on: the callback request it serves, else the extension's.
+func (r *tuiAltRegistry) callContext(ext *Extension) Context {
+	id := goroutineID()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if ctx, ok := r.callbacks[id]; ok {
+		return ctx
+	}
+	return Context{ext: ext}
 }
 
 // goroutineID is the calling goroutine's number, read from its stack header ("goroutine 12 [running]:").
@@ -272,7 +307,7 @@ func (s *TuiAltScreen) call(op string, fields map[string]any, out any) error {
 		args["inFrame"] = true
 	}
 	args["terminal"] = map[string]any{"columns": s.terminal.Columns(), "rows": s.terminal.Rows(), "kitty": s.terminal.KittyProtocolActive()}
-	result, err := Context{ext: s.ext}.callHost("tui.alt", args)
+	result, err := s.ext.tuiAlt.callContext(s.ext).callHost("tui.alt", args)
 	if err := callResultError(result, err); err != nil {
 		return err
 	}
@@ -794,7 +829,8 @@ func (h *TuiOverlayHandle) GetBounds() (*OverlayBounds, error) {
 }
 
 // dispatchTuiAlt answers a host callback (`tui.alt.cb`) of a screen.
-func (e *Extension) dispatchTuiAlt(raw json.RawMessage) (any, error) {
+func (e *Extension) dispatchTuiAlt(ctx Context, raw json.RawMessage) (any, error) {
+	defer e.tuiAlt.serveCallback(ctx)()
 	var request struct {
 		ID         string          `json:"id"`
 		Kind       string          `json:"kind"`
