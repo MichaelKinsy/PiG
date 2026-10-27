@@ -54,8 +54,7 @@ func (inv *invocation) afterSpan(span bool, then func(), tick bool) {
 
 // Resume is the Resumer of afterSpan.
 func (inv *invocation) Resume() {
-	switch inv.stage {
-	case spanHops:
+	if inv.stage == spanHops {
 		inv.stage = spanDeferred
 		inv.loop.DeferResumer(inv)
 		return
