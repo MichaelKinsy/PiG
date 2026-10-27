@@ -451,6 +451,11 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   (session-read m "getBranch" (obj "fromId" (or from-id :null))))
 (defun session-get-children (m parent-id) (session-read m "getChildren" (obj "parentId" (or parent-id :null))))
 (defun session-get-tree (m) (session-read m "getTree"))
+(defun session-build-context-entries (m) (session-read m "buildContextEntries"))
+(defun session-build-session-projection (m) (session-read m "buildSessionProjection"))
+(defun session-build-session-context (m) (session-read m "buildSessionContext"))
+(defun session-is-persisted (m) (session-read m "isPersisted"))
+(defun session-uses-default-session-dir (m) (session-read m "usesDefaultSessionDir"))
 
 ;;; model registry (Python ModelRegistry) -----------------------------------------------
 
