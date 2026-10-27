@@ -264,7 +264,7 @@ Returns the host and the register envelope."
       (flet ((check-call (thunk method args &optional (reply (pig:obj)))
                (let ((call (probe-call host thunk reply (format nil "t~D" (incf n)))))
                  (check-equal method (pig:jget call "method") method)
-                 (check-equal (pig:to-json args) (pig:to-json (or (pig:jget call "args") (pig:obj))) method))))
+                 (check-equal (pig:to-json args) (pig:to-json (let ((a (pig:jget call "args"))) (if (hash-table-p a) a (pig:obj)))) method))))
         (check-call (lambda (c) (pig:ctx-set-active-tools c '("a" "b"))) "setActiveTools" (pig:obj "tools" (pig:arr "a" "b")))
         (check-call (lambda (c) (pig:ctx-get-commands c)) "getCommands" (pig:obj) (pig:obj "commands" (pig:arr)))
         (check-call (lambda (c) (pig:ctx-get-context-usage c)) "getContextUsage" (pig:obj))
