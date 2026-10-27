@@ -45202,6 +45202,28 @@
       "shapeHash": "sha256:40ad18545385456a7210410c20f0f3a7dcee52273332601906d0560db8c1b65b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#isJSONSchemaNameMap",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "isJSONSchemaNameMap",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(key string) bool"
+      },
+      "shapeHash": "sha256:9ece29229d229d0b85c88b521ea83685d3b16081e5d7eb9c5f42fc47a2c48a77"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#isJSONSchemaSubschema",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "isJSONSchemaSubschema",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(key string) bool"
+      },
+      "shapeHash": "sha256:9ece29229d229d0b85c88b521ea83685d3b16081e5d7eb9c5f42fc47a2c48a77"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#isJSONString",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "isJSONString",
@@ -46817,28 +46839,6 @@
         "type": "func(schema any) bool"
       },
       "shapeHash": "sha256:a3bdb2707d5987242bf2c0df30cb31f04e94b2771d8f8390378ebd071c020950"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#jsonSchemaNameMaps",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "jsonSchemaNameMaps",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "map[string]bool"
-      },
-      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#jsonSchemaSubschemas",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "jsonSchemaSubschemas",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "map[string]bool"
-      },
-      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#jsonSchemaToolParameters",
@@ -350210,6 +350210,17 @@
       "shapeHash": "sha256:8179fc29ecd57c53648edf63bda77a325e60c8551a100ef53c308d72e3f21d72"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#isTerminalWordSelectionJoiner",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "isTerminalWordSelectionJoiner",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(segment string) bool"
+      },
+      "shapeHash": "sha256:af53f8923c7d6a011b71461855cfda8c08147860f0ebed73234585485cb7507d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#isTermuxSession",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "isTermuxSession",
@@ -361571,17 +361582,6 @@
         "type": "func(text string) string"
       },
       "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWordSelectionJoiners",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "terminalWordSelectionJoiners",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "map[string]bool"
-      },
-      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriteLog",
