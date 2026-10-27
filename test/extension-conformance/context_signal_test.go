@@ -16,8 +16,8 @@ func TestContextSignalIsTheActiveRunsSignalInEverySDK(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	cases := allHarnessCases()
-	for _, language := range []string{"go", "python", "rust"} {
+	cases := append(allHarnessCases(), lispHarnessCase())
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	for _, tc := range cases {
@@ -107,8 +107,8 @@ func TestContextSignalFollowsTheRunBetweenRequestsInEverySDK(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	cases := allHarnessCases()
-	for _, language := range []string{"go", "python", "rust"} {
+	cases := append(allHarnessCases(), lispHarnessCase())
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	for _, tc := range cases {

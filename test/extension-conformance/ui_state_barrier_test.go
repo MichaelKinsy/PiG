@@ -33,8 +33,8 @@ func (u *stateBarrierUI) SetTheme(name extension.ThemeSelection) extension.SetTh
 // Pi interactive-mode.ts:2572-2585,2623: getters and the synchronous theme result reflect actual host state, including a dialog's expansion change.
 func TestUIStateBarriersAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	cases := allHarnessCases()
-	for _, language := range []string{"go", "python", "rust"} {
+	cases := append(allHarnessCases(), lispHarnessCase())
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	for _, tc := range cases {

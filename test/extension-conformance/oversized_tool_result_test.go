@@ -19,7 +19,7 @@ func TestConformance_OversizedToolResultIsAnsweredAcrossSDKs(t *testing.T) {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	const oversized = 128*1024*1024 + 1
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
