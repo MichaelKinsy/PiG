@@ -279,15 +279,16 @@ func (r *compactionRun) settleSummary(cp *jv.Object, attempt float64, message *j
 		case history.SummaryPlace:
 			return r.placeSummary(tx, current, live, firstKept, string(outcome.Summary))
 		case history.SummaryRetry:
+			until := any(outcome.Until)
 			if status := CompactionStatusOf(live, r.rt.TaskID()); status != nil {
-				if err := status.Set("retry", jobj("at", outcome.Until, "error", str(message, "errorMessage"))); err != nil {
+				if err := status.Set("retry", jobj("at", until, "error", str(message, "errorMessage"))); err != nil {
 					return nil, err
 				}
 			}
 			next := cp.Shallow()
 			next.Set("phase", phaseRetry)
-			next.Set("until", outcome.Until)
-			return jobj("status", "sleeping", "checkpoint", next, "until", outcome.Until), nil
+			next.Set("until", until)
+			return jobj("status", "sleeping", "checkpoint", next, "until", until), nil
 		}
 		if err := FailCompactionStatus(live, r.rt.TaskID(), string(outcome.FailText)); err != nil {
 			return nil, err
@@ -308,22 +309,23 @@ func (r *compactionRun) retry(cp *jv.Object) {
 		r.rt.SleepUntil(until, cp, func(err error) { r.done(err) })
 		return
 	}
+	next := any(attempt)
 	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
 		}
 		if status := CompactionStatusOf(live, r.rt.TaskID()); status != nil {
-			if err := status.Set("attempt", attempt); err != nil {
+			if err := status.Set("attempt", next); err != nil {
 				return nil, err
 			}
 			status.Delete("retry")
 		}
-		next := cp.Shallow()
-		next.Delete("until")
-		next.Set("phase", phaseSummarize)
-		next.Set("attempt", attempt)
-		return jobj("status", "running", "checkpoint", next), nil
+		checkpoint := cp.Shallow()
+		checkpoint.Delete("until")
+		checkpoint.Set("phase", phaseSummarize)
+		checkpoint.Set("attempt", next)
+		return jobj("status", "running", "checkpoint", checkpoint), nil
 	})
 }
 

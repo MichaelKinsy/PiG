@@ -48,10 +48,11 @@ func (r *run) classify(req requestInfo, message *jv.Object) {
 			if err != nil {
 				return nil, err
 			}
-			if err := live.Set("generation", jobj("attempt", req.attempt, "deferred", jobj("pollAt", pollAt))); err != nil {
+			at, attempt := any(pollAt), any(req.attempt)
+			if err := live.Set("generation", jobj("attempt", attempt, "deferred", jobj("pollAt", at))); err != nil {
 				return nil, err
 			}
-			cp := jobj("phase", phasePoll, "attempt", req.attempt)
+			cp := jobj("phase", phasePoll, "attempt", attempt)
 			withCompacted(cp, req.compacted)
 			cp.Set("model", req.model.object())
 			if req.thinking != nil {
@@ -59,8 +60,8 @@ func (r *run) classify(req requestInfo, message *jv.Object) {
 			}
 			cp.Set("cutoff", float64(req.cutoff))
 			cp.Set("handle", handle)
-			cp.Set("pollAt", pollAt)
-			return jobj("status", "sleeping", "checkpoint", cp, "until", pollAt), nil
+			cp.Set("pollAt", at)
+			return jobj("status", "sleeping", "checkpoint", cp, "until", at), nil
 		})
 		return
 	}
@@ -148,13 +149,14 @@ func (r *run) retryOrFail(req requestInfo, message *jv.Object, settings Settings
 			return nil, err
 		}
 		if retry {
-			if err := live.Set("generation", jobj("attempt", req.attempt, "retry", jobj("at", until, "error", str(message, "errorMessage")))); err != nil {
+			at, attempt := any(until), any(req.attempt)
+			if err := live.Set("generation", jobj("attempt", attempt, "retry", jobj("at", at, "error", str(message, "errorMessage")))); err != nil {
 				return nil, err
 			}
-			cp := jobj("phase", phaseRetry, "attempt", req.attempt)
+			cp := jobj("phase", phaseRetry, "attempt", attempt)
 			withCompacted(cp, req.compacted)
-			cp.Set("until", until)
-			return jobj("status", "sleeping", "checkpoint", cp, "until", until), nil
+			cp.Set("until", at)
+			return jobj("status", "sleeping", "checkpoint", cp, "until", at), nil
 		}
 		text, ok := stringField(message, "errorMessage")
 		if !ok {
@@ -398,8 +400,9 @@ func (r *run) startRoundWith(message *jv.Object, calls []*jv.Object, offered map
 				return nil, err
 			}
 			tools = append(tools, taskID)
-			started = append(started, float64(taskID))
-			slots = append(slots, jobj("callId", id, "name", name, "taskId", float64(taskID), "status", "pending"))
+			taskValue := any(float64(taskID))
+			started = append(started, taskValue)
+			slots = append(slots, jobj("callId", id, "name", name, "taskId", taskValue, "status", "pending"))
 		}
 		live.Delete("generation")
 		if slots == nil {
