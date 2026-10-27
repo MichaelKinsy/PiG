@@ -336,7 +336,7 @@ func (s *coreSession) Submission(ctx context.Context, id durable.SubmissionId) (
 
 // AbortSubmission asks the core to withdraw a submission.
 func (s *coreSession) AbortSubmission(ctx context.Context, id durable.SubmissionId, conversationId *durable.ConversationId) (durable.SubmissionAbortResult, error) {
-	s.kick()
+	_ = s.kick() // Submissions.abort does not start scheduling upstream: a read-only Harness reaches the commit, which refuses the withdrawal itself
 	body := map[string]any{"submissionId": id}
 	if conversationId != nil {
 		body["conversationId"] = *conversationId
@@ -391,7 +391,9 @@ func (s *coreSession) WaitForTask(ctx context.Context, id durable.TaskId) (durab
 		return record, err
 	}
 	defer done()
-	s.kick()
+	if err := s.kick(); err != nil {
+		return record, err
+	}
 	raw, err := s.client.API(ctx, "waitForTask", map[string]any{"taskId": id})
 	if err != nil {
 		return record, s.closedOr(ctx, err)
@@ -401,7 +403,9 @@ func (s *coreSession) WaitForTask(ctx context.Context, id durable.TaskId) (durab
 
 // WaitForIdle returns when the ordinary ownership scope of every ownerless conversation has no live non-background task.
 func (s *coreSession) WaitForIdle(ctx context.Context) error {
-	s.kick()
+	if err := s.kick(); err != nil {
+		return err
+	}
 	return s.idle(ctx, nil)
 }
 
@@ -545,7 +549,9 @@ func (s *coreSession) submit(ctx context.Context, conversationID durable.Convers
 		return nil, err
 	}
 	defer release()
-	s.kick()
+	if err := s.kick(); err != nil {
+		return nil, err
+	}
 	rid := ""
 	if draft.RequestId != nil {
 		rid = *draft.RequestId
@@ -632,7 +638,9 @@ func (b *submission) Wait(ctx context.Context) (durable.SettledSubmissionRecord,
 }
 
 func (b *submission) wait(ctx context.Context) (durable.SettledSubmissionRecord, error) {
-	b.s.kick()
+	if err := b.s.kick(); err != nil {
+		return durable.SettledSubmissionRecord{}, err
+	}
 	for {
 		exp, err := b.s.host.Expect(func(n abi.Notice) bool {
 			p, ok := published(n)
@@ -698,7 +706,9 @@ func (c *conversation) Reset(ctx context.Context, handoff *string) error {
 }
 
 func (c *conversation) Compact(ctx context.Context, instructions *string) (durable.TaskId, error) {
-	c.s.kick()
+	if err := c.s.kick(); err != nil {
+		return 0, err
+	}
 	// harness.ts compact: createCompaction also lists the task in pi.live.compactions, which its events, retry status and
 	// failure record read.
 	input := harness.CompactionInput{Reason: durable.CompactionManual, Instructions: instructions}
@@ -751,7 +761,9 @@ func (c *conversation) Fork(ctx context.Context, at durable.EntryId, options har
 }
 
 func (c *conversation) Abort(ctx context.Context, options *durable.ConversationAbortOptions) error {
-	c.s.kick()
+	if err := c.s.kick(); err != nil {
+		return err
+	}
 	body := map[string]any{"conversationId": c.id}
 	if options != nil && options.Background {
 		body["background"] = true
@@ -763,7 +775,9 @@ func (c *conversation) Abort(ctx context.Context, options *durable.ConversationA
 }
 
 func (c *conversation) WaitForIdle(ctx context.Context) error {
-	c.s.kick()
+	if err := c.s.kick(); err != nil {
+		return err
+	}
 	return c.s.idle(ctx, &c.id)
 }
 
