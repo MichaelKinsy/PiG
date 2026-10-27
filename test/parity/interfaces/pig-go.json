@@ -240427,9 +240427,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(addLoadedSection func(name string, collapsedBody string, expandedBody string), formatCompactList func([]string, bool) string, theme *github.com/MichaelKinsy/PiG/tui.Theme, collator *github.com/MichaelKinsy/PiG/internal/jsstring.Collator)"
+        "type": "func(addLoadedSection func(name string, collapsedBody string, expandedBody string), formatCompactList func([]string, bool) string, theme *github.com/MichaelKinsy/PiG/tui.Theme, collator *github.com/MichaelKinsy/PiG/internal/jsstring/localecompare.Collator)"
       },
-      "shapeHash": "sha256:8e1101872d0883571b115a23385dd107000656778e0f5f6a62500786656c3216"
+      "shapeHash": "sha256:9e22e4d8e704fdb0ebb4541480249b713cc24568eb0b39ca4ffa2209ea705d0d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.addPersistedDefaultToNonEmptyScope",
@@ -271106,9 +271106,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(theme *github.com/MichaelKinsy/PiG/tui.Theme, collator *github.com/MichaelKinsy/PiG/internal/jsstring.Collator, groups []loadedScopeGroup, formatPath func(loadedResource) string, formatPackagePath func(loadedResource) string) string"
+        "type": "func(theme *github.com/MichaelKinsy/PiG/tui.Theme, collator *github.com/MichaelKinsy/PiG/internal/jsstring/localecompare.Collator, groups []loadedScopeGroup, formatPath func(loadedResource) string, formatPackagePath func(loadedResource) string) string"
       },
-      "shapeHash": "sha256:cce503695cbc059985ea5f8c68fc9bd2a6783542b7546b68822ef08a16cdc0a9"
+      "shapeHash": "sha256:049e6d42af8cf6c5d49a6ce5f2037d8b4e22745db894373ec8934d8c01ee42fa"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#formatTokens",
