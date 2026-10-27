@@ -23,7 +23,7 @@ const (
 // sdks are the matrix columns, in order.
 var sdks = []string{"node", "go", "rust", "python"}
 
-var sdkTitle = map[string]string{"node": "Node runtime", "go": "Go", "rust": "Rust", "python": "Python"}
+var sdkTitle = map[string]string{"node": "Node runtime", "go": "Go", "rust": "Rust", "python": "Python", "lisp": "Lisp"}
 
 const (
 	statusImplemented = "implemented"
@@ -198,6 +198,10 @@ func loadSymbols(root string, probe *probeResult) (*sdkSymbols, error) {
 	if err != nil {
 		return nil, fmt.Errorf("python sdk: %w", err)
 	}
+	lisp, err := parseLisp(filepath.Join(root, "extensions/sdk-lisp/src/package.lisp"))
+	if err != nil {
+		return nil, fmt.Errorf("lisp sdk: %w", err)
+	}
 	if err := addKitSymbols(root, goSDK.symbols, rs, py); err != nil {
 		return nil, err
 	}
@@ -238,7 +242,7 @@ func loadSymbols(root string, probe *probeResult) (*sdkSymbols, error) {
 		consumers = append(consumers, pkg)
 	}
 	return &sdkSymbols{
-		bySDK:     map[string]symbolSet{"node": node, "go": goSDK.symbols, "rust": rs, "python": py},
+		bySDK:     map[string]symbolSet{"node": node, "go": goSDK.symbols, "rust": rs, "python": py, "lisp": lisp},
 		extension: ext,
 		host:      host,
 		consumers: consumers,

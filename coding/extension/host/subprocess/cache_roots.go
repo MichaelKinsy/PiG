@@ -53,6 +53,12 @@ func CurrentCacheEntries(configs []ExtConfig, cacheRoot string) (map[string]stru
 				if err == nil {
 					entry, valid, err = runtimecell.CurrentPythonPackedCellEntry(cacheRoot, cell.Key, []runtimecell.PythonExtension{ext})
 				}
+			case isLispFactoryConfig(cfg):
+				var ext runtimecell.LispExtension
+				ext, err = lispExtensionFromConfig(cfg)
+				if err == nil {
+					entry, valid, err = runtimecell.CurrentLispPackedCellEntry(cacheRoot, cell.Key, []runtimecell.LispExtension{ext})
+				}
 			case cfg.Source != "":
 				entry, valid, err = builder.CurrentCacheEntry(cfg.Name, cfg.Source)
 			}
@@ -94,6 +100,19 @@ func CurrentCacheEntries(configs []ExtConfig, cacheRoot string) (map[string]stru
 			}
 			if err == nil {
 				entry, valid, err = runtimecell.CurrentPythonPackedCellEntry(cacheRoot, cell.Key, exts)
+			}
+		case CellStrategyPackedLisp:
+			exts := make([]runtimecell.LispExtension, 0, len(cell.Extensions))
+			for _, cfg := range cell.Extensions {
+				ext, convertErr := lispExtensionFromConfig(cfg)
+				if convertErr != nil {
+					err = convertErr
+					break
+				}
+				exts = append(exts, ext)
+			}
+			if err == nil {
+				entry, valid, err = runtimecell.CurrentLispPackedCellEntry(cacheRoot, cell.Key, exts)
 			}
 		case CellStrategyPackedNode:
 			exts, convertErr := cell.NodeExtensions()

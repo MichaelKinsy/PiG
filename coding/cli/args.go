@@ -421,7 +421,7 @@ const pigCommands = `PiG Commands:
   pig logout [provider]         Sign out of a provider
   pig piglet <command>          List, show, validate, and build Piglets (run without arguments for usage)
   pig package <command>         List, validate, and publish Packages
-  pig extension init <path>     Create a Go, Python, or Rust extension
+  pig extension init <path>     Create a Go, Python, Rust, or Lisp extension
   pig extension upgrade         Rewrite Go extensions written for an older SDK
   pig reload                    Stage the extension SDKs and drop builds an older SDK produced
   pig setup [go|container]      Show or install the toolchains that extensions and Piglet builds use
