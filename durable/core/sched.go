@@ -71,7 +71,7 @@ func (h *handler) startScheduler() error {
 	}
 	h.runtimes = map[session.ID]*session.Runtime{}
 	h.loadRegistry(objOf(h.open, "registry"))
-	h.sched = session.NewScheduler(h.sess, h.loop, session.Env{
+	env := session.Env{
 		Snapshot:           func() session.Snapshot { return h.snap },
 		FreshSnapshot:      h.freshSnapshot,
 		Report:             h.report,
@@ -88,7 +88,12 @@ func (h *handler) startScheduler() error {
 		GateRead:           func(method string, id session.ID) { _ = h.gateRead(method, float64(id)) },
 		After:              h.hopsThen,
 		CommitListeners:    &h.changes,
-	})
+	}
+	// HarnessOptions.telemetry: the core tells the host what to record (telemetry.go).
+	if on, _ := boolOf(h.open, "telemetry"); on {
+		env.Telemetry = h
+	}
+	h.sched = session.NewScheduler(h.sess, h.loop, env)
 	if onWake, _ := boolOf(h.open, "onWake"); onWake {
 		// The host wakes its process itself: the core arms no timer for sleeping tasks and publishes each change of the wake.
 		h.sched.SetOnWake(h.publishWake)
@@ -221,6 +226,13 @@ func (h *handler) report(err error, info *jv.Object) {
 	body := errorJSON(err)
 	body = append(body[:len(body)-1], `,"info":`...)
 	body = jv.Append(body, info)
+	// The scheduler's report under a span's Context (scheduler.ts #report's context): the host records the report event there.
+	if h.sched != nil {
+		if span := h.sched.ReportSpan(); span != 0 {
+			body = append(body, `,"span":`...)
+			body = jv.AppendNumber(body, float64(span))
+		}
+	}
 	body = append(body, '}')
 	h.b.Notice(abi.NoticeReport, body)
 }

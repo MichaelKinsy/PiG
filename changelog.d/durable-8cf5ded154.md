@@ -1,0 +1,3 @@
+### Added
+
+- The Durable core records Pi's telemetry for `HarnessOptions.telemetry` of the TypeScript host: a `pi.durable.submit` span around each submission (inputs start their own trace linked to their caller), a `pi.durable.phase` span for every task phase with its checkpoint, entry, settlement, replay and report events, tool names, and the phase-duration, active-task and report metrics. Submissions and tasks store the span carriers, so a task's phases and a run's linked inputs stay in their admission trace across a restart, and `TaskOptions.trace` and `links` are honored. <!-- fix: 8cf5ded1543ae98061fab5a4d4a01c06eaa7b17e -->

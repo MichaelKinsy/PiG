@@ -18,6 +18,8 @@ type Publication struct {
 	Changes []Change
 	// Memory is set for a commit held in memory (held.go): it is not stored, and the commit listeners that follow the Storage
 	// (the host's subscribeCommits) get nothing.
+	// Span is the host's handle of the span of the commit's Context: where the commit's entry and settlement events go (TxScope.Span).
+	Span   uint32
 	Memory bool
 	// Stored is every change one Storage transaction stored, tables included, when that differs from Changes: a commit that
 	// also stored held changes of the documents it reads or writes (its document change carries the held operations first), or
@@ -359,7 +361,7 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	}
 	tables := len(changes)
 	changes = append(changes, docs...)
-	pub := s.newPublication(Publication{Seq: seq, Changes: changes})
+	pub := s.newPublication(Publication{Seq: seq, Changes: changes, Span: tx.scope.Span})
 	if storedDocs != nil {
 		pub.Stored = append(append([]Change(nil), changes[:tables]...), storedDocs...)
 		docs = storedDocs

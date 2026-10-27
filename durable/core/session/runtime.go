@@ -67,19 +67,19 @@ func (r *Runtime) Report(err error, from ...ReportFrom) error {
 		return endedError(r.inv)
 	}
 	if len(from) == 0 {
-		r.s.report(err, aboutInvocation("task_error", r.inv))
+		r.s.reportAt(err, aboutInvocation("task_error", r.inv), r.inv.span)
 		return nil
 	}
 	task := reportTask(r.inv.taskID, r.inv.kind, r.inv.conversationID)
 	if f := from[0]; f.Callback != "" {
-		r.s.report(err, obj("type", "host_error", "callback", f.Callback, "task", task))
+		r.s.reportAt(err, obj("type", "host_error", "callback", f.Callback, "task", task), r.inv.span)
 		return nil
 	} else {
 		info := obj("type", "extension_error", "task", task)
 		if f.Extension != "" {
 			info.Set("extension", f.Extension)
 		}
-		r.s.report(err, info)
+		r.s.reportAt(err, info, r.inv.span)
 	}
 	return nil
 }
@@ -127,7 +127,7 @@ func (r *Runtime) commit(deferred bool, change func(tx *Tx, current *jv.Object) 
 // BeginHost opens a commit whose callback runs in the host, one operation per event (ABI section 8): the checks of Commit
 // run now, at the moment the host's transaction takes the Session line, and the returned transaction is scoped to the
 // task. The caller must hold the line until FinishHost or AbandonHost.
-func (r *Runtime) BeginHost() (tx *Tx, current *jv.Object, err error) {
+func (r *Runtime) BeginHost(span uint32, trace any) (tx *Tx, current *jv.Object, err error) {
 	s, inv := r.s, r.inv
 	if inv.ended {
 		return nil, nil, endedError(inv)
@@ -145,7 +145,7 @@ func (r *Runtime) BeginHost() (tx *Tx, current *jv.Object, err error) {
 	if !inv.abortMode && getBool(found, "abortRequested") {
 		return nil, nil, errorf("Task %d has a durable abort mark", inv.taskID)
 	}
-	tx, err = s.sess.Begin(TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID})
+	tx, err = s.sess.Begin(TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Span: span, Trace: trace})
 	return tx, found, err
 }
 
@@ -204,7 +204,7 @@ func (r *Runtime) gatedWith(late, deferred bool, change func(tx *Tx, current *jv
 			return errorf("Task %d has a durable abort mark", inv.taskID)
 		}
 		return change(tx, found)
-	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Deferred: deferred, WithinMs: -1}, then)
+	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Deferred: deferred, WithinMs: -1, Span: inv.span, Trace: inv.carrier}, then)
 }
 
 // Memo stores candidate unless a memo of that name exists and returns the

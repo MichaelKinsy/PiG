@@ -150,7 +150,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	if h.loop == nil && strOf(req, "op") == "watch.open" && (h.holder != 0 || len(h.queue) != 0) {
 		// Opening a watch is a job on the Session line (session.ts watchDoc, readOnLine): it waits behind the transactions queued
 		// before it, so a commit queued before the attachment is in its value.
-		h.queue = append(h.queue, lineWait{job: func() { _ = h.answerDirect(ev.ID, req) }})
+		h.queue = append(h.queue, lineWait{api: ev.ID, req: req})
 		return nil
 	}
 	return h.answerDirect(ev.ID, req)
@@ -173,10 +173,10 @@ func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 		h.cg.retry, h.cg.retryID, h.cg.retryReq = retryAPI, id, req
 		return nil
 	}
-	if h.cg.state == gateApplied && h.loop == nil && err == nil {
-		// The read stored held changes (session/held.go) that the host's Storage adopted and has not answered: the read ends when it does, with
-		// its error when it rejects them.
-		h.cg.apiID, h.cg.apiValue, h.cg.apiWaits = id, value, true
+	if h.loop == nil && h.cg.state == gateApplied {
+		// The read stored held changes and the Storage adopted them: it answers when the Storage's call settles, with that call's failure
+		// if it failed after adopting (session.ts unloadDocuments awaits the store).
+		h.cg.heldID, h.cg.heldValue, h.cg.heldErr = id, value, err
 		return nil
 	}
 	h.answerAfterReads(func() {

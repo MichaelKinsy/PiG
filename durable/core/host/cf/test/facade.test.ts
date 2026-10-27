@@ -208,6 +208,9 @@ test("subscribeCommits asks the core for the complete publication while a listen
   assert.deepEqual(modes(), [true], "the first listener turns it on")
   ;(h as any).onNotice(1, new TextEncoder().encode(JSON.stringify({ seq: 3, entries: [], changes: [{ type: "entry", value: { id: 1 } }] })))
   ;(h as any).onNotice(1, new TextEncoder().encode(JSON.stringify({ seq: 4, entries: [] })))
+  // session.ts #notifyHosts: the listeners are called one microtask after the adoption, outside it.
+  assert.deepEqual(seen, [], "the dispatch is one microtask after the notice")
+  await Promise.resolve()
   assert.deepEqual(seen, [{ seq: 3, changes: [{ type: "entry", value: { id: 1 } }] }])
   off(); assert.deepEqual(modes(), [true])
   off2(); assert.deepEqual(modes(), [true, false], "the last one turns it off")
