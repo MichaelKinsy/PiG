@@ -1690,6 +1690,29 @@
       ]
     },
     {
+      "id": "BF-10189c4",
+      "title": "The `/tree` Summarize option sends the session's thinking level with the branch summary request when the…",
+      "symptom": "The request carried no reasoning, and a reasoning model on OpenAI Responses or Azure Responses that rejects an effort of `none` failed the summary with a 400 error.",
+      "rootCause": "The /tree Summarize option ignored the session's thinking level: GenerateBranchSummary never read one, so the request carried no reasoning, and a reasoning model on OpenAI Responses or Azure Responses then got effort \"none\", which models that do not accept it reject with a 400.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `/tree` Summarize option sends the session's thinking level with the branch summary request when the model supports reasoning, as compaction does. Before, the request carried no reasoning, and a reasoning model on OpenAI Responses or Azure Responses that rejects an effort of `none` failed the summary with a 400 error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "10189c4741",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "coding/session_branch_summary_upstream_test.go::TestNavigateTreeSummaryPassesTheSessionThinkingLevel",
+        "internal/codingagent/compaction/branch_summarization_test.go::TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels"
+      ]
+    },
+    {
       "id": "BF-116b36c",
       "title": "fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read",
       "symptom": "fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read",
@@ -5887,6 +5910,25 @@
       ]
     },
     {
+      "id": "BF-380ea0e",
+      "title": "fix(durable/core): a settled outcome without error detail is no cut-off (Pi)",
+      "symptom": "fix(durable/core): a settled outcome without error detail is no cut-off (Pi)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "380ea0ec20",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-3840820",
       "title": "MCP tool results whose content blocks carry members of another type than the protocol's (a numeric `text`, a…",
       "symptom": "MCP tool results whose content blocks carry members of another type than the protocol's (a numeric `text`, a `size` string, a missing `uri`, a `null` block, a `resource` that is not an object) now convert as Pi converts them: the model sees what Pi's would, and a block Pi cannot read ends the tool call with Pi's error instead of a placeholder.",
@@ -9984,6 +10026,29 @@
       ]
     },
     {
+      "id": "BF-59b5dae",
+      "title": "OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base…",
+      "symptom": "OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base: OpenAI-compatible models at `/inference/openai/v1`, Anthropic models at `/inference/anthropic`, Google models at `/inference/google/v1beta` and Jev at `/inference/systemone/v1` (the same paths under `/inference/go` for OpenCode Go).",
+      "rootCause": "Pi (#11434) moves the OpenCode and OpenCode Go base URLs from the shared /inference/v1 to the protocol-specific endpoints in scripts/generate-models.ts: /openai/v1, /anthropic, /google/v1beta and /systemone/v1 (Jev), under /inference and /inference/go.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base: OpenAI-compatible models at `/inference/openai/v1`, Anthropic models at `/inference/anthropic`, Google models at `/inference/google/v1beta` and Jev at `/inference/systemone/v1` (the same paths under `/inference/go` for OpenCode Go). Ports Pi's #11434.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "59b5daed63",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream",
+        "ai/opencode_endpoints_upstream_test.go::TestOpenCodeCatalogUsesProtocolSpecificEndpoints"
+      ]
+    },
+    {
       "id": "BF-59fb623",
       "title": "fix(requestvalidity): one Responses assistant turn holds all its items, in any order",
       "symptom": "fix(requestvalidity): one Responses assistant turn holds all its items, in any order",
@@ -10827,8 +10892,6 @@
       "tests": [
         "internal/codingagent/interactive_native_login_test.go::TestLoginListsARegisteredNativeAPIKeyProviderInNameOrder",
         "internal/codingagent/session_listing_race_test.go::TestSessionListingSortsConcurrentlyWithoutARace",
-        "internal/jsstring/locale_compare_test.go::TestLocaleCompareIsSafeForConcurrentUse",
-        "internal/jsstring/locale_compare_test.go::TestLocaleCompareOrdersAsNodeDoes",
         "mcp/oauth/parse_url_node_test.go::TestParseURLMatchesNodeNewURL"
       ]
     },
@@ -10865,8 +10928,6 @@
         "coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow",
         "internal/codingagent/interactive_native_login_test.go::TestLoginListsARegisteredNativeAPIKeyProviderInNameOrder",
         "internal/codingagent/session_listing_race_test.go::TestSessionListingSortsConcurrentlyWithoutARace",
-        "internal/jsstring/locale_compare_test.go::TestLocaleCompareIsSafeForConcurrentUse",
-        "internal/jsstring/locale_compare_test.go::TestLocaleCompareOrdersAsNodeDoes",
         "mcp/oauth/parse_url_node_test.go::TestParseURLMatchesNodeNewURL"
       ]
     },
@@ -10999,6 +11060,28 @@
         "coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle",
         "mcp/client_cursor_test.go::TestClientKeepsTheEntriesOfResourceListsAndReadsAsTheServerSentThem",
         "mcp/client_cursor_test.go::TestToolsAndContentBlocksTrackWhetherTheServerSentATitle"
+      ]
+    },
+    {
+      "id": "BF-620abb0",
+      "title": "Hidden thinking with an empty label (`ctx.ui.setHiddenThinkingLabel(\"\")`) renders no rows: thinking before a…",
+      "symptom": "Hidden thinking with an empty label (`ctx.ui.setHiddenThinkingLabel(\"\")`) renders no rows: thinking before a tool call no longer draws blank rows, and thinking before text draws one spacer.",
+      "rootCause": "updateContent adds spacers lazily, right before the next visible block, and skips a hidden thinking run whose label is empty while still advancing its run index. Thinking before a tool call no longer draws blank rows and thinking before text draws one spacer.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Hidden thinking with an empty label (`ctx.ui.setHiddenThinkingLabel(\"\")`) renders no rows: thinking before a tool call no longer draws blank rows, and thinking before text draws one spacer.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "620abb0ff5",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/assistant_message_upstream_test.go::TestAssistantMessageUpstream"
       ]
     },
     {
@@ -14610,6 +14693,29 @@
       "tests": []
     },
     {
+      "id": "BF-69899c5",
+      "title": "A session entry whose write to the session file fails (a full disk, a busy or timed-out network drive) is no…",
+      "symptom": "The next entry pointed to the lost one, and resuming the session dropped the history before the gap, including the first system message that declares the tools.",
+      "rootCause": "When writing a session entry failed (ENOSPC, EBUSY, ETIMEDOUT on a network drive) the entry had already been added to memory and made the leaf. The process kept running and the next entry written pointed to a parent that was not in the file; on resume the history was followed back only to that gap.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A session entry whose write to the session file fails (a full disk, a busy or timed-out network drive) is no longer kept in memory: the error is returned, the session keeps its last written entry as the leaf, and the next entry is written as that entry's child. Before, the next entry pointed to the lost one, and resuming the session dropped the history before the gap, including the first system message that declares the tools.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "69899c5212",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "coding/session_custom_entries_test.go::TestAppendExtensionEntryPropagatesNativeStorageFailure",
+        "internal/codingagent/session_file_operations_upstream_test.go::TestSessionFileCreationUpstream"
+      ]
+    },
+    {
       "id": "BF-6992ffb",
       "title": "A Go, Python or Rust extension that calls `appendEntry` in a handler that already read the session log now…",
       "symptom": "It saw the entry only on its first read of the log or after the next host request.",
@@ -15748,6 +15854,29 @@
       ]
     },
     {
+      "id": "BF-7163ab3",
+      "title": "A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the…",
+      "symptom": "A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the last 20 lines or 2000 characters, terminal escapes and control characters removed) to the start error, for example `pi-env exited with code 3 before it was ready` followed by `remote stderr:` and the profile's message. stderr is decoded as UTF-8 across reads, and a start that fails because the daemon exited waits for its pipes to end so the tail is complete; a ready session still fails as soon as the daemon exits.",
+      "rootCause": "The connection keeps the last 20 lines / 2000 characters of the daemon's stderr until `hello`, with terminal escapes and control characters stripped, and adds them to the error of a start that fails. A start that fails because the daemon exited waits for its pipes to end first (Node's `close`); a ready session still fails as soon as the daemon exits. stderr is decoded as UTF-8 across reads.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the last 20 lines or 2000 characters, terminal escapes and control characters removed) to the start error, for example `pi-env exited with code 3 before it was ready` followed by `remote stderr:` and the profile's message. stderr is decoded as UTF-8 across reads, and a start that fails because the daemon exited waits for its pipes to end so the tail is complete; a ready session still fails as soon as the daemon exits.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7163ab34f1",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "env/connection_start_stderr_test.go::TestConnectionOfAReadyDaemonFailsPendingRequestsWhenItExitsWhilePipesStayOpen",
+        "env/connection_start_stderr_test.go::TestConnectionStartFailures"
+      ]
+    },
+    {
       "id": "BF-7177d5f",
       "title": "fix(tui): card of an unregistered tool is Pi's formatToolExecution",
       "symptom": "fix(tui): card of an unregistered tool is Pi's formatToolExecution",
@@ -15808,7 +15937,6 @@
         }
       ],
       "tests": [
-        "durable/harness/harness_events_test.go::TestAgentEvents",
         "durable/harness/partial_throttle_test.go::TestPartialChangesABlockTheBoundPartialLacksKeepsItsChangesForTheNextCut",
         "durable/harness/partial_throttle_test.go::TestPartialChangesACutLeavesTheChangesOfLaterEventsToTheNextCut",
         "durable/harness/partial_throttle_test.go::TestPartialChangesUncutPutsBackTheArgumentChangesOfACutThatNoCommitUsed",
@@ -18796,6 +18924,29 @@
       ]
     },
     {
+      "id": "BF-8aff02e",
+      "title": "`grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no…",
+      "symptom": "`grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no longer adds a line, so the context lines after it keep their line numbers and the match is no longer shown on the wrong line.",
+      "rootCause": "grep with context reads the matched file again and numbered its lines at CRLF, CR and LF; ripgrep, which supplies the match line numbers, counts only at LF, so a lone CR shifted every later line by one. The line window now ends a line at LF only (CRLF still ends at its LF) and drops every CR, as the line is displayed without it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no longer adds a line, so the context lines after it keep their line numbers and the match is no longer shown on the wrong line. The carriage return is dropped from the printed line.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8aff02e0d4",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepLineWindowMatchesTheWholeFileSplit",
+        "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
+      ]
+    },
+    {
       "id": "BF-8b75dc0",
       "title": "Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection…",
       "symptom": "Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection to the first item even when the query is unchanged, Tab no longer edits the search when project mode is unavailable, and the search is a callback-mode Input so Enter no longer freezes it, all as in Pi's `ResourceList.handleInput` (`tui/config_selector_oracle_test.go`, 648 probes against pinned Pi).",
@@ -19154,7 +19305,6 @@
         "coding/cli/session_resume_ui_test.go::TestInteractiveResumeWithAMissingCWDShowsPisStatuses",
         "coding/cli/startup_benchmark_pty_test.go::TestStartupBenchmarkInitsAndStopsInteractiveMode",
         "coding/cli/startup_benchmark_pty_test.go::TestStartupBenchmarkRejectsNonInteractiveModes",
-        "durable/harness/events_regression_test.go::TestTranslateEventsEndsATurnOncePerGeneration",
         "durable/harness/harness_lifecycle_test.go::TestHarnessClose",
         "durable/harness/harness_view_test.go::TestConversationView",
         "env/host_key_error_cause_test.go::TestHostKeyErrorCauseMatchesThePiOracle",
@@ -19245,7 +19395,6 @@
         "chord/delta/path_ref_test.go::TestNonEmptyPathAndPathRefMatchPi",
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
         "chord/delta/tracker_lifecycle_upstream_test.go::TestTrackerOverlayLifecycle",
-        "durable/harness/events_regression_test.go::TestTranslateEventsEndsATurnOncePerGeneration",
         "durable/harness/harness_lifecycle_test.go::TestHarnessClose",
         "durable/harness/harness_view_test.go::TestConversationView",
         "internal/chord/chordjson/copy_pi_differential_test.go::TestCopyMatchesPiOnRandomCases",
@@ -23570,6 +23719,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-a30388b",
+      "title": "GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another…",
+      "symptom": "GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another model that called tools.",
+      "rootCause": "Pi (#11415) removes gpt-5.4, gpt-5.4-mini, gpt-5.4-pro and gpt-5.5 from the tool-search and additional-tools model sets of scripts/generate-models.ts and limits supportsAdditionalTools on proxied Responses models to those sets, keeping supportsMidConvoSystemMessages. The generator stage runs in the pinned Pi and reaches PiG through the pinned provider data (ai/models_generated.go, regenerated by the pin commit), so the port is the changed case of openai-responses-compat.test.ts ('forwards required tool choice' now runs gpt-5.6-luna) plus request-shape cases for GPT-5.4/5.5 (top-level tools) and GPT-5.6 (additional_tools) on openai and opencode.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another model that called tools. On the OpenAI and OpenCode providers they declare their tools in the top-level tool list instead of loading them through `additional_tools` or tool search; GPT-5.6 and later keep `additional_tools`. Ports Pi's #11415.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a30388b92a",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatDefaultsUpstream"
+      ]
     },
     {
       "id": "BF-a3859aa",
@@ -29158,6 +29329,35 @@
       ]
     },
     {
+      "id": "BF-d2dafd7",
+      "title": "Bedrock requests no longer fail when `strict: \"prefer\"` tools exceed Claude's strict tool limits, such as…",
+      "symptom": "Bedrock requests no longer fail when `strict: \"prefer\"` tools exceed Claude's strict tool limits, such as more than 16 optional parameters across all strict tools.",
+      "rootCause": "Pi (#11416) retries a Bedrock request once with every strict: \"prefer\" tool non-strict when Bedrock rejects it with a ValidationException saying the strict tools exceed Claude's limits, as the Anthropic provider already does, and shares the limit messages and the prefer check between the two through constrained-sampling.ts. Ported: - ai/constrained_sampling.go: prefersJSONSchemaStrictSampling and isStrictToolLimitErrorMessage (exported to the Bedrock package in provider_kit.go); ai/anthropic.go calls them (anthropicStrictToolLimitsExceeded, anthropicMarksPreferredStrict, anthConvertTools) and drops its own message list. - ai/providers/bedrock/bedrock.go: convertBedrockTools takes…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Bedrock requests no longer fail when `strict: \"prefer\"` tools exceed Claude's strict tool limits, such as more than 16 optional parameters across all strict tools. The request is sent once more with the preferred tools non-strict while `strict: \"require\"` tools stay strict, as the Anthropic provider already does, and the reply carries a `bedrock_strict_tools_fallback` diagnostic. Ports Pi's #11416.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d2dafd770b",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "ai/providers/bedrock/bedrock_convert_upstream_test.go::TestBedrockUpstreamConvertMessages",
+        "ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go::TestBedrockConvertToolsPreferredStrictTools",
+        "ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go::TestBedrockPreferredStrictToolFallbackUpstream",
+        "ai/providers/bedrock/bedrock_test.go::TestBedrockConvertStrictTools",
+        "ai/providers/bedrock/bedrock_test.go::TestBedrockConvertTools",
+        "ai/providers/bedrock/bedrock_test.go::TestBedrockConvertTools_Empty",
+        "ai/strict_tool_limit_upstream_test.go::TestIsStrictToolLimitErrorMessage",
+        "ai/strict_tool_limit_upstream_test.go::TestPrefersJSONSchemaStrictSampling"
+      ]
+    },
+    {
       "id": "BF-d305b76",
       "title": "A Go extension whose `go.mod` replace (or a Rust extension whose `pig-sdk` path dependency) points at an SDK…",
       "symptom": "A Go extension whose `go.mod` replace (or a Rust extension whose `pig-sdk` path dependency) points at an SDK an earlier pig staged under its configuration root, for example through a link made with `pig reload --sdk-path go` before updating pig, now builds against the SDK the current pig staged. pig never deletes the SDK directories older versions staged, so such a link kept resolving and the extension compiled against the old SDK, failing at load with `decode register payload: json: unknown field ...`.",
@@ -29290,6 +29490,33 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-d409922",
+      "title": "A host that crashes during a model request no longer resends it forever, adding an aborted entry each time…",
+      "symptom": "A host that crashes during a model request no longer resends it forever, adding an aborted entry each time: the interrupted request is a failed attempt under the retry policy, and the run ends with `runFailure` reason `interrupted` once no retry is left; other work cut off `settings.restartLimit` times ends instead of keeping its conversation busy.",
+      "rootCause": "A generation whose request or poll fetch was in flight at a host death counts one failed attempt of the retry policy; without retries left the run ends with runFailure interrupted. restartLimit ends tool calls, compactions and generations themselves and the scheduler faults every other kind; task_interrupted replaces task_parked; Harness.RetryTask and the restart_limit blocked reason are removed. The core's scheduler follows (extension tasks fault at the limit); the core's built-in tasks are not ported and are faulted by it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A host that crashes during a model request no longer resends it forever, adding an aborted entry each time: the interrupted request is a failed attempt under the retry policy, and the run ends with `runFailure` reason `interrupted` once no retry is left; other work cut off `settings.restartLimit` times ends instead of keeping its conversation busy.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "19aa87d1a6",
+          "date": "2026-10-27"
+        },
+        {
+          "hash": "d40992222b",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/harness/harness_restart_failure_test.go::TestTheRestartLimitOnTheNormalPath"
+      ]
     },
     {
       "id": "BF-d42aebb",
@@ -29463,6 +29690,28 @@
         "coding/extension/host/subprocess/ts_runtime_test.go::TestTypeScriptRuntimeRetriesAFailedStartOnTheNextRuntime",
         "coding/extension/host/subprocess/ts_runtime_test.go::TestTypeScriptRuntimeRetriesOnlyStartFailures",
         "test/extension-conformance/node_load_exec_test.go::TestNodeFactoryExecDuringLoad"
+      ]
+    },
+    {
+      "id": "BF-d50faf0",
+      "title": "Replacing the editor component with `ctx.ui.setEditorComponent()` while an extension dialog is open no longer…",
+      "symptom": "Replacing the editor component with `ctx.ui.setEditorComponent()` while an extension dialog is open no longer closes a model selector shown over that dialog.",
+      "rootCause": "setCustomEditorComponent disposes the active selector only when no extension dialog is open, as Pi's setCustomEditorComponent leaves the editor slot alone while a dialog is open. PiG's editor widget is stable, so the dialog already stayed visible; the selector shown over it was the part that was disposed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Replacing the editor component with `ctx.ui.setEditorComponent()` while an extension dialog is open no longer closes a model selector shown over that dialog.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d50faf0882",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestEditorComponentReplacementKeepsTheActiveSelectorWhileADialogIsOpen"
       ]
     },
     {
@@ -30177,6 +30426,31 @@
       ]
     },
     {
+      "id": "BF-d991498",
+      "title": "Display math (`$$...$$`, `\\[...\\]`) wider than the Markdown content width renders as its raw LaTeX source…",
+      "symptom": "Display math (`$$...$$`, `\\[...\\]`) wider than the Markdown content width renders as its raw LaTeX source, which wraps like text, instead of wrapping each row of the 2D layout on its own and splitting fractions and sums apart.",
+      "rootCause": "A display math layout is several 2D rows, so wrapping each row on its own split fractions and sums apart. renderBlockLatex now takes the content width and renders the raw source, the fallback already used when parsing fails, when any row of the layout is wider. Layouts that fit render as before.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Display math (`$$...$$`, `\\[...\\]`) wider than the Markdown content width renders as its raw LaTeX source, which wraps like text, instead of wrapping each row of the 2D layout on its own and splitting fractions and sums apart. Layouts that fit render as before. Ports Pi's `latexBlock` width check.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d991498611",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi",
+        "tui/markdown_latex_width_test.go::TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
+        "tui/markdown_latex_width_test.go::TestMarkdownDisplayMathWidthFallbackMatchesPi",
+        "tui/markdown_unicode_space_oracle_test.go::TestMarkdownUnicodeSpaceLinesMatchPi"
+      ]
+    },
+    {
       "id": "BF-da5d32b",
       "title": "fix(extension): theme palette reports the theme's own sourcePath; conformance rows for the rest of…",
       "symptom": "fix(extension): theme palette reports the theme's own sourcePath; conformance rows for the rest of ctx.ui.theme",
@@ -30666,6 +30940,28 @@
       "tests": [
         "coding/extension/builtin/codemode/baseline_rss_test.go::TestPeakRSSOfCodemodeScenarios",
         "coding/extension/builtin/codemode/baseline_rss_test.go::TestRSSScenarioChild"
+      ]
+    },
+    {
+      "id": "BF-dbce96c",
+      "title": "On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and…",
+      "symptom": "On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and local execution environments or the JSONL session storage could lose the other end's bytes: a signal that ended the wait for the writer (the Go runtime's SIGURG preemption signal, a child's SIGCHLD) made macOS drop the open from the pipe, so the writer failed with EPIPE and the reader returned an empty file or waited for a writer that had gone (about one open in seven under a steady stream of signals).",
+      "rootCause": "On macOS a signal that ends a blocking open of a FIFO (Go's SIGURG preemption, SIGCHLD) makes fifo_open drop the open from the FIFO while the other end, whose open completed because it saw the opener, goes on: the writer's write fails with EPIPE or the reader sees an empty file or waits for a writer that has gone. Node avoids it because libuv opens on a worker thread that signals are not delivered to (fs.readFileSync on the main thread loses bytes at the same rate as Go).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and local execution environments or the JSONL session storage could lose the other end's bytes: a signal that ended the wait for the writer (the Go runtime's SIGURG preemption signal, a child's SIGCHLD) made macOS drop the open from the pipe, so the writer failed with EPIPE and the reader returned an empty file or waited for a writer that had gone (about one open in seven under a steady stream of signals). Pi does not lose them, as Node opens on a libuv worker thread that signals are not delivered to; PiG now opens a FIFO on a thread that blocks every signal. Other platforms and files that are not FIFOs are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dbce96c6a2",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "internal/nodefs/open_fifo_test.go::TestFIFOOpenLosesNoBytesToSignals"
       ]
     },
     {
@@ -33092,6 +33388,29 @@
       "tests": []
     },
     {
+      "id": "BF-e249b5c",
+      "title": "fix(coding): default the openai provider to gpt-6.1-sol (Pi)",
+      "symptom": "fix(coding): default the openai provider to gpt-6.1-sol (Pi)",
+      "rootCause": "defaultModelPerProvider.openai is gpt-6.1-sol, as openai-codex and github-copilot already are. The model picked after /login with no model set, the startup fallback and --provider openai all read the one shared table (internal/codingagent/default_models.go), so the entry is the only change in production code. The tests and the oauth post-login scenarios that named the old default now expect the new one.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e249b5c39d",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_resolver_defaults_upstream_test.go::TestModelResolverDefaultsUpstream",
+        "coding/cli/model_test.go::TestDefaultModelPerProviderMatchesPinnedUpstream",
+        "coding/cli/startup_model_test.go::TestSelectStartupModelUsesStoredLoginProvider"
+      ]
+    },
+    {
       "id": "BF-e25a09f",
       "title": "A tool argument or event payload with a number outside the double range (`1e400`), at any nesting depth, no…",
       "symptom": "A tool argument or event payload with a number outside the double range (`1e400`), at any nesting depth, no longer fails the call in the Go SDK or ends a Rust extension; it reads as Infinity (Go) or `null` (Rust), as `JSON.parse` and `JSON.stringify` do.",
@@ -33973,6 +34292,32 @@
       ]
     },
     {
+      "id": "BF-eaa4ed7",
+      "title": "F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and…",
+      "symptom": "F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and `CSI 1;\u003cmod\u003e P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5, so shortcuts bound to `f1` or `ctrl+f5` fire and `parseKey` names them.",
+      "rootCause": "The sdk/tui engine copies are regenerated from the changed sources.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and `CSI 1;\u003cmod\u003e P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5, so shortcuts bound to `f1` or `ctrl+f5` fire and `parseKey` names them. Releases and repeats of F1, F2 and F4 are no longer taken for presses. F13-F35 and the other Kitty functional keys in the Private Use Area are dropped instead of inserting invisible characters into the prompt. Ports Pi's `matchesKey`, `parseKey`, `isKeyRelease`, `isKeyRepeat` and `decodeKittyPrintable` changes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eaa4ed7eaa",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "tui/decode_printable_oracle_test.go::TestDecodePrintableKeyMatchesPi",
+        "tui/key_repeat_oracle_test.go::TestIsKeyRepeatAndReleaseMatchPi",
+        "tui/keys_function_keys_upstream_test.go::TestDecodeKittyPrintableIgnoresUnmappedKittyFunctionalKeys",
+        "tui/keys_function_keys_upstream_test.go::TestMatchesKittyFunctionKeysF1ToF12WithAndWithoutModifiers",
+        "tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput"
+      ]
+    },
+    {
       "id": "BF-ead285d",
       "title": "Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147)",
       "symptom": "Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147).",
@@ -34108,7 +34453,6 @@
         "durable/codecs_test.go::TestDocumentContentDecodesOperationObjectsInKeyOrder",
         "durable/env/node/watch_options_set_test.go::TestNodeTimerDelayFollowsSetTimeout",
         "durable/env/node/watch_options_set_test.go::TestNodeWatchMaxDirectoriesZeroRefusesEveryDirectory",
-        "durable/harness/events_regression_test.go::TestTranslateEventsEndsATurnOncePerGeneration",
         "durable/harness/harness_lifecycle_test.go::TestHarnessClose",
         "durable/harness/harness_view_test.go::TestConversationView",
         "env/watch_test.go::TestRemoteWatcherSendsASetZeroDirectoryBudget",
@@ -35593,6 +35937,34 @@
       ]
     },
     {
+      "id": "BF-f6575ff",
+      "title": "`pig install`, `pig remove` and `pig update --extensions` run npm with `--no-audit --no-fund`, wherever they…",
+      "symptom": "`pig install`, `pig remove` and `pig update --extensions` run npm with `--no-audit --no-fund`, wherever they already pass `--legacy-peer-deps`, so npm no longer prints audit advice that, followed in the managed package root, would install the host-provided pi packages a second time. bun and pnpm arguments are unchanged.",
+      "rootCause": "pi install, pi remove and pi update --extensions ran npm without --no-audit --no-fund, so npm printed its audit advice after every install, and following it (npm audit fix in the managed root runs without --legacy-peer-deps) installs the host-provided pi peers there. The npm install arguments, the git dependency install arguments and the npm uninstall arguments now carry --no-audit --no-fund wherever they carry --legacy-peer-deps, before --registry and the ignore-scripts arguments. bun and pnpm arguments are unchanged. The tests and paired scenario 15 expect the new argument lists.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig install`, `pig remove` and `pig update --extensions` run npm with `--no-audit --no-fund`, wherever they already pass `--legacy-peer-deps`, so npm no longer prints audit advice that, followed in the managed package root, would install the host-provided pi packages a second time. bun and pnpm arguments are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f6575ff088",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "coding/cli/package_install_empty_test.go::TestPackageInstallPlainNpmPersistsWithoutLoadingCode",
+        "coding/cli/package_npm_commands_upstream_test.go::TestPackageLegacyNpmUpdateMigratesOriginal",
+        "coding/cli/package_npm_commands_upstream_test.go::TestPackageNpmCommandOriginal",
+        "coding/cli/package_npm_trust_test.go::TestPackageNpmCommandDefaultsRespectTrust",
+        "coding/cli/package_reconcile_upstream_test.go::TestNpmUpdateSkipsExactVersionsAndIncludesBothScopes",
+        "coding/cli/package_reconcile_upstream_test.go::TestNpmUpdateVersionReconciliationUpstream",
+        "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASymlink"
+      ]
+    },
+    {
       "id": "BF-f68aa40",
       "title": "A `delta.Tracker` no longer keeps memory alive that Pi's tracker releases",
       "symptom": "A `delta.Tracker` no longer keeps memory alive that Pi's tracker releases.",
@@ -36435,6 +36807,28 @@
         "ai/validate_formats_oracle_test.go::TestTypeboxFormatsMatchPiOnSeededStrings",
         "ai/validate_tool_args_oracle_test.go::TestValidateToolArgumentsMatchesPiOnSeededSchemas",
         "internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes"
+      ]
+    },
+    {
+      "id": "BF-f8d96b7",
+      "title": "The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every…",
+      "symptom": "The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every statement it ever prepared, closing the evicted ones, so callers that generate SQL of unbounded shapes no longer grow it without bound.",
+      "rootCause": "The driver kept every statement it ever prepared. It now keeps the 256 most recently used per connection, closing evicted ones; below half the limit a hit stays one lookup.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every statement it ever prepared, closing the evicted ones, so callers that generate SQL of unbounded shapes no longer grow it without bound.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f8d96b7ffd",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "chord/sqlite/node/statement_cache_test.go::TestNodeSqliteStatementCache"
       ]
     },
     {
