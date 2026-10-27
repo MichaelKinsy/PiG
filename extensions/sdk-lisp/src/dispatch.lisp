@@ -242,12 +242,13 @@
     (let ((data (let ((d (jget req "args"))) (if (hash-table-p d) d (or d (obj))))))
       (cond
         ((member event '("agent_before_settle" "turn_end") :test #'equal)
-         (let ((entries (let ((e (jget data "entries"))) (or e (vector)))) result error-message)
+         (let (result error-message)
            (handler-case
                (progn (ticket-begin (request-ticket (ctx-request ctx)))
                       (setf result (funcall handler ctx data)))
              (serious-condition (c) (setf error-message (condition-message c))))
-           (values (obj "_pigBoundaryEntries" entries "_pigBoundaryResult" result) error-message)))
+           ;; the handler appends to the event's entries: the reply carries the list it left
+           (values (obj "_pigBoundaryEntries" (or (jget data "entries") (vector)) "_pigBoundaryResult" result) error-message)))
         ((equal event "tool_call")
          (let* ((input (jget data "input")) (before (to-json input)) result error-message)
            (handler-case
