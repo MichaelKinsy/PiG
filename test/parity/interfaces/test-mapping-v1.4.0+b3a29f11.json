@@ -1370,8 +1370,14 @@
     },
     {
       "path": "packages/ai/test/openai-responses-compat.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:846d19dcb91e7f37fac0db3891bfd7cc129e2607b4a8b3e0ac706758a30dda31"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:846d19dcb91e7f37fac0db3891bfd7cc129e2607b4a8b3e0ac706758a30dda31",
+      "evidence": [
+        "ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
+        "ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatHeadersUpstream",
+        "test/parity/scenarios/providers-faux-streaming/15-openai-cache-affinity.toml"
+      ],
+      "rationale": "All 18 sites (37 expanded cases) ported: Copilot omission, required tool choice, Cloudflare strictness, every supported/unsupported-off model row, every affinity-header variant, key clamping, all service-tier pricing rows and both max-output-token cases. HTTP capture uses the production provider; service-tier wire input uses SamplingParams. Red tests expose omitted reasoning incorrectly clamped on, dropped required choice, wrong affinity formats and generic header truncation. Compiling overlays fail these guards and the exact Pi probe. Pi 0.99.2 review: the 0.99.1 changes are ported: the key fixture is now sk-test-key (openai_responses_compat_upstream_test.go:20) and the service-tier cost case takes requested and returned tiers with GPT-6 \"fast\" rows (openai-responses-compat.test.ts:481-534; openai_responses_compat_upstream_test.go:185-201, close-to comparison at 12 digits). The it.each cases are table subtests with titles built from the row values. Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi e5fe9777 changes 'omits reasoning when no reasoning is requested' from github-copilot gpt-5-mini to gpt-6-sol (gpt-6-sol has off: \"none\", so it exercises the Copilot exception of #2567); the Go case takes the same model (openai_responses_compat_upstream_test.go, 437d51c5). All 18 sites remain ported. Pi 81d6759f (#11415) changes 'forwards required tool choice' (:122, :151) to openai gpt-5.6-luna: GPT-5.4 and GPT-5.5 declare their tools at the top level on OpenAI and OpenCode, so only GPT-5.6 and later keep additional_tools items and tool_choice applying to them. The Go subtest of that name uses gpt-5.6-luna with the same context and assertions (tool_choice required, no top-level tools, an additional_tools input item holding ping). The 'declares <provider>/<id> tools' subtests add the other side for openai and opencode: gpt-5.4, gpt-5.4-mini, gpt-5.4-pro and gpt-5.5 send ping in the top-level tools with no additional_tools item and no supportsAdditionalTools compat, gpt-5.6-sol, gpt-5.6-terra and gpt-5.6-luna send it in an additional_tools item, and every row keeps supportsMidConvoSystemMessages. Red: the original subtest (gpt-5.4) fails against the regenerated catalog with top-level tools=[{\"type\":\"function\",\"name\":\"ping\",...}]."
     },
     {
       "path": "packages/ai/test/openai-responses-empty-tool-result.test.ts",
