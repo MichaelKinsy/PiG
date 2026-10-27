@@ -70,7 +70,7 @@ func TestConformance_NumberAndKeyArgumentsAgreeAcrossSDKs(t *testing.T) {
 	}
 
 	var reference []outcome
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		if tc.name != "subprocess-node" {
 			continue
 		}
@@ -92,7 +92,7 @@ func TestConformance_NumberAndKeyArgumentsAgreeAcrossSDKs(t *testing.T) {
 		}
 	}
 
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		if tc.name == "subprocess-node" {
 			continue
 		}

@@ -16,8 +16,8 @@ func TestStaleContextLocalMembersRaiseTheStaleMessageInEverySDK(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	cases := sdkHarnessCases()
-	for _, language := range []string{"go", "python", "rust"} {
+	cases := append(sdkHarnessCases(), lispHarnessCase())
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	const stale = "This extension ctx is stale after session replacement or reload."
