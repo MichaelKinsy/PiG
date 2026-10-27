@@ -6,9 +6,11 @@ package durable
 
 import (
 	"errors"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
+	"weak"
 )
 
 // A timer fires once after its delay and a disarmed one never fires (timers.ts nativeTimer).
@@ -33,6 +35,31 @@ func TestNativeTimerFiresOnceAndDisarms(t *testing.T) {
 	if late.Load() != 0 {
 		t.Fatalf("a disarmed timer fired %d times", late.Load())
 	}
+}
+
+// A disarmed timer keeps nothing of its callback (timers.ts nativeTimer: clearTimeout leaves nothing of it). The runtime keeps a stopped
+// Go timer, and the function it was armed with, in its timer heap until it next removes it, so a callback that reaches a Session
+// would keep the Session alive after the Session disarmed the timer at its close. Each round arms and disarms one timer, as a
+// Session does its document sweep, and collects once: the callback's object must be gone at that collection.
+func TestNativeTimerDisarmReleasesItsCallback(t *testing.T) {
+	const rounds = 8
+	for round := range rounds {
+		held := armAndDisarmReachingTimer()
+		runtime.GC()
+		if held.Value() != nil {
+			t.Fatalf("round %d: a disarmed timer keeps its callback alive", round)
+		}
+	}
+}
+
+// armAndDisarmReachingTimer arms a timer whose callback reaches an object, disarms it, and returns a weak pointer to the object.
+func armAndDisarmReachingTimer() weak.Pointer[[64]byte] {
+	object := new([64]byte)
+	held := weak.Make(object)
+	// A delay far past the test: the timer is disarmed long before it could fire.
+	disarm := NativeTimer(func() { object[0]++ }, 3_600_000, true)
+	disarm()
+	return held
 }
 
 // A foreground timer the host throws on or declines is armed by the native timer and the failure is reported once; a background one the

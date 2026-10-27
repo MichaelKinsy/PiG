@@ -15,6 +15,11 @@ const maxTimerDelay = 2_147_483_647
 // NativeTimer is the default HarnessOptions.SetTimer: a Go timer, waiting out delays beyond setTimeout's limit in steps
 // (timers.ts nativeTimer). Go timers never keep a process alive and cannot hold a Durable Object awake, so a background
 // timer is never declined here.
+//
+// A disarmed timer keeps nothing of its callback, as clearTimeout leaves nothing of it. Stopping a Go timer only marks it:
+// the runtime keeps the stopped timer, and the function it was armed with, in the timer heap until it next removes it,
+// and a callback that reaches a Session, as the document sweep's does, would keep the Session and all it holds alive
+// until then. The disarm drops the callback, so what the heap holds meanwhile is the timer's own state.
 func NativeTimer(callback func(), delayMs float64, background bool) (disarm func()) {
 	var mu sync.Mutex
 	var timer *time.Timer
@@ -33,8 +38,9 @@ func NativeTimer(callback func(), delayMs float64, background bool) (disarm func
 				mu.Unlock()
 				return
 			}
+			fire := callback
 			mu.Unlock()
-			callback()
+			fire()
 		})
 		timer = next
 	}
@@ -45,6 +51,7 @@ func NativeTimer(callback func(), delayMs float64, background bool) (disarm func
 		mu.Lock()
 		defer mu.Unlock()
 		stopped = true
+		callback = nil
 		if timer != nil {
 			timer.Stop()
 		}
