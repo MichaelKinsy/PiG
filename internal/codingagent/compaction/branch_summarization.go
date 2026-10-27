@@ -85,6 +85,8 @@ type GenerateBranchSummaryOptions struct {
 	Completer SimpleCompleter
 	// StreamFn overrides Completer when supplied, as in compaction.
 	StreamFn StreamFn
+	// ThinkingLevel is the thinking level of the request, sent only to a reasoning-capable model (upstream thinkingLevel?: ThinkingLevel).
+	ThinkingLevel ai.ModelThinkingLevel
 	// CustomInstructions are appended to (or replace) the default prompt.
 	CustomInstructions string
 	// ReplaceInstructions, when true, replaces the default prompt entirely.
@@ -463,6 +465,7 @@ func summarizeBranchMessages(ctx context.Context, messages []agent.AgentMessage,
 	}
 
 	// No maxTokens: the summary uses the model's output limit (#9512, Pi 6fcb4867; branch-summarization.ts
-	// generateBranchSummary).
-	return completeSummarization(ctx, opts.Model, opts.Completer, opts.StreamFn, opts.Retry, opts.Callbacks, SummarizationSystemPrompt, req, ai.StreamOptions{APIKey: opts.APIKey, Headers: ai.ProviderHeadersFromStrings(opts.Headers), Env: opts.Env})
+	// generateBranchSummary). The request has no routing session: completeSummarization gives it a fresh one.
+	options := createSummarizationOptions(opts.Model, opts.APIKey, opts.Headers, opts.Env, opts.ThinkingLevel, "")
+	return completeSummarization(ctx, opts.Model, opts.Completer, opts.StreamFn, opts.Retry, opts.Callbacks, SummarizationSystemPrompt, req, options)
 }

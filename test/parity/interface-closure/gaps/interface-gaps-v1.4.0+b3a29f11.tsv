@@ -17,8 +17,6 @@ pkg:chord/sqlite/node#NodeSqliteDatabase::property:runCounted::call:0	chord	memb
 pkg:coding-agent/.#ExtensionUIContext	coding-agent	child-gap	coding/extension/ui.go#UIContext
 pkg:coding-agent/.#ExtensionUIContext::property:custom	coding-agent	child-gap	coding/extension/ui.go#UIContext.Custom
 pkg:coding-agent/.#ExtensionUIContext::property:custom::call:0	coding-agent	signature-mismatch	coding/extension/ui.go#UIContext.Custom
-pkg:coding-agent/.#GenerateBranchSummaryOptions	coding-agent	child-gap	internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummaryOptions
-pkg:coding-agent/.#GenerateBranchSummaryOptions::property:thinkingLevel	coding-agent	member-missing	internal/codingagent/compaction/branch_summarization.go#GenerateBranchSummaryOptions
 pkg:coding-agent/.#LoginDialogComponent	coding-agent	child-gap	tui/login_dialog.go#LoginDialogComponent
 pkg:coding-agent/.#LoginDialogComponent::property:showAuth	coding-agent	child-gap	tui/login_dialog.go#LoginDialogComponent.ShowAuth
 pkg:coding-agent/.#LoginDialogComponent::property:showAuth::call:0	coding-agent	signature-mismatch	tui/login_dialog.go#LoginDialogComponent.ShowAuth

@@ -2090,9 +2090,9 @@ rationale = "ported as coding/client_identity.go (getClientIdentity), set per re
 [[files]]
 path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/compaction/03-branch-summarize-via-tree.toml", "scenario:test/parity/scenarios/compaction/09-branch-summary-provider-responses.toml", "scenario:test/parity/scenarios/tree/13-tree-navigation-request-flow.toml", "test:internal/codingagent/compaction/branch_summarization_test.go#TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels", "test:coding/session_branch_summary_upstream_test.go#TestNavigateTreeSummaryPassesTheSessionThinkingLevel"]
+rationale = "PORT_MAP row is ✅ ported (internal/codingagent/compaction/branch_summarization.go (internal/codingagent/compaction/branch_summarization_test.go; coding/session_branch_summary_upstream_test.go verifies current Agent stream selection, request auth, usage and cancellation through NavigateTree), ai/types.go). coverage.md reports 3 behavioral verifications for this file (3 scenarios whose covers list it, 0 named unit tests); the first of each are cited. Delta at Pi 269afc66 (#11444): GenerateBranchSummaryOptions gains thinkingLevel, and generateBranchSummary sets the request's reasoning when the model supports reasoning and the level is not off (the rule createSummarizationOptions applies to compaction), so a reasoning model on OpenAI Responses no longer gets effort \"none\" for a branch summary. Ported as GenerateBranchSummaryOptions.ThinkingLevel, which GenerateBranchSummary hands to the shared createSummarizationOptions, and Session.NavigateTree passes the summary request's thinking level (the session's, or the router's for a virtual model) as agent-session.ts does through _getSummarizationRequestAuth. TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels ports the three cases (reasoning model at xhigh, at off, and a model without reasoning) and TestNavigateTreeSummaryPassesTheSessionThinkingLevel checks the request a /tree summary sends."
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/compaction.ts"

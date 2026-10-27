@@ -3194,8 +3194,16 @@
     },
     {
       "path": "packages/coding-agent/test/branch-summarization.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a2a3d79974d66a2b22f7ef79ba9bdb0be265ce97f38df4044a2a4d2d6510e3e5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a2a3d79974d66a2b22f7ef79ba9bdb0be265ce97f38df4044a2a4d2d6510e3e5",
+      "evidence": [
+        "coding/session_branch_summary_upstream_test.go#TestBranchSummarizationUpstream",
+        "internal/codingagent/compaction/branch_summarization_test.go#TestBranchSummaryFailureMatchesPi",
+        "test/parity/scenarios/compaction/09-branch-summary-provider-responses.toml",
+        "internal/codingagent/compaction/branch_summarization_test.go#TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels",
+        "coding/session_branch_summary_upstream_test.go#TestNavigateTreeSummaryPassesTheSessionThinkingLevel"
+      ],
+      "rationale": "All 4 upstream cases are ported through production GenerateBranchSummary and modelCompleter with provider event streams. Exact tool/length errors were red on the original implementation. A compiling mutation bypassing summarizationFailure fails both conversion and caller tests; the Pi 0.87.1 paired scenario also fails before the fix and passes after it. Pi 6fcb4867 (#9512) drops the output-cap case and the maxTokens assertion; the Go cases match the three remaining ones and assert no maxTokens is set (coding/session_branch_summary_upstream_test.go, internal/codingagent/compaction/branch_summarization_test.go#TestBranchSummaryMaxTokens). Pi 269afc66 (#11444) adds 'passes the thinking level only for reasoning-capable models' (:47): a reasoning model at xhigh, a reasoning model at off and a non-reasoning model at high produce reasoning [\"xhigh\", undefined, undefined]. TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels runs the same three calls through production GenerateBranchSummary and expects [\"xhigh\", \"\", \"\"] (off and an unset reasoning are the empty option); TestNavigateTreeSummaryPassesTheSessionThinkingLevel drives NavigateTree with the session thinking level set and checks the stream options of the summary request. The case is red on the unchanged code (the options type has no thinking level and the /tree request carries no reasoning)."
     },
     {
       "path": "packages/coding-agent/test/branch-summary-extensions.test.ts",

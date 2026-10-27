@@ -3138,6 +3138,7 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 			Env:                 request.env,
 			Completer:           request.completer,
 			StreamFn:            request.streamFn,
+			ThinkingLevel:       request.thinkingLevel,
 			CustomInstructions:  customInstructions,
 			ReplaceInstructions: replaceInstructions,
 			ReserveTokens:       s.SettingsManager().GetBranchSummarySettings().ReserveTokens,
