@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close stopped fails, for example because another process advanced the store. Pi catches that write and the Session reports the failure, so the close resolves. <!-- fix: 98666dfd10 -->
+- Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close stopped fails, for example because another process advanced the store. Pi catches that write and the Session reports the failure, so the close resolves. <!-- fix: 98666dfd10d79e195dc65e8002a2e6ea0fede12c -->
