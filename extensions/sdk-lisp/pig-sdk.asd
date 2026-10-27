@@ -23,9 +23,15 @@
                (:file "pi-ai")
                ;; ==== end lane T ====
                ;; ==== lane H ====
+               (:file "tui-tables")
                (:file "tui-width")
-               (:file "tui-keys")
                (:file "tui-text")
+               (:file "tui-fuzzy")
+               (:file "tui-keys")
+               (:file "tui-state")
+               (:file "tui-keybindings")
+               (:file "tui-terminal")
+               (:file "tui-colors")
                (:file "tui-theme")
                ;; ==== end lane H ====
                ;; ==== lane C ====
@@ -52,6 +58,7 @@
                (:file "create-provider")
                (:file "extension-runner")
                (:file "extension-factories")
+               (:file "mcp-options")
                (:file "event-bus")
                (:file "builtin-tool")
                ;; ==== end lane S3 ====

@@ -47,6 +47,26 @@
    ;; ==== lane T: type engine, tool schema, pi-ai ====
    ;; ==== end lane T ====
    ;; ==== lane H: pi-tui helpers ====
+    #:tui-visible-width #:tui-strip-terminal-sequences #:tui-truncate-to-width #:tui-wrap-text-with-ansi #:tui-slice-by-column #:tui-slice-with-width
+    #:tui-extract-segments #:tui-get-osc8-link-at-column #:tui-get-active-background-ansi #:+tui-cursor-marker+ #:tui-key #:tui-matches-key
+    #:tui-parse-key #:tui-key-release-p #:tui-key-repeat-p #:tui-set-kitty-protocol-active #:tui-kitty-protocol-active-p #:tui-decode-kitty-printable
+    #:tui-decode-printable-key #:tui-fuzzy-match #:tui-fuzzy-filter #:tui-fuzzy-match-matches #:tui-fuzzy-match-score #:*tui-keybindings*
+    #:make-tui-keybinding-definition #:tui-keybinding-definition-default-keys #:tui-keybinding-definition-description #:tui-keybinding-conflict-key
+    #:tui-keybinding-conflict-keybindings #:tui-make-keybindings-manager #:tui-keybindings-from-wire #:tui-keybindings-matches
+    #:tui-keybindings-get-keys #:tui-keybindings-get-definition #:tui-keybindings-get-conflicts #:tui-keybindings-set-user-bindings
+    #:tui-keybindings-get-user-bindings #:tui-keybindings-get-resolved-bindings #:tui-get-keybindings #:tui-set-keybindings #:make-tui-capabilities
+    #:tui-capabilities-images #:tui-capabilities-true-color #:tui-capabilities-hyperlinks #:tui-hyperlink #:tui-detect-capabilities
+    #:tui-get-capabilities #:tui-get-terminal-color-mode #:tui-reset-capabilities-cache #:tui-set-capability-overrides #:tui-set-capabilities
+    #:tui-error #:tui-error-message #:tui-indexed-color #:tui-rgb-color #:tui-oklch-color #:tui-okhsl-color #:tui-parse-color #:tui-color-to-rgb
+    #:tui-color-to-oklch #:tui-color-to-okhsl #:tui-color-to-hex #:tui-mix-colors #:tui-foreground-ansi #:tui-background-ansi #:tui-style-text
+    #:tui-style-text-with-ansi #:tui-color-ansi #:tui-wire-color #:format-key-text #:key-text #:key-display-text #:key-hint #:raw-key-hint
+    #:get-markdown-theme #:get-select-list-theme #:get-settings-list-theme #:get-editor-theme #:highlight-code #:init-theme #:markdown-theme-heading
+    #:markdown-theme-link #:markdown-theme-link-url #:markdown-theme-code #:markdown-theme-code-block #:markdown-theme-code-block-border
+    #:markdown-theme-quote #:markdown-theme-quote-border #:markdown-theme-hr #:markdown-theme-list-bullet #:markdown-theme-bold #:markdown-theme-italic
+    #:markdown-theme-underline #:markdown-theme-strikethrough #:markdown-theme-highlight-code #:select-list-theme-selected-prefix
+    #:select-list-theme-selected-text #:select-list-theme-description #:select-list-theme-scroll-info #:select-list-theme-no-match
+    #:settings-list-theme-label #:settings-list-theme-value #:settings-list-theme-description #:settings-list-theme-cursor #:settings-list-theme-hint
+    #:editor-theme-border-color #:editor-theme-select-list
    ;; ==== end lane H ====
    ;; ==== lane C: pi-coding-agent pure helpers ====
    ;; ==== end lane C ====
@@ -121,51 +141,125 @@
     #:trust-store-set-many
    ;; ==== end lane S2 ====
    ;; ==== lane S3: model runtime and registry, create-provider, extension runner and factories, MCP options, event bus, builtin tools ====
+    #:bash-tool-options #:builtin-tool #:builtin-tool-constrained-sampling #:builtin-tool-definition #:builtin-tool-definition-constrained-sampling
+    #:builtin-tool-definition-description #:builtin-tool-definition-execute #:builtin-tool-definition-execute-with
+    #:builtin-tool-definition-execution-mode #:builtin-tool-definition-label #:builtin-tool-definition-name #:builtin-tool-definition-output-schema
+    #:builtin-tool-definition-parameters #:builtin-tool-definition-prepare-arguments #:builtin-tool-definition-prompt-guidelines
+    #:builtin-tool-definition-prompt-snippet #:builtin-tool-definition-render-shell #:builtin-tool-description #:builtin-tool-execute
+    #:builtin-tool-execution-mode #:builtin-tool-label #:builtin-tool-name #:builtin-tool-output-schema #:builtin-tool-parameters
+    #:builtin-tool-prompt-guidelines #:builtin-tool-prompt-snippet #:copy-builtin-tool-definition #:create-bash-tool #:create-bash-tool-definition
+    #:create-codemode-extension #:create-coding-tools #:create-edit-tool #:create-edit-tool-definition #:create-extension-runtime #:create-find-tool
+    #:create-find-tool-definition #:create-grep-tool #:create-grep-tool-definition #:create-local-bash-operations #:create-local-powershell-operations
+    #:create-ls-tool #:create-ls-tool-definition #:create-mcp-extension #:create-powershell-tool #:create-powershell-tool-definition #:create-provider
+    #:create-read-only-tools #:create-read-tool #:create-read-tool-definition #:create-tool-search-extension #:create-write-tool
+    #:create-write-tool-definition #:ctx-events #:edit-operations #:edit-tool-options #:event-bus #:events-emit #:events-on #:extension-events
+    #:extension-factory #:extension-factory-p #:extension-factory-wire #:extension-runner #:extension-runtime #:extension-runtime-assert-active
+    #:extension-runtime-get-flag-values #:extension-runtime-invalidate #:extension-runtime-mcp-servers
+    #:extension-runtime-pending-native-provider-registrations #:extension-runtime-pending-provider-registrations
+    #:extension-runtime-pending-virtual-model-registrations #:extension-runtime-set-flag-value #:find-operations #:find-tool-options #:grep-operations
+    #:grep-tool-options #:loaded-extensions-runtime #:ls-operations #:ls-stat #:ls-tool-options #:make-bash-tool-options
+    #:make-builtin-tool-definition #:make-edit-operations #:make-edit-tool-options #:make-extension-runner #:make-find-operations
+    #:make-find-tool-options #:make-grep-operations #:make-grep-tool-options #:make-ls-operations #:make-ls-stat #:make-ls-tool-options
+    #:make-mcp-credential-store #:make-mcp-server-store #:make-mcp-transport #:make-model-image-resize-options #:make-power-shell-tool-options
+    #:make-provider-streams #:make-read-operations #:make-read-tool-options #:make-runtime-registry #:make-tools-options #:make-write-operations
+    #:make-write-tool-options #:mcp-auth-on-unauthorized #:mcp-auth-provider #:mcp-auth-token #:mcp-credential-store #:mcp-server-store
+    #:mcp-transport #:mcp-transport-emit-close #:mcp-transport-emit-error #:mcp-transport-emit-message #:mcp-transport-on-close
+    #:mcp-transport-on-error #:mcp-transport-on-message #:model-image-resize-options #:model-runtime #:power-shell-tool-options #:provider-streams
+    #:read-operations #:read-tool-options #:register-builtin-tool-definition #:runner-bind-command-context #:runner-bind-core #:runner-context
+    #:runner-context-abort #:runner-context-compact #:runner-context-cwd #:runner-context-execute-tool #:runner-context-fork
+    #:runner-context-get-context-usage #:runner-context-get-system-prompt #:runner-context-get-system-prompt-options
+    #:runner-context-has-pending-messages-p #:runner-context-has-ui-p #:runner-context-is-idle-p #:runner-context-is-project-trusted-p
+    #:runner-context-mode #:runner-context-model #:runner-context-model-registry #:runner-context-navigate-tree #:runner-context-new-session
+    #:runner-context-reload #:runner-context-scoped-models #:runner-context-session-manager #:runner-context-shutdown #:runner-context-signal
+    #:runner-context-switch-session #:runner-context-thinking-level #:runner-context-tools #:runner-context-ui #:runner-context-wait-for-idle
+    #:runner-create-command-context #:runner-create-context #:runner-create-tool-context #:runner-emit #:runner-emit-before-agent-start
+    #:runner-emit-before-provider-headers #:runner-emit-before-provider-request #:runner-emit-boundary #:runner-emit-cache-warming-decision
+    #:runner-emit-context #:runner-emit-error #:runner-emit-input #:runner-emit-message-end #:runner-emit-resources-discover #:runner-emit-tool-call
+    #:runner-emit-tool-result #:runner-emit-user-bash #:runner-get-active-tools #:runner-get-all-registered-tools #:runner-get-command
+    #:runner-get-command-diagnostics #:runner-get-entry-renderer-p #:runner-get-extension-paths #:runner-get-flag-values #:runner-get-flags
+    #:runner-get-markdown-transformers #:runner-get-message-renderer-p #:runner-get-model-registry #:runner-get-registered-commands
+    #:runner-get-shortcut-diagnostics #:runner-get-shortcuts #:runner-get-tool-definition #:runner-get-ui-context #:runner-has-handlers-p
+    #:runner-has-ui-p #:runner-invalidate #:runner-on-error #:runner-report-unhandled-mcp-servers #:runner-resolve-tool-renderers
+    #:runner-set-flag-value #:runner-set-ui-context #:runner-shutdown #:runner-ui #:runner-ui-confirm #:runner-ui-editor #:runner-ui-get-editor-text
+    #:runner-ui-get-tools-expanded-p #:runner-ui-input #:runner-ui-notify #:runner-ui-paste-to-editor #:runner-ui-select #:runner-ui-set-editor-text
+    #:runner-ui-set-hidden-thinking-label #:runner-ui-set-status #:runner-ui-set-title #:runner-ui-set-tools-expanded #:runner-ui-set-widget
+    #:runner-ui-set-working-message #:runner-ui-set-working-visible #:runtime-check-auth #:runtime-classify #:runtime-complete
+    #:runtime-complete-simple #:runtime-create #:runtime-generate-images #:runtime-get-all-available #:runtime-get-all-models #:runtime-get-auth
+    #:runtime-get-available #:runtime-get-available-of-type #:runtime-get-available-snapshot #:runtime-get-compatibility-request-config
+    #:runtime-get-error #:runtime-get-model #:runtime-get-model-of-type #:runtime-get-models #:runtime-get-models-of-type #:runtime-get-physical-model
+    #:runtime-get-provider #:runtime-get-provider-auth-status #:runtime-get-providers #:runtime-get-registered-native-provider
+    #:runtime-get-registered-provider-config #:runtime-get-registered-provider-ids #:runtime-has-configured-auth-p #:runtime-is-using-oauth-p
+    #:runtime-is-using-subscription-p #:runtime-list-credentials #:runtime-login #:runtime-logout #:runtime-provider-display-name #:runtime-refresh
+    #:runtime-register-native-provider #:runtime-register-provider #:runtime-register-virtual-model #:runtime-registry #:runtime-registry-classify
+    #:runtime-registry-complete #:runtime-registry-find #:runtime-registry-find-of-type #:runtime-registry-generate-images #:runtime-registry-get-all
+    #:runtime-registry-get-api-key-and-headers #:runtime-registry-get-api-key-for-provider #:runtime-registry-get-available
+    #:runtime-registry-get-available-of-type #:runtime-registry-get-error #:runtime-registry-get-model-of-type #:runtime-registry-get-models-of-type
+    #:runtime-registry-get-provider #:runtime-registry-get-provider-auth #:runtime-registry-get-provider-auth-status
+    #:runtime-registry-get-provider-display-name #:runtime-registry-get-registered-native-provider #:runtime-registry-get-registered-provider-config
+    #:runtime-registry-get-registered-provider-ids #:runtime-registry-has-configured-auth-p #:runtime-registry-is-using-oauth-p
+    #:runtime-registry-refresh #:runtime-registry-register-native-provider #:runtime-registry-register-provider
+    #:runtime-registry-register-virtual-model #:runtime-registry-stream #:runtime-registry-stream-simple #:runtime-registry-unregister-provider
+    #:runtime-registry-unregister-virtual-model #:runtime-remove-runtime-api-key #:runtime-resolve-model #:runtime-set-runtime-api-key
+    #:runtime-stream #:runtime-stream-simple #:runtime-unregister-provider #:runtime-unregister-virtual-model #:tools-options #:write-operations
+    #:write-tool-options
    ;; ==== end lane S3 ====
    ;; ==== lane S1: session operations, child sessions, agent session runtime and services ====
    ;; ==== end lane S1 ====
    ;; ==== lane P: providers, OAuth, renderers, virtual models, MCP registration ====
-   #:abort-signal-subscribe #:make-abort-signal #:signal-abort
-   #:registry-get-provider
-   #:auth-context #:make-auth-context #:auth-context-env #:auth-context-file-exists
-   #:api-key-auth-input #:make-api-key-auth-input #:api-key-auth-input-ctx #:api-key-auth-input-credential #:api-key-auth-input-signal
-   #:auth-result #:make-auth-result #:auth-result-auth #:auth-result-env #:auth-result-source
-   #:auth-check #:make-auth-check #:auth-check-type #:auth-check-source
-   #:auth-interaction #:make-auth-interaction #:auth-interaction-prompt #:auth-interaction-notify #:auth-interaction-signal
-   #:login-options #:make-login-options #:login-options-get-device-id #:login-options-agent-name
-   #:api-key-auth #:make-api-key-auth #:api-key-auth-name #:api-key-auth-resolve #:api-key-auth-check #:api-key-auth-login
-   #:oauth-auth #:make-oauth-auth #:oauth-auth-name #:oauth-auth-login #:oauth-auth-refresh #:oauth-auth-to-auth
-   #:oauth-auth-is-subscription #:oauth-auth-login-label
-   #:provider-auth #:make-provider-auth #:provider-auth-api-key #:provider-auth-oauth
-   #:provider-stream-options #:make-provider-stream-options #:provider-stream-options-values #:provider-stream-options-signal
+   #:abort-signal-subscribe #:make-abort-signal #:signal-abort #:registry-get-provider #:register-native-provider
+   #:register-provider #:unregister-provider #:register-oauth-provider #:ctx-register-provider #:ctx-unregister-provider
+   #:ctx-register-native-provider #:oauth-cancelled #:oauth-credentials #:oauth-on-auth #:oauth-on-device-code #:oauth-on-progress
+   #:oauth-on-prompt #:oauth-on-select #:oauth-on-manual-code-input #:register-virtual-model #:unregister-virtual-model
+   #:ctx-register-virtual-model #:ctx-unregister-virtual-model #:register-mcp-server #:unregister-mcp-server
+   #:ctx-register-mcp-server #:ctx-unregister-mcp-server #:ctx-get-mcp-servers #:tool-renderer #:message-renderer
+   #:message-view-renderer #:entry-renderer #:entry-view-renderer #:markdown-transformer #:ctx-set-login #:ctx-register-sprite
+   #:auth-context #:make-auth-context #:auth-context-p #:auth-context-env #:auth-context-file-exists #:api-key-auth-input
+   #:make-api-key-auth-input #:api-key-auth-input-p #:api-key-auth-input-ctx #:api-key-auth-input-credential
+   #:api-key-auth-input-signal #:auth-result #:make-auth-result #:auth-result-p #:auth-result-auth #:auth-result-env
+   #:auth-result-source #:auth-check #:make-auth-check #:auth-check-p #:auth-check-type #:auth-check-source #:auth-interaction
+   #:make-auth-interaction #:auth-interaction-p #:auth-interaction-prompt #:auth-interaction-notify #:auth-interaction-signal
+   #:login-options #:make-login-options #:login-options-p #:login-options-get-device-id #:login-options-agent-name #:api-key-auth
+   #:make-api-key-auth #:api-key-auth-p #:api-key-auth-name #:api-key-auth-resolve #:api-key-auth-check #:api-key-auth-login
+   #:oauth-auth #:make-oauth-auth #:oauth-auth-p #:oauth-auth-name #:oauth-auth-login #:oauth-auth-refresh #:oauth-auth-to-auth
+   #:oauth-auth-is-subscription #:oauth-auth-login-label #:provider-auth #:make-provider-auth #:provider-auth-p
+   #:provider-auth-api-key #:provider-auth-oauth #:provider-stream-options #:make-provider-stream-options
+   #:provider-stream-options-p #:provider-stream-options-values #:provider-stream-options-signal
    #:provider-stream-options-on-payload #:provider-stream-options-on-response #:provider-stream-options-on-provider-stream-event
-   #:provider-operation-options #:make-provider-operation-options #:provider-operation-options-values #:provider-operation-options-signal
-   #:models-publication #:make-models-publication #:models-publication-persist #:models-publication-update
-   #:refresh-models-context #:make-refresh-models-context #:refresh-models-context-publish #:refresh-models-context-credential
+   #:provider-operation-options #:make-provider-operation-options #:provider-operation-options-p
+   #:provider-operation-options-values #:provider-operation-options-signal #:models-publication #:make-models-publication
+   #:models-publication-p #:models-publication-persist #:models-publication-update #:refresh-models-context
+   #:make-refresh-models-context #:refresh-models-context-p #:refresh-models-context-publish #:refresh-models-context-credential
    #:refresh-models-context-stored #:refresh-models-context-allow-network #:refresh-models-context-force
-   #:refresh-models-context-signal #:refresh-models-context-base-url
-   #:provider #:provider-p #:make-provider #:provider-id #:provider-name #:provider-auth #:provider-get-models #:provider-stream
-   #:provider-stream-simple #:provider-base-url #:provider-headers #:provider-filter-models #:provider-get-all-models
-   #:provider-filter-all-models #:provider-refresh-models #:provider-fetch-deferred #:provider-cancel-deferred
-   #:provider-generate-images #:provider-classify #:provider-handle
-   #:register-native-provider #:register-provider #:unregister-provider #:register-oauth-provider
-   #:ctx-register-provider #:ctx-unregister-provider #:ctx-register-native-provider
-   #:oauth-cancelled #:oauth-credentials #:oauth-auth-info #:make-oauth-auth-info #:oauth-device-code-info #:make-oauth-device-code-info
-   #:oauth-prompt #:make-oauth-prompt #:oauth-select-option #:make-oauth-select-option #:oauth-select-prompt #:make-oauth-select-prompt
-   #:oauth-credential-status #:make-oauth-credential-status #:oauth-credential-store #:make-oauth-credential-store
-   #:oauth-provider #:make-oauth-provider #:oauth-on-auth #:oauth-on-device-code #:oauth-on-progress #:oauth-on-prompt
-   #:oauth-on-select #:oauth-on-manual-code-input
-   #:virtual-model #:make-virtual-model #:register-virtual-model #:unregister-virtual-model
-   #:ctx-register-virtual-model #:ctx-unregister-virtual-model
-   #:register-mcp-server #:unregister-mcp-server #:ctx-register-mcp-server #:ctx-unregister-mcp-server #:ctx-get-mcp-servers
-   #:tool-renderers #:make-tool-renderers #:tool-renderers-render-call #:tool-renderers-render-result #:tool-renderers-render-shell
-   #:tool-renderers-call-view #:tool-renderers-result-view
-   #:tool-render-context #:tool-render-context-args #:tool-render-context-tool-call-id #:tool-render-context-cwd
-   #:tool-render-context-execution-started #:tool-render-context-args-complete #:tool-render-context-is-partial
-   #:tool-render-context-expanded #:tool-render-context-show-images #:tool-render-context-is-error #:tool-render-context-output-pad
-   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate
-   #:tool-renderer #:message-renderer #:message-view-renderer #:entry-renderer #:entry-view-renderer #:markdown-transformer
-   #:login-definition #:make-login-definition #:sprite-definition #:make-sprite-definition #:ctx-set-login #:ctx-register-sprite
+   #:refresh-models-context-signal #:refresh-models-context-base-url #:provider #:make-provider #:provider-p #:provider-id
+   #:provider-name #:provider-auth #:provider-get-models #:provider-stream #:provider-stream-simple #:provider-base-url
+   #:provider-headers #:provider-filter-models #:provider-get-all-models #:provider-filter-all-models #:provider-refresh-models
+   #:provider-fetch-deferred #:provider-cancel-deferred #:provider-generate-images #:provider-classify #:provider-handle
+   #:oauth-auth-info #:make-oauth-auth-info #:oauth-auth-info-p #:oauth-auth-info-url #:oauth-auth-info-instructions
+   #:oauth-device-code-info #:make-oauth-device-code-info #:oauth-device-code-info-p #:oauth-device-code-info-user-code
+   #:oauth-device-code-info-verification-uri #:oauth-device-code-info-open-browser-on-confirm
+   #:oauth-device-code-info-copy-code-on-confirm #:oauth-device-code-info-interval-seconds
+   #:oauth-device-code-info-expires-in-seconds #:oauth-prompt #:make-oauth-prompt #:oauth-prompt-p #:oauth-prompt-message
+   #:oauth-prompt-placeholder #:oauth-prompt-allow-empty #:oauth-select-option #:make-oauth-select-option #:oauth-select-option-p
+   #:oauth-select-option-id #:oauth-select-option-label #:oauth-select-prompt #:make-oauth-select-prompt #:oauth-select-prompt-p
+   #:oauth-select-prompt-message #:oauth-select-prompt-options #:oauth-credential-status #:make-oauth-credential-status
+   #:oauth-credential-status-p #:oauth-credential-status-present #:oauth-credential-status-auth-type
+   #:oauth-credential-status-source #:oauth-credential-store #:make-oauth-credential-store #:oauth-credential-store-p
+   #:oauth-credential-store-credential-status #:oauth-credential-store-store-credentials
+   #:oauth-credential-store-delete-credentials #:oauth-provider #:make-oauth-provider #:oauth-provider-p #:oauth-provider-name
+   #:oauth-provider-login #:oauth-provider-refresh-token #:oauth-provider-get-api-key #:oauth-provider-credential-store
+   #:oauth-provider-is-subscription #:virtual-model #:make-virtual-model #:virtual-model-p #:virtual-model-provider
+   #:virtual-model-id #:virtual-model-name #:virtual-model-route #:virtual-model-thinking-levels #:virtual-model-context-window
+   #:virtual-model-max-tokens #:virtual-model-input #:tool-renderers #:make-tool-renderers #:tool-renderers-p
+   #:tool-renderers-render-call #:tool-renderers-render-result #:tool-renderers-render-shell #:tool-renderers-call-view
+   #:tool-renderers-result-view #:tool-render-context #:make-tool-render-context #:tool-render-context-p
+   #:tool-render-context-args #:tool-render-context-tool-call-id #:tool-render-context-cwd #:tool-render-context-execution-started
+   #:tool-render-context-args-complete #:tool-render-context-is-partial #:tool-render-context-expanded
+   #:tool-render-context-show-images #:tool-render-context-is-error #:tool-render-context-output-pad
+   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate #:login-definition
+   #:make-login-definition #:login-definition-p #:login-definition-brand #:login-definition-hero #:login-definition-mascot
+   #:login-definition-palette #:login-definition-name #:login-definition-description #:login-definition-tagline
+   #:sprite-definition #:make-sprite-definition #:sprite-definition-p #:sprite-definition-id #:sprite-definition-name
+   #:sprite-definition-tagline #:sprite-definition-mascot #:sprite-definition-palette
    ;; ==== end lane P ====
    ;; ==== lane U1: component kit, ui.custom, overlays, widgets, theme ====
    ;; ==== end lane U1 ====
