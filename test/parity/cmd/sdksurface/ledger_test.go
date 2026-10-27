@@ -230,6 +230,21 @@ func TestExportLedgerRejectsBadAndNearMissCases(t *testing.T) {
 		{"realized cell no fixture reaches", func(in *ledgerInput) { in.Corpus["rust"] = "kit::Text::new(\"a\")" }, false, "rust (native:truncate_head) is reached by no conformance fixture"},
 		{"name only in a longer identifier is not reached", func(in *ledgerInput) { in.Corpus["go"] = "NotTruncateHeadAtAll(); kit.Text(1)" }, false, "go (native:TruncateHead) is reached by no"},
 		{"kit view reached only by a bare word", func(in *ledgerInput) { in.Corpus["python"] = "truncate_head(); print('Text')" }, false, "python (kit:Text) is reached by no"},
+		{"lisp kit view named by its exported symbol", func(in *ledgerInput) {
+			in.File.Export["pi-tui: Text"]["lisp"] = "kit:pig:kit-text"
+			in.Symbols["lisp"] = symbolSet{"pig:kit-text": true}
+			in.Corpus["lisp"] = "(pig:kit-text \"a\")"
+		}, false, ""},
+		{"lisp kit view of a symbol the package does not export", func(in *ledgerInput) {
+			in.File.Export["pi-tui: Text"]["lisp"] = "kit:pig:kit-text"
+			in.Symbols["lisp"] = symbolSet{"pig:kit-box": true}
+			in.Corpus["lisp"] = "(pig:kit-text \"a\")"
+		}, false, "does not define"},
+		{"lisp kit view reached only by a longer symbol", func(in *ledgerInput) {
+			in.File.Export["pi-tui: Text"]["lisp"] = "kit:pig:kit-text"
+			in.Symbols["lisp"] = symbolSet{"pig:kit-text": true}
+			in.Corpus["lisp"] = "(pig:kit-text-style)"
+		}, false, "lisp (kit:pig:kit-text) is reached by no"},
 		{"reached hole is stale", func(in *ledgerInput) {
 			in.File.Unreached = []unreachedSpec{{Key: "pi-coding-agent: truncateHead", SDKs: []string{"go"}, Lane: "SdkTuiHelpers", Row: "r"}}
 		}, false, "is stale"},

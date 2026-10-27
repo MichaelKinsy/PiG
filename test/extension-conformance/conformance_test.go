@@ -578,7 +578,7 @@ func TestRemoteComponentInvalidationSDKsMatch(t *testing.T) {
 	}
 	t.Parallel()
 
-	cases := sdkHarnessCases()
+	cases := append(sdkHarnessCases(), lispHarnessCase())
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
@@ -3740,7 +3740,7 @@ func TestConformance_Geometry(t *testing.T) {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 
-	cases := sdkHarnessCases()
+	cases := append(sdkHarnessCases(), lispHarnessCase())
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -3950,7 +3950,7 @@ func TestConformance_FooterAndHeaderFollowHostWidth(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		for _, surface := range []string{"footer", "header"} {
 			t.Run(tc.name+"/"+surface, func(t *testing.T) {
 				h := tc.make(t)
@@ -4003,7 +4003,7 @@ func TestConformance_StaticFooterRowsCarryTheirWidth(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -4036,7 +4036,7 @@ func TestConformance_StaticHeaderRowsCarryTheirWidth(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -4103,7 +4103,7 @@ func TestConformance_StringWidgetUsesPiTextLayoutInEverySDK(t *testing.T) {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	want := []string{" " + strings.Repeat("A", 38) + " ", " " + strings.Repeat("A", 22) + " tail            ", " short                                  "}
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

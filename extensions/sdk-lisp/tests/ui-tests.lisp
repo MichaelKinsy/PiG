@@ -13,11 +13,11 @@
   "EXPECTED is JSON text."
   (equal (canon (pig:from-json expected)) (canon actual)))
 
-(defmacro check-json (expected actual)
+(defmacro check-json (expected actual &optional message)
   `(progn (incf *checks*)
           (let ((a ,actual))
             (unless (same-json ,expected a)
-              (report-failure ',actual (format nil "expected ~A, got ~A" ,expected (pig:to-json a)))))))
+              (report-failure ',actual (format nil "expected ~A, got ~A~@[ (~A)~]" ,expected (pig:to-json a) ,message))))))
 
 (defun encoded (view &optional frontend) (pig::kit-encode-view view frontend))
 (defun body (view &optional frontend) (pig::kit-encoded-body (encoded view frontend)))
@@ -131,7 +131,7 @@
          (assistant (pig:kit-assistant-message nil :id "a1"))
          (hidden (pig:kit-assistant-message (pig:kit-message (list (pig:kit-text-block "x")) :stop-reason "error" :error-message "boom")))
          (tool (pig:kit-tool-execution "read" "call-1" (pig:obj "path" "a.txt") "/work" :output-pad 5 :id "call-1"))
-         (empty (pig:kit-tool-execution "kit_tool" :tool-definition pig:*kit-tool-definition-empty*))
+         (empty (pig:kit-tool-execution "kit_tool" "" nil "" :tool-definition pig:*kit-tool-definition-empty*))
          (bash (pig:kit-bash-execution "ls" t :output-pad 2 :id "b"))
          (diff (pig:kit-diff (format nil " 1 a~%-2 b~%+2 c") :file-path "x.go"))
          (view (pig:kit-view nil)))
@@ -266,10 +266,9 @@
 (defun dark-palette ()
   (pig:from-json
    (format nil "{\"name\":\"dark\",\"sourcePath\":\"/t.json\",\"appearance\":\"light\",\"mode\":\"256color\",
-     \"foregrounds\":{\"success\":\"~C[38;2;1;2;3m\",\"dimmed\":\"~C[38;2;9;9;9m~C[2m\"},\"backgrounds\":{\"toolSuccessBg\":\"~C[48;2;4;5;6m\"},
+     \"foregrounds\":{\"success\":\"\\u001b[38;2;1;2;3m\",\"dimmed\":\"\\u001b[38;2;9;9;9m\\u001b[2m\"},\"backgrounds\":{\"toolSuccessBg\":\"\\u001b[48;2;4;5;6m\"},
      \"colors\":{\"success\":{\"kind\":\"rgb\",\"r\":1,\"g\":2,\"b\":3},\"accent\":{\"kind\":\"oklch\",\"l\":0.62,\"c\":0.1,\"h\":200},
-       \"bad\":{\"kind\":\"nope\"},\"worse\":\"x\"},\"modifiers\":true}"
-           (code-char 27) (code-char 27) (code-char 27) (code-char 27))))
+       \"bad\":{\"kind\":\"nope\"},\"worse\":\"x\"},\"modifiers\":true}")))
 
 (defun esc (text) (format nil "~C[~A" (code-char 27) text))
 
@@ -346,18 +345,22 @@
     (setf (uihost-events uihost) (append (uihost-events uihost) (list event)))
     (sb-thread:condition-broadcast (uihost-queue uihost))))
 
+(defun uihost-take (uihost predicate &optional (seconds 8))
+  "The first recorded event satisfying PREDICATE, removing everything before it (polls: a timed condition-wait may return without the lock)."
+  (let ((deadline (+ (get-internal-real-time) (* seconds internal-time-units-per-second))))
+    (loop
+      (let ((event (sb-thread:with-mutex ((uihost-lock uihost))
+                     (let ((hit (position-if predicate (uihost-events uihost))))
+                       (when hit
+                         (prog1 (nth hit (uihost-events uihost))
+                           (setf (uihost-events uihost) (nthcdr (1+ hit) (uihost-events uihost)))))))))
+        (when event (return event)))
+      (when (> (get-internal-real-time) deadline) (error "timed out waiting for an event"))
+      (sleep 0.01))))
+
 (defun uihost-next (uihost kind method &optional (seconds 8))
   "The next recorded event of KIND and METHOD, removing everything before it."
-  (let ((deadline (+ (get-internal-real-time) (* seconds internal-time-units-per-second))))
-    (sb-thread:with-mutex ((uihost-lock uihost))
-      (loop
-        (let ((hit (position-if (lambda (e) (and (eq (first e) kind) (equal (second e) method))) (uihost-events uihost))))
-          (when hit
-            (let ((event (nth hit (uihost-events uihost))))
-              (setf (uihost-events uihost) (nthcdr (1+ hit) (uihost-events uihost)))
-              (return event))))
-        (when (> (get-internal-real-time) deadline) (error "timed out waiting for ~A ~A" kind method))
-        (sb-thread:condition-wait (uihost-queue uihost) (uihost-lock uihost) :timeout 0.1)))))
+  (uihost-take uihost (lambda (e) (and (eq (first e) kind) (equal (second e) method))) seconds))
 
 (defun uihost-args (uihost kind method) (third (uihost-next uihost kind method)))
 
@@ -514,12 +517,7 @@
           (notify-event (uihost-host h) "ui.custom.input" (pig:obj "key" key "data" "x"))
           (notify-event (uihost-host h) "ui.view.event" (event "select" 0 "k0")))
         (let ((seqs '()) close)
-          (loop (let ((next (sb-thread:with-mutex ((uihost-lock h))
-                              (loop until (find-if (lambda (e) (eq (first e) :notify)) (uihost-events h))
-                                    do (sb-thread:condition-wait (uihost-queue h) (uihost-lock h) :timeout 5))
-                              (let ((e (find-if (lambda (e) (eq (first e) :notify)) (uihost-events h))))
-                                (setf (uihost-events h) (remove e (uihost-events h) :count 1))
-                                e))))
+          (loop (let ((next (uihost-take h (lambda (e) (eq (first e) :notify)))))
                   (unless next (error "no close"))
                   (when (equal (second next) "ui.custom.close") (setf close (third next)) (return))
                   (check-equal "ui.custom.render" (second next))
@@ -617,7 +615,7 @@
                                 (pig:ctx-on-theme-change ctx (lambda (theme) (sb-thread:with-mutex (lock) (push (list (pig:theme-name theme) (pig:theme-fg theme "success" "x")) themes))))
                                 (pig:ctx-on-tools-expanded-change ctx (lambda (value) (sb-thread:with-mutex (lock) (push value expanded))))))
     (pig:command ext "read" "" (lambda (ctx args) (declare (ignore args)) (pig:ctx-notify ctx (pig:theme-name (pig:ctx-theme ctx)))))
-    (flet ((palette (name rgb) (pig:from-json (format nil "{\"name\":\"~A\",\"foregrounds\":{\"success\":\"~C[38;2;~A;~A;~Am\"},\"backgrounds\":{}}" name (code-char 27) rgb rgb rgb)))
+    (flet ((palette (name rgb) (pig:from-json (format nil "{\"name\":\"~A\",\"foregrounds\":{\"success\":\"\\u001b[38;2;~A;~A;~Am\"},\"backgrounds\":{}}" name rgb rgb rgb)))
            (wait-for (predicate) (loop repeat 200 until (sb-thread:with-mutex (lock) (funcall predicate)) do (sleep 0.02))))
       (with-uihost (h ext :state (pig:obj "hasUI" t "theme" (palette "first" 1) "toolsExpanded" :false))
         (run-command h "sub")
