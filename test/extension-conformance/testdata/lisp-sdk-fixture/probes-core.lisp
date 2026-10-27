@@ -677,3 +677,25 @@
                                (pig:ctx-send-message hctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
                                (core-info hctx (format nil "rw_idle_in_settled=~A" (if (pig:ctx-is-idle-p hctx) "true" "false"))))
                              nil))))))
+
+(def-fixture "core-context" (ext)
+  (pig:command ext "context-probe" "Report ctx.mode + ctx.getSystemPromptOptions()"
+               (lambda (ctx args) (declare (ignore args))
+                 (let ((opts (pig:ctx-get-system-prompt-options ctx)))
+                   (flet ((shape (value)
+                            (cond ((or (null value) (eq value :null)) "absent")
+                                  ((stringp value) (format nil "string:~D" (length value)))
+                                  ((hash-table-p value) (format nil "object:~D" (hash-table-count value)))
+                                  ((vectorp value) (format nil "array:~D" (length value)))
+                                  (t (format nil "~A:~D" (type-of value) (length (princ-to-string value)))))))
+                     (let ((shapes (core-join (loop for key in '("selectedTools" "toolSnippets" "toolGuidelines" "promptGuidelines" "appendSystemPrompt" "sections" "contextFiles" "skills")
+                                                    collect (format nil "~A:~A" key (shape (pig:jget opts key)))))))
+                       (core-info ctx (format nil "mode=~A trusted=~A spo_prompt=~A spo_cwd=~A spo_tools=~A spo_shape=~A spo_guidelines=~A spo_skill_scope=~A spo_force_empty=~A spo_custom_present=~A"
+                                              (pig:ctx-mode ctx) (if (pig:ctx-project-trusted-p ctx) "true" "false")
+                                              (core-str (pig:jget opts "customPrompt")) (core-str (pig:jget opts "cwd"))
+                                              (core-join (coerce (let ((tools (pig:jget opts "selectedTools"))) (if (vectorp tools) tools (vector))) 'list))
+                                              shapes
+                                              (core-join (coerce (let ((guidelines (pig:jref opts "toolGuidelines" "read"))) (if (vectorp guidelines) guidelines (vector))) 'list))
+                                              (core-str (let ((skills (pig:jget opts "skills"))) (and (vectorp skills) (plusp (length skills)) (pig:jref (aref skills 0) "sourceInfo" "scope"))))
+                                              (if (equal (pig:jget opts "forceSystemPrompt") "") "true" "false")
+                                              (if (nth-value 1 (gethash "customPrompt" opts)) "true" "false")))))))))
