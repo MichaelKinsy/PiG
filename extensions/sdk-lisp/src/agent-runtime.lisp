@@ -120,9 +120,8 @@ which are the services' own; RESOURCE-LOADER-RELOAD-OPTIONS a plist of loader-re
                    path)))
     (rt-normalize (if (and (plusp (length path)) (char= (char path 0) #\/)) path (rt-join (sb-posix:getcwd) path)))))
 
-(defun rt-assert-session-cwd-exists (ctx manager fallback-cwd)
+(defun rt-assert-session-cwd-exists (manager fallback-cwd)
   "A persisted session whose stored working directory is gone signals a missing-session-cwd-error."
-  (declare (ignorable ctx))
   (let ((session-file (sm-get-session-file manager)))
     (when (rt-present session-file)
       (let ((session-cwd (sm-get-cwd manager)))
@@ -192,7 +191,7 @@ which are the services' own; RESOURCE-LOADER-RELOAD-OPTIONS a plist of loader-re
       (let* ((ctx (agent-session-runtime-ctx runtime))
              (previous (rt-file (agent-session-session-manager (agent-session-runtime-session runtime))))
              (manager (sm-open ctx session-path nil cwd-override)))
-        (rt-assert-session-cwd-exists ctx manager (agent-session-runtime-cwd runtime))
+        (rt-assert-session-cwd-exists manager (agent-session-runtime-cwd runtime))
         (rt-teardown runtime "resume" (rt-file manager))
         (rt-replace runtime (sm-get-cwd manager) manager "resume" previous)
         (rt-finish runtime)
@@ -294,7 +293,7 @@ before the session reads it (the session's context is refreshed after it). The r
           (let ((previous (rt-file (agent-session-session-manager (agent-session-runtime-session runtime)))))
             (unless already-stored (rt-copy-file resolved destination))
             (let ((manager (sm-open ctx destination session-dir cwd-override)))
-              (rt-assert-session-cwd-exists ctx manager (agent-session-runtime-cwd runtime))
+              (rt-assert-session-cwd-exists manager (agent-session-runtime-cwd runtime))
               (rt-teardown runtime "resume" (rt-file manager))
               (rt-replace runtime (sm-get-cwd manager) manager "resume" previous)
               (rt-finish runtime)
@@ -311,7 +310,7 @@ before the session reads it (the session's context is refreshed after it). The r
 (defun create-agent-session-runtime (ctx create-runtime options)
   "Pi's createAgentSessionRuntime: build the initial runtime from CREATE-RUNTIME, (lambda (session-runtime-options)) returning a
 session-runtime-result, and keep it for the replacements. OPTIONS is a session-runtime-options."
-  (rt-assert-session-cwd-exists ctx (session-runtime-options-session-manager options) (session-runtime-options-cwd options))
+  (rt-assert-session-cwd-exists (session-runtime-options-session-manager options) (session-runtime-options-cwd options))
   (let ((runtime (rt-make ctx create-runtime)))
     (rt-apply runtime (funcall create-runtime options))
     runtime))
