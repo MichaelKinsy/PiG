@@ -426,6 +426,8 @@ jobs:
           TARGET: ${{ matrix.target }}
           # ci-build-pr lints the changed files against the base branch (a pull request run has the base as a remote ref only).
           LINT_BASE: origin/main
+          # ci-test-changed (the light run's test-fast) selects the packages the pull request changed against its base branch.
+          TEST_BASE: origin/${{ github.base_ref || 'main' }}
           # A shard that groups several gates runs every one of them and fails if any failed.
           MAKEFLAGS: -k
         run: make "$TARGET"

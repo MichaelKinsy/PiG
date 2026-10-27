@@ -18,7 +18,7 @@ linux | portmap-1 | queue
 linux | portmap-2 | queue
 linux | portmap-3 | queue
 linux | test-fast-sharded | pr
-linux | test-fast | pr
+linux | test-fast | pr | ci-test-changed
 linux | test-conformance | queue
 linux | build | pr | ci-build-pr
 linux | test-cli-1 | pr
