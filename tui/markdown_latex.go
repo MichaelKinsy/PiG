@@ -198,16 +198,25 @@ func renderInlineLatex(tok latexToken) string {
 	return tok.raw
 }
 
-// renderBlockLatex mirrors the "latexBlock" render case: raw.trim() when
-// pending, else RenderLatex(text, display) with raw.trim() as fallback.
-func renderBlockLatex(tok latexToken) string {
-	if tok.pending {
-		return widthx.JSTrim(tok.raw)
-	}
-	if rendered, ok := latex.RenderLatex(tok.text, latex.RenderLatexOptions{Display: true}); ok {
-		return rendered
+// renderBlockLatex mirrors the "latexBlock" render case: raw.trim() when pending, else RenderLatex(text, display), with raw.trim() as the
+// fallback when it fails or a row of the 2D layout is wider than width, since a layout cannot be wrapped row by row.
+func renderBlockLatex(tok latexToken, width int) string {
+	if !tok.pending {
+		if rendered, ok := latex.RenderLatex(tok.text, latex.RenderLatexOptions{Display: true}); ok && !hasRowWiderThan(rendered, width) {
+			return rendered
+		}
 	}
 	return widthx.JSTrim(tok.raw)
+}
+
+// hasRowWiderThan reports whether a line of text has a visible width above width.
+func hasRowWiderThan(text string, width int) bool {
+	for line := range strings.SplitSeq(text, "\n") {
+		if widthx.VisibleWidth(line) > width {
+			return true
+		}
+	}
+	return false
 }
 
 // blockLatexStart reports whether a line begins a block latex token
