@@ -38,10 +38,10 @@ var ownConfigLiterals = map[string]bool{
 }
 
 // Directories that are not PiG's own runtime: the repository's test, benchmark, tooling and documentation trees, and the vendored
-// AWS fork, whose clients PiG builds in ai/bedrock.go.
+// AWS fork, whose clients PiG builds in ai/providers/bedrock/bedrock.go.
 var skippedTrees = map[string]string{
 	"test": "test fixtures", "bench": "benchmarks", "docs": "documentation", "examples": "examples", "plans": "plans",
-	"research": "research", "handoffs": "handoffs", "automation": "CI tooling", "third_party": "vendored forks; the AWS fork's clients are built and hardened in ai/bedrock.go",
+	"research": "research", "handoffs": "handoffs", "automation": "CI tooling", "third_party": "vendored forks; the AWS fork's clients are built and hardened in ai/providers/bedrock/bedrock.go",
 	"tlsdistrusttest": "the test helper",
 }
 

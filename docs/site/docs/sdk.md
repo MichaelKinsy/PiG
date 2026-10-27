@@ -365,7 +365,7 @@ A program that embeds PiG without a terminal still links everything the session 
 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o headless ./examples/headless
 ```
 
-On linux/amd64 this is 40.1 MB, against 69.8 MB for the `pig` command. Three things are already left out of such a program without any option: the terminal MCP view and tool renderers (package `mcptui`, see below), the terminal editor with the word dictionaries behind it (6.3 MB), and the announcement image of the interactive mode (0.5 MB). The rest is features you can remove with build tags.
+On linux/amd64 this is 36.7 MB, against 69.7 MB for the `pig` command. Four things are already left out of such a program without any option: the Amazon Bedrock provider and the AWS SDK behind it (3.3 MB, package `ai/providers/bedrock`, which only `ai/all` and the `pig` command import), the terminal MCP view and tool renderers (package `mcptui`, see below), the terminal editor with the word dictionaries behind it (6.3 MB), and the announcement image of the interactive mode (0.5 MB). The rest is features you can remove with build tags.
 
 ### Strip tags
 
@@ -374,20 +374,20 @@ Every feature that can be left out of a build has a Go build tag, `pig_strip_<id
 | Tag | Leaves the binary | Saves on `examples/headless` (linux/amd64) |
 | --- | --- | ---: |
 | `pig_strip_node_extensions` | The embedded Node runtime that runs TypeScript and JavaScript extensions | 5.07 MB |
-| `pig_strip_bedrock_converse_stream` | The Amazon Bedrock API and the AWS SDK | 3.29 MB |
+| `pig_strip_bedrock_converse_stream` | The Amazon Bedrock API and the AWS SDK | 0, already absent (3.29 MB in the `pig` command) |
 | `pig_strip_syntax_highlight` | Code highlighting grammars | 0.63 MB |
 | `pig_strip_google_vertex` | The Google Vertex API and its OAuth code | 0.46 MB |
 | `pig_strip_mistral_conversations` | The Mistral conversations API | 0.10 MB |
 | `pig_strip_mermaid` | Mermaid diagram drawing | 0.07 MB |
 | `pig_strip_word_dictionaries` | The CJK, Thai, Lao, Khmer and Burmese word dictionaries | 0, already absent (6.3 MB in the `pig` command) |
 
-The remaining tags (`pig_strip_llama_cpp`, `pig_strip_codemode`, `pig_strip_tool_search`, `pig_strip_pig_login`, `pig_strip_docs`, `pig_strip_changelog`, `pig_strip_export_html`, `pig_strip_self_update`, `pig_strip_piglet_builder`, `pig_strip_extension_sdk_go`, `pig_strip_extension_sdk_python` and `pig_strip_extension_sdk_rust`) remove features the session API does not link by itself. They matter when your program also links the `pig` command's packages, and they do no harm here. Passing all of them except `pig_strip_mcp` takes `examples/headless` to 30.4 MB on linux/amd64, 29.0 MB on darwin/arm64 and 31.7 MB on windows/amd64.
+The remaining tags (`pig_strip_llama_cpp`, `pig_strip_codemode`, `pig_strip_tool_search`, `pig_strip_pig_login`, `pig_strip_docs`, `pig_strip_changelog`, `pig_strip_export_html`, `pig_strip_self_update`, `pig_strip_piglet_builder`, `pig_strip_extension_sdk_go`, `pig_strip_extension_sdk_python` and `pig_strip_extension_sdk_rust`) remove features the session API does not link by itself. They matter when your program also links the `pig` command's packages, and they do no harm here. Passing all of them except `pig_strip_mcp` takes `examples/headless` to 30.2 MB on linux/amd64, 28.8 MB on darwin/arm64 and 31.5 MB on windows/amd64.
 
 Notes:
 
 - Leave `pig_strip_mcp` out. It removes MCP from the `pig` command's built-in extension list. A program that calls `mcpext` itself, as `examples/headless` does, needs the package.
 - `pig_strip_node_extensions` means the program cannot load TypeScript or JavaScript extension files. Set `DefaultResourceLoaderOptions.NoExtensions` if the program loads none, as the example does.
-- There is no tag that keeps one provider and removes the others. The tags above remove whole APIs that bring their own large dependencies (Bedrock, Vertex, Mistral). The other providers share one code path and stay linked. The code of one provider is small next to these dependencies.
+- There is no tag that keeps one provider and removes the others. Of the APIs that bring their own large dependencies, Bedrock has its own package, `ai/providers/bedrock`, that `import ai` does not link: a program imports `github.com/MichaelKinsy/PiG/ai/providers/bedrock` (or `ai/all`, which is what the `pig` command imports) to get it, and the `pig_strip_bedrock_converse_stream` tag then compiles the package down to the strip registration. Vertex and Mistral are still part of `ai` and need their tags. The other providers share one code path and stay linked. The code of one provider is small next to these dependencies.
 - The tags apply to the whole program and to every package it links. Check the result with `go build -tags` and the size of the file.
 
 ### MCP without a terminal

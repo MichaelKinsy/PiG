@@ -23,9 +23,9 @@
 expectations_from = "2026-10-10T00:00:00Z"
 
 [[golden]]
-paths = ["ai/testdata/bedrock-eventstream/golden.json"]
+paths = ["ai/providers/bedrock/testdata/bedrock-eventstream/golden.json"]
 owner = "pi"
-generator = "ai/testdata/bedrock-eventstream/probe.mjs"
+generator = "ai/providers/bedrock/testdata/bedrock-eventstream/probe.mjs"
 
 [[golden]]
 paths = ["ai/testdata/d82-w7/lazy-golden.json"]

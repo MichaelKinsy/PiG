@@ -1,5 +1,3 @@
-//go:build !pig_strip_bedrock_converse_stream
-
 package ai
 
 import (
@@ -58,19 +56,6 @@ func TestConfiguredThinkingBudgetsWinWhateverTheirValue(t *testing.T) {
 	config, err = buildGeminiThinkingConfig(model, ThinkingMedium, true, NewThinkingBudgets(nil, nil, nil, new(9)))
 	if err != nil || config == nil || config.ThinkingBudget == nil || *config.ThinkingBudget == 0 || *config.ThinkingBudget == 9 {
 		t.Errorf("google must use its own medium default when only high is configured: %#v, %v", config, err)
-	}
-
-	claude := &Model{ID: "anthropic.claude-3-7-sonnet-20250219-v1:0", Capabilities: ModelCapabilities{MaxOutputTokens: 32768}}
-	for name, test := range map[string]struct {
-		budgets *ThinkingBudgets
-		level   ModelThinkingLevel
-		want    int
-	}{"zero": {zeroMedium, ThinkingMedium, 0}, "default": {nil, ThinkingMedium, 8192}, "xhigh": {NewThinkingBudgets(nil, nil, nil, new(0)), ThinkingXHigh, 0}} {
-		fields := buildBedrockAdditionalFieldsWithBudget(claude, "", StreamOptions{IsReasoning: true, Thinking: ThinkingLevel(test.level), ThinkingBudgets: test.budgets}, nil)
-		thinking, _ := fields["thinking"].(map[string]any)
-		if thinking["budget_tokens"] != test.want {
-			t.Errorf("bedrock %s: budget_tokens %v, want %d (%v)", name, thinking["budget_tokens"], test.want, fields)
-		}
 	}
 
 	anthropic := &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, MaxOutputTokens: 32768}}

@@ -177,8 +177,8 @@
    "call:ai/anthropic.go#anthConvertMessagesDetailed"
   ],
   "evidence": [
-   "test:ai/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars",
-   "test:ai/bedrock_test.go#TestBedrockSanitizeSurrogates"
+   "test:ai/providers/bedrock/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars",
+   "test:ai/providers/bedrock/bedrock_test.go#TestBedrockSanitizeSurrogates"
   ],
   "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
   "rationale": "sanitizeSurrogates: Go sanitizeSurrogates has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types."

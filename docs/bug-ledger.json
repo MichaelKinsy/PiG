@@ -3060,7 +3060,6 @@
       ],
       "tests": [
         "ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK",
-        "ai/bedrock_region_oracle_test.go::TestBedrockEndpointRegionMatchesPi",
         "ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes",
         "ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi",
         "ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi",
@@ -4372,8 +4371,6 @@
       ],
       "tests": [
         "ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder",
-        "ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi",
-        "ai/bedrock_wire_metadata_order_test.go::TestBedrockStringMapEnumeratesLikeAJavaScriptObject",
         "ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi",
         "ai/mistral_request_body_oracle_test.go::TestMistralRequestBodyMatchesPi",
         "ai/mistral_request_body_oracle_test.go::TestMistralTypedWirePayloadMatchesTheGeneralLowering",
@@ -5144,10 +5141,7 @@
           "date": "2026-10-21"
         }
       ],
-      "tests": [
-        "ai/identity_bedrock_oracle_test.go::TestBedrockUserAgentMatchesPi",
-        "ai/identity_bedrock_test.go::TestBedrockUserAgentCarriesTheClientIdentity"
-      ]
+      "tests": []
     },
     {
       "id": "BF-33ea9e4",
@@ -11300,9 +11294,7 @@
           "date": "2026-10-10"
         }
       ],
-      "tests": [
-        "ai/bedrock_uncataloged_model_test.go::TestBedrockUncatalogedModelIsTheSameModelAsItsOwnReplay"
-      ]
+      "tests": []
     },
     {
       "id": "BF-633152d",
@@ -14309,7 +14301,6 @@
         "ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK",
         "ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi",
         "ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi",
-        "ai/bedrock_region_oracle_test.go::TestBedrockEndpointRegionMatchesPi",
         "ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes",
         "ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi",
         "ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi",
@@ -14802,7 +14793,6 @@
       "tests": [
         "ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK",
         "ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi",
-        "ai/bedrock_region_oracle_test.go::TestBedrockEndpointRegionMatchesPi",
         "ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes",
         "ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi",
         "ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi",
@@ -15612,7 +15602,6 @@
         "agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock",
         "ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping",
         "ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "ai/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi",
         "ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi",
         "ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi",
         "internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries",
@@ -17783,12 +17772,7 @@
         }
       ],
       "commitsFrom": "release note",
-      "tests": [
-        "ai/bedrock_alternation_d116_test.go::TestBedrockMergesAdjacentSameRoleMessagesD116",
-        "ai/bedrock_convert_upstream_test.go::TestBedrockUpstreamConvertMessages",
-        "ai/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi",
-        "ai/bedrock_test.go::TestBedrockConvertMessages_SkipsEmptyAssistant"
-      ]
+      "tests": []
     },
     {
       "id": "BF-80c797d",
@@ -17813,8 +17797,6 @@
         }
       ],
       "tests": [
-        "ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi",
-        "ai/bedrock_wire_metadata_order_test.go::TestBedrockStringMapEnumeratesLikeAJavaScriptObject",
         "ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi",
         "coding/extension/host/subprocess/native_stream_options_union_test.go::TestNativeProviderOptionsKeepRawValuesAndNumericPresence",
         "coding/extension/host/subprocess/request_metadata_order_test.go::TestCompleteRequestKeepsRequestMetadataOrder",
@@ -17903,7 +17885,6 @@
         "agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock",
         "ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping",
         "ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "ai/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi",
         "ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi",
         "internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries",
         "internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain",
@@ -17940,7 +17921,6 @@
         "agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock",
         "ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping",
         "ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "ai/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi",
         "ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi",
         "ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi",
         "internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries",
@@ -18110,7 +18090,6 @@
         }
       ],
       "tests": [
-        "ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi",
         "ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText",
         "ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage"
       ]
@@ -18497,8 +18476,6 @@
         }
       ],
       "tests": [
-        "ai/bedrock_eventstream_integer_float_test.go::TestBedrockStreamAcceptsIntegerValuedFloats",
-        "ai/bedrock_eventstream_integer_float_test.go::TestBedrockStreamEventReadsIntegerValuedFloats",
         "ai/openai_stream_oracle_test.go::TestOpenAICompletionsProviderStreamMatchesPi",
         "ai/pi_messages_non_object_event_test.go::TestPiMessagesNonObjectEventIsSkippedLikeAnUnknownEvent",
         "internal/jsjson/normalize_test.go::TestNormalizeIntegers"
@@ -19798,7 +19775,6 @@
         }
       ],
       "tests": [
-        "ai/bedrock_model_match_oracle_test.go::TestBedrockModelMatchingMatchesPi",
         "ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi",
         "ai/overflow_oracle_test.go::TestContextOverflowMatchesPiOnSeededMessages",
         "internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes"
@@ -23140,10 +23116,7 @@
           "date": "2026-10-24"
         }
       ],
-      "tests": [
-        "ai/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi",
-        "ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi"
-      ]
+      "tests": []
     },
     {
       "id": "BF-D196",
@@ -23164,9 +23137,7 @@
           "date": "2026-10-24"
         }
       ],
-      "tests": [
-        "ai/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi"
-      ]
+      "tests": []
     },
     {
       "id": "BF-D197",
@@ -24126,7 +24097,6 @@
       ],
       "tests": [
         "ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi",
-        "ai/bedrock_region_oracle_test.go::TestBedrockEndpointRegionMatchesPi",
         "ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi",
         "internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode",
         "internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL"
@@ -24533,8 +24503,6 @@
         }
       ],
       "tests": [
-        "ai/bedrock_eventstream_integer_float_test.go::TestBedrockStreamAcceptsIntegerValuedFloats",
-        "ai/bedrock_eventstream_integer_float_test.go::TestBedrockStreamEventReadsIntegerValuedFloats",
         "ai/fetch_request_url_test.go::TestCodexAndAzureRequestTargetIsParsedLikeFetch",
         "ai/fetch_request_url_test.go::TestCodexRequestTargetDropsTheFragmentOfAnOpaquePath",
         "ai/openrouter_exchange_oracle_test.go::TestOpenRouterExchangeMatchesPi",
@@ -25083,8 +25051,6 @@
       ],
       "tests": [
         "ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder",
-        "ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi",
-        "ai/bedrock_wire_metadata_order_test.go::TestBedrockStringMapEnumeratesLikeAJavaScriptObject",
         "ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi",
         "coding/extension/host/subprocess/native_stream_options_union_test.go::TestNativeProviderOptionsKeepRawValuesAndNumericPresence",
         "coding/extension/host/subprocess/request_metadata_order_test.go::TestCompleteRequestKeepsRequestMetadataOrder",
@@ -25123,8 +25089,6 @@
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow",
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow",
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses",
-        "ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi",
-        "ai/bedrock_wire_metadata_order_test.go::TestBedrockStringMapEnumeratesLikeAJavaScriptObject",
         "ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi",
         "automation/ci/portlint/checks/checks_test.go::TestAnalyzers",
         "coding/extension/host/subprocess/native_stream_options_union_test.go::TestNativeProviderOptionsKeepRawValuesAndNumericPresence",
@@ -25501,7 +25465,6 @@
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow",
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses",
         "ai/anthropic_tool_schema_order_oracle_test.go::TestAnthropicToolsFollowPiMemberOrder",
-        "ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi",
         "ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi",
         "ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream",
         "ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi",
@@ -29002,16 +28965,6 @@
         }
       ],
       "tests": [
-        "ai/bedrock_option_fields_upstream_test.go::TestBedrockBearerTokenOptionPrecedence",
-        "ai/bedrock_option_fields_upstream_test.go::TestBedrockThinkingDisplayOption",
-        "ai/bedrock_provider_options_wire_test.go::TestBedrockAppliesPreparedHeadersAndRequestEnvironment",
-        "ai/bedrock_provider_options_wire_test.go::TestBedrockReservedHeaderMiddlewarePreservesSDKValues",
-        "ai/bedrock_provider_options_wire_test.go::TestBedrockReservedHeadersCannotBeOverriddenOrDeleted",
-        "ai/bedrock_provider_response_test.go::TestBedrockResponseHeadersUpstream",
-        "ai/bedrock_stream_events_upstream_test.go::TestBedrockProviderStreamEventsUpstream",
-        "ai/bedrock_transport_error_test.go::TestBedrockMidStreamTransportFailureMatchesTerminated",
-        "ai/bedrock_transport_error_test.go::TestBedrockRequestTransportFailureMatchesFetchFailure",
-        "ai/bedrock_usage_cost_test.go::TestBedrockUsageCostMatchesUpstream",
         "ai/google_vertex_option_fields_upstream_test.go::TestGoogleVertexProjectAndLocationOptions",
         "ai/mistral_map_tool_choice_test.go::TestMistralToolChoiceMatchesPiMapToolChoice",
         "ai/mistral_provider_options_wire_test.go::TestMistralAppliesPreparedHeadersAndRequestSessionID",
@@ -38103,8 +38056,6 @@
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow",
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses",
         "ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder",
-        "ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi",
-        "ai/bedrock_wire_metadata_order_test.go::TestBedrockStringMapEnumeratesLikeAJavaScriptObject",
         "ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi",
         "ai/mistral_request_body_oracle_test.go::TestMistralRequestBodyMatchesPi",
         "ai/mistral_request_body_oracle_test.go::TestMistralTypedWirePayloadMatchesTheGeneralLowering",
@@ -38164,8 +38115,6 @@
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses",
         "ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi",
         "ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder",
-        "ai/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi",
-        "ai/bedrock_wire_metadata_order_test.go::TestBedrockStringMapEnumeratesLikeAJavaScriptObject",
         "ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi",
         "ai/mistral_request_body_oracle_test.go::TestMistralRequestBodyMatchesPi",
         "ai/mistral_request_body_oracle_test.go::TestMistralTypedWirePayloadMatchesTheGeneralLowering",
