@@ -94,6 +94,27 @@
     #:editor-theme-border-color #:editor-theme-select-list
    ;; ==== end lane H ====
    ;; ==== lane C: pi-coding-agent pure helpers ====
+   #:js-type-error #:js-type-error-message #:+default-max-lines+ #:+default-max-bytes+ #:+grep-max-line-length+ #:truncate-head #:truncate-tail
+   #:truncate-line #:format-size #:truncate-to-visual-lines #:truncation-result #:truncation-result-content #:truncation-result-truncated
+   #:truncation-result-truncated-by #:truncation-result-total-lines #:truncation-result-total-bytes #:truncation-result-output-lines
+   #:truncation-result-output-bytes #:truncation-result-last-line-partial #:truncation-result-first-line-exceeds-limit #:truncation-result-max-lines
+   #:truncation-result-max-bytes #:visual-truncate-result #:visual-truncate-result-visual-lines #:visual-truncate-result-skipped-count
+   #:compaction-settings #:make-compaction-settings #:compaction-settings-enabled #:compaction-settings-reserve-tokens
+   #:compaction-settings-keep-recent-tokens #:*default-compaction-settings* #:calculate-context-tokens #:should-compact #:get-last-assistant-usage
+   #:estimate-tokens #:find-turn-start-index #:find-cut-point #:cut-point-result #:cut-point-result-first-kept-entry-index
+   #:cut-point-result-turn-start-index #:cut-point-result-split-turn-p #:convert-to-llm #:serialize-conversation #:session-entry-to-context-messages
+   #:build-session-context #:+session-leaf-last+ #:file-operations #:file-operations-read #:file-operations-written #:file-operations-edited
+   #:branch-preparation #:branch-preparation-messages #:branch-preparation-file-ops #:branch-preparation-total-tokens #:collect-entries-result
+   #:collect-entries-result-entries #:collect-entries-result-common-ancestor-id #:collect-entries-for-branch-summary #:prepare-branch-entries
+   #:tool-call-event-type-p #:bash-tool-result-p #:powershell-tool-result-p #:read-tool-result-p #:edit-tool-result-p #:write-tool-result-p
+   #:grep-tool-result-p #:find-tool-result-p #:ls-tool-result-p #:message-role #:message-text #:get-language-from-path #:+current-session-version+
+   #:*virtual-model-state-entry* #:get-latest-compaction-entry #:parsed-skill-block #:parsed-skill-block-name #:parsed-skill-block-location
+   #:parsed-skill-block-content #:parsed-skill-block-user-message #:parse-skill-block #:format-skills-for-prompt #:resized-image #:make-resized-image
+   #:resized-image-original-width #:resized-image-original-height #:resized-image-width #:resized-image-height #:resized-image-was-resized
+   #:resized-image-data #:resized-image-mime-type #:format-dimension-note #:parsed-frontmatter #:parsed-frontmatter-frontmatter
+   #:parsed-frontmatter-body #:parse-frontmatter #:strip-frontmatter #:parse-date #:diff-string #:diff-string-diff #:diff-string-first-changed-line
+   #:generate-diff-string #:generate-unified-patch #:copy-to-clipboard #:converted-image #:converted-image-data #:converted-image-mime-type
+   #:convert-to-png #:image-resize-options #:make-image-resize-options #:resize-image #:read-stored-credential #:with-file-mutation-queue
    ;; ==== end lane C ====
    ;; ==== lane M: model calls and streams, model types ====
    #:ctx-complete #:registry-stream #:registry-stream-simple #:registry-complete #:registry-classify #:registry-generate-images

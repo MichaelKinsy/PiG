@@ -99,7 +99,7 @@ func TestConformance_SerializeConversationAgreesAcrossSDKs(t *testing.T) {
 		}
 	}
 
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...) {
 		if tc.name == "subprocess-node" {
 			continue
 		}
