@@ -1,4 +1,4 @@
-version = "1.4.0+6c384aa3"
+version = "1.4.0+b3a29f11"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -390,7 +390,7 @@ path = "packages/ai/src/providers/amazon-bedrock.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/providers/bedrock/bedrock.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/bedrock.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/ai/src/providers/anthropic.ts"
