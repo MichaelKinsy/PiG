@@ -18,7 +18,7 @@
       (format t "~&== ~A~%" (car test)) (finish-output)
       (let* ((fails-before (symbol-value (find-symbol "*FAILURES*" "PIG-TESTS")))
              (thread (sb-thread:make-thread (lambda () (handler-case (funcall (cdr test)) (error (e) (format t "~&ERROR ~A: ~A~%" (car test) e)))))))
-        (unless (sb-thread:join-thread thread :default nil :timeout 30)
+        (when (eq :hang (sb-thread:join-thread thread :default :hang :timeout 30))
           (format t "~&HANG ~A~%" (car test)) (finish-output))
         (let ((f (symbol-value (find-symbol "*FAILURES*" "PIG-TESTS"))))
           (when (> f fails-before) (format t "~&  -> ~D failure(s)~%" (- f fails-before))))))))
