@@ -5,9 +5,9 @@
 ;;; ---------------------------------------------------------------- a host that logs every frame and answers calls
 
 (defstruct (edh (:constructor make-edh (host handler)))
-  host handler (lock (sb-thread:make-mutex)) (frames '()) (thread nil))
+  host handler (lock (sb-thread:make-mutex)) (log '()) (thread nil))
 
-(defun edh-frames (edh) (sb-thread:with-mutex ((edh-lock edh)) (reverse (edh-frames edh))))
+(defun edh-frames (edh) (sb-thread:with-mutex ((edh-lock edh)) (reverse (edh-log edh))))
 
 (defun edh-reply (edh call-id result)
   (hsend (edh-host edh) "type" "call_result" "id" call-id "call_result" (pig:obj "result" result)))
@@ -16,7 +16,7 @@
   (loop
     (let ((frame (handler-case (hread (edh-host edh)) (error () :eof))))
       (when (eq frame :eof) (return))
-      (sb-thread:with-mutex ((edh-lock edh)) (push frame (edh-frames edh)))
+      (sb-thread:with-mutex ((edh-lock edh)) (push frame (edh-log edh)))
       (when (equal (pig:jget frame "type") "call")
         (let* ((call (pig:jget frame "call"))
                (result (funcall (edh-handler edh) (pig:jget call "method") (pig:jget call "args") (pig:jget frame "id"))))
