@@ -193,6 +193,7 @@ type Scheduler struct {
 	closing            bool
 	dirty              bool
 	draining           bool
+	reserveSkip        uint8 // the decision of the reservation job's first run, which a later run of the same job keeps (reserve)
 }
 
 // NewScheduler returns a scheduler over the Session, on the Loop.
@@ -207,6 +208,13 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 	sess.OnFail = func(err error) { s.report(err, obj("type", "session_failed")) }
 	return s
 }
+
+// reserveSkip values: not decided yet, decided to reserve, decided to reserve nothing.
+const (
+	pinUnset uint8 = iota
+	pinRun
+	pinSkip
+)
 
 // failSession fails the Session, which reports it, for a failure in one of the scheduler's own commits: no extension code runs
 // in them, so a failure is a storage failure, a host callback, or a bug, and running the pass again fixes none. Ignored once
