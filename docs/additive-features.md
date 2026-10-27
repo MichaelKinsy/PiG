@@ -164,7 +164,10 @@ The Common Lisp SDK (`extensions/sdk-lisp`, package `pig`) is an inert capabilit
 Python SDK (`pig_strip_extension_sdk_lisp` removes it), and runs it only when an extension resolves to `language == "lisp"`. Pig builds a
 Lisp factory (an ASDF system or one file defining `new-extension`) into a cached executable SBCL image through the runtime-cell build
 and cache machinery (`runtimecell.BuildLispPackedCell`), and starts it with the packed-cell runner protocol, one socket and one register
-handshake per member. Phase 1 serves registration, tools, commands, shortcuts, flags, events and the context's host calls; every other
+handshake per member. The Lisp image build, the Quicklisp resolver, the Lisp staging of the extension host and the Lisp source resolver are linked only
+into a program that imports `coding/extension/host/lispcell` (`cmd/pig` does), which calls `subprocess.EnableLisp` and `source.EnableLisp` from its `init`;
+the host reaches them only through the hooks those functions install, so the linker drops them from an embedding program such as `examples/headless`, and a
+Lisp extension does not load there: its source resolves as an unsupported language, and a Lisp cell fails with "this program was built without Lisp extension support". Phase 1 serves registration, tools, commands, shortcuts, flags, events and the context's host calls; every other
 member signals `unsupported-capability` naming its lane and is a `gap:SdkLispPhase2` cell in `test/parity/sdk-exports.toml`.
 
 Transport: each extension process connects to one host socket named by `PIG_EXT_SOCKET` (a packed cell gets one variable per member). The socket is AF_UNIX. On Windows, a Node extension instead gets a named pipe with an unguessable name that only the current user can open, because Node's `net` module treats every Windows path as a named pipe. The Python SDK reaches AF_UNIX on Windows through Winsock, because CPython does not expose `socket.AF_UNIX` there; the Rust SDK does the same. Framing and handshake are identical on both carriers, and extension code never names the transport.
