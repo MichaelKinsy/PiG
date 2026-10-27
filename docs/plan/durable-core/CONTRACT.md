@@ -9,12 +9,11 @@ The core is correct when pi-durable, run through the same scenario with the same
 | item | value |
 |---|---|
 | reference | `packages/durable`, `packages/ai` and `packages/chord` of Pi at the upstream commit below, run from source (`make durable-contract-setup` checks it out; `durable/contract/PIN`) |
-| upstream commit | `06a466935536f8c9bcacb2d5efc0fc021be1bdff` (Pi v1.3.0; `durable/contract/PIN` `main`, `durable/contract/corpus.toml` `[pin]`) |
-| tick reference | `6c384aa30f619d7b28963f2bab24d8dacbe73cb6` (Pi 1.4.0; `durable/contract/PIN` `ticks`, `corpus.toml` `ticks_commit`): the reference of the rows with `reference = "ticks"` (F-ticks-\*, F-split-\*) and of the Storage hop tables. The facade imports Pi 1.4 modules, so the rows pinned to `main` do not run against it until they move to this commit (the core lacks the Pi 1.4 durable features listed in the 0.6.0 re-pin report) |
-| normative spec | `packages/durable/docs/spec.md`, sha256 prefix `13f0b4d5a4238c44`, 5,340 lines |
-| storage conformance | `packages/durable/src/testing/storage-conformance.ts`, sha256 prefix `96111bf8d693804f` |
+| upstream commit | `6c384aa30f619d7b28963f2bab24d8dacbe73cb6` (Pi 1.4.0; `durable/contract/PIN` `main`, `durable/contract/corpus.toml` `[pin]`): the reference of every row, tick rows included (F-ticks-\*, F-split-\*) and of the Storage hop tables |
+| normative spec | `packages/durable/docs/spec.md`, sha256 prefix `62f887f2481c22c7`, 5,912 lines |
+| storage conformance | `packages/durable/src/testing/storage-conformance.ts`, sha256 prefix `32b9064e91388750` |
 | scenarios | `packages/durable/test/examples/00-*.ts` through `31-*.ts` (32 programs) |
-| SQLite schema | `src/storage/sqlite/migrations.ts`, schema version 1 |
+| SQLite schema | `src/storage/sqlite/migrations.ts`, schema version 2 |
 | store readability | release `v1.0.4` (`durable/contract/PIN` `release`): stores it writes must open and read. A secondary reference; its rows do not block the gate |
 
 The core writes the record shapes of the pinned commit: task `startedAt`/`endedAt` and message `durationMs` (`packages/durable/src/types.ts`, `packages/ai/src/types.ts` at `06a46693`). It reads stores written by 1.0.4, which lack those fields (section 2.3).

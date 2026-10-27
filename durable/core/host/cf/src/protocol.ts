@@ -32,7 +32,7 @@ export type ToolEffect = {
 export type HookEffect = { name: string; handler: number; conversationId: number; taskId: number; payload: Record<string, unknown> }
 
 /** phase effect (effect 8): a custom task's phase handler, or its abort handler when `abort` is true. */
-export type PhaseEffect = { taskId: number; kind: string; phase?: string; record: unknown; invocation: number; handler?: number; abort?: true }
+export type PhaseEffect = { taskId: number; kind: string; extension?: string; phase?: string; record: unknown; invocation: number; handler?: number; abort?: true }
 
 /** env effect (effect 9): build HarnessOptions.env for a task; the result stays in the host under `taskId` until the task ends. */
 export type EnvEffect = { conversationId: number; taskId?: number; cwd?: string }
