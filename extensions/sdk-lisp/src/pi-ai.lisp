@@ -575,7 +575,7 @@ resolving is NIL. Its login prompts for the key with a secret prompt and returns
                         (let ((value (funcall (auth-context-env (api-key-auth-input-ctx input)) variable)))
                           (ai-throw-if-aborted (api-key-auth-input-signal input))
                           (when (ai-truthy value)
-                            (return (make-auth-result :auth (obj "apiKey" value) :source variable))))))))))))
+                            (return (make-auth-result :auth (obj "apiKey" value) :source variable)))))))))))
 
 ;;; ---------------------------------------------------------------- model types
 
