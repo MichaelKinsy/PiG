@@ -267,6 +267,29 @@ def new_extension():
  e.on_event("before_agent_start",third)
  return e
 `, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		source = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)) (seen '()))
+    (flet ((read-prompt (ctx data) (format nil "event=~A ctx=~A" (pig:jget data "systemPrompt") (pig:ctx-get-system-prompt ctx))))
+      (pig:on e "before_agent_start"
+        (lambda (ctx data)
+          (let ((before (read-prompt ctx data)))
+            (setf (gethash "appendSystemPrompt" (pig:jget data "systemPromptOptions")) "APPENDED-BY-FIRST")
+            (setf seen (list (concatenate 'string "first " before) (concatenate 'string "first after-edit " (read-prompt ctx data)))))
+          nil))
+      (pig:on e "before_agent_start"
+        (lambda (ctx data)
+          (setf seen (append seen (list (concatenate 'string "second " (read-prompt ctx data)))))
+          (pig:obj "systemPrompt" "FORCED-BY-SECOND")))
+      (pig:on e "before_agent_start"
+        (lambda (ctx data)
+          (setf seen (append seen (list (concatenate 'string "third " (read-prompt ctx data)))))
+          (pig:obj "message" (pig:obj "customType" "seen" "content" (format nil "~{~A~^~%%~}" seen) "display" :false)))))
+    e))
+`, name, name, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		// A Rust handler edits and reads the emission's options through the BeforeAgentStartEvent it receives, which shares them with ctx.
