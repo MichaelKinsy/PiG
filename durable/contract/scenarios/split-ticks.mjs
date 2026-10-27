@@ -73,7 +73,7 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 1000))
 
 if (part === 1 || part === 2) {
 	const stream = await watchEvents(harness, root.id, context)
-	stream.start(events => { for (const e of events) marks.push([`event ${e.type}`, passes]) })
+	stream.start(({ value: events }) => { for (const e of events) marks.push([`event ${e.type}`, passes]) })
 	for (const label of ["cold", "idle"]) {
 		marks.length = 0
 		start()
