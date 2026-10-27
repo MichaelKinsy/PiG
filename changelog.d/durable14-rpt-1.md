@@ -1,7 +1,7 @@
 ### Fixed
 
-- A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the handoff's reset is written first, queued writes and selected steers land after it and join the continuing run, a follow-up queued across the handoff waits for the continuing run's final boundary, and a queued reset ends the handed-off run. The core used to end the run at the handoff and answer it without another model request.
-- `HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a failed run start the next run with `continue` and settle `run_failed` with `withdraw`.
+- A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the handoff's reset is written first, queued writes and selected steers land after it and join the continuing run, a follow-up queued across the handoff waits for the continuing run's final boundary, and a queued reset ends the handed-off run. The core used to end the run at the handoff and answer it without another model request. <!-- fix: d94328677410f7437d3bc0371fcf84e0b9b323d0 -->
+- `HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a failed run start the next run with `continue` and settle `run_failed` with `withdraw`. <!-- fix: d94328677410f7437d3bc0371fcf84e0b9b323d0 -->
 
 ### Added
 
