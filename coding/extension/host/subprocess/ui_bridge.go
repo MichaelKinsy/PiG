@@ -2839,6 +2839,7 @@ func (b *UIBridge) handleCustom(ctx context.Context, extName string, owner *Conn
 			HeightFraction: p.HeightFraction,
 			Overlay:        p.Overlay,
 			Layout:         p.OverlayOptions,
+			Blocked:        p.Blocked,
 		},
 		host,
 		func(h extension.RemoteOverlayHandle) {
