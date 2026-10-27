@@ -243,7 +243,7 @@ func (r *run) failNoModel(ref *ModelRef) {
 		if err != nil {
 			return nil, err
 		}
-		if err := r.endFailedRun(tx, live, failed, RunEnd{Reason: "no_model", Detail: &message, Settlement: jobj("status", "unanswered", "reason", "no_model")}); err != nil {
+		if err := r.endFailedRun(tx, live, failed, RunEnd{Reason: "no_model", Detail: message, HasDetail: true, Settlement: jobj("status", "unanswered", "reason", "no_model")}); err != nil {
 			return nil, err
 		}
 		return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", "no_model")))), nil

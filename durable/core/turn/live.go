@@ -60,8 +60,9 @@ type RunEnd struct {
 	Answer ID
 	// Reason is why a run that ended without an answer did: model_error, no_model, aborted, reset, faulted or orphaned.
 	Reason string
-	// Detail is the failure's detail; nil when it has none.
-	Detail *string
+	// Detail is the failure's detail when HasDetail.
+	Detail    string
+	HasDetail bool
 	// Settlement is the inputs' settlement when it is not unanswered with Reason and Detail.
 	Settlement *jv.Object
 }
@@ -73,7 +74,9 @@ func Answered(answer ID) RunEnd { return RunEnd{Answer: answer} }
 func Unanswered(reason string) RunEnd { return RunEnd{Reason: reason} }
 
 // UnansweredWith is Unanswered with the failure's detail.
-func UnansweredWith(reason, detail string) RunEnd { return RunEnd{Reason: reason, Detail: &detail} }
+func UnansweredWith(reason, detail string) RunEnd {
+	return RunEnd{Reason: reason, Detail: detail, HasDetail: true}
+}
 
 // EndRun is endRun: it settles each input of the run owned by taskID, removes `run` and, without an answer, records `runFailure`,
 // and always removes `generation` and `tools`, whose presentation belongs to the ending run.
@@ -85,13 +88,21 @@ func EndRun(tx *session.Tx, live *delta.Obj, taskID session.ID, end RunEnd) erro
 				inputs = append(inputs, list.Get(i))
 			}
 		}
+		// The failure's members are boxed once, for the settlement and for `runFailure`.
+		var reason, detail any
 		settlement := end.Settlement
 		if end.Reason == "" {
 			settlement = jobj("status", "done", "answer", float64(end.Answer))
-		} else if settlement == nil {
-			settlement = jobj("status", "unanswered", "reason", end.Reason)
-			if end.Detail != nil {
-				settlement.Set("detail", *end.Detail)
+		} else {
+			reason = end.Reason
+			if end.HasDetail {
+				detail = end.Detail
+			}
+			if settlement == nil {
+				settlement = jobj("status", "unanswered", "reason", reason)
+				if end.HasDetail {
+					settlement.Set("detail", detail)
+				}
 			}
 		}
 		for _, input := range inputs {
@@ -101,9 +112,9 @@ func EndRun(tx *session.Tx, live *delta.Obj, taskID session.ID, end RunEnd) erro
 			}
 		}
 		if end.Reason != "" {
-			failure := jobj("taskId", float64(taskID), "inputs", inputs, "reason", end.Reason)
-			if end.Detail != nil {
-				failure.Set("detail", *end.Detail)
+			failure := jobj("taskId", run.Get("taskId"), "inputs", inputs, "reason", reason)
+			if end.HasDetail {
+				failure.Set("detail", detail)
 			}
 			if err := live.Set("runFailure", failure); err != nil {
 				return err
