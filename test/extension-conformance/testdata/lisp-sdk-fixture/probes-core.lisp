@@ -618,6 +618,12 @@
                  (core-info ctx (pig:to-json (map 'simple-vector (lambda (name) (or (pig:ctx-get-flag ctx name) :null))
                                                   '("flag-true" "flag-false" "flag-string" "flag-empty" "flag-unset" "unregistered")))))))
 
+(defun core-call-pig (name &rest arguments)
+  "Call the exported function NAME of the pig package that another lane of the SDK defines."
+  (let ((symbol (find-symbol name "PIG")))
+    (unless (and symbol (fboundp symbol)) (error "pig:~A is not defined" (string-downcase name)))
+    (apply symbol arguments)))
+
 (def-fixture "core-state-push" (ext)
   (pig:command ext "state-push-probe" "Read one replicated accessor from a thread between requests"
                (lambda (ctx args)
@@ -626,6 +632,10 @@
                                     ((equal kind "session-name") (lambda () (pig:ctx-session-name ctx)))
                                     ((and (> (length kind) 9) (string= "settings:" kind :end2 9))
                                      (lambda () (pig:to-json (or (pig:jget (pig:ctx-get-settings ctx) (subseq kind 9)) :null))))
+                                    ((equal kind "mcp")
+                                     (lambda () (core-join (map 'list (lambda (server) (pig:jget server "name")) (core-call-pig "CTX-GET-MCP-SERVERS" ctx)))))
+                                    ((equal kind "theme")
+                                     (lambda () (let ((name (core-call-pig "THEME-NAME" (core-call-pig "CTX-THEME" ctx)))) (if (stringp name) name ""))))
                                     (t (error "state-push-probe: unsupported kind ~S" kind))))
                         (guarded (lambda () (handler-case (funcall read) (error (e) (format nil "error:~A" e)))))
                         (armed (funcall guarded)))
@@ -638,3 +648,32 @@
                             (write-string (concatenate 'string armed "=>" current) out))
                           (rename-file temp path))))))
                  nil)))
+
+(def-fixture "core-rw" (ext)
+  (pig:command ext "rw_prompt_state" "Read the system prompt state after registering and activating tools"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((define (name)
+                          (pig:ctx-register-tool ctx name :label name :description name :prompt-snippet (concatenate 'string name "-snippet")
+                                                          :parameters (pig:obj "type" "object") :execute (lambda (c a) (declare (ignore c a)) "ok"))))
+                   (define "rw-alpha") (define "rw-beta")
+                   (let ((registered (pig:ctx-get-system-prompt-options ctx)))
+                     (pig:ctx-set-active-tools ctx (list "rw-beta"))
+                     (let* ((options (pig:ctx-get-system-prompt-options ctx)) (prompt (pig:ctx-get-system-prompt ctx)))
+                       (core-info ctx (format nil "rw_prompt_state=registered:~A;selected:~A;beta:~A;alpha:~A"
+                                              (or (pig:jref registered "toolSnippets" "rw-alpha") "")
+                                              (core-join (coerce (or (pig:jget options "selectedTools") (vector)) 'list))
+                                              (if (search "rw-beta-snippet" prompt) "true" "false") (if (search "rw-alpha-snippet" prompt) "true" "false"))))))))
+  (pig:command ext "rw_idle_after_trigger" "Read isIdle after a message that starts a run"
+               (lambda (ctx args) (declare (ignore args))
+                 (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                 (core-info ctx (format nil "rw_idle_after_trigger=~A" (if (pig:ctx-is-idle-p ctx) "true" "false")))))
+  (let ((settled-once nil))
+    (pig:command ext "rw_idle_in_settled" "Read isIdle after a message that starts a run, sent from an agent_settled handler"
+                 (lambda (ctx args) (declare (ignore ctx args))
+                   (pig:on ext "agent_settled"
+                           (lambda (hctx data) (declare (ignore data))
+                             (unless settled-once
+                               (setf settled-once t)
+                               (pig:ctx-send-message hctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                               (core-info hctx (format nil "rw_idle_in_settled=~A" (if (pig:ctx-is-idle-p hctx) "true" "false"))))
+                             nil))))))

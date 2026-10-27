@@ -108,9 +108,6 @@ var knownCapabilityGaps = map[string]map[string]string{
 	"switchSession": {
 		"lisp": "the Lisp SDK does not serve session replacement yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
 	},
-	"watchSessionLog": {
-		"lisp": "the Lisp SDK does not serve the session log watcher yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
 	"complete": {
 		"node": "host-backed completion is unavailable to Node extensions",
 		"lisp": "the Lisp SDK does not serve host model calls yet (gap lane SdkLispPhase2)",

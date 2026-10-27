@@ -275,7 +275,7 @@ def new_extension():
                          (setf (gethash "selectedTools" options) (vector %[1]q))
                          (setf (gethash "selectedTools" options) (concatenate 'simple-vector (selected) (vector %[1]q))))
                      (cond ((equal prompt "error") (error "selected tools failure"))
-                           ((equal prompt "result") (pig:obj "systemPrompt" "Exact prompt."))))))))))
+                           ((equal prompt "result") (pig:obj "systemPrompt" "Exact prompt.")))))))))
     e))
 `, name)
 	case "rust":
