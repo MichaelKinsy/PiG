@@ -54,6 +54,8 @@ func slowProgressSetup(t *testing.T, persistWithinMs float64) *chatState {
 	setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 80, TokenSize: &ai.FauxTokenSize{Min: &four, Max: &four}})
 	setup.SetSettings(func(settings *HarnessSettings) {
 		settings.Progress = &ProgressPolicyPatch{PersistWithinMs: &persistWithinMs}
+		// A request a crash interrupted is a failed attempt (#11139): retry at once.
+		settings.Retry = &RetryPolicyPatch{Enabled: new(true), MaxRetries: new(5), BaseDelayMs: new(1)}
 	})
 	return setup
 }
@@ -229,7 +231,7 @@ func TestDeferredGenerationPartials(t *testing.T) {
 		must0(t, run.harness.Close(testContext))
 	})
 
-	t.Run("converts what was stored into the aborted entry after a crash, and resends", func(t *testing.T) {
+	t.Run("converts what was stored into the aborted entry after a crash, and retries the charged attempt", func(t *testing.T) {
 		storage := newControlledStorage()
 		setup := slowProgressSetup(t, 150)
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(longText())})
@@ -360,26 +362,6 @@ func TestDeferredGenerationPartials(t *testing.T) {
 		}
 		must0(t, reopened.harness.Close(testContext))
 	})
-
-	t.Run("never counts partial commits as progress of a task cut off again and again", func(t *testing.T) {
-		storage := newControlledStorage()
-		setup := slowProgressSetup(t, 50)
-		run := openProgress(t, storage, setup)
-		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(longText())})
-		submitInput(t, run.root, "hi")
-		waitFor(t, func() bool { live := liveOf(t, run.harness, run.root.Id()); return live != nil && live.Run != nil })
-		id := liveOf(t, run.harness, run.root.Id()).Run.TaskId
-		for crashes := 1; crashes <= 2; crashes++ {
-			waitForLong(t, func() bool { return storedTextLength(t, storage, run.root.Id()) > 40 })
-			crash(t, run.harness)
-			setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(longText())})
-			run = openProgress(t, storage, setup)
-			if record := must(run.harness.GetTask(testContext, id)); record.Restarts != crashes {
-				t.Fatalf("after %d crashes the task counts %d restarts", crashes, record.Restarts)
-			}
-		}
-		must0(t, run.harness.Close(testContext))
-	})
 }
 
 // streamingTool writes a line every 20 ms until its invocation is cancelled on its first run. A later run waits for
@@ -475,6 +457,51 @@ func workStep() ai.FauxResponseStep {
 }
 
 func TestDeferredToolOutput(t *testing.T) {
+	// #11139: a generation's request is charged at once after a crash, so its partials never stream with a count; a
+	// replay-safe tool reruns and streams its output with one.
+	t.Run("never counts progress commits as progress of a task cut off again and again", func(t *testing.T) {
+		storage := newControlledStorage()
+		setup := slowProgressSetup(t, 50)
+		var mu sync.Mutex
+		runs := 0
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
+			ToolSchema: ai.ToolSchema{Name: "work", Description: "work", Parameters: emptyObjectSchema()},
+			Replay:     durable.ToolReplaySafe,
+			Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+				mu.Lock()
+				runs++
+				run := runs
+				mu.Unlock()
+				for line := 0; ctx.Err() == nil; line++ {
+					api.Output("run " + itoaString(run) + " line " + itoaString(line) + "\n")
+					time.Sleep(20 * time.Millisecond)
+				}
+				return durable.ToolExecutionResult{}, context.Cause(ctx)
+			},
+		}))
+		setup.Faux.SetResponses([]ai.FauxResponseStep{workStep()})
+		run := openProgress(t, storage, setup)
+		submitInput(t, run.root, "go")
+		for crashes := 1; crashes <= 2; crashes++ {
+			// This run stored output of its own, a progress commit, before it was cut off.
+			waitForLong(t, func() bool {
+				output, _ := storedToolOutput(t, storage, run.root.Id())
+				return strings.HasPrefix(output, "run "+itoaString(crashes)+" ")
+			})
+			crash(t, run.harness)
+			run = openProgress(t, storage, setup)
+			kind := "pi.tool"
+			tool := must(durable.Commit(testContext, run.harness, func(tx durable.Tx) (durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
+				page, err := tx.ScanTasks(durable.TaskQuery{Kind: &kind}, 1, nil)
+				return page.Items[0], err
+			}))
+			if tool.Restarts != crashes {
+				t.Fatalf("after %d crashes the tool task counts %d restarts", crashes, tool.Restarts)
+			}
+		}
+		must0(t, run.harness.Close(testContext))
+	})
+
 	t.Run("answers a tool without replay that crashed with the output stored by then", func(t *testing.T) {
 		storage := newControlledStorage()
 		setup := slowProgressSetup(t, 150)
