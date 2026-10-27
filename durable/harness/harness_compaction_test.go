@@ -5,7 +5,6 @@ package harness
 import (
 	"context"
 	"errors"
-	"github.com/MichaelKinsy/PiG/chord"
 	"math"
 	"path/filepath"
 	"regexp"
@@ -15,6 +14,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/chord"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"

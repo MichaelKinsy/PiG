@@ -3,12 +3,13 @@ package harness
 import (
 	"context"
 	"encoding/json"
-	"github.com/MichaelKinsy/PiG/chord"
 	"reflect"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"

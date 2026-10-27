@@ -2,8 +2,9 @@ package harness
 
 import (
 	"context"
-	"github.com/MichaelKinsy/PiG/chord"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"

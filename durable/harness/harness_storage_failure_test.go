@@ -6,12 +6,13 @@ package harness
 import (
 	"context"
 	"errors"
-	"github.com/MichaelKinsy/PiG/chord"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/chord"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
