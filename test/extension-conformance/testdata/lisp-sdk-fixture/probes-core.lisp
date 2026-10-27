@@ -631,12 +631,6 @@
                  (core-info ctx (pig:to-json (map 'simple-vector (lambda (name) (or (pig:ctx-get-flag ctx name) :null))
                                                   '("flag-true" "flag-false" "flag-string" "flag-empty" "flag-unset" "unregistered")))))))
 
-(defun core-call-pig (name &rest arguments)
-  "Call the exported function NAME of the pig package that another lane of the SDK defines."
-  (let ((symbol (find-symbol name "PIG")))
-    (unless (and symbol (fboundp symbol)) (error "pig:~A is not defined" (string-downcase name)))
-    (apply symbol arguments)))
-
 (def-fixture "core-state-push" (ext)
   (pig:command ext "state-push-probe" "Read one replicated accessor from a thread between requests"
                (lambda (ctx args)
@@ -646,9 +640,9 @@
                                     ((and (> (length kind) 9) (string= "settings:" kind :end2 9))
                                      (lambda () (pig:to-json (or (pig:jget (pig:ctx-get-settings ctx) (subseq kind 9)) :null))))
                                     ((equal kind "mcp")
-                                     (lambda () (core-join (map 'list (lambda (server) (pig:jget server "name")) (core-call-pig "CTX-GET-MCP-SERVERS" ctx)))))
+                                     (lambda () (core-join (map 'list (lambda (server) (pig:jget server "name")) (pig:ctx-get-mcp-servers ctx)))))
                                     ((equal kind "theme")
-                                     (lambda () (let ((name (core-call-pig "THEME-NAME" (core-call-pig "CTX-THEME" ctx)))) (if (stringp name) name ""))))
+                                     (lambda () (let ((name (pig:theme-name (pig:ctx-theme ctx)))) (if (stringp name) name ""))))
                                     (t (error "state-push-probe: unsupported kind ~S" kind))))
                         (guarded (lambda () (handler-case (funcall read) (error (e) (format nil "error:~A" e)))))
                         (armed (funcall guarded)))
@@ -712,3 +706,31 @@
                                               (core-str (let ((skills (pig:jget opts "skills"))) (and (vectorp skills) (plusp (length skills)) (pig:jref (aref skills 0) "sourceInfo" "scope"))))
                                               (if (equal (pig:jget opts "forceSystemPrompt") "") "true" "false")
                                               (if (nth-value 1 (gethash "customPrompt" opts)) "true" "false")))))))))
+
+;;; ---------------------------------------------------------------- UI availability
+
+(defmacro core-assert (form) `(unless ,form (error "assertion failed: ~S" ',form)))
+
+(def-fixture "core-ui-availability" (ext)
+  (pig:command ext "ui-availability" "Probe bound UI and headless defaults"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (let ((selected (core-dialog-text (pig:ctx-select ctx "Pick" (list "first" "second")))))
+                   (pig:ctx-notify ctx "availability-notify" "info")
+                   (unless (pig:ctx-has-ui-p ctx)
+                     (core-assert (equal (multiple-value-list (pig:ctx-input ctx "Input" :placeholder "placeholder")) '(nil nil)))
+                     (core-assert (equal (multiple-value-list (pig:ctx-editor ctx "Editor" :prefill "prefill")) '(nil nil)))
+                     (core-assert (not (pig:ctx-confirm ctx "Confirm" "message")))
+                     (flet ((refuse (what) (lambda (&rest values) (declare (ignore values)) (error "headless ~A" what))))
+                       (core-assert (null (pig:ctx-custom ctx (pig:make-custom-component :render (refuse "render") :handle-input (refuse "input")
+                                                                                         :set-invalidate (refuse "invalidation") :dispose (refuse "disposal"))))))
+                     (let ((off (pig:ctx-on-terminal-input ctx (lambda (data) (declare (ignore data)) nil)))) (funcall off) (funcall off))
+                     (pig:ctx-add-autocomplete-provider ctx)
+                     (pig:ctx-set-editor-text ctx "ignored")
+                     (pig:ctx-set-tools-expanded ctx t)
+                     (core-assert (equal (pig:ctx-get-editor-text ctx) ""))
+                     (core-assert (not (pig:ctx-tools-expanded-p ctx)))
+                     (core-assert (zerop (length (pig:ctx-get-all-themes ctx))))
+                     (core-assert (null (pig:ctx-get-theme ctx "dark")))
+                     (core-assert (equal (multiple-value-list (pig:ctx-set-theme ctx "dark")) '(nil "UI not available"))))
+                   (pig:ctx-append-entry ctx "ui-availability" (format nil "hasUI=~A selected=~A" (core-bool (pig:ctx-has-ui-p ctx)) selected))))))
