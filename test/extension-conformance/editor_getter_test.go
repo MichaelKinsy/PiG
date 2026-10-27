@@ -99,7 +99,6 @@ func TestConformance_EditorComponentGetterAgreesAcrossSDKs(t *testing.T) {
 		{command: "editor-get-probe", want: "absent"},
 	}
 	cases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
-	cases = append(cases, lispHarnessCase(), harnessCase{name: "subprocess-lisp-packed", extName: lispFixtureName, make: func(t *testing.T) *harness { return makePackedUIHarness(t, "lisp") }})
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)

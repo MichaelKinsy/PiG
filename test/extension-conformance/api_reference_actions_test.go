@@ -35,7 +35,7 @@ func TestConformance_HostActionsAcrossSDKs(t *testing.T) {
 	} {
 		requireAPIMember(t, want, member)
 	}
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

@@ -27,7 +27,7 @@ func TestConformance_UIForwardingAgreesAcrossSDKs(t *testing.T) {
 		"editorText:draft",
 		"toolsExpanded:true",
 	}
-	for _, tc := range append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...) {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

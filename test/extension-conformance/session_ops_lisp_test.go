@@ -18,7 +18,7 @@ func TestLispSessionActionsReachTheHostActions(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	h := lispHarnessCase().make(t)
+	h := makeSubprocessLispHarness(t)
 	t.Cleanup(func() {
 		if h.cleanup != nil {
 			h.cleanup()

@@ -54,7 +54,7 @@ func TestToolResultMemberOrderFollowsTheToolAcrossSDKs(t *testing.T) {
 	}
 	want := []string{"details", "isError", "content"}
 	wantPartial := []string{"details", "content"}
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		switch tc.name {
 		case "subprocess-node", "subprocess-node-packed", "subprocess-rust", "subprocess-python":
 		default:

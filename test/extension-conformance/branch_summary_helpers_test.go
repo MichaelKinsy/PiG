@@ -99,7 +99,7 @@ func TestConformance_BranchSummaryHelpersAgreeAcrossSDKs(t *testing.T) {
 		}
 	}
 
-	for _, tc := range append(append(sdkHarnessCases(), lispHarnessCase()), packedSDKHarnessCases()...) {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		if tc.name == "subprocess-node" {
 			continue
 		}

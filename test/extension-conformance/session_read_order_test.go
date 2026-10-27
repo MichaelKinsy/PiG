@@ -43,7 +43,7 @@ func TestSessionReadsKeepPiMemberOrderAcrossSDKs(t *testing.T) {
 	}
 	want.WriteByte('}')
 
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		switch tc.name {
 		case "subprocess-node", "subprocess-node-packed", "subprocess-rust", "subprocess-python":
 		default:

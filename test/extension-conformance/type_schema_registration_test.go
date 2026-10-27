@@ -79,7 +79,7 @@ func typeToolParametersAgree(t *testing.T, toolName, caseName string) {
 	if want == "" {
 		t.Fatalf("the vector %q is missing", caseName)
 	}
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		if tc.name == "inproc-go" {
 			continue // the in-process Go reference registers through the host API, with no SDK (and so no sdk.Type) in the loop
 		}

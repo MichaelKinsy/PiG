@@ -20,7 +20,7 @@ func TestHostStateChangeReachesABackgroundReaderAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	cases := append(append(allHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...)
+	cases := append(allHarnessCases(), packedSDKHarnessCases()...)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)

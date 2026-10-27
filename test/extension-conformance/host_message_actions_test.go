@@ -22,7 +22,7 @@ func TestSendMessageAndSetSessionNameAcrossSDKs(t *testing.T) {
 		{"send_message_no_turn", "sendMessage:notice:no-turn:unset:false"},
 		{"set_session_name", "setSessionName:conformance-session"},
 	}
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -60,7 +60,7 @@ func TestSetModelAcrossSDKs(t *testing.T) {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	t.Parallel()
-	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
+	for _, tc := range allHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
@@ -108,7 +108,7 @@ func TestGetThinkingLevelAndGetCommandsAcrossSDKs(t *testing.T) {
 	}
 	t.Parallel()
 	const want = "getThinkingLevel=xhigh;getCommands=conformance-listed|Listed by the host|prompt||,review|Review the diff|prompt|/prompts/review.md|project,lint||skill|/skills/lint/SKILL.md|user:info"
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {

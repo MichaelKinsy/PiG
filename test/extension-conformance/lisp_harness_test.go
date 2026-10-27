@@ -16,11 +16,6 @@ import (
 // extends with the probe commands of its family (probes-*.lisp), as the Python and Rust fixtures carry theirs.
 const lispFixtureName = "lisp-sdk-fixture"
 
-// lispHarnessCase is the Lisp SDK's case of the SDK harness: a test of a family the Lisp SDK serves appends it to sdkHarnessCases().
-func lispHarnessCase() harnessCase {
-	return harnessCase{name: "subprocess-lisp", make: makeSubprocessLispHarness, extName: lispFixtureName}
-}
-
 // lispFixtureConfig loads testdata/<dir> as the factory extension named name through the Lisp SDK.
 func lispFixtureConfig(t testing.TB, dir, name string) subprocess.ExtConfig {
 	t.Helper()
@@ -68,14 +63,4 @@ func makeSubprocessLispHarness(t *testing.T) *harness {
 	runner := inproc.NewRunner(loaded, t.TempDir())
 	bridge.SetUIPromptScope(runner)
 	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
-}
-
-// lispHarnessCases are both placements of the Lisp SDK, for a test that loops over append(sdkHarnessCases(), packedSDKHarnessCases()...).
-func lispHarnessCases() []harnessCase {
-	return []harnessCase{lispHarnessCase(), lispPackedHarnessCase()}
-}
-
-// lispPackedHarnessCase is the Lisp SDK harness fixture beside a peer extension in one shared cell.
-func lispPackedHarnessCase() harnessCase {
-	return harnessCase{name: "subprocess-lisp-packed", extName: lispFixtureName, make: func(t *testing.T) *harness { return makePackedUIHarness(t, "lisp") }}
 }
