@@ -53,4 +53,5 @@
 //   - Extension → Host: widget_push (a string list widget)
 //   - Host → Extension: shutdown
 package sdk
+
 // pig divergence (D204): this SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host (the Node SDK does); the 0.6.1 export ends this.
