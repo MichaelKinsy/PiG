@@ -173,7 +173,7 @@ func TestLiveRunLifecycle(t *testing.T) {
 	}, session.TxScope{}); err != nil {
 		t.Fatal(err)
 	}
-	if got := liveValue(t, s); got != `{}` {
+	if got, want := liveValue(t, s), failure+`}`; got != want {
 		t.Fatalf("emptied compactions: %s", got)
 	}
 }
