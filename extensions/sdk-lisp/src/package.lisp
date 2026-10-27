@@ -331,6 +331,46 @@
    #:sprite-definition-tagline #:sprite-definition-mascot #:sprite-definition-palette
    ;; ==== end lane P ====
    ;; ==== lane U1: component kit, ui.custom, overlays, widgets, theme ====
+   ;; kit: nodes
+   #:kit-container #:kit-container-add-child #:kit-box #:kit-box-add-child #:kit-text #:kit-truncated-text #:kit-markdown #:kit-text-style
+   #:kit-spacer #:kit-dynamic-border #:kit-select-item #:kit-select-layout #:kit-select-list #:kit-setting-item #:kit-settings-list
+   #:kit-image #:kit-image-ref #:kit-loader #:kit-loader-indicator #:kit-hstack #:kit-vstack #:kit-stack-entry #:kit-stack-add-child
+   #:kit-list #:kit-list-item #:kit-lines #:kit-lines-image #:kit-lines-progress
+   #:kit-user-message #:kit-user-message-set-output-pad
+   #:kit-assistant-message #:kit-assistant-message-update-content #:kit-assistant-message-set-hide-thinking-block
+   #:kit-assistant-message-set-hidden-thinking-label #:kit-assistant-message-set-output-pad
+   #:kit-message #:kit-text-block #:kit-thinking-block #:kit-tool-call-block
+   #:kit-text-content #:kit-image-content #:kit-tool-result #:*kit-tool-definition-builtin* #:*kit-tool-definition-empty*
+   #:kit-tool-execution #:kit-tool-execution-update-args #:kit-tool-execution-mark-execution-started #:kit-tool-execution-set-args-complete
+   #:kit-tool-execution-update-result #:kit-tool-execution-set-expanded #:kit-tool-execution-set-show-images
+   #:kit-tool-execution-set-image-width-cells #:kit-tool-execution-set-output-pad
+   #:kit-bash-execution #:kit-bash-execution-append-output #:kit-bash-execution-set-complete #:kit-bash-execution-set-expanded
+   #:kit-bash-execution-set-output-pad #:kit-diff
+   #:kit-branch-summary #:kit-branch-summary-set-expanded #:kit-branch-summary-set-output-pad
+   #:kit-compaction-summary #:kit-compaction-summary-set-expanded #:kit-compaction-summary-set-output-pad
+   #:kit-skill-invocation #:kit-skill-invocation-set-expanded #:kit-skill-invocation-set-output-pad
+   #:kit-custom-message #:kit-custom-message-set-expanded #:kit-custom-message-set-output-pad
+   #:kit-cancellable-loader #:kit-bordered-loader #:kit-input #:kit-slash-command #:kit-autocomplete #:kit-editor
+   #:kit-scroll-view #:kit-mouse-region
+   ;; kit: views, events and the view renderers' result
+   #:kit-view #:kit-render-result #:kit-event-node #:kit-event-type #:kit-event-index #:kit-event-item #:kit-event-id #:kit-event-value
+   #:kit-event-cursor #:kit-event-mouse
+   ;; ui.custom and overlays
+   #:make-custom-component #:make-custom-result #:ctx-custom #:make-mouse-event #:mouse-event-type #:mouse-event-button #:mouse-event-x
+   #:mouse-event-y #:mouse-event-screen-x #:mouse-event-screen-y #:mouse-event-width #:mouse-event-height #:mouse-event-shift
+   #:mouse-event-alt #:mouse-event-ctrl #:mouse-event-wheel-delta #:mouse-event-click-count
+   #:overlay-handle #:overlay-hide #:overlay-set-hidden #:overlay-hidden-p #:overlay-focus #:overlay-unfocus #:overlay-focused-p
+   #:overlay-get-bounds
+   ;; widgets, footer, header, working indicator
+   #:ctx-width #:ctx-height #:ctx-set-working-message #:ctx-set-working-visible #:ctx-set-working-indicator
+   #:ctx-set-hidden-thinking-label #:ctx-set-tools-expanded #:ctx-bell
+   #:ctx-set-widget #:ctx-set-widget-renderer #:ctx-set-footer #:ctx-clear-footer #:ctx-set-footer-renderer #:ctx-set-footer-view
+   #:ctx-set-header #:ctx-clear-header #:ctx-set-header-renderer #:ctx-set-header-view
+   ;; theme
+   #:theme #:make-theme-from-palette #:theme-name #:theme-source-path #:theme-source-info #:theme-appearance #:theme-colors
+   #:theme-fg #:theme-bg #:theme-bold #:theme-italic #:theme-underline #:theme-inverse #:theme-strikethrough #:theme-get-fg-ansi
+   #:theme-get-bg-ansi #:theme-get-color-mode #:theme-style #:theme-get-thinking-border-color #:theme-get-bash-mode-border-color
+   #:ctx-theme #:ctx-on-theme-change #:ctx-on-tools-expanded-change
    ;; ==== end lane U1 ====
    ;; ==== lane U2: editor components, autocomplete providers, terminal input ====
    #:ctx-set-editor-component #:ctx-clear-editor-component #:ctx-get-editor-component

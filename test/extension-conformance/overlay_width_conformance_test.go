@@ -11,7 +11,7 @@ func TestConformance_OverlayRenderWidth(t *testing.T) {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	t.Parallel()
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
