@@ -25,6 +25,8 @@ export function validateCorpus(corpus) {
 		// encoded as a weaker level, a masked column or an excused test here (the owner revoked D106 on 2026-10-12).
 		for (const key of ["divergence", "divergence_levels", "divergence_tests", "not_core_tests"]) if (s[key] !== undefined) problems.push(`${s.id}: ${key} relaxes the row's comparison; the gate has no such field`)
 		if (s.levels?.includes("order") && !["example", "interop", "diff"].includes(s.runner)) problems.push(`${s.id}: the order level needs a scenario program (an example, interop or diff row)`)
+		if (s.reference !== undefined && s.reference !== "ticks") problems.push(`${s.id}: reference ${s.reference} is not ticks (the main reference is the default)`)
+		if (s.reference && s.runner !== "diff") problems.push(`${s.id}: a row runs against the tick reference only as a diff row`)
 		if (s.runner === "diff" && (!Number.isInteger(s.seed) || !["gate", "node"].includes(s.profile))) problems.push(`${s.id}: a diff row names an integer seed and a storage profile (gate or node)`)
 		if (s.normalisers?.length) problems.push(`${s.id}: normalisers are not allowed in acceptance runs (CONTRACT 2.2)`)
 	}
