@@ -38,6 +38,8 @@ type scenarioRig struct {
 	footer footerData
 	// signal is the active run's cancellation the host reports as ctx.signal.
 	signal runSignalState
+	// wire holds the results the extension sent the host, as written.
+	wire wireLog
 }
 
 // peerConfig loads the Node driver as the scenario's second extension. It is
@@ -83,6 +85,11 @@ func scenarioDriverConfig(t *testing.T, root string, sdk sdkscenarios.SDK, name 
 		config.Factory = "new_extension"
 		config.SDKName = "pig-sdk-py"
 		config.Package = "scenario_driver"
+	case sdkscenarios.Lisp:
+		config.Source = filepath.Join(base, "scenario-driver-lisp")
+		config.Factory = "new-extension"
+		config.SDKName = "pig-sdk-lisp"
+		config.Package = "scenario-driver"
 	case sdkscenarios.Rust:
 		config.Source = filepath.Join(base, "scenario-driver-rust")
 		config.Factory = "new_extension"
@@ -129,6 +136,7 @@ func newScenarioRig(t *testing.T, sdk sdkscenarios.SDK, scenario sdkscenarios.Sc
 			rig.bridge.SetUIContext(rigUI{UIContext: extension.NoopUIContext})
 		}
 	}
+	host.SetInboundObserver(rig.wire.observe)
 	rig.configs = []subprocess.ExtConfig{scenarioDriverConfig(t, root, sdk, "scenario-driver-"+string(sdk))}
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return slices.Clone(rig.configs), nil })
 	loaded, errs := host.LoadAll(t.Context(), slices.Clone(rig.configs))

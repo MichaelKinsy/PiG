@@ -2704,7 +2704,7 @@ func resolveExtensionEntries(dir string, python bool) []string {
 // isPythonFactoryRoot reports whether source.Resolve classifies dir as a Python extension by its one new_extension factory module or executable main.py.
 func isPythonFactoryRoot(dir string) bool {
 	definition, err := extsource.Resolve(dir)
-	return err == nil && definition.Language == "python"
+	return err == nil && (definition.Language == "python" || definition.Language == "lisp")
 }
 
 // hasChildExtensionEntry reports whether discoverExtensionEntries would find an entry among the children of dir. A child directory counts when it carries an index, a manifest entry, or a Go, Rust or Python root marker; go.work in a child is not searched further, which bounds the check to one level.
@@ -2869,12 +2869,16 @@ func mustRel(baseDir, target string) string {
 	return relative
 }
 
-// hasBuildFile reports whether dir is a Go module, Rust crate or Python project root. A go.work-only root is decided by resolveExtensionEntries.
+// hasBuildFile reports whether dir is a Go module, Rust crate, Python project or Lisp ASDF system root. A go.work-only root is decided by resolveExtensionEntries.
 func hasBuildFile(dir string) bool {
 	for _, name := range []string{"go.mod", "Cargo.toml", "pyproject.toml"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
 			return true
 		}
+	}
+	// pig additive (D19): an ASDF system definition marks a Lisp project root.
+	if matches, err := filepath.Glob(filepath.Join(dir, "*.asd")); err == nil && len(matches) > 0 {
+		return true
 	}
 	return false
 }

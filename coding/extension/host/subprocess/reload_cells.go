@@ -55,6 +55,8 @@ func reasonFor(cell CellSpec) string {
 		return "rust factory packed (shared-ok)"
 	case CellStrategyPackedPython:
 		return "python factory packed (shared-ok)"
+	case CellStrategyPackedLisp:
+		return "lisp factory packed (shared-ok)"
 	case CellStrategyPackedNode:
 		if name, ok := strings.CutPrefix(cell.Isolation, "quarantined:"); ok {
 			return "Node crash culprit in its own process: " + name
@@ -141,6 +143,9 @@ func (h *Host) stageCell(ctx context.Context, cell CellSpec, oldByName map[strin
 		case CellStrategyPackedPython:
 			staged, err := h.stagePackedPython(ctx, cell, oldByName, &rep)
 			return stageOutcome{staged: staged, report: rep}, err
+		case CellStrategyPackedLisp:
+			staged, err := h.stagePackedLisp(ctx, cell, oldByName, &rep)
+			return stageOutcome{staged: staged, report: rep}, err
 		case CellStrategyPackedNode:
 			staged, err := h.stagePackedNode(ctx, cell, oldByName, &rep)
 			return stageOutcome{staged: staged, report: rep}, err
@@ -152,7 +157,7 @@ func (h *Host) stageCell(ctx context.Context, cell CellSpec, oldByName map[strin
 	// keep its lease through registration. Go and Rust consume staged sources
 	// only while compiling; their builders own a narrower lease and must not
 	// hold the global transaction lock while a subprocess registers.
-	if cell.Language == "python" {
+	if cell.Language == "python" || cell.Language == "lisp" {
 		return pigsdklock.WithBuild(ctx, h.builder.configRoot, work)
 	}
 	return work()
@@ -167,6 +172,9 @@ func (h *Host) stageIsolated(ctx context.Context, cfg ExtConfig, oldByName map[s
 	}
 	if isPythonFactoryConfig(cfg) {
 		return h.stageIsolatedPythonFactory(ctx, cfg, oldByName, rep)
+	}
+	if isLispFactoryConfig(cfg) {
+		return h.stageIsolatedLispFactory(ctx, cfg, oldByName, rep)
 	}
 	resolved := cfg
 	h.markExtension(cfg.Name, "build-check-start")
@@ -402,6 +410,60 @@ func (h *Host) stagePackedPython(ctx context.Context, cell CellSpec, oldByName m
 	return staged, nil
 }
 
+func (h *Host) stagePackedLisp(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {
+	lispExts, err := cell.LispExtensions()
+	if err != nil {
+		return nil, err
+	}
+	cacheRoot := filepath.Dir(h.builder.cacheDir)
+	h.markCellExtensions(cell, "build-check-start")
+	packed, err := runtimecell.BuildLispPackedCell(ctx, cacheRoot, cell.Key, lispExts)
+	if err != nil {
+		return nil, fmt.Errorf("build packed Lisp cell %s: %w", cell.Key, err)
+	}
+	h.markCellExtensions(cell, "build-check-done")
+	rep.Hash = packed.Hash
+	rep.BinaryPath = packed.BinaryPath
+	rep.Cached = packed.Cached
+	rep.BuildDuration = packed.BuildDuration
+	staged, _, err := h.startLispPackedCell(ctx, packed)
+	if err != nil {
+		if acceptErr, ok := errors.AsType[*packedAcceptError](err); ok {
+			rep.Replaced = anyExisting(cell.Extensions, oldByName)
+			return staged, acceptErr
+		}
+		return nil, fmt.Errorf("reload packed Lisp cell %s: %w", cell.Key, err)
+	}
+	rep.Replaced = anyExisting(cell.Extensions, oldByName)
+	return staged, nil
+}
+
+func (h *Host) stageIsolatedLispFactory(ctx context.Context, cfg ExtConfig, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {
+	lispExt, err := lispExtensionFromConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	cacheRoot := filepath.Dir(h.builder.cacheDir)
+	cellKey := isolatedCell(cfg, "factory").Key
+	h.markExtension(cfg.Name, "build-check-start")
+	packed, err := runtimecell.BuildLispPackedCell(ctx, cacheRoot, cellKey, []runtimecell.LispExtension{lispExt})
+	if err != nil {
+		return nil, fmt.Errorf("build isolated Lisp factory %s: %w", cfg.Name, err)
+	}
+	h.markExtension(cfg.Name, "build-check-done")
+	rep.Hash = packed.Hash
+	rep.BinaryPath = packed.BinaryPath
+	rep.Cached = packed.Cached
+	rep.BuildDuration = packed.BuildDuration
+	old := oldByName[cfg.Name]
+	staged, _, err := h.startLispPackedCell(ctx, packed)
+	if err != nil {
+		return nil, fmt.Errorf("reload isolated Lisp factory %s: %w", cfg.Name, err)
+	}
+	rep.Replaced = old != nil
+	return staged, nil
+}
+
 func anyExisting(cfgs []ExtConfig, oldByName map[string]*managedExt) bool {
 	for _, cfg := range cfgs {
 		if _, ok := oldByName[cfg.Name]; ok {
@@ -421,6 +483,24 @@ func isRustFactoryConfig(cfg ExtConfig) bool {
 
 func isPythonFactoryConfig(cfg ExtConfig) bool {
 	return cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "python" && cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "new_extension"
+}
+
+func isLispFactoryConfig(cfg ExtConfig) bool {
+	return cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "lisp" && cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "new-extension"
+}
+
+func lispExtensionFromConfig(cfg ExtConfig) (runtimecell.LispExtension, error) {
+	if !isLispFactoryConfig(cfg) {
+		return runtimecell.LispExtension{}, fmt.Errorf("extension %q is not a Lisp factory extension", cfg.Name)
+	}
+	return runtimecell.LispExtension{
+		Name:    cfg.Name,
+		Root:    cfg.Source,
+		Package: cfg.Package,
+		Factory: cfg.Factory,
+		Hash:    valueOr(cfg.ContentHash, cfg.Source),
+		Verify:  cfg.sourceCheck,
+	}, nil
 }
 
 func goExtensionFromConfig(cfg ExtConfig) (runtimecell.GoExtension, error) {

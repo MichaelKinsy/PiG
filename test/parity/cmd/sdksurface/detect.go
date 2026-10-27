@@ -704,3 +704,26 @@ func rawStringEnd(b []byte, i int) int {
 	}
 	return len(b)
 }
+
+// ── Lisp ─────────────────────────────────────────────────────────────────────
+
+// lispExportRE reads one exported symbol of the pig package: #:name inside the defpackage's (:export ...) clause.
+var lispExportRE = regexp.MustCompile(`#:([a-z0-9][a-z0-9*+-]*)`)
+
+// parseLisp returns the symbols the pig package exports, each as pig:<name>: the SDK's whole public surface.
+func parseLisp(packageFile string) (symbolSet, error) {
+	data, err := os.ReadFile(packageFile)
+	if err != nil {
+		return nil, err
+	}
+	text := string(data)
+	start := strings.Index(text, "(:export")
+	if start < 0 {
+		return nil, fmt.Errorf("%s has no (:export clause", packageFile)
+	}
+	set := symbolSet{}
+	for _, m := range lispExportRE.FindAllStringSubmatch(text[start:], -1) {
+		set["pig:"+m[1]] = true
+	}
+	return set, nil
+}

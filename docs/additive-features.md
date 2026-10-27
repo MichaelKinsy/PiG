@@ -120,8 +120,9 @@ Stock disposition: required substrate. PiG Standard selects extensions but does 
 
 Embedding hosts bind `HostCallbacks.AppendEntry` through `coding.Session.AppendExtensionEntry`. It preserves the subprocess-assigned ID and timestamp, validates the identity and appends under the native Session mutation lock, and emits `entry_appended` only for `pi.appendEntry`. `TestAppendExtensionEntryThroughNodeHost` exercises isolated and packed Node extensions through the public host API; rejection and concurrent native appends are covered in `coding/session_custom_entries_test.go`.
 
-What: pig ships SDKs in three languages: Go (`extensions/sdk`), Rust
-(`extensions/sdk-rs`), and Python (`extensions/sdk-py`): that all author
+What: pig ships SDKs in four languages: Go (`extensions/sdk`), Rust
+(`extensions/sdk-rs`), Python (`extensions/sdk-py`), and Common Lisp on SBCL
+(`extensions/sdk-lisp`): that all author
 into the **same** pig subprocess extension API. Upstream pi ships a single
 TypeScript SDK and loads extensions in-process.
 
@@ -158,6 +159,13 @@ the SDKs send the list as a `ui.setWidget` call instead, so the host writes
 one request per call in call order, as `rpc-mode.ts` does.
 The wire has no independent version or compatibility
 negotiation; it changes atomically with the running Pig binary and staged SDKs.
+
+The Common Lisp SDK (`extensions/sdk-lisp`, package `pig`) is an inert capability: Stock PiG ships its source, stages it like the
+Python SDK (`pig_strip_extension_sdk_lisp` removes it), and runs it only when an extension resolves to `language == "lisp"`. Pig builds a
+Lisp factory (an ASDF system or one file defining `new-extension`) into a cached executable SBCL image through the runtime-cell build
+and cache machinery (`runtimecell.BuildLispPackedCell`), and starts it with the packed-cell runner protocol, one socket and one register
+handshake per member. Phase 1 serves registration, tools, commands, shortcuts, flags, events and the context's host calls; every other
+member signals `unsupported-capability` naming its lane and is a `gap:SdkLispPhase2` cell in `test/parity/sdk-exports.toml`.
 
 Transport: each extension process connects to one host socket named by `PIG_EXT_SOCKET` (a packed cell gets one variable per member). The socket is AF_UNIX. On Windows, a Node extension instead gets a named pipe with an unguessable name that only the current user can open, because Node's `net` module treats every Windows path as a named pipe. The Python SDK reaches AF_UNIX on Windows through Winsock, because CPython does not expose `socket.AF_UNIX` there; the Rust SDK does the same. Framing and handshake are identical on both carriers, and extension code never names the transport.
 
