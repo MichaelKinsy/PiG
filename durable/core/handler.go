@@ -72,8 +72,6 @@ type handler struct {
 	// document cache sizes published.
 	sweeps     []func() error
 	microtasks []func()
-	// unloadIDs are the unloadDocuments requests waiting for the store of held changes (sweep.go).
-	unloadIDs []uint32
 	// stepNo numbers the steps the handler ran; hops chains carry the number of the step that opened them.
 	stepNo     uint64
 	cacheSent  bool

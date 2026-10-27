@@ -104,31 +104,3 @@ func (h *handler) publishIndexSizes() {
 	}
 	h.b.Notice(abi.NoticeIndexSizes, append(body, '}'))
 }
-
-// unloadHeld answers unloadDocuments for a Session with held changes: the store of those is a Storage commit, a job on the Session
-// line that the host's Storage may hold (a *NeedGate runs it again once the Storage answered).
-func (h *handler) unloadHeld(id uint32) {
-	h.unloadIDs = append(h.unloadIDs, id)
-	h.enqueueSweep(h.unloadSession)
-}
-
-// unloadDone answers the oldest unload request.
-func (h *handler) unloadDone(err error) {
-	id := h.unloadIDs[0]
-	h.unloadIDs = h.unloadIDs[1:]
-	if err != nil {
-		h.apiError(id, err)
-		return
-	}
-	h.apiOK(id, nil)
-}
-
-// unloadSession is the unload job: it answers the oldest request once the held changes are stored, or returns the *NeedGate.
-func (h *handler) unloadSession() error {
-	err := h.sess.UnloadDocuments()
-	if session.IsNeedGate(err) {
-		return err
-	}
-	h.unloadDone(err)
-	return nil
-}

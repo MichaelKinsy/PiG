@@ -459,19 +459,20 @@ const hostAnswerTicks = 3
 // publish emits the published notice of one commit (durable/core/host/PROTOCOL.md, Notices). The notice is written an
 // item at a time into abi.Chunks, so a 20,000-task commit's (megabytes) needs no block of its size.
 func (h *handler) publish(pub *session.Publication) {
+	var out abi.Chunks
+	item := make([]byte, 0, 128)
 	if pub.Memory {
 		// A commit held in memory (session/held.go) is shown to watches and views now and to the host's subscribeCommits listeners
 		// once stored. The host's internal observers (observeCommits) see it in a notice with no sequence number and no tables.
 		if h.changes {
-			out := jv.Append(append(make([]byte, 0, 128), `{"memory":true,"changes":`...), commitChanges(pub.Changes))
-			h.b.Notice(abi.NoticePublished, append(out, '}'))
+			out.Append(jv.Append(append(item, `{"memory":true,"changes":`...), commitChanges(pub.Changes)))
+			out.Append(append(item[:0], '}'))
+			h.b.NoticeChunks(abi.NoticePublished, out)
 		}
 		h.publishWatches(pub)
 		return
 	}
-	var out abi.Chunks
-	item := append(make([]byte, 0, 128), `{"seq":`...)
-	out.Append(jv.AppendNumber(item, float64(pub.Seq)))
+	out.Append(jv.AppendNumber(append(item, `{"seq":`...), float64(pub.Seq)))
 	for _, kind := range [...]session.WriteKind{session.WriteSubmission, session.WriteEntry, session.WriteTask} {
 		item = append(item[:0], `,"`...)
 		switch kind {

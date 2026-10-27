@@ -118,11 +118,6 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		h.loop.Line(run, done)
 		return nil
 	}
-	if strOf(req, "op") == "unloadDocuments" && h.sess.HeldDocuments() > 0 {
-		// Storing held changes is a Storage commit: a job on the Session line (session.ts unloadDocuments).
-		h.unloadHeld(ev.ID)
-		return nil
-	}
 	if strOf(req, "op") == "context" && h.runtimeContext(ev.ID, req) {
 		return nil
 	}
@@ -161,6 +156,10 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	return h.answerDirect(ev.ID, req)
 }
 
+// errHostFailed is the error the core fails the Session with when the host did (api op "fail"); the host keeps the error itself.
+// Read-only: assigned once at initialization.
+var errHostFailed = errors.New("the host failed the Session")
+
 // answerDirect serves an api request on the spot: its value, or its error, as the api_result of id.
 func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 	value, err := h.api(strOf(req, "op"), req)
@@ -189,6 +188,9 @@ func (h *handler) onLine(op string, req *jv.Object) bool {
 	switch op {
 	case "conversation", "getTask", "submission", "scanEntries", "context", "entry", "taskGraph", "snapshotAsOf", "view.attach":
 		return true
+	case "unloadDocuments":
+		// Storing held changes first is a Storage commit: a job on the Session line (session.ts unloadDocuments).
+		return h.sess.HeldDocuments() > 0
 	case "snapshot":
 		def, args, err := docDef(req)
 		return err == nil && !h.sess.Loaded(def, args)
@@ -203,7 +205,7 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 	switch op {
 	case "fail":
 		// session.ts fail: the host failed the Session (a test's, or a Storage call of its own that threw): nothing more is stored.
-		h.sess.Fail(errors.New(strOf(req, "message")))
+		h.sess.Fail(errHostFailed)
 		return nil, nil
 	case "unloadDocuments":
 		// session.ts unloadDocuments: the loaded-document cache is dropped, held changes stored first; later reads load from the
