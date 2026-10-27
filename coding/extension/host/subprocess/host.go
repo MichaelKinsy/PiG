@@ -3183,16 +3183,12 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		cancel()
 		return nil, newLoadError(me.config.Name, "spawn", "socket_dir_failed", fmt.Errorf("write harness arguments: %w", err))
 	}
-	var cmd *exec.Cmd
-	if me.config.RuntimeLanguage == "lisp" || strings.HasSuffix(strings.ToLower(binPath), ".lisp") {
-		// pig additive (D19): an exact Lisp standalone runs in the cached SDK image, which loads the script named on its command line.
-		image, err := runtimecell.BuildLispBaseImage(ctx, filepath.Dir(h.builder.cacheDir))
-		if err != nil {
-			cancel()
-			return nil, newLoadError(me.config.Name, "spawn", "build_failed", fmt.Errorf("build the Lisp image for %s: %w", binPath, err))
-		}
-		cmd = linkerexec.CommandContext(extCtx, image, binPath)
-	} else {
+	cmd, err := h.lispCommand(ctx, extCtx, me.config.RuntimeLanguage, binPath)
+	if err != nil {
+		cancel()
+		return nil, newLoadError(me.config.Name, "spawn", "build_failed", err)
+	}
+	if cmd == nil {
 		cmd = buildExtCommandSelected(extCtx, binPath, me.config.RuntimeLanguage, runtime.GOOS, exec.LookPath, tsSelection)
 	}
 	nodeOutput := usesNodeRuntime(binPath, me.config.RuntimeLanguage)

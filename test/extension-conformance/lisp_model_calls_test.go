@@ -83,7 +83,7 @@ func TestLispModelStreamEndsWithItsCancelledRequest(t *testing.T) {
 	case <-time.After(30 * time.Second):
 		t.Fatal("the cancelled command did not return")
 	}
-	waitFor(t, func() bool { return hostSawCancel.Load() })
+	waitFor(t, hostSawCancel.Load)
 	waitFor(t, func() bool {
 		if err := report.Handler(t.Context(), ""); err != nil {
 			t.Fatal(err)
