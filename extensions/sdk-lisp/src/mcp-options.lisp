@@ -219,7 +219,7 @@ longer waits for a reply. What the transport receives is passed to MCP-TRANSPORT
       (callback :update-config "updateConfig" (lambda (entry patch) (funcall update-config entry patch)))
       (callback :create-transport "createTransport"
                 (lambda (entry cwd auth)
-                  (let ((transport (funcall create-transport entry cwd (and auth (make-mcp-auth-provider ctx auth)))))
+                  (let ((transport (funcall create-transport entry cwd (and (stringp auth) (plusp (length auth)) (make-mcp-auth-provider ctx auth)))))
                     (unless transport (error "create-transport returned no transport"))
                     (obj "transport" (mcp-shim-id (mcp-make-shim ctx transport))
                          "setsProtocolVersion" (if (mcp-transport-set-protocol-version transport) t :false)))))
