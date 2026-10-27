@@ -303,6 +303,8 @@ which JSON.stringify writes as null)."
 
 ;;; ------------------------------------------------------------------ writer
 
+(defvar *encode-limit* nil "When an integer, the most octets ENCODE-JSON may write: a larger value signals frame-too-large without allocating it.")
+
 (defstruct (obuf (:constructor make-obuf ()))
   (data (make-array 512 :element-type '(unsigned-byte 8)) :type octets)
   (fill 0 :type fixnum))
@@ -312,7 +314,14 @@ which JSON.stringify writes as null)."
   (declare (type obuf b) (type (unsigned-byte 8) byte))
   (let ((data (obuf-data b)) (fill (obuf-fill b)))
     (when (= fill (length data))
-      (let ((bigger (make-array (* 2 (length data)) :element-type '(unsigned-byte 8))))
+      (let ((bigger (make-array (let ((size (* 2 (length data))))
+                                  (if *encode-limit*
+                                      (let ((capped (min size (1+ *encode-limit*))))
+                                        (when (<= capped (length data))
+                                          (error 'host-call-error :message (format nil "frame too large: exceeds ~D bytes" (1- *encode-limit*))))
+                                        capped)
+                                      size))
+                                :element-type '(unsigned-byte 8))))
         (replace bigger data)
         (setf (obuf-data b) bigger data bigger)))
     (setf (aref data fill) byte)

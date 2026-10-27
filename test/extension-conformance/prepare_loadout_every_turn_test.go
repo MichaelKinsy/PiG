@@ -26,7 +26,7 @@ const (
 func TestPrepareLoadoutRunsBeforeEveryTurnAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	root := findModuleRoot(t)
-	for _, language := range []string{"go", "python", "rust", "node", "fused-go"} {
+	for _, language := range []string{"go", "python", "rust", "node", "fused-go", "lisp"} {
 		for _, isolation := range []string{"strict", "shared-ok"} {
 			if language == "fused-go" && isolation == "shared-ok" {
 				continue
@@ -215,6 +215,21 @@ def new_extension():
  e.tool("other","Other.",{"type":"object"},lambda ctx,args:"other")
  return e
 `, name, loadoutBefore, loadoutAfter)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		code = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)) (executed nil))
+    (pig:register-tool e "watch" :label "watch" :description "Watch." :parameters (pig:obj "type" "object")
+      :prepare-loadout (lambda (loadout) (declare (ignore loadout))
+                         (if executed
+                             (pig:obj "descriptions" (pig:obj "watch" %q) "hiddenDeclarations" (vector "other"))
+                             (pig:obj "descriptions" (pig:obj "watch" %q))))
+      :execute (lambda (ctx args) (declare (ignore ctx args)) (setf executed t) "watched"))
+    (pig:tool e "other" "Other." (pig:obj "type" "object") (lambda (ctx args) (declare (ignore ctx args)) "other"))
+    e))
+`, name, name, name, loadoutAfter, loadoutBefore)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		code = fmt.Sprintf(`use pig_sdk::{Extension,ToolDefinition,ToolLoadoutChanges,ToolResult,Schema};

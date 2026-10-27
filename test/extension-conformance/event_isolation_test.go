@@ -25,7 +25,7 @@ func TestConformance_EventHandlersDoNotShareTheirPayload(t *testing.T) {
 	event := extension.TurnEndEvent{BoundaryState: state, Type: "turn_end", TurnIndex: 1,
 		Message: wireAgentMessage(map[string]any{"role": "user", "content": "hi", "timestamp": float64(1700000000000)}), ToolResults: []extension.ToolResultMessage{}}
 
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	for _, tc := range append(append(sdkHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.name != "subprocess-go" && !strings.Contains(tc.name, "go") && !strings.Contains(tc.name, "python") {
 				t.Skip("the isolation probe is in the Go and Python fixtures; Node and Rust decode in their own process and have no probe yet")

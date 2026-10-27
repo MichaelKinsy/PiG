@@ -20,7 +20,7 @@ func TestHostStateChangeReachesABackgroundReaderAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	cases := append(allHarnessCases(), packedSDKHarnessCases()...)
+	cases := append(append(allHarnessCases(), packedSDKHarnessCases()...), lispHarnessCases()...)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
@@ -47,7 +47,7 @@ func TestHostStateChangeReachesABackgroundReaderAcrossSDKs(t *testing.T) {
 
 // statePushLanguage is the SDK a harness case loads.
 func statePushLanguage(caseName string) string {
-	for _, language := range []string{"node", "rust", "python", "go"} {
+	for _, language := range []string{"node", "rust", "python", "go", "lisp"} {
 		if strings.Contains(caseName, language) {
 			return language
 		}
