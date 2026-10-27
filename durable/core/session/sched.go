@@ -11,9 +11,17 @@ const schedScanPage = 256
 // Read-only: assigned once at initialization.
 var liveStatuses = [...]string{StatusPending, StatusRunning, StatusWaiting, StatusSleeping, StatusCompleting}
 
+// abortResumer signals the run of its invocation once the hops chain Scheduler.abortLater parked it on ends (Loop.Hops); it lives in the invocation.
+type abortResumer struct{ inv *invocation }
+
+func (a *abortResumer) of(inv *invocation) *abortResumer { a.inv = inv; return a }
+
+func (a *abortResumer) Resume() { a.inv.signal.Abort() }
+
 type invocation struct {
-	taskID ID
-	kind   string
+	aborter abortResumer
+	taskID  ID
+	kind    string
 	// extension is the extension that installed the definition this invocation runs, as of its reservation; empty for a
 	// built-in task.
 	extension      string

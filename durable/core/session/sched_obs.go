@@ -13,18 +13,17 @@ func (s *Scheduler) scheduleReconcile() {
 		return
 	}
 	s.reconcileScheduled = true
-	s.microtask(s.reconcile)
+	s.loop.Defer(s.reconcile)
 }
 
-// microtask is `queueMicrotask(fn)` as the scheduler's code calls it. Inside the commit observer (scheduler.ts #observe, which runs in the
-// Storage's adopt) it queues behind the dispatch to the host's `subscribeCommits` listeners (session.ts #notifyHosts), which a listener
-// registered at adoption has queued first: it runs a hop later, so a commit such a listener makes is admitted to the line before it.
-func (s *Scheduler) microtask(fn func()) {
-	if s.observing && s.env.CommitListeners != nil && *s.env.CommitListeners && s.env.After != nil {
-		s.env.After(1, fn)
+// abortLater signals the run of inv: scheduler.ts #observe queues `invocation.controller.abort()` as a microtask inside the Storage's adopt, behind
+// the dispatch to the host's `subscribeCommits` listeners a listener registered at adoption queued first, so it runs a hop later when there are
+// any (no closure: the invocation's own resumer is what the hops chain resumes).
+func (s *Scheduler) abortLater(inv *invocation) {
+	if s.observing && s.env.CommitListeners != nil && *s.env.CommitListeners && s.loop.Hops != nil && s.loop.Hops(1, inv.aborter.of(inv)) {
 		return
 	}
-	s.loop.Defer(fn)
+	inv.signal.Abort()
 }
 
 // scheduleReconcileAfterRead is scheduleReconcile for a chain load: Pi's #loadChain schedules it after its Storage read
@@ -53,13 +52,17 @@ func (s *Scheduler) kick() {
 		return
 	}
 	s.draining = true
-	s.microtask(s.drain)
+	s.loop.Defer(s.drain)
 }
 
 // observe is the scheduler's commit listener (scheduler.ts #observe).
 func (s *Scheduler) observe(pub *Publication) {
 	s.observing = true
-	defer func() { s.observing = false }()
+	s.observeCommit(pub)
+	s.observing = false
+}
+
+func (s *Scheduler) observeCommit(pub *Publication) {
 	var updated []*jv.Object
 	var failed []ID
 	changed := false
@@ -105,7 +108,7 @@ func (s *Scheduler) observe(pub *Publication) {
 			if inv := s.invocations[id]; inv != nil && !inv.abortMode {
 				// scheduler.ts #observe: `queueMicrotask(() => invocation.controller.abort())`, queued inside the Storage's adopt behind the
 				// host listeners' dispatch, so the run is signalled after they saw the mark and outside the adoption.
-				s.microtask(inv.signal.Abort)
+				s.abortLater(inv)
 			}
 		}
 		// A request replacing a restart mark upgrades the marks of the work below.
