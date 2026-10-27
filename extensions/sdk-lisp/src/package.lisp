@@ -114,5 +114,23 @@
    ;; ==== lane U1: component kit, ui.custom, overlays, widgets, theme ====
    ;; ==== end lane U1 ====
    ;; ==== lane U2: editor components, autocomplete providers, terminal input ====
+   #:ctx-set-editor-component #:ctx-clear-editor-component #:ctx-get-editor-component
+   #:editor-status #:make-editor-status #:editor-status-kind #:editor-status-message #:editor-status-frames #:editor-status-frame
+   #:editor-status-spinner-color #:editor-status-message-color #:editor-status-indicator-verbatim
+   #:editor-component #:make-editor-component #:editor-component-base #:editor-component-embed-working-status
+   #:editor-component-handle-input #:editor-component-handle-mouse #:editor-component-render #:editor-component-set-text
+   #:editor-component-insert-text-at-cursor #:editor-component-add-to-history #:editor-component-set-working-status-indicator
+   #:editor-component-invalidate
+   #:editor-base #:editor-base-on-escape #:editor-base-on-ctrl-d #:editor-base-on-paste-image #:editor-base-on-extension-shortcut
+   #:editor-base-action-handlers #:editor-base-on-action
+   #:editor-base-handle-input #:editor-base-handle-mouse #:editor-base-render #:editor-base-set-text #:editor-base-insert-text-at-cursor
+   #:editor-base-add-to-history #:editor-base-get-text #:editor-base-get-expanded-text #:editor-base-get-lines #:editor-base-get-cursor
+   #:editor-base-is-showing-autocomplete-p #:editor-base-set-padding-x #:editor-base-set-autocomplete-max-visible
+   #:editor-base-get-padding-x #:editor-base-get-autocomplete-max-visible #:editor-base-border-color
+   #:editor-base-disable-submit #:editor-base-focused #:editor-base-set-autocomplete-provider #:editor-base-on-submit #:editor-base-on-change
+   #:editor-base-set-working-status-indicator #:editor-base-invalidate
+   #:ctx-add-autocomplete-provider #:autocomplete-provider #:make-autocomplete-provider #:autocomplete-provider-trigger-characters
+   #:autocomplete-get-suggestions #:autocomplete-apply-completion #:autocomplete-should-trigger-file-completion
+   #:ctx-on-terminal-input #:terminal-input-result #:make-terminal-input-result #:terminal-input-result-consume #:terminal-input-result-data
    ;; ==== end lane U2 ====
    ))
