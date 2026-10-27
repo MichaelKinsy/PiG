@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/handleryield"
 	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -292,7 +293,7 @@ func RenderServersSection(servers []McpServerListing) (string, bool) {
 	if len(listed) == 0 {
 		return "", false
 	}
-	slices.SortStableFunc(listed, func(a, b McpServerListing) int { return jsstring.LocaleCompare(a.Entry.Name, b.Entry.Name) })
+	slices.SortStableFunc(listed, func(a, b McpServerListing) int { return localecompare.Compare(a.Entry.Name, b.Entry.Name) })
 	heads := make([]string, len(listed))
 	reaches := map[string]bool{}
 	for i, server := range listed {
