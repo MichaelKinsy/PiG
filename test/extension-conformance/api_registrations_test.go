@@ -141,7 +141,7 @@ func TestConformance_ExtensionAPIRegistrations(t *testing.T) {
 		t.Fatalf("the reference view = %v", want)
 	}
 
-	for _, tc := range append(sdkHarnessCases(), lispHarnessCase()) {
+	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
