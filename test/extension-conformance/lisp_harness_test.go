@@ -2,11 +2,14 @@ package extensionconformance
 
 import (
 	"context"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // lispFixtureName is the extension name of the Lisp SDK harness fixture (testdata/lisp-sdk-fixture), which every lane of the Lisp SDK
@@ -31,8 +34,17 @@ func lispFixtureConfig(t testing.TB, dir, name string) subprocess.ExtConfig {
 	}
 }
 
+// requireSBCL fails the test when no SBCL is available: the Lisp rows cannot be skipped, as the Python rows cannot without an interpreter.
+func requireSBCL(t testing.TB) {
+	t.Helper()
+	if _, err := exec.LookPath(toolchain.SBCLExecutable(runtime.GOOS, exec.LookPath)); err != nil {
+		t.Fatalf("sbcl is required for SDK conformance: %v", err)
+	}
+}
+
 func makeSubprocessLispHarness(t *testing.T) *harness {
 	t.Helper()
+	requireSBCL(t)
 	notify := &[]string{}
 	status := &[]string{}
 	actions := &[]string{}
