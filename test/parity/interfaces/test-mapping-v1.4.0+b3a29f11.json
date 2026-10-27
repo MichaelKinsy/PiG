@@ -352,12 +352,12 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:3cc5cca62e56a6556e697254c1d5c584077a038117cbcdb21ad05ef659d6152e",
       "evidence": [
-        "ai/bedrock_test.go#TestBedrockConvertMessages_PlaceholderForBlankUserString",
-        "ai/bedrock_test.go#TestBedrockConvertMessages_UserBlocksSkipBlankContent",
-        "ai/bedrock_test.go#TestBedrockConvertMessages_PlaceholderForBlankToolResult",
-        "ai/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
-        "ai/bedrock_convert_boundaries_test.go#TestBedrockDocumentSanitizationRetainsJSONTypes",
-        "ai/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars"
+        "ai/providers/bedrock/bedrock_test.go#TestBedrockConvertMessages_PlaceholderForBlankUserString",
+        "ai/providers/bedrock/bedrock_test.go#TestBedrockConvertMessages_UserBlocksSkipBlankContent",
+        "ai/providers/bedrock/bedrock_test.go#TestBedrockConvertMessages_PlaceholderForBlankToolResult",
+        "ai/providers/bedrock/bedrock_convert_upstream_test.go#TestBedrockUpstreamConvertMessages",
+        "ai/providers/bedrock/bedrock_convert_boundaries_test.go#TestBedrockDocumentSanitizationRetainsJSONTypes",
+        "ai/providers/bedrock/bedrock_convert_boundaries_test.go#TestProviderSurrogateSanitizationPreservesValidScalars"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-03 and its delivered tests are composed from 52c9b1f95. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations. Pi 5ab7fe74 (#10794) adds \"moves images of error tool results after the tool results\" and \"keeps images in error tool results for non-Claude models\". Both are subtests of TestBedrockUpstreamConvertMessages through convertBedrockMessages with a Claude and a Nova model; ungating the split for non-Claude models fails the second."
     },
@@ -366,7 +366,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:fc662838b0e0562546aa7a41fe16a80ee3be45104a120624e0ddbc9ffe4b042f",
       "evidence": [
-        "ai/bedrock_config_upstream_test.go#TestBedrockUpstreamCredentials"
+        "ai/providers/bedrock/bedrock_config_upstream_test.go#TestBedrockUpstreamCredentials"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-03 and its delivered tests are composed from 52c9b1f95. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -375,11 +375,11 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:9ced72235859b78206d40a918223fb40f0d999241bc03ed4480a6c6cd3dad388",
       "evidence": [
-        "ai/bedrock_provider_options_wire_test.go#TestBedrockAppliesPreparedHeadersAndRequestEnvironment",
-        "ai/bedrock_provider_options_wire_test.go#TestBedrockReservedHeaderMiddlewarePreservesSDKValues",
-        "ai/bedrock_provider_options_wire_test.go#TestBedrockReservedHeadersCannotBeOverriddenOrDeleted",
-        "ai/bedrock_headers_upstream_test.go#TestBedrockUpstreamCustomHeaders",
-        "ai/direct_simple_bedrock_test.go#TestDirectSimpleBedrockCustomHeaders"
+        "ai/providers/bedrock/bedrock_provider_options_wire_test.go#TestBedrockAppliesPreparedHeadersAndRequestEnvironment",
+        "ai/providers/bedrock/bedrock_provider_options_wire_test.go#TestBedrockReservedHeaderMiddlewarePreservesSDKValues",
+        "ai/providers/bedrock/bedrock_provider_options_wire_test.go#TestBedrockReservedHeadersCannotBeOverriddenOrDeleted",
+        "ai/providers/bedrock/bedrock_headers_upstream_test.go#TestBedrockUpstreamCustomHeaders",
+        "ai/providers/bedrock/direct_simple_bedrock_test.go#TestDirectSimpleBedrockCustomHeaders"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-03 and its delivered tests are composed from 52c9b1f95. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. All six sites include the real keyless StreamSimple VC4 caller after the shared dispatch/authentication fix cfdc4ce8d; no direct-provider substitute is used. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -388,8 +388,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:256644a52f42da4000520be9bb97f72bb996c2805650118e020d2d065d9c99aa",
       "evidence": [
-        "ai/bedrock_test.go#TestBedrockResolveRegion",
-        "ai/bedrock_config_upstream_test.go#TestBedrockUpstreamEndpointResolution"
+        "ai/providers/bedrock/bedrock_test.go#TestBedrockResolveRegion",
+        "ai/providers/bedrock/bedrock_config_upstream_test.go#TestBedrockUpstreamEndpointResolution"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-03 and its delivered tests are composed from 52c9b1f95. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -398,8 +398,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:419813d91e53ec4365b88f47b16b1e11b284fe35e949bcd2bcf9e7f185413fcc",
       "evidence": [
-        "ai/bedrock_error_metadata_upstream_test.go#TestBedrockUpstreamErrorMetadata",
-        "ai/bedrock_error_metadata_boundaries_test.go",
+        "ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockUpstreamErrorMetadata",
+        "ai/providers/bedrock/bedrock_error_metadata_boundaries_test.go",
         "coding/model_bedrock_diagnostics_test.go#TestModelRuntimePreservesBedrockFailureDiagnostics"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-03 and its delivered tests are composed from 52c9b1f95. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
@@ -410,20 +410,20 @@
       "upstreamTestHash": "sha256:adb580d3fd5fba8e916f540bdd6711bdc65a977714bc411115cf5fff6f008550",
       "evidence": [
         "coding/model_test.go#TestBuildModelUsesGeneratedProviderAPI",
-        "ai/port_wave_13_bedrock_models_test.go#TestPortWave13BedrockModels",
-        "ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
+        "ai/providers/bedrock/port_wave_13_bedrock_models_test.go#TestPortWave13BedrockModels",
+        "ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog"
       ],
-      "rationale": "All 3 upstream sites are present (:27,:32,:39): the two catalog assertions (:27, :32) run offline in ai/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog, and the per-model request rows (165 models at Pi 0.87.1, plus the inference-profile-only Opus 5 case) keep the concise system/OK prompt, 10-second deadline and content/usage/error assertions. Each row requires BEDROCK_EXTENSIVE_MODEL_TEST and AWS credentials through testenv.RequireLiveEnv and skips without them; the file is behind the live build tag. No AWS call was made, so the real-account availability matrix is unverified."
+      "rationale": "All 3 upstream sites are present (:27,:32,:39): the two catalog assertions (:27, :32) run offline in ai/providers/bedrock/bedrock_models_upstream_test.go#TestBedrockUpstreamModelCatalog, and the per-model request rows (165 models at Pi 0.87.1, plus the inference-profile-only Opus 5 case) keep the concise system/OK prompt, 10-second deadline and content/usage/error assertions. Each row requires BEDROCK_EXTENSIVE_MODEL_TEST and AWS credentials through testenv.RequireLiveEnv and skips without them; the file is behind the live build tag. No AWS call was made, so the real-account availability matrix is unverified."
     },
     {
       "path": "packages/ai/test/bedrock-raw-stop-reason.test.ts",
       "disposition": "ported",
       "upstreamTestHash": "sha256:28e7ff81d411329ea5c2fb9f2f7382c0ff5cbc409eff13ef57a90fa112bc08d5",
       "evidence": [
-        "ai/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
-        "ai/bedrock_contract_0861_test.go#TestBedrockSDKStreamForwardsExceptionMembersAndDropsUnknownEvents",
-        "ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRawStopReason",
-        "ai/bedrock_contract_0861_test.go#TestBedrockStreamPreservesSequenceUsageAndRawStopReason"
+        "ai/providers/bedrock/bedrock_stream_events_upstream_test.go#TestBedrockProviderStreamEventsUpstream",
+        "ai/providers/bedrock/bedrock_contract_0861_test.go#TestBedrockSDKStreamForwardsExceptionMembersAndDropsUnknownEvents",
+        "ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRawStopReason",
+        "ai/providers/bedrock/bedrock_contract_0861_test.go#TestBedrockStreamPreservesSequenceUsageAndRawStopReason"
       ],
       "rationale": "All 4 cases. The two raw stop reason cases are TestBedrockUpstreamRawStopReason; 'forwards SDK stream items in order before normalizing them' (:73) is TestBedrockProviderStreamEventsUpstream/forwards_SDK_stream_items_in_order_before_normalizing_them. 'forwards SDK error items before reporting them' (:91) is TestBedrockProviderStreamEventsUpstream/forwards_SDK_error_items_before_reporting_them/\u003ckind\u003e for all five exception members of the ConverseStream union, through the real AWS event-stream wire: an event frame whose :event-type is the exception member is yielded as that item, so Pi forwards it to onProviderStreamEvent (bedrock-converse-stream.ts:297) and then throws it (:318-327). PiG hands the observer the Go SDK's *types.UnknownUnionMember for the member (the Go union has no exception members) and reports the formatted modeled exception. The expected messages are the real SDK's ('Internal server error: bedrock stream failed' and siblings): the upstream mock throws a plain Error, so its expected message has no prefix. docs/plan/evidence/bedrock-exception-event-probe.mjs runs the pinned pi-ai 0.99.2 streamBedrock against the same frames and records the five item pairs and messages, and that an unmodeled event type is dropped. A frame whose :message-type is exception is thrown by the SDK before the loop (docs/plan/evidence/bedrock-exception-frame-probe.md); the exception-frame subtest asserts that. TestBedrockSDKStreamForwardsExceptionMembersAndDropsUnknownEvents covers the SDK-reader path."
     },
@@ -432,8 +432,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:f1f2e4d27c8f3cbf47da5712012d9a12c6580fbd93a69636d9744c7600aee896",
       "evidence": [
-        "ai/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
-        "ai/bedrock_reasoning_boundaries_test.go"
+        "ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRedactedReasoning",
+        "ai/providers/bedrock/bedrock_reasoning_boundaries_test.go"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-03 and its delivered tests are composed from 52c9b1f95. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -442,7 +442,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:8436eacf232697682ecf4efcddf86e5dec216f9ea83fe5be728409adfdd82fa4",
       "evidence": [
-        "ai/bedrock_provider_response_test.go#TestBedrockResponseHeadersUpstream"
+        "ai/providers/bedrock/bedrock_provider_response_test.go#TestBedrockResponseHeadersUpstream"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-04 and its delivered tests are composed from f6562b3a6. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -451,8 +451,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:4e3fa06dbece89937474cb249099b7c91f0465408a90f4ad68596b84d21dc173",
       "evidence": [
-        "ai/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments",
-        "ai/bedrock_streaming_tool_arguments_norace_test.go#TestBedrockStreamingToolArgumentsAllocateLinearlyInTheArgumentText"
+        "ai/providers/bedrock/bedrock_stream_state_upstream_test.go#TestBedrockStreamStateStaysOffPartialBlocksAndTheToolCallFinishesWithItsExactArguments",
+        "ai/providers/bedrock/bedrock_streaming_tool_arguments_norace_test.go#TestBedrockStreamingToolArgumentsAllocateLinearlyInTheArgumentText"
       ],
       "rationale": "Both cases ported over the provider's event handler with the same events (encrypted reasoning in two deltas, a write call in 32-character deltas): no partial block carries stream state, the redacted reasoning signature is AQID and the call finishes with its exact arguments; and the allocation of a 250 KB call is within 25 times that of a 25 KB one and 5,000 bytes per argument byte. Upstream mocks the AWS SDK client; Go feeds the typed events the SDK decoder would yield."
     },
@@ -473,13 +473,13 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:f15266b2ee51b81611c4a91f8f6f418f8391cd2875ffbf022827572b9fab945a",
       "evidence": [
-        "ai/bedrock_test.go#TestBedrockAdaptiveThinkingWithModelName",
-        "ai/bedrock_test.go#TestBedrockBuildAdditionalFields_UsesModelCapWhenMaxTokensUnset",
-        "ai/port_wave_13_bedrock_thinking_payload_test.go#TestPortWave13BedrockThinkingPayload",
-        "ai/bedrock_max_tokens_live_test.go#TestPortWave13BedrockClaudeMaxTokensE2E",
-        "ai/bedrock_openai_reasoning_test.go#TestBedrockOpenAIReasoningPayload"
+        "ai/providers/bedrock/bedrock_test.go#TestBedrockAdaptiveThinkingWithModelName",
+        "ai/providers/bedrock/bedrock_test.go#TestBedrockBuildAdditionalFields_UsesModelCapWhenMaxTokensUnset",
+        "ai/providers/bedrock/port_wave_13_bedrock_thinking_payload_test.go#TestPortWave13BedrockThinkingPayload",
+        "ai/providers/bedrock/bedrock_max_tokens_live_test.go#TestPortWave13BedrockClaudeMaxTokensE2E",
+        "ai/providers/bedrock/bedrock_openai_reasoning_test.go#TestBedrockOpenAIReasoningPayload"
       ],
-      "rationale": "All 13 upstream cases are present. Twelve payload/profile cases run offline (adaptive thinking by model name, xhigh effort, GovCloud display omission, fixed-budget fallback, cache points) and abort before transport. The 5200-alpha generation with a 6000-token model cap, no explicit maxTokens, output\u003e4096 and the 180-second deadline requires AWS credentials through requireBedrockLiveCredentials (testenv.RequireLiveEnv) and skips without them. The payload test file is untagged; only the live case (ai/bedrock_max_tokens_live_test.go) is behind the live build tag. No AWS call was made. 1.1.0 adds block_binding and the binding beta for adaptive Claude (#10324), their omission for the 4.6 models, and the Bedrock OpenAI reasoning payload cases; TestPortWave13BedrockThinkingPayload and TestBedrockOpenAIReasoningPayload assert the exact payloads."
+      "rationale": "All 13 upstream cases are present. Twelve payload/profile cases run offline (adaptive thinking by model name, xhigh effort, GovCloud display omission, fixed-budget fallback, cache points) and abort before transport. The 5200-alpha generation with a 6000-token model cap, no explicit maxTokens, output\u003e4096 and the 180-second deadline requires AWS credentials through requireBedrockLiveCredentials (testenv.RequireLiveEnv) and skips without them. The payload test file is untagged; only the live case (ai/providers/bedrock/bedrock_max_tokens_live_test.go) is behind the live build tag. No AWS call was made. 1.1.0 adds block_binding and the binding beta for adaptive Claude (#10324), their omission for the 4.6 models, and the Bedrock OpenAI reasoning payload cases; TestPortWave13BedrockThinkingPayload and TestBedrockOpenAIReasoningPayload assert the exact payloads."
     },
     {
       "path": "packages/ai/test/cache-retention.test.ts",
