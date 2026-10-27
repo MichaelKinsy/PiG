@@ -29,7 +29,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Go | 484 | 26 | 10 |
 | Rust | 484 | 26 | 10 |
 | Python | 484 | 26 | 10 |
-| Lisp | 480 | 19 | 21 |
+| Lisp | 491 | 19 | 10 |
 
 31 PiG-only surfaces:
 
@@ -39,7 +39,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Go | 31 | 0 | 0 |
 | Rust | 31 | 0 | 0 |
 | Python | 31 | 0 | 0 |
-| Lisp | 7 | 0 | 24 |
+| Lisp | 31 | 0 | 0 |
 
 1628 package exports and class members, Node runtime:
 
@@ -913,8 +913,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `ctx.sessionManager.getEntry` | `ReadonlySessionManager.getEntry` | implemented `RuntimeSessionManager.getEntry` | implemented `ReadonlySessionManager.GetEntry` | implemented `ReadonlySessionManager::get_entry` | implemented `ReadonlySessionManager.get_entry` | implemented `pig:session-get-entry` |
 | `ctx.sessionManager.getLabel` | `ReadonlySessionManager.getLabel` | implemented `RuntimeSessionManager.getLabel` | implemented `ReadonlySessionManager.GetLabel` | implemented `ReadonlySessionManager::get_label` | implemented `ReadonlySessionManager.get_label` | implemented `pig:session-get-label` |
 | `ctx.sessionManager.getBranch` | `ReadonlySessionManager.getBranch` | implemented `RuntimeSessionManager.getBranch` | implemented `ReadonlySessionManager.GetBranch` | implemented `ReadonlySessionManager::get_branch` | implemented `ReadonlySessionManager.get_branch` | implemented `pig:session-get-branch` |
-| `ctx.sessionManager.buildContextEntries` | `ReadonlySessionManager.buildContextEntries` | implemented `RuntimeSessionManager.buildContextEntries` | implemented `ReadonlySessionManager.BuildContextEntries` | implemented `ReadonlySessionManager::build_context_entries` | implemented `ReadonlySessionManager.build_context_entries` | missing |
-| `ctx.sessionManager.buildSessionProjection` | `ReadonlySessionManager.buildSessionProjection` | implemented `RuntimeSessionManager.buildSessionProjection` | implemented `ReadonlySessionManager.BuildSessionProjection` | implemented `ReadonlySessionManager::build_session_projection` | implemented `ReadonlySessionManager.build_session_projection` | missing |
+| `ctx.sessionManager.buildContextEntries` | `ReadonlySessionManager.buildContextEntries` | implemented `RuntimeSessionManager.buildContextEntries` | implemented `ReadonlySessionManager.BuildContextEntries` | implemented `ReadonlySessionManager::build_context_entries` | implemented `ReadonlySessionManager.build_context_entries` | implemented `pig:session-build-context-entries` |
+| `ctx.sessionManager.buildSessionProjection` | `ReadonlySessionManager.buildSessionProjection` | implemented `RuntimeSessionManager.buildSessionProjection` | implemented `ReadonlySessionManager.BuildSessionProjection` | implemented `ReadonlySessionManager::build_session_projection` | implemented `ReadonlySessionManager.build_session_projection` | implemented `pig:session-build-session-projection` |
 | `ctx.sessionManager.getHeader` | `ReadonlySessionManager.getHeader` | implemented `RuntimeSessionManager.getHeader` | implemented `ReadonlySessionManager.GetHeader` | implemented `ReadonlySessionManager::get_header` | implemented `ReadonlySessionManager.get_header` | implemented `pig:session-get-header` |
 | `ctx.sessionManager.getEntries` | `ReadonlySessionManager.getEntries` | implemented `RuntimeSessionManager.getEntries` | implemented `ReadonlySessionManager.GetEntries` | implemented `ReadonlySessionManager::get_entries` | implemented `ReadonlySessionManager.get_entries` | implemented `pig:session-get-entries` |
 | `ctx.sessionManager.getTree` | `ReadonlySessionManager.getTree` | implemented `RuntimeSessionManager.getTree` | implemented `ReadonlySessionManager.GetTree` | implemented `ReadonlySessionManager::get_tree` | implemented `ReadonlySessionManager.get_tree` | implemented `pig:session-get-tree` |
@@ -1016,7 +1016,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|---|
 | `ctx.newSession(options.parentSession)` | `ExtensionCommandContext.newSession(options.parentSession)` | implemented `RuntimeContext.newSession` | implemented `Context.NewSession` | implemented `Context::new_session` | implemented `Context.new_session` | implemented `pig:ctx-new-session` |
 | `ctx.newSession(options.setup)` | `ExtensionCommandContext.newSession(options.setup)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `ctx.newSession(options.withSession)` | `ExtensionCommandContext.newSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::new_session_with` | implemented `ReplacedSessionContext` | missing |
+| `ctx.newSession(options.withSession)` | `ExtensionCommandContext.newSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::new_session_with` | implemented `ReplacedSessionContext` | implemented `pig:ctx-new-session(with-session)` |
 | `ctx.newSession → cancelled` | `ExtensionCommandContext.newSession → cancelled` | implemented `RuntimeContext.newSession` | implemented `CancelledResult.Cancelled` | implemented `Context::new_session` | implemented `Context.new_session` | implemented `pig:ctx-new-session` |
 
 ## ctx (ExtensionCommandContext, command handlers)
@@ -1030,7 +1030,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
 | `ctx.fork(options.position)` | `ExtensionCommandContext.fork(options.position)` | implemented `RuntimeContext.fork` | implemented `Context.Fork` | implemented `Context::fork` | implemented `Context.fork` | implemented `pig:ctx-fork` |
-| `ctx.fork(options.withSession)` | `ExtensionCommandContext.fork(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::fork_with` | implemented `ReplacedSessionContext` | missing |
+| `ctx.fork(options.withSession)` | `ExtensionCommandContext.fork(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::fork_with` | implemented `ReplacedSessionContext` | implemented `pig:ctx-fork(with-session)` |
 | `ctx.fork → cancelled` | `ExtensionCommandContext.fork → cancelled` | implemented `RuntimeContext.fork` | implemented `CancelledResult.Cancelled` | implemented `Context::fork` | implemented `Context.fork` | implemented `pig:ctx-fork` |
 
 ## ctx (ExtensionCommandContext, command handlers)
@@ -1059,7 +1059,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
-| `ctx.switchSession(options.withSession)` | `ExtensionCommandContext.switchSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::switch_session_with` | implemented `ReplacedSessionContext` | missing |
+| `ctx.switchSession(options.withSession)` | `ExtensionCommandContext.switchSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::switch_session_with` | implemented `ReplacedSessionContext` | implemented `pig:ctx-switch-session(with-session)` |
 | `ctx.switchSession → cancelled` | `ExtensionCommandContext.switchSession → cancelled` | implemented `RuntimeContext.switchSession` | implemented `CancelledResult.Cancelled` | implemented `Context::switch_session` | implemented `Context.switch_session` | implemented `pig:ctx-switch-session` |
 
 ## ctx (ExtensionCommandContext, command handlers)
@@ -1197,7 +1197,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|---|
 | `ctx.ui.custom(options.overlay)` | `ExtensionUIContext.custom(options.overlay)` | implemented `RuntimeUI.custom` | implemented `RemoteOverlayOptions.Overlay` | implemented `Context::custom_component` | implemented `Context.custom` | implemented `pig:ctx-custom` |
 | `ctx.ui.custom(options.overlayOptions)` | `ExtensionUIContext.custom(options.overlayOptions)` | stand-in/partial `RuntimeUI.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `RemoteOverlayOptions.OverlayOptions`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context::custom_component`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `pig:ctx-custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary |
-| `ctx.ui.custom(options.onHandle)` | `ExtensionUIContext.custom(options.onHandle)` | stand-in/partial `RuntimeUI.custom`: mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73 | implemented `RemoteOverlayOptions.OnHandle` | implemented `Context::custom_component_with_handle` | implemented `_RemoteOverlayState.on_handle` | missing |
+| `ctx.ui.custom(options.onHandle)` | `ExtensionUIContext.custom(options.onHandle)` | stand-in/partial `RuntimeUI.custom`: mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73 | implemented `RemoteOverlayOptions.OnHandle` | implemented `Context::custom_component_with_handle` | implemented `_RemoteOverlayState.on_handle` | implemented `pig:ctx-custom(on-handle)` |
 
 ## ctx.ui (ExtensionUIContext)
 
@@ -1340,12 +1340,12 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `provider.models` | `ProviderConfig.models` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider.refreshModels` | `ProviderConfig.refreshModels` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
 | `provider.oauth` | `ProviderConfig.oauth` | implemented `api.registerProvider` | implemented `OAuthProvider` | implemented `Extension::register_oauth_provider` | implemented `Extension.register_oauth_provider` | implemented `pig:register-oauth-provider` |
-| `provider.oauth.name` | `ProviderConfig.oauth.name` | implemented `read:oauth.name` | implemented `OAuthProvider.Name` | implemented `OAuthProvider.name` | implemented `OAuthProvider.name` | missing |
-| `provider.oauth.isSubscription` | `ProviderConfig.oauth.isSubscription` | implemented `read:oauth.isSubscription` | implemented `OAuthProvider.IsSubscription` | implemented `OAuthProvider.is_subscription` | implemented `OAuthProvider.is_subscription` | missing |
+| `provider.oauth.name` | `ProviderConfig.oauth.name` | implemented `read:oauth.name` | implemented `OAuthProvider.Name` | implemented `OAuthProvider.name` | implemented `OAuthProvider.name` | implemented `pig:oauth-provider-name` |
+| `provider.oauth.isSubscription` | `ProviderConfig.oauth.isSubscription` | implemented `read:oauth.isSubscription` | implemented `OAuthProvider.IsSubscription` | implemented `OAuthProvider.is_subscription` | implemented `OAuthProvider.is_subscription` | implemented `pig:oauth-provider-is-subscription` |
 | `provider.oauth.usesCallbackServer` | `ProviderConfig.oauth.usesCallbackServer` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `provider.oauth.login` | `ProviderConfig.oauth.login` | implemented `read:oauth.login` | implemented `OAuthProvider.Login` | implemented `OAuthProvider.login` | implemented `OAuthProvider.login` | missing |
-| `provider.oauth.refreshToken` | `ProviderConfig.oauth.refreshToken` | implemented `read:oauth.refreshToken` | implemented `OAuthProvider.RefreshToken` | implemented `OAuthProvider.refresh_token` | implemented `OAuthProvider.refresh_token` | missing |
-| `provider.oauth.getApiKey` | `ProviderConfig.oauth.getApiKey` | implemented `read:oauth.getApiKey` | implemented `OAuthProvider.GetAPIKey` | implemented `OAuthProvider.get_api_key` | implemented `OAuthProvider.get_api_key` | missing |
+| `provider.oauth.login` | `ProviderConfig.oauth.login` | implemented `read:oauth.login` | implemented `OAuthProvider.Login` | implemented `OAuthProvider.login` | implemented `OAuthProvider.login` | implemented `pig:oauth-provider-login` |
+| `provider.oauth.refreshToken` | `ProviderConfig.oauth.refreshToken` | implemented `read:oauth.refreshToken` | implemented `OAuthProvider.RefreshToken` | implemented `OAuthProvider.refresh_token` | implemented `OAuthProvider.refresh_token` | implemented `pig:oauth-provider-refresh-token` |
+| `provider.oauth.getApiKey` | `ProviderConfig.oauth.getApiKey` | implemented `read:oauth.getApiKey` | implemented `OAuthProvider.GetAPIKey` | implemented `OAuthProvider.get_api_key` | implemented `OAuthProvider.get_api_key` | implemented `pig:oauth-provider-get-api-key` |
 | `provider.oauth.modifyModels` | `ProviderConfig.oauth.modifyModels` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
 | `provider model.type` | `ProviderModelConfig.type` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider model.api` | `ProviderModelConfig.api` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
@@ -1382,29 +1382,29 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | PiG declaration | Node runtime | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
-| `kit node Container` | `view node kind, Pi's Container (spec §2)` | implemented `read:Container.prototype` | implemented `kit.NewContainer` | implemented `kit::Container::new` | implemented `kit.Container` | missing |
-| `kit node Box` | `view node kind, Pi's Box (spec §2)` | implemented `read:tui.Box` | implemented `kit.NewBox` | implemented `kit::Box::new` | implemented `kit.Box` | missing |
-| `kit node Text` | `view node kind, Pi's Text (spec §2)` | implemented `read:tui.Text` | implemented `kit.NewText` | implemented `kit::Text::new` | implemented `kit.Text` | missing |
-| `kit node TruncatedText` | `view node kind, Pi's TruncatedText (spec §2)` | implemented `read:tui.TruncatedText` | implemented `kit.NewTruncatedText` | implemented `kit::TruncatedText::new` | implemented `kit.TruncatedText` | missing |
-| `kit node Markdown` | `view node kind, Pi's Markdown (spec §2)` | implemented `read:tui.Markdown` | implemented `kit.NewMarkdown` | implemented `kit::Markdown::new` | implemented `kit.Markdown` | missing |
-| `kit node Spacer` | `view node kind, Pi's Spacer (spec §2)` | implemented `read:tui.Spacer` | implemented `kit.NewSpacer` | implemented `kit::Spacer::new` | implemented `kit.Spacer` | missing |
-| `kit node DynamicBorder` | `view node kind, Pi's DynamicBorder (spec §2)` | implemented `read:codingAgent.DynamicBorder` | implemented `kit.NewDynamicBorder` | implemented `kit::DynamicBorder::new` | implemented `kit.DynamicBorder` | missing |
-| `kit node SelectList` | `view node kind, Pi's SelectList (spec §2)` | implemented `read:tui.SelectList` | implemented `kit.NewSelectList` | implemented `kit::SelectList::new` | implemented `kit.SelectList` | missing |
-| `kit node SettingsList` | `view node kind, Pi's SettingsList (spec §2)` | implemented `read:tui.SettingsList` | implemented `kit.NewSettingsList` | implemented `kit::SettingsList::new` | implemented `kit.SettingsList` | missing |
-| `kit node Image` | `view node kind, Pi's Image (spec §2)` | implemented `read:tui.Image` | implemented `kit.NewImage` | implemented `kit::Image::new` | implemented `kit.Image` | missing |
-| `kit node Loader` | `view node kind, Pi's Loader (spec §2)` | implemented `read:tui.Loader` | implemented `kit.NewLoader` | implemented `kit::Loader::new` | implemented `kit.Loader` | missing |
-| `kit node HStack` | `view node kind, Pi's HStack (spec §2)` | implemented `read:tui.HStack` | implemented `kit.NewHStack` | implemented `kit::HStack::new` | implemented `kit.HStack` | missing |
-| `kit node VStack` | `view node kind, Pi's VStack (spec §2)` | implemented `read:tui.VStack` | implemented `kit.NewVStack` | implemented `kit::VStack::new` | implemented `kit.VStack` | missing |
-| `kit node Lines` | `view node kind lines (spec §2)` | implemented `read:component.viewLines` | implemented `kit.NewLines` | implemented `kit::Lines::new` | implemented `kit.Lines` | missing |
-| `kit node UserMessage` | `view node kind user-message, Pi's UserMessageComponent (spec §2.1)` | implemented `read:codingAgent.UserMessageComponent` | implemented `kit.NewUserMessage` | implemented `kit::UserMessage::new` | implemented `kit.UserMessage` | missing |
-| `kit node AssistantMessage` | `view node kind assistant-message, Pi's AssistantMessageComponent (spec §2.1)` | implemented `read:codingAgent.AssistantMessageComponent` | implemented `kit.NewAssistantMessage` | implemented `kit::AssistantMessage::new` | implemented `kit.AssistantMessage` | missing |
-| `kit node ToolExecution` | `view node kind tool-execution, Pi's ToolExecutionComponent (spec §2.1)` | implemented `read:codingAgent.ToolExecutionComponent` | implemented `kit.NewToolExecution` | implemented `kit::ToolExecution::new` | implemented `kit.ToolExecution` | missing |
-| `kit node BashExecution` | `view node kind bash-execution, Pi's BashExecutionComponent (spec §2.1)` | implemented `read:codingAgent.BashExecutionComponent` | implemented `kit.NewBashExecution` | implemented `kit::BashExecution::new` | implemented `kit.BashExecution` | missing |
-| `kit node Diff` | `view node kind diff, Pi's renderDiff in a Text (spec §2.1)` | implemented `read:diff.filePath` | implemented `kit.NewDiff` | implemented `kit::Diff::new` | implemented `kit.Diff` | missing |
-| `kit view` | `a view: root, focus, theme overrides (spec §2, §6)` | implemented `read:component.viewTheme` | implemented `kit.View` | implemented `kit::View` | implemented `kit.View` | missing |
-| `kit ctx.ui.custom(view)` | `ui.custom drawn from a view (spec §4)` | implemented `RuntimeUI.custom` | implemented `ViewComponent.View` | implemented `ViewComponent::view` | implemented `kit.ViewComponent.view` | missing |
-| `kit view events` | `a focused list's events (spec §4, ui.view.event)` | missing [exception](#exceptions) | implemented `ViewEventHandler.HandleViewEvent` | implemented `ViewComponent::handle_view_event` | implemented `kit.ViewEventHandler.handle_view_event` | missing |
-| `kit event` | `a view event (spec §4)` | missing [exception](#exceptions) | implemented `kit.Event` | implemented `kit::Event` | implemented `kit.Event` | missing |
+| `kit node Container` | `view node kind, Pi's Container (spec §2)` | implemented `read:Container.prototype` | implemented `kit.NewContainer` | implemented `kit::Container::new` | implemented `kit.Container` | implemented `pig:kit-container` |
+| `kit node Box` | `view node kind, Pi's Box (spec §2)` | implemented `read:tui.Box` | implemented `kit.NewBox` | implemented `kit::Box::new` | implemented `kit.Box` | implemented `pig:kit-box` |
+| `kit node Text` | `view node kind, Pi's Text (spec §2)` | implemented `read:tui.Text` | implemented `kit.NewText` | implemented `kit::Text::new` | implemented `kit.Text` | implemented `pig:kit-text` |
+| `kit node TruncatedText` | `view node kind, Pi's TruncatedText (spec §2)` | implemented `read:tui.TruncatedText` | implemented `kit.NewTruncatedText` | implemented `kit::TruncatedText::new` | implemented `kit.TruncatedText` | implemented `pig:kit-truncated-text` |
+| `kit node Markdown` | `view node kind, Pi's Markdown (spec §2)` | implemented `read:tui.Markdown` | implemented `kit.NewMarkdown` | implemented `kit::Markdown::new` | implemented `kit.Markdown` | implemented `pig:kit-markdown` |
+| `kit node Spacer` | `view node kind, Pi's Spacer (spec §2)` | implemented `read:tui.Spacer` | implemented `kit.NewSpacer` | implemented `kit::Spacer::new` | implemented `kit.Spacer` | implemented `pig:kit-spacer` |
+| `kit node DynamicBorder` | `view node kind, Pi's DynamicBorder (spec §2)` | implemented `read:codingAgent.DynamicBorder` | implemented `kit.NewDynamicBorder` | implemented `kit::DynamicBorder::new` | implemented `kit.DynamicBorder` | implemented `pig:kit-dynamic-border` |
+| `kit node SelectList` | `view node kind, Pi's SelectList (spec §2)` | implemented `read:tui.SelectList` | implemented `kit.NewSelectList` | implemented `kit::SelectList::new` | implemented `kit.SelectList` | implemented `pig:kit-select-list` |
+| `kit node SettingsList` | `view node kind, Pi's SettingsList (spec §2)` | implemented `read:tui.SettingsList` | implemented `kit.NewSettingsList` | implemented `kit::SettingsList::new` | implemented `kit.SettingsList` | implemented `pig:kit-settings-list` |
+| `kit node Image` | `view node kind, Pi's Image (spec §2)` | implemented `read:tui.Image` | implemented `kit.NewImage` | implemented `kit::Image::new` | implemented `kit.Image` | implemented `pig:kit-image` |
+| `kit node Loader` | `view node kind, Pi's Loader (spec §2)` | implemented `read:tui.Loader` | implemented `kit.NewLoader` | implemented `kit::Loader::new` | implemented `kit.Loader` | implemented `pig:kit-loader` |
+| `kit node HStack` | `view node kind, Pi's HStack (spec §2)` | implemented `read:tui.HStack` | implemented `kit.NewHStack` | implemented `kit::HStack::new` | implemented `kit.HStack` | implemented `pig:kit-hstack` |
+| `kit node VStack` | `view node kind, Pi's VStack (spec §2)` | implemented `read:tui.VStack` | implemented `kit.NewVStack` | implemented `kit::VStack::new` | implemented `kit.VStack` | implemented `pig:kit-vstack` |
+| `kit node Lines` | `view node kind lines (spec §2)` | implemented `read:component.viewLines` | implemented `kit.NewLines` | implemented `kit::Lines::new` | implemented `kit.Lines` | implemented `pig:kit-lines` |
+| `kit node UserMessage` | `view node kind user-message, Pi's UserMessageComponent (spec §2.1)` | implemented `read:codingAgent.UserMessageComponent` | implemented `kit.NewUserMessage` | implemented `kit::UserMessage::new` | implemented `kit.UserMessage` | implemented `pig:kit-user-message` |
+| `kit node AssistantMessage` | `view node kind assistant-message, Pi's AssistantMessageComponent (spec §2.1)` | implemented `read:codingAgent.AssistantMessageComponent` | implemented `kit.NewAssistantMessage` | implemented `kit::AssistantMessage::new` | implemented `kit.AssistantMessage` | implemented `pig:kit-assistant-message` |
+| `kit node ToolExecution` | `view node kind tool-execution, Pi's ToolExecutionComponent (spec §2.1)` | implemented `read:codingAgent.ToolExecutionComponent` | implemented `kit.NewToolExecution` | implemented `kit::ToolExecution::new` | implemented `kit.ToolExecution` | implemented `pig:kit-tool-execution` |
+| `kit node BashExecution` | `view node kind bash-execution, Pi's BashExecutionComponent (spec §2.1)` | implemented `read:codingAgent.BashExecutionComponent` | implemented `kit.NewBashExecution` | implemented `kit::BashExecution::new` | implemented `kit.BashExecution` | implemented `pig:kit-bash-execution` |
+| `kit node Diff` | `view node kind diff, Pi's renderDiff in a Text (spec §2.1)` | implemented `read:diff.filePath` | implemented `kit.NewDiff` | implemented `kit::Diff::new` | implemented `kit.Diff` | implemented `pig:kit-diff` |
+| `kit view` | `a view: root, focus, theme overrides (spec §2, §6)` | implemented `read:component.viewTheme` | implemented `kit.View` | implemented `kit::View` | implemented `kit.View` | implemented `pig:kit-view` |
+| `kit ctx.ui.custom(view)` | `ui.custom drawn from a view (spec §4)` | implemented `RuntimeUI.custom` | implemented `ViewComponent.View` | implemented `ViewComponent::view` | implemented `kit.ViewComponent.view` | implemented `pig:make-custom-component(view)` |
+| `kit view events` | `a focused list's events (spec §4, ui.view.event)` | missing [exception](#exceptions) | implemented `ViewEventHandler.HandleViewEvent` | implemented `ViewComponent::handle_view_event` | implemented `kit.ViewEventHandler.handle_view_event` | implemented `pig:make-custom-component(handle-view-event)` |
+| `kit event` | `a view event (spec §4)` | missing [exception](#exceptions) | implemented `kit.Event` | implemented `kit::Event` | implemented `kit.Event` | implemented `pig:kit-event-type` |
 | `kit ctx.ui.setWidget(view)` | `a widget drawn from a view (spec §9)` | implemented `RuntimeUI.setWidget` | implemented `Context.SetWidget` | implemented `Context::set_widget_view` | implemented `Context.set_widget` | implemented `pig:ctx-set-widget` |
 | `kit ctx.ui.setHeader(view)` | `the header drawn from a view (spec §9)` | implemented `RuntimeUI.setHeader` | implemented `Context.SetHeaderView` | implemented `Context::set_header_view` | implemented `Context.set_header_view` | implemented `pig:ctx-set-header-view` |
 | `kit ctx.ui.setFooter(view)` | `the footer drawn from a view (spec §9)` | implemented `RuntimeUI.setFooter` | implemented `Context.SetFooterView` | implemented `Context::set_footer_view` | implemented `Context.set_footer_view` | implemented `pig:ctx-set-footer-view` |
@@ -1412,7 +1412,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `kit tool renderResult(view)` | `a tool result card drawn from a view (spec §9)` | implemented `read:tool.renderResult` | implemented `ToolRenderers.ResultView` | implemented `ToolRendererSet.result_view` | implemented `ToolRenderers.result_view` | implemented `pig:register-tool(result-view)` |
 | `kit message renderer(view)` | `a custom message drawn from a view (spec §9)` | implemented `api.registerMessageRenderer` | implemented `Extension.MessageViewRenderer` | implemented `Extension::message_view_renderer` | implemented `Extension.message_view_renderer` | implemented `pig:message-view-renderer` |
 | `kit entry renderer(view)` | `a custom session entry drawn from a view (spec §9)` | implemented `api.registerEntryRenderer` | implemented `Extension.EntryViewRenderer` | implemented `Extension::entry_view_renderer` | implemented `Extension.entry_view_renderer` | implemented `pig:entry-view-renderer` |
-| `kit lines list annotation` | `a lines node's frontend-only list (spec §2, §13.2)` | implemented `read:list.selectedIndex` | implemented `kit.Lines.List` | implemented `kit::List` | implemented `kit.List` | missing |
+| `kit lines list annotation` | `a lines node's frontend-only list (spec §2, §13.2)` | implemented `read:list.selectedIndex` | implemented `kit.Lines.List` | implemented `kit::List` | implemented `kit.List` | implemented `pig:kit-list` |
 
 ## Package exports: pi-coding-agent
 
