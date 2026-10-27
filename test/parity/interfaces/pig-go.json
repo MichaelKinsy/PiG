@@ -148503,6 +148503,17 @@
       "shapeHash": "sha256:356a7ab4023b3291772eac8b7f95d537b94dd246e92c17348d07eb8c772348c8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.drainDeferred",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.drainDeferred",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.focusedKey",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "tuiAltScreenState.focusedKey",
@@ -148512,6 +148523,17 @@
         "type": "func() any"
       },
       "shapeHash": "sha256:6b40cbb40507b7efce1d433d06fed509e653a5671897ef0381b72bf3dce3329e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.frameCallback",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.frameCallback",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(kind string, fields map[string]any, result any) error"
+      },
+      "shapeHash": "sha256:91e3e9d3143e0e11ae1dd4767cbbba6ea2076f721c6028384adc99e5ba7e470c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.keyOf",
@@ -148528,6 +148550,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.op",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "tuiAltScreenState.op",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(call *tuiAltCall) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:72744729824cabe7a76348230b44fd68370f0f060fdb43fdf3dd0c3a8534141e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.opInFrame",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.opInFrame",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -187097,9 +187130,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(raw encoding/json.RawMessage) (any, error)"
+        "type": "func(ctx Context, raw encoding/json.RawMessage) (any, error)"
       },
-      "shapeHash": "sha256:6eb5b0b45221f86955481b8056aea1a799d8325e2822283e4d2a04df67b90a79"
+      "shapeHash": "sha256:cd582255ce7d2d9cc02b7130b7daca0005fb57fd35e98ae32d2b0d6eea29df3b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.dispatchUserBashExec",
@@ -200495,9 +200528,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(component Component, options *OverlayOptions) (*TuiOverlayHandle, error)"
+        "type": "func(component Component, options *TuiOverlayOptions) (*TuiOverlayHandle, error)"
       },
-      "shapeHash": "sha256:d66ba519dbe48d4e26b6732280d9a2d74b14ee19035f4081e3daea0243692213"
+      "shapeHash": "sha256:1b8e94e448c785dc38dcef9561cc2e8d72f97a87b41e1743c5b2bf575373c77f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiAltScreen.Start",
@@ -200806,6 +200839,17 @@
         "type": "func(action string, fields map[string]any) (*tuiOverlayState, error)"
       },
       "shapeHash": "sha256:568703fd3bb8982c73c68f105d843603f1617ab3a66ac166e519b0254224b13a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiOverlayOptions",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "TuiOverlayOptions",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TuiOverlayOptions"
+      },
+      "shapeHash": "sha256:4ab55960db8feff3147af704b329ac8f65a2cd3f72d12aa755d53da2931b3872"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#TuiRgb",
@@ -205778,6 +205822,17 @@
         "type": "globalTheme"
       },
       "shapeHash": "sha256:409f7c8df30997de848bd962a21cd3de6a7968a01bebe4e57634ccdcecd20df6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#goroutineID",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "goroutineID",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() uint64"
+      },
+      "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#graphArg",
@@ -210992,6 +211047,50 @@
         "type": "tuiAltRegistry"
       },
       "shapeHash": "sha256:7676f5d5c447830b76b5c395da17dffbf6915f6dc7c8807ff18b725a623e4993"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#tuiAltRegistry.callContext",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "tuiAltRegistry.callContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ext *Extension) Context"
+      },
+      "shapeHash": "sha256:b1b4f7dafd56838f1def3f8800cf8736b50c174dab0f595f1930eea9efad2e6a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#tuiAltRegistry.enterFrame",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "tuiAltRegistry.enterFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() func()"
+      },
+      "shapeHash": "sha256:207ce74f02e77526c8289eecfae4b3d4c23dfd6f19c6f0d62a67b13cc07ecb07"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#tuiAltRegistry.inFrame",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "tuiAltRegistry.inFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#tuiAltRegistry.serveCallback",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "tuiAltRegistry.serveCallback",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx Context) func()"
+      },
+      "shapeHash": "sha256:96e21dddeb58511111cbc7d1da9edfbfbd569b4bf49a8bc3d803a7f4f36f5b6d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#tuiAltState",
@@ -308366,6 +308465,17 @@
       "shapeHash": "sha256:deb652e2c386b2f7bbe2a3d20f7a94ca27a85b0e80bd235e59dd8d917a9391f3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenFrameState",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AltScreenFrameState",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "AltScreenFrameState"
+      },
+      "shapeHash": "sha256:d997b0df17f2d9a8c0fde1743dbda5e4900e619f5c8eb86b3c7c290d6f996afd"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenSearchComponent",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "AltScreenSearchComponent",
@@ -337360,6 +337470,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.FrameState",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.FrameState",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (AltScreenFrameState, bool)"
+      },
+      "shapeHash": "sha256:eb61c699600108be5133d21ac246a185d30a4dac4791f469e6d552f0691a22b0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.FullRedraws",
