@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-// Pi's TuiAltScreen (pi-tui tui-alt-screen.ts, D204): the alternate-screen TUI host with a scrollable, application-owned viewport. The host runs
+// Pi's TuiAltScreen (pi-tui tui-alt-screen.ts): the alternate-screen TUI host with a scrollable, application-owned viewport. The host runs
 // the renderer (the `tui` port of tui-alt-screen.ts); the extension supplies the [Terminal] it draws on and the [Component]s it shows, and the
 // host calls back into them (docs/extension-api-parity.md, "TuiAltScreen"). Every member that reads or changes the renderer is a host round
 // trip and reports its error; the members Pi serves from the object itself (Mode, Children, Terminal, ViewportTui, SetOnDebug,

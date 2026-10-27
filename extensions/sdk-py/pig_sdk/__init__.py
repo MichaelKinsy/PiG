@@ -9,7 +9,6 @@ returned extension over a host-provided subprocess socket.
 """
 
 from __future__ import annotations
-# pig divergence (D204): this SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host (the Node SDK does); the 0.6.1 export ends this.
 
 import base64
 import copy
