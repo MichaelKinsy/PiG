@@ -90,12 +90,12 @@ var homeEndFinals = map[byte]int{
 
 // funcKeyCodes maps the CSI parameter to sentinel codepoints.
 var funcKeyCodes = map[int]int{
-	2: cpInsert,
-	3: cpDelete,
-	5: cpPageUp,
-	6: cpPageDown,
-	7: cpHome,
-	8: cpEnd,
+	2:  cpInsert,
+	3:  cpDelete,
+	5:  cpPageUp,
+	6:  cpPageDown,
+	7:  cpHome,
+	8:  cpEnd,
 	11: cpF1,
 	12: cpF2,
 	13: cpF3,
