@@ -106,8 +106,8 @@ func TestExecAbortAcrossSDKs(t *testing.T) {
 			t.Fatalf("the command (pid %d) is still running after the abort", pid)
 		}
 	})
-	cases := sdkHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	cases := append(sdkHarnessCases(), lispHarnessCase())
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	for _, tc := range cases {

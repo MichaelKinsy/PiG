@@ -19,7 +19,7 @@ func assertOrderedRichToolResult(t *testing.T, rich agent.AgentToolResult) {
 }
 
 func TestPackedOrderedToolResults(t *testing.T) {
-	for _, language := range []string{"go", "rust", "python"} {
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			h := makePackedUIHarness(t, language)
 			t.Cleanup(func() {
@@ -54,7 +54,7 @@ func TestToolResultMemberOrderFollowsTheToolAcrossSDKs(t *testing.T) {
 	}
 	want := []string{"details", "isError", "content"}
 	wantPartial := []string{"details", "content"}
-	for _, tc := range allHarnessCases() {
+	for _, tc := range append(allHarnessCases(), lispHarnessCase()) {
 		switch tc.name {
 		case "subprocess-node", "subprocess-node-packed", "subprocess-rust", "subprocess-python":
 		default:

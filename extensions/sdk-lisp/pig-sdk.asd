@@ -16,6 +16,8 @@
                (:file "context")
                (:file "hooks")
                (:file "dispatch")
+               (:file "context-extra")
+               (:file "tool-order")
                ;; ==== lane T ====
                (:file "host-helper")
                (:file "type-schema")
@@ -46,6 +48,7 @@
                (:file "resource-loader")
                (:file "package-manager")
                (:file "project-trust")
+               (:file "host-info")
                ;; ==== end lane S2 ====
                ;; ==== lane S3 ====
                (:file "model-runtime")
@@ -88,6 +91,7 @@
   :components ((:file "harness")
                (:file "json-tests")
                (:file "sdk-tests")
+               (:file "core-tests")
                 ;; ==== lane T ====
                 (:file "type-tests")
                 ;; ==== end lane T ====
