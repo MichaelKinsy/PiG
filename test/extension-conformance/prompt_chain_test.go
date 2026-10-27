@@ -63,7 +63,7 @@ func TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs(t *testing.T) {
 		}
 		assertPromptChain(t, runPromptChain(t, loaded), want)
 	})
-	for _, language := range []string{"go", "python", "rust", "node"} {
+	for _, language := range []string{"go", "python", "rust", "node", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			for _, placement := range []string{"isolated", "packed"} {
 				t.Run(placement, func(t *testing.T) {
