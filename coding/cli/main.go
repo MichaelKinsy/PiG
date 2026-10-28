@@ -875,6 +875,7 @@ func Main(args []string, options *MainOptions) {
 	var activePigletBaked bool
 	enforcePigletBinaryScope(flags.UnknownFlags)
 	activePiglet, activePigletBaked = resolvePiglet(flags.UnknownFlags, flags.ProjectTrustOverride)
+	exportActivePigletSource(activePiglet, activePigletBaked)
 	if activePigletBaked && flags.SystemPrompt != "" {
 		fmt.Fprintln(os.Stderr, "pig: a Piglet Binary's baseline system prompt cannot be replaced; use --append-system-prompt for an additive prompt")
 		exitProcess(1)

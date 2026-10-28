@@ -348,6 +348,10 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 		return showRecordFile(recordPath, jsonMode, stdout, stderr)
 	}
 	if nameOrPath == "" {
+		// pig additive (D209): without an argument, show the Piglet the session that started this shell runs.
+		nameOrPath = ActiveSourceFromEnv()
+	}
+	if nameOrPath == "" {
 		_, _ = fmt.Fprintln(stderr, "Usage: pig piglet show <name|path> [--effective] [--workspace <dir>] [--json]")
 		return 2
 	}
