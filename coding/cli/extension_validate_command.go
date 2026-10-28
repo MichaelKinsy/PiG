@@ -336,6 +336,7 @@ func validateExtensionRuntimes(input string) ([]extensionValidationReport, error
 //
 // pig additive (D28): `pig install --validate-only` states what discovery would load.
 func notAutoDiscoveredWarning(path string) string {
+	//perf:ok once per validated source, in a one-shot validate command
 	info, err := os.Stat(path)
 	if err != nil {
 		return ""
