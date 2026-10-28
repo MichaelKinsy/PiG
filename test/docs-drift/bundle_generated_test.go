@@ -37,6 +37,7 @@ type bundleManifest struct {
 	AgentOnly       []string `json:"agent_only"`
 	DeferredPairs   []string `json:"deferred_pairs"`
 	OtherGenerators []string `json:"other_generators"`
+	SiteOnly        []string `json:"site_only"`
 }
 
 func readBundleManifest(t *testing.T) bundleManifest {
@@ -282,6 +283,32 @@ func TestNoLinkPinsAStalePiTag(t *testing.T) {
 	for _, src := range corpus(t) {
 		if loc := piTagLink.FindString(src.Body); loc != "" {
 			t.Errorf("%s links a Pi tag (%s); link blob/main as Pi's own docs do", src.Rel, loc)
+		}
+	}
+}
+
+var siteURLSlug = regexp.MustCompile(`https://pi-in-go\.dev/docs/latest/([a-z0-9-]*)`)
+
+// A generated page links the site only for a page the bundle lacks. A link to content that the bundle holds goes through anchor_map or slug_map, so an agent reads it locally. A new site-only target is a decision, so it must be listed in site_only.
+func TestGeneratedBundleLinksTheSiteOnlyForSiteOnlyPages(t *testing.T) {
+	m := readBundleManifest(t)
+	allowed := map[string]bool{"": true}
+	for _, slug := range m.SiteOnly {
+		allowed[slug] = true
+	}
+	names := []string{m.Glossary.Bundle, "extend-pig.md"}
+	for _, p := range m.Pages {
+		names = append(names, p.Bundle)
+	}
+	for _, name := range names {
+		body, err := os.ReadFile(filepath.Join(repoRoot, bundleDirRel, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, match := range siteURLSlug.FindAllStringSubmatch(string(body), -1) {
+			if !allowed[match[1]] {
+				t.Errorf("%s links the site page %q; map it to a bundle page in anchor_map or slug_map, or list it in site_only if the bundle has no such content", name, match[1])
+			}
 		}
 	}
 }

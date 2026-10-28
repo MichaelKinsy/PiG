@@ -70,6 +70,8 @@ Pass `--approve` or `--no-approve` when an automated run needs an explicit one-t
 
 Project trust is not a complete startup boundary. As in Pi, PiG reads the project `sessionDir` setting while it selects or creates a session, before it resolves trust. Declining trust cannot undo that lookup.
 
+`pig status` and `pig diagnose` do not show the trust decision. Use `/trust` to see the saved decision and the state of the current session.
+
 Trust does not limit what tool calls can reach. After PiG starts, enabled tools use the operating-system permissions of the PiG process.
 
 ## Compare with Pi

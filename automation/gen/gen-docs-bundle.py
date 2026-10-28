@@ -7,6 +7,9 @@ this script copies each shared page into it and rewrites what a flat bundle cann
 hold. The manifest internal/pigdocs/bundle-manifest.json lists:
 
   pages      site page -> bundle page, with optional heading blocks to drop
+  slug_map   site page -> hand-written bundle page of the same subject
+  anchor_map site page#anchor -> bundle page#anchor, for content the bundle keeps elsewhere
+  site_only  site pages the bundle links by URL on purpose
   glossary   the glossary page, rendered from docs/project/CONTEXT.md into both trees
   blocks     fragments rendered into marked blocks of hand-written pages
   agent_only bundle pages written by hand that have no site page
@@ -115,6 +118,10 @@ def anchors_of(path):
 def page_link(name, frag, to_bundle):
     if not to_bundle:
         return f"/docs/latest/{name[:-3]}{frag}" if name != "index.md" else f"/docs/latest/{frag}"
+    # A site page or anchor whose content the bundle holds under another page or anchor.
+    for key in (name + frag, name):
+        if key in manifest["anchor_map"] and (key == name + frag or not frag):
+            return manifest["anchor_map"][key]
     mapped = manifest["slug_map"].get(name, name)
     if mapped in bundle_pages:
         # A hand-written bundle page can lack the anchor the site page has; the site URL keeps the link valid.
