@@ -96,7 +96,7 @@ func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
 		t.Fatal(err)
 	}
 	if found == 0 {
-		t.Fatal("no compressed copy found: the files of 32 KiB or more are embedded gzipped")
+		t.Fatal("no compressed copy found: every source file is embedded gzipped")
 	}
 }
 
