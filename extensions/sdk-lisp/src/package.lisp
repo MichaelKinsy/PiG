@@ -394,4 +394,26 @@
    #:autocomplete-get-suggestions #:autocomplete-apply-completion #:autocomplete-should-trigger-file-completion
    #:ctx-on-terminal-input #:terminal-input-result #:make-terminal-input-result #:terminal-input-result-consume #:terminal-input-result-data
    ;; ==== end lane U2 ====
+   ;; ==== lane TA: pi-tui's TuiAltScreen over the tui.alt wire ====
+   #:tui-terminal #:make-tui-terminal #:tui-terminal-columns #:tui-terminal-rows #:tui-terminal-kitty-protocol-active #:tui-terminal-start
+   #:tui-terminal-stop #:tui-terminal-drain-input #:tui-terminal-write #:tui-terminal-move-by #:tui-terminal-hide-cursor #:tui-terminal-show-cursor
+   #:tui-terminal-clear-line #:tui-terminal-clear-from-cursor #:tui-terminal-clear-screen #:tui-terminal-set-title #:tui-terminal-set-progress
+   #:tui-terminal-set-program-status #:tui-terminal-restore-on-exit
+   #:tui-component #:make-tui-component #:tui-component-render #:tui-component-invalidate #:tui-component-handle-input
+   #:tui-component-handle-mouse #:tui-component-focusable #:tui-component-on-focus #:tui-component-wants-key-release #:tui-component-focused
+   #:tui-alt-screen #:make-tui-alt-screen #:tui-alt-screen-viewport-tui-p #:tui-alt-screen-add-child #:tui-alt-screen-add-input-listener
+   #:tui-alt-screen-children #:tui-alt-screen-clear #:tui-alt-screen-copy-active-selection-to-clipboard #:tui-alt-screen-flash
+   #:tui-alt-screen-full-redraws #:tui-alt-screen-get-clear-on-shrink #:tui-alt-screen-get-copy-on-select #:tui-alt-screen-get-focused-component
+   #:tui-alt-screen-get-screen-lines #:tui-alt-screen-get-show-hardware-cursor #:tui-alt-screen-handle-mouse #:tui-alt-screen-has-active-selection-p
+   #:tui-alt-screen-has-overlay-p #:tui-alt-screen-has-overlay-entries-p #:tui-alt-screen-hide-overlay #:tui-alt-screen-invalidate
+   #:tui-alt-screen-following-output-p #:tui-alt-screen-mode #:tui-alt-screen-set-on-debug #:tui-alt-screen-on-terminal-color-scheme-change
+   #:tui-alt-screen-query-terminal-colors #:tui-alt-screen-remove-child #:tui-alt-screen-remove-input-listener #:tui-alt-screen-render
+   #:tui-alt-screen-render-now #:tui-alt-screen-request-render #:tui-alt-screen-reset-text-selection #:tui-alt-screen-scroll-by
+   #:tui-alt-screen-scroll-to-bottom #:tui-alt-screen-scroll-to-top #:tui-alt-screen-set-clear-on-shrink #:tui-alt-screen-set-copy-on-select
+   #:tui-alt-screen-set-focus #:tui-alt-screen-set-layout-root #:tui-alt-screen-set-show-hardware-cursor
+   #:tui-alt-screen-set-terminal-color-scheme-notifications #:tui-alt-screen-set-wheel-scroll-lines #:tui-alt-screen-show-overlay
+   #:tui-alt-screen-start #:tui-alt-screen-stop #:tui-alt-screen-terminal #:tui-alt-screen-viewport-top
+   #:tui-alt-overlay-handle #:tui-alt-overlay-hide #:tui-alt-overlay-set-hidden #:tui-alt-overlay-hidden-p #:tui-alt-overlay-focus
+   #:tui-alt-overlay-unfocus #:tui-alt-overlay-focused-p #:tui-alt-overlay-get-bounds
+   ;; ==== end lane TA ====
    ))

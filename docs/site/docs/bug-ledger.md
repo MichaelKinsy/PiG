@@ -826,9 +826,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D198](#bf-d198) | The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D200](#bf-d200) | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D203](#bf-d203) | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D204](#bf-d204) | The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D207](#bf-d207) | TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D207](#bf-d207) | TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -12479,24 +12478,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `90ffbef9d1` (2026-10-25), `9314897979` (2026-10-25)
 - **Tests:** `coding/register_provider_empty_apikey_test.go::TestRegisterProviderWithEmptyAPIKeyIsNotConfigured`, `test/extension-conformance/session_graph_test.go::TestSessionGraphModelRegistryAcrossSDKs`
 
-### BF-D204
-
-**The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and…**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D204)
-- **Symptom:** none claimed.
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the Lisp SDK exports `TuiAltScreen` over the `tui.alt` wire; then the 46 `lisp` cells become `native:` cells with their conformance reach, and this record goes.
-- **Fix commits:** `26bbbe6a80` (2026-10-26), `f67a7da98e` (2026-10-26), `084f8094e6` (2026-10-27), `97571ba165` (2026-10-27)
-- **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs`, `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs`
-
 ### BF-D207
 
-**TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array**
+**TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D207)
 - **Symptom:** none claimed.
@@ -12505,13 +12489,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the three markers, the evidence note and this record go.
-- **Fix commits:** `109a3bd9f4` (2026-10-28)
+- **Removed when Pi fixes it:** Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the four markers, the evidence note and this record go.
+- **Fix commits:** `109a3bd9f4` (2026-10-28), `1d6732bee8` (2026-10-28), `395ad20127` (2026-10-28), `5a671a6be6` (2026-10-28), `af97c34f84` (2026-10-28), `be8abc8c03` (2026-10-28)
 - **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenChildrenAcrossSDKs`
 
 ### BF-D208
 
-**From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that…**
+**From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that…**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D208)
 - **Symptom:** none claimed.
@@ -12521,7 +12505,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.
-- **Fix commits:** `1d6732bee8` (2026-10-28), `be8abc8c03` (2026-10-28)
+- **Fix commits:** `1d6732bee8` (2026-10-28), `395ad20127` (2026-10-28), `5a671a6be6` (2026-10-28), `be8abc8c03` (2026-10-28)
 - **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReentryAcrossSDKs`
 
 ### BF-a076a50
@@ -18896,10 +18880,9 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D199 | PiG lists OpenRouter's :nitro and :floor routing variants beside every OpenRouter model, where Pi lists only… | deliberate difference |
 | D200 | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | [BF-D200](#bf-d200) |
 | D203 | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | [BF-D203](#bf-d203) |
-| D204 | The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and… | [BF-D204](#bf-d204) |
 | D205 | Fullscreen frames scroll the rows that only moved | deliberate difference |
-| D207 | TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array | [BF-D207](#bf-d207) |
-| D208 | From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that… | [BF-D208](#bf-d208) |
+| D207 | TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array | [BF-D207](#bf-d207) |
+| D208 | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | [BF-D208](#bf-d208) |
 
 ## Fix-titled commits that are not bugs in a release
 
