@@ -57,6 +57,7 @@ func (h *handler) startScheduler() error {
 		Session: h.sess,
 		Started: func() { h.job = jobStats{mintStart: h.sess.NextID()}; h.sess.TakeTicks() },
 		Hold:    h.holdJob,
+		Adopted: h.adoptedRun,
 		Tail: func(release func()) bool {
 			if h.loop.Answered {
 				return h.holdFor(2, release)
@@ -70,7 +71,7 @@ func (h *handler) startScheduler() error {
 	}
 	h.runtimes = map[session.ID]*session.Runtime{}
 	h.loadRegistry(objOf(h.open, "registry"))
-	h.sched = session.NewScheduler(h.sess, h.loop, session.Env{
+	env := session.Env{
 		Snapshot:           func() session.Snapshot { return h.snap },
 		FreshSnapshot:      h.freshSnapshot,
 		Report:             h.report,
@@ -87,7 +88,13 @@ func (h *handler) startScheduler() error {
 		ReadTicks:          func() int { return h.job.change },
 		GateRead:           func(method string, id session.ID) { _ = h.gateRead(method, float64(id)) },
 		After:              h.hopsThen,
-	})
+		CommitListeners:    &h.changes,
+	}
+	// HarnessOptions.telemetry: the core tells the host what to record (telemetry.go).
+	if on, _ := boolOf(h.open, "telemetry"); on {
+		env.Telemetry = h
+	}
+	h.sched = session.NewScheduler(h.sess, h.loop, env)
 	if onWake, _ := boolOf(h.open, "onWake"); onWake {
 		// The host wakes its process itself: the core arms no timer for sleeping tasks and publishes each change of the wake.
 		h.sched.SetOnWake(h.publishWake)
@@ -220,6 +227,13 @@ func (h *handler) report(err error, info *jv.Object) {
 	body := errorJSON(err)
 	body = append(body[:len(body)-1], `,"info":`...)
 	body = jv.Append(body, info)
+	// The scheduler's report under a span's Context (scheduler.ts #report's context): the host records the report event there.
+	if h.sched != nil {
+		if span := h.sched.ReportSpan(); span != 0 {
+			body = append(body, `,"span":`...)
+			body = jv.AppendNumber(body, float64(span))
+		}
+	}
 	body = append(body, '}')
 	h.b.Notice(abi.NoticeReport, body)
 }
@@ -311,6 +325,13 @@ func (h *handler) documentRetentionMs() *float64 {
 		return &v
 	}
 	return nil
+}
+
+// persistWithinMs is settings.progress.persistWithinMs, the default window of a deferred commit; false when the host set none, which
+// means the default (harness/agent.ts). The host sends Infinity as the largest finite number.
+func (h *handler) persistWithinMs() (float64, bool) {
+	v, ok := valueOf(objOf(objOf(h.open, "settings"), "progress"), "persistWithinMs").(float64)
+	return v, ok
 }
 
 // publishWake offers the host the Harness's wake (HarnessOptions.onWake) in a wake notice after each recomputation: the host

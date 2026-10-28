@@ -4,6 +4,8 @@
 package core
 
 import (
+	"math"
+
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
@@ -117,7 +119,7 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 		})
 	case "sleepUntil":
 		checkpoint, _ := req.Get("checkpoint")
-		rt.SleepUntil(numOf(req, "until"), checkpoint, func(err error) { reply(nil, err) })
+		rt.SleepUntil(sleepTime(req), checkpoint, func(err error) { reply(nil, err) })
 	}
 	return true
 }
@@ -143,4 +145,22 @@ func wakeJSON(w session.Wake) *jv.Object {
 		o.Set("at", w.At)
 	}
 	return o
+}
+
+// sleepTime is the `until` of a sleepUntil request. JSON cannot carry NaN or the infinities, so the host sends them as the strings
+// "NaN", "Infinity" and "-Infinity"; the scheduler's validation then rejects them as scheduler.ts validateSleep does.
+func sleepTime(req *jv.Object) float64 {
+	if v, _ := req.Get("until"); v != nil {
+		if s, ok := v.(string); ok {
+			switch s {
+			case "NaN":
+				return math.NaN()
+			case "Infinity":
+				return math.Inf(1)
+			case "-Infinity":
+				return math.Inf(-1)
+			}
+		}
+	}
+	return numOf(req, "until")
 }

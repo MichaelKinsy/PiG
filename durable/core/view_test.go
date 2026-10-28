@@ -169,14 +169,14 @@ func TestResolveWindow(t *testing.T) {
 // carries its record, conversation, version, value and ops, with a null value and no version for a retirement; a copy
 // names its source.
 func TestCommitChangesAreTheSessionPublicationShape(t *testing.T) {
-	got := jv.Stringify(commitChanges(&session.Publication{Seq: 5, Changes: []session.Change{
+	got := jv.Stringify(commitChanges([]session.Change{
 		{Kind: session.ChangeTable, Table: session.WriteTask, Record: parsed(t, `{"id":7}`)},
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":2}`), Version: 1, Value: parsed(t, `{"a":1}`),
 			Ops: []delta.Op{{Verb: delta.Set, Path: delta.Path{delta.Key("a")}, Value: 1.0}}},
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":3}`), Version: 1},
 		{Kind: session.ChangeDocumentCopy, ConversationID: 4, Record: parsed(t, `{"id":8}`), Source: session.DocCopySource{ID: 2, At: session.AsOf(6)}},
 		{Kind: session.ChangeDocumentCopy, ConversationID: 4, Record: parsed(t, `{"id":9}`), Source: session.DocCopySource{ID: 3, At: session.Current}},
-	}}))
+	}, nil, valueWhole))
 	want := `[{"type":"task","value":{"id":7}},` +
 		`{"type":"document","record":{"id":2},"conversationId":1,"version":1,"value":{"a":1},"ops":[["s",["a"],1]]},` +
 		`{"type":"document","record":{"id":3},"conversationId":1,"value":null,"ops":[]},` +
@@ -199,5 +199,33 @@ func TestSettingsEventReplacesTheLiveSettings(t *testing.T) {
 	}
 	if h.queueModes().FollowUp != "all" {
 		t.Fatalf("follow-up mode %q after the settings event", h.queueModes().FollowUp)
+	}
+}
+
+// A memory notice omits the value of a document the host already holds (a partial commit costs its new text), and carries it for one the
+// host does not hold, for a replacement, and for a change that has no operations (a migration's base).
+func TestMemoryNoticesOmitTheValueOfADocumentTheHostHolds(t *testing.T) {
+	change := func(ops ...delta.Op) []session.Change {
+		return []session.Change{{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":2}`), Version: 1, Value: parsed(t, `{"a":"xy"}`), Ops: ops}}
+	}
+	appendOp := delta.Op{Verb: delta.Append, Path: delta.Path{delta.Key("a")}, Text: "y"}
+	sent := &idSet{}
+	first := jv.Stringify(commitChanges(change(appendOp), sent, valueFromOps))
+	if want := `[{"type":"document","record":{"id":2},"conversationId":1,"version":1,"value":{"a":"xy"},"ops":[["a",["a"],"y"]]}]`; first != want {
+		t.Fatalf("first %s\nwant  %s", first, want)
+	}
+	second := jv.Stringify(commitChanges(change(appendOp), sent, valueFromOps))
+	if want := `[{"type":"document","record":{"id":2},"conversationId":1,"version":1,"ops":[["a",["a"],"y"]]}]`; second != want {
+		t.Fatalf("second %s\nwant   %s", second, want)
+	}
+	if got := jv.Stringify(commitChanges(change(appendOp), sent, valueWhole)); got == second {
+		t.Fatalf("a stored notice left out the value: %s", got)
+	}
+	if got := jv.Stringify(commitChanges(change(), sent, valueFromOps)); got == "" || got == second {
+		t.Fatalf("a change without operations left out the value: %s", got)
+	}
+	replace := delta.Op{Verb: delta.Replace, Value: parsed(t, `{"a":"xy"}`)}
+	if got := jv.Stringify(commitChanges(change(replace), sent, valueFromOps)); got == second {
+		t.Fatalf("a replacement left out the value: %s", got)
 	}
 }

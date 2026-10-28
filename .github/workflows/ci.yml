@@ -53,6 +53,7 @@ jobs:
       macos: ${{ steps.plan.outputs.macos }}
       run-node-runtime: ${{ steps.plan.outputs.run-node-runtime }}
       run-durable-cf-host: ${{ steps.plan.outputs.run-durable-cf-host }}
+      run-durable-contract: ${{ steps.plan.outputs.run-durable-contract }}
       run-android: ${{ steps.plan.outputs.run-android }}
       run-node-loader: ${{ steps.plan.outputs.run-node-loader }}
     steps:
@@ -647,6 +648,64 @@ jobs:
         shell: bash
         run: automation/ci/with-isolated-pig-home.sh make durable-core-budget
 
+  durable-contract:
+    name: Durable contract / ${{ matrix.impl }}
+    needs: [changes, bookkeeping]
+    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # make durable-contract runs every corpus row against Pi and one build of the core: pi is the control (the reference
+        # against itself), wasm-tinygo the shipped Wasm build, native the same source natively. Three jobs keep each inside its
+        # limit; each recomputes the reference captures it compares with.
+        impl: [pi, wasm-tinygo, native]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Install pinned npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$NPM_VERSION"
+      # The same Pi oracle build, TinyGo and reference checkout as the Cloudflare host job; the cache keys are shared with it, so
+      # whichever job runs first warms the other.
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Restore TinyGo and the Pi reference
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/pig-dev/tinygo
+            durable/contract/.cache
+          key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
+      - name: Install the pinned TinyGo
+        shell: bash
+        run: echo "TINYGO=$(sh durable/core/budget/tinygo-install.sh)" >> "$GITHUB_ENV"
+      # durable-contract: durable-contract-setup (the Pi reference and its npm tree), durable-core-host-deps for the host, then
+      # cd durable/contract && node cli/contract.mjs all --impls <impl>: every row, per-lane table, exit 1 on a row that differs.
+      - name: Run the Durable core conformance gate
+        shell: bash
+        env:
+          DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }} -j 4
+        run: automation/ci/with-isolated-pig-home.sh make ci-durable-contract
+
   verify:
     name: Linux verification
     needs: [changes, linux]
@@ -1110,7 +1169,7 @@ jobs:
     # is label) a pull request's result fails unless this run is the full run
     # on the pull request's current head, so a head that only the light run
     # tested can never satisfy the required check.
-    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host]
+    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host, durable-contract]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -1132,6 +1191,7 @@ jobs:
           RUN_NODE_LOADER: ${{ needs.changes.outputs.run-node-loader }}
           RUN_ANDROID: ${{ needs.changes.outputs.run-android }}
           RUN_DURABLE_CF_HOST: ${{ needs.changes.outputs.run-durable-cf-host }}
+          RUN_DURABLE_CONTRACT: ${{ needs.changes.outputs.run-durable-contract }}
           CHANGES: ${{ needs.changes.result }}
           DOCS: ${{ needs.docs.result }}
           BOOKKEEPING: ${{ needs.bookkeeping.result }}
@@ -1142,6 +1202,7 @@ jobs:
           ANDROID: ${{ needs.android.result }}
           NODE_LOADER: ${{ needs.node-loader.result }}
           DURABLE_CF_HOST: ${{ needs.durable-cf-host.result }}
+          DURABLE_CONTRACT: ${{ needs.durable-contract.result }}
           PREFLIGHT: ${{ needs.preflight.result }}
         shell: bash
         run: |
@@ -1195,4 +1256,5 @@ jobs:
           expect "Android" "$ANDROID" "$(skip_unless_planned "$RUN_ANDROID")"
           expect "Node loader" "$NODE_LOADER" "$(skip_unless_planned "$RUN_NODE_LOADER")"
           expect "Durable Cloudflare host" "$DURABLE_CF_HOST" "$(skip_unless_planned "$RUN_DURABLE_CF_HOST")"
+          expect "Durable contract" "$DURABLE_CONTRACT" "$(skip_unless_planned "$RUN_DURABLE_CONTRACT")"
           exit "$status"

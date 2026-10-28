@@ -37,6 +37,10 @@ func (s *Scheduler) wakeDue() {
 // time made ending a chain of 20,000 held tasks 20,000 walks of 20,000 records, each record a key search here, not the
 // property read it is in scheduler.ts.
 func (s *Scheduler) Wake() Wake {
+	// A read-only Harness runs nothing, so it never needs a process.
+	if s.sess.ReadOnly {
+		return Wake{}
+	}
 	now := s.env.Now()
 	// A reconcile pass with work to do is work too: it finalizes held outcomes and marks cascades, at open as recovery. A
 	// process that dies before it lands must be woken again. A pass with nothing to do is not.
@@ -106,7 +110,7 @@ func (s *Scheduler) anyRunnable(now float64) bool {
 // scheduleWake recomputes the wake in a microtask, off the Session line's jobs: it arms the built-in timer, or tells OnWake
 // of a change (scheduler.ts #scheduleWake).
 func (s *Scheduler) scheduleWake() {
-	if s.wakeScheduled || s.closing {
+	if s.wakeScheduled || s.closing || s.sess.ReadOnly {
 		return
 	}
 	s.wakeScheduled = true

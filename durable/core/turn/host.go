@@ -135,6 +135,8 @@ type StreamRequest struct {
 	Replaced     []*jv.Object
 	// Options are the request options without the signal: the pinned stream options, the provider session ID and the reasoning level.
 	Options *jv.Object
+	// Span is the host's handle of the span of the phase making the request: its Context.telemetry.
+	Span uint32
 }
 
 // CompleteRequest is a non-streaming model request (completeSimple): the compaction summarizer.

@@ -55,6 +55,9 @@ type Loop struct {
 	// origin the line holds a job for, from the job's queuing to the end of its run.
 	Origin          uint32
 	Retain, Release func(origin uint32)
+	// Adopted, when set, is asked as each line job finishes whether the host's Storage adopted its commit and has not answered
+	// yet (Storage gate): the job's publication is then made at once, and its completion waits for Answer.
+	Adopted func() bool
 	// Started, when set, runs as each line job starts.
 	Started func()
 	// Reading is set while a Session.readOnLine job (ReadLine) runs and when it finishes: Hold asks it for the job's duration.
@@ -76,6 +79,9 @@ type Loop struct {
 	// after holds what the running job asked to run at its completion, right after its publication and before the line's
 	// next job: the code a caller runs on resuming from `await commitWith(...)`, which follows the commit's publication.
 	after []func()
+
+	// awaiting is set while a finished job's commit was adopted and its completion waits for the Storage's answer (Answer).
+	awaiting bool
 }
 
 // Resumer is a continuation that keeps its own state: the Loop runs it as a microtask (DeferResumer) or the host after a chain of
@@ -105,6 +111,35 @@ type job struct {
 	settled bool // done already ran at Settle
 	// ended: the job's commit ended this runtime's task for crashes, which Resume reports before done (Runtime.Commit).
 	ended *Runtime
+	// rn, when set instead of run and done, is the job's own run and done (jobRunner): a struct that embeds its job holds the
+	// job's state in one allocation where closures would take several (20,000 queued jobs of a task graph's commits).
+	rn jobRunner
+}
+
+// jobRunner is a line job that is its own run and done.
+type jobRunner interface {
+	runJob() error
+	doneJob(err error)
+}
+
+// hasDone reports whether the job has a done.
+func (j *job) hasDone() bool { return j.done != nil || j.rn != nil }
+
+// exec runs the job's body.
+func (j *job) exec() error {
+	if j.run != nil {
+		return j.run()
+	}
+	return j.rn.runJob()
+}
+
+// finish delivers err to the job's done.
+func (j *job) finish(err error) {
+	if j.done != nil {
+		j.done(err)
+		return
+	}
+	j.rn.doneJob(err)
 }
 
 // Resume delivers done: in the microtask the Loop queued for it, or, for a late job, a tick after that.
@@ -117,7 +152,7 @@ func (j *job) Resume() {
 	if j.ended != nil && j.err == nil {
 		j.ended.ReportEnded()
 	}
-	j.done(j.err)
+	j.finish(j.err)
 }
 
 // endedBy marks the running line job as the commit that ended rt's task for crashes.
@@ -215,7 +250,7 @@ func (l *Loop) enqueue(j *job) {
 	j.late, l.lateNext = l.lateNext, false
 	if l.Admit != nil {
 		if err := l.Admit(); err != nil {
-			if j.done != nil {
+			if j.hasDone() {
 				j.err = err
 				l.DeferResumer(j)
 			}
@@ -248,6 +283,12 @@ func (l *Loop) LineAfterTail(run func() error, done func(error)) {
 	l.enqueue(&job{run: run, done: done, idle: !l.Busy()})
 }
 
+// QueueAfterTail is LineAfterTail for a job that is its own run and done: j.rn is set, and the job is queued by address.
+func (l *Loop) QueueAfterTail(j *job) {
+	j.idle = !l.Busy()
+	l.enqueue(j)
+}
+
 // ReadLine queues a Session.readOnLine job (session.ts:105-115): a read-only job on the line, whose duration is its reads
 // plus the three ticks of the return through #enqueue (hopcost.ReadOnLine).
 func (l *Loop) ReadLine(run func() error, done func(error)) {
@@ -265,7 +306,7 @@ func (l *Loop) ClientReadLine(run func() error, done func(error)) {
 // job's end. It reports whether it answered.
 func (l *Loop) Settle() bool {
 	j, err := l.ending, l.endErr
-	if j == nil || !j.client || j.settled || j.done == nil {
+	if j == nil || !j.client || j.settled || !j.hasDone() {
 		return false
 	}
 	j.settled = true
@@ -275,7 +316,7 @@ func (l *Loop) Settle() bool {
 }
 
 // EndingClient reports whether the job whose completion Hold holds answers a host caller (ClientReadLine).
-func (l *Loop) EndingClient() bool { return l.ending != nil && l.ending.client && l.ending.done != nil }
+func (l *Loop) EndingClient() bool { return l.ending != nil && l.ending.client && l.ending.hasDone() }
 
 // LineBare queues a job that only takes the line for someone else, a host transaction that holds it until Blocked reports
 // false: it keeps its place in the line's order and takes no job duration of its own.
@@ -341,7 +382,7 @@ func (l *Loop) runJob() {
 	}
 	l.Reading = j.read
 	l.after = l.after[:0]
-	err := j.run()
+	err := j.exec()
 	var pubs []*Publication
 	if sess != nil {
 		sess.holdPubs, sess.inJob = false, false
@@ -369,6 +410,14 @@ func (l *Loop) runJob() {
 		l.jobs, l.jhead = l.jobs[:0], 0
 	}
 	l.ending, l.endErr = j, err
+	if l.Adopted != nil && l.Adopted() {
+		// The Storage adopted this job's commit and has not resolved: the commit is published now, inside the adoption, and the
+		// job ends when the Storage answers (Answer), as Pi's #runCommit resumes from `await storage.commit()`.
+		l.holding = true
+		l.awaiting = true
+		l.Publish()
+		return
+	}
 	if l.Hold != nil && !j.bare && l.Hold(l.fns().completeFn) {
 		l.holding = true
 		return
@@ -398,7 +447,7 @@ func (l *Loop) complete() {
 		}
 	}
 	l.ending, l.endErr = nil, nil
-	if j.done != nil && !j.settled {
+	if j.hasDone() && !j.settled {
 		j.err = err
 		l.DeferResumer(j)
 	}
@@ -425,6 +474,16 @@ func (l *Loop) tailDone() {
 	}
 }
 
+// MemoryPubsOnly reports whether every publication of the finished job is a deferred commit held in memory (Publication.Memory).
+func (l *Loop) MemoryPubsOnly() bool {
+	for _, pub := range l.pubs {
+		if !pub.Memory {
+			return false
+		}
+	}
+	return len(l.pubs) != 0
+}
+
 // HasPubs reports whether the finished job whose completion Hold holds has publications to deliver.
 func (l *Loop) HasPubs() bool { return len(l.pubs) != 0 }
 
@@ -433,7 +492,7 @@ func (l *Loop) HasPubs() bool { return len(l.pubs) != 0 }
 // own between them: the line stays held from the job's last tick to the tail's and QuietRelease frees it there.
 func (l *Loop) QuietEnd() bool {
 	j := l.ending
-	return j != nil && j.done == nil && !j.bare && !j.client && l.Tail != nil && len(l.pubs) == 0 && len(l.after) == 0 &&
+	return j != nil && !j.hasDone() && !j.bare && !j.client && l.Tail != nil && len(l.pubs) == 0 && len(l.after) == 0 &&
 		(l.Session == nil || !l.Session.HasUnrevealedLoads())
 }
 
@@ -459,6 +518,22 @@ func (l *Loop) Publish() {
 		l.Session.publish(pub)
 	}
 }
+
+// Answer takes the Storage's answer to the commit a finished job adopted: a failure of the call after the adoption is the job's own
+// error (the commit stays published). The job ends when Completer's function runs. It reports whether a job waited.
+func (l *Loop) Answer(err error) bool {
+	if !l.awaiting {
+		return false
+	}
+	l.awaiting = false
+	if err != nil {
+		l.endErr = err
+	}
+	return true
+}
+
+// Completer is the function that ends the job Answer released.
+func (l *Loop) Completer() func() { return l.fns().completeFn }
 
 // Ungate runs the job that returned a *NeedGate again, from the start, after the host's Storage answered.
 func (l *Loop) Ungate() {

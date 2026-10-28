@@ -227,7 +227,11 @@ func (h *handler) startTool(run *turn.ToolRun, io *turn.ToolIO, cancel *session.
 		body.Set("handler", float64(handler))
 	}
 	var remove func()
-	id := h.startEffect(abi.EffectTool, jv.Append(nil, body), &pending{
+	var span uint32
+	if h.sched != nil {
+		span = h.sched.SpanOf(run.Task)
+	}
+	id := h.startEffect(abi.EffectTool, withSpan(jv.Append(nil, body), span), &pending{
 		progress: func(ev *abi.Event) bool {
 			payload := append([]byte(nil), ev.Payload...)
 			switch ev.Phase {
@@ -314,7 +318,11 @@ func (h *handler) completion(kind abi.EffectKind, body *jv.Object, cancel *sessi
 		left++
 		h.hopsThen(envCallHops, resume)
 	}
-	id := h.startEffect(kind, jv.Append(nil, body), &pending{done: func(outcome uint8, payload []byte) {
+	var span uint32
+	if cancel != nil {
+		span = cancel.Span
+	}
+	id := h.startEffect(kind, withSpan(jv.Append(nil, body), span), &pending{done: func(outcome uint8, payload []byte) {
 		if remove != nil {
 			remove()
 		}
@@ -502,6 +510,9 @@ func (h *handler) renderSections(conv, task turn.ID, agent *turn.Agent, shown *t
 // forwarded as the text the host sent (the request keeps only the last one it commits), and only the message that ends the
 // request is built.
 func (h *handler) stream(req *turn.StreamRequest, onPartial func(jv.Raw), cancel *session.Cancel, then func(*jv.Object, error)) {
+	if cancel != nil {
+		req.Span = cancel.Span
+	}
 	out := h.modelContextPayload(req)
 	h.keepPayload(out)
 	var remove func()

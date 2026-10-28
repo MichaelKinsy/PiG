@@ -67,7 +67,8 @@ export class WatchHub {
     if (frame.end === true) { sink.ownerEnded?.(); return }
     const before = this.values.get(watchId)
     // A retirement repeats the last value the watch was given, with no ops.
-    if (frame.retired === true) { sink.advance({ value: before, ops: [], retired: true }, context); return }
+    // The watch keeps no value while the address is absent (session.ts #observeDocument): the new incarnation's frame carries its own.
+    if (frame.retired === true) { this.values.delete(watchId); sink.advance({ value: before, ops: [], retired: true }, context); return }
     const frameOps = frame.ops ?? []
     const target = this.targets.get(watchId)
     // The frame of a commit this host wrote carries the revision its draft prepared (snapshots.ts Revision), as the Storage write and the publication do.
@@ -123,6 +124,9 @@ export class WatchHub {
       joined.frames = undefined
       const member = attach((frames === undefined ? this.values.get(joined.watchId) : joined.first) as T, () => this.leave(key, joined, member))
       joined.members.add(member)
+      // The mount keeps no value: the Watch and the sinks hold the current one, and a retired incarnation's must be collectable.
+      joined.first = undefined
+      if (joined.result !== undefined) joined.result.value = undefined
       for (const f of frames ?? []) this.apply(joined.watchId, this.sinks.get(joined.watchId)!, f, this.context)
       return member
     } finally {

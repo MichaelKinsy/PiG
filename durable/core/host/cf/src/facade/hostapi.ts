@@ -7,6 +7,7 @@ import { BACKGROUND_CONTEXT, awaitWithContext, withAbortSignal } from "@earendil
 import type { CoreClient } from "../client.ts"
 import { migrateRetry, runCommit, wireDefinition, type TxProxy } from "./tx.ts"
 import { enterCommit } from "./commit-context.ts"
+import { spanFields } from "./telemetry.ts"
 import { loadedTracker, keepTracker, settleRevision, shareSnapshot, snapshotStamp, stageRevision, unstageRevision } from "./snapshots.ts"
 import { resolveAddress, wireAddress, type AnyDocToken } from "./documents.ts"
 import type { Context } from "@earendil-works/chord"
@@ -150,7 +151,7 @@ export function invocationApi(options: HostApiOptions, who: InvocationIdentity &
       return await awaitWithContext(resolved, context)
     },
     /** Commit a sleep: the core stores it and answers once it is committed; the task then holds no invocation. */
-    sleepUntil: (until: number, checkpoint: unknown, context: Context) => run<null>(context, "sleepUntil", { taskId: who.taskId, until, checkpoint }).then(() => undefined),
+    sleepUntil: (until: number, checkpoint: unknown, context: Context) => run<null>(context, "sleepUntil", { taskId: who.taskId, until: typeof until === "number" && !Number.isFinite(until) ? String(until) : until, checkpoint }).then(() => undefined),
     conversation: async (id: number, context: Context) => options.conversation ? options.conversation(id, binding, context) : undefined,
     /** The serialized watch of a committed document; it stops when the invocation ends. */
     watchDoc: async (token: AnyDocToken, ...args: unknown[]) => {
@@ -168,17 +169,34 @@ export function invocationApi(options: HostApiOptions, who: InvocationIdentity &
   }
 }
 
+/** `CommitOptions` (types.ts): when a commit reaches Storage (spec section 4.1). */
+export type CommitOptions = { readonly persistence?: { readonly kind: "immediate" } | { readonly kind: "deferred"; readonly withinMs?: number } }
+
+/**
+ * session.ts #deferral: the persistence a commit asks the core for, or `undefined` when it is immediate. `withinMs` is checked here, as the types cannot
+ * (a TypeError); absent, the core uses the Session's default window. Infinity travels as the largest finite number, which JSON can carry.
+ */
+export function wirePersistence(persistence: CommitOptions["persistence"] | undefined): { kind: "deferred"; withinMs?: number } | undefined {
+  if (persistence?.kind !== "deferred") return undefined
+  const ms = persistence.withinMs
+  if (ms === undefined) return { kind: "deferred" }
+  if (typeof ms !== "number" || !(ms >= 0)) throw new TypeError("CommitPersistence.withinMs must be a number of milliseconds, 0 or more")
+  return { kind: "deferred", withinMs: Number.isFinite(ms) ? ms : Number.MAX_VALUE }
+}
+
 /** `commit(change, context)` bound to an invocation: the transaction carries the invocation so the core can reject it once the invocation ends. */
 export function invocationCommit(options: HostApiOptions, who: { invocation?: number; conversationId?: number }, binding: InvocationBinding = UNBOUND) {
-  const begin = () => options.client.begin({ ...(who.invocation === undefined ? {} : { invocation: who.invocation }), ...(who.conversationId === undefined ? {} : { conversationId: who.conversationId }) })
+  // The commit's Context (Context.telemetry): its span and carrier go to the core, which records the commit's events there and gives a task it creates the carrier.
+  const begin = (context: Context, persistence?: { kind: "deferred"; withinMs?: number }) => options.client.begin({ ...(who.invocation === undefined ? {} : { invocation: who.invocation }), ...(who.conversationId === undefined ? {} : { conversationId: who.conversationId }), ...(persistence === undefined ? {} : { persistence }), ...spanFields(options.client, context) })
   // Not async, and no cancellable wait: Pi's commitWith checks the signal when the job starts and then ignores it (session.ts:411), so the caller's
   // promise is the commit's own and settles the hops after the core's ack that Pi's `run` does. A commit of an invocation that has ended rejects as
   // 'invocation has ended', also when the core refused it for that reason (`onError`).
-  return <T>(change: (tx: TxProxy, current?: unknown) => T | Promise<T>, context: Context): Promise<T> => {
-    try { binding.check(); context.abortSignal?.throwIfAborted() } catch (error) { return Promise.reject(error) }
+  return <T>(change: (tx: TxProxy, current?: unknown) => T | Promise<T>, context: Context, commitOptions?: CommitOptions): Promise<T> => {
+    let persistence: ReturnType<typeof wirePersistence>
+    try { binding.check(); persistence = wirePersistence(commitOptions?.persistence); context.abortSignal?.throwIfAborted() } catch (error) { return Promise.reject(error) }
     let leave: (() => void) | undefined
     // The commit holds the line from `begin` until its answer settles: publications that arrive meanwhile are its own (commit-context.ts).
-    const held = () => { const ready = begin(); ready.then(() => { leave = enterCommit(options.client, context) }, () => {}); return ready }
+    const held = () => { const ready = begin(context, persistence); ready.then(() => { leave = enterCommit(options.client, context) }, () => {}); return ready }
     const done = runCommit(held, change,
       // Only a task invocation's commit returns the next task state; a Session commit hands its result (a draft that the commit revokes) back unread.
       who.invocation === undefined ? undefined : result => result, () => binding.check(),

@@ -263,7 +263,7 @@ func (r *run) answer(message *jv.Object) {
 				if _, err := tx.AppendEntry(r.conv, entryDraft(KindUser, jobj("model", []any{user}))); err != nil {
 					return nil, err
 				}
-				next, err := createGeneration(tx, r.conv)
+				next, err := createGeneration(tx, r.conv, nil)
 				if err != nil {
 					return nil, err
 				}
@@ -284,15 +284,16 @@ func (r *run) answer(message *jv.Object) {
 	})
 }
 
-// createGeneration creates a generation owned by its conversation.
-func createGeneration(tx *session.Tx, conv ID) (ID, error) {
-	return tx.CreateTask(GenerationDef, jv.NewObject(), session.TaskOptions{ConversationID: conv})
+// createGeneration creates a generation owned by its conversation; a run's inputs are the submissions whose carriers it takes as its
+// trace and links (generation.ts createGeneration, `submissionIds`).
+func createGeneration(tx *session.Tx, conv ID, inputs []ID) (ID, error) {
+	return tx.CreateTask(GenerationDef, jv.NewObject(), session.TaskOptions{ConversationID: conv, Submissions: inputs})
 }
 
 // startRun starts a run for inputs, placed input submissions: a new generation takes pi.live.run. It removes `runFailure`, unless
 // keepFailure: a run started in the commit that ended the failed one keeps its failure.
 func startRun(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID, keepFailure bool) error {
-	id, err := createGeneration(tx, conv)
+	id, err := createGeneration(tx, conv, inputs)
 	if err != nil {
 		return err
 	}
