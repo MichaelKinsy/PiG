@@ -67,8 +67,12 @@ func (p *PhaseInfo) Answered(v any, err error) {
 	var span uint32
 	var carrier any
 	if o, ok := v.(*jv.Object); ok && err == nil {
-		n, _ := getNum(o, "span")
-		span = uint32(n)
+		// The handle is the host's own integer, not a Pi number: anything but a value that fits one (NaN, a negative, a fraction past the
+		// range) names no span.
+		if n, ok := getNum(o, "span"); ok && n >= 0 && n <= 4294967295 {
+			//portlint:allow numbers a span handle the host assigned, range-checked to a uint32 above; no JS number semantics are involved
+			span = uint32(n)
+		}
 		carrier, _ = o.Get("carrier")
 	}
 	p.Started(span, carrier)
