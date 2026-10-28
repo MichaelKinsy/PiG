@@ -33,7 +33,7 @@ func writeOverlayFixture(t *testing.T, root string) {
 	files := map[string]string{
 		filepath.Join(root, "hello", "go.mod"):       "module example.com/overlay/hello\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n",
 		filepath.Join(root, "hello", "extension.go"): overlayHelloExtension,
-		filepath.Join(root, "accepting.yaml"):        "name: accepting\nmodel:\n  provider: test-faux\n  name: faux-1\nstrip:\n  tools: [ls]\nbuild:\n  allowOverlays: true\nextensions:\n  - name: hello\n    origins: [local:./hello]\n",
+		filepath.Join(root, "accepting.yaml"):        "name: accepting\nmodel:\n  provider: test-faux\n  name: faux-1\nstrip:\n  tools: [ls]\n  extensions: [mcp]\nbuild:\n  allowOverlays: true\nextensions:\n  - name: hello\n    origins: [local:./hello]\n",
 		filepath.Join(root, "closed.yaml"):           "name: closed\nmodel:\n  provider: test-faux\n  name: faux-1\nstrip:\n  tools: [ls]\nextensions:\n  - name: hello\n    origins: [local:./hello]\n",
 		filepath.Join(root, "overlays", "flag.mjs"):  overlayFlagExtension,
 		filepath.Join(root, "overlays", "add.yaml"):  "name: add\nextensions:\n  - name: flag\n    origins: [local:./flag.mjs]\nstrip:\n  tools: [grep]\n",
@@ -169,18 +169,16 @@ func TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo(t *testing.T) {
 		body string
 		want []string
 	}{
-		{"replacing the Binary's extension", "name: x\nextensions:\n  - name: hello\n    origins: [local:./flag.mjs]\n",
-			[]string{`extensions[hello]`, `Piglet Binary "accepting"`, "cannot replace it"}},
-		{"removing the Binary's extension", "name: x\nextends:\n  source: local:./mid.yaml\n  remove:\n    extensions: [hello]\n",
-			[]string{`extensions[hello]`, `Piglet Binary "accepting"`, "cannot remove it"}},
+		{"replacing the Binary's fused extension with another under its name", "name: x\nextends:\n  allowWiden: true\nextensions:\n  - name: hello\n    origins: [local:./flag.mjs]\n",
+			[]string{`extensions[hello]`, `Piglet Binary "accepting"`, "cannot replace it with another one under the same name"}},
 		{"setting the frontend slot", "name: x\nslots:\n  frontend:\n    member: ./tern\n",
-			[]string{"slots.frontend", `Piglet Binary "accepting"`}},
-		{"setting the system prompt", "name: x\nsystemPrompt:\n  text: other\n",
-			[]string{"systemPrompt", `Piglet Binary "accepting"`, "--append-system-prompt"}},
-		{"widening ambient discovery", "name: x\ndiscovery:\n  extensions: [workspace]\n",
-			[]string{"discovery", `Piglet Binary "accepting"`, "cannot add ambient Resource scopes"}},
-		{"re-enabling a stripped built-in", "name: x\nextends:\n  source: local:./mid.yaml\n  allowWiden: true\n  remove:\n    strip:\n      tools: [ls]\n",
-			[]string{`strip.tools: "ls" is stripped by`, `Piglet Binary "accepting"`, "cannot re-enable it"}},
+			[]string{"slots.frontend", `Piglet Binary "accepting"`, "built without a frontend member", "compiled into the Binary"}},
+		{"removing a frontend slot the Binary does not have", "name: x\nextends:\n  remove:\n    slots: [frontend]\n",
+			[]string{"remove.slots", `Piglet Binary "accepting"`}},
+		{"re-enabling a built-in a build tag compiled out", "name: x\nextends:\n  allowWiden: true\n  remove:\n    strip:\n      extensions: [mcp]\n",
+			[]string{`strip.extensions: "mcp"`, `Piglet Binary "accepting"`, "pig_strip_mcp", "cannot re-enable it"}},
+		{"widening without allowWiden", "name: x\ndiscovery:\n  extensions: [workspace]\n",
+			[]string{"requires extends.allowWiden: true"}},
 	} {
 		t.Run("refuses "+tc.name, func(t *testing.T) {
 			overlay := filepath.Join(root, "overlays", "refused.yaml")
@@ -201,4 +199,35 @@ func TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo(t *testing.T) {
 			}
 		})
 	}
+
+	// The overlay merges as an extends child: it removes the fused extension (so the Binary does not start it), re-enables a
+	// runtime strip entry and replaces the system prompt.
+	t.Run("an overlay removes a fused member and re-enables a runtime strip entry", func(t *testing.T) {
+		overlay := filepath.Join(root, "overlays", "remove.yaml")
+		body := "name: lite\nsystemPrompt:\n  text: overlay prompt\nextends:\n  allowWiden: true\n  remove:\n    extensions: [hello]\n    strip:\n      tools: [ls]\n"
+		if err := os.WriteFile(overlay, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		code, output := startPigletBinary(t, accepting, "--piglet", overlay, "--help")
+		if code != 0 {
+			t.Fatalf("exit %d\n%s", code, output)
+		}
+		if strings.Contains(output, "--base-flag") {
+			t.Fatalf("the removed fused extension still started:\n%s", output)
+		}
+		if !strings.Contains(output, "  ls         - ") {
+			t.Fatalf("the re-enabled runtime strip entry stays stripped:\n%s", output)
+		}
+	})
+	t.Run("--system-prompt is accepted by a Binary that accepts overlays and refused by one that does not", func(t *testing.T) {
+		t.Setenv("PIG_TEST_FAUX", "1")
+		t.Setenv("PIG_OFFLINE", "1")
+		if code, output := startPigletBinary(t, accepting, "--system-prompt", "Answer with one word.", "--no-session", "-p", "What is 20+22?"); code != 0 || !strings.Contains(output, "42") {
+			t.Fatalf("accepting Binary: exit %d\n%s", code, output)
+		}
+		code, output := startPigletBinary(t, closed, "--system-prompt", "Answer with one word.", "--no-session", "-p", "What is 20+22?")
+		if code != 1 || !strings.Contains(output, "baseline system prompt cannot be replaced") {
+			t.Fatalf("closed Binary: exit %d\n%s", code, output)
+		}
+	})
 }
