@@ -22,7 +22,7 @@ func reloadResourceSnapshotProvider(cwd, agentDir string, sm *codingagent.Settin
 		// One walk of the ancestor .agents/skills directories serves the skills and their source infos, as Pi's resolve() makes one.
 		skillScan := codingagent.NewAgentsSkillScan(cwd)
 		skillPaths := collectSkillInputsIn(skillScan, cwd, agentDir, sm, flags, skillScopes)
-		contextFiles := loadContextFiles(cwd, agentDir, flags.NoContextFiles)
+		contextFiles := loadContextFiles(cwd, agentDir, flags.NoContextFiles, sm.IsProjectTrusted())
 		infos := resourceSourceInfosIn(skillScan, cwd, agentDir, sm, flags, extConfigs)
 		return codingagent.ReloadResourceSnapshot{
 			PromptPaths:             promptPaths,

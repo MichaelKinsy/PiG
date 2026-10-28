@@ -57,11 +57,12 @@ func resolvePromptInputs(cwd, agentDir string, flags Args, projectTrusted bool) 
 	}
 }
 
-func loadContextFiles(cwd, agentDir string, disabled bool) []codingagent.ContextFile {
+// loadContextFiles loads the context files of a run. pig divergence (D210): with projectTrusted false the project's own files are skipped.
+func loadContextFiles(cwd, agentDir string, disabled, projectTrusted bool) []codingagent.ContextFile {
 	if disabled {
 		return nil
 	}
-	return codingagent.LoadProjectContextFiles(cwd, agentDir)
+	return codingagent.LoadProjectContextFilesScoped(cwd, agentDir, projectTrusted)
 }
 
 func discoverPromptFile(cwd, agentDir, name string, projectTrusted bool) string {

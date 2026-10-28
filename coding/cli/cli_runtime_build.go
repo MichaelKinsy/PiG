@@ -620,7 +620,7 @@ func (b *cliRuntimeBuilder) loadPromptResources(build *cliBuild, agentToolNames 
 		promptSkills = append(promptSkills, prompts.Skill{Name: s.Name, Description: s.Description, Path: s.FilePath, DisableModelInvocation: s.DisableModelInvocation})
 	}
 	trace.Mark("pre-system-prompt")
-	projectCtxFiles := loadContextFiles(cwd, b.agentDir, build.Flags.NoContextFiles)
+	projectCtxFiles := loadContextFiles(cwd, b.agentDir, build.Flags.NoContextFiles, build.ProjectTrusted)
 	promptCtxFiles := toPromptContextFiles(projectCtxFiles)
 	resolvedPrompts := resolvePromptInputs(cwd, b.agentDir, build.Flags, build.ProjectTrusted)
 	promptOptions := prompts.Options{

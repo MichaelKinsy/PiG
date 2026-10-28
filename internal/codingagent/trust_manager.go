@@ -135,6 +135,11 @@ func HasTrustRequiringProjectResources(cwd string) bool {
 		}
 	}
 
+	// pig divergence (D210): a project context file (AGENTS.md or CLAUDE.md below the user's home directory) needs trust, as .agents/skills does.
+	if len(WithheldProjectContextFiles(current, "")) > 0 {
+		return true
+	}
+
 	for {
 		if !probe.Set(current, ".agents", "skills").Is(userAgentsSkills) && probe.Exists() {
 			return true
