@@ -635,8 +635,9 @@ func (h boundHandle) WaitForIdle(ctx context.Context) error {
 // it once the invocation ended or the task carries an abort mark, hands the task record it read (ready.current) to change, and
 // takes the returned state as the task's next state in the same commit (nil leaves it).
 func (r *taskRuntime) Commit(ctx context.Context, change func(tx durable.Tx, current durable.ErasedRunningTask) (*durable.NextTaskState[durable.JsonValue, durable.JsonValue], error), options ...durable.CommitOptions) error {
-	// The core stores every commit before it returns: options.Persistence is a permission (spec §4.1), so a deferred commit is stored at once.
-	if _, err := durable.SingleCommitOptions(options); err != nil {
+	// options.Persistence is a permission (spec section 4.1): a commit that returns a state is stored at once.
+	chosen, err := durable.SingleCommitOptions(options)
+	if err != nil {
 		return err
 	}
 	if err := r.check(); err != nil {
@@ -656,7 +657,7 @@ func (r *taskRuntime) Commit(ctx context.Context, change func(tx durable.Tx, cur
 			r.s.watches.leaveCommit(ctx)
 		}
 	}()
-	tx, err := r.s.client.Begin(ctx, map[string]any{"invocation": r.invocationID, "conversationId": r.conversation})
+	tx, err := r.s.client.Begin(ctx, persistenceBinding(map[string]any{"invocation": r.invocationID, "conversationId": r.conversation}, chosen))
 	if err != nil {
 		return r.ended(err)
 	}

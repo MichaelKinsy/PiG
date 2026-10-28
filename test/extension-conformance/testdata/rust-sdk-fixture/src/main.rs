@@ -2532,6 +2532,31 @@ fn main() {
             CommandResult::Ok
         },
     );
+    let rw_background_subscriber = ext.event_subscriber();
+    let rw_background_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> = Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "rw_idle_background",
+        "Poll isIdle from a background callback after agent_end",
+        move |_ctx, _args| {
+            let subscription = rw_background_subscriber.on_event("agent_end", |ctx, _data| {
+                let ctx = ctx.clone();
+                std::thread::spawn(move || {
+                    let mut idle = false;
+                    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+                    while !idle && std::time::Instant::now() < deadline {
+                        idle = ctx.is_idle().unwrap_or(false);
+                        if !idle {
+                            std::thread::sleep(std::time::Duration::from_millis(10));
+                        }
+                    }
+                    ctx.notify(&format!("rw_idle_background={idle}"), "info");
+                });
+                Ok(None)
+            });
+            rw_background_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "set_model",
         "Switch to the model in the arguments",

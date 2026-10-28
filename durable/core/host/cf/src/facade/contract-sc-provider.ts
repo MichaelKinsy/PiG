@@ -20,7 +20,13 @@ export async function withStorage(use: (storage: any) => Promise<void>): Promise
   if (step?.status) throw new RejectedError(step.error?.name, step.error?.message, step.error?.raw ?? "")
   const call = async (method: string, args: Record<string, unknown> = {}) => (await client.api(`storage.${method}`, args)) ?? undefined
   const storage = {
-    commit: (writes: unknown[]) => call("commit", { writes }),
+    // types.ts Storage.commit(writes, adopt, context): the batch is durable when the core's commit answers, so the one adoption is made
+    // there, synchronously, before the promise resolves; a rejected commit adopts nothing.
+    commit: async (writes: unknown[], adopt: (seq: number) => void, _context?: unknown) => {
+      const seq = (await call("commit", { writes })) as number
+      adopt(seq)
+      return seq
+    },
     mintId: () => call("mintId"),
     conversation: (id: number) => call("conversation", { id }),
     scanConversations: (query: unknown, limit: number, cursor?: unknown) => call("scanConversations", { query, limit, cursor }),

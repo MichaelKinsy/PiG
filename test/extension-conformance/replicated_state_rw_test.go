@@ -142,3 +142,19 @@ func TestReplicatedStateIsIdleAfterAMessageFromAgentSettled(t *testing.T) {
 		}
 	})
 }
+
+// Pi's runner.ts createContext reads the Session's isIdle live on every call (agent-session.ts isIdle), so a callback that runs after the extension's last subscribed event reads the Session as it is then. agent_end fires while the run is still busy and no event follows it, so an SDK that answers from a snapshot pushed with the last event keeps reporting a busy Session after the run ended. Every SDK polls isIdle from a background callback it starts in its agent_end handler and reports the last answer.
+func TestReplicatedStateIsIdleIsLiveInABackgroundCallback(t *testing.T) {
+	runReplicatedStateRow(t, func(t *testing.T, h *harness, session *coding.Session, faux *ai.FauxProviderHandle) {
+		faux.SetResponses([]ai.FauxResponseStep{
+			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
+		})
+		runConformanceCommand(t, h, "rw_idle_background")
+		if err := session.Prompt(t.Context(), "go"); err != nil {
+			t.Fatal(err)
+		}
+		if got, want := reportedLine(t, h, "rw_idle_background="), "rw_idle_background=true"; got != want {
+			t.Fatalf("the background callback read %q, want %q", got, want)
+		}
+	})
+}

@@ -1,0 +1,3 @@
+### Fixed
+
+- Durable core: a Harness opened through the TypeScript host honours `HarnessOptions.setTimer` and `onWake` (sleeping tasks arm host timers or wake the host once per change, a background timer the host declines is dropped, a foreground one it declines or throws on falls back to `setTimeout` and is reported once, `TaskRuntime.setTimer` timers end with their invocation) and `settings.restartLimit` (including `Infinity`) reaches the core, so a crash-looping task parks. A reservation commit that the host's Storage holds while `close()` seals the Harness now lands and is written back as pending instead of being dropped, and a `sleepUntil` of `NaN` or an infinity is rejected as Pi rejects it. <!-- fix: 432775653a -->

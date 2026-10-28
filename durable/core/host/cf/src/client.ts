@@ -42,7 +42,9 @@ export class CoreClient {
   /** HarnessOptions.conversationCreated: run by the transaction that created or forked a conversation, last in the creation hook (harness.ts conversationCreated). */
   onConversationCreated?: (tx: unknown, record: unknown) => unknown
   /** The sizes of a session-mode core's document cache, as its last doc_cache notice said (session.ts documentCacheSizes is synchronous). */
-  docCache: { readonly cached: number; readonly idle: number; readonly attached: number; readonly sweeps: number } = { cached: 0, idle: 0, attached: 0, sweeps: 0 }
+  docCache: { readonly cached: number; readonly idle: number; readonly attached: number; readonly sweeps: number; readonly held: number } = { cached: 0, idle: 0, attached: 0, sweeps: 0, held: 0 }
+  /** Told which documents the core's cache dropped, with the record IDs: the host forgets the values it holds of them (facade/harness.ts documentValues). */
+  onDropped: ((documents: { id: number; address: string }[]) => void) | undefined
   /** The last wake the core published, and the host's callback for each (HarnessOptions.onWake); the core arms no timer for sleeping tasks when the host takes it. */
   wake: { active: boolean; at?: number } | undefined
   onWake: ((wake: { active: boolean; at?: number }) => void) | undefined
@@ -114,7 +116,10 @@ export class CoreClient {
         return
       }
       case NOTICE.doc_cache: {
-        this.docCache = JSON.parse(dec.decode(n.payload))
+        const body = JSON.parse(dec.decode(n.payload)) as typeof this.docCache & { dropped?: { id: number; address: string }[] }
+        // Documents the core's cache dropped (core/sweep.go): the values this host holds of them go too.
+        if (body.dropped !== undefined) { this.onDropped?.(body.dropped); delete body.dropped }
+        this.docCache = body
         return
       }
       case NOTICE.index_sizes: {
@@ -172,7 +177,7 @@ export class CoreClient {
       const id = this.nextRequest++
       const bytes = apiBytes(id, { op, ...args })
       // Every api op the host sends is a read, a wait, or a registration the new core takes again; the storage-mode writes run on hosts without a renewal.
-      this.requests.set(id, { waits: op.startsWith("waitFor"), sent: { kind: EVENT.api, bytes, idempotent: !op.startsWith("storage."), bound: args.invocation !== undefined }, resolve: value => { settled = true; resolve(revive ? revive(value as T) : value as T) }, reject: error => {
+      this.requests.set(id, { waits: op.startsWith("waitFor"), sent: { kind: EVENT.api, bytes, idempotent: !op.startsWith("storage.") && op !== "adopt", bound: args.invocation !== undefined }, resolve: value => { settled = true; resolve(revive ? revive(value as T) : value as T) }, reject: error => {
         // A rejection the caller answers by repeating the request (a read that needs the definition's migration) is settled by the repeat's answer, so a success spends no pass of its own.
         let again: Record<string, unknown> | undefined
         try { again = retry?.(error) } catch (e) { settled = true; return reject(e as Error) }
@@ -234,7 +239,7 @@ export class CoreClient {
   }
 
   /** Open a transaction on the Session line. Resolves at `ready`; `waiting` only means the line is held and `ready` follows. */
-  begin(options: { invocation?: number; conversationId?: number } = {}): Promise<TxChannel> {
+  begin(options: { invocation?: number; conversationId?: number; span?: number; trace?: unknown; persistence?: { kind: "deferred"; withinMs?: number } } = {}): Promise<TxChannel> {
     const id = this.nextTx++
     const channel = new TxChannel(this, id)
     this.txs.set(id, channel)
@@ -388,7 +393,7 @@ export class TxChannel {
     })
   }
 
-  begin(options: { invocation?: number; conversationId?: number }) {
+  begin(options: { invocation?: number; conversationId?: number; span?: number; trace?: unknown; persistence?: { kind: "deferred"; withinMs?: number } }) {
     return this.send({ op: "begin", ...options }, "ready")
   }
 

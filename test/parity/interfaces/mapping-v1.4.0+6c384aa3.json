@@ -208687,9 +208687,9 @@
         "call:durable/harness/harness.go#conversationImpl.Commit"
       ],
       "evidence": [
+        "test:durable/core/driver/session_deferred_commits_core_test.go#TestCoreADeferredCommitWithANegativeWindowIsRejected",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestACrashLeavesStorageAtTheLastStoredState",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestAHeldDocumentIsPinned",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges"
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestAHeldDocumentIsPinned"
       ]
     },
     {
@@ -208709,9 +208709,9 @@
         "call:durable/session/held.go#SessionImpl.deferral"
       ],
       "evidence": [
+        "test:durable/core/driver/session_deferred_commits_core_test.go#TestCoreADeferredCommitWithANegativeWindowIsRejected",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestHoldingADeferredCommit",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestStoringHeldChanges",
-        "test:durable/session/session_adoption_test.go#TestPublicationAtAdoption"
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestStoringHeldChanges"
       ]
     },
     {
@@ -209382,7 +209382,7 @@
         "public-api:durable/harness/types.go#Conversation.Context"
       ],
       "evidence": [
-        "test:durable/harness/context_shared_test.go#TestBeforeRequestHookChangesDoNotReachTheStoredContext"
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209403,7 +209403,7 @@
         "public-api:durable/harness/types.go#Conversation.Context"
       ],
       "evidence": [
-        "test:durable/harness/context_shared_test.go#TestBeforeRequestHookChangesDoNotReachTheStoredContext"
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209528,7 +209528,7 @@
         "public-api:durable/harness/types.go#Conversation.Reset"
       ],
       "evidence": [
-        "test:durable/harness/harness_events_test.go#TestAgentEvents"
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209549,7 +209549,7 @@
         "public-api:durable/harness/types.go#Conversation.Reset"
       ],
       "evidence": [
-        "test:durable/harness/harness_events_test.go#TestAgentEvents"
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209847,8 +209847,8 @@
       ],
       "evidence": [
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments",
-        "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreWaitForIdleCountsBlockedWorkAndIgnoresBackgroundTasks"
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore",
+        "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments"
       ]
     },
     {
@@ -211594,9 +211594,9 @@
         "call:durable/entries.go#DefineEntry"
       ],
       "evidence": [
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore",
         "test:durable/entries_behavior_test.go#TestDefineEntryGuardsByKindAndDecodesTypedData",
-        "test:durable/harness/harness_read_only_test.go#TestReadOnlyHarness",
-        "test:durable/harness/harness_submissions_test.go#TestSubmissions"
+        "test:durable/harness/harness_read_only_test.go#TestReadOnlyHarness"
       ]
     },
     {
@@ -212193,7 +212193,7 @@
       "evidence": [
         "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks",
         "test:durable/core/driver/harness_inspect_core_test.go#TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode",
-        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks"
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore"
       ]
     },
     {
@@ -219490,9 +219490,9 @@
         "call:durable/harness/generation.go#finishToolRound"
       ],
       "evidence": [
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff",
         "test:durable/examples/agent_examples_test.go#TestExample26PlanMode",
-        "test:durable/harness/agent_callers_e2e_test.go#TestAddToolsAppliesToModelToolsSoTheModelIsOfferedTheAddedTools",
-        "test:durable/harness/agent_model_tools_test.go#TestAddToolsExtendsToolsAndModelTools"
+        "test:durable/harness/agent_callers_e2e_test.go#TestAddToolsAppliesToModelToolsSoTheModelIsOfferedTheAddedTools"
       ]
     },
     {
@@ -222155,9 +222155,9 @@
         "call:durable/harness/generation.go#answer"
       ],
       "evidence": [
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore",
         "test:durable/harness/harness_generation_test.go#TestGeneration",
-        "test:durable/harness/harness_read_only_test.go#TestReadOnlyHarness",
-        "test:durable/harness/harness_submissions_test.go#TestSubmissionDraftIgnoresTheFieldsOfTheOtherType"
+        "test:durable/harness/harness_read_only_test.go#TestReadOnlyHarness"
       ]
     },
     {
@@ -222200,8 +222200,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks",
-        "test:durable/core/driver/harness_reports_core_test.go#TestReports",
-        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks"
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore",
+        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
       ]
     },
     {
@@ -266260,9 +266260,9 @@
         "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
-        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing",
+        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
       ]
     },
     {
@@ -266282,9 +266282,9 @@
         "call:tui/image.go#NewImage"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
-        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing",
+        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
       ]
     },
     {
@@ -266528,9 +266528,9 @@
         "call:tui/image.go#Image.Render"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
-        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing",
+        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
       ]
     },
     {
@@ -266592,9 +266592,9 @@
         "call:tui/image.go#Image.Render"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/loader_image_parity_test.go#TestImage_Render_UsesMaxHeightCells",
-        "test:tui/image_render_oracle_test.go#TestImageRenderMatchesPi"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes"
       ]
     },
     {
@@ -266637,7 +266637,7 @@
       "evidence": [
         "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues",
         "test:internal/codingagent/tools/render_text_output_oracle_test.go#TestGetTextOutputMatchesPi",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -271688,8 +271688,8 @@
       ],
       "evidence": [
         "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle"
+        "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -271793,9 +271793,9 @@
         "call:tui/tui.go#OverlayHandle.Hide"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop",
+        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle"
       ]
     },
     {
@@ -271815,9 +271815,9 @@
         "call:tui/tui.go#OverlayHandle.Hide"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop",
+        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle"
       ]
     },
     {
@@ -281732,9 +281732,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.Flash"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_alt_screen_test.go#TestAltScreenFlashComposited",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenCopySelectionErrorMessages"
+        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenCopySelectionErrorMessages",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -281754,9 +281754,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.Flash"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_alt_screen_test.go#TestAltScreenFlashComposited",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenCopySelectionErrorMessages"
+        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenCopySelectionErrorMessages",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -281776,7 +281776,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.FullRedraws"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrolledFramesShowPisScreens"
       ]
     },
     {
@@ -282531,9 +282533,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -282553,9 +282555,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -282661,9 +282663,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollBy"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsLeastRecentlyVisibleKittyImageWhenCacheFull",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsOffscreenKittyImagesOverDecodedMemoryQuota"
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenDoesNotScrollImageRows",
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrolledFramesShowEveryRow",
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrollsRowsDownWhenScrolledBack"
       ]
     },
     {
@@ -282683,9 +282685,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollBy"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsLeastRecentlyVisibleKittyImageWhenCacheFull",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsOffscreenKittyImagesOverDecodedMemoryQuota"
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenDoesNotScrollImageRows",
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrolledFramesShowEveryRow",
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrollsRowsDownWhenScrolledBack"
       ]
     },
     {
@@ -282705,8 +282707,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollToBottom"
       ],
       "evidence": [
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
         "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes"
       ]
     },
     {
@@ -282726,8 +282729,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollToBottom"
       ],
       "evidence": [
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
         "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes"
       ]
     },
     {
@@ -282747,9 +282751,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollToTop"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsLeastRecentlyVisibleKittyImageWhenCacheFull",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollToPromptJumpsToOsc133Marker"
       ]
     },
     {
@@ -282769,9 +282773,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollToTop"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsLeastRecentlyVisibleKittyImageWhenCacheFull",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollToPromptJumpsToOsc133Marker"
       ]
     },
     {
@@ -282963,7 +282967,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.SetShowHardwareCursor"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrolledFramesShowPisScreens"
       ]
     },
     {
@@ -282983,7 +282989,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.SetShowHardwareCursor"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrolledFramesShowPisScreens"
       ]
     },
     {
@@ -283091,9 +283099,9 @@
         "call:tui/tui.go#tuiBase.ShowOverlay"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -283113,9 +283121,9 @@
         "call:tui/tui.go#tuiBase.ShowOverlay"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -283178,8 +283186,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -283200,8 +283208,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -283265,9 +283273,9 @@
         "call:tui/tui_alt_screen.go#NewTuiAltScreen"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/assistant_mouse_upstream_test.go#TestAssistantThinkingClicksThroughTerminal",
-        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal"
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
+        "test:tui/key_event_type_upstream_test.go#TestIsFocusableAndIsViewportTUI"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -284415,9 +284423,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -284437,9 +284445,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -284723,9 +284731,9 @@
         "call:tui/tui.go#tuiBase.ShowOverlay"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -284745,9 +284753,9 @@
         "call:tui/tui.go#tuiBase.ShowOverlay"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -285728,7 +285736,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.FullRedraws"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrolledFramesShowPisScreens"
       ]
     },
     {
@@ -286260,9 +286270,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -286282,9 +286292,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -286645,8 +286655,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -286667,8 +286677,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {

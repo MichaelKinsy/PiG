@@ -48,7 +48,7 @@ async function runTs(o) {
 export const outsideBenchSlice = o => (o.parallel ? "parallel rounds" : o.stream ? "streaming partials" : o.fault ? "provider faults and retries" : o.subagent ? "sub-agents" : o.seed ? "seeding" : undefined)
 
 export const IMPLS = {
-	pi: { label: "pi-durable@06a46693", reference: true, runBench: runPi },
+	pi: { label: "pi-durable@6c384aa3", reference: true, runBench: runPi },
 	ts: {
 		label: "ts-core (durable-core-ts de1fac200)", contexts: ["bench"], slice: "bench", runBench: runTs,
 		/** What the bench slice of the control cannot run: one conversation, sequential rounds, no streaming, no faults, no sub-agents. */
