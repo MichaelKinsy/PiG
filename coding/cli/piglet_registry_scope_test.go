@@ -128,6 +128,7 @@ func TestPigletHidingEveryMCPToolLeavesNoneForCodemodeAndToolSearch(t *testing.T
 		t.Parallel()
 		result := runPigletRegistry(t, pigletRegistryRun{
 			servers: []mcpBinaryServer{docsServer("codemode")},
+			args:    []string{"--tools", "read,codemode,tool_search"},
 			steps:   []chatStep{codemodeCall("mcp__docs__a"), chatText("done")},
 		})
 		requests := result.chat.recorded()
@@ -145,6 +146,7 @@ func TestPigletHidingEveryMCPToolLeavesNoneForCodemodeAndToolSearch(t *testing.T
 		t.Parallel()
 		result := runPigletRegistry(t, pigletRegistryRun{
 			servers: []mcpBinaryServer{docsServer("deferred")},
+			args:    []string{"--tools", "read,codemode,tool_search"},
 			steps:   []chatStep{chatCall("tool_search", map[string]any{"query": "docs", "limit": 10}), chatText("done")},
 		})
 		requests := result.chat.recorded()
@@ -176,10 +178,12 @@ func TestPigletRemovesHiddenExtensionToolsFromTheRegistry(t *testing.T) {
 	}
 	t.Parallel()
 	const scopedTools = "    tools: [shown_codemode, shown_deferred]\n"
+	// The allowlist names every tool of the extension, so only the Piglet hides some.
+	scopedToolsFlag := []string{"--tools", "read,codemode,tool_search,shown_codemode,shown_deferred,hidden_codemode,hidden_deferred"}
 	t.Run("codemode exposure", func(t *testing.T) {
 		t.Parallel()
 		result := runPigletRegistry(t, pigletRegistryRun{
-			scopedExtension: scopedToolsExtension, scopedTools: scopedTools,
+			scopedExtension: scopedToolsExtension, scopedTools: scopedTools, args: scopedToolsFlag,
 			steps: []chatStep{codemodeCall("hidden_codemode"), codemodeCall("shown_codemode"), chatText("done")},
 		})
 		requests := result.chat.recorded()
@@ -196,7 +200,7 @@ func TestPigletRemovesHiddenExtensionToolsFromTheRegistry(t *testing.T) {
 	t.Run("deferred exposure", func(t *testing.T) {
 		t.Parallel()
 		result := runPigletRegistry(t, pigletRegistryRun{
-			scopedExtension: scopedToolsExtension, scopedTools: scopedTools,
+			scopedExtension: scopedToolsExtension, scopedTools: scopedTools, args: scopedToolsFlag,
 			steps: []chatStep{chatCall("tool_search", map[string]any{"query": "registry probe", "limit": 10}), chatText("done")},
 		})
 		requests := result.chat.recorded()
