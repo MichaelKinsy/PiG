@@ -2,6 +2,7 @@ package session
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/durable/core/session/hopcost"
 
@@ -648,12 +649,15 @@ type Change struct {
 	Source         DocCopySource
 }
 
-// adopt applies the commit's effect to the Session's caches and returns the
-// document publications.
+// adopt applies the commit's effect to the Session's caches and returns the document publications: this commit's own changes as
+// memory adopted them, and what Storage got, which differs only when the commit also stored held changes, which precede its own
+// (transaction.ts adopt, AdoptedDocuments); stored is nil when it is the same as observed.
 //
 //go:noinline
-func (tx *Tx) adopt(seq Seq) ([]Change, error) {
+func (tx *Tx) adopt(seq Seq) (observed, stored []Change, err error) {
 	var pubs []Change
+	var storedPubs []Change
+	storedSet := false
 	for _, p := range tx.plans {
 		record := p.record
 		if !p.committed {
@@ -671,7 +675,7 @@ func (tx *Tx) adopt(seq Seq) ([]Change, error) {
 			}
 			if needAdopt {
 				if err := c.tracker.Adopt(c.prepared); err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 			} else {
 				c.prepared.Abort()
@@ -692,6 +696,7 @@ func (tx *Tx) adopt(seq Seq) ([]Change, error) {
 				tx.s.touchDocument(p.addressID)
 			}
 		}
+		var change Change
 		switch {
 		case p.retire:
 			if p.committed {
@@ -699,16 +704,39 @@ func (tx *Tx) adopt(seq Seq) ([]Change, error) {
 					tx.s.dropDocument(p.addressID)
 				}
 			}
-			pubs = append(pubs, Change{Kind: ChangeDocument, Record: record, ConversationID: p.convID})
+			change = Change{Kind: ChangeDocument, Record: record, ConversationID: p.convID}
 		case p.content != nil && p.content.Kind == WriteDocCopy:
-			pubs = append(pubs, Change{Kind: ChangeDocumentCopy, Record: record, ConversationID: p.convID, Source: p.content.Source})
+			change = Change{Kind: ChangeDocumentCopy, Record: record, ConversationID: p.convID, Source: p.content.Source}
 		case p.change != nil && p.publishes():
 			var ops []delta.Op
 			if p.change.loaded != nil {
 				ops = p.change.prepared.Ops()
 			}
-			pubs = append(pubs, Change{Kind: ChangeDocument, Record: record, ConversationID: p.convID, Version: p.change.version, Value: p.change.prepared.Value(), Ops: ops})
+			change = Change{Kind: ChangeDocument, Record: record, ConversationID: p.convID, Version: p.change.version, Value: p.change.prepared.Value(), Ops: ops}
+		default:
+			continue
 		}
+		if !p.hasHeld {
+			pubs = append(pubs, change)
+			if storedSet {
+				storedPubs = append(storedPubs, change)
+			}
+			continue
+		}
+		if !storedSet {
+			storedPubs, storedSet = slices.Clone(pubs), true
+		}
+		if p.held.observed {
+			pubs = append(pubs, change)
+		}
+		// Only a document change of a loaded incarnation carries held operations.
+		if change.Kind == ChangeDocument {
+			change.Ops = p.held.ops
+		}
+		storedPubs = append(storedPubs, change)
 	}
-	return pubs, nil
+	if !storedSet {
+		return pubs, nil, nil
+	}
+	return pubs, storedPubs, nil
 }

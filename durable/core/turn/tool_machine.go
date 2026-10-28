@@ -61,6 +61,7 @@ func (r *toolRun) readCall(then func(call *jv.Object, ok bool)) {
 	// A nested call carries its own call; no entry holds it.
 	if r.isNested() {
 		if call := objField(r.input, "call"); call != nil {
+			r.rt.ToolCall(str(call, "name"), str(call, "id"))
 			then(call, true)
 			return
 		}
@@ -91,6 +92,7 @@ func (r *toolRun) readCallFrom(entry *jv.Object, then func(call *jv.Object, ok b
 			content, _ := arrayField(m, "content")
 			for _, c := range content {
 				if o, ok := c.(*jv.Object); ok && str(o, "type") == "toolCall" && str(o, "id") == callID {
+					r.rt.ToolCall(str(o, "name"), callID)
 					then(o, true)
 					return
 				}
@@ -608,7 +610,7 @@ func (r *toolRun) publishProgress(rep *reported) *progress {
 		if len(added) > 0 {
 			bytes += len(jv.Stringify(added))
 		}
-		r.rt.Commit(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		r.rt.CommitDeferred(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 			live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 			if err != nil {
 				return nil, err

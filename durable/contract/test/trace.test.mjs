@@ -38,7 +38,7 @@ const rows = loadCorpus().scenario.filter(r => (r.runner === "example" || r.runn
 test("every program row has a golden Pi interleaving, as parseable tokens", () => {
 	for (const id of rows) {
 		const file = join(traces, `${id}.pi.jsonl`)
-		if (!existsSync(file)) { assert.ok(["E16"].includes(id), `${id} has no golden trace: run node cli/trace.mjs record ${id}`); continue }
+		if (!existsSync(file)) { assert.ok(["E15"].includes(id), `${id} has no golden trace: run node cli/trace.mjs record ${id}`); continue }
 		const events = readFileSync(file, "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l))
 		assert.ok(events.length > 0 && events.every(e => ["#", ">", "!"].includes(e.k)), `${id}: tokens`)
 		// E00-E05 drive the Session kernel, not a Harness: their trace is commits only.
