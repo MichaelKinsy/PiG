@@ -221,6 +221,8 @@ func TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo(t *testing.T) {
 		}
 	})
 	t.Run("an overlay narrows a fused member's tools by naming it without origins", func(t *testing.T) {
+		t.Setenv("PIG_TEST_FAUX", "1")
+		t.Setenv("PIG_OFFLINE", "1")
 		code, output := startPigletBinary(t, accepting, "--help")
 		if code != 0 || !strings.Contains(output, "hello_tool") {
 			t.Fatalf("the fused extension's tool is not listed: exit %d\n%s", code, output)
