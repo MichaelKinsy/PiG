@@ -75,7 +75,7 @@ func (a *partialAcc) apply(p *jv.Object) {
 				if !acc.has {
 					acc.text, acc.has = acc.text[:0], true
 				}
-				acc.text = delta.AppendText(acc.text, text)
+				acc.text = jv.AppendConcat(acc.text, text)
 			} else {
 				text, _ := member(block, field).(string)
 				acc.text, acc.has = append(acc.text[:0], text...), true

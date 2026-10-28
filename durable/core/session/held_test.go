@@ -58,16 +58,15 @@ type heldTimer struct {
 }
 
 type heldRig struct {
-	t       *testing.T
-	s       *session.Session
-	store   *sessiontest.MemStore
-	clock   float64
-	timers  []*heldTimer
-	jobs    []func() error
-	conv    session.ID
-	stored  []*session.Publication
-	seen    []*session.Publication
-	checked int
+	t      *testing.T
+	s      *session.Session
+	store  *sessiontest.MemStore
+	clock  float64
+	timers []*heldTimer
+	jobs   []func() error
+	conv   session.ID
+	stored []*session.Publication
+	seen   []*session.Publication
 }
 
 func newHeldRig(t *testing.T, defaultWithin *float64) *heldRig {
@@ -105,7 +104,7 @@ func newHeldRig(t *testing.T, defaultWithin *float64) *heldRig {
 	}, session.TxScope{}); err != nil {
 		t.Fatal(err)
 	}
-	rig.commit(session.TxScope{}, func(tx *session.Tx) error { _, err := tx.Doc(heldText, session.DocArgs{Owner: rig.conv}); return err })
+	rig.mustCommit(session.TxScope{}, func(tx *session.Tx) error { _, err := tx.Doc(heldText, session.DocArgs{Owner: rig.conv}); return err })
 	return rig
 }
 
