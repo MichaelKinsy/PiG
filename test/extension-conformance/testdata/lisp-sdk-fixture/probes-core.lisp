@@ -673,6 +673,19 @@
                (lambda (ctx args) (declare (ignore args))
                  (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
                  (core-info ctx (format nil "rw_idle_after_trigger=~A" (if (pig:ctx-is-idle-p ctx) "true" "false")))))
+  (pig:command ext "rw_idle_background" "Poll isIdle from a background callback after agent_end"
+               (lambda (ctx args) (declare (ignore ctx args))
+                 (pig:on ext "agent_end"
+                         (lambda (hctx data) (declare (ignore data))
+                           (sb-thread:make-thread
+                            (lambda ()
+                              (let ((idle nil)
+                                    (deadline (+ (get-internal-real-time) (* 3 internal-time-units-per-second))))
+                                (loop until (or idle (> (get-internal-real-time) deadline))
+                                      do (setf idle (pig:ctx-is-idle-p hctx))
+                                         (unless idle (sleep 0.01)))
+                                (core-info hctx (format nil "rw_idle_background=~A" (if idle "true" "false"))))))
+                           nil))))
   (let ((settled-once nil))
     (pig:command ext "rw_idle_in_settled" "Read isIdle after a message that starts a run, sent from an agent_settled handler"
                  (lambda (ctx args) (declare (ignore ctx args))
