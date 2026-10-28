@@ -27,7 +27,7 @@ const module_ = () => new (WebAssembly.Module as unknown as new (b: Uint8Array) 
 
 type Api = { name: string; Harness: any; createRegistry: any; defineExtension: any; defineTool: any; section: any; storage: (path: string) => Promise<any>; extra: Record<string, unknown> }
 const piApi: Api = { name: "pi", Harness: Pi.Harness, createRegistry: Pi.createRegistry, defineExtension: Pi.defineExtension, defineTool: Pi.defineTool, section: Pi.section, storage: path => piStorage(path), extra: {} }
-const coreApi = (): Api => ({ name: "core", Harness: CoreHarness, createRegistry: Core.createRegistry, defineExtension: Core.defineExtension, defineTool: Core.defineTool, section: Core.section, storage: path => coreStorage(path), extra: { core: module_() } })
+const coreApi = (): Api => ({ name: "core", Harness: CoreHarness, createRegistry: Core.createRegistry, defineExtension: Core.defineExtension, defineTool: Core.defineTool, section: Core.section, storage: async path => coreStorage(path), extra: { core: module_() } })
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 const waitFor = async (check: () => Promise<boolean> | boolean) => { for (let i = 0; i < 2000; i++) { if (await check()) return; await sleep(10) } throw new Error("waitFor timed out") }
@@ -67,7 +67,7 @@ const measure = async <T,>(call: () => Promise<T>): Promise<[T, number]> => { pa
 
 const live = async (harness: any) => ((await harness.snapshot(Pi.LiveDoc, Pi.ROOT_CONVERSATION_ID, context)) ?? {}) as any
 
-type Crash = { path: string; id?: number; taskId: number; setup: () => Setup }
+type Crash = { path: string; id?: number; taskId: Pi.TaskId; setup: () => Setup }
 
 /** Open a copy of the dead store with each implementation and count the passes of the open and of `resume()` through the task's end. */
 async function counts(name: string, crash: Crash, configure: (api: Api, setup: Setup) => void) {
@@ -77,7 +77,7 @@ async function counts(name: string, crash: Crash, configure: (api: Api, setup: S
     const setup = setupOf(api)
     configure(api, setup)
     const storage = await api.storage(path)
-    const [harness, openPasses] = await measure(() => api.Harness.open(storage, { models: setup.models, registry: setup.registry, settings: setup.settings, onReport: () => {}, ...api.extra }, context))
+    const [harness, openPasses] = await measure<Pi.Harness>(() => api.Harness.open(storage, { models: setup.models, registry: setup.registry, settings: setup.settings, onReport: () => {}, ...api.extra }, context))
     await sleep(200)
     const [record, endPasses] = await measure(async () => { harness.resume(); return harness.waitForTask(crash.taskId, context) }).catch(error => { console.log(`passes ${name} ${api.name} failed: ${error?.stack ?? error}`); throw error })
     assert.equal(record.state.status, "terminal", `${api.name}: the task ended`)
@@ -222,7 +222,7 @@ test("attaching a windowed view takes Pi's passes", async () => {
   const result: Record<string, Record<string, number>> = { pi: {}, core: {} }
   const attach = async (api: Api, harness: any, rootId: number, label: string, window?: unknown) => {
     const conversation = await harness.conversation(rootId, context)
-    const [view, count] = await measure(() => conversation.watch(context, window))
+    const [view, count] = await measure<Pi.ConversationWatch>(() => conversation.watch(context, window))
     await view.stop()
     result[api.name]![label] = count
   }

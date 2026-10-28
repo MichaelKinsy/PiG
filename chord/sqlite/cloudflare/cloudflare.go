@@ -8,6 +8,7 @@ package cloudflare
 import (
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"slices"
 	"sync"
@@ -328,7 +329,10 @@ func toInt64(value DurableObjectSqlValue) int64 {
 	case int:
 		return int64(typed)
 	case float64:
-		return int64(typed)
+		if math.IsNaN(typed) || math.IsInf(typed, 0) || typed < -(1<<63) || typed >= 1<<63 {
+			return 0
+		}
+		return int64(math.Trunc(typed)) //portlint:allow numbers changes() is an integer count; Number(changes) (node.ts:102) is exact for it, and non-finite or out-of-range values (unreachable from SQLite) read as 0
 	}
 	return 0
 }

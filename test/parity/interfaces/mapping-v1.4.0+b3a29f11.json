@@ -169434,8 +169434,26 @@
     },
     {
       "id": "pkg:coding-agent/.#LoginDialogComponent",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9e7ee4f3ae17d22b661521d07aac441b87f02ed11b42de7ca266772cfe37f009"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9e7ee4f3ae17d22b661521d07aac441b87f02ed11b42de7ca266772cfe37f009",
+      "rationale": "Derived by the interface gap detector: LoginDialogComponent is Go tui/login_dialog.go#LoginDialogComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/login_dialog.go#LoginDialogComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/alt_screen_search.go#AltScreenSearchComponent.Invalidate"
+      ],
+      "evidence": [
+        "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
+        "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveStatusCoalescingUpstream",
+        "test:internal/codingagent/interactive_tui_custom_status_upstream_test.go#TestCustomEditorDoesNotInheritDefaultStatusOptIn"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:coding-agent/.#LoginDialogComponent::construct:0",
@@ -169817,13 +169835,47 @@
     },
     {
       "id": "pkg:coding-agent/.#LoginDialogComponent::property:showAuth",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:47afcde6f70ccda1abdf16c8e0a475a7ee0d12e489d7db150645421492cf50bf"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:47afcde6f70ccda1abdf16c8e0a475a7ee0d12e489d7db150645421492cf50bf",
+      "rationale": "Derived by the interface gap detector: LoginDialogComponent::property:showAuth is Go tui/login_dialog.go#LoginDialogComponent.ShowAuth (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/login_dialog.go#LoginDialogComponent.ShowAuth"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/login_dialog.go#LoginDialogComponent.ShowAuth"
+      ],
+      "evidence": [
+        "test:tui/auth_url_copy_upstream_test.go#TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput",
+        "test:tui/login_dialog_oauth_prompt_upstream_test.go#TestLoginDialogPreservesAuthInstructionsWithPromptUpstream",
+        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#LoginDialogComponent::property:showAuth::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:05a32ed2afe95b5ac01f1774c5897fc7259501878d53cd46d2a0df1cd856edbc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:05a32ed2afe95b5ac01f1774c5897fc7259501878d53cd46d2a0df1cd856edbc",
+      "rationale": "Derived by the interface gap detector: LoginDialogComponent::property:showAuth::call:0 is Go tui/login_dialog.go#LoginDialogComponent.ShowAuth (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/login_dialog.go#LoginDialogComponent.ShowAuth"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/login_dialog.go#LoginDialogComponent.ShowAuth"
+      ],
+      "evidence": [
+        "test:tui/auth_url_copy_upstream_test.go#TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput",
+        "test:tui/login_dialog_oauth_prompt_upstream_test.go#TestLoginDialogPreservesAuthInstructionsWithPromptUpstream",
+        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#LoginDialogComponent::property:showDetails",
