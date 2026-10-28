@@ -81,7 +81,7 @@ Package installation never activates a Piglet. A Piglet separately selects an ag
 
 ## Piglets
 
-A Piglet is explicit composition, not a security boundary. It can narrow tools and discovery, declare secrets, and require an environment.
+Stock PiG has the same security boundary as Pi. It runs as the user, and it has no sandbox. A Piglet does not change that. A Piglet is a declaration, and stock PiG applies it as a narrowing of tools and discovery.
 
 Use exact tool lists and empty discovery lists when an application must not inherit ambient Resources:
 
@@ -92,7 +92,45 @@ discovery:
   skills: []
 ```
 
-Command-line and platform policy can narrow a Piglet. They must not silently widen it.
+Command-line options can narrow a Piglet. They cannot widen it. An overlay can widen a Piglet Binary only when its Piglet sets `extends.allowWiden: true`.
+
+A Piglet Binary adds guarantees that stock PiG does not give. The next section lists them. It also lists what a Piglet Binary does not guarantee.
+
+## What a Piglet Binary guarantees
+
+The guarantees below hold for a Piglet Binary built with `build.allowOverlays` off. That is the default. A Binary built with `build.allowOverlays: true` accepts an overlay Piglet, and the overlay selects its ambient Resources. Build a controlled deployment with `allowOverlays` off.
+
+**Fused extensions.** A fused extension is compiled into the executable. The Binary starts it in the PiG process. It does not build, download, or run a subprocess for it. A fused extension that fails to load is reported and is not replaced by a subprocess. At startup the Binary checks that the fused extensions equal the component plan it was built with. It exits when they differ.
+
+**No Piglet or ambient Resource selection at run time.** A Binary refuses `--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME` and `--system-prompt`. It loads no ambient extension or skill, even when its Piglet lists a discovery scope.
+
+**No silent install or substitution.** Startup does not install a Package, download a component, or replace a failed requirement. The cells that a Binary embeds run from absolute paths under the PiG config directory.
+
+**Tool ceilings.** The `tools` list of a Piglet, and the `tools` list of an extension entry, are a ceiling. The session tool registry admits a tool only when the ceiling, `--tools` and `--exclude-tools` all admit it. A tool outside the ceiling is not listed, is not active, and is not reachable by `codemode` or `tool_search`. A later `setActiveTools` call, a late registration, or a reload cannot bring it back.
+
+**Strips that overlays cannot undo.** A strip entry marked `stripped(binary)` names code that a build tag left out of the executable. An overlay cannot re-enable it, with or without `extends.allowWiden`. The strip list is part of the Binary record digest.
+
+**Signed Binaries.** A Binary built with `--sign-key` carries an Ed25519 signature in a DSSE envelope. At every start the Binary verifies the signature offline. It refuses to run when the executable, the manifest, or the signature changed. With `pig piglet trust require on`, a Binary without a signature from a locally trusted key does not run, and `pig piglet pull` does not install it. `pig piglet pull` also verifies the DSSE release index and pins the first signer of each Piglet.
+
+**A container for the agent, when the Piglet declares one.** A source Piglet with `agentEnv.image` and `pigRuntime.mode: image` runs `pig` in a container. The container runs as the invoking user with all capabilities dropped, `no-new-privileges`, a read-only root file system and limits on memory, CPU and processes. It does not receive the host environment. It receives only the secrets that `agentEnv.secrets` binds with a declared `secretRef`, and the fixed `PIG_*` variables that the launch sets. If the environment cannot start, PiG does not fall back to the host.
+
+## What a Piglet Binary does not guarantee
+
+- **It is not a sandbox.** A Binary runs as the user. The fused code shares the PiG process. The model can still run the tools that the ceiling leaves.
+- **It does not stop `-e` or `pig install`.** A Binary accepts `-e <path>` on its command line and the package commands. The deployer controls the command line.
+- **It does not pin every runtime.** A Node extension runs the `node` found on `PATH`. A Python or Lisp source extension finds `uv`, Python or SBCL on `PATH`. The Binary does not check these executables.
+- **The signature is a self-check.** A signature proves that the file is unchanged since a key signed it. A person who can rewrite the Binary and the trust store can sign a replacement. An unsigned Binary runs unless `trust require` is on.
+- **The `agentEnv` container is not available for a Binary.** `pig piglet build` refuses a Piglet with `agentEnv`. The container runs only for a source Piglet that names an image. The `--unsafe-host` option skips the container and prints a warning. The container network is the default bridge network, and no setting limits it. A command that the `bash` tool runs inherits the container environment, including the bound secrets.
+
+## What needs the planned Piglet Image
+
+A Piglet Image is planned and is not built today. `pig piglet build --format image` fails with `Piglet Image build is not implemented`. These need it:
+
+- a Binary that carries its own `agentEnv` and starts inside it;
+- the Dev Container and materialized source forms of `agentEnv`;
+- `pigRuntime` modes other than `image`, and `agentEnv` together with `extends`;
+- secret file targets;
+- an environment that one signed artifact fixes, so that the host cannot swap the image.
 
 ## Secrets
 
@@ -139,6 +177,29 @@ A Sigstore keyless attestation is separate build-provenance evidence. `pig verif
 It does not silently install, download, substitute, or weaken missing requirements. Verify the release checksum, offline signature, and available provenance before execution.
 
 A Binary can still require external services, configuration, runtimes, and secrets. Read its record instead of assuming that one file is self-contained.
+
+## Enterprise deployment
+
+An enterprise review asks for a set of controls. This table maps each to a Piglet setting. A row that says "No setting" has no control in PiG today. Provide that control outside PiG.
+
+| Control | Piglet setting | What it gives | Limit |
+|---|---|---|---|
+| C1/D4: run untrusted tools and extensions inside an operating-system boundary, with a low-privilege account | `agentEnv.image` with `pigRuntime.mode: image`, on a source Piglet. For a Binary, run it in a container or virtual machine that you provide. | The agent runs in a container as the invoking user, with no capabilities, no new privileges and a read-only root file system. | Not available inside a Binary. `--unsafe-host` skips it. The network is not restricted. |
+| C2/D2: run model-chosen commands as an argument array, never through a shell | `tools` without `bash` or `powershell`, or `strip.tools`. | The model has no shell tool. | No setting makes the `bash` tool use an argument array. It always runs `shell -c <command>`. |
+| C2/D3: allow only listed commands and arguments | No setting. | None. Omit `bash` as above, and give the model a fused extension tool that runs only the commands you accept. | A fused extension tool is code you review. PiG does not check it. |
+| C3/D5a: children get a minimal environment and a secrets broker | `agentEnv.secrets` with `secretRef`, and `secrets` declarations. | The container receives only the bound secrets, not the host environment. | A command that the `bash` tool runs inherits the whole container environment. No per-tool filter or broker exists. |
+| D5b: pin an absolute `PATH` | No setting. | None. Set `PATH` in the image. | Node, Python and Lisp source extensions find their runtimes on `PATH`. |
+
+Build a controlled Binary in these steps:
+
+1. Set an exact `tools` list, and set `discovery.extensions: []` and `discovery.skills: []`.
+2. Strip the built-ins that the application does not need, with `strip`.
+3. Leave `build.allowOverlays` unset.
+4. Build with `--sign-key`. Run `pig piglet trust add` for the publisher key, and run `pig piglet trust require on` on each host.
+5. Run the Binary in a container or virtual machine that you provide, with the secrets injected at run time.
+6. Run `pig verify <binary>` and `pig piglet verify <binary> --source <piglet.yaml>` before you release it. The second command fails when the source differs from the baked Piglet, which includes a source that turns `allowOverlays` on.
+
+A running Binary reports whether it accepts overlays: it refuses `--piglet` with a message that names `build.allowOverlays`.
 
 ## Network content
 
